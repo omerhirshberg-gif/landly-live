@@ -464,8 +464,10 @@
   <div class="section-label">Join Landly</div>
   <h2 class="section-title">Ready to land<br/>with confidence?</h2>
   <p class="section-sub">Leave your details and we will reach out to get you started.</p>
-  <form class="waitlist-form" id="wlForm">
-    <input type="email" id="emailInput" placeholder="your@email.com" required />
+  <form class="waitlist-form" id="wlForm"
+        action="https://formspree.io/f/xykrpjgo"
+        method="POST">
+    <input type="email" name="email" id="emailInput" placeholder="your@email.com" required />
     <button type="submit">Join Now</button>
   </form>
   <p class="waitlist-note">🔒 No spam. Unsubscribe anytime.</p>
@@ -499,10 +501,25 @@
       }
     });
   }
-  document.getElementById("wlForm").addEventListener("submit", function(e) {
+  document.getElementById("wlForm").addEventListener("submit", async function(e) {
     e.preventDefault();
-    document.getElementById("successMsg").style.display = "block";
-    document.getElementById("wlForm").style.display = "none";
+    const form = e.target;
+    const data = new FormData(form);
+    try {
+      const res = await fetch("https://formspree.io/f/xykrpjgo", {
+        method: "POST",
+        body: data,
+        headers: { "Accept": "application/json" }
+      });
+      if (res.ok) {
+        document.getElementById("successMsg").style.display = "block";
+        form.style.display = "none";
+      } else {
+        alert("Something went wrong. Please email us at contact@landly.io");
+      }
+    } catch(err) {
+      alert("Something went wrong. Please email us at contact@landly.io");
+    }
   });
 </script>
 </body>
