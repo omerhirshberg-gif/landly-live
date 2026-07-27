@@ -4,7 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0"/>
 <title>Landly — Live Israel Like a Local</title>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -240,8 +243,6 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* ═══════════════════════════════════════════════════════
    LOGIN MODAL & MEMBER DASHBOARD
 ═══════════════════════════════════════════════════════ */
-.login-input{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;min-height:48px;}
-.login-input:focus{border-color:#0038b8;}
 
 .dash-stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px 20px;}
 .dash-plan-card{background:#fff;border:2px solid #e2e8f0;border-radius:18px;padding:20px;transition:border-color .2s;}
@@ -299,11 +300,11 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
         <i class="fa-solid fa-gift text-xs"></i> <span data-i18n="nav_perks">My Perks</span>
       </button>
       <a href="#pricing" id="navGetCardBtn" class="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md" data-i18n="nav_cta">Get Your Card</a>
-      <button onclick="openModal('loginModal')" id="navLoginBtn" class="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
-        <i class="fa-solid fa-user text-xs"></i> <span data-i18n="nav_login">Log In</span>
+      <button onclick="instantLogin()" id="navLoginBtn" class="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
+        <i class="fa-solid fa-user text-xs"></i> <span data-i18n="nav_login">Sign In</span>
       </button>
       <button onclick="doLogout()" id="navLogoutBtn" class="hidden tap-target items-center gap-1.5 text-[13px] font-bold text-white bg-slate-800 rounded-full px-4 py-2.5 hover:bg-slate-900 transition">
-        <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span data-i18n="nav_logout">Log Out</span>
+        <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span data-i18n="nav_logout">Sign Out</span>
       </button>
 
       <!-- Hamburger (mobile/tablet only) -->
@@ -326,8 +327,8 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
     <button onclick="openView('bizView');closeMobileMenu()" class="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100" data-i18n="nav_biz">For Businesses</button>
     <button onclick="openView('supportView');closeMobileMenu()" class="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100" data-i18n="nav_support">Support</button>
     <button onclick="handlePerksClick();closeMobileMenu()" class="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100" data-i18n="nav_perks">My Perks</button>
-    <button onclick="openModal('loginModal');closeMobileMenu()" id="navLoginBtnMobile" class="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100" data-i18n="nav_login">Log In</button>
-    <button onclick="doLogout();closeMobileMenu()" id="navLogoutBtnMobile" class="hidden tap-target flex justify-start text-base font-bold text-red-600 py-3.5 border-b border-slate-100" data-i18n="nav_logout">Log Out</button>
+    <button onclick="instantLogin();closeMobileMenu()" id="navLoginBtnMobile" class="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100" data-i18n="nav_login">Sign In</button>
+    <button onclick="doLogout();closeMobileMenu()" id="navLogoutBtnMobile" class="hidden tap-target flex justify-start text-base font-bold text-red-600 py-3.5 border-b border-slate-100" data-i18n="nav_logout">Sign Out</button>
     <a href="#pricing" id="navGetCardBtnMobile" onclick="closeMobileMenu()" class="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-5 shadow-md" data-i18n="nav_cta">Get Your Card</a>
   </div>
 </div>
@@ -484,9 +485,9 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
             <p class="text-white/75 text-xs sm:text-sm mt-1" data-i18n="raffle_card_sub">No purchase needed beyond your membership. Winners drawn periodically.</p>
           </div>
         </div>
-        <div class="flex gap-2.5 flex-shrink-0 w-full sm:w-auto">
-          <a href="#pricing" class="tap-target flex-1 sm:flex-none justify-center bg-white text-brand font-bold text-sm px-5 py-3 rounded-full hover:bg-brandLight transition shadow" data-i18n="raffle_card_cta">Join Now</a>
-          <button onclick="openModal('termsModal');scrollToRaffleTerms()" class="tap-target flex-1 sm:flex-none justify-center border-2 border-white/60 text-white font-bold text-sm px-5 py-3 rounded-full hover:bg-white/10 transition" data-i18n="raffle_card_details">Raffle Details &amp; Terms</button>
+        <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0 w-full sm:w-auto">
+          <a href="#pricing" class="tap-target justify-center bg-white text-brand font-bold text-sm px-5 py-3 rounded-full hover:bg-brandLight transition shadow whitespace-nowrap" data-i18n="raffle_card_cta">Join Now</a>
+          <button onclick="openModal('termsModal');scrollToRaffleTerms()" class="tap-target justify-center border-2 border-white/60 text-white font-bold text-sm px-5 py-3 rounded-full hover:bg-white/10 transition whitespace-nowrap" data-i18n="raffle_card_details">Raffle Details &amp; Terms</button>
         </div>
       </div>
     </div>
@@ -942,9 +943,9 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
           <p class="text-slate-500 text-xs sm:text-sm mt-0.5" data-i18n="cats_cta_sub">Plus automatic entry into our Tel Aviv hotel night raffle.</p>
         </div>
       </div>
-      <div class="flex gap-2.5 flex-shrink-0">
-        <a href="#pricing" onclick="closeView('catsView')" class="tap-target bg-brand text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md" data-i18n="join_banner_cta">Join Now</a>
-        <button onclick="openModal('termsModal');scrollToRaffleTerms()" class="tap-target border-2 border-brand text-brand font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandLight transition" data-i18n="raffle_card_details">Raffle Details &amp; Terms</button>
+      <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0 w-full sm:w-auto">
+        <a href="#pricing" onclick="closeView('catsView')" class="tap-target justify-center bg-brand text-white font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md whitespace-nowrap" data-i18n="join_banner_cta">Join Now</a>
+        <button onclick="openModal('termsModal');scrollToRaffleTerms()" class="tap-target justify-center border-2 border-brand text-brand font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandLight transition whitespace-nowrap" data-i18n="raffle_card_details">Raffle Details &amp; Terms</button>
       </div>
     </div>
 
@@ -967,33 +968,6 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════
-     LOGIN MODAL (simulated authentication)
-═══════════════════════════════════════ -->
-<div id="loginModal" class="modal-bg" onclick="if(event.target===this)closeModal('loginModal')">
-  <div class="modal-box" style="max-width:440px;">
-    <button onclick="closeModal('loginModal')" class="modal-close-btn tap-target flex items-center justify-center absolute top-3 right-3 sm:top-4 sm:right-5 text-slate-400 hover:text-slate-700 text-xl"><i class="fa-solid fa-xmark"></i></button>
-    <div class="text-center mb-6">
-      <div class="w-14 h-14 rounded-2xl bg-brandLight flex items-center justify-center mx-auto mb-4">
-        <i class="fa-solid fa-user text-brand text-xl"></i>
-      </div>
-      <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-2" data-i18n="login_title">Welcome Back</h2>
-      <p class="text-slate-500 text-sm" data-i18n="login_sub">Log in to view your perks, vouchers and raffle status.</p>
-    </div>
-    <form id="loginForm" onsubmit="simulateLogin(event)" class="space-y-4">
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1.5" data-i18n="form_email">Email</label>
-        <input type="email" placeholder="your@email.com" class="login-input" required/>
-      </div>
-      <div>
-        <label class="block text-sm font-semibold text-slate-700 mb-1.5" data-i18n="login_password">Password</label>
-        <input type="password" placeholder="••••••••" class="login-input" required/>
-      </div>
-      <button type="submit" class="tap-target w-full bg-brand text-white font-bold py-3.5 rounded-full hover:bg-brandDark transition shadow-md" data-i18n="login_btn">Log In</button>
-    </form>
-    <p class="text-center text-xs text-slate-400 mt-5" data-i18n="login_demo_note">This is a demo login — any email and password will work.</p>
-  </div>
-</div>
 <!-- ═══════════════════════════════════════
      FOR BUSINESSES PAGE
 ═══════════════════════════════════════ -->
@@ -1104,13 +1078,13 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 <div id="memberView" class="pview bg-slate-50 pt-16">
   <div class="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
 
-    <div class="flex items-start justify-between mb-6">
+    <div class="flex items-start justify-between mb-6 gap-3">
       <div>
         <div class="text-xs font-bold tracking-widest text-brand uppercase mb-1" data-i18n="dash_label">Member Dashboard</div>
-        <h1 class="text-2xl sm:text-3xl font-black text-slate-900" data-i18n="dash_welcome">Welcome back!</h1>
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900" data-i18n="dash_welcome">Welcome back, Alex!</h1>
       </div>
       <button onclick="doLogout()" class="tap-target hidden sm:flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-600 transition flex-shrink-0">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="dash_back_public">Back to Public Site</span>
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="dash_back_public">Sign Out</span>
       </button>
     </div>
 
@@ -1122,14 +1096,33 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
         <div class="text-blue-200 text-sm mt-1"><span data-i18n="perks_renews">Renews:</span> January 2026</div>
       </div>
       <div class="text-left sm:text-right">
-        <div class="text-blue-200 text-xs mb-1" data-i18n="perks_cashback_earned">Cash Back Earned</div>
-        <div class="text-2xl sm:text-3xl font-black">142 ILS</div>
+        <div class="text-blue-200 text-xs mb-1" data-i18n="dash_total_saved">Total Saved</div>
+        <div class="text-2xl sm:text-3xl font-black" dir="ltr">₪1,240</div>
       </div>
     </div>
 
-    <!-- Raffle entry status — prioritized near the top per member value focus -->
+    <!-- Snapshot stats: Card status / Savings / Raffle entries -->
+    <div class="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
+      <div class="dash-stat-card text-center">
+        <i class="fa-solid fa-credit-card text-brand text-base sm:text-lg mb-1.5 sm:mb-2"></i>
+        <div class="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight" data-i18n="dash_card_status_label">Landly Card</div>
+        <div class="text-xs sm:text-base font-black text-slate-900" data-i18n="dash_card_status_value">Active</div>
+      </div>
+      <div class="dash-stat-card text-center">
+        <i class="fa-solid fa-sack-dollar text-emerald-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
+        <div class="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight" data-i18n="dash_total_saved">Total Saved</div>
+        <div class="text-xs sm:text-base font-black text-slate-900" dir="ltr">₪1,240</div>
+      </div>
+      <div class="dash-stat-card text-center">
+        <i class="fa-solid fa-ticket text-amber-500 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
+        <div class="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight" data-i18n="dash_raffle_entries_label">Raffle Entries</div>
+        <div class="text-xs sm:text-base font-black text-slate-900" data-i18n="dash_raffle_entries_value">3 Active</div>
+      </div>
+    </div>
+
+    <!-- Raffle note -->
     <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 flex items-center gap-3">
-      <i class="fa-solid fa-ticket text-amber-500 text-xl flex-shrink-0"></i>
+      <i class="fa-solid fa-champagne-glasses text-amber-500 text-xl flex-shrink-0"></i>
       <p class="text-sm text-amber-800"><strong data-i18n="perks_raffle_entered">You are entered</strong> <span data-i18n="perks_raffle_note">in the current Tel Aviv hotel night raffle as an active subscriber. Good luck!</span></p>
     </div>
 
@@ -1196,7 +1189,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 
     <div class="mt-10 text-center sm:hidden">
       <button onclick="doLogout()" class="tap-target inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-600 transition">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="dash_back_public">Back to Public Site</span>
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span data-i18n="dash_back_public">Sign Out</span>
       </button>
     </div>
   </div>
@@ -1491,20 +1484,15 @@ const translations = {
     "row_bestsellers": "Best Sellers",
     "footer_copyright_notice": "All rights reserved to Landly Ltd.",
     "footer_follow": "Follow Landly",
-    "nav_login": "Log In",
-    "nav_logout": "Log Out",
-    "login_title": "Welcome Back",
-    "login_sub": "Log in to view your perks, vouchers and raffle status.",
-    "login_password": "Password",
-    "login_btn": "Log In",
-    "login_demo_note": "This is a demo login — any email and password will work.",
+    "nav_login": "Sign In",
+    "nav_logout": "Sign Out",
     "dash_label": "Member Dashboard",
-    "dash_welcome": "Welcome back!",
+    "dash_welcome": "Welcome back, Alex!",
     "dash_plan_mgmt": "Manage Your Plan",
     "dash_plan_mgmt_sub": "Switch between Monthly and Annual anytime. Changes apply to your next billing cycle.",
     "dash_switch_btn": "Switch to This Plan",
     "dash_current_plan": "Current Plan",
-    "dash_back_public": "Back to Public Site",
+    "dash_back_public": "Sign Out",
     "raffle_card_headline": "Active Subscriber? You're Automatically Entered to Win a Luxury TLV Hotel Night!",
     "raffle_card_sub": "No purchase needed beyond your membership. Winners drawn periodically.",
     "raffle_card_cta": "Join Now",
@@ -1519,7 +1507,12 @@ const translations = {
     "terms_cta_text": "Ready to join and start earning perks?",
     "toast_plan_monthly": "Switched to the Monthly plan!",
     "toast_plan_annual": "Switched to the Annual plan!",
-    "toast_logged_out": "You have been logged out."
+    "toast_logged_out": "You have been logged out.",
+    "dash_total_saved": "Total Saved",
+    "dash_card_status_label": "Landly Card",
+    "dash_card_status_value": "Active",
+    "dash_raffle_entries_label": "Raffle Entries",
+    "dash_raffle_entries_value": "3 Active"
   },
   "ru": {
     "nav_deals": "Скидки",
@@ -1746,18 +1739,13 @@ const translations = {
     "footer_follow": "Подписывайтесь на Landly",
     "nav_login": "Войти",
     "nav_logout": "Выйти",
-    "login_title": "С возвращением",
-    "login_sub": "Войдите, чтобы увидеть бонусы, купоны и статус розыгрыша.",
-    "login_password": "Пароль",
-    "login_btn": "Войти",
-    "login_demo_note": "Это демо-вход — подойдет любой email и пароль.",
     "dash_label": "Личный кабинет",
-    "dash_welcome": "С возвращением!",
+    "dash_welcome": "С возвращением, Алекс!",
     "dash_plan_mgmt": "Управление подпиской",
     "dash_plan_mgmt_sub": "Переключайтесь между ежемесячным и годовым в любое время. Изменения вступят в силу со следующего цикла оплаты.",
     "dash_switch_btn": "Перейти на этот план",
     "dash_current_plan": "Текущий план",
-    "dash_back_public": "Вернуться на сайт",
+    "dash_back_public": "Выйти",
     "raffle_card_headline": "Активный подписчик? Вы автоматически участвуете в розыгрыше роскошной ночи в отеле Тель-Авива!",
     "raffle_card_sub": "Не требуется никаких дополнительных покупок, кроме подписки. Победители определяются периодически.",
     "raffle_card_cta": "Присоединиться",
@@ -1772,7 +1760,12 @@ const translations = {
     "terms_cta_text": "Готовы присоединиться и начать получать бонусы?",
     "toast_plan_monthly": "Вы перешли на ежемесячный план!",
     "toast_plan_annual": "Вы перешли на годовой план!",
-    "toast_logged_out": "Вы вышли из аккаунта."
+    "toast_logged_out": "Вы вышли из аккаунта.",
+    "dash_total_saved": "Всего сэкономлено",
+    "dash_card_status_label": "Карта Landly",
+    "dash_card_status_value": "Активна",
+    "dash_raffle_entries_label": "Билеты розыгрыша",
+    "dash_raffle_entries_value": "3 активных"
   },
   "es": {
     "nav_deals": "Ofertas",
@@ -1999,18 +1992,13 @@ const translations = {
     "footer_follow": "Sigue a Landly",
     "nav_login": "Iniciar Sesión",
     "nav_logout": "Cerrar Sesión",
-    "login_title": "Bienvenido de Nuevo",
-    "login_sub": "Inicia sesión para ver tus beneficios, cupones y estado del sorteo.",
-    "login_password": "Contraseña",
-    "login_btn": "Iniciar Sesión",
-    "login_demo_note": "Este es un inicio de sesión de demostración; cualquier correo y contraseña funcionarán.",
     "dash_label": "Panel de Miembro",
-    "dash_welcome": "¡Bienvenido de nuevo!",
+    "dash_welcome": "¡Bienvenido de nuevo, Alex!",
     "dash_plan_mgmt": "Administra Tu Plan",
     "dash_plan_mgmt_sub": "Cambia entre Mensual y Anual cuando quieras. Los cambios se aplican en tu próximo ciclo de facturación.",
     "dash_switch_btn": "Cambiar a Este Plan",
     "dash_current_plan": "Plan Actual",
-    "dash_back_public": "Volver al Sitio Público",
+    "dash_back_public": "Cerrar Sesión",
     "raffle_card_headline": "¿Suscriptor Activo? ¡Estás Automáticamente Participando para Ganar una Noche de Hotel de Lujo en Tel Aviv!",
     "raffle_card_sub": "No se necesita ninguna compra adicional además de tu membresía. Los ganadores se sortean periódicamente.",
     "raffle_card_cta": "Únete Ahora",
@@ -2025,7 +2013,12 @@ const translations = {
     "terms_cta_text": "¿Listo para unirte y empezar a ganar beneficios?",
     "toast_plan_monthly": "¡Has cambiado al plan Mensual!",
     "toast_plan_annual": "¡Has cambiado al plan Anual!",
-    "toast_logged_out": "Has cerrado sesión."
+    "toast_logged_out": "Has cerrado sesión.",
+    "dash_total_saved": "Total Ahorrado",
+    "dash_card_status_label": "Tarjeta Landly",
+    "dash_card_status_value": "Activa",
+    "dash_raffle_entries_label": "Entradas al Sorteo",
+    "dash_raffle_entries_value": "3 Activas"
   },
   "fr": {
     "nav_deals": "Offres",
@@ -2252,18 +2245,13 @@ const translations = {
     "footer_follow": "Suivez Landly",
     "nav_login": "Connexion",
     "nav_logout": "Déconnexion",
-    "login_title": "Content de Vous Revoir",
-    "login_sub": "Connectez-vous pour voir vos avantages, bons et statut du tirage.",
-    "login_password": "Mot de Passe",
-    "login_btn": "Connexion",
-    "login_demo_note": "Ceci est une connexion de démonstration, n'importe quel email et mot de passe fonctionneront.",
     "dash_label": "Espace Membre",
-    "dash_welcome": "Content de vous revoir !",
+    "dash_welcome": "Content de vous revoir, Alex !",
     "dash_plan_mgmt": "Gérez Votre Forfait",
     "dash_plan_mgmt_sub": "Passez du Mensuel à l'Annuel à tout moment. Les changements s'appliquent à votre prochain cycle de facturation.",
     "dash_switch_btn": "Passer à ce Forfait",
     "dash_current_plan": "Forfait Actuel",
-    "dash_back_public": "Retour au Site Public",
+    "dash_back_public": "Déconnexion",
     "raffle_card_headline": "Abonné Actif ? Vous Êtes Automatiquement Inscrit pour Gagner une Nuit d'Hôtel de Luxe à Tel Aviv !",
     "raffle_card_sub": "Aucun achat supplémentaire requis en dehors de votre abonnement. Les gagnants sont tirés périodiquement.",
     "raffle_card_cta": "Rejoindre",
@@ -2278,7 +2266,12 @@ const translations = {
     "terms_cta_text": "Prêt à rejoindre et commencer à gagner des avantages ?",
     "toast_plan_monthly": "Vous êtes passé au forfait Mensuel !",
     "toast_plan_annual": "Vous êtes passé au forfait Annuel !",
-    "toast_logged_out": "Vous avez été déconnecté."
+    "toast_logged_out": "Vous avez été déconnecté.",
+    "dash_total_saved": "Total Économisé",
+    "dash_card_status_label": "Carte Landly",
+    "dash_card_status_value": "Active",
+    "dash_raffle_entries_label": "Participations au Tirage",
+    "dash_raffle_entries_value": "3 Actives"
   },
   "he": {
     "nav_deals": "מבצעים",
@@ -2505,18 +2498,13 @@ const translations = {
     "footer_follow": "עקבו אחרי Landly",
     "nav_login": "התחברות",
     "nav_logout": "התנתקות",
-    "login_title": "ברוכים השבים",
-    "login_sub": "התחברו כדי לראות את ההטבות, הקופונים וסטטוס ההגרלה שלכם.",
-    "login_password": "סיסמה",
-    "login_btn": "התחברות",
-    "login_demo_note": "זוהי התחברות הדגמה — כל אימייל וסיסמה יעבדו.",
     "dash_label": "איזור אישי",
-    "dash_welcome": "ברוכים השבים!",
+    "dash_welcome": "ברוכים השבים, אלכס!",
     "dash_plan_mgmt": "ניהול המנוי שלכם",
     "dash_plan_mgmt_sub": "עברו בין חודשי לשנתי בכל עת. השינויים ייכנסו לתוקף במחזור החיוב הבא.",
     "dash_switch_btn": "עברו למסלול זה",
     "dash_current_plan": "המסלול הנוכחי",
-    "dash_back_public": "חזרה לאתר",
+    "dash_back_public": "התנתקות",
     "raffle_card_headline": "מנוי פעיל? אתם משתתפים אוטומטית בהגרלה ללילה יוקרתי במלון בתל אביב!",
     "raffle_card_sub": "לא נדרשת רכישה נוספת מעבר למנוי. הזוכים נבחרים באופן תקופתי.",
     "raffle_card_cta": "הצטרפו עכשיו",
@@ -2531,7 +2519,12 @@ const translations = {
     "terms_cta_text": "מוכנים להצטרף ולהתחיל לצבור הטבות?",
     "toast_plan_monthly": "עברתם למסלול החודשי!",
     "toast_plan_annual": "עברתם למסלול השנתי!",
-    "toast_logged_out": "התנתקתם בהצלחה."
+    "toast_logged_out": "התנתקתם בהצלחה.",
+    "dash_total_saved": "סה\"כ נחסך",
+    "dash_card_status_label": "כרטיס Landly",
+    "dash_card_status_value": "פעיל",
+    "dash_raffle_entries_label": "כרטיסי הגרלה",
+    "dash_raffle_entries_value": "3 פעילים"
   }
 };
 
@@ -2679,20 +2672,19 @@ function showMain(){
 }
 
 /* ═══════════════════════════════════════
-   SIMULATED LOGIN / MEMBER DASHBOARD
+   INSTANT DEMO SIGN-IN / MEMBER DASHBOARD
+   No form, no credentials — one click reveals a fully populated
+   demo member area, ideal for live presentations.
 ═══════════════════════════════════════ */
 function handlePerksClick(){
   closeMobileMenu();
   if(isLoggedIn){ openView('memberView'); }
-  else{ openModal('loginModal'); }
+  else{ instantLogin(); }
 }
 
-function simulateLogin(e){
-  e.preventDefault();
+function instantLogin(){
   isLoggedIn = true;
-  closeModal('loginModal');
   updateLoginUI();
-  document.getElementById('loginForm').reset();
   openView('memberView');
 }
 
