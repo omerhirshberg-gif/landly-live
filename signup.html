@@ -172,6 +172,9 @@ form.addEventListener('submit', async function(e){
   e.preventDefault();
   errorBox.classList.add('hidden');
 
+  // מוודא שספריית הטלפון סיימה לטעון לגמרי לפני שבודקים תקינות
+  await iti.promise;
+
   if (!iti.isValidNumber()) {
     errorBox.textContent = translations[currentLang].errorPhone;
     errorBox.classList.remove('hidden');
@@ -181,14 +184,24 @@ form.addEventListener('submit', async function(e){
   const fullName = document.getElementById('fullName').value;
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
-  const phone = iti.getNumber(); // בפורמט בינלאומי מלא, לדוגמה +972501234567
+
+  // בפורמט בינלאומי מלא, לדוגמה +972501234567
+  let phone = iti.getNumber();
+
+  // רשת ביטחון: אם מסיבה כלשהי הפורמוט נכשל ויצא ריק,
+  // בונים ידנית קידומת-מדינה + הספרות שהוזנו
+  if (!phone) {
+    const dialCode = iti.getSelectedCountryData().dialCode;
+    const rawDigits = phoneInputEl.value.replace(/\D/g, '');
+    phone = '+' + dialCode + rawDigits;
+  }
 
   submitBtn.disabled = true;
   submitBtn.textContent = translations[currentLang].submitBtnLoading;
 
   // full_name ו-phone נשמרים כ-metadata של המשתמש.
   // טריגר ב-Supabase מעתיק אותם אוטומטית לטבלת profiles (ראה קובץ ה-SQL).
-  const { error } = await supabaseClient.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
@@ -206,8 +219,14 @@ form.addEventListener('submit', async function(e){
     return;
   }
 
-  form.classList.add('hidden');
-  successBox.classList.remove('hidden');
+  // אם התקבל session מיד (כשאישור מייל כבוי) - המשתמש כבר מחובר, מעבירים אותו הלאה
+  // אם אין session - אישור מייל דלוק, ואז כן צריך להראות "בדוק את המייל"
+  if (data.session) {
+    window.location.href = '/';
+  } else {
+    form.classList.add('hidden');
+    successBox.classList.remove('hidden');
+  }
 });
 </script>
 </body>
