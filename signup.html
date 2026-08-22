@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/css/intlTelInput.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/css/intlTelInput.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{brand:'#0038b8',brandDark:'#002a8a',brandLight:'#e0effe'},fontFamily:{heebo:['Heebo','sans-serif']}}}}
@@ -84,7 +84,7 @@ html[dir="rtl"] .iti input{padding:13px 52px 13px 16px;}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/js/intlTelInput.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/intlTelInput.min.js"></script>
 <script>
 /* ═══════════════════════════════════════
    TRANSLATIONS
@@ -157,7 +157,7 @@ const phoneInputEl = document.querySelector('#phone');
 const iti = window.intlTelInput(phoneInputEl, {
   initialCountry: 'il',
   separateDialCode: true,
-  loadUtils: () => import('https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/js/utils.js'),
+  loadUtils: () => import('https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/utils.js'),
 });
 
 /* ═══════════════════════════════════════
