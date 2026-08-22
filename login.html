@@ -79,6 +79,7 @@ const translations = {
     forgotLink: 'Forgot password',
     signupLink: "Don't have an account",
     errorMsg: 'Incorrect email or password',
+    errorNotConfirmed: 'Please confirm your email first — check your inbox for the confirmation link',
     toggleLabel: 'עברית'
   },
   he: {
@@ -92,6 +93,7 @@ const translations = {
     forgotLink: 'שכחתי סיסמא',
     signupLink: 'עדיין אין לי חשבון',
     errorMsg: 'מייל או סיסמא שגויים',
+    errorNotConfirmed: 'צריך קודם לאשר את המייל - תבדוק/י בתיבת הדואר שלך את קישור האישור',
     toggleLabel: 'English'
   }
 };
@@ -137,7 +139,11 @@ form.addEventListener('submit', async function(e){
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if (error) {
-    errorBox.textContent = translations[currentLang].errorMsg;
+    if (error.message.includes('Email not confirmed')) {
+      errorBox.textContent = translations[currentLang].errorNotConfirmed;
+    } else {
+      errorBox.textContent = translations[currentLang].errorMsg;
+    }
     errorBox.classList.remove('hidden');
     submitBtn.disabled = false;
     submitBtn.textContent = translations[currentLang].submitBtn;

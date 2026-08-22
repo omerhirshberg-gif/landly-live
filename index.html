@@ -2863,12 +2863,11 @@ function handlePerksClick(){
 }
 
 function instantLogin(){
-  isLoggedIn = true;
-  updateLoginUI();
-  openView('memberView');
+  window.location.href = '/login.html';
 }
 
-function doLogout(){
+async function doLogout(){
+  await supabaseClient.auth.signOut();
   isLoggedIn = false;
   updateLoginUI();
   showMain();
@@ -2986,6 +2985,17 @@ document.getElementById('wlForm').addEventListener('submit',async function(e){
   try{
     const saved = localStorage.getItem('landly_lang');
     if(saved && translations[saved]) setLang(saved);
+  }catch(e){}
+})();
+
+/* בודק אם המשתמש כבר מחובר באמת (Supabase) ומעדכן את כפתורי הניווט בהתאם */
+(async function(){
+  try{
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(session){
+      isLoggedIn = true;
+      updateLoginUI();
+    }
   }catch(e){}
 })();
 </script>
