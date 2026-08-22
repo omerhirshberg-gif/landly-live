@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>התחברות — Landly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{brand:'#0038b8',brandDark:'#002a8a',brandLight:'#e0effe'},fontFamily:{heebo:['Heebo','sans-serif']}}}}
+</script>
+<style>
+*{font-family:'Heebo',sans-serif;box-sizing:border-box;}
+body{background:#f8fafc;min-height:100vh;}
+.inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
+.inp:focus{border-color:#0038b8;}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0038b8;color:#ffffff;font-weight:800;font-size:15px;padding:15px 30px;border-radius:100px;border:none;cursor:pointer;transition:background .2s,transform .18s;width:100%;min-height:50px;}
+.btn-primary:hover{background:#002a8a;}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+  <div class="max-w-7xl mx-auto px-5 py-5">
+    <a href="/" class="inline-flex items-center gap-2">
+      <img src="/logo.jpg" alt="Landly" class="h-9 w-auto"/>
+    </a>
+  </div>
+
+  <div class="flex items-center justify-center px-5" style="min-height:calc(100vh - 100px)">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-lg p-8 sm:p-10">
+      <h1 class="text-2xl font-black text-slate-900 mb-1">התחברות</h1>
+      <p class="text-sm text-slate-500 mb-7">נעים לראות אותך שוב</p>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700">מייל</label>
+          <input type="email" id="email" required class="inp" autocomplete="email"/>
+        </div>
+
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700">סיסמא</label>
+          <input type="password" id="password" required class="inp" autocomplete="current-password"/>
+        </div>
+
+        <div id="errorBox" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></div>
+
+        <button type="submit" id="submitBtn" class="btn-primary mt-2">התחברות</button>
+      </form>
+
+      <div class="flex items-center justify-between mt-6 text-sm">
+        <a href="/forgot-password.html" class="text-brand font-bold hover:underline">שכחתי סיסמא</a>
+        <a href="/signup.html" class="text-brand font-bold hover:underline">עדיין אין לי חשבון</a>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script>
+const form = document.getElementById('loginForm');
+const errorBox = document.getElementById('errorBox');
+const submitBtn = document.getElementById('submitBtn');
+
+form.addEventListener('submit', async function(e){
+  e.preventDefault();
+  errorBox.classList.add('hidden');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'מתחבר...';
+
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errorBox.textContent = 'מייל או סיסמא שגויים';
+    errorBox.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'התחברות';
+    return;
+  }
+
+  // התחברות הצליחה — חוזרים לדף הבית
+  window.location.href = '/';
+});
+</script>
+</body>
+</html>
