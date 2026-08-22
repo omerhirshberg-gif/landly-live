@@ -120,6 +120,12 @@ function toggleLang(){
 
 applyLang(currentLang);
 
+/* אם כבר יש session פעיל - מדלגים ישר לאתר במקום להציג שוב את הטופס */
+(async function(){
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) { window.location.href = '/'; }
+})();
+
 /* ═══════════════════════════════════════
    LOGIN
 ═══════════════════════════════════════ */
