@@ -2998,6 +2998,76 @@ document.getElementById('wlForm').addEventListener('submit',async function(e){
     }
   }catch(e){}
 })();
+
+<script>
+/* ═══════════════════════════════════════
+   LANDLY AUTH UI — עצמאי לגמרי, לא תלוי בשום קוד אחר בדף.
+   אחראי על: הצגת "שלום [שם]", החלפת Sign In/Sign Out, וכפתורי ההתנתקות/התחברות.
+═══════════════════════════════════════ */
+(async function(){
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const loggedIn = !!session;
+
+    const ids = {
+      loginDesktop: 'navLoginBtn',
+      loginMobile: 'navLoginBtnMobile',
+      logoutDesktop: 'navLogoutBtn',
+      logoutMobile: 'navLogoutBtnMobile'
+    };
+
+    function setHidden(id, hidden){
+      const elx = document.getElementById(id);
+      if(!elx) return;
+      elx.classList.toggle('hidden', hidden);
+      if(!hidden){
+        elx.style.display = id.indexOf('Mobile') !== -1 ? 'flex' : 'inline-flex';
+      }
+    }
+
+    setHidden(ids.loginDesktop, loggedIn);
+    setHidden(ids.loginMobile, loggedIn);
+    setHidden(ids.logoutDesktop, !loggedIn);
+    setHidden(ids.logoutMobile, !loggedIn);
+
+    if (loggedIn) {
+      const fullName = (session.user.user_metadata && session.user.user_metadata.full_name) || '';
+      const firstName = fullName.split(' ')[0] || '';
+      const greetingText = firstName ? ('שלום, ' + firstName) : 'שלום';
+
+      const greetDesktop = document.createElement('span');
+      greetDesktop.id = 'landlyGreetDesktop';
+      greetDesktop.className = 'hidden sm:inline-flex items-center text-[13px] font-bold text-slate-700 px-1';
+      greetDesktop.textContent = greetingText;
+      const logoutBtn = document.getElementById(ids.logoutDesktop);
+      if (logoutBtn && logoutBtn.parentNode) logoutBtn.parentNode.insertBefore(greetDesktop, logoutBtn);
+
+      const greetMobile = document.createElement('div');
+      greetMobile.id = 'landlyGreetMobile';
+      greetMobile.className = 'text-base font-bold text-slate-800 py-3.5 border-b border-slate-100';
+      greetMobile.textContent = greetingText;
+      const logoutBtnMobile = document.getElementById(ids.logoutMobile);
+      if (logoutBtnMobile && logoutBtnMobile.parentNode) logoutBtnMobile.parentNode.insertBefore(greetMobile, logoutBtnMobile);
+    }
+
+    async function realSignOut(){
+      await supabaseClient.auth.signOut();
+      window.location.href = '/';
+    }
+    [ids.logoutDesktop, ids.logoutMobile].forEach(function(id){
+      const elx = document.getElementById(id);
+      if (elx) elx.addEventListener('click', realSignOut);
+    });
+
+    [ids.loginDesktop, ids.loginMobile].forEach(function(id){
+      const elx = document.getElementById(id);
+      if (elx) elx.addEventListener('click', function(){ window.location.href = '/login.html'; });
+    });
+
+  } catch(e) {
+    console.error('Landly auth UI error:', e);
+  }
+})();
 </script>
 </body>
 </html>
