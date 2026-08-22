@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" id="htmlRoot">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sign Up — Landly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/css/intlTelInput.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{brand:'#0038b8',brandDark:'#002a8a',brandLight:'#e0effe'},fontFamily:{heebo:['Heebo','sans-serif']}}}}
+</script>
+<style>
+*{font-family:'Heebo',sans-serif;box-sizing:border-box;}
+body{background:#f8fafc;min-height:100vh;}
+.inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
+.inp:focus{border-color:#0038b8;}
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0038b8;color:#ffffff;font-weight:800;font-size:15px;padding:15px 30px;border-radius:100px;border:none;cursor:pointer;transition:background .2s,transform .18s;width:100%;min-height:50px;}
+.btn-primary:hover{background:#002a8a;}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+.lang-toggle{font-size:13px;font-weight:700;color:#64748b;border:1.5px solid #e2e8f0;border-radius:100px;padding:7px 14px;cursor:pointer;background:#fff;transition:border-color .2s,color .2s;}
+.lang-toggle:hover{border-color:#0038b8;color:#0038b8;}
+/* מוודא שהגובה של שדה הטלפון תואם לשאר השדות */
+.iti{width:100%;}
+.iti input{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px 13px 52px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;min-height:48px;}
+.iti input:focus{border-color:#0038b8;}
+html[dir="rtl"] .iti input{padding:13px 52px 13px 16px;}
+</style>
+</head>
+<body>
+
+  <div class="max-w-7xl mx-auto px-5 py-5 flex items-center justify-between">
+    <a href="/" class="inline-flex items-center gap-2">
+      <img src="/logo.jpg" alt="Landly" class="h-9 w-auto"/>
+    </a>
+    <button class="lang-toggle" id="langToggleBtn" onclick="toggleLang()">עברית</button>
+  </div>
+
+  <div class="flex items-center justify-center px-5 py-6" style="min-height:calc(100vh - 100px)">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-lg p-8 sm:p-10">
+      <h1 class="text-2xl font-black text-slate-900 mb-1" data-i18n="title">Sign Up</h1>
+      <p class="text-sm text-slate-500 mb-7" data-i18n="subtitle">Create your Landly account</p>
+
+      <form id="signupForm" class="space-y-4">
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700" data-i18n="fullNameLabel">Full name</label>
+          <input type="text" id="fullName" required class="inp" autocomplete="name"/>
+        </div>
+
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700" data-i18n="emailLabel">Email</label>
+          <input type="email" id="email" required class="inp" autocomplete="email"/>
+        </div>
+
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700" data-i18n="passwordLabel">Password</label>
+          <input type="password" id="password" required minlength="6" class="inp" autocomplete="new-password"/>
+        </div>
+
+        <div>
+          <label class="block mb-1.5 text-sm font-bold text-slate-700" data-i18n="phoneLabel">Phone number</label>
+          <input type="tel" id="phone" required/>
+          <p class="text-xs text-slate-500 mt-1.5" data-i18n="phoneNote">Enter your WhatsApp number — we'll use it for important updates</p>
+        </div>
+
+        <div id="errorBox" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3"></div>
+
+        <button type="submit" id="submitBtn" class="btn-primary mt-2" data-i18n="submitBtn">Sign Up</button>
+      </form>
+
+      <div id="successBox" class="hidden text-center">
+        <h2 class="text-xl font-black text-slate-900 mb-2" data-i18n="successTitle">Almost done!</h2>
+        <p class="text-sm text-slate-600" data-i18n="successMsg">We sent you a confirmation email. Click the link inside to finish signing up.</p>
+      </div>
+
+      <div class="text-center mt-6 text-sm">
+        <span class="text-slate-500" data-i18n="haveAccount">Already have an account?</span>
+        <a href="/login.html" class="text-brand font-bold hover:underline" data-i18n="loginLink">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/js/intlTelInput.min.js"></script>
+<script>
+/* ═══════════════════════════════════════
+   TRANSLATIONS
+═══════════════════════════════════════ */
+const translations = {
+  en: {
+    pageTitle: 'Sign Up — Landly',
+    title: 'Sign Up',
+    subtitle: 'Create your Landly account',
+    fullNameLabel: 'Full name',
+    emailLabel: 'Email',
+    passwordLabel: 'Password',
+    phoneLabel: 'Phone number',
+    phoneNote: "Enter your WhatsApp number — we'll use it for important updates",
+    submitBtn: 'Sign Up',
+    submitBtnLoading: 'Signing up...',
+    successTitle: 'Almost done!',
+    successMsg: 'We sent you a confirmation email. Click the link inside to finish signing up.',
+    haveAccount: 'Already have an account?',
+    loginLink: 'Sign in',
+    errorPhone: 'Please enter a valid phone number',
+    toggleLabel: 'עברית'
+  },
+  he: {
+    pageTitle: 'הרשמה — Landly',
+    title: 'הרשמה',
+    subtitle: 'צור/י חשבון Landly',
+    fullNameLabel: 'שם מלא',
+    emailLabel: 'מייל',
+    passwordLabel: 'סיסמא',
+    phoneLabel: 'מספר טלפון',
+    phoneNote: 'הכנס את מספר הווצאפ שלך — נשתמש בו לעדכונים חשובים',
+    submitBtn: 'הרשמה',
+    submitBtnLoading: 'נרשם...',
+    successTitle: 'כמעט סיימנו!',
+    successMsg: 'שלחנו לך מייל אישור. לחץ על הקישור במייל כדי להשלים את ההרשמה.',
+    haveAccount: 'כבר יש לך חשבון?',
+    loginLink: 'התחברות',
+    errorPhone: 'מספר הטלפון לא תקין',
+    toggleLabel: 'English'
+  }
+};
+
+let currentLang = localStorage.getItem('landly_lang') === 'he' ? 'he' : 'en';
+
+function applyLang(lang){
+  currentLang = lang;
+  const t = translations[lang];
+  document.getElementById('htmlRoot').setAttribute('lang', lang);
+  document.getElementById('htmlRoot').setAttribute('dir', lang === 'he' ? 'rtl' : 'ltr');
+  document.title = t.pageTitle;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) el.textContent = t[key];
+  });
+  document.getElementById('langToggleBtn').textContent = t.toggleLabel;
+  try { localStorage.setItem('landly_lang', lang); } catch(e){}
+}
+
+function toggleLang(){
+  applyLang(currentLang === 'en' ? 'he' : 'en');
+}
+
+applyLang(currentLang);
+
+/* ═══════════════════════════════════════
+   PHONE INPUT (country code picker)
+═══════════════════════════════════════ */
+const phoneInputEl = document.querySelector('#phone');
+const iti = window.intlTelInput(phoneInputEl, {
+  initialCountry: 'il',
+  separateDialCode: true,
+  loadUtils: () => import('https://cdn.jsdelivr.net/npm/intl-tel-input@29.2.3/build/js/utils.js'),
+});
+
+/* ═══════════════════════════════════════
+   SIGNUP
+═══════════════════════════════════════ */
+const form = document.getElementById('signupForm');
+const errorBox = document.getElementById('errorBox');
+const submitBtn = document.getElementById('submitBtn');
+const successBox = document.getElementById('successBox');
+
+form.addEventListener('submit', async function(e){
+  e.preventDefault();
+  errorBox.classList.add('hidden');
+
+  if (!iti.isValidNumber()) {
+    errorBox.textContent = translations[currentLang].errorPhone;
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
+  const fullName = document.getElementById('fullName').value;
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const phone = iti.getNumber(); // בפורמט בינלאומי מלא, לדוגמה +972501234567
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = translations[currentLang].submitBtnLoading;
+
+  // full_name ו-phone נשמרים כ-metadata של המשתמש.
+  // טריגר ב-Supabase מעתיק אותם אוטומטית לטבלת profiles (ראה קובץ ה-SQL).
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: fullName, phone },
+      emailRedirectTo: `${window.location.origin}/login.html`
+    }
+  });
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = translations[currentLang].submitBtn;
+
+  if (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
+  form.classList.add('hidden');
+  successBox.classList.remove('hidden');
+});
+</script>
+</body>
+</html>
