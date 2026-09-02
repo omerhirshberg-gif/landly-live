@@ -9,6 +9,7 @@ import AuthCard from '@/components/auth/AuthCard'
 import GoogleButton from '@/components/auth/GoogleButton'
 import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import { createUserDocument, ensureUserDocument } from '@/lib/firebase/users'
 import { useSimpleLang } from '@/lib/i18n/useSimpleLang'
 
 const dict = {
@@ -50,7 +51,10 @@ const dict = {
 
 declare global {
   interface Window {
-    intlTelInput?: (input: HTMLInputElement, options: Record<string, unknown>) => { destroy: () => void }
+    intlTelInput?: (
+      input: HTMLInputElement,
+      options: Record<string, unknown>
+    ) => { destroy: () => void; getNumber: () => string }
   }
 }
 
@@ -63,6 +67,7 @@ export default function SignupPage() {
   const { t, toggleLang } = useSimpleLang(dict)
   const router = useRouter()
   const phoneRef = useRef<HTMLInputElement>(null)
+  const itiRef = useRef<{ destroy: () => void; getNumber: () => string } | null>(null)
   const [itiReady, setItiReady] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -75,9 +80,16 @@ export default function SignupPage() {
     const iti = window.intlTelInput(phoneRef.current, {
       initialCountry: 'il',
       separateDialCode: true,
-      loadUtils: () => import(ITI_UTILS_URL),
+      // webpackIgnore stops Turbopack/webpack from treating this as a bundleable
+      // module request (which silently fails for a non-literal CDN specifier and
+      // never issues the real network fetch) - it must stay a genuine runtime import.
+      loadUtils: () => import(/* webpackIgnore: true */ ITI_UTILS_URL),
     })
-    return () => iti.destroy()
+    itiRef.current = iti
+    return () => {
+      iti.destroy()
+      itiRef.current = null
+    }
   }, [itiReady])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,9 +98,12 @@ export default function SignupPage() {
     setSubmitting(true)
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
-      if (fullName.trim()) {
-        await updateProfile(cred.user, { displayName: fullName.trim() })
+      const trimmedName = fullName.trim()
+      if (trimmedName) {
+        await updateProfile(cred.user, { displayName: trimmedName })
       }
+      const phone = itiRef.current?.getNumber() || phoneRef.current?.value || ''
+      await createUserDocument(cred.user, { phone })
       router.push('/member')
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -99,7 +114,8 @@ export default function SignupPage() {
   const handleGoogle = async () => {
     setError(null)
     try {
-      await signInWithPopup(auth, googleProvider)
+      const cred = await signInWithPopup(auth, googleProvider)
+      await ensureUserDocument(cred.user)
       router.push('/member')
     } catch (err) {
       setError(getAuthErrorMessage(err))

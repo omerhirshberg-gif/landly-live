@@ -8,6 +8,7 @@ import AuthCard from '@/components/auth/AuthCard'
 import GoogleButton from '@/components/auth/GoogleButton'
 import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import { ensureUserDocument } from '@/lib/firebase/users'
 import { useSimpleLang } from '@/lib/i18n/useSimpleLang'
 
 const dict = {
@@ -65,7 +66,8 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setError(null)
     try {
-      await signInWithPopup(auth, googleProvider)
+      const cred = await signInWithPopup(auth, googleProvider)
+      await ensureUserDocument(cred.user)
       router.push('/member')
     } catch (err) {
       setError(getAuthErrorMessage(err))
