@@ -322,3 +322,16 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
   background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center;
   color:#fff; font-size:12px; border:none; cursor:pointer;
 }
+
+/* ═══════════════════════════════════════════════════════
+   AUTH PAGES — ported verbatim from the legacy login/signup/
+   forgot-password/reset-password HTML files' own <style> blocks.
+═══════════════════════════════════════════════════════ */
+.lang-toggle{font-size:13px;font-weight:700;color:#64748b;border:1.5px solid #e2e8f0;border-radius:100px;padding:7px 14px;cursor:pointer;background:#fff;transition:border-color .2s,color .2s;}
+.lang-toggle:hover{border-color:#0038b8;color:#0038b8;}
+
+/* Phone input (signup) — matches the height/style of the other .inp fields */
+.iti{width:100%;}
+.iti input{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px 13px 52px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;min-height:48px;}
+.iti input:focus{border-color:#0038b8;}
+html[dir="rtl"] .iti input{padding:13px 52px 13px 16px;}
