@@ -1,0 +1,60 @@
+'use client'
+
+import { useLang } from '@/lib/i18n/useLang'
+
+export default function Pricing({ onOpenTerms }: { onOpenTerms: () => void }) {
+  const { t } = useLang()
+
+  return (
+    <section id="pricing" className="py-14 sm:py-20 bg-slate-50">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6">
+        <div className="text-xs font-bold tracking-widest text-brand uppercase mb-3">{t('pricing_label')}</div>
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-10 sm:mb-12" style={{ letterSpacing: '-1px' }}>{t('pricing_title')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 max-w-4xl">
+          <div className="bg-white border-2 border-slate-100 rounded-2xl p-7 sm:p-8 hover:border-brand transition hover:shadow-lg">
+            <div className="text-sm font-bold text-slate-400 mb-2">{t('plan_monthly_name')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-1">39 <span className="text-lg sm:text-xl font-medium text-slate-400">{t('price_suffix')}</span></div>
+            <div className="text-xs text-slate-400 mb-6">{t('plan_monthly_note')}</div>
+            <ul className="space-y-3 mb-8 text-sm text-slate-600">
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_card')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_all_discounts')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_cashback')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_legal')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>
+            </ul>
+            <a href="#waitlist" className="tap-target block text-center bg-white border-2 border-brand text-brand font-bold py-3 rounded-full hover:bg-brandLight transition shadow-sm">{t('btn_get_started')}</a>
+          </div>
+          <div className="bg-white border-2 border-slate-100 rounded-2xl p-7 sm:p-8 hover:border-brand transition hover:shadow-lg">
+            <div className="text-sm font-bold text-slate-400 mb-2">{t('plan_quarterly_name')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-1">33 <span className="text-lg sm:text-xl font-medium text-slate-400">{t('price_suffix')}</span></div>
+            <div className="text-xs text-slate-400 mb-6">{t('plan_quarterly_note')}</div>
+            <ul className="space-y-3 mb-8 text-sm text-slate-600">
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_everything_monthly')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_enhanced_cashback')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_legal')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_community')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>
+            </ul>
+            <a href="#waitlist" className="tap-target block text-center bg-white border-2 border-brand text-brand font-bold py-3 rounded-full hover:bg-brandLight transition shadow-sm">{t('btn_get_started')}</a>
+          </div>
+          <div className="bg-brand border-2 border-brand rounded-2xl p-7 sm:p-8 relative shadow-xl shadow-blue-200">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap">{t('best_value')}</div>
+            <div className="text-sm font-bold text-blue-200 mb-2">{t('plan_annual_name')}</div>
+            <div className="text-4xl sm:text-5xl font-black text-white mb-1">29 <span className="text-lg sm:text-xl font-medium text-blue-200">{t('price_suffix')}</span></div>
+            <div className="text-xs text-blue-200 mb-1">{t('plan_annual_note1')}</div>
+            <div className="text-xs text-blue-200 mb-6">{t('plan_annual_note2')}</div>
+            <ul className="space-y-3 mb-8 text-sm text-blue-100">
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-white mt-0.5 flex-shrink-0"></i><span>{t('feat_everything_quarterly')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-white mt-0.5 flex-shrink-0"></i><span>{t('feat_priority_matching')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-white mt-0.5 flex-shrink-0"></i><span>{t('feat_vip')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-white mt-0.5 flex-shrink-0"></i><span>{t('feat_whatsapp')}</span></li>
+              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-white mt-0.5 flex-shrink-0"></i><span>{t('feat_priority_raffle')}</span></li>
+            </ul>
+            <a href="#waitlist" className="tap-target block text-center bg-white text-brand font-bold py-3 rounded-full hover:bg-brandLight transition shadow-lg">{t('btn_get_annual')}</a>
+          </div>
+        </div>
+        <p className="text-slate-400 text-xs mt-5"><span>{t('pricing_disclaimer_pre')}</span> <button onClick={onOpenTerms} className="text-brand underline font-semibold">{t('terms_link')}</button><span>{t('pricing_disclaimer_post')}</span></p>
+      </div>
+    </section>
+  )
+}
