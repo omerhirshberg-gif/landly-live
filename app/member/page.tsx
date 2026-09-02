@@ -2,14 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
+import { useAuth } from '@/lib/firebase/useAuth'
 
 export default function MemberPage() {
   const { t } = useLang()
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const [plan, setPlan] = useState<'monthly' | 'annual'>('annual')
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login')
+  }, [loading, user, router])
 
   const showToast = (message: string) => {
     setToast(message)
@@ -26,6 +34,15 @@ export default function MemberPage() {
   }
 
   const showSegmentInfo = () => showToast(t('dash_segment_toast'))
+
+  if (loading || !user) {
+    return (
+      <>
+        <Navbar />
+        <div className="pt-16 min-h-screen bg-slate-50" />
+      </>
+    )
+  }
 
   return (
     <>

@@ -8,11 +8,15 @@ export default function MobileMenu({
   onClose,
   onGoHome,
   t,
+  isLoggedIn,
+  onSignOut,
 }: {
   isOpen: boolean
   onClose: () => void
   onGoHome: () => void
   t: (key: TranslationKey) => string
+  isLoggedIn: boolean
+  onSignOut: () => void
 }) {
   return (
     <div className={`mobile-menu ${isOpen ? 'open' : ''}`}>
@@ -24,8 +28,12 @@ export default function MobileMenu({
         <Link href="/olim" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_olim')}</Link>
         <Link href="/business" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_biz')}</Link>
         <Link href="/support" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_support')}</Link>
-        <Link href="/login" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_perks')}</Link>
-        <Link href="/login" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_login')}</Link>
+        <Link href={isLoggedIn ? '/member' : '/login'} onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_perks')}</Link>
+        {isLoggedIn ? (
+          <button onClick={onSignOut} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_logout')}</button>
+        ) : (
+          <Link href="/login" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_login')}</Link>
+        )}
         <Link href="/#pricing" onClick={onClose} className="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-5 shadow-md text-center justify-center flex items-center">{t('nav_cta')}</Link>
       </div>
     </div>

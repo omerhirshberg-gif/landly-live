@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
+import { useAuth } from '@/lib/firebase/useAuth'
+import { auth } from '@/lib/firebase/config'
 import { translations, Lang, TranslationKey } from '@/lib/i18n/translations'
 import MobileMenu from './MobileMenu'
 
@@ -23,6 +26,7 @@ const LANGUAGES: { code: Lang; flag: string; label: string }[] = [
  */
 export default function Navbar({ forceLocked = false }: { forceLocked?: boolean }) {
   const { lang: ctxLang, setLang, t: ctxT } = useLang()
+  const { user } = useAuth()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
@@ -47,6 +51,12 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
   }, [])
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
+
+  const handleSignOut = async () => {
+    closeMobileMenu()
+    await signOut(auth)
+    router.push('/')
+  }
 
   const goHome = () => {
     closeMobileMenu()
@@ -109,13 +119,19 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
               </div>
             </div>
 
-            <Link href="/login" className="hidden lg:flex tap-target items-center gap-1.5 text-[13px] font-bold text-brand border-2 border-brand rounded-full px-4 py-2 hover:bg-brandLight transition">
+            <Link href={user ? '/member' : '/login'} className="hidden lg:flex tap-target items-center gap-1.5 text-[13px] font-bold text-brand border-2 border-brand rounded-full px-4 py-2 hover:bg-brandLight transition">
               <i className="fa-solid fa-gift text-xs"></i> <span>{t('nav_perks')}</span>
             </Link>
             <Link href="/#pricing" className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{t('nav_cta')}</Link>
-            <Link href="/login" className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
-              <i className="fa-solid fa-user text-xs"></i> <span>{t('nav_login')}</span>
-            </Link>
+            {user ? (
+              <button onClick={handleSignOut} className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
+                <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>{t('nav_logout')}</span>
+              </button>
+            ) : (
+              <Link href="/login" className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
+                <i className="fa-solid fa-user text-xs"></i> <span>{t('nav_login')}</span>
+              </Link>
+            )}
 
             {/* Hamburger (mobile/tablet only) */}
             <button className="lg:hidden tap-target flex items-center justify-center" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menu">
@@ -125,7 +141,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} />
     </>
   )
 }
