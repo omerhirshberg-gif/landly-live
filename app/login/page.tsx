@@ -22,7 +22,6 @@ const dict = {
     submitBtnBusy: 'Signing in…',
     forgotLink: 'Forgot password',
     signupLink: "Don't have an account",
-    toggleLabel: 'עברית',
     orDivider: 'or',
     googleBtn: 'Continue with Google',
   },
@@ -36,14 +35,13 @@ const dict = {
     submitBtnBusy: 'מתחבר…',
     forgotLink: 'שכחתי סיסמא',
     signupLink: 'עדיין אין לי חשבון',
-    toggleLabel: 'English',
     orDivider: 'או',
     googleBtn: 'המשך עם Google',
   },
 }
 
 export default function LoginPage() {
-  const { t, toggleLang } = useSimpleLang(dict)
+  const { t } = useSimpleLang(dict)
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -75,7 +73,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+    <AuthCard>
       <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-slate-500 mb-7">{t('subtitle')}</p>
 

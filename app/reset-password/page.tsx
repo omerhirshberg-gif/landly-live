@@ -18,7 +18,6 @@ const dict = {
     confirmLabel: 'Confirm password',
     submitBtn: 'Update password',
     submitBtnBusy: 'Updating…',
-    toggleLabel: 'עברית',
     mismatch: 'Passwords do not match.',
     invalidLink: 'This reset link is invalid or has expired.',
     requestNew: 'Request a new link',
@@ -34,7 +33,6 @@ const dict = {
     confirmLabel: 'אימות סיסמא',
     submitBtn: 'עדכן סיסמא',
     submitBtnBusy: 'מעדכן…',
-    toggleLabel: 'English',
     mismatch: 'הסיסמאות אינן תואמות.',
     invalidLink: 'קישור האיפוס אינו תקין או שפג תוקפו.',
     requestNew: 'בקש קישור חדש',
@@ -45,7 +43,7 @@ const dict = {
 }
 
 function ResetPasswordForm() {
-  const { t, toggleLang } = useSimpleLang(dict)
+  const { t } = useSimpleLang(dict)
   const searchParams = useSearchParams()
   const oobCode = searchParams.get('oobCode')
 
@@ -89,7 +87,7 @@ function ResetPasswordForm() {
 
   if (checking) {
     return (
-      <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+      <AuthCard>
         <div className="h-24" />
       </AuthCard>
     )
@@ -97,7 +95,7 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+      <AuthCard>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('doneTitle')}</h1>
         <p className="text-sm text-slate-500 mb-7">{t('doneSubtitle')}</p>
         <Link href="/login" className="btn-primary inline-flex">{t('signInLink')}</Link>
@@ -107,7 +105,7 @@ function ResetPasswordForm() {
 
   if (!oobCode || !validCode) {
     return (
-      <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+      <AuthCard>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
         <div className="mb-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           {t('invalidLink')}
@@ -118,7 +116,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+    <AuthCard>
       <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-slate-500 mb-7">{t('subtitle')}</p>
 

@@ -26,7 +26,6 @@ const dict = {
     submitBtnBusy: 'Creating account…',
     haveAccount: 'Already have an account?',
     loginLink: 'Sign in',
-    toggleLabel: 'עברית',
     orDivider: 'or',
     googleBtn: 'Continue with Google',
   },
@@ -43,7 +42,6 @@ const dict = {
     submitBtnBusy: 'יוצר חשבון…',
     haveAccount: 'כבר יש לך חשבון?',
     loginLink: 'התחברות',
-    toggleLabel: 'English',
     orDivider: 'או',
     googleBtn: 'המשך עם Google',
   },
@@ -64,7 +62,7 @@ declare global {
 const ITI_UTILS_URL = 'https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/utils.js'
 
 export default function SignupPage() {
-  const { t, toggleLang } = useSimpleLang(dict)
+  const { t } = useSimpleLang(dict)
   const router = useRouter()
   const phoneRef = useRef<HTMLInputElement>(null)
   const itiRef = useRef<{ destroy: () => void; getNumber: () => string } | null>(null)
@@ -131,7 +129,7 @@ export default function SignupPage() {
         onLoad={() => setItiReady(true)}
       />
 
-      <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang} wrapperClassName="py-6">
+      <AuthCard>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
         <p className="text-sm text-slate-500 mb-7">{t('subtitle')}</p>
 

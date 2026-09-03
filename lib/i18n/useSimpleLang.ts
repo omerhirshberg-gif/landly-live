@@ -2,20 +2,20 @@
 
 import { useEffect, useState } from 'react'
 
-// Standalone-page language toggle used by the 4 auth pages (login/signup/
+// Standalone-page language reader used by the 4 auth pages (login/signup/
 // forgot-password/reset-password). Separate from the main 5-language
 // LangProvider/translations.ts on purpose: the legacy auth HTML files each
-// had their own small, page-local `translations` object with only en/he
-// (a toggle button, not the 5-language dropdown), and read/write the same
-// localStorage key with different fallback logic than the main site
-// (anything that isn't exactly 'he' displays as English).
+// had their own small, page-local `translations` object with only en/he.
+// These pages have no switcher of their own — they silently follow the
+// language the user already chose on the main site (same localStorage key,
+// read-only here), falling back to English for new visitors and for any
+// saved language other than Hebrew.
 
 const STORAGE_KEY = 'landly_lang'
 type SimpleLang = 'en' | 'he'
 
 interface BaseDict {
   pageTitle: string
-  toggleLabel: string
 }
 
 export function useSimpleLang<T extends BaseDict>(dict: Record<SimpleLang, T>) {
@@ -37,19 +37,7 @@ export function useSimpleLang<T extends BaseDict>(dict: Record<SimpleLang, T>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang])
 
-  const toggleLang = () => {
-    setLangState((prev) => {
-      const next: SimpleLang = prev === 'en' ? 'he' : 'en'
-      try {
-        localStorage.setItem(STORAGE_KEY, next)
-      } catch {
-        // localStorage unavailable — language choice just won't persist
-      }
-      return next
-    })
-  }
-
   const t = <K extends keyof T>(key: K): T[K] => dict[lang][key]
 
-  return { lang, t, toggleLang }
+  return { lang, t }
 }

@@ -19,6 +19,11 @@ export default function MemberPage() {
     if (!loading && !user) router.replace('/login')
   }, [loading, user, router])
 
+  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || ''
+  const welcomeMessage = displayName
+    ? t('dash_welcome').replace('{name}', displayName)
+    : t('dash_welcome_generic')
+
   const showToast = (message: string) => {
     setToast(message)
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -53,7 +58,7 @@ export default function MemberPage() {
           <div className="flex items-start justify-between mb-6 gap-3">
             <div>
               <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{t('dash_welcome')}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{welcomeMessage}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="segment-badge">
                   <i className="fa-solid fa-passport"></i>

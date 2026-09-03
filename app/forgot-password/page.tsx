@@ -17,7 +17,6 @@ const dict = {
     submitBtn: 'Send reset link',
     submitBtnBusy: 'Sending…',
     backLink: 'Back to sign in',
-    toggleLabel: 'עברית',
     sentTitle: 'Check your email',
     sentSubtitle: "We've sent a password reset link to your email address.",
   },
@@ -29,14 +28,13 @@ const dict = {
     submitBtn: 'שלח קישור לאיפוס',
     submitBtnBusy: 'שולח…',
     backLink: 'חזרה להתחברות',
-    toggleLabel: 'English',
     sentTitle: 'בדוק/י את המייל שלך',
     sentSubtitle: 'שלחנו קישור לאיפוס סיסמא לכתובת המייל שלך.',
   },
 }
 
 export default function ForgotPasswordPage() {
-  const { t, toggleLang } = useSimpleLang(dict)
+  const { t } = useSimpleLang(dict)
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -59,7 +57,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthCard toggleLabel={t('toggleLabel')} onToggleLang={toggleLang}>
+    <AuthCard>
       {sent ? (
         <>
           <h1 className="text-2xl font-black text-slate-900 mb-1">{t('sentTitle')}</h1>
