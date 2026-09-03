@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth'
 import AuthCard from '@/components/auth/AuthCard'
 import { auth } from '@/lib/firebase/config'
@@ -23,7 +23,7 @@ const dict = {
     requestNew: 'Request a new link',
     doneTitle: 'Password updated',
     doneSubtitle: 'You can now sign in with your new password.',
-    signInLink: 'Sign in',
+    backToLogin: 'Back to Login',
   },
   he: {
     pageTitle: 'איפוס סיסמא — Landly',
@@ -38,12 +38,13 @@ const dict = {
     requestNew: 'בקש קישור חדש',
     doneTitle: 'הסיסמא עודכנה',
     doneSubtitle: 'כעת ניתן להתחבר עם הסיסמא החדשה.',
-    signInLink: 'התחברות',
+    backToLogin: 'חזרה להתחברות',
   },
 }
 
 function ResetPasswordForm() {
   const { t } = useSimpleLang(dict)
+  const router = useRouter()
   const searchParams = useSearchParams()
   const oobCode = searchParams.get('oobCode')
 
@@ -78,6 +79,7 @@ function ResetPasswordForm() {
     try {
       await confirmPasswordReset(auth, oobCode, password)
       setDone(true)
+      setTimeout(() => router.replace('/login'), 3000)
     } catch (err) {
       setError(getAuthErrorMessage(err))
     } finally {
@@ -98,7 +100,7 @@ function ResetPasswordForm() {
       <AuthCard>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('doneTitle')}</h1>
         <p className="text-sm text-slate-500 mb-7">{t('doneSubtitle')}</p>
-        <Link href="/login" className="btn-primary inline-flex">{t('signInLink')}</Link>
+        <Link href="/login" className="btn-primary inline-flex">{t('backToLogin')}</Link>
       </AuthCard>
     )
   }
@@ -111,6 +113,9 @@ function ResetPasswordForm() {
           {t('invalidLink')}
         </div>
         <Link href="/forgot-password" className="text-brand font-bold hover:underline text-sm">{t('requestNew')}</Link>
+        <div className="text-center mt-6 text-sm">
+          <Link href="/login" className="text-brand font-bold hover:underline">{t('backToLogin')}</Link>
+        </div>
       </AuthCard>
     )
   }
