@@ -1,0 +1,337 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════
+   Everything below this line is ported verbatim from the legacy
+   index.html <style> block. It is intentionally placed AFTER the
+   Tailwind directives above so it wins the cascade on any conflict
+   with Tailwind's base/reset styles, exactly as it did when this
+   CSS sat after the Tailwind CDN <script> in the original page.
+   Do not reorder, dedupe, or "clean up" — port verbatim only.
+═══════════════════════════════════════════════════════ */
+
+*{font-family:'Heebo',sans-serif;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+/* Anchor targets get top offset so smooth-scroll lands cleanly below the fixed navbar (65px) instead of hiding the section heading behind it */
+#deals, #how, #pricing, #faq, #waitlist{scroll-margin-top:80px;}
+body{overflow-x:hidden;}
+
+/* ── Touch targets ─────────────────────────────────── */
+button,a{touch-action:manipulation;}
+.tap-target{min-height:44px;min-width:44px;}
+
+/* ── Scroll row ────────────────────────────────────── */
+.scroll-x{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#0038b8 transparent;-webkit-overflow-scrolling:touch;}
+.scroll-x::-webkit-scrollbar{height:3px;}
+.scroll-x::-webkit-scrollbar-thumb{background:#0038b8;border-radius:4px;}
+
+/* ── Deal card ─────────────────────────────────────── */
+.deal-card{flex-shrink:0;width:168px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.07);transition:transform .22s,box-shadow .22s;cursor:pointer;}
+@media(min-width:640px){.deal-card{width:210px;}}
+.deal-card:hover{transform:translateY(-6px);box-shadow:0 14px 36px rgba(0,56,184,.18);}
+.deal-card img{width:100%;height:108px;object-fit:cover;display:block;}
+@media(min-width:640px){.deal-card img{height:130px;}}
+.card-body{padding:10px 11px 12px;}
+@media(min-width:640px){.card-body{padding:11px 13px 14px;}}
+.deal-badge{display:inline-block;background:#e0effe;color:#0038b8;font-size:10px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:100px;margin-bottom:5px;}
+.deal-name{font-size:12.5px;font-weight:700;color:#0f172a;line-height:1.3;}
+@media(min-width:640px){.deal-name{font-size:13px;}}
+.deal-loc{font-size:10.5px;color:#64748b;margin-top:2px;}
+
+/* ── Accordion ─────────────────────────────────────── */
+.acc-body{max-height:0;overflow:hidden;transition:max-height .36s ease;}
+.acc-body.open{max-height:500px;}
+.acc-icon{transition:transform .3s;}
+.acc-icon.open{transform:rotate(180deg);}
+
+/* ── Modal ─────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;align-items:center;justify-content:center;padding:0;}
+.modal-bg.show{display:flex;}
+.modal-box{background:#fff;border-radius:0;max-width:700px;width:100%;height:100%;max-height:100vh;overflow-y:auto;padding:28px 20px 40px;position:relative;}
+@media(min-width:640px){.modal-box{border-radius:22px;height:auto;max-height:90vh;padding:40px 36px;}}
+
+/* ── Page view ─────────────────────────────────────── */
+/* z-index kept BELOW the navbar (1000) so the shared header remains visible on every standalone page */
+.pview{display:none;position:fixed;inset:0;background:#f8fafc;z-index:900;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.pview.show{display:block;}
+
+/* ── Steps ─────────────────────────────────────────── */
+.step-card{background:#fff;border-radius:20px;padding:26px 20px;border:2px solid #e0effe;text-align:center;transition:border-color .2s,box-shadow .2s;}
+.step-card:hover{border-color:#0038b8;box-shadow:0 8px 30px rgba(0,56,184,.11);}
+.step-num{width:44px;height:44px;border-radius:50%;background:#0038b8;color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.biz-card{background:linear-gradient(135deg,#0038b8,#1d6bdb);color:#fff;border-radius:20px;padding:26px 20px;cursor:pointer;text-align:center;transition:transform .2s,box-shadow .2s;}
+.biz-card:hover{transform:translateY(-5px);box-shadow:0 16px 48px rgba(0,56,184,.35);}
+
+/* ── QR ────────────────────────────────────────────── */
+.qr-box{width:72px;height:72px;background:repeating-conic-gradient(#0038b8 0% 25%,#fff 0% 50%) 0 0/11px 11px;border-radius:6px;border:2px solid #0038b8;flex-shrink:0;}
+@media(min-width:640px){.qr-box{width:80px;height:80px;}}
+
+/* ── Input ─────────────────────────────────────────── */
+.inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
+.inp:focus{border-color:#0038b8;}
+select.inp{cursor:pointer;}
+
+/* ── Hero video ────────────────────────────────────── */
+.hero-video-wrap{position:relative;min-height:100vh;min-height:100dvh;display:flex;align-items:center;overflow:hidden;padding-top:64px;}
+.hero-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;z-index:0;}
+.hero-vid-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(15,23,42,.72) 0%,rgba(0,38,140,.62) 100%);z-index:1;}
+.hero-vid-content{position:relative;z-index:2;width:100%;}
+
+/* ── CTA buttons ───────────────────────────────────── */
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0038b8;color:#ffffff;font-weight:800;font-size:15px;padding:15px 30px;border-radius:100px;border:none;cursor:pointer;transition:background .2s,transform .18s,box-shadow .2s;box-shadow:0 8px 28px rgba(0,56,184,.4);text-decoration:none;min-height:50px;}
+.btn-primary:hover{background:#002a8a;transform:translateY(-2px);}
+.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.1);color:#ffffff;font-weight:800;font-size:15px;padding:14px 28px;border-radius:100px;border:2px solid rgba(255,255,255,.7);cursor:pointer;transition:background .2s,transform .18s;backdrop-filter:blur(4px);text-decoration:none;min-height:50px;}
+.btn-secondary:hover{background:rgba(255,255,255,.2);transform:translateY(-2px);}
+
+/* ── Raffle banner ─────────────────────────────────── */
+
+/* ── Hero subtitle glass card ──────────────────────── */
+/* Semi-transparent glassmorphism backdrop + text-shadow so the subtitle stays
+   legible over any part of the background video, bright or dark. */
+.hero-sub-glass{
+  display:inline-block;
+  background:rgba(15,23,42,.38);
+  border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-radius:16px;
+  padding:14px 18px;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);
+}
+.hero-sub-glass p{
+  text-shadow:0 1px 3px rgba(0,0,0,.55), 0 1px 12px rgba(0,0,0,.35);
+}
+
+/* ── Language dropdown lock (Business Owners page) ──── */
+.lang-locked{opacity:.55;cursor:not-allowed;pointer-events:none;}
+
+/* ── Compact floating raffle pill (replaces old full-width banner) ── */
+.raffle-float{
+  position:absolute; top:80px; right:20px; z-index:6;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:9px 16px 9px 10px; border-radius:100px; border:none; cursor:pointer;
+  background:linear-gradient(90deg,#f59e0b,#f97316);
+  color:#fff; font-family:'Heebo',sans-serif; font-weight:800; font-size:12.5px;
+  box-shadow:0 8px 24px rgba(249,115,22,.45), 0 0 0 1px rgba(255,255,255,.25) inset;
+  animation:rafflePulse 2.6s ease-in-out infinite;
+  transition:transform .2s, box-shadow .2s;
+  white-space:nowrap;
+}
+.raffle-float:hover{ transform:translateY(-2px) scale(1.03); }
+.raffle-float .raffle-icon-wrap{
+  width:22px; height:22px; border-radius:50%; flex-shrink:0;
+  background:rgba(255,255,255,.28);
+  display:flex; align-items:center; justify-content:center; font-size:11px;
+}
+@keyframes rafflePulse{
+  0%,100%{ box-shadow:0 8px 24px rgba(249,115,22,.45), 0 0 0 1px rgba(255,255,255,.25) inset; }
+  50%{ box-shadow:0 10px 34px rgba(249,115,22,.75), 0 0 0 1px rgba(255,255,255,.4) inset; }
+}
+@media(max-width:640px){
+  .raffle-float{ top:72px; right:12px; font-size:11px; padding:7px 13px 7px 9px; }
+}
+[dir="rtl"] .raffle-float{ right:auto; left:20px; }
+[dir="rtl"] .raffle-float:hover{ transform:translateY(-2px) scale(1.03); }
+@media(max-width:640px){ [dir="rtl"] .raffle-float{ left:12px; right:auto; } }
+
+/* ── "New" row indicator dot ─────────────────────────── */
+.new-badge-dot{
+  width:8px; height:8px; border-radius:50%; background:#f97316; flex-shrink:0;
+  box-shadow:0 0 0 rgba(249,115,22,.6); animation:newDotPulse 1.8s infinite;
+}
+@keyframes newDotPulse{
+  0%{ box-shadow:0 0 0 0 rgba(249,115,22,.55); }
+  70%{ box-shadow:0 0 0 7px rgba(249,115,22,0); }
+  100%{ box-shadow:0 0 0 0 rgba(249,115,22,0); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RTL ENGINE — applied when document.documentElement.dir="rtl" (Hebrew)
+   Most flex/grid layouts mirror automatically via the browser's native
+   bidi handling; these rules cover the few physically-positioned or
+   directional elements that do not auto-flip.
+═══════════════════════════════════════════════════════ */
+html[dir="rtl"] body{ font-family:'Heebo',sans-serif; }
+
+/* Mobile menu slides in from the left instead of the right */
+html[dir="rtl"] .mobile-menu{ transform:translateX(-100%); }
+html[dir="rtl"] .mobile-menu.open{ transform:translateX(0); }
+
+/* Language dropdown panel hugs the correct side of its trigger button */
+html[dir="rtl"] .lang-menu{ right:auto; left:0; }
+
+/* Modal close button (✕) sits at the visual top-left in RTL */
+html[dir="rtl"] .modal-close-btn{ right:auto; left:1.1rem; }
+
+/* Directional chevrons/arrows that carry semantic meaning (back / forward)
+   are mirrored so they still point the correct visual direction */
+html[dir="rtl"] .fa-arrow-left{ transform:scaleX(-1); display:inline-block; }
+html[dir="rtl"] .fa-arrow-right{ transform:scaleX(-1); display:inline-block; }
+
+/* FAQ accordion chevron uses a symmetric gap now (see markup change) so no
+   RTL override is needed there; kept here for reference only. */
+
+/* Hero decorative gradient text stays visually consistent; no changes needed
+   since it has no directional offsets. */
+
+/* Category filter row and horizontal deal scrollers reorder natively via
+   flex-direction under RTL; first card in DOM = visually first in reading
+   order (right side), which is correct default RTL behavior. */
+
+/* Numeric price displays stay LTR even inside RTL text blocks, per standard
+   bidi convention, using unicode-bidi isolation. */
+html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; direction:ltr; display:inline-block; }
+
+/* ── Hamburger ─────────────────────────────────────── */
+.hamburger{width:26px;height:20px;position:relative;cursor:pointer;}
+.hamburger span{position:absolute;left:0;width:100%;height:2.5px;background:#0f172a;border-radius:3px;transition:all .3s;}
+.hamburger span:nth-child(1){top:0;}
+.hamburger span:nth-child(2){top:8.5px;}
+.hamburger span:nth-child(3){top:17px;}
+.hamburger.open span:nth-child(1){transform:rotate(45deg);top:8.5px;}
+.hamburger.open span:nth-child(2){opacity:0;}
+.hamburger.open span:nth-child(3){transform:rotate(-45deg);top:8.5px;}
+
+.mobile-menu{position:fixed;top:64px;left:0;right:0;bottom:0;background:#fff;z-index:950;transform:translateX(100%);transition:transform .3s ease;overflow-y:auto;}
+.mobile-menu.open{transform:translateX(0);}
+
+/* ── Language dropdown ─────────────────────────────── */
+.lang-dropdown{position:relative;}
+.lang-menu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.14);min-width:170px;padding:6px;display:none;z-index:60;}
+.lang-menu.show{display:block;}
+.lang-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#334155;cursor:pointer;transition:background .15s;}
+.lang-item:hover{background:#f1f5f9;}
+.lang-item.active-lang{background:#e0effe;color:#0038b8;}
+
+/* ═══════════════════════════════════════════════════════
+   RAFFLE — Large glowing promo card (used at multiple scroll points)
+═══════════════════════════════════════════════════════ */
+.raffle-glow-card{
+  position:relative; overflow:hidden; border-radius:24px;
+  background:linear-gradient(120deg,#0038b8 0%,#1d4ed8 45%,#f97316 130%);
+  padding:28px 24px; box-shadow:0 20px 50px rgba(0,56,184,.28);
+  border:1px solid rgba(255,255,255,.18);
+}
+.raffle-glow-card::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 15% 20%, rgba(255,255,255,.22), transparent 55%);
+}
+.raffle-glow-card::after{
+  content:''; position:absolute; inset:0; pointer-events:none; border-radius:24px;
+  box-shadow:0 0 0 rgba(249,115,22,.5); animation:raffleGlowPulse 3s ease-in-out infinite;
+}
+@keyframes raffleGlowPulse{
+  0%,100%{ box-shadow:inset 0 0 40px rgba(249,115,22,.08); }
+  50%{ box-shadow:inset 0 0 70px rgba(249,115,22,.22); }
+}
+.raffle-glow-icon{
+  width:52px; height:52px; border-radius:16px; flex-shrink:0;
+  background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3);
+  display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff;
+  backdrop-filter:blur(6px);
+}
+
+/* ── Mid-scroll compact "Join Now" CTA banner ─────────── */
+.join-cta-banner{
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  background:linear-gradient(90deg,#eff6ff,#e0effe); border:1.5px solid #bfdbfe;
+  border-radius:18px; padding:18px 22px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN MODAL & MEMBER DASHBOARD
+═══════════════════════════════════════════════════════ */
+
+.dash-stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px 20px;}
+.dash-plan-card{background:#fff;border:2px solid #e2e8f0;border-radius:18px;padding:20px;transition:border-color .2s;}
+.dash-plan-card.dash-plan-active{border-color:#0038b8;background:#eff6ff;}
+
+/* User segment tag/badge shown next to the member's name in the dashboard */
+.segment-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  background:linear-gradient(90deg,#7c3aed,#a855f7); color:#fff;
+  font-size:11.5px; font-weight:800; padding:5px 13px 5px 11px; border-radius:100px;
+  box-shadow:0 4px 14px rgba(124,58,237,.3); white-space:nowrap;
+}
+.segment-hint{
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:10.5px; color:#94a3b8; font-weight:700; cursor:pointer;
+  border:1.5px dashed #cbd5e1; border-radius:100px; padding:4.5px 11px;
+  background:transparent; transition:border-color .2s, color .2s; white-space:nowrap;
+}
+.segment-hint:hover{ border-color:#7c3aed; color:#7c3aed; }
+
+/* Simple toast confirmation for simulated actions (plan change, etc.) */
+.toast-msg{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:#0f172a; color:#fff; font-weight:700; font-size:13.5px;
+  padding:13px 24px; border-radius:100px; box-shadow:0 12px 32px rgba(0,0,0,.25);
+  z-index:1300; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+  max-width:90vw; text-align:center;
+}
+.toast-msg.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+@media(max-width:639px){ .toast-msg{ bottom:92px; } } /* clears the sticky mobile CTA bar */
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL HOOK — curiosity teaser between Hero and Deals
+═══════════════════════════════════════════════════════ */
+.scroll-hook{ position:relative; overflow:hidden; background:#fff; text-align:center; padding:44px 20px 40px; }
+.hook-eyebrow{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+  color:#f97316; margin-bottom:14px;
+}
+.hook-pills{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:640px; margin:0 auto 22px; }
+.hook-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:100px;
+  padding:10px 18px; font-size:13.5px; font-weight:700; color:#1e293b;
+  transition:transform .2s, border-color .2s, box-shadow .2s; cursor:default;
+}
+.hook-pill:hover{ transform:translateY(-2px); border-color:#93c5fd; box-shadow:0 8px 20px rgba(0,56,184,.12); }
+.hook-pill-icon{ font-size:16px; }
+.hook-tagline{ font-size:clamp(19px,4vw,27px); font-weight:900; color:#0038b8; letter-spacing:-.5px; margin-bottom:18px; }
+.hook-arrow{
+  width:34px; height:34px; border-radius:50%; margin:0 auto;
+  background:#eff6ff; border:1.5px solid #bfdbfe;
+  display:flex; align-items:center; justify-content:center; color:#0038b8; font-size:13px;
+  animation:hookBounce 1.8s ease-in-out infinite;
+}
+.hook-hint{ font-size:11.5px; color:#94a3b8; font-weight:600; margin-top:8px; }
+@keyframes hookBounce{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(6px); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   STICKY MOBILE BOTTOM CTA BAR
+═══════════════════════════════════════════════════════ */
+.sticky-cta-bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:800;
+  background:linear-gradient(90deg,#0038b8,#1d4ed8);
+  padding:11px 16px; padding-bottom:calc(11px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 28px rgba(0,0,0,.18);
+  transform:translateY(0); transition:transform .3s ease;
+}
+.sticky-cta-bar.hidden-bar{ transform:translateY(110%); }
+@media(min-width:640px){ .sticky-cta-bar{ display:none; } }
+@media(max-width:639px){ body{ padding-bottom:74px; } }
+.sticky-cta-close{
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:12px; border:none; cursor:pointer;
+}
+
+/* ═══════════════════════════════════════════════════════
+   AUTH PAGES — ported verbatim from the legacy login/signup/
+   forgot-password/reset-password HTML files' own <style> blocks.
+═══════════════════════════════════════════════════════ */
+.lang-toggle{font-size:13px;font-weight:700;color:#64748b;border:1.5px solid #e2e8f0;border-radius:100px;padding:7px 14px;cursor:pointer;background:#fff;transition:border-color .2s,color .2s;}
+.lang-toggle:hover{border-color:#0038b8;color:#0038b8;}
+
+/* Phone input (signup) — matches the height/style of the other .inp fields */
+.iti{width:100%;}
+.iti input{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px 13px 52px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;min-height:48px;}
+.iti input:focus{border-color:#0038b8;}
+html[dir="rtl"] .iti input{padding:13px 52px 13px 16px;}
