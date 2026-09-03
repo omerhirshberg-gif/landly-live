@@ -21,7 +21,6 @@ export default function Faq({
 
   const items: FaqItemData[] = [
     { q: t('faq1_q'), body: <>{t('faq1_a')}</> },
-    { q: t('faq2_q'), body: <>{t('faq2_a')}</> },
     {
       q: t('faq3_q'),
       body: (

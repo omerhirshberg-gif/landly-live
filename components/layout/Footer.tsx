@@ -17,8 +17,8 @@ export default function Footer({
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between gap-10 mb-10 sm:mb-12">
           <div className="max-w-xs">
-            <div className="flex items-center gap-2.5 mb-4">
-              <img src="/logo.jpg" alt="Landly" className="h-8 w-auto" />
+            <div className="flex items-center gap-2 mb-4">
+              <img src="/logo-mark.png" alt="Landly" className="h-10 w-auto" />
               <span className="font-black text-white text-xl">Landly</span>
             </div>
             <p className="text-sm leading-relaxed">{t('footer_tagline')}</p>

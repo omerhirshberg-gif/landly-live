@@ -16,9 +16,7 @@ export default function Pricing({ onOpenTerms }: { onOpenTerms: () => void }) {
             <div className="text-4xl sm:text-5xl font-black text-slate-900 mb-1">39 <span className="text-lg sm:text-xl font-medium text-slate-400">{t('price_suffix')}</span></div>
             <div className="text-xs text-slate-400 mb-6">{t('plan_monthly_note')}</div>
             <ul className="space-y-3 mb-8 text-sm text-slate-600">
-              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_card')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_all_discounts')}</span></li>
-              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_cashback')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_legal')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>
             </ul>
@@ -30,7 +28,6 @@ export default function Pricing({ onOpenTerms }: { onOpenTerms: () => void }) {
             <div className="text-xs text-slate-400 mb-6">{t('plan_quarterly_note')}</div>
             <ul className="space-y-3 mb-8 text-sm text-slate-600">
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_everything_monthly')}</span></li>
-              <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_enhanced_cashback')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_legal')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_community')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>

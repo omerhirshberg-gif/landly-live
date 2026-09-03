@@ -21,7 +21,7 @@ export default function HowItWorks() {
           </div>
           <div className="step-card">
             <div className="step-num">2</div>
-            <div className="text-3xl mb-3">💳</div>
+            <div className="text-3xl mb-3">🎟️</div>
             <h3 className="font-bold text-[17px] text-slate-900 mb-2">{t('step2_title')}</h3>
             <p className="text-slate-500 text-sm leading-relaxed">{t('step2_desc')}</p>
           </div>

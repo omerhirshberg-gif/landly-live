@@ -84,7 +84,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
       <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target">
-            <img src="/logo.jpg" alt="Landly" className="h-8 sm:h-9 w-auto" />
+            <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
             <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
           </a>
 

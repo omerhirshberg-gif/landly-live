@@ -22,7 +22,7 @@ export default function OlimPage() {
           </div>
           <div className="grid sm:grid-cols-3 gap-4 sm:gap-5 mb-10 sm:mb-12">
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5 sm:p-6 text-center">
-              <div className="text-3xl mb-3">💳</div>
+              <div className="text-3xl mb-3">🎁</div>
               <h3 className="font-bold text-slate-900 mb-2">{t('olim_card_title')}</h3>
               <p className="text-sm text-slate-500">{t('olim_card_desc')}</p>
             </div>

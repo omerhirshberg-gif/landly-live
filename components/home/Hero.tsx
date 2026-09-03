@@ -21,12 +21,6 @@ export default function Hero({ onOpenRaffleTerms }: { onOpenRaffleTerms: () => v
 
       <div className="hero-vid-content max-w-7xl mx-auto px-5 sm:px-6 py-20 sm:py-24 w-full">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-white/15 border border-white/30 rounded-full px-4 py-2 mb-6 sm:mb-8 backdrop-blur-sm">
-            <span className="text-sm">🇮🇱</span>
-            <span className="text-white text-[12px] sm:text-[13px] font-semibold">{t('hero_badge')}</span>
-            <span className="text-sm">🇷🇺 🇫🇷 🇪🇸 🇺🇸</span>
-          </div>
-
           <h1 className="font-black text-white leading-[1.12] mb-5 sm:mb-6" style={{ fontSize: 'clamp(32px,7vw,58px)', letterSpacing: '-1.5px' }}>
             <span>{t('hero_line1')}</span><br />
             <span style={{ background: 'linear-gradient(90deg,#60c8ff,#a5f3fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{t('hero_line2')}</span>
@@ -39,8 +33,8 @@ export default function Hero({ onOpenRaffleTerms }: { onOpenRaffleTerms: () => v
           </div>
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mb-12 sm:mb-16">
-            <a href="#pricing" className="btn-primary">
-              <i className="fa-solid fa-credit-card"></i> <span>{t('hero_cta1')}</span>
+            <a href="#deals" className="btn-primary">
+              <i className="fa-solid fa-tags"></i> <span>{t('hero_cta1')}</span>
             </a>
             <Link href="/business" className="btn-secondary">
               <i className="fa-solid fa-store"></i> <span>{t('hero_cta2')}</span>
