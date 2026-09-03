@@ -70,9 +70,6 @@ export default function MemberPage() {
                 </button>
               </div>
             </div>
-            <Link href="/" className="tap-target hidden sm:flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-600 transition flex-shrink-0">
-              <i className="fa-solid fa-arrow-right-from-bracket"></i> <span>{t('dash_back_public')}</span>
-            </Link>
           </div>
 
           {/* Membership status */}
