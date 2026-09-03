@@ -247,6 +247,17 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .dash-plan-card{background:#fff;border:2px solid #e2e8f0;border-radius:18px;padding:20px;transition:border-color .2s;}
 .dash-plan-card.dash-plan-active{border-color:#0038b8;background:#eff6ff;}
 
+/* Member dashboard tab nav */
+.dash-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:#eef2f7;border-radius:100px;padding:5px;scrollbar-width:none;}
+.dash-tabs::-webkit-scrollbar{display:none;}
+.dash-tab{flex:1 0 auto;white-space:nowrap;text-align:center;font-size:13.5px;font-weight:800;color:#64748b;padding:10px 18px;border-radius:100px;border:none;background:transparent;cursor:pointer;transition:background .2s,color .2s;}
+.dash-tab:hover{color:#0f172a;}
+.dash-tab.dash-tab-active{background:#0038b8;color:#fff;box-shadow:0 4px 14px rgba(0,56,184,.3);}
+
+/* Empty state (e.g. Redeemed tab with no history yet) */
+.dash-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:56px 20px;color:#94a3b8;}
+.dash-empty-state i{font-size:34px;margin-bottom:14px;color:#cbd5e1;}
+
 /* User segment tag/badge shown next to the member's name in the dashboard */
 .segment-badge{
   display:inline-flex; align-items:center; gap:6px;

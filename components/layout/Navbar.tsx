@@ -126,7 +126,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
             )}
             <Link href="/#pricing" className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{t('nav_cta')}</Link>
             {user ? (
-              <button onClick={handleSignOut} className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
+              <button onClick={handleSignOut} className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-red-600 bg-red-50 border-2 border-red-200 rounded-full px-4 py-2.5 hover:bg-red-100 hover:border-red-300 transition">
                 <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>{t('nav_logout')}</span>
               </button>
             ) : (

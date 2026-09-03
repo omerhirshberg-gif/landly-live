@@ -11,6 +11,7 @@ const MESSAGES: Record<string, string> = {
   'auth/popup-closed-by-user': 'Sign-in was cancelled.',
   'auth/expired-action-code': 'This link has expired. Please request a new one.',
   'auth/invalid-action-code': 'This link is invalid or has already been used.',
+  'auth/requires-recent-login': 'Please sign in again to complete this action.',
 }
 
 export function getAuthErrorMessage(err: unknown): string {
