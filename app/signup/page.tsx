@@ -37,7 +37,7 @@ const CUSTOMER_TYPES: { value: string; labelKey: TranslationKey }[] = [
 ]
 
 export default function SignupPage() {
-  const { t } = useLang()
+  const { t, isRtl } = useLang()
   const router = useRouter()
   const phoneRef = useRef<HTMLInputElement>(null)
   const itiRef = useRef<{ destroy: () => void; getNumber: () => string } | null>(null)
@@ -105,9 +105,12 @@ export default function SignupPage() {
         onLoad={() => setItiReady(true)}
       />
 
-      <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* dir="ltr" pins physical side order (form left, marketing right) regardless
+          of the active language — flex-row is otherwise direction-relative and would
+          flip under document dir="rtl". RTL styling is applied per-side below instead. */}
+      <div className="min-h-screen flex flex-col lg:flex-row" dir="ltr">
         {/* Form side */}
-        <div className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
+        <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
           <div className="w-full max-w-md">
             <Link href="/" className="flex justify-center mb-8">
               <img src="/logo.jpg" alt="Landly" className="h-28 w-auto" />
