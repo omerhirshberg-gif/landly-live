@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth'
+import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
 import GoogleButton from '@/components/auth/GoogleButton'
 import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
@@ -179,17 +180,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Marketing panel */}
-        <div className="hidden lg:flex flex-1 bg-brand items-center justify-center px-12 xl:px-20 py-12">
-          <div className="max-w-md">
-            <h2 className="text-3xl xl:text-4xl font-black text-white leading-tight mb-5">
-              {t('signup_marketing_headline')}
-            </h2>
-            <p className="text-base text-white/80 leading-relaxed">
-              {t('signup_marketing_sub')}
-            </p>
-          </div>
-        </div>
+        <AuthMarketingPanel headline={t('signup_marketing_headline')} sub={t('signup_marketing_sub')} />
       </div>
     </>
   )
