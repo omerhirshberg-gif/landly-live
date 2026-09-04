@@ -6,14 +6,19 @@ export interface UserDocument {
   email: string
   displayName: string
   phone: string
+  customerType: string
 }
 
 /** Writes the users/{uid} doc for a brand-new account (email/password signup). */
-export async function createUserDocument(user: User, { phone = '' }: { phone?: string } = {}) {
+export async function createUserDocument(
+  user: User,
+  { phone = '', customerType = '' }: { phone?: string; customerType?: string } = {}
+) {
   await setDoc(doc(db, 'users', user.uid), {
     email: user.email ?? '',
     displayName: user.displayName ?? '',
     phone,
+    customerType,
     createdAt: serverTimestamp(),
   })
 }
@@ -27,6 +32,7 @@ export async function ensureUserDocument(user: User) {
     email: user.email ?? '',
     displayName: user.displayName ?? '',
     phone: '',
+    customerType: '',
     createdAt: serverTimestamp(),
   })
 }
@@ -39,6 +45,7 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     email: data.email ?? '',
     displayName: data.displayName ?? '',
     phone: data.phone ?? '',
+    customerType: data.customerType ?? '',
   }
 }
 
