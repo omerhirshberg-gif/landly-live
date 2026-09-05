@@ -71,8 +71,13 @@ export default function MemberPage() {
             </div>
           </div>
 
-          {/* Snapshot stats: Card status / Savings / Raffle entries */}
+          {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
           <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
+            <div className="dash-stat-card text-center">
+              <i className="fa-solid fa-tags text-cyan-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
+              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_active_perks_label')}</div>
+              <div className="text-xs sm:text-base font-black text-slate-900">0</div>
+            </div>
             <div className="dash-stat-card text-center">
               <i className="fa-solid fa-gift text-brand text-base sm:text-lg mb-1.5 sm:mb-2"></i>
               <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_perks_redeemed_label')}</div>
@@ -82,11 +87,6 @@ export default function MemberPage() {
               <i className="fa-solid fa-sack-dollar text-emerald-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
               <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_total_saved')}</div>
               <div className="text-xs sm:text-base font-black text-slate-900" dir="ltr">₪0</div>
-            </div>
-            <div className="dash-stat-card text-center">
-              <i className="fa-solid fa-ticket text-amber-500 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_raffle_entries_label')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900">{t('dash_raffle_entries_value')}</div>
             </div>
           </div>
 
