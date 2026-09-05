@@ -7,6 +7,7 @@ interface LangContextValue {
   lang: Lang
   setLang: (lang: Lang) => void
   t: (key: TranslationKey) => string
+  isRtl: boolean
 }
 
 export const LangContext = createContext<LangContextValue | null>(null)
@@ -49,5 +50,7 @@ export function LangProvider({ children }: { children: ReactNode }) {
     return translations[lang][key] || translations.en[key]
   }
 
-  return <LangContext.Provider value={{ lang, setLang, t }}>{children}</LangContext.Provider>
+  const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
+
+  return <LangContext.Provider value={{ lang, setLang, t, isRtl }}>{children}</LangContext.Provider>
 }

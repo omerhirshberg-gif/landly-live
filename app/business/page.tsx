@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 
 export default function BusinessPage() {
@@ -9,9 +8,6 @@ export default function BusinessPage() {
       <Navbar forceLocked />
       <div className="pt-16" dir="ltr">
         <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <Link href="/" className="tap-target flex items-center gap-2 text-brand font-bold mb-6 hover:underline">
-            <i className="fa-solid fa-arrow-left"></i> Back
-          </Link>
           <div className="text-center mb-10 sm:mb-12">
             <div className="text-4xl sm:text-5xl mb-4">🤝</div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4" style={{ letterSpacing: '-1px' }}>Grow With Landly</h1>

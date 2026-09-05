@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -12,9 +11,6 @@ export default function OlimPage() {
       <Navbar />
       <div className="pt-16 bg-white">
         <div className="max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <Link href="/" className="tap-target flex items-center gap-2 text-brand font-bold mb-8 hover:underline">
-            <i className="fa-solid fa-arrow-left"></i> <span>{t('back_btn')}</span>
-          </Link>
           <div className="text-center mb-10 sm:mb-12">
             <div className="text-4xl sm:text-5xl mb-4">✈️ 🇮🇱</div>
             <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4" style={{ letterSpacing: '-1px' }}>{t('olim_title')}</h1>

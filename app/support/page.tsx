@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 
 export default function SupportPage() {
   const { t } = useLang()
@@ -12,22 +13,20 @@ export default function SupportPage() {
       <Navbar />
       <div className="pt-16">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <Link href="/" className="tap-target flex items-center gap-2 text-brand font-bold mb-6 hover:underline">
-            <i className="fa-solid fa-arrow-left"></i> <span>{t('back_btn')}</span>
-          </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-8">{t('support_title')}</h1>
 
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5">
               <div className="text-2xl mb-2">📧</div>
               <div className="font-bold text-slate-900 mb-1">{t('support_email_us')}</div>
-              <a href="mailto:contact@landly.io" className="text-brand text-sm font-semibold hover:underline">contact@landly.io</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand text-sm font-semibold hover:underline">{SUPPORT_EMAIL}</a>
               <p className="text-xs text-slate-500 mt-2">{t('support_email_note')}</p>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
               <div className="text-2xl mb-2">💬</div>
               <div className="font-bold text-slate-900 mb-1">{t('support_whatsapp')}</div>
-              <p className="text-sm text-slate-600">{t('support_whatsapp_note')}</p>
+              <a href={SUPPORT_WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" dir="ltr" className="text-brand text-sm font-semibold hover:underline">{SUPPORT_WHATSAPP_DISPLAY}</a>
+              <p className="text-sm text-slate-600 mt-1">{t('support_whatsapp_note')}</p>
             </div>
           </div>
 

@@ -1,49 +1,48 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
+import SubscriptionTab from '@/components/member/SubscriptionTab'
+import SupportTab from '@/components/member/SupportTab'
 import ProfileTab from '@/components/member/ProfileTab'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { getUserDocument } from '@/lib/firebase/users'
+import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR } from '@/lib/customerTypes'
 
 export default function MemberPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [plan, setPlan] = useState<'monthly' | 'annual'>('annual')
-  const [toast, setToast] = useState<string | null>(null)
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [activeTab, setActiveTab] = useState<MemberTab>('perks')
+  const [customerType, setCustomerType] = useState('')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
   }, [loading, user, router])
 
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getUserDocument(user.uid).then((doc) => {
+      if (!cancelled) setCustomerType(doc?.customerType ?? '')
+    })
+    return () => { cancelled = true }
+  }, [user])
+
+  const segmentOption = CUSTOMER_TYPES.find((o) => o.value === customerType)
+  const segmentLabel = segmentOption ? t(segmentOption.labelKey) : t('dash_segment_value_unset')
+  const segmentColor = segmentOption?.color ?? CUSTOMER_TYPE_UNSET_COLOR
+
   const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || ''
   const welcomeMessage = displayName
     ? t('dash_welcome').replace('{name}', displayName)
     : t('dash_welcome_generic')
-
-  const showToast = (message: string) => {
-    setToast(message)
-    if (toastTimer.current) clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(null), 2600)
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current) }, [])
-
-  const switchPlan = (next: 'monthly' | 'annual') => {
-    if (next === plan) return
-    setPlan(next)
-    showToast(next === 'monthly' ? t('toast_plan_monthly') : t('toast_plan_annual'))
-  }
-
-  const showSegmentInfo = () => showToast(t('dash_segment_toast'))
 
   if (loading || !user) {
     return (
@@ -65,33 +64,20 @@ export default function MemberPage() {
               <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{welcomeMessage}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                <span className="segment-badge">
-                  <i className="fa-solid fa-passport"></i>
-                  <span>{t('dash_segment_value')}</span>
+                <span className="segment-badge" style={{ background: segmentColor }}>
+                  <span>{segmentLabel}</span>
                 </span>
-                <button onClick={showSegmentInfo} className="segment-hint">
-                  <span>{t('dash_segment_hint')}</span>
-                  <i className="fa-solid fa-chevron-down text-[9px]"></i>
-                </button>
               </div>
             </div>
           </div>
 
-          {/* Membership status */}
-          <div className="bg-brand text-white rounded-2xl p-5 sm:p-6 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="text-blue-200 text-sm font-semibold mb-1">{t('perks_active_membership')}</div>
-              <div className="text-xl sm:text-2xl font-black">{plan === 'monthly' ? t('plan_monthly_name') : t('plan_annual_name')}</div>
-              <div className="text-blue-200 text-sm mt-1"><span>{t('perks_renews')}</span> January 2026</div>
-            </div>
-            <div className="text-left sm:text-right">
-              <div className="text-blue-200 text-xs mb-1">{t('dash_total_saved')}</div>
-              <div className="text-2xl sm:text-3xl font-black" dir="ltr">₪1,240</div>
-            </div>
-          </div>
-
-          {/* Snapshot stats: Card status / Savings / Raffle entries */}
+          {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
           <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
+            <div className="dash-stat-card text-center">
+              <i className="fa-solid fa-tags text-cyan-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
+              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_active_perks_label')}</div>
+              <div className="text-xs sm:text-base font-black text-slate-900">0</div>
+            </div>
             <div className="dash-stat-card text-center">
               <i className="fa-solid fa-gift text-brand text-base sm:text-lg mb-1.5 sm:mb-2"></i>
               <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_perks_redeemed_label')}</div>
@@ -100,12 +86,7 @@ export default function MemberPage() {
             <div className="dash-stat-card text-center">
               <i className="fa-solid fa-sack-dollar text-emerald-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
               <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_total_saved')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900" dir="ltr">₪1,240</div>
-            </div>
-            <div className="dash-stat-card text-center">
-              <i className="fa-solid fa-ticket text-amber-500 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_raffle_entries_label')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900">{t('dash_raffle_entries_value')}</div>
+              <div className="text-xs sm:text-base font-black text-slate-900" dir="ltr">₪0</div>
             </div>
           </div>
 
@@ -115,46 +96,16 @@ export default function MemberPage() {
             <p className="text-sm text-amber-800"><strong>{t('perks_raffle_entered')}</strong> <span>{t('perks_raffle_note')}</span></p>
           </div>
 
-          {/* Tabs: My Perks / Redeemed / Profile */}
+          {/* Tabs: My Perks / Redeemed / Subscription / Support / Profile */}
           <div className="mb-5">
             <MemberTabs active={activeTab} onChange={setActiveTab} />
           </div>
           <div className="mb-4">
             {activeTab === 'perks' && <PerksTab />}
             {activeTab === 'redeemed' && <RedeemedTab />}
-            {activeTab === 'profile' && <ProfileTab user={user} />}
-          </div>
-
-          {/* Account / Plan management — bottom section */}
-          <div className="mt-10 pt-8 border-t border-slate-200">
-            <h2 className="text-lg font-bold text-slate-900 mb-1">{t('dash_plan_mgmt')}</h2>
-            <p className="text-sm text-slate-500 mb-5">{t('dash_plan_mgmt_sub')}</p>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className={`dash-plan-card ${plan === 'monthly' ? 'dash-plan-active' : ''}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-900">{t('plan_monthly_name')}</span>
-                  <span className="text-brand font-black text-lg">39 <span className="text-xs font-medium text-slate-400">{t('price_suffix')}</span></span>
-                </div>
-                <p className="text-xs text-slate-500 mb-4">{t('plan_monthly_note')}</p>
-                {plan === 'monthly' ? (
-                  <button className="tap-target w-full text-center justify-center bg-brand text-white font-bold py-2.5 rounded-full text-sm cursor-default">{t('dash_current_plan')}</button>
-                ) : (
-                  <button onClick={() => switchPlan('monthly')} className="tap-target w-full text-center justify-center border-2 border-brand text-brand font-bold py-2.5 rounded-full hover:bg-brandLight transition text-sm">{t('dash_switch_btn')}</button>
-                )}
-              </div>
-              <div className={`dash-plan-card ${plan === 'annual' ? 'dash-plan-active' : ''}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-900">{t('plan_annual_name')}</span>
-                  <span className="text-brand font-black text-lg">29 <span className="text-xs font-medium text-slate-400">{t('price_suffix')}</span></span>
-                </div>
-                <p className="text-xs text-slate-500 mb-4">{t('plan_annual_note1')}</p>
-                {plan === 'annual' ? (
-                  <button className="tap-target w-full text-center justify-center bg-brand text-white font-bold py-2.5 rounded-full text-sm cursor-default">{t('dash_current_plan')}</button>
-                ) : (
-                  <button onClick={() => switchPlan('annual')} className="tap-target w-full text-center justify-center border-2 border-brand text-brand font-bold py-2.5 rounded-full hover:bg-brandLight transition text-sm">{t('dash_switch_btn')}</button>
-                )}
-              </div>
-            </div>
+            {activeTab === 'subscription' && <SubscriptionTab user={user} />}
+            {activeTab === 'support' && <SupportTab />}
+            {activeTab === 'profile' && <ProfileTab user={user} onCustomerTypeChange={setCustomerType} />}
           </div>
 
           <div className="mt-10 text-center sm:hidden">
@@ -164,8 +115,6 @@ export default function MemberPage() {
           </div>
         </div>
       </div>
-
-      <div className={`toast-msg ${toast ? 'show' : ''}`}>{toast}</div>
     </>
   )
 }
