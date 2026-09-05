@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { usePerkCollections } from '@/lib/firebase/usePerkCollections'
 import { auth } from '@/lib/firebase/config'
 import { translations, Lang, TranslationKey } from '@/lib/i18n/translations'
 import MobileMenu from './MobileMenu'
@@ -27,6 +28,7 @@ const LANGUAGES: { code: Lang; flag: string; label: string }[] = [
 export default function Navbar({ forceLocked = false }: { forceLocked?: boolean }) {
   const { lang: ctxLang, setLang, t: ctxT } = useLang()
   const { user } = useAuth()
+  const { wishlistIds, cartIds } = usePerkCollections()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
@@ -83,10 +85,32 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
     <>
       <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target">
-            <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
-            <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
-          </a>
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target">
+              <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
+              <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
+            </a>
+
+            {/* Language dropdown */}
+            <div className="lang-dropdown" ref={langDropdownRef}>
+              <button onClick={toggleLangMenu} className={`tap-target flex items-center gap-1.5 text-[13px] font-bold text-slate-600 border border-slate-200 rounded-full px-3 py-2 hover:border-brand hover:text-brand transition ${forceLocked ? 'lang-locked' : ''}`}>
+                <i className="fa-solid fa-globe text-xs"></i>
+                <span>{lang.toUpperCase()}</span>
+                <i className="fa-solid fa-chevron-down text-[9px]"></i>
+              </button>
+              <div className={`lang-menu ${langMenuOpen ? 'show' : ''}`}>
+                {LANGUAGES.map((l) => (
+                  <div
+                    key={l.code}
+                    className={`lang-item ${lang === l.code ? 'active-lang' : ''}`}
+                    onClick={() => chooseLang(l.code)}
+                  >
+                    <span>{l.flag}</span> {l.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <div className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-slate-600 absolute left-1/2 -translate-x-1/2">
             <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="hover:text-brand transition">{t('nav_home')}</a>
@@ -111,25 +135,22 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Language dropdown */}
-            <div className="lang-dropdown" ref={langDropdownRef}>
-              <button onClick={toggleLangMenu} className={`tap-target flex items-center gap-1.5 text-[13px] font-bold text-slate-600 border border-slate-200 rounded-full px-3 py-2 hover:border-brand hover:text-brand transition ${forceLocked ? 'lang-locked' : ''}`}>
-                <i className="fa-solid fa-globe text-xs"></i>
-                <span>{lang.toUpperCase()}</span>
-                <i className="fa-solid fa-chevron-down text-[9px]"></i>
-              </button>
-              <div className={`lang-menu ${langMenuOpen ? 'show' : ''}`}>
-                {LANGUAGES.map((l) => (
-                  <div
-                    key={l.code}
-                    className={`lang-item ${lang === l.code ? 'active-lang' : ''}`}
-                    onClick={() => chooseLang(l.code)}
-                  >
-                    <span>{l.flag}</span> {l.label}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {user && (
+              <>
+                <Link href="/wishlist" aria-label={t('nav_wishlist')} className="tap-target relative flex items-center justify-center w-10 h-10 text-slate-600 hover:text-brand transition">
+                  <i className="fa-solid fa-heart text-base"></i>
+                  {wishlistIds.length > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{wishlistIds.length}</span>
+                  )}
+                </Link>
+                <Link href="/cart" aria-label={t('nav_cart')} className="tap-target relative flex items-center justify-center w-10 h-10 text-slate-600 hover:text-brand transition">
+                  <i className="fa-solid fa-cart-shopping text-base"></i>
+                  {cartIds.length > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{cartIds.length}</span>
+                  )}
+                </Link>
+              </>
+            )}
 
             <Link href={user ? '/member' : '/#deals'} className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{user ? t('nav_account') : t('nav_cta')}</Link>
             {user ? (

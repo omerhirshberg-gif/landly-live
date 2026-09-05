@@ -13,9 +13,6 @@ export default function SupportPage() {
       <Navbar />
       <div className="pt-16">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <Link href="/" className="tap-target flex items-center gap-2 text-brand font-bold mb-6 hover:underline">
-            <i className="fa-solid fa-arrow-left"></i> <span>{t('back_btn')}</span>
-          </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-8">{t('support_title')}</h1>
 
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">

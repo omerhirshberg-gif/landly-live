@@ -26,3 +26,33 @@ export function sortByDistance<T extends { location?: Coordinates }>(items: T[],
     .filter((item): item is T & { location: Coordinates } => !!item.location)
     .sort((a, b) => haversineDistanceKm(origin, a.location) - haversineDistanceKm(origin, b.location))
 }
+
+export interface PlaceName {
+  city: string
+  state: string
+}
+
+/**
+ * Reverse-geocodes coordinates to a city/state via OpenStreetMap's free
+ * Nominatim API (no key required). Nominatim's usage policy caps this to
+ * low-volume, non-bulk lookups — fine for one "Near Me" click, but a
+ * higher-traffic deployment should move this behind a paid provider or a
+ * backend proxy instead of calling it directly from the browser.
+ */
+export async function reverseGeocode(coords: Coordinates): Promise<PlaceName | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lng}&format=json&zoom=10&addressdetails=1`,
+      { headers: { Accept: 'application/json' } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const address = data?.address ?? {}
+    const city: string = address.city || address.town || address.village || address.municipality || ''
+    const state: string = address.state || address.region || ''
+    if (!city && !state) return null
+    return { city, state }
+  } catch {
+    return null
+  }
+}

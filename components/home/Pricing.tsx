@@ -1,14 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { User } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
 import { getUserDocument, SubscriptionStatus } from '@/lib/firebase/users'
+import type { SubscriptionPlan } from '@/lib/firebase/users'
 
 export default function Pricing({ onOpenTerms, user }: { onOpenTerms: () => void; user?: User }) {
   const { t } = useLang()
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const router = useRouter()
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
+
+  const handleSelectPlan = (plan: SubscriptionPlan) => router.push(`/checkout?plan=${plan}`)
 
   useEffect(() => {
     if (!user) return
@@ -41,7 +45,7 @@ export default function Pricing({ onOpenTerms, user }: { onOpenTerms: () => void
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_legal')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>
             </ul>
-            <button onClick={() => setShowComingSoon(true)} className="tap-target block w-full text-center bg-brandLight text-brand font-bold py-3 rounded-full hover:bg-blue-100 transition mt-auto">{t('btn_get_started')}</button>
+            <button onClick={() => handleSelectPlan('monthly')} className="tap-target block w-full text-center bg-brandLight text-brand font-bold py-3 rounded-full hover:bg-blue-100 transition mt-auto">{t('btn_get_started')}</button>
           </div>
           <div className="flex flex-col bg-white border-2 border-slate-100 rounded-2xl p-7 sm:p-8 hover:border-brand transition hover:shadow-lg">
             <div className="text-sm font-bold text-slate-400 mb-2">{t('plan_quarterly_name')}</div>
@@ -53,7 +57,7 @@ export default function Pricing({ onOpenTerms, user }: { onOpenTerms: () => void
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_community')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_raffle')}</span></li>
             </ul>
-            <button onClick={() => setShowComingSoon(true)} className="tap-target block w-full text-center bg-brandLight text-brand font-bold py-3 rounded-full hover:bg-blue-100 transition mt-auto">{t('btn_get_started')}</button>
+            <button onClick={() => handleSelectPlan('quarterly')} className="tap-target block w-full text-center bg-brandLight text-brand font-bold py-3 rounded-full hover:bg-blue-100 transition mt-auto">{t('btn_get_started')}</button>
           </div>
           <div className="flex flex-col bg-white border-2 border-brand rounded-2xl p-7 sm:p-8 relative shadow-xl shadow-blue-100">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap">{t('best_value')}</div>
@@ -67,16 +71,9 @@ export default function Pricing({ onOpenTerms, user }: { onOpenTerms: () => void
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_whatsapp')}</span></li>
               <li className="flex gap-2 items-start"><i className="fa-solid fa-check text-brand mt-0.5 flex-shrink-0"></i><span>{t('feat_priority_raffle')}</span></li>
             </ul>
-            <button onClick={() => setShowComingSoon(true)} className="tap-target block w-full text-center bg-brand text-white font-bold py-3 rounded-full hover:bg-brandDark transition shadow-md mt-auto">{t('btn_get_annual')}</button>
+            <button onClick={() => handleSelectPlan('annual')} className="tap-target block w-full text-center bg-brand text-white font-bold py-3 rounded-full hover:bg-brandDark transition shadow-md mt-auto">{t('btn_get_annual')}</button>
           </div>
         </div>
-
-        {showComingSoon && (
-          <div className="max-w-4xl mt-5 text-sm font-semibold text-brand bg-brandLight border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2"><i className="fa-solid fa-circle-info flex-shrink-0"></i>{t('pricing_coming_soon_msg')}</span>
-            <button onClick={() => setShowComingSoon(false)} aria-label="Dismiss" className="tap-target text-brand/70 hover:text-brand flex-shrink-0"><i className="fa-solid fa-xmark"></i></button>
-          </div>
-        )}
 
         <p className="text-slate-400 text-xs mt-5"><span>{t('pricing_disclaimer_pre')}</span> <button onClick={onOpenTerms} className="text-brand underline font-semibold">{t('terms_link')}</button><span>{t('pricing_disclaimer_post')}</span></p>
       </div>

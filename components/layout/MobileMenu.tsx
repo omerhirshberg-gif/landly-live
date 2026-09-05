@@ -25,6 +25,8 @@ export default function MobileMenu({
         {isLoggedIn ? (
           <>
             <Link href="/categories" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_cta')}</Link>
+            <Link href="/wishlist" onClick={onClose} className="tap-target flex items-center gap-2 justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100"><i className="fa-solid fa-heart text-sm"></i> {t('nav_wishlist')}</Link>
+            <Link href="/cart" onClick={onClose} className="tap-target flex items-center gap-2 justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100"><i className="fa-solid fa-cart-shopping text-sm"></i> {t('nav_cart')}</Link>
             <Link href="/#how" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_how')}</Link>
             <Link href="/#pricing" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_pricing')}</Link>
             <Link href="/olim" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_olim')}</Link>

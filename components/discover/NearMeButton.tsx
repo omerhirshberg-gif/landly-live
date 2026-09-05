@@ -27,14 +27,12 @@ export default function NearMeButton({ onLocate }: { onLocate: (coords: Coordina
   }
 
   const message: Partial<Record<GeoState, string>> = {
-    requesting: t('geo_requesting'),
     denied: t('geo_denied'),
     unsupported: t('geo_unsupported'),
-    granted: t('geo_granted'),
   }
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div className="flex flex-col items-center gap-2">
       <button
         onClick={handleClick}
         disabled={state === 'requesting'}
@@ -44,7 +42,7 @@ export default function NearMeButton({ onLocate }: { onLocate: (coords: Coordina
         <span>{t('geo_near_me_btn')}</span>
       </button>
       {message[state] && (
-        <p className={`text-xs font-semibold ${state === 'denied' || state === 'unsupported' ? 'text-red-600' : 'text-slate-500'}`}>
+        <p className="text-xs font-semibold text-red-600 text-center max-w-xs">
           {message[state]}
         </p>
       )}

@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import { db } from './config'
 
 // 'active' is the only status that grants access once SUBSCRIPTION_ENFORCED
@@ -18,6 +18,8 @@ export interface UserDocument {
   subscriptionStatus: SubscriptionStatus
   subscriptionPlan: SubscriptionPlan | null
   subscriptionExpiresAt: Date | null
+  wishlistPerkIds: string[]
+  cartPerkIds: string[]
 }
 
 /** Writes the users/{uid} doc for a brand-new account (email/password signup). */
@@ -33,6 +35,8 @@ export async function createUserDocument(
     subscriptionStatus: 'inactive',
     subscriptionPlan: null,
     subscriptionExpiresAt: null,
+    wishlistPerkIds: [],
+    cartPerkIds: [],
     createdAt: serverTimestamp(),
   })
 }
@@ -50,6 +54,8 @@ export async function ensureUserDocument(user: User) {
     subscriptionStatus: 'inactive',
     subscriptionPlan: null,
     subscriptionExpiresAt: null,
+    wishlistPerkIds: [],
+    cartPerkIds: [],
     createdAt: serverTimestamp(),
   })
 }
@@ -70,6 +76,8 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     subscriptionStatus: data.subscriptionStatus === 'active' ? 'active' : 'inactive',
     subscriptionPlan: plan,
     subscriptionExpiresAt: data.subscriptionExpiresAt instanceof Timestamp ? data.subscriptionExpiresAt.toDate() : null,
+    wishlistPerkIds: Array.isArray(data.wishlistPerkIds) ? data.wishlistPerkIds : [],
+    cartPerkIds: Array.isArray(data.cartPerkIds) ? data.cartPerkIds : [],
   }
 }
 
@@ -78,4 +86,16 @@ export async function updateUserDocument(
   data: { displayName: string; phone: string; customerType?: string }
 ) {
   await updateDoc(doc(db, 'users', uid), data)
+}
+
+export async function setPerkWishlisted(uid: string, perkId: string, wishlisted: boolean) {
+  await updateDoc(doc(db, 'users', uid), {
+    wishlistPerkIds: wishlisted ? arrayUnion(perkId) : arrayRemove(perkId),
+  })
+}
+
+export async function setPerkInCart(uid: string, perkId: string, inCart: boolean) {
+  await updateDoc(doc(db, 'users', uid), {
+    cartPerkIds: inCart ? arrayUnion(perkId) : arrayRemove(perkId),
+  })
 }
