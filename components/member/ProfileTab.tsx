@@ -6,22 +6,26 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, update
 import { useLang } from '@/lib/i18n/useLang'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { getUserDocument, updateUserDocument } from '@/lib/firebase/users'
+import { CUSTOMER_TYPES } from '@/lib/customerTypes'
 
 interface ProfileTabProps {
   user: User
+  onCustomerTypeChange?: (customerType: string) => void
 }
 
-export default function ProfileTab({ user }: ProfileTabProps) {
+export default function ProfileTab({ user, onCustomerTypeChange }: ProfileTabProps) {
   const { t } = useLang()
   const hasPasswordProvider = user.providerData.some((p) => p.providerId === 'password')
 
   const [loadingDoc, setLoadingDoc] = useState(true)
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
   const [phone, setPhone] = useState('')
+  const [customerType, setCustomerType] = useState('')
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [phoneInput, setPhoneInput] = useState('')
+  const [customerTypeInput, setCustomerTypeInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -36,6 +40,7 @@ export default function ProfileTab({ user }: ProfileTabProps) {
     getUserDocument(user.uid).then((doc) => {
       if (cancelled) return
       setPhone(doc?.phone ?? '')
+      setCustomerType(doc?.customerType ?? '')
       if (doc?.displayName) setDisplayName(doc.displayName)
       setLoadingDoc(false)
     })
@@ -45,6 +50,7 @@ export default function ProfileTab({ user }: ProfileTabProps) {
   const startEdit = () => {
     setNameInput(displayName)
     setPhoneInput(phone)
+    setCustomerTypeInput(customerType)
     setSaveMsg(null)
     setEditing(true)
   }
@@ -63,10 +69,12 @@ export default function ProfileTab({ user }: ProfileTabProps) {
       const trimmedPhone = phoneInput.trim()
       await Promise.all([
         updateProfile(user, { displayName: trimmedName }),
-        updateUserDocument(user.uid, { displayName: trimmedName, phone: trimmedPhone }),
+        updateUserDocument(user.uid, { displayName: trimmedName, phone: trimmedPhone, customerType: customerTypeInput }),
       ])
       setDisplayName(trimmedName)
       setPhone(trimmedPhone)
+      setCustomerType(customerTypeInput)
+      onCustomerTypeChange?.(customerTypeInput)
       setEditing(false)
       setSaveMsg({ type: 'success', text: t('profile_save_success') })
     } catch {
@@ -114,6 +122,15 @@ export default function ProfileTab({ user }: ProfileTabProps) {
               <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_phone_label')}</label>
               <input type="tel" className="inp" autoComplete="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} />
             </div>
+            <div>
+              <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('signup_customerTypeLabel')}</label>
+              <select className="inp" value={customerTypeInput} onChange={(e) => setCustomerTypeInput(e.target.value)}>
+                <option value="">{t('signup_customerType_placeholder')}</option>
+                {CUSTOMER_TYPES.map((option) => (
+                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-3 pt-1">
               <button type="submit" disabled={saving} className="tap-target btn-primary flex-1 disabled:opacity-70">
                 {saving ? '…' : t('profile_save_btn')}
@@ -143,6 +160,16 @@ export default function ProfileTab({ user }: ProfileTabProps) {
               <div>
                 <dt className="text-xs font-semibold text-slate-500 mb-0.5">{t('profile_phone_label')}</dt>
                 <dd className="text-sm font-bold text-slate-900" dir="ltr">{loadingDoc ? '…' : (phone || t('profile_no_phone'))}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500 mb-0.5">{t('signup_customerTypeLabel')}</dt>
+                <dd className="text-sm font-bold text-slate-900">
+                  {loadingDoc
+                    ? '…'
+                    : CUSTOMER_TYPES.find((option) => option.value === customerType)
+                      ? t(CUSTOMER_TYPES.find((option) => option.value === customerType)!.labelKey)
+                      : t('signup_customerType_placeholder')}
+                </dd>
               </div>
             </dl>
           </div>

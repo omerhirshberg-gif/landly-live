@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
@@ -12,33 +12,37 @@ import SupportTab from '@/components/member/SupportTab'
 import ProfileTab from '@/components/member/ProfileTab'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { getUserDocument } from '@/lib/firebase/users'
+import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR } from '@/lib/customerTypes'
 
 export default function MemberPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [toast, setToast] = useState<string | null>(null)
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [activeTab, setActiveTab] = useState<MemberTab>('perks')
+  const [customerType, setCustomerType] = useState('')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
   }, [loading, user, router])
 
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getUserDocument(user.uid).then((doc) => {
+      if (!cancelled) setCustomerType(doc?.customerType ?? '')
+    })
+    return () => { cancelled = true }
+  }, [user])
+
+  const segmentOption = CUSTOMER_TYPES.find((o) => o.value === customerType)
+  const segmentLabel = segmentOption ? t(segmentOption.labelKey) : t('dash_segment_value_unset')
+  const segmentColor = segmentOption?.color ?? CUSTOMER_TYPE_UNSET_COLOR
+
   const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || ''
   const welcomeMessage = displayName
     ? t('dash_welcome').replace('{name}', displayName)
     : t('dash_welcome_generic')
-
-  const showToast = (message: string) => {
-    setToast(message)
-    if (toastTimer.current) clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(null), 2600)
-  }
-
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current) }, [])
-
-  const showSegmentInfo = () => showToast(t('dash_segment_toast'))
 
   if (loading || !user) {
     return (
@@ -60,14 +64,9 @@ export default function MemberPage() {
               <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{welcomeMessage}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                <span className="segment-badge">
-                  <i className="fa-solid fa-passport"></i>
-                  <span>{t('dash_segment_value')}</span>
+                <span className="segment-badge" style={{ background: segmentColor }}>
+                  <span>{segmentLabel}</span>
                 </span>
-                <button onClick={showSegmentInfo} className="segment-hint">
-                  <span>{t('dash_segment_hint')}</span>
-                  <i className="fa-solid fa-chevron-down text-[9px]"></i>
-                </button>
               </div>
             </div>
           </div>
@@ -106,7 +105,7 @@ export default function MemberPage() {
             {activeTab === 'redeemed' && <RedeemedTab />}
             {activeTab === 'subscription' && <SubscriptionTab user={user} />}
             {activeTab === 'support' && <SupportTab />}
-            {activeTab === 'profile' && <ProfileTab user={user} />}
+            {activeTab === 'profile' && <ProfileTab user={user} onCustomerTypeChange={setCustomerType} />}
           </div>
 
           <div className="mt-10 text-center sm:hidden">
@@ -116,8 +115,6 @@ export default function MemberPage() {
           </div>
         </div>
       </div>
-
-      <div className={`toast-msg ${toast ? 'show' : ''}`}>{toast}</div>
     </>
   )
 }

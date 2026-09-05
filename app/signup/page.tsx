@@ -11,7 +11,7 @@ import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { createUserDocument, ensureUserDocument } from '@/lib/firebase/users'
 import { useLang } from '@/lib/i18n/useLang'
-import type { TranslationKey } from '@/lib/i18n/translations'
+import { CUSTOMER_TYPES } from '@/lib/customerTypes'
 
 declare global {
   interface Window {
@@ -26,15 +26,6 @@ declare global {
 // treats the dynamic import as Promise<any> instead of trying to resolve this
 // CDN URL as a real module.
 const ITI_UTILS_URL = 'https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/utils.js'
-
-const CUSTOMER_TYPES: { value: string; labelKey: TranslationKey }[] = [
-  { value: 'student', labelKey: 'signup_customerType_student' },
-  { value: 'new_immigrant', labelKey: 'signup_customerType_newImmigrant' },
-  { value: 'long_term_program', labelKey: 'signup_customerType_longTermProgram' },
-  { value: 'taglit', labelKey: 'signup_customerType_taglit' },
-  { value: 'traveler', labelKey: 'signup_customerType_traveler' },
-  { value: 'other', labelKey: 'signup_customerType_other' },
-]
 
 export default function SignupPage() {
   const { t, isRtl } = useLang()

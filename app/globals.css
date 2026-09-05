@@ -260,18 +260,11 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 
 /* User segment tag/badge shown next to the member's name in the dashboard */
 .segment-badge{
-  display:inline-flex; align-items:center; gap:6px;
-  background:linear-gradient(90deg,#7c3aed,#a855f7); color:#fff;
-  font-size:11.5px; font-weight:800; padding:5px 13px 5px 11px; border-radius:100px;
-  box-shadow:0 4px 14px rgba(124,58,237,.3); white-space:nowrap;
+  display:inline-flex; align-items:center;
+  color:#fff;
+  font-size:11.5px; font-weight:800; padding:5px 13px; border-radius:100px;
+  box-shadow:0 4px 14px rgba(0,0,0,.15); white-space:nowrap;
 }
-.segment-hint{
-  display:inline-flex; align-items:center; gap:5px;
-  font-size:10.5px; color:#94a3b8; font-weight:700; cursor:pointer;
-  border:1.5px dashed #cbd5e1; border-radius:100px; padding:4.5px 11px;
-  background:transparent; transition:border-color .2s, color .2s; white-space:nowrap;
-}
-.segment-hint:hover{ border-color:#7c3aed; color:#7c3aed; }
 
 /* Simple toast confirmation for simulated actions (plan change, etc.) */
 .toast-msg{
