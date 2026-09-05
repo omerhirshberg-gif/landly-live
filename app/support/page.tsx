@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 
 export default function SupportPage() {
   const { t } = useLang()
@@ -21,13 +22,14 @@ export default function SupportPage() {
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5">
               <div className="text-2xl mb-2">📧</div>
               <div className="font-bold text-slate-900 mb-1">{t('support_email_us')}</div>
-              <a href="mailto:contact@landly.io" className="text-brand text-sm font-semibold hover:underline">contact@landly.io</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand text-sm font-semibold hover:underline">{SUPPORT_EMAIL}</a>
               <p className="text-xs text-slate-500 mt-2">{t('support_email_note')}</p>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
               <div className="text-2xl mb-2">💬</div>
               <div className="font-bold text-slate-900 mb-1">{t('support_whatsapp')}</div>
-              <p className="text-sm text-slate-600">{t('support_whatsapp_note')}</p>
+              <a href={SUPPORT_WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" dir="ltr" className="text-brand text-sm font-semibold hover:underline">{SUPPORT_WHATSAPP_DISPLAY}</a>
+              <p className="text-sm text-slate-600 mt-1">{t('support_whatsapp_note')}</p>
             </div>
           </div>
 

@@ -78,7 +78,7 @@ export default function SignupPage() {
       }
       const phone = itiRef.current?.getNumber() || phoneRef.current?.value || ''
       await createUserDocument(cred.user, { phone, customerType })
-      router.push('/member')
+      router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
       setSubmitting(false)
@@ -90,7 +90,7 @@ export default function SignupPage() {
     try {
       const cred = await signInWithPopup(auth, googleProvider)
       await ensureUserDocument(cred.user)
-      router.push('/member')
+      router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
     }

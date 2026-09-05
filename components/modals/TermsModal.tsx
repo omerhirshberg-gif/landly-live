@@ -63,7 +63,8 @@ export default function TermsModal({
           </div>
           <div ref={raffleSectionRef} className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2"><i className="fa-solid fa-ticket text-amber-500"></i> <span>{t('terms_h5')}</span></h3>
-            <p>{t('terms_raffle_intro')}</p>
+            <p className="font-semibold text-amber-700">{t('terms_raffle_none_active')}</p>
+            <p className="mt-2">{t('terms_raffle_intro')}</p>
             <ul className="list-disc pr-5 mt-2 space-y-1">
               <li>{t('terms_raffle_li1')}</li>
               <li>{t('terms_raffle_li2')}</li>

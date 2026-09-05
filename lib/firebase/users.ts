@@ -2,11 +2,17 @@ import type { User } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './config'
 
+// 'active' is the only status that grants access once SUBSCRIPTION_ENFORCED
+// flips on (see lib/subscription.ts) — no real subscription flow writes
+// anything but 'inactive' yet, since there's no Tranzila integration.
+export type SubscriptionStatus = 'inactive' | 'active'
+
 export interface UserDocument {
   email: string
   displayName: string
   phone: string
   customerType: string
+  subscriptionStatus: SubscriptionStatus
 }
 
 /** Writes the users/{uid} doc for a brand-new account (email/password signup). */
@@ -19,6 +25,7 @@ export async function createUserDocument(
     displayName: user.displayName ?? '',
     phone,
     customerType,
+    subscriptionStatus: 'inactive',
     createdAt: serverTimestamp(),
   })
 }
@@ -33,6 +40,7 @@ export async function ensureUserDocument(user: User) {
     displayName: user.displayName ?? '',
     phone: '',
     customerType: '',
+    subscriptionStatus: 'inactive',
     createdAt: serverTimestamp(),
   })
 }
@@ -46,6 +54,7 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     displayName: data.displayName ?? '',
     phone: data.phone ?? '',
     customerType: data.customerType ?? '',
+    subscriptionStatus: data.subscriptionStatus === 'active' ? 'active' : 'inactive',
   }
 }
 

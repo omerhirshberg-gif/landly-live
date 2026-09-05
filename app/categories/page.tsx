@@ -4,8 +4,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import TermsModal from '@/components/modals/TermsModal'
+import NearMeButton from '@/components/discover/NearMeButton'
 import { useLang } from '@/lib/i18n/useLang'
 import { TranslationKey } from '@/lib/i18n/translations'
+import { sortByDistance, Coordinates } from '@/lib/geo'
+import type { Business } from '@/lib/types/business'
+
+// No businesses onboarded yet — populated once real listings exist.
+const BUSINESSES: Business[] = []
 
 const TILES: { emoji: string; labelKey: TranslationKey; countKey: TranslationKey; newDot?: boolean }[] = [
   { emoji: '✨', labelKey: 'row_new', countKey: 'count_12', newDot: true },
@@ -27,9 +33,12 @@ const TILES: { emoji: string; labelKey: TranslationKey; countKey: TranslationKey
 export default function CategoriesPage() {
   const { t } = useLang()
   const [termsOpen, setTermsOpen] = useState(false)
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null)
 
   const openRaffleTerms = () => setTermsOpen(true)
   const closeTerms = () => setTermsOpen(false)
+
+  const nearby = userLocation ? sortByDistance(BUSINESSES, userLocation) : null
 
   return (
     <>
@@ -39,7 +48,31 @@ export default function CategoriesPage() {
           <Link href="/" className="tap-target flex items-center gap-2 text-brand font-bold mb-6 hover:underline">
             <i className="fa-solid fa-arrow-left"></i> <span>{t('back_btn')}</span>
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-6">{t('cats_page_title')}</h1>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{t('cats_page_title')}</h1>
+            <NearMeButton onLocate={setUserLocation} />
+          </div>
+
+          {nearby && (
+            <div className="mb-8">
+              <h2 className="text-sm font-bold text-slate-900 mb-3">{t('discover_nearby_title')}</h2>
+              {nearby.length === 0 ? (
+                <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
+                  <i className="fa-solid fa-tags"></i>
+                  <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
+                  <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {nearby.map((business) => (
+                    <div key={business.id} className="bg-white border border-slate-100 rounded-2xl p-4">
+                      <div className="font-bold text-slate-900 text-sm">{business.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="join-cta-banner mb-8">
             <div className="flex items-center gap-3">

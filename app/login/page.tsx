@@ -33,7 +33,7 @@ export default function LoginPage() {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       await signInWithEmailAndPassword(auth, email, password)
-      router.push('/member')
+      router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
       setSubmitting(false)
@@ -46,7 +46,7 @@ export default function LoginPage() {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       const cred = await signInWithPopup(auth, googleProvider)
       await ensureUserDocument(cred.user)
-      router.push('/member')
+      router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
     }
