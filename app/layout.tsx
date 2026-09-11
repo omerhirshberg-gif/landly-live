@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
 import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
@@ -30,6 +31,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <Script src="https://cdn.enable.co.il/licenses/enable-L563244uhpzx2wnq-0926-83757/init.js" strategy="afterInteractive" />
         <AuthProvider>
           <WishlistProvider>
             <LangProvider>
