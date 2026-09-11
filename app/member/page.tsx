@@ -89,12 +89,6 @@ export default function MemberPage() {
             </div>
           </div>
 
-          {/* Raffle note */}
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 flex items-center gap-3">
-            <i className="fa-solid fa-champagne-glasses text-amber-500 text-xl flex-shrink-0"></i>
-            <p className="text-sm text-amber-800"><strong>{t('perks_raffle_entered')}</strong> <span>{t('perks_raffle_note')}</span></p>
-          </div>
-
           {/* Tabs: My Perks / Redeemed / Subscription / Support / Profile */}
           <div className="mb-5">
             <MemberTabs active={activeTab} onChange={setActiveTab} />

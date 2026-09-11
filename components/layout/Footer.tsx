@@ -7,10 +7,8 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 
 export default function Footer({
   onOpenTerms,
-  onOpenRaffleTerms,
 }: {
   onOpenTerms: () => void
-  onOpenRaffleTerms: () => void
 }) {
   const { t } = useLang()
   const { user } = useAuth()
@@ -72,15 +70,20 @@ export default function Footer({
               <div className="font-bold text-white mb-3">{t('footer_col_legal')}</div>
               <ul className="space-y-2">
                 <li><button onClick={onOpenTerms} className="hover:text-white transition">{t('terms_link')}</button></li>
-                <li><button onClick={onOpenRaffleTerms} className="hover:text-white transition">{t('footer_raffle_rules')}</button></li>
                 <li><a href="#faq" className="hover:text-white transition">{t('faq_label_short')}</a></li>
               </ul>
             </div>
             <div>
               <div className="font-bold text-white mb-3">{t('footer_col_download')}</div>
               <ul className="space-y-2">
-                <li><a href="#" className="hover:text-white transition flex items-center gap-1.5"><i className="fa-brands fa-apple text-xs"></i> <span>{t('footer_appstore')}</span></a></li>
-                <li><a href="#" className="hover:text-white transition flex items-center gap-1.5"><i className="fa-brands fa-google-play text-xs"></i> <span>{t('footer_googleplay')}</span></a></li>
+                <li aria-disabled="true" className="flex items-center gap-1.5 opacity-50 cursor-not-allowed">
+                  <i className="fa-brands fa-apple text-xs"></i> <span>{t('footer_appstore')}</span>
+                  <span className="bg-white/10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">{t('deals_card_soon_badge')}</span>
+                </li>
+                <li aria-disabled="true" className="flex items-center gap-1.5 opacity-50 cursor-not-allowed">
+                  <i className="fa-brands fa-google-play text-xs"></i> <span>{t('footer_googleplay')}</span>
+                  <span className="bg-white/10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">{t('deals_card_soon_badge')}</span>
+                </li>
               </ul>
             </div>
           </div>

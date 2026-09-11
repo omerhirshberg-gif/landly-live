@@ -42,7 +42,7 @@ export default function SupportPage() {
                 <select name="subject" className="inp">
                   <option>{t('subj_general')}</option><option>{t('subj_billing')}</option>
                   <option>{t('subj_voucher')}</option>
-                  <option>{t('subj_raffle')}</option><option>{t('subj_partner')}</option><option>{t('subj_aliyah')}</option>
+                  <option>{t('subj_partner')}</option><option>{t('subj_aliyah')}</option>
                 </select>
               </div>
               <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('form_message')}</label><textarea name="message" rows={4} required placeholder={t('form_message_ph')} className="inp resize-none"></textarea></div>
