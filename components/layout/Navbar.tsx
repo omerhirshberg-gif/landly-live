@@ -6,18 +6,18 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
-import { usePerkCollections } from '@/lib/firebase/usePerkCollections'
+import { useWishlist } from '@/lib/firebase/useWishlist'
+import { isNavLinkActive } from '@/lib/navActive'
+import { useScrollSpy } from '@/lib/useScrollSpy'
 import { auth } from '@/lib/firebase/config'
+import { updateUserLanguage } from '@/lib/firebase/users'
 import { translations, Lang, TranslationKey } from '@/lib/i18n/translations'
+import { LANGUAGES } from '@/lib/i18n/languages'
 import MobileMenu from './MobileMenu'
 
-const LANGUAGES: { code: Lang; flag: string; label: string }[] = [
-  { code: 'en', flag: '🇺🇸', label: 'English' },
-  { code: 'ru', flag: '🇷🇺', label: 'Русский' },
-  { code: 'es', flag: '🇪🇸', label: 'Español' },
-  { code: 'fr', flag: '🇫🇷', label: 'Français' },
-  { code: 'he', flag: '🇮🇱', label: 'עברית' },
-]
+// The only sections the navbar itself links to (Footer's own #faq/#waitlist
+// links are out of scope) — order matters for useScrollSpy's tie-breaking.
+const HOME_ANCHOR_IDS = ['deals', 'how'] as const
 
 /**
  * forceLocked: used on the /business page, which the legacy site always force-displays
@@ -28,7 +28,7 @@ const LANGUAGES: { code: Lang; flag: string; label: string }[] = [
 export default function Navbar({ forceLocked = false }: { forceLocked?: boolean }) {
   const { lang: ctxLang, setLang, t: ctxT } = useLang()
   const { user } = useAuth()
-  const { wishlistIds, cartIds } = usePerkCollections()
+  const { wishlistIds } = useWishlist()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
@@ -37,6 +37,11 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
 
   const lang: Lang = forceLocked ? 'en' : ctxLang
   const t = (key: TranslationKey): string => (forceLocked ? translations.en[key] : ctxT(key))
+
+  const activeAnchorId = useScrollSpy(HOME_ANCHOR_IDS, pathname === '/')
+
+  const navLinkClass = (href: string) =>
+    `transition ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand font-bold underline decoration-2 underline-offset-[9px]' : 'hover:text-brand'}`
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
@@ -79,6 +84,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
     if (forceLocked) return
     setLang(code)
     setLangMenuOpen(false)
+    if (user) updateUserLanguage(user.uid, code)
   }
 
   return (
@@ -113,43 +119,33 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
           </div>
 
           <div className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-slate-600 absolute left-1/2 -translate-x-1/2">
-            <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="hover:text-brand transition">{t('nav_home')}</a>
+            <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className={navLinkClass('/')}>{t('nav_home')}</a>
             {user ? (
               <>
-                <Link href="/categories" className="hover:text-brand transition">{t('nav_cta')}</Link>
-                <Link href="/#how" className="hover:text-brand transition">{t('nav_how')}</Link>
-                <Link href="/#pricing" className="hover:text-brand transition">{t('nav_pricing')}</Link>
-                <Link href="/olim" className="hover:text-brand transition">{t('nav_olim')}</Link>
-                <Link href="/support" className="hover:text-brand transition">{t('nav_support')}</Link>
+                <Link href="/categories" className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
+                <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
+                <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+                <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             ) : (
               <>
-                <Link href="/#deals" className="hover:text-brand transition">{t('nav_deals')}</Link>
-                <Link href="/#how" className="hover:text-brand transition">{t('nav_how')}</Link>
-                <Link href="/#pricing" className="hover:text-brand transition">{t('nav_pricing')}</Link>
-                <Link href="/olim" className="hover:text-brand transition">{t('nav_olim')}</Link>
-                <Link href="/business" className="hover:text-brand transition">{t('nav_biz')}</Link>
-                <Link href="/support" className="hover:text-brand transition">{t('nav_support')}</Link>
+                <Link href="/#deals" className={navLinkClass('/#deals')}>{t('nav_deals')}</Link>
+                <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
+                <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+                <Link href="/business" className={navLinkClass('/business')}>{t('nav_biz')}</Link>
+                <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             )}
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             {user && (
-              <>
-                <Link href="/wishlist" aria-label={t('nav_wishlist')} className="tap-target relative flex items-center justify-center w-10 h-10 text-slate-600 hover:text-brand transition">
-                  <i className="fa-solid fa-heart text-base"></i>
-                  {wishlistIds.length > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{wishlistIds.length}</span>
-                  )}
-                </Link>
-                <Link href="/cart" aria-label={t('nav_cart')} className="tap-target relative flex items-center justify-center w-10 h-10 text-slate-600 hover:text-brand transition">
-                  <i className="fa-solid fa-cart-shopping text-base"></i>
-                  {cartIds.length > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{cartIds.length}</span>
-                  )}
-                </Link>
-              </>
+              <Link href="/wishlist" aria-label={t('nav_wishlist')} className={`tap-target relative flex items-center justify-center w-10 h-10 rounded-full transition ${isNavLinkActive(pathname, '/wishlist', activeAnchorId) ? 'text-brand bg-brandLight' : 'text-slate-600 hover:text-brand'}`}>
+                <i className="fa-solid fa-heart text-base"></i>
+                {wishlistIds.length > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{wishlistIds.length}</span>
+                )}
+              </Link>
             )}
 
             <Link href={user ? '/member' : '/#deals'} className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{user ? t('nav_account') : t('nav_cta')}</Link>
@@ -162,6 +158,11 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
                 <i className="fa-solid fa-user text-xs"></i> <span>{t('nav_login')}</span>
               </Link>
             )}
+            {!user && (
+              <Link href="/business/login" aria-label={t('bizlogin_title')} title={t('bizlogin_title')} className="hidden xl:inline-flex tap-target items-center justify-center w-10 h-10 text-slate-400 hover:text-brand transition">
+                <i className="fa-solid fa-store text-base"></i>
+              </Link>
+            )}
 
             {/* Hamburger (mobile/tablet only) */}
             <button className="lg:hidden tap-target flex items-center justify-center" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menu">
@@ -171,7 +172,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
     </>
   )
 }

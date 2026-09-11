@@ -8,7 +8,6 @@ import Hero from '@/components/home/Hero'
 import AppBanner from '@/components/home/AppBanner'
 import DealsSection from '@/components/home/DealsSection'
 import HowItWorks from '@/components/home/HowItWorks'
-import Pricing from '@/components/home/Pricing'
 import BottomCta from '@/components/home/BottomCta'
 import Faq from '@/components/home/Faq'
 import Waitlist from '@/components/home/Waitlist'
@@ -46,7 +45,6 @@ export default function Home() {
         <Navbar />
         <LoggedInHome user={user} />
         <HowItWorks />
-        <Pricing onOpenTerms={openTerms} user={user} />
         <Faq onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
         <Footer onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
         <TermsModal isOpen={termsOpen} onClose={closeTerms} scrollToRaffle={scrollToRaffle} />
@@ -61,7 +59,6 @@ export default function Home() {
       <AppBanner />
       <DealsSection onOpenRaffleTerms={openRaffleTerms} />
       <HowItWorks />
-      <Pricing onOpenTerms={openTerms} />
       <BottomCta />
       <Faq onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
       <Waitlist />

@@ -7,7 +7,6 @@ import Navbar from '@/components/layout/Navbar'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
-import SubscriptionTab from '@/components/member/SubscriptionTab'
 import SupportTab from '@/components/member/SupportTab'
 import ProfileTab from '@/components/member/ProfileTab'
 import { useLang } from '@/lib/i18n/useLang'
@@ -103,7 +102,6 @@ export default function MemberPage() {
           <div className="mb-4">
             {activeTab === 'perks' && <PerksTab />}
             {activeTab === 'redeemed' && <RedeemedTab />}
-            {activeTab === 'subscription' && <SubscriptionTab user={user} />}
             {activeTab === 'support' && <SupportTab />}
             {activeTab === 'profile' && <ProfileTab user={user} onCustomerTypeChange={setCustomerType} />}
           </div>

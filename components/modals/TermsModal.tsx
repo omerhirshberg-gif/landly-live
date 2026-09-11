@@ -43,7 +43,7 @@ export default function TermsModal({
             <i className="fa-solid fa-ticket text-brand text-base flex-shrink-0"></i>
             <p className="font-semibold text-slate-800 text-xs sm:text-sm">{t('terms_cta_text')}</p>
           </div>
-          <a href="#pricing" onClick={onClose} className="tap-target bg-brand text-white font-bold text-xs px-4 py-2 rounded-full hover:bg-brandDark transition flex-shrink-0">{t('join_banner_cta')}</a>
+          <a href="#deals" onClick={onClose} className="tap-target bg-brand text-white font-bold text-xs px-4 py-2 rounded-full hover:bg-brandDark transition flex-shrink-0">{t('join_banner_cta')}</a>
         </div>
         <div className="text-slate-600 text-[13px] leading-relaxed space-y-5">
           <p><strong>{t('terms_updated_label')}</strong> <span>{t('terms_updated_date')}</span></p>
@@ -55,7 +55,6 @@ export default function TermsModal({
             <h3 className="font-bold text-slate-800 text-base mb-1">{t('terms_h2')}</h3>
             <p><strong>{t('terms_p2a_label')}</strong> <span>{t('terms_p2a')}</span></p>
             <p className="mt-2"><strong>{t('terms_p2b_label')}</strong> <span>{t('terms_p2b')}</span></p>
-            <p className="mt-2"><strong>{t('terms_p2c_label')}</strong> <span>{t('terms_p2c')}</span></p>
           </div>
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1">{t('terms_h3')}</h3>

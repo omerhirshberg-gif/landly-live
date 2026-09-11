@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
+import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
-import { PerkCollectionsProvider } from '@/lib/firebase/PerkCollectionsProvider'
+import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 
 export const metadata: Metadata = {
   title: 'Landly — Live Israel Like a Local',
@@ -30,9 +31,12 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          <PerkCollectionsProvider>
-            <LangProvider>{children}</LangProvider>
-          </PerkCollectionsProvider>
+          <WishlistProvider>
+            <LangProvider>
+              <PreferredLanguageSync />
+              {children}
+            </LangProvider>
+          </WishlistProvider>
         </AuthProvider>
       </body>
     </html>

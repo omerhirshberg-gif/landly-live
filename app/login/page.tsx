@@ -16,9 +16,10 @@ import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { ensureUserDocument } from '@/lib/firebase/users'
 import { useLang } from '@/lib/i18n/useLang'
+import { resolvePreferredLanguage } from '@/lib/i18n/preferredLanguage'
 
 export default function LoginPage() {
-  const { t, isRtl } = useLang()
+  const { t, isRtl, lang, setLang } = useLang()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,7 +33,9 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      await signInWithEmailAndPassword(auth, email, password)
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      const preferred = await resolvePreferredLanguage(cred.user.uid, lang)
+      if (preferred) setLang(preferred)
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -45,7 +48,9 @@ export default function LoginPage() {
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       const cred = await signInWithPopup(auth, googleProvider)
-      await ensureUserDocument(cred.user)
+      await ensureUserDocument(cred.user, { preferredLanguage: lang })
+      const preferred = await resolvePreferredLanguage(cred.user.uid, lang)
+      if (preferred) setLang(preferred)
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
