@@ -49,7 +49,6 @@ export default function Footer({
                 <li><a href="#hero" className="hover:text-white transition">{t('nav_home')}</a></li>
                 <li><a href="#deals" className="hover:text-white transition">{t('nav_deals')}</a></li>
                 <li><a href="#how" className="hover:text-white transition">{t('nav_how')}</a></li>
-                <li><a href="#pricing" className="hover:text-white transition">{t('nav_pricing')}</a></li>
                 <li><Link href={user ? '/member' : '/login'} className="hover:text-white transition">{t('nav_perks')}</Link></li>
               </ul>
             </div>
@@ -61,6 +60,13 @@ export default function Footer({
                 <li><Link href="/categories" className="hover:text-white transition">{t('footer_all_categories')}</Link></li>
                 <li><Link href="/support" className="hover:text-white transition">{t('nav_support')}</Link></li>
               </ul>
+              <Link
+                href="/business/login"
+                className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 border border-slate-700 rounded-full px-3 py-1.5 hover:text-white hover:border-slate-500 transition"
+              >
+                <i className="fa-solid fa-store text-[11px]"></i>
+                {t('footer_biz_login')}
+              </Link>
             </div>
             <div>
               <div className="font-bold text-white mb-3">{t('footer_col_legal')}</div>

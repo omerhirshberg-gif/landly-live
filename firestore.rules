@@ -8,6 +8,50 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Business accounts are created manually (Firebase Console) — same
+    // uid-keyed ownership pattern as users/{userId}. voucherStats is now
+    // bumped only by the Tranzila webhook via the Admin SDK (see
+    // lib/payments/claimOfferForOrder.ts), which bypasses these rules
+    // entirely, so no client-facing update path is needed here anymore.
+    match /businesses/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Publicly readable. All writes, including claimedCount, are admin-only
+    // now: offer creation/edits go through a script or the admin API routes
+    // using the Admin SDK, and claimedCount is bumped only by the Tranzila
+    // webhook (lib/payments/claimOfferForOrder.ts) once a payment for that
+    // offer is confirmed — never directly by a client.
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // One voucher per (user, offer), deterministic doc ID (`${uid}_${offerId}`).
+    // Vouchers are created only by the Tranzila webhook (Admin SDK, bypasses
+    // these rules) after payment is confirmed — a client can never create one
+    // directly, since that would mean claiming an offer without paying for it.
+    match /vouchers/{voucherId} {
+      // resource is null when the voucher doesn't exist yet (the common
+      // case for hasUserClaimedOffer's "have I already bought this?" check)
+      // -- must be handled explicitly, since resource.data on a null
+      // resource throws rather than failing the condition. No data is
+      // exposed by allowing this: a nonexistent doc has none.
+      allow read: if request.auth != null
+        && (resource == null || request.auth.uid == resource.data.userId);
+      allow write: if false;
+    }
+
+    // One order per (user, offer), deterministic doc ID (`${uid}_${offerId}`).
+    // Created by /api/payments/initiate and updated by
+    // /api/payments/tranzila-webhook, both via the Admin SDK. The client only
+    // ever reads its own order, to reflect live payment status on the
+    // checkout success page (lib/firebase/orders.ts) — it never writes one.
+    match /orders/{orderId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow write: if false;
+    }
+
     // Deny everything else by default (production mode default, made explicit).
     match /{document=**} {
       allow read, write: if false;

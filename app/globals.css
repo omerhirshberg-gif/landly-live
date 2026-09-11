@@ -79,6 +79,10 @@ button,a{touch-action:manipulation;}
 .inp:focus{border-color:#0038b8;}
 select.inp{cursor:pointer;}
 
+/* Dark-theme override for the business login/dashboard pages — layered on top of .inp */
+.inp-dark{background:#0f172a;border-color:#334155;color:#f1f5f9;}
+.inp-dark::placeholder{color:#64748b;}
+
 /* ── Hero video ────────────────────────────────────── */
 .hero-video-wrap{position:relative;min-height:100vh;min-height:100dvh;display:flex;align-items:center;overflow:hidden;padding-top:64px;}
 .hero-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;z-index:0;}
@@ -251,6 +255,9 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 ═══════════════════════════════════════════════════════ */
 
 .dash-stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px 20px;}
+
+/* Dark-theme override for the business dashboard's stat cards */
+.dash-stat-card-dark{background:#0f172a;border-color:#1e293b;}
 .dash-plan-card{background:#fff;border:2px solid #e2e8f0;border-radius:18px;padding:20px;transition:border-color .2s;}
 .dash-plan-card.dash-plan-active{border-color:#0038b8;background:#eff6ff;}
 

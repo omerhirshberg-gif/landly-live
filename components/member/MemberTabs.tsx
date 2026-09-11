@@ -2,7 +2,7 @@
 
 import { useLang } from '@/lib/i18n/useLang'
 
-export type MemberTab = 'perks' | 'redeemed' | 'subscription' | 'support' | 'profile'
+export type MemberTab = 'perks' | 'redeemed' | 'support' | 'profile'
 
 interface MemberTabsProps {
   active: MemberTab
@@ -15,7 +15,6 @@ export default function MemberTabs({ active, onChange }: MemberTabsProps) {
   const tabs: { id: MemberTab; label: string }[] = [
     { id: 'perks', label: t('dash_tab_perks') },
     { id: 'redeemed', label: t('dash_tab_redeemed') },
-    { id: 'subscription', label: t('dash_tab_subscription') },
     { id: 'support', label: t('dash_tab_support') },
     { id: 'profile', label: t('dash_tab_profile') },
   ]

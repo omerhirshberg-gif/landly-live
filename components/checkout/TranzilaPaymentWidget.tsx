@@ -1,19 +1,22 @@
 'use client'
 
 import { useLang } from '@/lib/i18n/useLang'
-import { formatPrice, PlanDefinition } from '@/lib/plans'
+import { formatPrice } from '@/lib/format'
 
 interface TranzilaPaymentWidgetProps {
-  plan: PlanDefinition
+  offerTitle: string
   amount: number
   onBack: () => void
 }
 
 // Placeholder for Tranzila's hosted iframe widget. Once we have Tranzila
 // credentials, swap the body below for their iframe embed — the props this
-// component takes (plan, amount) are already what the real widget will need,
-// so no restructuring of the checkout page should be required.
-export default function TranzilaPaymentWidget({ plan, amount, onBack }: TranzilaPaymentWidgetProps) {
+// component takes (offerTitle, amount) are already what the real widget will
+// need, so no restructuring of the checkout page should be required. Payment
+// confirmation itself never happens client-side even once wired up: the
+// voucher is only created after app/api/payments/tranzila-webhook confirms
+// payment server-to-server.
+export default function TranzilaPaymentWidget({ offerTitle, amount, onBack }: TranzilaPaymentWidgetProps) {
   const { t } = useLang()
 
   return (
@@ -21,7 +24,7 @@ export default function TranzilaPaymentWidget({ plan, amount, onBack }: Tranzila
       <i className="fa-solid fa-lock text-brand text-2xl mb-4"></i>
       <h2 className="text-lg font-bold text-slate-900 mb-2">{t('checkout_payment_coming_soon_title')}</h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-1">{t('checkout_payment_coming_soon_sub')}</p>
-      <p className="text-sm font-semibold text-slate-700 mt-4" dir="ltr">{t(plan.nameKey)} — {formatPrice(amount, plan.currency)}</p>
+      <p className="text-sm font-semibold text-slate-700 mt-4" dir="ltr">{offerTitle} — {formatPrice(amount)}</p>
 
       <button onClick={onBack} className="tap-target inline-flex items-center gap-2 text-brand font-bold text-sm hover:underline mt-6">
         <i className="fa-solid fa-arrow-left text-xs"></i>

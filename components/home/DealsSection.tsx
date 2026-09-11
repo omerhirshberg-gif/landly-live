@@ -60,7 +60,7 @@ export default function DealsSection({ onOpenRaffleTerms }: { onOpenRaffleTerms:
               <p className="text-slate-500 text-xs sm:text-sm mt-0.5">{t('join_banner_sub')}</p>
             </div>
           </div>
-          <a href="#pricing" className="tap-target bg-brand text-white font-bold text-sm px-6 py-3 rounded-full hover:bg-brandDark transition shadow-md flex-shrink-0">{t('join_banner_cta')}</a>
+          <a href="#deals" className="tap-target bg-brand text-white font-bold text-sm px-6 py-3 rounded-full hover:bg-brandDark transition shadow-md flex-shrink-0">{t('join_banner_cta')}</a>
         </div>
       </div>
     </section>

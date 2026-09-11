@@ -28,7 +28,7 @@ declare global {
 const ITI_UTILS_URL = 'https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/utils.js'
 
 export default function SignupPage() {
-  const { t, isRtl } = useLang()
+  const { t, isRtl, lang } = useLang()
   const router = useRouter()
   const phoneRef = useRef<HTMLInputElement>(null)
   const itiRef = useRef<{ destroy: () => void; getNumber: () => string } | null>(null)
@@ -68,7 +68,7 @@ export default function SignupPage() {
         await updateProfile(cred.user, { displayName: trimmedName })
       }
       const phone = itiRef.current?.getNumber() || phoneRef.current?.value || ''
-      await createUserDocument(cred.user, { phone, customerType })
+      await createUserDocument(cred.user, { phone, customerType, preferredLanguage: lang })
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -80,7 +80,7 @@ export default function SignupPage() {
     setError(null)
     try {
       const cred = await signInWithPopup(auth, googleProvider)
-      await ensureUserDocument(cred.user)
+      await ensureUserDocument(cred.user, { preferredLanguage: lang })
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
