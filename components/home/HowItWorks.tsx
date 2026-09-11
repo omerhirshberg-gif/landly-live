@@ -15,7 +15,7 @@ export default function HowItWorks() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="step-card">
             <div className="step-num">1</div>
-            <div className="text-3xl mb-3">📱</div>
+            <div className="text-3xl mb-3">👤</div>
             <h3 className="font-bold text-[17px] text-slate-900 mb-2">{t('step1_title')}</h3>
             <p className="text-slate-500 text-sm leading-relaxed">{t('step1_desc')}</p>
           </div>

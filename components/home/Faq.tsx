@@ -11,25 +11,14 @@ interface FaqItemData {
 
 export default function Faq({
   onOpenTerms,
-  onOpenRaffleTerms,
 }: {
   onOpenTerms: () => void
-  onOpenRaffleTerms: () => void
 }) {
   const { t } = useLang()
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const items: FaqItemData[] = [
     { q: t('faq1_q'), body: <>{t('faq1_a')}</> },
-    {
-      q: t('faq3_q'),
-      body: (
-        <>
-          <span>{t('faq3_a')}</span> <span>{t('faq_see_full_details')}</span>{' '}
-          <button onClick={onOpenRaffleTerms} className="text-brand underline font-semibold">{t('terms_link')}</button>.
-        </>
-      ),
-    },
     { q: t('faq4_q'), body: <>{t('faq4_a')}</> },
     {
       q: t('faq5_q'),

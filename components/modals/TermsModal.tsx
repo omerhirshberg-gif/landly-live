@@ -1,32 +1,20 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 
 export default function TermsModal({
   isOpen,
   onClose,
-  scrollToRaffle,
 }: {
   isOpen: boolean
   onClose: () => void
-  scrollToRaffle: boolean
 }) {
   const { t } = useLang()
-  const raffleSectionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : ''
   }, [isOpen])
-
-  useEffect(() => {
-    if (isOpen && scrollToRaffle) {
-      const timer = setTimeout(() => {
-        raffleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 150)
-      return () => clearTimeout(timer)
-    }
-  }, [isOpen, scrollToRaffle])
 
   return (
     <div
@@ -59,19 +47,6 @@ export default function TermsModal({
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1">{t('terms_h3')}</h3>
             <p>{t('terms_p3')}</p>
-          </div>
-          <div ref={raffleSectionRef} className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <h3 className="font-bold text-slate-800 text-base mb-1 flex items-center gap-2"><i className="fa-solid fa-ticket text-amber-500"></i> <span>{t('terms_h5')}</span></h3>
-            <p className="font-semibold text-amber-700">{t('terms_raffle_none_active')}</p>
-            <p className="mt-2">{t('terms_raffle_intro')}</p>
-            <ul className="list-disc pr-5 mt-2 space-y-1">
-              <li>{t('terms_raffle_li1')}</li>
-              <li>{t('terms_raffle_li2')}</li>
-              <li>{t('terms_raffle_li3')}</li>
-              <li>{t('terms_raffle_li4')}</li>
-              <li>{t('terms_raffle_li5')}</li>
-              <li>{t('terms_raffle_li6')}</li>
-            </ul>
           </div>
           <div>
             <h3 className="font-bold text-slate-800 text-base mb-1">{t('terms_h6')}</h3>

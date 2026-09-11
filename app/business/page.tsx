@@ -22,7 +22,7 @@ export default function BusinessPage() {
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5 sm:p-6 text-center">
               <div className="text-3xl mb-3">📈</div>
               <h3 className="font-bold text-slate-900 mb-2">Pay Only for Results</h3>
-              <p className="text-sm text-slate-500">3 to 5 percent commission only on direct in-app sales. No hidden fees, no risk.</p>
+              <p className="text-sm text-slate-500">3 to 5 percent commission only on direct sales through Landly. No hidden fees, no risk.</p>
             </div>
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5 sm:p-6 text-center">
               <div className="text-3xl mb-3">💬</div>

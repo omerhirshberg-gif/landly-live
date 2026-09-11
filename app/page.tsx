@@ -18,16 +18,8 @@ import { useAuth } from '@/lib/firebase/useAuth'
 export default function Home() {
   const { user, loading } = useAuth()
   const [termsOpen, setTermsOpen] = useState(false)
-  const [scrollToRaffle, setScrollToRaffle] = useState(false)
 
-  const openTerms = () => {
-    setScrollToRaffle(false)
-    setTermsOpen(true)
-  }
-  const openRaffleTerms = () => {
-    setScrollToRaffle(true)
-    setTermsOpen(true)
-  }
+  const openTerms = () => setTermsOpen(true)
   const closeTerms = () => setTermsOpen(false)
 
   if (loading) {
@@ -45,9 +37,9 @@ export default function Home() {
         <Navbar />
         <LoggedInHome user={user} />
         <HowItWorks />
-        <Faq onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
-        <Footer onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
-        <TermsModal isOpen={termsOpen} onClose={closeTerms} scrollToRaffle={scrollToRaffle} />
+        <Faq onOpenTerms={openTerms} />
+        <Footer onOpenTerms={openTerms} />
+        <TermsModal isOpen={termsOpen} onClose={closeTerms} />
       </>
     )
   }
@@ -55,15 +47,15 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <Hero onOpenRaffleTerms={openRaffleTerms} />
+      <Hero />
       <AppBanner />
-      <DealsSection onOpenRaffleTerms={openRaffleTerms} />
+      <DealsSection />
       <HowItWorks />
       <BottomCta />
-      <Faq onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
+      <Faq onOpenTerms={openTerms} />
       <Waitlist />
-      <Footer onOpenTerms={openTerms} onOpenRaffleTerms={openRaffleTerms} />
-      <TermsModal isOpen={termsOpen} onClose={closeTerms} scrollToRaffle={scrollToRaffle} />
+      <Footer onOpenTerms={openTerms} />
+      <TermsModal isOpen={termsOpen} onClose={closeTerms} />
       <StickyCta />
     </>
   )

@@ -2,7 +2,7 @@
 
 import { useLang } from '@/lib/i18n/useLang'
 
-export default function DealsSection({ onOpenRaffleTerms }: { onOpenRaffleTerms: () => void }) {
+export default function DealsSection() {
   const { t } = useLang()
 
   return (
@@ -35,21 +35,6 @@ export default function DealsSection({ onOpenRaffleTerms }: { onOpenRaffleTerms:
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="raffle-glow-card mb-10 sm:mb-12">
-          <div className="relative z-[1] flex flex-col sm:flex-row items-center sm:items-center gap-5 justify-between">
-            <div className="flex items-center gap-4">
-              <div className="raffle-glow-icon"><i className="fa-solid fa-champagne-glasses"></i></div>
-              <div>
-                <p className="text-white font-black text-base sm:text-lg leading-snug">{t('raffle_card_headline')}</p>
-                <p className="text-white/75 text-xs sm:text-sm mt-1">{t('raffle_card_sub')}</p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2.5 flex-shrink-0 w-full sm:w-auto">
-              <button onClick={onOpenRaffleTerms} className="tap-target justify-center bg-white text-brand font-bold text-sm px-5 py-3 rounded-full hover:bg-brandLight transition shadow whitespace-nowrap">{t('raffle_card_details')}</button>
-            </div>
-          </div>
         </div>
 
         <div className="join-cta-banner mb-4">

@@ -5,6 +5,7 @@ import { LangProvider } from '@/lib/i18n/LangProvider'
 import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
+import CookieNotice from '@/components/layout/CookieNotice'
 
 export const metadata: Metadata = {
   title: 'Landly — Live Israel Like a Local',
@@ -37,6 +38,7 @@ export default function RootLayout({
             <LangProvider>
               <PreferredLanguageSync />
               {children}
+              <CookieNotice />
             </LangProvider>
           </WishlistProvider>
         </AuthProvider>
