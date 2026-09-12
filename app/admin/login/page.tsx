@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { setStoredToken } from '@/lib/admin/adminSession'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -20,12 +20,13 @@ export default function AdminLoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       })
-      if (!res.ok) {
-        setError('Incorrect password.')
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.token) {
+        setError(res.status === 429 ? 'Too many attempts. Try again later.' : 'Incorrect password.')
         setSubmitting(false)
         return
       }
-      sessionStorage.setItem(ADMIN_SESSION_KEY, password)
+      setStoredToken(data.token)
       router.push('/admin')
     } catch {
       setError('Something went wrong. Try again.')

@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import PasswordField from '@/components/admin/PasswordField'
+import RevealableText from '@/components/admin/RevealableText'
+import { adminFetch } from '@/lib/admin/adminSession'
 import Link from 'next/link'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -57,10 +59,9 @@ export default function NewBusinessPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-      const res = await fetch('/api/admin/businesses', {
+      const res = await adminFetch('/api/admin/businesses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${password}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           business: {
             businessName: form.businessName,
@@ -113,7 +114,7 @@ export default function NewBusinessPage() {
           </div>
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Login password</div>
-            <div className="text-white font-mono">{result.loginPassword}</div>
+            <RevealableText className="text-white font-mono">{result.loginPassword}</RevealableText>
           </div>
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">First offer</div>
@@ -183,7 +184,7 @@ export default function NewBusinessPage() {
             </div>
             <div>
               <label className="block mb-1.5 text-sm font-bold text-slate-300">Login password</label>
-              <input type="text" required minLength={6} className="inp inp-dark !py-3.5" value={form.loginPassword} onChange={(e) => update('loginPassword', e.target.value)} />
+              <PasswordField required minLength={6} value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
             </div>
           </div>
         </section>

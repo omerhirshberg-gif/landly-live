@@ -2,14 +2,15 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AdminGate, { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import AdminGate from '@/components/admin/AdminGate'
+import { clearStoredToken } from '@/lib/admin/adminSession'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
 
   const logout = () => {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY)
+    clearStoredToken()
     router.push('/admin/login')
   }
 

@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server'
-import { isAdminPassword } from '@/lib/admin/checkAdminPassword'
+import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ uid: string }> }) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
 
   const { uid } = await params
   const adminDb = getAdminDb()

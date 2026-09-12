@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
-import { isAdminPassword } from '@/lib/admin/checkAdminPassword'
+import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -32,11 +32,8 @@ function badRequest(message: string) {
 }
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
 
   const adminDb = getAdminDb()
   const [businessesSnap, offersSnap] = await Promise.all([
@@ -69,11 +66,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
   const adminAuth = getAdminAuth()
   const adminDb = getAdminDb()
 

@@ -8,13 +8,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Business accounts are created manually (Firebase Console) — same
-    // uid-keyed ownership pattern as users/{userId}. voucherStats is now
-    // bumped only by the Tranzila webhook via the Admin SDK (see
-    // lib/payments/claimOfferForOrder.ts), which bypasses these rules
-    // entirely, so no client-facing update path is needed here anymore.
+    // Business accounts are created manually (Firebase Console) or via the
+    // admin API route, both using the Admin SDK, which bypasses these rules
+    // entirely. There is no field a business owner legitimately writes
+    // client-side today (voucherStats is bumped only by the Tranzila
+    // webhook, and businessName/category/location/businessId are all
+    // admin-managed) — so, same as offers/vouchers, this is read-only for
+    // the owner and denied for every write.
     match /businesses/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
 
     // Publicly readable. All writes, including claimedCount, are admin-only
