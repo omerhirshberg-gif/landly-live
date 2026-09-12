@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
-
-function authHeader() {
-  const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-  return { Authorization: `Bearer ${password}` }
-}
 
 function toFormValue(offer: OfferDocument): OfferFormValue {
   return {
@@ -62,9 +57,9 @@ export default function EditOfferPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/offers/${offerId}`, {
+      const res = await adminFetch(`/api/admin/offers/${offerId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           offer: {
             title: form.title,

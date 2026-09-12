@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isAdminPassword } from '@/lib/admin/checkAdminPassword'
+import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 
 // An orphan is a Firebase Auth user with no matching doc in either
@@ -9,11 +9,8 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 // looks. This also catches a customer signup that created its Auth user but
 // failed to write its Firestore doc, not just business-deletion orphans.
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
 
   const adminAuth = getAdminAuth()
   const adminDb = getAdminDb()

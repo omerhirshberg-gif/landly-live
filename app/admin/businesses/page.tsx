@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 import BackLink from '@/components/admin/BackLink'
 
 interface Business {
@@ -20,8 +20,7 @@ export default function BusinessesListPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-    fetch('/api/admin/businesses', { headers: { Authorization: `Bearer ${password}` } })
+    adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
       .catch(() => setError('Failed to load businesses.'))

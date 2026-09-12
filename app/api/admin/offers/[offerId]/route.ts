@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
-import { isAdminPassword } from '@/lib/admin/checkAdminPassword'
+import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { getAdminDb } from '@/lib/firebase/admin'
@@ -23,11 +23,8 @@ function badRequest(message: string) {
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ offerId: string }> }) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
 
   const { offerId } = await params
   const ref = getAdminDb().collection('offers').doc(offerId)
@@ -44,11 +41,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
 // (for category/business reassignment) a separate, more sensitive operation
 // not supported by this form.
 export async function PATCH(request: Request, { params }: { params: Promise<{ offerId: string }> }) {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const password = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!isAdminPassword(password)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
 
   const { offerId } = await params
   const body = (await request.json().catch(() => null)) as PatchBody | null

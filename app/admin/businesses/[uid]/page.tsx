@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 import BackLink from '@/components/admin/BackLink'
 import { formatPrice } from '@/lib/format'
 import { getOfferDiscountPercent } from '@/lib/firebase/offers'
@@ -27,11 +27,6 @@ interface Offer {
   active: boolean
 }
 
-function authHeader() {
-  const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-  return { Authorization: `Bearer ${password}` }
-}
-
 export default function BusinessDetailPage() {
   const { uid } = useParams<{ uid: string }>()
   const router = useRouter()
@@ -41,12 +36,12 @@ export default function BusinessDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/businesses', { headers: authHeader() })
+    adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusiness((data.businesses ?? []).find((b: Business) => b.uid === uid) ?? null))
       .catch(() => setError('Failed to load business.'))
 
-    fetch(`/api/admin/offers?businessUid=${uid}`, { headers: authHeader() })
+    adminFetch(`/api/admin/offers?businessUid=${uid}`)
       .then((res) => res.json())
       .then((data) => setOffers(data.offers ?? []))
       .catch(() => setError('Failed to load offers.'))
@@ -59,7 +54,7 @@ export default function BusinessDetailPage() {
         : `Delete "${offer.title}"?`
     if (!window.confirm(warning)) return
 
-    const res = await fetch(`/api/admin/offers/${offer.id}`, { method: 'DELETE', headers: authHeader() })
+    const res = await adminFetch(`/api/admin/offers/${offer.id}`, { method: 'DELETE' })
     if (!res.ok) {
       setError((await res.json()).error ?? 'Failed to delete offer.')
       return
@@ -73,7 +68,7 @@ export default function BusinessDetailPage() {
     const offerText = offerCount > 0 ? ` and its ${offerCount} offer(s)` : ''
     if (!window.confirm(`Delete "${business.businessName}"${offerText}? This cannot be undone.`)) return
 
-    const res = await fetch(`/api/admin/businesses/${uid}`, { method: 'DELETE', headers: authHeader() })
+    const res = await adminFetch(`/api/admin/businesses/${uid}`, { method: 'DELETE' })
     const data = await res.json()
     if (!res.ok) {
       setError(data.error ?? 'Failed to delete business.')

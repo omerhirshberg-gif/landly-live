@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -41,8 +41,7 @@ function NewOfferForm() {
   const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string } | null>(null)
 
   useEffect(() => {
-    const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-    fetch('/api/admin/businesses', { headers: { Authorization: `Bearer ${password}` } })
+    adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
       .catch(() => setLoadError('Failed to load businesses.'))
@@ -81,10 +80,9 @@ function NewOfferForm() {
     setError(null)
     setSubmitting(true)
     try {
-      const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-      const res = await fetch('/api/admin/offers', {
+      const res = await adminFetch('/api/admin/offers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${password}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessUid: selectedUid,
           offer: {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 import BackLink from '@/components/admin/BackLink'
 
 interface Orphan {
@@ -11,11 +11,6 @@ interface Orphan {
   providerIds: string[]
 }
 
-function authHeader() {
-  const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-  return { Authorization: `Bearer ${password}` }
-}
-
 export default function OrphansPage() {
   const [orphans, setOrphans] = useState<Orphan[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +18,7 @@ export default function OrphansPage() {
 
   const load = () => {
     setError(null)
-    fetch('/api/admin/orphans', { headers: authHeader() })
+    adminFetch('/api/admin/orphans')
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error)
@@ -39,7 +34,7 @@ export default function OrphansPage() {
     setDeletingUid(orphan.uid)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/orphans/${orphan.uid}`, { method: 'DELETE', headers: authHeader() })
+      const res = await adminFetch(`/api/admin/orphans/${orphan.uid}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to delete.')
       setOrphans((prev) => prev?.filter((o) => o.uid !== orphan.uid) ?? null)

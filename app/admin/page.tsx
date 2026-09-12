@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ADMIN_SESSION_KEY } from '@/components/admin/AdminGate'
+import { adminFetch } from '@/lib/admin/adminSession'
 
 interface Business {
   activePerkCount: number
@@ -12,8 +12,7 @@ export default function AdminIndexPage() {
   const [businesses, setBusinesses] = useState<Business[] | null>(null)
 
   useEffect(() => {
-    const password = sessionStorage.getItem(ADMIN_SESSION_KEY) ?? ''
-    fetch('/api/admin/businesses', { headers: { Authorization: `Bearer ${password}` } })
+    adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
       .catch(() => setBusinesses(null))
