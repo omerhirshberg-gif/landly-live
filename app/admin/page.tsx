@@ -3,9 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
+import Card from '@/components/admin/Card'
+import StatCard from '@/components/admin/StatCard'
 
 interface Business {
+  uid: string
+  businessName: string
+  category: string
   activePerkCount: number
+  createdAt: string | null
 }
 
 export default function AdminIndexPage() {
@@ -21,17 +27,33 @@ export default function AdminIndexPage() {
   const businessCount = businesses?.length ?? null
   const activeOfferCount = businesses?.reduce((sum, b) => sum + b.activePerkCount, 0) ?? null
 
-  return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-black text-white mb-6">Dashboard</h1>
+  const recentBusinesses = businesses
+    ?.filter((b) => b.createdAt)
+    .slice()
+    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+    .slice(0, 5)
 
+  return (
+    <div>
       <div className="grid grid-cols-2 gap-4 mb-10">
-        <StatTile label="Total Businesses" value={businessCount} icon="fa-store" />
-        <StatTile label="Active Offers" value={activeOfferCount} icon="fa-tags" />
+        <StatCard
+          label="Total Businesses"
+          value={businessCount}
+          icon="fa-store"
+          accent="blue"
+          emptyHint="No businesses yet — add your first one below."
+        />
+        <StatCard
+          label="Active Offers"
+          value={activeOfferCount}
+          icon="fa-tags"
+          accent="amber"
+          emptyHint="No active offers yet — add one from a business."
+        />
       </div>
 
       <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-3">Actions</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
         <ActionCard
           icon="fa-plus"
           title="Add New Business"
@@ -48,20 +70,30 @@ export default function AdminIndexPage() {
           buttonLabel="View businesses"
         />
       </div>
-    </div>
-  )
-}
 
-function StatTile({ label, value, icon }: { label: string; value: number | null; icon: string }) {
-  return (
-    <div className="dash-stat-card-dark rounded-2xl p-5 flex items-center gap-4">
-      <div className="w-11 h-11 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand shrink-0">
-        <i className={`fa-solid ${icon}`} aria-hidden="true" />
-      </div>
-      <div>
-        <div className="text-2xl font-black text-white leading-none">{value ?? '…'}</div>
-        <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-1">{label}</div>
-      </div>
+      {recentBusinesses && recentBusinesses.length > 0 && (
+        <>
+          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-3">Recent Businesses</h2>
+          <div className="space-y-2">
+            {recentBusinesses.map((business) => (
+              <Card key={business.uid} href={`/admin/businesses/${business.uid}`} className="px-5 py-3.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-white font-semibold truncate">{business.businessName}</div>
+                    <div className="text-slate-500 text-xs mt-0.5">
+                      {business.category} · added {new Date(business.createdAt!).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-emerald-400 text-sm font-bold shrink-0">
+                    <i className="fa-solid fa-tags text-xs" aria-hidden="true" />
+                    {business.activePerkCount}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -82,7 +114,7 @@ function ActionCard({
   primary?: boolean
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 flex flex-col gap-3 transition-colors hover:border-slate-700">
+    <Card hover className="p-6 flex flex-col gap-3">
       <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand text-xl">
         <i className={`fa-solid ${icon}`} aria-hidden="true" />
       </div>
@@ -96,6 +128,6 @@ function ActionCard({
       >
         {buttonLabel}
       </Link>
-    </div>
+    </Card>
   )
 }

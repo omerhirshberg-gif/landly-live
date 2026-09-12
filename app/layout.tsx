@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import Script from 'next/script'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
 import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
+import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
 
 export const metadata: Metadata = {
   title: 'Landly — Live Israel Like a Local',
@@ -32,7 +32,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Script src="https://cdn.enable.co.il/licenses/enable-L563244uhpzx2wnq-0926-83757/init.js" strategy="afterInteractive" />
+        <AccessibilityWidget />
         <AuthProvider>
           <WishlistProvider>
             <LangProvider>

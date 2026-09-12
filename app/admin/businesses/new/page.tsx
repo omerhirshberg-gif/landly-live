@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
+import Card from '@/components/admin/Card'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
 interface SuccessResult {
@@ -98,12 +99,12 @@ export default function NewBusinessPage() {
 
   if (result) {
     return (
-      <div className="max-w-lg">
-        <BackLink href="/admin">Dashboard</BackLink>
+      <div>
+        <BackLink href="/admin/businesses">Back</BackLink>
         <h1 className="text-2xl font-black text-white mb-1">Business created</h1>
         <p className="text-sm text-slate-400 mb-6">Relay these login details to the business owner.</p>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-3 mb-6">
+        <Card className="p-5 space-y-3 mb-6">
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Business</div>
             <div className="text-white font-semibold">{result.businessName}</div>
@@ -121,7 +122,7 @@ export default function NewBusinessPage() {
             <div className="text-white font-semibold">{result.offerTitle}</div>
             <div className="text-slate-500 text-xs font-mono">{result.offerId}</div>
           </div>
-        </div>
+        </Card>
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -143,7 +144,7 @@ export default function NewBusinessPage() {
 
   return (
     <div className="max-w-2xl">
-      <BackLink href="/admin">Dashboard</BackLink>
+      <BackLink href="/admin/businesses">Back</BackLink>
       <h1 className="text-2xl font-black text-white mb-6">Add new business</h1>
 
       {error && (
@@ -153,8 +154,8 @@ export default function NewBusinessPage() {
       )}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+        <Card className="p-6">
+          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
             Business details
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -187,14 +188,14 @@ export default function NewBusinessPage() {
               <PasswordField required minLength={6} value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
             </div>
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+        <Card className="p-6">
+          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
             First offer
           </h2>
           <OfferFormFields value={form} onChange={updateOffer} />
-        </section>
+        </Card>
 
         <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
           {submitting ? 'Creating…' : 'Create business'}

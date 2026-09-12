@@ -29,11 +29,12 @@ export async function GET(request: Request) {
   if (authError) return authError
 
   const businessUid = new URL(request.url).searchParams.get('businessUid')
-  if (!businessUid) return badRequest('Missing businessUid query param.')
 
   // Sorted in-memory (not via orderBy) so this doesn't need a composite
   // Firestore index (where + orderBy on different fields requires one).
-  const snap = await getAdminDb().collection('offers').where('businessId', '==', businessUid).get()
+  const snap = businessUid
+    ? await getAdminDb().collection('offers').where('businessId', '==', businessUid).get()
+    : await getAdminDb().collection('offers').get()
   const offers = snap.docs
     .map((doc) => {
       const data = doc.data()
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
       return {
         id: doc.id,
         title: data.title ?? '',
+        businessId: data.businessId ?? '',
+        businessName: data.businessName ?? '',
         originalPrice: Number(data.originalPrice) || 0,
         offerPrice: Number(data.offerPrice) || 0,
         expiryDate: expiryDate ? expiryDate.toISOString() : null,
