@@ -1,9 +1,12 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import AdminGate from '@/components/admin/AdminGate'
+import Sidebar from '@/components/admin/Sidebar'
+import LiveClock from '@/components/admin/LiveClock'
+import SidebarShell from '@/components/layout/SidebarShell'
 import { clearStoredToken } from '@/lib/admin/adminSession'
+import { getAdminPageTitle } from '@/lib/admin/pageTitle'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -15,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // The login page has no session to log out of yet -- it keeps its own
-  // standalone centered layout (still dark-themed) instead of the header below.
+  // standalone centered layout (still dark-themed) instead of the sidebar below.
   if (pathname === '/admin/login') {
     return (
       <AdminGate>
@@ -28,26 +31,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AdminGate>
-      <div className="min-h-screen bg-slate-950" dir="ltr">
-        <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-3.5 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-          <Link href="/admin" className="flex items-center gap-3">
-            <img src="/logo-mark.png" alt="Landly" className="h-8 w-auto" />
-            <div className="flex items-center gap-2">
-              <span className="font-black text-white text-lg leading-none">Landly</span>
-              <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
-                Admin
-              </span>
+      <div dir="ltr">
+        <SidebarShell
+          sidebar={<Sidebar onLogout={logout} />}
+          header={
+            <div className="hidden md:flex items-center justify-between sticky top-0 z-30 px-8 py-4 bg-slate-950/90 backdrop-blur border-b border-white/5">
+              <h2 className="text-2xl font-black text-white">{getAdminPageTitle(pathname)}</h2>
+              <LiveClock />
             </div>
-          </Link>
-          <button
-            onClick={logout}
-            className="btn-secondary !min-h-0 !py-2 !px-4 text-sm inline-flex items-center gap-2"
-          >
-            <i className="fa-solid fa-right-from-bracket text-xs" aria-hidden="true" />
-            Logout
-          </button>
-        </header>
-        <main className="px-6 py-8">{children}</main>
+          }
+        >
+          {children}
+        </SidebarShell>
       </div>
     </AdminGate>
   )

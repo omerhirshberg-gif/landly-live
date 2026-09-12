@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
+import Card from '@/components/admin/Card'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
@@ -93,7 +94,7 @@ export default function EditOfferPage() {
 
   return (
     <div className="max-w-2xl">
-      <BackLink href={backHref}>Business</BackLink>
+      <BackLink href={backHref}>Back</BackLink>
       <h1 className="text-2xl font-black text-white mb-6">Edit offer</h1>
 
       {error && (
@@ -102,8 +103,8 @@ export default function EditOfferPage() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm mb-6">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+      <Card className="p-6 mb-6">
+        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
           Business
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -123,16 +124,16 @@ export default function EditOfferPage() {
         <p className="text-xs text-slate-500 mt-4">
           Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
         </p>
-      </section>
+      </Card>
 
       {form && (
         <form className="space-y-6" onSubmit={handleSubmit}>
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+          <Card className="p-6">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
               Offer
             </h2>
             <OfferFormFields value={form} onChange={updateForm} />
-          </section>
+          </Card>
           <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
             {submitting ? 'Saving…' : 'Save changes'}
           </button>

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import BackLink from '@/components/admin/BackLink'
+import Card from '@/components/admin/Card'
+import PageHeader from '@/components/admin/PageHeader'
 import { formatPrice } from '@/lib/format'
 import { getOfferDiscountPercent } from '@/lib/firebase/offers'
 
@@ -84,8 +86,8 @@ export default function BusinessDetailPage() {
   const inactiveOffers = offers?.filter((o) => !o.active) ?? []
 
   return (
-    <div className="max-w-3xl">
-      <BackLink href="/admin/businesses">Businesses</BackLink>
+    <div>
+      <BackLink href="/admin/businesses">Back</BackLink>
 
       {error && (
         <div className="mb-4 text-sm font-semibold text-red-400 bg-red-950/40 border border-red-900 rounded-xl px-4 py-3">
@@ -93,38 +95,41 @@ export default function BusinessDetailPage() {
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-black text-white mb-2">{business.businessName}</h1>
+      <PageHeader
+        className="mb-8"
+        title={business.businessName}
+        subtitle={
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
               {business.category}
             </span>
             <span className="text-slate-500 text-xs">{business.businessId} · {business.location}</span>
           </div>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Link
-            href={`/admin/offers/new?businessUid=${uid}`}
-            className="btn-primary !min-h-0 !py-2.5 !px-4 text-sm inline-flex items-center gap-2"
-          >
-            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-            Add offer
-          </Link>
-          <button
-            className="inline-flex items-center gap-2 text-sm font-bold text-red-400 border-2 border-red-900/60 rounded-full px-4 py-2.5 transition-colors hover:bg-red-950/50 hover:border-red-800"
-            onClick={deleteBusiness}
-          >
-            <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
-            Delete business
-          </button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <Link
+              href={`/admin/offers/new?businessUid=${uid}`}
+              className="btn-primary !min-h-0 !py-2.5 !px-4 text-sm inline-flex items-center gap-2"
+            >
+              <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+              Add offer
+            </Link>
+            <button
+              className="inline-flex items-center gap-2 text-sm font-bold text-red-400 border-2 border-red-900/60 rounded-full px-4 py-2.5 transition-colors hover:bg-red-950/50 hover:border-red-800"
+              onClick={deleteBusiness}
+            >
+              <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
+              Delete business
+            </button>
+          </>
+        }
+      />
 
       {offers === null && <p className="text-slate-400">Loading offers…</p>}
 
       {offers !== null && (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <section>
             <h2 className="text-sm font-bold text-emerald-400 uppercase mb-3">Active perks ({activeOffers.length})</h2>
             {activeOffers.length === 0 && <p className="text-slate-500 text-sm">None.</p>}
@@ -152,7 +157,7 @@ export default function BusinessDetailPage() {
 
 function OfferRow({ offer, onDelete }: { offer: Offer; onDelete: () => void }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+    <Card className="flex items-center justify-between px-4 py-3">
       <div>
         <div className="text-white font-semibold">{offer.title}</div>
         <div className="text-slate-500 text-xs">
@@ -171,6 +176,6 @@ function OfferRow({ offer, onDelete }: { offer: Offer; onDelete: () => void }) {
           Delete
         </button>
       </div>
-    </div>
+    </Card>
   )
 }

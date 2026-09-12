@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
+import Card from '@/components/admin/Card'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
 interface Business {
@@ -62,7 +63,7 @@ function NewOfferForm() {
 
   const selected = businesses?.find((b) => b.uid === selectedUid) ?? null
   const backUid = selectedUid ?? preselectUid
-  const backHref = backUid ? `/admin/businesses/${backUid}` : '/admin'
+  const backHref = backUid ? `/admin/businesses/${backUid}` : '/admin/offers'
 
   const updateOffer = (key: keyof OfferFormValue, value: string | boolean) =>
     setOffer((prev) => ({ ...prev, [key]: value }))
@@ -112,10 +113,10 @@ function NewOfferForm() {
 
   if (result) {
     return (
-      <div className="max-w-lg">
-        <BackLink href={backHref}>{backUid ? 'Business' : 'Dashboard'}</BackLink>
+      <div>
+        <BackLink href={backHref}>Back</BackLink>
         <h1 className="text-2xl font-black text-white mb-1">Offer created</h1>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-3 mb-6">
+        <Card className="p-5 space-y-3 mb-6">
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase">Business</div>
             <div className="text-white font-semibold">{result.businessName}</div>
@@ -125,7 +126,7 @@ function NewOfferForm() {
             <div className="text-white font-semibold">{result.offerTitle}</div>
             <div className="text-slate-500 text-xs font-mono">{result.offerId}</div>
           </div>
-        </div>
+        </Card>
         <button
           className="btn-secondary"
           onClick={() => {
@@ -141,7 +142,7 @@ function NewOfferForm() {
 
   return (
     <div className="max-w-2xl">
-      <BackLink href={backHref}>{backUid ? 'Business' : 'Dashboard'}</BackLink>
+      <BackLink href={backHref}>Back</BackLink>
       <h1 className="text-2xl font-black text-white mb-6">Add offer to existing business</h1>
 
       {(error || loadError) && (
@@ -150,8 +151,8 @@ function NewOfferForm() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm mb-6">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+      <Card className="p-6 mb-6">
+        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
           Business
         </h2>
         {selected ? (
@@ -179,7 +180,11 @@ function NewOfferForm() {
               onChange={(e) => setSelectedUid(e.target.value)}
             >
               <option value="" disabled>
-                {businesses === null ? 'Loading businesses…' : `${filtered.length} business(es)`}
+                {businesses === null
+                  ? 'Loading businesses…'
+                  : filtered.length === 0
+                    ? 'No businesses found'
+                    : `${filtered.length} business${filtered.length === 1 ? '' : 'es'}`}
               </option>
               {filtered.map((b) => (
                 <option key={b.uid} value={b.uid}>
@@ -189,16 +194,16 @@ function NewOfferForm() {
             </select>
           </div>
         )}
-      </section>
+      </Card>
 
       {selected && (
         <form className="space-y-6" onSubmit={handleSubmit}>
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-slate-800">
+          <Card className="p-6">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
               Offer
             </h2>
             <OfferFormFields value={offer} onChange={updateOffer} />
-          </section>
+          </Card>
           <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
             {submitting ? 'Creating…' : 'Create offer'}
           </button>

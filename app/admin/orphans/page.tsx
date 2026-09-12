@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
-import BackLink from '@/components/admin/BackLink'
+import Card from '@/components/admin/Card'
 
 interface Orphan {
   uid: string
@@ -46,8 +46,7 @@ export default function OrphansPage() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <BackLink href="/admin">Dashboard</BackLink>
+    <div>
       <h1 className="text-2xl font-black text-white mb-1">Orphaned login accounts</h1>
       <p className="text-slate-500 text-sm mb-6">
         Firebase Auth accounts with no matching business or customer record. Deleting one only removes the
@@ -63,12 +62,9 @@ export default function OrphansPage() {
       {orphans === null && <p className="text-slate-400">Loading…</p>}
       {orphans?.length === 0 && <p className="text-slate-400">No orphaned accounts found.</p>}
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {orphans?.map((orphan) => (
-          <div
-            key={orphan.uid}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4"
-          >
+          <Card key={orphan.uid} className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="min-w-0 flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
                 <i className="fa-solid fa-triangle-exclamation text-sm" aria-hidden="true" />
@@ -89,7 +85,7 @@ export default function OrphansPage() {
               <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
               {deletingUid === orphan.uid ? 'Deleting…' : 'Delete'}
             </button>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

@@ -61,6 +61,7 @@ export async function GET(request: Request) {
     email: doc.data().email ?? '',
     activePerkCount: activeCounts.get(doc.id) ?? 0,
     redeemedTotal: Number(doc.data().voucherStats?.redeemedTotal) || 0,
+    createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt.toDate().toISOString() : null,
   }))
   return NextResponse.json({ businesses })
 }
