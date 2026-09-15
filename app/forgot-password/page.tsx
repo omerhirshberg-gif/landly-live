@@ -2,14 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { sendPasswordResetEmail } from 'firebase/auth'
 import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
-import { auth } from '@/lib/firebase/config'
-import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { useLang } from '@/lib/i18n/useLang'
 
 export default function ForgotPasswordPage() {
-  const { t, isRtl } = useLang()
+  const { t, lang, isRtl } = useLang()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -20,18 +17,15 @@ export default function ForgotPasswordPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await sendPasswordResetEmail(auth, email, {
-        // Points at the static success page, not /reset-password: while Firebase's
-        // hosted __/auth/action widget is still handling the reset (Console Action
-        // URL setting unresolved), it consumes the oobCode itself and redirects here
-        // as continueUrl — /reset-password would then try to re-validate an
-        // already-used code and show a false "invalid or expired" error.
-        url: `${window.location.origin}/reset-password/success`,
-        handleCodeInApp: true,
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, lang }),
       })
+      if (!res.ok) throw new Error('request failed')
       setSent(true)
-    } catch (err) {
-      setError(getAuthErrorMessage(err))
+    } catch {
+      setError(t('forgot_error_generic'))
     } finally {
       setSubmitting(false)
     }
