@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import Script from 'next/script'
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth'
 import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
 import GoogleButton from '@/components/auth/GoogleButton'
@@ -13,53 +13,26 @@ import { createUserDocument, ensureUserDocument } from '@/lib/firebase/users'
 import { useLang } from '@/lib/i18n/useLang'
 import { CUSTOMER_TYPES } from '@/lib/customerTypes'
 
-declare global {
-  interface Window {
-    intlTelInput?: (
-      input: HTMLInputElement,
-      options: Record<string, unknown>
-    ) => { destroy: () => void; getNumber: () => string }
-  }
-}
-
-// Kept as a variable (not a string literal directly in import()) so TypeScript
-// treats the dynamic import as Promise<any> instead of trying to resolve this
-// CDN URL as a real module.
-const ITI_UTILS_URL = 'https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/utils.js'
-
 export default function SignupPage() {
   const { t, isRtl, lang } = useLang()
   const router = useRouter()
-  const phoneRef = useRef<HTMLInputElement>(null)
-  const itiRef = useRef<{ destroy: () => void; getNumber: () => string } | null>(null)
-  const [itiReady, setItiReady] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [customerType, setCustomerType] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    if (!itiReady || !phoneRef.current || !window.intlTelInput) return
-    const iti = window.intlTelInput(phoneRef.current, {
-      initialCountry: 'il',
-      separateDialCode: true,
-      // webpackIgnore stops Turbopack/webpack from treating this as a bundleable
-      // module request (which silently fails for a non-literal CDN specifier and
-      // never issues the real network fetch) - it must stay a genuine runtime import.
-      loadUtils: () => import(/* webpackIgnore: true */ ITI_UTILS_URL),
-    })
-    itiRef.current = iti
-    return () => {
-      iti.destroy()
-      itiRef.current = null
-    }
-  }, [itiReady])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (!phone || !isValidPhoneNumber(phone)) {
+      setPhoneError(t('phone_invalid_error'))
+      return
+    }
+    setPhoneError(null)
     setSubmitting(true)
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
@@ -67,7 +40,6 @@ export default function SignupPage() {
       if (trimmedName) {
         await updateProfile(cred.user, { displayName: trimmedName })
       }
-      const phone = itiRef.current?.getNumber() || phoneRef.current?.value || ''
       await createUserDocument(cred.user, { phone, customerType, preferredLanguage: lang })
       router.push('/')
     } catch (err) {
@@ -89,13 +61,6 @@ export default function SignupPage() {
 
   return (
     <>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/css/intlTelInput.css" />
-      <Script
-        src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.2.1/build/js/intlTelInput.min.js"
-        strategy="afterInteractive"
-        onLoad={() => setItiReady(true)}
-      />
-
       {/* dir="ltr" pins physical side order (form left, marketing right) regardless
           of the active language — flex-row is otherwise direction-relative and would
           flip under document dir="rtl". RTL styling is applied per-side below instead. */}
@@ -150,7 +115,14 @@ export default function SignupPage() {
 
               <div>
                 <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('signup_phoneLabel')}</label>
-                <input type="tel" required ref={phoneRef} />
+                <PhoneInput
+                  international
+                  countryCallingCodeEditable={false}
+                  defaultCountry="IL"
+                  value={phone}
+                  onChange={(value) => setPhone(value ?? '')}
+                />
+                {phoneError && <p className="text-xs text-red-600 font-semibold mt-1.5">{phoneError}</p>}
                 <p className="text-xs text-slate-500 mt-1.5">{t('signup_phoneNote')}</p>
               </div>
 

@@ -49,12 +49,6 @@ export default function LoggedInHome({ user }: { user: User }) {
             </Link>
           </div>
         </div>
-
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm mt-4 sm:mt-5">
-          <i className="fa-solid fa-sparkles text-brand text-xl mb-3"></i>
-          <div className="font-bold text-base text-slate-900 mb-1">{t('home_recommended_title')}</div>
-          <p className="text-sm text-slate-500 leading-relaxed">{t('home_recommended_message')}</p>
-        </div>
       </div>
     </div>
   )

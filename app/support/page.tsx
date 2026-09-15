@@ -1,12 +1,15 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
 import Navbar from '@/components/layout/Navbar'
+import Faq from '@/components/home/Faq'
+import TermsModal from '@/components/modals/TermsModal'
 import { useLang } from '@/lib/i18n/useLang'
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 
 export default function SupportPage() {
   const { t } = useLang()
+  const [termsOpen, setTermsOpen] = useState(false)
 
   return (
     <>
@@ -49,17 +52,10 @@ export default function SupportPage() {
               <button type="submit" className="tap-target w-full text-center justify-center bg-brand text-white font-bold py-3 rounded-full hover:bg-brandDark transition shadow-md">{t('btn_send_message')}</button>
             </form>
           </div>
-
-          <div className="mt-8 bg-slate-50 rounded-2xl p-5">
-            <h3 className="font-bold text-slate-900 mb-3">{t('support_faq_links')}</h3>
-            <div className="space-y-2 text-sm">
-              <Link href="/#faq" className="block text-brand hover:underline">{t('faq1_q')}</Link>
-              <Link href="/#faq" className="block text-brand hover:underline">{t('faq4_q')}</Link>
-              <Link href="/#faq" className="block text-brand hover:underline">{t('faq5_q')}</Link>
-            </div>
-          </div>
         </div>
       </div>
+      <Faq onOpenTerms={() => setTermsOpen(true)} />
+      <TermsModal isOpen={termsOpen} onClose={() => setTermsOpen(false)} />
     </>
   )
 }
