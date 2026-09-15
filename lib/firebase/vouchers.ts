@@ -1,4 +1,4 @@
-import { doc, getDoc, Timestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, where, Timestamp } from 'firebase/firestore'
 import { db } from './config'
 
 export interface VoucherDocument {
@@ -44,4 +44,20 @@ export async function getUserVoucherForOffer(uid: string, offerId: string): Prom
   const snap = await getDoc(doc(db, 'vouchers', voucherRefId(uid, offerId)))
   if (!snap.exists()) return null
   return toDoc(snap.data())
+}
+
+// Two equality-only filters (userId, status) — Firestore covers this with its
+// automatic single-field indexes, no composite index needed. Filtering by
+// status here (not client-side) keeps redeemed vouchers out of callers like
+// PerksTab that should only ever see active ones.
+export async function getUserVouchers(
+  uid: string,
+  status: VoucherDocument['status']
+): Promise<(VoucherDocument & { id: string })[]> {
+  const snap = await getDocs(
+    query(collection(db, 'vouchers'), where('userId', '==', uid), where('status', '==', status))
+  )
+  return snap.docs
+    .map((d) => ({ id: d.id, ...toDoc(d.data()) }))
+    .sort((a, b) => (b.takenAt?.getTime() ?? 0) - (a.takenAt?.getTime() ?? 0))
 }

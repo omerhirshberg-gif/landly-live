@@ -1,5 +1,5 @@
 import 'server-only'
-import { randomBytes } from 'node:crypto'
+import { randomInt } from 'node:crypto'
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 
 // Admin-SDK counterpart of the old client-side claimOffer() in
@@ -8,12 +8,10 @@ import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 // businesses. Called exclusively from the Tranzila webhook route, once
 // payment for the order has been confirmed.
 
-// Unambiguous alphabet (no 0/O/1/I) since this is read off a screen by hand.
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-
-function generateRedemptionCode(length = 8): string {
-  const bytes = randomBytes(length)
-  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
+// 8-digit numeric code, full 0-99999999 range (100M combinations). Stored/
+// displayed as a string everywhere so leading zeros survive (e.g. "00012345").
+function generateRedemptionCode(): string {
+  return String(randomInt(0, 100_000_000)).padStart(8, '0')
 }
 
 export class ClaimOfferError extends Error {}
