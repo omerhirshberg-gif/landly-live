@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth'
+import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
@@ -29,6 +30,7 @@ export default function ProfileTab({ user, onCustomerTypeChange }: ProfileTabPro
   const [customerTypeInput, setCustomerTypeInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -53,21 +55,28 @@ export default function ProfileTab({ user, onCustomerTypeChange }: ProfileTabPro
     setPhoneInput(phone)
     setCustomerTypeInput(customerType)
     setSaveMsg(null)
+    setPhoneError(null)
     setEditing(true)
   }
 
   const cancelEdit = () => {
     setEditing(false)
     setSaveMsg(null)
+    setPhoneError(null)
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true)
     setSaveMsg(null)
+    const trimmedPhone = phoneInput.trim()
+    if (trimmedPhone && !isValidPhoneNumber(trimmedPhone)) {
+      setPhoneError(t('phone_invalid_error'))
+      return
+    }
+    setPhoneError(null)
+    setSaving(true)
     try {
       const trimmedName = nameInput.trim()
-      const trimmedPhone = phoneInput.trim()
       await Promise.all([
         updateProfile(user, { displayName: trimmedName }),
         updateUserDocument(user.uid, { displayName: trimmedName, phone: trimmedPhone, customerType: customerTypeInput }),
@@ -126,7 +135,14 @@ export default function ProfileTab({ user, onCustomerTypeChange }: ProfileTabPro
             </div>
             <div>
               <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_phone_label')}</label>
-              <input type="tel" className="inp" autoComplete="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} />
+              <PhoneInput
+                international
+                countryCallingCodeEditable={false}
+                defaultCountry="IL"
+                value={phoneInput}
+                onChange={(value) => setPhoneInput(value ?? '')}
+              />
+              {phoneError && <p className="text-xs text-red-600 font-semibold mt-1.5">{phoneError}</p>}
             </div>
             <div>
               <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('signup_customerTypeLabel')}</label>
@@ -165,7 +181,7 @@ export default function ProfileTab({ user, onCustomerTypeChange }: ProfileTabPro
               </div>
               <div>
                 <dt className="text-xs font-semibold text-slate-500 mb-0.5">{t('profile_phone_label')}</dt>
-                <dd className="text-sm font-bold text-slate-900" dir="ltr">{loadingDoc ? '…' : (phone || t('profile_no_phone'))}</dd>
+                <dd className="text-sm font-bold text-slate-900" dir="ltr">{loadingDoc ? '…' : (phone ? formatPhoneNumberIntl(phone) || phone : t('profile_no_phone'))}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold text-slate-500 mb-0.5">{t('signup_customerTypeLabel')}</dt>

@@ -7,8 +7,6 @@ import Navbar from '@/components/layout/Navbar'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
-import SupportTab from '@/components/member/SupportTab'
-import ProfileTab from '@/components/member/ProfileTab'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { getUserDocument } from '@/lib/firebase/users'
@@ -89,15 +87,13 @@ export default function MemberPage() {
             </div>
           </div>
 
-          {/* Tabs: My Perks / Redeemed / Subscription / Support / Profile */}
+          {/* Tabs: My Perks / Redeemed */}
           <div className="mb-5">
             <MemberTabs active={activeTab} onChange={setActiveTab} />
           </div>
           <div className="mb-4">
             {activeTab === 'perks' && <PerksTab />}
             {activeTab === 'redeemed' && <RedeemedTab />}
-            {activeTab === 'support' && <SupportTab />}
-            {activeTab === 'profile' && <ProfileTab user={user} onCustomerTypeChange={setCustomerType} />}
           </div>
 
           <div className="mt-10 text-center sm:hidden">

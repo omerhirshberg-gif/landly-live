@@ -9,9 +9,9 @@ import AppBanner from '@/components/home/AppBanner'
 import DealsSection from '@/components/home/DealsSection'
 import HowItWorks from '@/components/home/HowItWorks'
 import BottomCta from '@/components/home/BottomCta'
-import Faq from '@/components/home/Faq'
 import Waitlist from '@/components/home/Waitlist'
 import LoggedInHome from '@/components/home/LoggedInHome'
+import HomeFaqPrompt from '@/components/home/HomeFaqPrompt'
 import TermsModal from '@/components/modals/TermsModal'
 import { useAuth } from '@/lib/firebase/useAuth'
 
@@ -36,8 +36,8 @@ export default function Home() {
       <>
         <Navbar />
         <LoggedInHome user={user} />
-        <HowItWorks />
-        <Faq onOpenTerms={openTerms} />
+        <HowItWorks variant="member" />
+        <HomeFaqPrompt />
         <Footer onOpenTerms={openTerms} />
         <TermsModal isOpen={termsOpen} onClose={closeTerms} />
       </>
@@ -52,7 +52,7 @@ export default function Home() {
       <DealsSection />
       <HowItWorks />
       <BottomCta />
-      <Faq onOpenTerms={openTerms} />
+      <HomeFaqPrompt />
       <Waitlist />
       <Footer onOpenTerms={openTerms} />
       <TermsModal isOpen={termsOpen} onClose={closeTerms} />

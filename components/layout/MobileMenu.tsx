@@ -37,6 +37,7 @@ export default function MobileMenu({
             <Link href="/#how" onClick={onClose} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
             <Link href="/olim" onClick={onClose} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
             <Link href="/support" onClick={onClose} className={navLinkClass('/support')}>{t('nav_support')}</Link>
+            <Link href="/account" onClick={onClose} className={navLinkClass('/account')}>{t('dash_tab_profile')}</Link>
           </>
         ) : (
           <>
@@ -55,7 +56,7 @@ export default function MobileMenu({
             <Link href="/business/login" onClick={onClose} className="tap-target flex items-center gap-2 justify-start text-sm font-semibold text-slate-400 py-3.5 border-b border-slate-100"><i className="fa-solid fa-store text-xs"></i> {t('bizlogin_title')}</Link>
           </>
         )}
-        <Link href={isLoggedIn ? '/member' : '/#deals'} onClick={onClose} className="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-5 shadow-md text-center justify-center flex items-center">{isLoggedIn ? t('nav_account') : t('nav_cta')}</Link>
+        <Link href={isLoggedIn ? '/member' : '/#deals'} onClick={onClose} className="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-5 shadow-md text-center justify-center flex items-center">{isLoggedIn ? t('nav_perks') : t('nav_cta')}</Link>
       </div>
     </div>
   )

@@ -126,6 +126,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
                 <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
                 <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
+                <Link href="/account" className={navLinkClass('/account')}>{t('nav_account')}</Link>
               </>
             ) : (
               <>
@@ -148,7 +149,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
               </Link>
             )}
 
-            <Link href={user ? '/member' : '/#deals'} className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{user ? t('nav_account') : t('nav_cta')}</Link>
+            <Link href={user ? '/member' : '/#deals'} className="hidden sm:inline-flex tap-target bg-brand text-white text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-brandDark transition shadow-md">{user ? t('nav_perks') : t('nav_cta')}</Link>
             {user ? (
               <button onClick={handleSignOut} className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-red-600 border-2 border-red-200 rounded-full px-4 py-2.5 hover:bg-red-50 hover:border-red-600 transition">
                 <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>{t('nav_logout')}</span>

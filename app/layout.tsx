@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import 'react-phone-number-input/style.css'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
 import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
