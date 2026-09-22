@@ -111,7 +111,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
                     className={`lang-item ${lang === l.code ? 'active-lang' : ''}`}
                     onClick={() => chooseLang(l.code)}
                   >
-                    <span>{l.flag}</span> {l.label}
+                    {l.label}
                   </div>
                 ))}
               </div>
@@ -155,7 +155,7 @@ export default function Navbar({ forceLocked = false }: { forceLocked?: boolean 
                 <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>{t('nav_logout')}</span>
               </button>
             ) : (
-              <Link href="/login" className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-slate-700 border-2 border-slate-200 rounded-full px-4 py-2.5 hover:border-brand hover:text-brand transition">
+              <Link href="/login" className="hidden sm:inline-flex tap-target items-center gap-1.5 text-[13px] font-bold text-brand bg-white border-2 border-brand rounded-full px-4 py-2.5 hover:bg-brandLight transition">
                 <i className="fa-solid fa-user text-xs"></i> <span>{t('nav_login')}</span>
               </Link>
             )}

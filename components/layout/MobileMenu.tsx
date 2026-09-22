@@ -25,6 +25,8 @@ export default function MobileMenu({
   const pathname = usePathname()
   const navLinkClass = (href: string) =>
     `tap-target flex items-center gap-2 justify-start text-base font-bold py-3.5 border-b border-slate-100 transition ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight -mx-5 px-5' : 'text-slate-800'}`
+  const outlinePillClass =
+    'tap-target flex items-center justify-center gap-2 text-base font-bold text-brand bg-white border-2 border-brand rounded-full py-3.5 mt-5 hover:bg-brandLight transition'
 
   return (
     <div className={`mobile-menu ${isOpen ? 'open' : ''}`}>
@@ -37,7 +39,6 @@ export default function MobileMenu({
             <Link href="/#how" onClick={onClose} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
             <Link href="/olim" onClick={onClose} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
             <Link href="/support" onClick={onClose} className={navLinkClass('/support')}>{t('nav_support')}</Link>
-            <Link href="/account" onClick={onClose} className={navLinkClass('/account')}>{t('dash_tab_profile')}</Link>
           </>
         ) : (
           <>
@@ -52,11 +53,15 @@ export default function MobileMenu({
           <button onClick={onSignOut} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_logout')}</button>
         ) : (
           <>
-            <Link href="/login" onClick={onClose} className="tap-target flex justify-start text-base font-bold text-slate-800 py-3.5 border-b border-slate-100">{t('nav_login')}</Link>
             <Link href="/business/login" onClick={onClose} className="tap-target flex items-center gap-2 justify-start text-sm font-semibold text-slate-400 py-3.5 border-b border-slate-100"><i className="fa-solid fa-store text-xs"></i> {t('bizlogin_title')}</Link>
           </>
         )}
-        <Link href={isLoggedIn ? '/member' : '/#deals'} onClick={onClose} className="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-5 shadow-md text-center justify-center flex items-center">{isLoggedIn ? t('nav_perks') : t('nav_cta')}</Link>
+        {isLoggedIn ? (
+          <Link href="/account" onClick={onClose} className={outlinePillClass}><i className="fa-solid fa-user text-sm"></i> {t('nav_account')}</Link>
+        ) : (
+          <Link href="/login" onClick={onClose} className={outlinePillClass}><i className="fa-solid fa-user text-sm"></i> {t('nav_login')}</Link>
+        )}
+        <Link href={isLoggedIn ? '/member' : '/#deals'} onClick={onClose} className="tap-target bg-brand text-white text-base font-bold rounded-full py-4 mt-3 shadow-md text-center justify-center flex items-center">{isLoggedIn ? t('nav_perks') : t('nav_cta')}</Link>
       </div>
     </div>
   )

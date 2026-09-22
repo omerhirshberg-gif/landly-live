@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
+import BackToHomeLink from '@/components/auth/BackToHomeLink'
 import { useLang } from '@/lib/i18n/useLang'
 
 // Purely static confirmation — no oobCode reading, no Firebase Auth calls.
@@ -23,6 +24,7 @@ export default function ResetPasswordSuccessPage() {
     <div className="min-h-screen flex flex-col lg:flex-row" dir="ltr">
       <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
         <div className="w-full max-w-md">
+          <BackToHomeLink label={t('auth_backHome')} />
           <Link href="/" className="flex justify-center mb-8">
             <img src="/logo.jpg" alt="Landly" className="h-28 w-auto" />
           </Link>

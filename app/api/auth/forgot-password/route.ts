@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getAdminAuth } from '@/lib/firebase/admin'
 import { sendPasswordResetEmail } from '@/lib/email/sendPasswordResetEmail'
-import { translations, type Lang } from '@/lib/i18n/translations'
+import type { Lang } from '@/lib/i18n/translations'
 import { isPasswordResetRateLimited } from '@/lib/auth/passwordResetRateLimit'
-
-const KNOWN_LANGS = Object.keys(translations) as Lang[]
-
-function isValidLang(value: unknown): value is Lang {
-  return typeof value === 'string' && (KNOWN_LANGS as string[]).includes(value)
-}
-
-function requestOrigin(request: Request): string {
-  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
-  const host = request.headers.get('host')
-  return `${proto}://${host}`
-}
+import { isValidLang, requestOrigin } from '@/lib/auth/requestContext'
 
 // Always resolves to the same generic response regardless of whether the
 // email exists, so this endpoint can't be used to enumerate accounts.

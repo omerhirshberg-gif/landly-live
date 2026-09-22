@@ -1,5 +1,6 @@
+import { signOut } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
-import { db } from './config'
+import { auth, db } from './config'
 
 export interface BusinessDocument {
   businessName: string
@@ -39,4 +40,22 @@ export async function getBusinessDocument(uid: string): Promise<BusinessDocument
       active: Number(voucherStats.active) || 0,
     },
   }
+}
+
+// Business logins belong on /business/login only, so the customer auth pages
+// (/login, and /signup's Google button, which also signs in existing
+// accounts) call this right after sign-in -- before anything else runs,
+// verified or not, and before any customer users/{uid} doc is created. A
+// business can read its own businesses/{uid} doc, so the check works
+// client-side; the session is dropped immediately when it matches.
+//
+// TODO(security): pre-existing, tracked separately. Business logins are
+// admin-created and unverified, so a Google sign-in using a business's login
+// email makes Firebase replace that unverified password provider with
+// Google. This check still rejects the session, but the business's password
+// no longer works on /business/login afterwards.
+export async function signOutIfBusinessAccount(uid: string): Promise<boolean> {
+  if (!(await getBusinessDocument(uid))) return false
+  await signOut(auth)
+  return true
 }

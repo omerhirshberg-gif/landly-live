@@ -24,6 +24,7 @@ const dict = {
     doneTitle: 'Password updated',
     doneSubtitle: 'You can now sign in with your new password.',
     backToLogin: 'Back to Login',
+    backHome: 'Back to Home',
   },
   he: {
     pageTitle: 'איפוס סיסמא — Landly',
@@ -39,6 +40,7 @@ const dict = {
     doneTitle: 'הסיסמא עודכנה',
     doneSubtitle: 'כעת ניתן להתחבר עם הסיסמא החדשה.',
     backToLogin: 'חזרה להתחברות',
+    backHome: 'חזרה לדף הבית',
   },
 }
 
@@ -89,7 +91,7 @@ function ResetPasswordForm() {
 
   if (checking) {
     return (
-      <AuthCard>
+      <AuthCard backLabel={t('backHome')}>
         <div className="h-24" />
       </AuthCard>
     )
@@ -97,7 +99,7 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <AuthCard>
+      <AuthCard backLabel={t('backHome')}>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('doneTitle')}</h1>
         <p className="text-sm text-slate-500 mb-7">{t('doneSubtitle')}</p>
         <Link href="/login" className="btn-primary inline-flex">{t('backToLogin')}</Link>
@@ -107,7 +109,7 @@ function ResetPasswordForm() {
 
   if (!oobCode || !validCode) {
     return (
-      <AuthCard>
+      <AuthCard backLabel={t('backHome')}>
         <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
         <div className="mb-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           {t('invalidLink')}
@@ -121,7 +123,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <AuthCard>
+    <AuthCard backLabel={t('backHome')}>
       <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
       <p className="text-sm text-slate-500 mb-7">{t('subtitle')}</p>
 
