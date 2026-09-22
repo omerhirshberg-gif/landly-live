@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
@@ -94,12 +93,6 @@ export default function MemberPage() {
           <div className="mb-4">
             {activeTab === 'perks' && <PerksTab />}
             {activeTab === 'redeemed' && <RedeemedTab />}
-          </div>
-
-          <div className="mt-10 text-center sm:hidden">
-            <Link href="/" className="tap-target inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-600 transition">
-              <i className="fa-solid fa-arrow-right-from-bracket"></i> <span>{t('dash_back_public')}</span>
-            </Link>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { getAdminDb } from '@/lib/firebase/admin'
-import { getUidFromRequest } from '@/lib/firebase/verifyRequestUser'
+import { getVerifiedUidFromRequest } from '@/lib/firebase/verifyRequestUser'
 
 interface RequestBody {
   offerId: string
@@ -18,7 +18,7 @@ function badRequest(message: string) {
 // voucher only gets created later, by app/api/payments/tranzila-webhook,
 // once payment for this exact order is confirmed.
 export async function POST(request: Request) {
-  const uid = await getUidFromRequest(request)
+  const uid = await getVerifiedUidFromRequest(request)
   if (!uid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await request.json().catch(() => null)) as RequestBody | null

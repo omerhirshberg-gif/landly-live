@@ -11,6 +11,7 @@ import {
   signOut,
 } from 'firebase/auth'
 import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
+import BackToHomeLink from '@/components/auth/BackToHomeLink'
 import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { getBusinessDocument } from '@/lib/firebase/businesses'
@@ -55,6 +56,7 @@ export default function BusinessLoginPage() {
       {/* Form side */}
       <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
         <div className="w-full max-w-md">
+          <BackToHomeLink label={t('auth_backHome')} variant="dark" />
           <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
             <img src="/logo-mark.png" alt="Landly" className="h-11 w-auto" />
             <span className="font-black text-white text-2xl">Landly</span>

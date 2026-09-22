@@ -3,9 +3,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Email+password signups stay unverified until they click the emailed
+    // link; Google sign-ins are always verified. Existing email+password
+    // customers were grandfathered by scripts/grandfather-email-verification.mjs.
+    // Business logins are admin-created and unverified, but never touch the
+    // customer-only data below that this gates.
+    function isVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
     // Each user may read and write only their own document, keyed by their auth UID.
+    // create is allowed before verification: the signup page writes this doc
+    // right after creating the account, before the verification email is sent.
+    // read allows a missing doc (resource == null) so a signed-in business
+    // account's background reads (wishlist, preferred language) of a users doc
+    // it doesn't have still resolve as empty rather than permission-denied.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId
+        && (resource == null || isVerified());
+      allow update, delete: if request.auth != null && request.auth.uid == userId && isVerified();
     }
 
     // Business accounts are created manually (Firebase Console) or via the
@@ -41,7 +58,7 @@ service cloud.firestore {
       // resource throws rather than failing the condition. No data is
       // exposed by allowing this: a nonexistent doc has none.
       allow read: if request.auth != null
-        && (resource == null || request.auth.uid == resource.data.userId);
+        && (resource == null || (request.auth.uid == resource.data.userId && isVerified()));
       allow write: if false;
     }
 
@@ -51,7 +68,7 @@ service cloud.firestore {
     // ever reads its own order, to reflect live payment status on the
     // checkout success page (lib/firebase/orders.ts) — it never writes one.
     match /orders/{orderId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId && isVerified();
       allow write: if false;
     }
 
