@@ -41,7 +41,7 @@ function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent)
         <table role="presentation" width="480" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:480px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:32px 32px 8px 32px;">
-              <img src="${origin}/logo.jpg" alt="Landly" width="96" style="display:block;border-radius:8px;">
+              <img src="${escapeHtml(`${origin}/logo.jpg`)}" alt="Landly" width="96" style="display:block;border-radius:8px;">
             </td>
           </tr>
           <tr>
@@ -52,7 +52,7 @@ function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent)
           </tr>
           <tr>
             <td align="center" style="padding:0 32px 24px 32px;">
-              <a href="${buttonLink}" style="display:inline-block;background-color:#0038b8;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:9999px;">${escapeHtml(buttonLabel)}</a>
+              <a href="${escapeHtml(buttonLink)}" style="display:inline-block;background-color:#0038b8;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:9999px;">${escapeHtml(buttonLabel)}</a>
             </td>
           </tr>
           <tr>

@@ -1,4 +1,5 @@
 import 'server-only'
+import { clientIp } from '@/lib/auth/clientIp'
 import { NextResponse } from 'next/server'
 import { isAdminPassword } from './checkAdminPassword'
 import { verifyAdminSessionToken } from './sessionToken'
@@ -27,10 +28,6 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const REQUEST_WINDOW_MS = 60 * 1000
 const REQUEST_MAX = 60
 const requestCounts = new Map<string, { count: number; resetAt: number }>()
-
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 function isLoginRateLimited(ip: string): boolean {
   const entry = loginAttempts.get(ip)

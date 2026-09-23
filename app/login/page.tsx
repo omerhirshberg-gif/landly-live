@@ -49,7 +49,7 @@ export default function LoginPage() {
       }
       // Firebase lets unverified accounts sign in, so the block is ours: sign
       // straight back out and offer a resend. The server enforces the same
-      // rule independently (getVerifiedUidFromRequest, firestore.rules).
+      // rule independently (requireVerifiedCustomerUid, firestore.rules).
       if (!cred.user.emailVerified) {
         const idToken = await cred.user.getIdToken()
         await signOut(auth)

@@ -9,8 +9,16 @@ export function isValidLang(value: unknown): value is Lang {
   return typeof value === 'string' && (KNOWN_LANGS as string[]).includes(value)
 }
 
-export function requestOrigin(request: Request): string {
-  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
-  const host = request.headers.get('host')
-  return `${proto}://${host}`
+export function applicationOrigin(): string {
+  const configured = process.env.APP_URL
+  if (!configured) throw new Error('APP_URL is not configured')
+  const url = new URL(configured)
+  const localDevelopment = process.env.NODE_ENV === 'development'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    && url.protocol === 'http:'
+  if ((url.protocol !== 'https:' && !localDevelopment)
+    || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('APP_URL must be an HTTPS origin without credentials, path, query, or fragment')
+  }
+  return url.origin
 }

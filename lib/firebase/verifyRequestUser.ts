@@ -1,44 +1,64 @@
 import 'server-only'
 import type { DecodedIdToken } from 'firebase-admin/auth'
-import { getAdminAuth } from './admin'
+import { getAdminAuth, getAdminDb } from './admin'
 
-// Shared by user-authenticated API routes (as opposed to the admin-password
-// gate in lib/admin/checkAdminPassword.ts). Client callers send
-// `Authorization: Bearer ${await user.getIdToken()}`.
+export class RequestAuthError extends Error {
+  constructor(message: string, public readonly status: 401 | 403 | 503) { super(message) }
+}
+
+const INVALID_SESSION_CODES = new Set([
+  'auth/argument-error', 'auth/invalid-argument', 'auth/invalid-id-token',
+  'auth/id-token-expired', 'auth/id-token-revoked', 'auth/user-disabled', 'auth/user-not-found',
+])
+
 export async function getDecodedTokenFromRequest(request: Request): Promise<DecodedIdToken | null> {
-  const authHeader = request.headers.get('authorization') ?? ''
-  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (!idToken) return null
-
+  const header = request.headers.get('authorization') ?? ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
+  if (!token) return null
   try {
-    return await getAdminAuth().verifyIdToken(idToken)
-  } catch {
-    return null
+    // Checks the live Auth record for disabled users and revoked sessions.
+    return await getAdminAuth().verifyIdToken(token, true)
+  } catch (error) {
+    if (INVALID_SESSION_CODES.has((error as { code?: string })?.code ?? '')) return null
+    throw new RequestAuthError('Authentication service unavailable.', 503)
   }
 }
 
-export async function getUidFromRequest(request: Request): Promise<string | null> {
+async function requireRole(request: Request, role: 'customer' | 'business'): Promise<DecodedIdToken> {
   const decoded = await getDecodedTokenFromRequest(request)
-  return decoded?.uid ?? null
+  if (!decoded) throw new RequestAuthError('Unauthorized', 401)
+  let isBusiness: boolean
+  try {
+    isBusiness = (await getAdminDb().collection('businesses').doc(decoded.uid).get()).exists
+  } catch {
+    // An unavailable role lookup is never evidence of customer membership.
+    throw new RequestAuthError('Authorization service unavailable.', 503)
+  }
+  if (isBusiness !== (role === 'business')) throw new RequestAuthError('This account cannot access this resource.', 403)
+  return decoded
 }
 
-// For customer-facing routes. Email+password signups stay unverified until
-// they click the link from /api/auth/send-verification, and the login page
-// hiding them is only UX -- anyone can mint an ID token for an unverified
-// account via Firebase's REST API, so the claim has to be checked here too.
-// Google sign-ins always carry email_verified: true. Business routes keep
-// using getUidFromRequest: business logins are admin-created and unverified.
-export async function getVerifiedUidFromRequest(request: Request): Promise<string | null> {
-  const decoded = await getDecodedTokenFromRequest(request)
-  if (!decoded) return null
+// Signup/verification need an authenticated customer, but not verified email yet.
+export function requireCustomer(request: Request): Promise<DecodedIdToken> {
+  return requireRole(request, 'customer')
+}
+
+export async function requireBusinessUid(request: Request): Promise<string> {
+  return (await requireRole(request, 'business')).uid
+}
+
+export async function requireVerifiedCustomerUid(request: Request): Promise<string> {
+  const decoded = await requireCustomer(request)
   if (decoded.email_verified === true) return decoded.uid
-  // The claim can be up to an hour stale (a session that was open when the
-  // user verified, or was grandfathered by scripts/grandfather-email-verification.mjs),
-  // so a false claim is re-checked against the live record before refusing.
+  // A false token claim can be stale immediately after email verification.
+  let user
   try {
-    const user = await getAdminAuth().getUser(decoded.uid)
-    return user.emailVerified ? decoded.uid : null
-  } catch {
-    return null
+    user = await getAdminAuth().getUser(decoded.uid)
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'auth/user-not-found') throw new RequestAuthError('Unauthorized', 401)
+    throw new RequestAuthError('Authentication service unavailable.', 503)
   }
+  if (user.disabled) throw new RequestAuthError('Unauthorized', 401)
+  if (!user.emailVerified) throw new RequestAuthError('Verify your email before continuing.', 403)
+  return decoded.uid
 }

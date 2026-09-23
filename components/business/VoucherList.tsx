@@ -36,33 +36,30 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
   const { user } = useAuth()
   const [vouchers, setVouchers] = useState<BusinessVoucher[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
-  useEffect(() => {
+  async function loadVouchers(cursor: string | null, append: boolean) {
     if (!user) return
-    let cancelled = false
-    setVouchers(null)
-    setError(null)
-    ;(async () => {
-      try {
+    if (append) setLoadingMore(true); else { setVouchers(null); setError(null) }
+    try {
         const idToken = await user.getIdToken()
-        const res = await fetch(`/api/business/vouchers?status=${status}`, {
+        const suffix = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+        const res = await fetch(`/api/business/vouchers?status=${status}&limit=50${suffix}`, {
           headers: { Authorization: `Bearer ${idToken}` },
         })
         const data = await res.json()
-        if (cancelled) return
         if (!res.ok) {
           setError(data.error ?? t(errorKey))
           return
         }
-        setVouchers(data.vouchers ?? [])
-      } catch {
-        if (!cancelled) setError(t(errorKey))
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [user, status, errorKey, t])
+        setVouchers((current) => append ? [...(current ?? []), ...(data.vouchers ?? [])] : (data.vouchers ?? []))
+        setNextCursor(data.nextCursor ?? null)
+      } catch { setError(t(errorKey)) }
+      finally { setLoadingMore(false) }
+  }
+
+  useEffect(() => { void loadVouchers(null, false) }, [user, status, errorKey, t])
 
   const dateField = status === 'redeemed' ? 'redeemedAt' : 'takenAt'
 
@@ -102,6 +99,9 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
           </table>
         </div>
       )}
+      {nextCursor && <button type="button" onClick={() => void loadVouchers(nextCursor, true)} disabled={loadingMore} className="btn-primary mt-5 disabled:opacity-60">
+        {loadingMore ? '…' : t('bizdash_view_all')}
+      </button>}
     </div>
   )
 }

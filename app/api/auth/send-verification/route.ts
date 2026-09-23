@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
-import { getDecodedTokenFromRequest } from '@/lib/firebase/verifyRequestUser'
+import { getAdminAuth } from '@/lib/firebase/admin'
+import { requireCustomer, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
 import { sendVerificationEmail } from '@/lib/email/sendVerificationEmail'
 import type { Lang } from '@/lib/i18n/translations'
-import { isValidLang, requestOrigin } from '@/lib/auth/requestContext'
+import { isValidLang, applicationOrigin } from '@/lib/auth/requestContext'
 import { isVerificationIpRateLimited, isVerificationUidRateLimited } from '@/lib/auth/verificationRateLimit'
 
 // Sends (or re-sends) the branded verification email for the caller's own
@@ -17,8 +17,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }
 
-  const decoded = await getDecodedTokenFromRequest(request)
-  if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let decoded
+  try {
+    decoded = await requireCustomer(request)
+  } catch (error) {
+    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: error.status })
+    return NextResponse.json({ error: 'Authorization service unavailable.' }, { status: 503 })
+  }
 
   // Google (and any future federated) sign-ins are verified by their provider.
   if (decoded.firebase.sign_in_provider !== 'password') return NextResponse.json({ ok: true })
@@ -28,9 +33,6 @@ export async function POST(request: Request) {
   // an hour stale after the user has already clicked the link.
   const userRecord = await adminAuth.getUser(decoded.uid)
   if (userRecord.emailVerified || !userRecord.email) return NextResponse.json({ ok: true })
-  // Business logins are exempt from verification entirely (see app/login/page.tsx).
-  const businessSnap = await getAdminDb().collection('businesses').doc(decoded.uid).get()
-  if (businessSnap.exists) return NextResponse.json({ ok: true })
 
   if (isVerificationUidRateLimited(decoded.uid)) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
@@ -38,9 +40,9 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null)
   const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
-  const origin = requestOrigin(request)
 
   try {
+    const origin = applicationOrigin()
     // Only the oobCode is taken from Firebase's link. The email points at our
     // own /verify-email page, which applies the code client-side, so users
     // never land on Firebase's hosted __/auth/action widget (see

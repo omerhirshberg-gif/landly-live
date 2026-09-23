@@ -1,11 +1,10 @@
 import 'server-only'
 import { timingSafeEqual } from 'node:crypto'
 
-// Placeholder gate for the Tranzila webhook until real Tranzila credentials
-// and their actual signature scheme are available — same shared-secret
-// pattern as lib/admin/checkAdminPassword.ts, applied to a different secret
-// (TRANZILA_WEBHOOK_SECRET) so admin access and payment-webhook access stay
-// independently rotatable.
+// Application-specific gate, NOT a confirmed Tranzila signature scheme.
+// Keep fail-closed until actual notification transport/authentication is
+// verified with Tranzila support or terminal documentation before go-live.
+// Never put this secret in the client payment form or its custom fields.
 export function isTranzilaWebhookSecret(candidate: string | null | undefined): boolean {
   const expected = process.env.TRANZILA_WEBHOOK_SECRET
   if (!expected || !candidate) return false
