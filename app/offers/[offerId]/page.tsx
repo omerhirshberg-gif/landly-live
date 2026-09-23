@@ -43,6 +43,11 @@ export default function OfferDetailPage() {
       setAlreadyClaimed(null)
       return
     }
+    // Unverified customers cannot own a readable voucher or initiate payment.
+    if (!user.emailVerified) {
+      setAlreadyClaimed(false)
+      return
+    }
     let cancelled = false
     hasUserClaimedOffer(user.uid, offerId).then((claimed) => {
       if (!cancelled) setAlreadyClaimed(claimed)

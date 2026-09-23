@@ -1,4 +1,5 @@
 import 'server-only'
+import { clientIp } from '@/lib/auth/clientIp'
 
 // Throttle for /api/auth/send-verification. Same in-memory-per-process shape
 // (and same caveats: resets on cold start, not shared across serverless
@@ -13,10 +14,6 @@ const UID_COOLDOWN_MS = 60 * 1000
 
 const ipCounts = new Map<string, { count: number; resetAt: number }>()
 const uidSends = new Map<string, { count: number; resetAt: number; lastSentAt: number }>()
-
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 export function isVerificationIpRateLimited(request: Request): boolean {
   const ip = clientIp(request)

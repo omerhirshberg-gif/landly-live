@@ -1,4 +1,5 @@
 import 'server-only'
+import { clientIp } from '@/lib/auth/clientIp'
 
 // In-memory-per-process throttle for the public /api/auth/forgot-password
 // endpoint, same shape as the generic request limiter in
@@ -11,10 +12,6 @@ import 'server-only'
 const WINDOW_MS = 15 * 60 * 1000
 const MAX_REQUESTS = 5
 const requestCounts = new Map<string, { count: number; resetAt: number }>()
-
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
 
 export function isPasswordResetRateLimited(request: Request): boolean {
   const ip = clientIp(request)

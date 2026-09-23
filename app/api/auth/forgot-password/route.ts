@@ -3,10 +3,11 @@ import { getAdminAuth } from '@/lib/firebase/admin'
 import { sendPasswordResetEmail } from '@/lib/email/sendPasswordResetEmail'
 import type { Lang } from '@/lib/i18n/translations'
 import { isPasswordResetRateLimited } from '@/lib/auth/passwordResetRateLimit'
-import { isValidLang, requestOrigin } from '@/lib/auth/requestContext'
+import { isValidLang, applicationOrigin } from '@/lib/auth/requestContext'
 
-// Always resolves to the same generic response regardless of whether the
-// email exists, so this endpoint can't be used to enumerate accounts.
+// A common response and minimum duration reduce account enumeration signals.
+// Upstream calls exceeding the floor can still reveal timing differences.
+const MIN_RESPONSE_MS = 2000
 function genericSuccess(): NextResponse {
   return NextResponse.json({ ok: true })
 }
@@ -16,15 +17,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }
 
+  const startedAt = performance.now()
+  async function delayedSuccess(): Promise<NextResponse> {
+    const remaining = MIN_RESPONSE_MS - (performance.now() - startedAt)
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining))
+    return genericSuccess()
+  }
+
   const body = await request.json().catch(() => null)
   const email = typeof body?.email === 'string' ? body.email.trim() : ''
   const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
 
-  if (!email) return genericSuccess()
-
-  const origin = requestOrigin(request)
+  if (!email) return delayedSuccess()
 
   try {
+    const origin = applicationOrigin()
     const resetLink = await getAdminAuth().generatePasswordResetLink(email, {
       // See app/reset-password/success/page.tsx: Firebase's Console "Customize
       // action URL" field is broken for this project, so the link still routes
@@ -40,5 +47,5 @@ export async function POST(request: Request) {
     console.error('forgot-password request failed', err)
   }
 
-  return genericSuccess()
+  return delayedSuccess()
 }

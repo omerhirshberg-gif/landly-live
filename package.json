@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest run --exclude 'tests/emulator/**'",
+    "test:emulator": "firebase emulators:exec --config firebase.test.json --project demo-landly-payments --only firestore \"vitest run tests/emulator --no-file-parallelism\"",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "firebase": "^12.18.0",
@@ -27,8 +30,10 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "autoprefixer": "^10.5.4",
+    "firebase-tools": "^15.30.2",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.19",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
   }
 }

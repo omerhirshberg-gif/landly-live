@@ -29,28 +29,27 @@ export default function BusinessOffersPage() {
   const { user } = useAuth()
   const [offers, setOffers] = useState<BusinessOffer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  async function loadOffers(cursor: string | null, append: boolean) {
+    if (!user) return
+    if (append) setLoadingMore(true); else { setOffers(null); setError(null) }
+    try {
+      const idToken = await user.getIdToken()
+      const suffix = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+      const res = await fetch(`/api/business/offers?limit=50${suffix}`, { headers: { Authorization: `Bearer ${idToken}` } })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? t('bizdash_offers_error')); return }
+      setOffers((current) => append ? [...(current ?? []), ...(data.offers ?? [])] : (data.offers ?? []))
+      setNextCursor(data.nextCursor ?? null)
+    } catch { setError(t('bizdash_offers_error')) }
+    finally { setLoadingMore(false) }
+  }
 
   useEffect(() => {
     if (!user) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const idToken = await user.getIdToken()
-        const res = await fetch('/api/business/offers', { headers: { Authorization: `Bearer ${idToken}` } })
-        const data = await res.json()
-        if (cancelled) return
-        if (!res.ok) {
-          setError(data.error ?? t('bizdash_offers_error'))
-          return
-        }
-        setOffers(data.offers ?? [])
-      } catch {
-        if (!cancelled) setError(t('bizdash_offers_error'))
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+    void loadOffers(null, false)
   }, [user, t])
 
   const statusLabel: Record<OfferStatus, string> = {
@@ -98,6 +97,9 @@ export default function BusinessOffersPage() {
           </Card>
         ))}
       </div>
+      {nextCursor && <button type="button" onClick={() => void loadOffers(nextCursor, true)} disabled={loadingMore} className="btn-primary mt-6 disabled:opacity-60">
+        {loadingMore ? '…' : t('bizdash_view_all')}
+      </button>}
     </div>
   )
 }
