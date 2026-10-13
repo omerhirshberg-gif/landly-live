@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Landly",
+    "slug": "landly-live",
+    "scheme": "landly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": [
+          "en",
+          "he"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": false,
+          "forcesRTL": false
+        }
+      ]
+    ],
+    "experiments": {
+      "tsconfigPaths": false
+    }
+  }
+}
