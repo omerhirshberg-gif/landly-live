@@ -1,0 +1,22 @@
+import Constants from 'expo-constants'
+import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
+
+// Expo web counterpart of ./config.ts (landly-mobile run in a browser) --
+// Metro picks this file over config.ts for platform=web, Next.js never sees
+// it. Expo only inlines EXPO_PUBLIC_* env vars, so config.ts's
+// NEXT_PUBLIC_* reads would be undefined here; instead, like
+// config.native.ts, it takes the same root-.env values via
+// landly-mobile/app.config.js. getAuth's browser default
+// (IndexedDB) already persists the session across reloads.
+const firebaseConfig = Constants.expoConfig?.extra?.firebase as FirebaseOptions | undefined
+if (!firebaseConfig?.apiKey || !firebaseConfig.projectId) {
+  throw new Error('Firebase config missing — see landly-mobile/app.config.js')
+}
+
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
+
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const googleProvider = new GoogleAuthProvider()

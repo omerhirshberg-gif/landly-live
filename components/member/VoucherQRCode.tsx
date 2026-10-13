@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
+import { voucherRedeemUrl } from '@/lib/firebase/vouchers'
 
 // Rendered client-side via the browser <canvas> API (qrcode's toDataURL runs
 // isomorphically) so nothing is precomputed or stored — one fewer field to
@@ -11,7 +12,7 @@ export default function VoucherQRCode({ voucherId }: { voucherId: string }) {
 
   useEffect(() => {
     let cancelled = false
-    QRCode.toDataURL(`https://golandly.com/redeem/${voucherId}`, { margin: 1, width: 160 })
+    QRCode.toDataURL(voucherRedeemUrl(voucherId), { margin: 1, width: 160 })
       .then((url) => { if (!cancelled) setDataUrl(url) })
       .catch(() => { if (!cancelled) setDataUrl(null) })
     return () => { cancelled = true }

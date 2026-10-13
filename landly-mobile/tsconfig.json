@@ -1,0 +1,21 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // Typecheck shared code the way Metro bundles it: config.native.ts over config.ts.
+    "moduleSuffixes": [".native", ""],
+    "paths": {
+      "@shared/*": ["../lib/*"],
+      "@/*": ["../*"],
+      // Shared code in ../lib resolves packages from this app, as in metro.config.js.
+      "*": ["./node_modules/@types/*", "./node_modules/*"],
+      // Path mapping skips package.json "exports" conditions, so point at the
+      // react-native build's types (getReactNativePersistence) explicitly.
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
+    }
+  },
+  // ../lib is checked only where the app imports it (it also holds server code),
+  // plus the web-only config that the ".native" suffix above would skip.
+  "include": ["**/*.ts", "**/*.tsx", "../lib/firebase/config.web.ts"],
+  "exclude": ["node_modules"]
+}

@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  browserLocalPersistence,
-  browserSessionPersistence,
-  setPersistence,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth'
+import { browserLocalPersistence, browserSessionPersistence, setPersistence, signInWithPopup } from 'firebase/auth'
 import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
 import BackToHomeLink from '@/components/auth/BackToHomeLink'
 import GoogleButton from '@/components/auth/GoogleButton'
@@ -18,10 +11,8 @@ import VerifyEmailNotice from '@/components/auth/VerifyEmailNotice'
 import BusinessAccountNotice from '@/components/auth/BusinessAccountNotice'
 import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
-import { ensureUserDocument } from '@/lib/firebase/users'
-import { signOutIfBusinessAccount } from '@/lib/firebase/businesses'
+import { finishCustomerGoogleSignIn, signInCustomerWithEmail } from '@/lib/auth/signInCustomer'
 import { useLang } from '@/lib/i18n/useLang'
-import { resolvePreferredLanguage } from '@/lib/i18n/preferredLanguage'
 
 export default function LoginPage() {
   const { t, isRtl, lang, setLang } = useLang()
@@ -41,24 +32,18 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      const cred = await signInWithEmailAndPassword(auth, email, password)
-      if (await signOutIfBusinessAccount(cred.user.uid)) {
+      const result = await signInCustomerWithEmail(email, password, lang)
+      if (result.status === 'businessAccount') {
         setBusinessAccount(true)
         setSubmitting(false)
         return
       }
-      // Firebase lets unverified accounts sign in, so the block is ours: sign
-      // straight back out and offer a resend. The server enforces the same
-      // rule independently (requireVerifiedCustomerUid, firestore.rules).
-      if (!cred.user.emailVerified) {
-        const idToken = await cred.user.getIdToken()
-        await signOut(auth)
-        setUnverified({ email: cred.user.email ?? email, idToken })
+      if (result.status === 'unverified') {
+        setUnverified({ email: result.email, idToken: result.idToken })
         setSubmitting(false)
         return
       }
-      const preferred = await resolvePreferredLanguage(cred.user.uid, lang)
-      if (preferred) setLang(preferred)
+      if (result.preferredLanguage) setLang(result.preferredLanguage)
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -71,15 +56,12 @@ export default function LoginPage() {
     setBusinessAccount(false)
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      const cred = await signInWithPopup(auth, googleProvider)
-      // Before ensureUserDocument, so a business never gets a customer doc.
-      if (await signOutIfBusinessAccount(cred.user.uid)) {
+      const result = await finishCustomerGoogleSignIn(await signInWithPopup(auth, googleProvider), lang)
+      if (result.status === 'businessAccount') {
         setBusinessAccount(true)
         return
       }
-      await ensureUserDocument(cred.user, { preferredLanguage: lang })
-      const preferred = await resolvePreferredLanguage(cred.user.uid, lang)
-      if (preferred) setLang(preferred)
+      if (result.status === 'signedIn' && result.preferredLanguage) setLang(result.preferredLanguage)
       router.push('/')
     } catch (err) {
       setError(getAuthErrorMessage(err))

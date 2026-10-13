@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "mobile": "npm --prefix landly-mobile start",
     "test": "vitest run --exclude 'tests/emulator/**'",
     "test:emulator": "firebase emulators:exec --config firebase.test.json --project demo-landly-payments --only firestore \"vitest run tests/emulator --no-file-parallelism\"",
     "typecheck": "tsc --noEmit --incremental false"
