@@ -87,10 +87,106 @@
   display: none;
 }
 
-/* Steps slide a short way in from the reading direction (--step-from is
-   signed by the wizard for forward/back and LTR/RTL) while fading in. */
+/* ── Onboarding motion ──────────────────────────────────────────────────
+   Every duration and curve arrives from onboardingVars.ts
+   (lib/brand/onboardingMotion.ts, shared with the Expo wizard). A card
+   change overlaps: the old card fades out drifting away (--step-to) while the
+   new one fades in from the other side (--step-from), its children rising in
+   one after another. Both share the stage's one grid cell, so the stage is
+   just as tall as its content: no measuring, no height animation. */
+
+/* Leaving the sign-in card for the wizard, and the wizard for home. */
+.main {
+  transition:
+    opacity var(--onb-screen-out) var(--onb-fade),
+    transform var(--onb-screen-out) var(--onb-ease);
+}
+.main[data-leaving] {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--onb-screen-rise)));
+}
+.compact .main:not([data-leaving]) {
+  animation: onbScreenIn var(--onb-screen-in) var(--onb-ease) both;
+}
+@keyframes onbScreenIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--onb-screen-rise));
+  }
+}
+
+/* Picking a language: out quickly, flip locale and direction unseen, back in slowly. */
+.wizard {
+  transition: opacity var(--onb-lang-in) var(--onb-ease);
+}
+.wizard[data-fading] {
+  opacity: 0;
+  transition: opacity var(--onb-lang-out) var(--onb-fade);
+}
+
+/* The outgoing and incoming cards overlap in one grid cell; while both are
+   up the stage fits the taller, then the current one. Only the sideways drift
+   is clipped (never the height), and the stage reaches out over the card's
+   padding (--stage-pad-*) so that clip never cuts a focus ring or a scaled
+   field. Browsers without overflow-x: clip fall back to hidden. */
+.stage {
+  --stage-pad-y: 12px;
+  --stage-pad-x: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  overflow-x: hidden;
+  overflow-y: visible;
+  margin: calc(-1 * var(--stage-pad-y)) calc(-1 * var(--stage-pad-x));
+  padding: var(--stage-pad-y) var(--stage-pad-x);
+}
+@supports (overflow-x: clip) {
+  .stage {
+    overflow-x: clip;
+    overflow-clip-margin: var(--stage-pad-y);
+  }
+}
+@media (min-width: 640px) {
+  .stage {
+    --stage-pad-x: 32px;
+  }
+}
+
+/* flow-root keeps the last child's margin inside the card's own box. */
 .step {
-  animation: onbStepIn 220ms var(--ease-out) both;
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: flow-root;
+}
+.stepIn {
+  animation: onbStepIn var(--onb-in) var(--onb-ease) var(--onb-in-delay) both;
+}
+.stepIn > * {
+  animation: onbRise var(--onb-in) var(--onb-ease) both;
+  animation-delay: calc(var(--onb-in-delay) + 3 * var(--onb-stagger));
+}
+.stepIn > :nth-child(1) {
+  animation-delay: var(--onb-in-delay);
+}
+.stepIn > :nth-child(2) {
+  animation-delay: calc(var(--onb-in-delay) + var(--onb-stagger));
+}
+.stepIn > :nth-child(3) {
+  animation-delay: calc(var(--onb-in-delay) + 2 * var(--onb-stagger));
+}
+/* The celebration: the badge lands first, the copy follows it. */
+.celebrate > :nth-child(n + 2) {
+  animation-delay: calc(var(--onb-in-delay) + var(--onb-copy-delay));
+}
+.celebrate > :nth-child(n + 3) {
+  animation-delay: calc(var(--onb-in-delay) + var(--onb-copy-delay) + var(--onb-stagger));
+}
+.celebrate > :nth-child(n + 4) {
+  animation-delay: calc(var(--onb-in-delay) + var(--onb-copy-delay) + 2 * var(--onb-stagger));
+}
+.stepOut {
+  pointer-events: none;
+  animation: onbStepOut var(--onb-out) var(--onb-fade) both;
 }
 @keyframes onbStepIn {
   from {
@@ -98,11 +194,436 @@
     transform: translateX(var(--step-from, 0));
   }
 }
+@keyframes onbStepOut {
+  to {
+    opacity: 0;
+    transform: translateX(var(--step-to, 0));
+  }
+}
+@keyframes onbRise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--onb-rise));
+  }
+}
+
+/* An in-card reveal (the persona "Other" note); the card grows with it. */
+.reveal {
+  animation: onbRise var(--onb-reveal) var(--onb-ease) both;
+}
+
+/* Header: the step count and bar fade out on the welcome and celebration cards. */
+.progressFill {
+  transition: width var(--onb-progress) var(--onb-ease);
+}
+
+/* Selectable rows and chips: a soft brand ring grows in on selection and focus. */
+.choice {
+  transition:
+    border-color var(--onb-ring) var(--onb-ease),
+    background-color var(--onb-ring) var(--onb-ease),
+    box-shadow var(--onb-ring) var(--onb-ease),
+    transform var(--onb-press) var(--onb-ease);
+  box-shadow: 0 0 0 0 rgba(0, 56, 184, 0);
+}
+.choice[aria-checked='true'],
+.choice:focus-visible {
+  box-shadow: 0 0 0 4px rgba(0, 56, 184, 0.12);
+}
+@media (hover: hover) {
+  .choice:hover {
+    transform: scale(1.01);
+  }
+}
+.choice:active {
+  transform: scale(0.98);
+}
+
+/* ── Celebration badge ── */
+.badgeWrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin: 4px auto 20px;
+}
+.halo {
+  position: absolute;
+  inset: -22px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(0, 56, 184, 0.32) 0%, rgba(0, 56, 184, 0.12) 45%, rgba(0, 56, 184, 0) 70%);
+  animation:
+    onbHaloIn var(--onb-halo-in) var(--onb-ease) var(--onb-in-delay) both,
+    onbHaloBreathe var(--onb-halo-breathe) ease-in-out calc(var(--onb-in-delay) + var(--onb-halo-in)) infinite alternate;
+}
+.badge {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1d5be0 0%, #0038b8 55%, #002a8a 100%);
+  box-shadow:
+    0 0 0 6px rgba(0, 56, 184, 0.08),
+    0 14px 30px -10px rgba(0, 56, 184, 0.6);
+  animation-name: landlyFadeIn, onbBadgeIn;
+  animation-duration: var(--onb-in), var(--onb-in);
+  animation-timing-function: var(--onb-fade), var(--onb-ease);
+  animation-delay: var(--onb-in-delay), var(--onb-in-delay);
+  animation-fill-mode: both, both;
+}
+/* The failed-verification variant: same shape and landing, muted red, no halo. */
+.badgeAlert {
+  background: linear-gradient(145deg, #f87171 0%, #dc2626 60%, #b91c1c 100%);
+  box-shadow:
+    0 0 0 6px rgba(220, 38, 38, 0.08),
+    0 14px 30px -10px rgba(220, 38, 38, 0.5);
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  .badge {
+    animation-duration: var(--onb-in), var(--onb-celebrate-ms);
+    animation-timing-function: var(--onb-fade), var(--onb-celebrate-spring);
+  }
+}
+@keyframes onbBadgeIn {
+  from {
+    transform: scale(var(--onb-celebrate-from));
+  }
+}
+@keyframes onbHaloIn {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@keyframes onbHaloBreathe {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.6;
+    transform: scale(1.07);
+  }
+}
 
 /* Short viewports (small phones, landscape): the one-line subtitle goes
    first, so the fields and buttons still fit. */
 @media (max-height: 640px) {
   .subtitle {
+    display: none;
+  }
+}
+
+/* ── Standalone pages (verify-email, forgot / reset password) ─────────
+   Below the desktop split and up to 760px tall the hero goes, so each card
+   fits a phone's visible height (an iPhone SE in Safari is about 550px)
+   without scrolling; the form subtitles go below 640px (above). /login and
+   /signup don't carry .standalone and keep their hero. */
+@media (max-width: 1023.98px) and (max-height: 760px) {
+  .standalone .heroSlot {
+    display: none;
+  }
+  .standalone .main {
+    padding-top: 0;
+  }
+}
+@media (min-width: 640px) and (max-width: 1023.98px) and (max-height: 760px) {
+  .standalone .card {
+    padding: 24px;
+  }
+}
+
+/* ── Desktop split (1024px and up) ────────────────────────────────────
+   Narrower screens keep the phone layout above. From 1024px the screen is
+   two panes: the brand panel (AuthBrandPanel.tsx — the logo, promises and
+   step list) and the form pane, where the same card sits in a fixed-width
+   column. The panel comes first in the DOM, so it's on the left in LTR and
+   on the right in Hebrew. */
+.brandPanel {
+  display: none;
+}
+
+/* Phones and tablets: the wizard card hangs from a fixed top offset instead
+   of being centred, so a card change that alters its height moves only its
+   bottom edge, never the whole card. */
+@media (max-width: 1023.98px) {
+  .compact .main {
+    justify-content: flex-start;
+    padding-top: clamp(8px, 4vh, 40px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .main {
+    max-width: 480px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .root,
+  .compact {
+    flex-direction: row;
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .brandPanel {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    /* About 42 / 58 at every desktop width, so the form side never turns into a void. */
+    flex: 0 0 clamp(400px, 42%, 800px);
+    padding: calc(env(safe-area-inset-top) + 44px) clamp(40px, 4.5vw, 72px) 44px;
+    background:
+      radial-gradient(120% 70% at 0% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+      linear-gradient(160deg, #eef3ff 0%, #e3ebff 55%, #d5e1ff 100%);
+    border-inline-end: 1px solid #dbe4f7;
+    color: #19264b;
+  }
+  /* Two soft brand glows, purely decorative. */
+  .brandPanel::before,
+  .brandPanel::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+  .brandPanel::before {
+    width: 560px;
+    height: 560px;
+    inset-inline-end: -220px;
+    bottom: -200px;
+    background: radial-gradient(circle, rgba(0, 56, 184, 0.16) 0%, rgba(0, 56, 184, 0) 70%);
+  }
+  .brandPanel::after {
+    width: 320px;
+    height: 320px;
+    inset-inline-start: -140px;
+    top: 38%;
+    background: radial-gradient(circle, rgba(29, 91, 224, 0.1) 0%, rgba(29, 91, 224, 0) 70%);
+  }
+
+  .main,
+  .compact .main {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    padding: calc(env(safe-area-inset-top) + 88px) clamp(32px, 5vw, 80px) calc(env(safe-area-inset-bottom) + 56px);
+    background: #f8fafc;
+  }
+  .main > * {
+    width: 100%;
+    max-width: 520px;
+  }
+  /* The logo lives in the brand panel here. */
+  .heroSlot {
+    display: none;
+  }
+  .backSlot {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 28px);
+    inset-inline-start: clamp(32px, 4vw, 56px);
+    width: auto;
+    max-width: none;
+  }
+  .card {
+    padding: 40px;
+    border-radius: 28px;
+  }
+  /* The stage reaches out over the card's padding (see .stage). */
+  .stage {
+    --stage-pad-x: 40px;
+  }
+  /* The wizard's card keeps one size from card to card; only what's inside changes. */
+  .compact .card {
+    min-height: min(620px, calc(100dvh - 144px));
+  }
+  /* The brand panel's step list stands in for these. */
+  .progressTrack,
+  .headerEmblem {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .card {
+    padding: 48px;
+  }
+  .stage {
+    --stage-pad-x: 48px;
+  }
+}
+
+.brandLogo {
+  align-self: flex-start;
+}
+
+.brandContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.brandCopy {
+  margin-block: auto;
+  padding-block: 32px;
+  max-width: 480px;
+  animation: brandSwap var(--onb-in) var(--onb-ease) both;
+}
+@keyframes brandSwap {
+  from {
+    opacity: 0;
+    transform: translateY(var(--onb-screen-rise));
+  }
+}
+
+.brandTitle {
+  margin: 0;
+  font-size: clamp(32px, 2.7vw, 42px);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #19264b;
+  text-wrap: balance;
+}
+
+.brandBody {
+  margin: 14px 0 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: #475569;
+  text-wrap: pretty;
+}
+
+.brandPoints {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.brandPoints li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #1e293b;
+}
+.brandPointIcon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #0038b8;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 6px 16px -6px rgba(0, 56, 184, 0.28);
+}
+
+/* The step list: a numbered row of dots joined by a line that fills in brand
+   blue behind each finished step. */
+.brandSteps {
+  padding-top: 24px;
+  border-top: 1px solid rgba(25, 38, 75, 0.1);
+}
+.brandStepsLabel {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.brandSteps ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.brandSteps li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #64748b;
+  transition: color var(--onb-ring) var(--onb-ease);
+}
+.brandSteps li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  inset-inline-start: 36px;
+  inset-inline-end: -4px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(25, 38, 75, 0.12);
+  transition: background-color var(--onb-progress) var(--onb-ease);
+}
+.brandSteps li[data-state='done']::after {
+  background: #0038b8;
+}
+.brandSteps li[data-state='done'] {
+  color: #334155;
+}
+.brandSteps li[data-state='current'] {
+  color: #19264b;
+  font-weight: 700;
+}
+.brandStepDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1.5px solid rgba(25, 38, 75, 0.2);
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.6);
+  transition:
+    background-color var(--onb-ring) var(--onb-ease),
+    border-color var(--onb-ring) var(--onb-ease),
+    color var(--onb-ring) var(--onb-ease),
+    box-shadow var(--onb-ring) var(--onb-ease);
+}
+li[data-state='current'] > .brandStepDot {
+  border-color: #0038b8;
+  background: #0038b8;
+  color: #ffffff;
+  box-shadow: 0 0 0 5px rgba(0, 56, 184, 0.14);
+}
+li[data-state='done'] > .brandStepDot {
+  border-color: #0038b8;
+  background: #ffffff;
+  color: #0038b8;
+}
+
+/* Short desktop windows: the promises go first, so the panel never overflows. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .brandPoints {
     display: none;
   }
 }
@@ -257,6 +778,7 @@
    footer only fade. After the intro it starts with the reveal stage, as the
    mobile card rises while the splash logo settles. */
 .root[data-entrance='pending'] .chrome,
+.root[data-entrance='pending'] .brandContent,
 .root[data-entrance='pending'] .card {
   visibility: hidden;
 }
@@ -267,7 +789,9 @@
   --card-delay: var(--card-delay-base);
 }
 .root[data-entrance='intro'] .chrome,
-.root[data-entrance='settled'] .chrome {
+.root[data-entrance='settled'] .chrome,
+.root[data-entrance='intro'] .brandContent,
+.root[data-entrance='settled'] .brandContent {
   animation: landlyFadeIn var(--card-fade-ms) var(--ease-out) var(--card-delay) both;
 }
 .root[data-entrance='intro'] .card,
@@ -304,7 +828,35 @@
   .root[data-entrance='settled'] .card {
     animation: landlyFadeIn var(--card-fade-ms) var(--ease-out) var(--card-delay) both;
   }
-  .step {
-    animation: landlyFadeIn 150ms var(--ease-out) both;
+  /* Onboarding: every change is a short cross-fade — no drift, no stagger, no loop. */
+  .main,
+  .progressFill,
+  .choice,
+  .brandSteps li,
+  .brandSteps li::after,
+  .brandStepDot {
+    transition-duration: var(--onb-reduced);
+  }
+  .main[data-leaving],
+  .choice:hover,
+  .choice:active {
+    transform: none;
+  }
+  .compact .main:not([data-leaving]),
+  .brandCopy,
+  .stepIn,
+  .reveal,
+  .badge {
+    animation: landlyFadeIn var(--onb-reduced) var(--ease-out) both;
+  }
+  .stepIn > *,
+  .celebrate > * {
+    animation: none;
+  }
+  .stepOut {
+    animation: landlyFadeOut var(--onb-reduced) var(--ease-out) both;
+  }
+  .halo {
+    animation: landlyFadeIn var(--onb-reduced) var(--ease-out) both;
   }
 }

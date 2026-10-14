@@ -6,6 +6,7 @@ import Navbar from '@/components/layout/Navbar'
 import TranzilaPaymentWidget from '@/components/checkout/TranzilaPaymentWidget'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { formatPrice } from '@/lib/format'
 
 type CheckoutStep = 'summary' | 'payment'
@@ -20,6 +21,8 @@ interface OrderSummary {
 function CheckoutContent() {
   const { t } = useLang()
   const { user, loading } = useAuth()
+  // Onboarding first: a member mid-wizard is sent back to it.
+  const held = useOnboardingGuard()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<CheckoutStep>('summary')
@@ -37,7 +40,8 @@ function CheckoutContent() {
       router.replace('/categories')
       return
     }
-    if (!user) return
+    // No order is created for a member who still owes onboarding.
+    if (!user || held) return
 
     let cancelled = false
     ;(async () => {
@@ -60,9 +64,9 @@ function CheckoutContent() {
       }
     })()
     return () => { cancelled = true }
-  }, [user, offerId, router, t])
+  }, [user, held, offerId, router, t])
 
-  if (loading || !user || (!order && !error)) {
+  if (loading || !user || held || (!order && !error)) {
     return (
       <>
         <Navbar />

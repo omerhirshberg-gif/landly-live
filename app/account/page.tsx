@@ -9,10 +9,13 @@ import LanguageSection from '@/components/account/LanguageSection'
 import SecuritySection from '@/components/account/SecuritySection'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 
 export default function AccountPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
+  // Onboarding first: a member mid-wizard is sent back to it.
+  const held = useOnboardingGuard()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AccountTab>('profile')
 
@@ -20,7 +23,7 @@ export default function AccountPage() {
     if (!loading && !user) router.replace('/login')
   }, [loading, user, router])
 
-  if (loading || !user) {
+  if (loading || !user || held) {
     return (
       <>
         <Navbar />

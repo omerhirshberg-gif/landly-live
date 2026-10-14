@@ -8,15 +8,20 @@ import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { getUserDocument } from '@/lib/firebase/users'
+import { greetingName } from '@/lib/auth/names'
 import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR } from '@/lib/customerTypes'
 
 export default function MemberPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
+  // Onboarding first: a member mid-wizard is sent back to it.
+  const held = useOnboardingGuard()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<MemberTab>('perks')
   const [customerType, setCustomerType] = useState('')
+  const [greeting, setGreeting] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -26,7 +31,9 @@ export default function MemberPage() {
     if (!user) return
     let cancelled = false
     getUserDocument(user.uid).then((doc) => {
-      if (!cancelled) setCustomerType(doc?.customerType ?? '')
+      if (cancelled) return
+      setCustomerType(doc?.customerType ?? '')
+      setGreeting(greetingName(doc, user.displayName))
     })
     return () => { cancelled = true }
   }, [user])
@@ -35,12 +42,13 @@ export default function MemberPage() {
   const segmentLabel = segmentOption ? t(segmentOption.labelKey) : t('dash_segment_value_unset')
   const segmentColor = segmentOption?.color ?? CUSTOMER_TYPE_UNSET_COLOR
 
-  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || ''
+  // First name from the profile, else the display name — never the email.
+  const displayName = greeting ?? greetingName(null, user?.displayName)
   const welcomeMessage = displayName
     ? t('dash_welcome').replace('{name}', displayName)
     : t('dash_welcome_generic')
 
-  if (loading || !user) {
+  if (loading || !user || held) {
     return (
       <>
         <Navbar />

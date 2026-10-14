@@ -1,11 +1,17 @@
 'use client'
 
 import { Suspense, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { applyActionCode } from 'firebase/auth'
-import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
 import BackToHomeLink from '@/components/auth/BackToHomeLink'
+import AuthBrandPanel from '@/components/auth/entrance/AuthBrandPanel'
+import BrandHero from '@/components/auth/entrance/BrandHero'
+import Button from '@/components/auth/entrance/Button'
+import Notice from '@/components/auth/entrance/Notice'
+import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
+import styles from '@/components/auth/entrance/entrance.module.css'
+import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
+import { ONB_ICONS } from '@/lib/brand/onboardingIcons'
 import { auth } from '@/lib/firebase/config'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -13,8 +19,16 @@ import { useLang } from '@/lib/i18n/useLang'
 // built by /api/auth/send-verification from the oobCode of Firebase's own
 // link, so the code is applied here directly and users never see Firebase's
 // hosted __/auth/action widget.
+//
+// Same shell as AuthScreen (/login, /signup): the brand panel with the
+// account journey beside the card from 1024px, the hero above it below that,
+// in the site language and direction. Verified, the journey moves on to
+// Personalize; signing in from here opens the onboarding wizard on /login.
+// The card is centred around a status badge: a spinner while the code is
+// applied, then the celebration check or a muted alert.
 function VerifyEmailContent() {
-  const { t, isRtl } = useLang()
+  const { t, lang, isRtl } = useLang()
+  const router = useRouter()
   const oobCode = useSearchParams().get('oobCode')
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(oobCode ? 'verifying' : 'error')
   // An oobCode is single-use, so a second applyActionCode (React StrictMode's
@@ -30,40 +44,71 @@ function VerifyEmailContent() {
   }, [oobCode])
 
   return (
-    // dir="ltr" pins physical side order (form left, marketing right) regardless
-    // of the active language — flex-row is otherwise direction-relative and would
-    // flip under document dir="rtl". RTL styling is applied per-side below instead.
-    <div className="min-h-screen flex flex-col lg:flex-row" dir="ltr">
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
-        <div className="w-full max-w-md">
+    <div
+      className={`${styles.root} ${styles.standalone}`}
+      data-entrance="settled"
+      style={{ ...ENTRANCE_VARS, ...ONBOARDING_VARS }}
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={lang}
+    >
+      <AuthBrandPanel context={status === 'success' ? 'verified' : 'verify'} entrance="settled" />
+
+      <main className={styles.main}>
+        <div className={`${styles.chrome} ${styles.backSlot}`}>
           <BackToHomeLink label={t('auth_backHome')} />
-          <Link href="/" className="flex justify-center mb-8">
-            <img src="/logo.jpg" alt="Landly" className="h-28 w-auto" />
-          </Link>
+        </div>
 
-          {status === 'verifying' && <p className="text-sm text-slate-500">{t('verifyPage_verifying')}</p>}
+        <div className={styles.heroSlot}>
+          <BrandHero mode="settled" />
+        </div>
 
-          {status === 'success' && (
+        <div className={`${styles.card} text-center`} aria-live="polite">
+          {/* One 88px slot for spinner, check or alert, so the card keeps its
+              height when the result lands. The check is the onboarding
+              celebration badge (spring scale-in, breathing halo; still under
+              reduced motion). */}
+          <div className={styles.badgeWrap} aria-hidden="true">
+            {status === 'verifying' ? (
+              <span className="flex h-full w-full items-center justify-center">
+                <span className="h-10 w-10 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
+              </span>
+            ) : status === 'success' ? (
+              <>
+                <span className={styles.halo} />
+                <span className={styles.badge}>
+                  <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round">
+                    <path d={ONB_ICONS.check} />
+                  </svg>
+                </span>
+              </>
+            ) : (
+              <span className={`${styles.badge} ${styles.badgeAlert}`}>
+                <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 7v6M12 17h.01" />
+                </svg>
+              </span>
+            )}
+          </div>
+
+          {status === 'verifying' ? (
+            <p className="mb-2 text-[15px] font-semibold text-slate-500">{t('verifyPage_verifying')}</p>
+          ) : (
             <>
-              <h1 className="text-2xl font-black text-slate-900 mb-1">{t('verifyPage_successTitle')}</h1>
-              <p className="text-sm text-slate-500 mb-7">{t('verifyPage_successMessage')}</p>
-              <Link href="/login" className="btn-primary inline-flex">{t('verifyPage_toLogin')}</Link>
-            </>
-          )}
-
-          {status === 'error' && (
-            <>
-              <h1 className="text-2xl font-black text-slate-900 mb-1">{t('verifyPage_errorTitle')}</h1>
-              <div className="mb-7 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                {t('verifyPage_errorMessage')}
-              </div>
-              <Link href="/login" className="btn-primary inline-flex">{t('verifyPage_toLogin')}</Link>
+              <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">
+                {t(status === 'success' ? 'verifyPage_successTitle' : 'verifyPage_errorTitle')}
+              </h1>
+              {status === 'success' ? (
+                <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500">{t('verifyPage_successMessage')}</p>
+              ) : (
+                <div className="mt-4 mb-3 text-start">
+                  <Notice>{t('verifyPage_errorMessage')}</Notice>
+                </div>
+              )}
+              <Button label={t('verifyPage_toLogin')} onClick={() => router.push('/login')} large arrow />
             </>
           )}
         </div>
-      </div>
-
-      <AuthMarketingPanel headline={t('signup_marketing_headline')} sub={t('signup_marketing_sub')} />
+      </main>
     </div>
   )
 }

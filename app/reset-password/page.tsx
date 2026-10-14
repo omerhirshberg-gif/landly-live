@@ -3,159 +3,203 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { FirebaseError } from 'firebase/app'
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth'
-import AuthCard from '@/components/auth/AuthCard'
+import BackToHomeLink from '@/components/auth/BackToHomeLink'
+import AuthBrandPanel from '@/components/auth/entrance/AuthBrandPanel'
+import BrandHero from '@/components/auth/entrance/BrandHero'
+import Button from '@/components/auth/entrance/Button'
+import Notice from '@/components/auth/entrance/Notice'
+import TextField from '@/components/auth/entrance/TextField'
+import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
+import styles from '@/components/auth/entrance/entrance.module.css'
+import PasswordStrengthMeter from '@/components/auth/onboarding/PasswordStrengthMeter'
+import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
+import { MIN_PASSWORD_LENGTH, passwordStrength } from '@/lib/auth/onboarding'
 import { auth } from '@/lib/firebase/config'
-import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
-import { useSimpleLang } from '@/lib/i18n/useSimpleLang'
+import { useLang } from '@/lib/i18n/useLang'
 
-const dict = {
-  en: {
-    pageTitle: 'Reset Password — Landly',
-    title: 'Set New Password',
-    subtitle: 'Choose a new password for your account',
-    passwordLabel: 'New password',
-    confirmLabel: 'Confirm password',
-    submitBtn: 'Update password',
-    submitBtnBusy: 'Updating…',
-    mismatch: 'Passwords do not match.',
-    invalidLink: 'This reset link is invalid or has expired.',
-    requestNew: 'Request a new link',
-    doneTitle: 'Password updated',
-    doneSubtitle: 'You can now sign in with your new password.',
-    backToLogin: 'Back to Login',
-    backHome: 'Back to Home',
-  },
-  he: {
-    pageTitle: 'איפוס סיסמא — Landly',
-    title: 'קביעת סיסמא חדשה',
-    subtitle: 'בחר/י סיסמא חדשה לחשבון שלך',
-    passwordLabel: 'סיסמא חדשה',
-    confirmLabel: 'אימות סיסמא',
-    submitBtn: 'עדכן סיסמא',
-    submitBtnBusy: 'מעדכן…',
-    mismatch: 'הסיסמאות אינן תואמות.',
-    invalidLink: 'קישור האיפוס אינו תקין או שפג תוקפו.',
-    requestNew: 'בקש קישור חדש',
-    doneTitle: 'הסיסמא עודכנה',
-    doneSubtitle: 'כעת ניתן להתחבר עם הסיסמא החדשה.',
-    backToLogin: 'חזרה להתחברות',
-    backHome: 'חזרה לדף הבית',
-  },
-}
+// Landing page for the link in our branded reset email. The link is built by
+// /api/auth/forgot-password from the oobCode of Firebase's own link, so the
+// code is checked and applied here and users never see Firebase's hosted
+// __/auth/action widget.
+//
+// checking → ready | invalid; ready → submitting → /reset-password/success.
+// verifyPasswordResetCode doesn't use up the code and returns the account's
+// email, shown read-only so the member knows which account they're resetting.
+// A code that expires or gets used between the check and the submit lands on
+// the invalid card too.
+//
+// Same shell as /verify-email and AuthScreen (/login, /signup): the brand
+// panel beside the card from 1024px, the hero above it below that, in the
+// site language and direction.
+type Status = 'checking' | 'ready' | 'invalid' | 'submitting'
+type FieldError = 'onb_passwordTooShort' | 'onb_passwordMismatch'
 
-function ResetPasswordForm() {
-  const { t } = useSimpleLang(dict)
+const DEAD_CODE = new Set(['auth/expired-action-code', 'auth/invalid-action-code', 'auth/user-disabled', 'auth/user-not-found'])
+
+function ResetPasswordContent() {
+  const { t, lang, isRtl } = useLang()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const oobCode = searchParams.get('oobCode')
-
-  const [checking, setChecking] = useState(true)
-  const [validCode, setValidCode] = useState(false)
+  const oobCode = useSearchParams().get('oobCode')
+  const [status, setStatus] = useState<Status>(oobCode ? 'checking' : 'invalid')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [fieldError, setFieldError] = useState<FieldError | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState(false)
 
   useEffect(() => {
-    if (!oobCode) {
-      setChecking(false)
-      return
-    }
+    if (!oobCode) return
+    let cancelled = false
     verifyPasswordResetCode(auth, oobCode)
-      .then(() => setValidCode(true))
-      .catch(() => setValidCode(false))
-      .finally(() => setChecking(false))
+      .then((accountEmail) => {
+        if (cancelled) return
+        setEmail(accountEmail)
+        setStatus('ready')
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('invalid')
+      })
+    return () => {
+      cancelled = true
+    }
   }, [oobCode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!oobCode) return
-    if (password !== confirmPassword) {
-      setError(t('mismatch'))
-      return
-    }
+    if (!oobCode || status !== 'ready') return
+    if (password.length < MIN_PASSWORD_LENGTH) return setFieldError('onb_passwordTooShort')
+    if (password !== confirm) return setFieldError('onb_passwordMismatch')
+    setFieldError(null)
     setError(null)
-    setSubmitting(true)
+    setStatus('submitting')
     try {
       await confirmPasswordReset(auth, oobCode, password)
-      setDone(true)
-      setTimeout(() => router.replace('/login'), 3000)
+      router.replace('/reset-password/success')
     } catch (err) {
-      setError(getAuthErrorMessage(err))
-    } finally {
-      setSubmitting(false)
+      const code = err instanceof FirebaseError ? err.code : ''
+      if (DEAD_CODE.has(code)) return setStatus('invalid')
+      if (code === 'auth/weak-password') setFieldError('onb_passwordTooShort')
+      else setError(t('forgot_error_generic'))
+      setStatus('ready')
     }
   }
 
-  if (checking) {
-    return (
-      <AuthCard backLabel={t('backHome')}>
-        <div className="h-24" />
-      </AuthCard>
-    )
-  }
-
-  if (done) {
-    return (
-      <AuthCard backLabel={t('backHome')}>
-        <h1 className="text-2xl font-black text-slate-900 mb-1">{t('doneTitle')}</h1>
-        <p className="text-sm text-slate-500 mb-7">{t('doneSubtitle')}</p>
-        <Link href="/login" className="btn-primary inline-flex">{t('backToLogin')}</Link>
-      </AuthCard>
-    )
-  }
-
-  if (!oobCode || !validCode) {
-    return (
-      <AuthCard backLabel={t('backHome')}>
-        <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
-        <div className="mb-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          {t('invalidLink')}
-        </div>
-        <Link href="/forgot-password" className="text-brand font-bold hover:underline text-sm">{t('requestNew')}</Link>
-        <div className="text-center mt-6 text-sm">
-          <Link href="/login" className="text-brand font-bold hover:underline">{t('backToLogin')}</Link>
-        </div>
-      </AuthCard>
-    )
-  }
+  const submitting = status === 'submitting'
 
   return (
-    <AuthCard backLabel={t('backHome')}>
-      <h1 className="text-2xl font-black text-slate-900 mb-1">{t('title')}</h1>
-      <p className="text-sm text-slate-500 mb-7">{t('subtitle')}</p>
+    <div
+      className={`${styles.root} ${styles.standalone}`}
+      data-entrance="settled"
+      style={{ ...ENTRANCE_VARS, ...ONBOARDING_VARS }}
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={lang}
+    >
+      <AuthBrandPanel context="reset" entrance="settled" />
 
-      {error && (
-        <div className="mb-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          {error}
-        </div>
-      )}
-
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div>
-          <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('passwordLabel')}</label>
-          <input type="password" required minLength={6} className="inp" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <main className={styles.main}>
+        <div className={`${styles.chrome} ${styles.backSlot}`}>
+          <BackToHomeLink label={t('auth_backHome')} />
         </div>
 
-        <div>
-          <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('confirmLabel')}</label>
-          <input type="password" required minLength={6} className="inp" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+        <div className={styles.heroSlot}>
+          <BrandHero mode="settled" />
         </div>
 
-        <button type="submit" disabled={submitting} className="btn-primary mt-2 w-full disabled:opacity-70">
-          {submitting ? t('submitBtnBusy') : t('submitBtn')}
-        </button>
-      </form>
-    </AuthCard>
+        {status === 'checking' ? (
+          <div className={`${styles.card} text-center`} aria-live="polite">
+            <div className={styles.badgeWrap} aria-hidden="true">
+              <span className="flex h-full w-full items-center justify-center">
+                <span className="h-10 w-10 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
+              </span>
+            </div>
+            <p className="mb-2 text-[15px] font-semibold text-slate-500">{t('resetPage_checking')}</p>
+          </div>
+        ) : status === 'invalid' ? (
+          <div className={`${styles.card} text-center`} aria-live="polite">
+            <div className={styles.badgeWrap} aria-hidden="true">
+              <span className={`${styles.badge} ${styles.badgeAlert}`}>
+                <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 7v6M12 17h.01" />
+                </svg>
+              </span>
+            </div>
+            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('resetPage_invalidTitle')}</h1>
+            <div className="mt-4 mb-3 text-start">
+              <Notice>{t('resetPage_invalidMessage')}</Notice>
+            </div>
+            <Button label={t('resetPage_requestNew')} onClick={() => router.push('/forgot-password')} large arrow />
+            <div className="mt-6 text-sm">
+              <Link href="/login" className="py-3 -my-3 font-bold text-brand hover:underline">
+                {t('forgot_backLink')}
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.card}>
+            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('resetPage_title')}</h1>
+            <p className={`${styles.subtitle} mt-2 mb-5 text-[15px] leading-6 text-slate-500`}>{t('resetPage_subtitle')}</p>
+
+            <div className="mb-5 flex items-center gap-3 rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-3">
+              <span className="text-[13px] font-semibold text-slate-500">{t('resetPage_accountLabel')}</span>
+              <span dir="ltr" className="min-w-0 flex-1 truncate text-end text-[15px] font-semibold text-slate-900 rtl:text-start">
+                {email}
+              </span>
+            </div>
+
+            {error && <Notice>{error}</Notice>}
+
+            <form noValidate onSubmit={handleSubmit}>
+              {/* Lets password managers file the new password under the right account. */}
+              <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
+              <TextField
+                label={t('resetPage_passwordLabel')}
+                icon="lock"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setFieldError(null)
+                }}
+                error={fieldError === 'onb_passwordTooShort' ? t(fieldError) : undefined}
+                autoComplete="new-password"
+                enterKeyHint="next"
+              />
+              <PasswordStrengthMeter strength={passwordStrength(password)} />
+              <TextField
+                label={t('onb_confirmPasswordLabel')}
+                icon="lock"
+                type="password"
+                value={confirm}
+                onChange={(e) => {
+                  setConfirm(e.target.value)
+                  setFieldError(null)
+                }}
+                error={fieldError === 'onb_passwordMismatch' ? t(fieldError) : undefined}
+                autoComplete="new-password"
+                enterKeyHint="go"
+              />
+              <div className="mt-1">
+                <Button
+                  type="submit"
+                  label={t(submitting ? 'resetPage_submitBtnBusy' : 'resetPage_submitBtn')}
+                  busy={submitting}
+                  large
+                />
+              </div>
+            </form>
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={null}>
-      <ResetPasswordForm />
+      <ResetPasswordContent />
     </Suspense>
   )
 }

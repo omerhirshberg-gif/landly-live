@@ -12,17 +12,30 @@ import {
 import { auth, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { finishCustomerGoogleSignIn, signInCustomerWithEmail } from '@/lib/auth/signInCustomer'
-import { isProfileComplete, passwordStrength, signUpFormError } from '@/lib/auth/onboarding'
+import {
+  greetingName,
+  isOnboardingComplete,
+  parseOnboardingDraft,
+  passwordStrength,
+  signUpFormError,
+  type OnboardingDraft,
+  type OnboardingStep,
+  type SignUpFormError,
+} from '@/lib/auth/onboarding'
+import { ONB } from '@/lib/brand/onboardingMotion'
 import { signUpCustomer } from '@/lib/auth/signUpCustomer'
+import type { SignInMethod } from '@/lib/auth/brandPanelSteps'
 import { getUserDocument } from '@/lib/firebase/users'
+import { useAuth } from '@/lib/firebase/useAuth'
 import type { Lang } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
 import BackToHomeLink from '../BackToHomeLink'
 import BusinessAccountNotice from '../BusinessAccountNotice'
 import GoogleButton from '../GoogleButton'
 import VerifyEmailNotice, { type PendingVerification } from '../VerifyEmailNotice'
-import OnboardingWizard from '../onboarding/OnboardingWizard'
+import OnboardingWizard, { readOnboardingDraft } from '../onboarding/OnboardingWizard'
 import PasswordStrengthMeter from '../onboarding/PasswordStrengthMeter'
+import AuthBrandPanel from './AuthBrandPanel'
 import BrandHero, { type EntranceMode } from './BrandHero'
 import Button from './Button'
 import Checkbox from './Checkbox'
@@ -30,6 +43,7 @@ import Notice from './Notice'
 import SegmentedControl from './SegmentedControl'
 import TextField from './TextField'
 import { ENTRANCE_VARS } from './entranceVars'
+import { ONBOARDING_VARS } from '../onboarding/onboardingVars'
 import styles from './entrance.module.css'
 
 type Mode = 'signIn' | 'signUp'
@@ -44,10 +58,20 @@ const INTRO_SEEN_KEY = 'landly_auth_intro_seen'
 // footer link, in the site language and direction. /login and /signup both
 // render it; switching tabs only rewrites the URL, so the hero never replays.
 // Both tabs share one hero above the card and one tab control inside it, so
-// switching never re-mounts either. Sign Up asks for credentials only; the
-// OnboardingWizard (language, persona, WhatsApp, notifications) runs after a
-// sign-in whose profile is incomplete, in a compact layout with no hero so
-// every card fits a phone screen without scrolling.
+// switching never re-mounts either. Sign Up asks for the name and
+// credentials; the OnboardingWizard (welcome, language, persona, WhatsApp,
+// notifications, celebration) runs after a sign-in that hasn't finished it, in
+// a compact layout with no hero so every card fits a phone screen without
+// scrolling. The screen fades out before switching to the wizard and before
+// leaving for home, so neither change is a cut.
+//
+// From 1024px wide it's a split screen: AuthBrandPanel (logo, promises, the
+// step list) on one side, the same card on the other, for the tabs and the
+// wizard alike; below that it's the phone layout above, unchanged.
+//
+// Arriving already signed in (a reload mid-wizard, or a member page sending
+// a member back): unfinished onboarding reopens the wizard at the card the
+// member left (its draft on this browser); otherwise it goes home.
 export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const { t, lang, isRtl, setLang } = useLang()
   const router = useRouter()
@@ -62,10 +86,68 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
   const [googleBusy, setGoogleBusy] = useState(false)
+  // A Google sign-up skips verification, so the brand panel's journey moves straight to Personalize.
+  const [via, setVia] = useState<SignInMethod>('email')
   const [confirm, setConfirm] = useState('')
-  const [signUpError, setSignUpError] = useState<ReturnType<typeof signUpFormError>>(null)
-  // Signed in, but the profile still lacks persona / phone: the card becomes the wizard.
-  const [onboarding, setOnboarding] = useState(false)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  const { user, loading: authLoading, onboardingComplete, setOnboardingComplete } = useAuth()
+  // Signed in, but onboarding isn't finished: the card becomes the wizard,
+  // starting from the member's saved progress, if any.
+  const [wizard, setWizard] = useState<{ uid: string; draft: OnboardingDraft | null } | null>(null)
+  const onboarding = wizard !== null
+  // The card on screen in the wizard, for the desktop brand panel.
+  const [onbStep, setOnbStep] = useState<OnboardingStep>('welcome')
+  // Until an existing session has been looked at, nothing but the page shows,
+  // so a member who's on their way into the wizard (or home) never sees the form.
+  const [restoring, setRestoring] = useState(true)
+  const restoreDecided = useRef(false)
+  // The member's first name for the wizard's welcome and celebration (null: greet without one).
+  const [onboardingName, setOnboardingName] = useState<string | null>(null)
+  // The screen is fading out ahead of a switch (into the wizard, or to home).
+  const [leaving, setLeaving] = useState(false)
+  const leaveTimer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
+
+  const openWizard = (uid: string) => {
+    const draft = parseOnboardingDraft(readOnboardingDraft(uid))
+    setOnbStep(draft?.step ?? 'welcome')
+    setWizard({ uid, draft })
+  }
+
+  // Decided once, on the session the page loaded with; sign-ins made here go through afterSignIn.
+  useEffect(() => {
+    if (restoreDecided.current || authLoading) return
+    if (!user?.emailVerified) {
+      restoreDecided.current = true
+      setRestoring(false)
+      return
+    }
+    if (onboardingComplete === null) return
+    restoreDecided.current = true
+    if (onboardingComplete) {
+      router.replace('/')
+      return
+    }
+    const uid = user.uid
+    getUserDocument(uid)
+      .catch(() => null)
+      .then((doc) => {
+        setOnboardingName(greetingName(doc, user.displayName))
+        openWizard(uid)
+        setRestoring(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openWizard only reads storage and sets state
+  }, [authLoading, user, onboardingComplete, router])
+
+  const fadeOutThen = (next: () => void) => {
+    setLeaving(true)
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.clearTimeout(leaveTimer.current)
+    leaveTimer.current = window.setTimeout(next, reduced ? ONB.reducedMs : ONB.screenOutMs)
+  }
 
   // sessionStorage only exists in the browser, so the choice is made after
   // mount; until then the hero and card stay hidden (the intro's first frame
@@ -92,12 +174,23 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     window.history.replaceState(null, '', PATHS[next])
   }
 
-  // Where a successful sign-in goes: home, or the wizard first if the
-  // profile was never finished (new accounts always start there).
+  // Where a successful sign-in goes: home, or the wizard first if
+  // onboarding was never finished (new accounts always start there).
   const afterSignIn = async (uid: string, preferredLanguage: Lang | null) => {
     if (preferredLanguage) setLang(preferredLanguage)
-    if (isProfileComplete(await getUserDocument(uid))) router.push('/')
-    else setOnboarding(true)
+    const doc = await getUserDocument(uid)
+    const complete = isOnboardingComplete(doc)
+    // The doc may have only just been created, so this read is the one the guards go by.
+    setOnboardingComplete(complete)
+    if (complete) {
+      router.push('/')
+      return
+    }
+    setOnboardingName(greetingName(doc, auth.currentUser?.displayName))
+    fadeOutThen(() => {
+      openWizard(uid)
+      setLeaving(false)
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,12 +228,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const invalid = signUpFormError(email, password, confirm)
+    const invalid = signUpFormError({ firstName, lastName, email, password, confirm })
     setSignUpError(invalid)
     if (invalid) return
     setSubmitting(true)
     try {
-      const result = await signUpCustomer(email.trim(), password, lang)
+      const result = await signUpCustomer({ firstName, lastName }, email.trim(), password, lang)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -159,7 +252,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       const result = await finishCustomerGoogleSignIn(await signInWithPopup(auth, googleProvider), lang)
       if (result.status === 'businessAccount') setBusinessAccount(true)
-      else if (result.status === 'signedIn') await afterSignIn(result.user.uid, result.preferredLanguage)
+      else if (result.status === 'signedIn') {
+        setVia('google')
+        await afterSignIn(result.user.uid, result.preferredLanguage)
+      }
     } catch (err) {
       setError(getAuthErrorMessage(err))
     } finally {
@@ -167,7 +263,9 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     }
   }
 
-  const handleWizardComplete = () => router.push('/')
+  // The celebration's "Let's explore": fade the screen out, then go home
+  // (whose greeting fades in on arrival).
+  const handleWizardComplete = () => fadeOutThen(() => router.push('/'))
 
   // Back from "check your inbox": land on Sign In with the email filled in.
   const handleBackToSignIn = () => {
@@ -188,28 +286,32 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     </div>
   )
 
+  const shown: EntranceMode = restoring ? 'pending' : entrance
+
   return (
     <div
       className={`${styles.root} ${onboarding ? styles.compact : ''}`}
-      data-entrance={entrance}
-      style={ENTRANCE_VARS}
+      data-entrance={shown}
+      style={{ ...ENTRANCE_VARS, ...ONBOARDING_VARS }}
       dir={isRtl ? 'rtl' : 'ltr'}
       lang={lang}
     >
-      <main className={styles.main}>
+      <AuthBrandPanel context={onboarding ? onbStep : pending ? 'verify' : mode} via={via} entrance={shown} />
+
+      <main className={styles.main} data-leaving={leaving ? '' : undefined}>
         {!onboarding && (
-          <div className={styles.chrome}>
+          <div className={`${styles.chrome} ${styles.backSlot}`}>
             <BackToHomeLink label={t('auth_backHome')} />
           </div>
         )}
 
         <div className={styles.heroSlot}>
-          <BrandHero mode={entrance} />
+          <BrandHero mode={shown} />
         </div>
 
         <div className={styles.card}>
-          {onboarding ? (
-            <OnboardingWizard onComplete={handleWizardComplete} />
+          {wizard ? (
+            <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onStepChange={setOnbStep} onComplete={handleWizardComplete} />
           ) : pending ? (
             <VerifyEmailNotice
               variant={pending.variant}
@@ -237,6 +339,36 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
               {signUp ? (
                 <form noValidate onSubmit={handleSignUp}>
+                  {/* Side by side from 360px up, stacked on the narrowest phones. */}
+                  <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-x-3">
+                    <TextField
+                      label={t('onb_firstNameLabel')}
+                      icon="user"
+                      value={firstName}
+                      onChange={(e) => {
+                        setFirstName(e.target.value)
+                        setSignUpError(null)
+                      }}
+                      error={signUpError === 'onb_firstNameRequired' ? t(signUpError) : undefined}
+                      autoComplete="given-name"
+                      autoCapitalize="words"
+                      enterKeyHint="next"
+                      maxLength={50}
+                    />
+                    <TextField
+                      label={t('onb_lastNameLabel')}
+                      value={lastName}
+                      onChange={(e) => {
+                        setLastName(e.target.value)
+                        setSignUpError(null)
+                      }}
+                      error={signUpError === 'onb_lastNameRequired' ? t(signUpError) : undefined}
+                      autoComplete="family-name"
+                      autoCapitalize="words"
+                      enterKeyHint="next"
+                      maxLength={50}
+                    />
+                  </div>
                   <TextField
                     label={t('signup_emailLabel')}
                     icon="mail"
@@ -284,7 +416,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       type="submit"
                       label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
                       busy={submitting}
-                      disabled={!email || !password || !confirm || googleBusy}
+                      disabled={!firstName.trim() || !lastName.trim() || !email || !password || !confirm || googleBusy}
                       large
                       arrow
                     />

@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import * as WebBrowser from 'expo-web-browser'
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { inMemoryPersistence, setPersistence } from 'firebase/auth'
-import { isProfileComplete, passwordStrength, signUpFormError } from '@shared/auth/onboarding'
+import { greetingName, isOnboardingComplete, passwordStrength, signUpFormError, type OnboardingDraft, type SignUpFormError } from '@shared/auth/onboarding'
+import { EASE_FADE, EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { auth, devicePersistence } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
 import { getUserDocument } from '@shared/firebase/users'
+import { useAuth } from '@shared/firebase/useAuth'
 import type { Lang } from '@shared/i18n/translations'
 import { CARD_DELAY_MS, CARD_FADE_MS, CURVES, FROM } from '@shared/brand/entranceTimeline'
 import AppText from '../../components/AppText'
@@ -23,6 +26,7 @@ import TextField from '../../components/TextField'
 import { useSignInGate } from '../../auth/SignInGate'
 import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSignIn'
 import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
+import { loadOnboardingDraft } from '../../auth/onboarding/draftStorage'
 import PasswordStrengthMeter from '../../auth/onboarding/PasswordStrengthMeter'
 import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmailCard'
 import { useLang } from '../../i18n/LangProvider'
@@ -34,22 +38,43 @@ import { colors } from '../../theme'
 // Password reset and business login stay on the website for now.
 const openWeb = (path: string) => Linking.openURL(`${API_BASE_URL}${path}`)
 
+// Forgot password opens in an in-app browser sheet (SFSafariViewController /
+// Chrome Custom Tabs), so closing it lands back on this screen. Business
+// login keeps the system browser above, where business users' web session
+// lives. If a sheet can't open (one is already showing), fall back to that.
+const openWebSheet = (path: string) =>
+  WebBrowser.openBrowserAsync(`${API_BASE_URL}${path}`, {
+    controlsColor: colors.brand,
+    toolbarColor: colors.white,
+    dismissButtonStyle: 'close',
+  }).catch(() => openWeb(path))
+
 type Mode = 'signIn' | 'signUp'
 
 const EASE_OUT = Easing.bezier(...CURVES.easeOut)
+const SILK = Easing.bezier(...EASE_SILK)
+const FADE = Easing.bezier(...EASE_FADE)
+// First and last name sit side by side from this window width up.
+const NAME_ROW_MIN_WIDTH = 360
 // The card rises this far as the splash logo settles into the hero spot.
 const CARD_RISE = FROM.cardRise
 
 // Both tabs share one hero above the card and one tab control inside it, so
 // switching never re-mounts either (the splash logo may still be landing on
-// the hero). Sign Up asks for credentials only; the OnboardingWizard
-// (language, persona, WhatsApp, notifications) replaces the card after a
-// sign-in whose profile is incomplete, with the hero hidden so every card
-// fits the screen without scrolling.
+// the hero). Sign Up asks for the name and credentials; the
+// OnboardingWizard (welcome, language, persona, WhatsApp, notifications,
+// celebration) replaces the card after a sign-in that hasn't finished it,
+// with the hero hidden so every card fits the screen without scrolling. The
+// card fades out before the wizard appears and again before the tabs do.
+//
+// Launching with a saved session whose onboarding isn't finished (the root
+// layout keeps the tabs closed) lands here too, and goes straight back into
+// the wizard at the card the member left (its draft on this device).
 
 export default function LoginScreen() {
   const { t, lang, setLang } = useLang()
   const { setChecking, onboarding, setOnboarding } = useSignInGate()
+  const { user, onboardingComplete, setOnboardingComplete } = useAuth()
   const keyboardVisible = useKeyboardVisible()
   const { phase, setHeroRect } = useEntrance()
   const reduced = useReducedMotion()
@@ -58,6 +83,7 @@ export default function LoginScreen() {
   const entering = useRef(phase !== 'done').current
   const cardY = useSharedValue(entering && !reduced ? CARD_RISE : 0)
   const cardOpacity = useSharedValue(entering ? 0 : 1)
+  const heroOpacity = useSharedValue(1)
   const [mode, setMode] = useState<Mode>('signIn')
   const [rememberMe, setRememberMe] = useState(true)
   const [email, setEmail] = useState('')
@@ -68,7 +94,33 @@ export default function LoginScreen() {
   const [pending, setPending] = useState<PendingVerification | null>(null)
   const [googleBusy, setGoogleBusy] = useState(false)
   const [confirm, setConfirm] = useState('')
-  const [signUpError, setSignUpError] = useState<ReturnType<typeof signUpFormError>>(null)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  // The gate closes (`onboarding`) the moment sign-in finds onboarding
+  // unfinished; the wizard itself only replaces the card once it has faded out.
+  const [wizardShown, setWizardShown] = useState(false)
+  const [wizard, setWizard] = useState<{ uid: string; draft: OnboardingDraft | null } | null>(null)
+  // A restored session headed for the wizard: the card (and the hero) stay
+  // away while its name and draft load, so the form never flashes.
+  // The root layout only mounts this screen once that answer is known.
+  const [restoring, setRestoring] = useState(() => !!user?.emailVerified && onboardingComplete === false)
+  const [onboardingName, setOnboardingName] = useState<string | null>(null)
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const { width } = useWindowDimensions()
+  const nameRow = width >= NAME_ROW_MIN_WIDTH
+
+  useEffect(() => () => clearTimeout(fadeTimer.current), [])
+
+  // Fade the card (and footer) out, rising slightly, then switch what it shows.
+  const fadeOutThen = (next: () => void) => {
+    const duration = reduced ? ONB.reducedMs : ONB.screenOutMs
+    cardOpacity.set(withTiming(0, { duration, easing: FADE }))
+    heroOpacity.set(withTiming(0, { duration, easing: FADE }))
+    if (!reduced) cardY.set(withTiming(-ONB.screenRisePx, { duration, easing: SILK }))
+    clearTimeout(fadeTimer.current)
+    fadeTimer.current = setTimeout(next, duration)
+  }
 
   const switchMode = (next: Mode) => {
     setMode(next)
@@ -77,13 +129,45 @@ export default function LoginScreen() {
     setSignUpError(null)
   }
 
-  // A signed-in member with an unfinished profile stays behind the gate and
-  // gets the wizard; everyone else is let through to the tabs. Runs while
-  // the gate is still held closed by `checking`.
+  // A signed-in member who hasn't finished onboarding stays behind the gate
+  // and gets the wizard; everyone else is let through to the tabs. Runs while
+  // the gate is still held closed by `checking`, and closes it for good
+  // (`onboarding`) before that's released.
   const afterSignIn = async (uid: string, preferredLanguage: Lang | null) => {
     if (preferredLanguage) setLang(preferredLanguage)
-    if (!isProfileComplete(await getUserDocument(uid))) setOnboarding(true)
+    const doc = await getUserDocument(uid)
+    const complete = isOnboardingComplete(doc)
+    // The doc may have only just been created, so this read is the one the root layout goes by.
+    setOnboardingComplete(complete)
+    if (complete) return
+    setOnboarding(true)
+    setOnboardingName(greetingName(doc, auth.currentUser?.displayName))
+    const draft = await loadOnboardingDraft(uid)
+    fadeOutThen(() => {
+      setWizard({ uid, draft })
+      setWizardShown(true)
+      setSubmitting(false)
+    })
   }
+
+  // Once, for the session the app launched with.
+  useEffect(() => {
+    if (!restoring || !user) return
+    const uid = user.uid
+    setOnboarding(true)
+    let cancelled = false
+    Promise.all([getUserDocument(uid).catch(() => null), loadOnboardingDraft(uid)]).then(([doc, draft]) => {
+      if (cancelled) return
+      setOnboardingName(greetingName(doc, user.displayName))
+      setWizard({ uid, draft })
+      setWizardShown(true)
+      setRestoring(false)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs for the launch session only
+  }, [])
 
   const handleSubmit = async () => {
     setError(null)
@@ -121,14 +205,14 @@ export default function LoginScreen() {
   // the profile doc). The wizard runs on the first verified sign-in.
   const handleSignUp = async () => {
     setError(null)
-    const invalid = signUpFormError(email, password, confirm)
+    const invalid = signUpFormError({ firstName, lastName, email, password, confirm })
     setSignUpError(invalid)
     if (invalid) return
     setSubmitting(true)
     // Keeps the root layout from reacting to the brief unverified session.
     setChecking(true)
     try {
-      const result = await signUpCustomer(email.trim(), password, lang, API_BASE_URL)
+      const result = await signUpCustomer({ firstName, lastName }, email.trim(), password, lang, API_BASE_URL)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -162,7 +246,22 @@ export default function LoginScreen() {
     }
   }
 
-  const handleWizardComplete = () => setOnboarding(false)
+  // The celebration's "Let's explore": fade out, then open the gate; the
+  // tabs fade in (root layout).
+  const handleWizardComplete = () => fadeOutThen(() => setOnboarding(false))
+
+  // The wizard rises and fades in once the card behind it has faded out.
+  useEffect(() => {
+    if (!wizardShown) return
+    if (reduced) {
+      cardY.set(0)
+      cardOpacity.set(withTiming(1, { duration: ONB.reducedMs }))
+      return
+    }
+    cardY.set(ONB.screenRisePx)
+    cardY.set(withTiming(0, { duration: ONB.screenInMs, easing: SILK }))
+    cardOpacity.set(withTiming(1, { duration: ONB.screenInMs, easing: SILK }))
+  }, [wizardShown, reduced, cardY, cardOpacity])
 
   // The card and top bar rise in while the splash logo glides into the hero.
   useEffect(() => {
@@ -176,6 +275,7 @@ export default function LoginScreen() {
     transform: [{ translateY: cardY.get() }],
   }))
   const fadeStyle = useAnimatedStyle(() => ({ opacity: cardOpacity.get() }))
+  const heroFadeStyle = useAnimatedStyle(() => ({ opacity: heroOpacity.get() }))
 
   // Tell the splash where the hero sits so its logo can land exactly on it.
   const reportHero = () => {
@@ -202,165 +302,208 @@ export default function LoginScreen() {
             compact header, subtitles dropped while typing); scrolling remains
             only as a fallback for very large accessibility text, and never bounces. */}
         <ScrollView
-          contentContainerStyle={[styles.content, onboarding && styles.contentCompact]}
+          contentContainerStyle={[styles.content, wizardShown && styles.contentCompact]}
           keyboardShouldPersistTaps="handled"
           alwaysBounceVertical={false}
         >
-          <View style={[styles.main, onboarding && keyboardVisible && styles.mainTop]}>
+          <View style={[styles.main, wizardShown && keyboardVisible && styles.mainTop]}>
             {/* Hidden until the splash hands over: its logo is landing on this exact spot. */}
-            {!onboarding && (
+            {!wizardShown && !restoring && (
               <View
                 ref={heroRef}
                 collapsable={false}
                 onLayout={reportHero}
                 style={[styles.header, phase !== 'done' && styles.hidden]}
               >
-                <BrandHero />
+                {/* Fades out with the card when the wizard takes over. */}
+                <Animated.View style={heroFadeStyle}>
+                  <BrandHero />
+                </Animated.View>
               </View>
             )}
 
-            <Animated.View style={[styles.card, riseStyle]}>
-              {onboarding ? (
-                <OnboardingWizard onComplete={handleWizardComplete} />
-              ) : pending ? (
-                <VerifyEmailCard pending={pending} onBack={handleBackToSignIn} />
-              ) : (
-                <>
-                  <SegmentedControl
-                    options={[
-                      { value: 'signIn', label: t('login_title') },
-                      { value: 'signUp', label: t('signup_title') },
-                    ]}
-                    value={mode}
-                    onChange={switchMode}
-                    style={styles.modeSwitch}
-                  />
+            {!restoring && (
+              <Animated.View style={[styles.card, riseStyle]}>
+                {wizardShown && wizard ? (
+                  <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onComplete={handleWizardComplete} />
+                ) : pending ? (
+                  <VerifyEmailCard pending={pending} onBack={handleBackToSignIn} />
+                ) : (
+                  <>
+                    <SegmentedControl
+                      options={[
+                        { value: 'signIn', label: t('login_title') },
+                        { value: 'signUp', label: t('signup_title') },
+                      ]}
+                      value={mode}
+                      onChange={switchMode}
+                      style={styles.modeSwitch}
+                    />
 
-                  {error && <Notice message={error} />}
-                  {businessAccount && (
-                    <View style={styles.businessNotice}>
-                      <Notice message={t('login_businessAccountError')} />
-                      <Pressable accessibilityRole="link" onPress={() => openWeb('/business/login')} hitSlop={8} style={styles.pointer}>
-                        <AppText style={[styles.link, styles.center]}>{t('login_businessAccountLink')}</AppText>
-                      </Pressable>
-                    </View>
-                  )}
+                    {error && <Notice message={error} />}
+                    {businessAccount && (
+                      <View style={styles.businessNotice}>
+                        <Notice message={t('login_businessAccountError')} />
+                        <Pressable accessibilityRole="link" onPress={() => openWeb('/business/login')} hitSlop={8} style={styles.pointer}>
+                          <AppText style={[styles.link, styles.center]}>{t('login_businessAccountLink')}</AppText>
+                        </Pressable>
+                      </View>
+                    )}
 
-                  {signUp ? (
-                    <>
-                      <TextField
-                        label={t('signup_emailLabel')}
-                        icon="mail"
-                        value={email}
-                        onChangeText={(v) => {
-                          setEmail(v)
-                          setSignUpError(null)
-                        }}
-                        error={signUpError === 'onb_emailInvalid' ? t(signUpError) : undefined}
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        keyboardType="email-address"
-                        textContentType="emailAddress"
-                        returnKeyType="next"
-                      />
-                      <TextField
-                        label={t('onb_createPasswordLabel')}
-                        icon="lock"
-                        value={password}
-                        onChangeText={(v) => {
-                          setPassword(v)
-                          setSignUpError(null)
-                        }}
-                        error={signUpError === 'onb_passwordTooShort' ? t(signUpError) : undefined}
-                        secureTextEntry
-                        autoComplete="new-password"
-                        textContentType="newPassword"
-                        returnKeyType="next"
-                      />
-                      <PasswordStrengthMeter strength={passwordStrength(password)} />
-                      <TextField
-                        label={t('onb_confirmPasswordLabel')}
-                        icon="lock"
-                        value={confirm}
-                        onChangeText={(v) => {
-                          setConfirm(v)
-                          setSignUpError(null)
-                        }}
-                        error={signUpError === 'onb_passwordMismatch' ? t(signUpError) : undefined}
-                        secureTextEntry
-                        autoComplete="new-password"
-                        textContentType="newPassword"
-                        returnKeyType="go"
-                        onSubmitEditing={handleSignUp}
-                      />
-                      <View style={styles.cta}>
+                    {signUp ? (
+                      <>
+                        {/* Side by side from 360px up, stacked on the narrowest phones. */}
+                        <View style={nameRow && styles.nameRow}>
+                          <View style={nameRow && styles.nameCell}>
+                            <TextField
+                              label={t('onb_firstNameLabel')}
+                              icon="user"
+                              natural
+                              value={firstName}
+                              onChangeText={(v) => {
+                                setFirstName(v)
+                                setSignUpError(null)
+                              }}
+                              error={signUpError === 'onb_firstNameRequired' ? t(signUpError) : undefined}
+                              autoCapitalize="words"
+                              autoComplete="given-name"
+                              textContentType="givenName"
+                              returnKeyType="next"
+                              maxLength={50}
+                            />
+                          </View>
+                          <View style={nameRow && styles.nameCell}>
+                            <TextField
+                              label={t('onb_lastNameLabel')}
+                              natural
+                              value={lastName}
+                              onChangeText={(v) => {
+                                setLastName(v)
+                                setSignUpError(null)
+                              }}
+                              error={signUpError === 'onb_lastNameRequired' ? t(signUpError) : undefined}
+                              autoCapitalize="words"
+                              autoComplete="family-name"
+                              textContentType="familyName"
+                              returnKeyType="next"
+                              maxLength={50}
+                            />
+                          </View>
+                        </View>
+                        <TextField
+                          label={t('signup_emailLabel')}
+                          icon="mail"
+                          value={email}
+                          onChangeText={(v) => {
+                            setEmail(v)
+                            setSignUpError(null)
+                          }}
+                          error={signUpError === 'onb_emailInvalid' ? t(signUpError) : undefined}
+                          autoCapitalize="none"
+                          autoComplete="email"
+                          keyboardType="email-address"
+                          textContentType="emailAddress"
+                          returnKeyType="next"
+                        />
+                        <TextField
+                          label={t('onb_createPasswordLabel')}
+                          icon="lock"
+                          value={password}
+                          onChangeText={(v) => {
+                            setPassword(v)
+                            setSignUpError(null)
+                          }}
+                          error={signUpError === 'onb_passwordTooShort' ? t(signUpError) : undefined}
+                          secureTextEntry
+                          autoComplete="new-password"
+                          textContentType="newPassword"
+                          returnKeyType="next"
+                        />
+                        <PasswordStrengthMeter strength={passwordStrength(password)} />
+                        <TextField
+                          label={t('onb_confirmPasswordLabel')}
+                          icon="lock"
+                          value={confirm}
+                          onChangeText={(v) => {
+                            setConfirm(v)
+                            setSignUpError(null)
+                          }}
+                          error={signUpError === 'onb_passwordMismatch' ? t(signUpError) : undefined}
+                          secureTextEntry
+                          autoComplete="new-password"
+                          textContentType="newPassword"
+                          returnKeyType="go"
+                          onSubmitEditing={handleSignUp}
+                        />
+                        <View style={styles.cta}>
+                          <Button
+                            label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
+                            onPress={handleSignUp}
+                            busy={submitting}
+                            disabled={!firstName.trim() || !lastName.trim() || !email || !password || !confirm || googleBusy}
+                            large
+                            arrow
+                          />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <TextField
+                          label={t('login_emailLabel')}
+                          icon="mail"
+                          value={email}
+                          onChangeText={setEmail}
+                          autoCapitalize="none"
+                          autoComplete="email"
+                          keyboardType="email-address"
+                          textContentType="emailAddress"
+                          returnKeyType="next"
+                        />
+                        <TextField
+                          label={t('login_passwordLabel')}
+                          icon="lock"
+                          value={password}
+                          onChangeText={setPassword}
+                          secureTextEntry
+                          autoComplete="current-password"
+                          textContentType="password"
+                          returnKeyType="go"
+                          onSubmitEditing={handleSubmit}
+                        />
+                        <View style={styles.actionRow}>
+                          <Checkbox label={t('login_rememberMe')} checked={rememberMe} onChange={setRememberMe} />
+                          <Pressable
+                            accessibilityRole="link"
+                            onPress={() => openWebSheet('/forgot-password')}
+                            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                            style={styles.pointer}
+                          >
+                            <AppText style={styles.forgotText}>{t('login_forgotLink')}</AppText>
+                          </Pressable>
+                        </View>
                         <Button
-                          label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
-                          onPress={handleSignUp}
+                          label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
+                          onPress={handleSubmit}
                           busy={submitting}
-                          disabled={!email || !password || !confirm || googleBusy}
+                          disabled={!email || !password || googleBusy}
                           large
                           arrow
                         />
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <TextField
-                        label={t('login_emailLabel')}
-                        icon="mail"
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        keyboardType="email-address"
-                        textContentType="emailAddress"
-                        returnKeyType="next"
-                      />
-                      <TextField
-                        label={t('login_passwordLabel')}
-                        icon="lock"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                        autoComplete="current-password"
-                        textContentType="password"
-                        returnKeyType="go"
-                        onSubmitEditing={handleSubmit}
-                      />
-                      <View style={styles.actionRow}>
-                        <Checkbox label={t('login_rememberMe')} checked={rememberMe} onChange={setRememberMe} />
-                        <Pressable
-                          accessibilityRole="link"
-                          onPress={() => openWeb('/forgot-password')}
-                          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-                          style={styles.pointer}
-                        >
-                          <AppText style={styles.forgotText}>{t('login_forgotLink')}</AppText>
-                        </Pressable>
-                      </View>
-                      <Button
-                        label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
-                        onPress={handleSubmit}
-                        busy={submitting}
-                        disabled={!email || !password || googleBusy}
-                        large
-                        arrow
-                      />
-                    </>
-                  )}
+                      </>
+                    )}
 
-                  <View style={styles.divider}>
-                    <View style={styles.rule} />
-                    <AppText style={styles.or}>{t('login_orDivider')}</AppText>
-                    <View style={styles.rule} />
-                  </View>
-                  <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onPress={handleGoogle} disabled={busy} />
-                </>
-              )}
-            </Animated.View>
+                    <View style={styles.divider}>
+                      <View style={styles.rule} />
+                      <AppText style={styles.or}>{t('login_orDivider')}</AppText>
+                      <View style={styles.rule} />
+                    </View>
+                    <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onPress={handleGoogle} disabled={busy} />
+                  </>
+                )}
+              </Animated.View>
+            )}
 
-            {!pending && !onboarding && (
+            {!pending && !wizardShown && !restoring && (
               <Animated.View style={[styles.footer, fadeStyle]}>
                 <AppText style={styles.muted}>{t(signUp ? 'signup_haveAccount' : 'login_noAccount')}</AppText>
                 <Pressable accessibilityRole="link" onPress={() => switchMode(signUp ? 'signIn' : 'signUp')} hitSlop={12} style={styles.pointer}>
@@ -412,6 +555,8 @@ const styles = StyleSheet.create({
     ...webOnly({ width: '100%', maxWidth: 440, alignSelf: 'center', marginHorizontal: 'auto', padding: 32 }),
   },
   modeSwitch: { marginBottom: 24 },
+  nameRow: { flexDirection: 'row', gap: 12 },
+  nameCell: { flex: 1, minWidth: 0 },
   cta: { marginTop: 4 },
   center: { textAlign: 'center' },
   businessNotice: { marginBottom: 16 },

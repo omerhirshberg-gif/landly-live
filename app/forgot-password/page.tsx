@@ -2,12 +2,31 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import AuthMarketingPanel from '@/components/auth/AuthMarketingPanel'
+import { useRouter } from 'next/navigation'
 import BackToHomeLink from '@/components/auth/BackToHomeLink'
+import AuthBrandPanel from '@/components/auth/entrance/AuthBrandPanel'
+import BrandHero from '@/components/auth/entrance/BrandHero'
+import Button from '@/components/auth/entrance/Button'
+import Notice from '@/components/auth/entrance/Notice'
+import TextField from '@/components/auth/entrance/TextField'
+import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
+import styles from '@/components/auth/entrance/entrance.module.css'
+import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
 import { useLang } from '@/lib/i18n/useLang'
+
+// Asks /api/auth/forgot-password to email a reset link. The link opens our
+// own /reset-password page (the route builds it from Firebase's oobCode), and
+// the reply is the same whether or not the address has an account.
+//
+// Same shell as /verify-email and AuthScreen (/login, /signup): the brand
+// panel beside the card from 1024px, the hero above it below that, in the
+// site language and direction. Once sent, the card turns into the inbox badge.
+// The envelope from TextField's mail icon, for the "check your inbox" badge.
+const MAIL = 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'
 
 export default function ForgotPasswordPage() {
   const { t, lang, isRtl } = useLang()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -22,6 +41,9 @@ export default function ForgotPasswordPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, lang }),
+        // The route holds every reply for 2s; past this, show the error rather
+        // than a spinner that never ends.
+        signal: AbortSignal.timeout(20_000),
       })
       if (!res.ok) throw new Error('request failed')
       setSent(true)
@@ -33,57 +55,71 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    // dir="ltr" pins physical side order (form left, marketing right) regardless
-    // of the active language — flex-row is otherwise direction-relative and would
-    // flip under document dir="rtl". RTL styling is applied per-side below instead.
-    <div className="min-h-screen flex flex-col lg:flex-row" dir="ltr">
-      {/* Form side */}
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
-        <div className="w-full max-w-md">
+    <div
+      className={`${styles.root} ${styles.standalone}`}
+      data-entrance="settled"
+      style={{ ...ENTRANCE_VARS, ...ONBOARDING_VARS }}
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={lang}
+    >
+      <AuthBrandPanel context="reset" entrance="settled" />
+
+      <main className={styles.main}>
+        <div className={`${styles.chrome} ${styles.backSlot}`}>
           <BackToHomeLink label={t('auth_backHome')} />
-          <Link href="/" className="flex justify-center mb-8">
-            <img src="/logo.jpg" alt="Landly" className="h-28 w-auto" />
-          </Link>
-
-          {sent ? (
-            <>
-              <h1 className="text-2xl font-black text-slate-900 mb-1">{t('forgot_sentTitle')}</h1>
-              <p className="text-sm text-slate-500 mb-7">{t('forgot_sentSubtitle')}</p>
-              <Link href="/login" className="text-brand font-bold hover:underline text-sm">{t('forgot_backLink')}</Link>
-            </>
-          ) : (
-            <>
-              <h1 className="text-2xl font-black text-slate-900 mb-1">{t('forgot_title')}</h1>
-              <p className="text-sm text-slate-500 mb-7">{t('forgot_subtitle')}</p>
-
-              {error && (
-                <div className="mb-4 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                  {error}
-                </div>
-              )}
-
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div>
-                  <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('forgot_emailLabel')}</label>
-                  <input type="email" required className="inp" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-
-                <button type="submit" disabled={submitting} className="btn-primary mt-2 w-full disabled:opacity-70">
-                  {submitting ? t('forgot_submitBtnBusy') : t('forgot_submitBtn')}
-                </button>
-              </form>
-
-              <p className="text-xs text-slate-500 mt-4 leading-relaxed">{t('forgot_privacyNote')}</p>
-
-              <div className="text-center mt-6 text-sm">
-                <Link href="/login" className="text-brand font-bold hover:underline">{t('forgot_backLink')}</Link>
-              </div>
-            </>
-          )}
         </div>
-      </div>
 
-      <AuthMarketingPanel headline={t('forgot_marketing_headline')} sub={t('forgot_marketing_sub')} />
+        <div className={styles.heroSlot}>
+          <BrandHero mode="settled" />
+        </div>
+
+        {sent ? (
+          <div className={`${styles.card} text-center`} aria-live="polite">
+            <div className={styles.badgeWrap} aria-hidden="true">
+              <span className={styles.halo} />
+              <span className={styles.badge}>
+                <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round">
+                  <path d={MAIL} />
+                </svg>
+              </span>
+            </div>
+            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('forgot_sentTitle')}</h1>
+            <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500">{t('forgot_sentSubtitle')}</p>
+            <Button label={t('forgot_backLink')} onClick={() => router.push('/login')} large arrow />
+          </div>
+        ) : (
+          <div className={styles.card}>
+            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('forgot_title')}</h1>
+            <p className={`${styles.subtitle} mt-2 mb-6 text-[15px] leading-6 text-slate-500`}>{t('forgot_subtitle')}</p>
+
+            {error && <Notice>{error}</Notice>}
+
+            <form onSubmit={handleSubmit}>
+              <TextField
+                label={t('forgot_emailLabel')}
+                icon="mail"
+                type="email"
+                required
+                autoComplete="email"
+                inputMode="email"
+                enterKeyHint="send"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                hint={t('forgot_privacyNote')}
+              />
+              <div className="mt-1">
+                <Button type="submit" label={t(submitting ? 'forgot_submitBtnBusy' : 'forgot_submitBtn')} busy={submitting} large />
+              </div>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+              <Link href="/login" className="py-3 -my-3 font-bold text-brand hover:underline">
+                {t('forgot_backLink')}
+              </Link>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

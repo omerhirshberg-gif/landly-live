@@ -5,12 +5,14 @@ import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { isWeb, webOnly } from '../lib/webStyles'
+import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { colors, radius } from '../theme'
 
-const PRESS_EASE = cubicBezier(0, 0, 0.58, 1) // ease-out
+const PRESS_EASE = cubicBezier(...EASE_SILK)
 
-// Press feedback lands on press-in: a quick scale-down (a Reanimated CSS
-// transition, so it runs on the UI thread) plus the darker pressed fill.
+// Press feedback lands on press-in: a gentle scale-down (a Reanimated CSS
+// transition on the onboarding's silk curve, so it runs on the UI thread)
+// plus the darker pressed fill; a mouse hover (web) lifts it to 1.01.
 export default function Button({
   label,
   onPress,
@@ -59,9 +61,9 @@ export default function Button({
           pressed && (primary ? styles.primaryPressed : styles.secondaryPressed),
           inactive && styles.disabled,
           {
-            transform: [{ scale: pressed ? 0.97 : 1 }],
+            transform: [{ scale: pressed ? ONB.pressScale : hovered && !inactive ? ONB.hoverScale : 1 }],
             transitionProperty: isWeb ? ['transform', 'backgroundColor'] : 'transform',
-            transitionDuration: isWeb ? 150 : 120,
+            transitionDuration: ONB.pressMs,
             transitionTimingFunction: PRESS_EASE,
           },
         ]}

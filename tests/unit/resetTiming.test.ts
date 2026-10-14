@@ -7,7 +7,7 @@ vi.mock('@/lib/auth/requestContext', () => ({ applicationOrigin: () => 'https://
 import { POST } from '@/app/api/auth/forgot-password/route'
 beforeEach(() => {
   vi.useFakeTimers(); vi.resetAllMocks()
-  mocks.generate.mockResolvedValue('https://test.invalid/reset')
+  mocks.generate.mockResolvedValue('https://firebase.invalid/__/auth/action?mode=resetPassword&oobCode=code')
   mocks.send.mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })

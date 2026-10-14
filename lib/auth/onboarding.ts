@@ -1,39 +1,48 @@
-import { getCountries, getCountryCallingCode, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
+import { getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import type { Lang } from '@/lib/i18n/translations'
+import { normalizePersonName } from './names'
 
 // The post-sign-in onboarding rules, shared by the web AuthScreen and the
 // mobile login screen so both ask the same questions in the same order and
 // store the same values. Pure functions only — each platform owns its UI.
 //
-// Credentials come first (the Sign Up tab is only email + password); these
-// steps run once the member is signed in and their profile is incomplete.
+// Credentials and name come first (the Sign Up tab); these cards run once
+// the member is signed in and hasn't finished onboarding: a welcome, four
+// questions, then a celebration. Answers are saved when the notifications
+// card is left, so the celebration only shows once they're stored.
 
-export type OnboardingStep = 'language' | 'persona' | 'phone' | 'notifications'
+export type OnboardingStep = 'welcome' | 'language' | 'persona' | 'phone' | 'notifications' | 'done'
 
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['language', 'persona', 'phone', 'notifications']
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['welcome', 'language', 'persona', 'phone', 'notifications', 'done']
 
-/** Every app language, offered on the first step (each label in its own language). */
+/** Every app language, offered on the language card (each label in its own language), Hebrew last. */
 export const ONBOARDING_LANGS: readonly { code: Lang; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'he', label: 'עברית', flag: '🇮🇱' },
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'he', label: 'עברית', flag: '🇮🇱' },
 ]
 
 export function nextStep(step: OnboardingStep): OnboardingStep | null {
   return ONBOARDING_STEPS[ONBOARDING_STEPS.indexOf(step) + 1] ?? null
 }
 
+/** The card ← goes back to, or null: nothing before the welcome, and the celebration is past saving. */
 export function prevStep(step: OnboardingStep): OnboardingStep | null {
+  if (step === 'done') return null
   const index = ONBOARDING_STEPS.indexOf(step)
   return index > 0 ? ONBOARDING_STEPS[index - 1] : null
 }
 
-/** 1-based position and total, for the "Step 2 of 4" header. */
-export function stepProgress(step: OnboardingStep): { current: number; total: number } {
-  return { current: ONBOARDING_STEPS.indexOf(step) + 1, total: ONBOARDING_STEPS.length }
+/** How far through the wizard a card is, 0 on the welcome to 1 on the celebration, for the header's progress bar. */
+export function onboardingProgress(step: OnboardingStep): number {
+  return ONBOARDING_STEPS.indexOf(step) / (ONBOARDING_STEPS.length - 1)
 }
+
+// ── Name ────────────────────────────────────────────────────────────────
+// Kept in ./names (no libphonenumber), so pages that only greet stay light.
+export { MAX_NAME_LENGTH, fullName, greetingName, normalizePersonName, splitDisplayName } from './names'
 
 // ── Identity ────────────────────────────────────────────────────────────
 // A shape check only; Firebase has the final word (auth/invalid-email).
@@ -48,12 +57,24 @@ export const MIN_PASSWORD_LENGTH = 6
 /** 0 = empty, 1 = weak (too short or one kind of character), 2 = fair, 3 = strong. */
 export type PasswordStrength = 0 | 1 | 2 | 3
 
-/** The Sign Up form's error key for its fields, or null when they can be submitted. */
-export function signUpFormError(
-  email: string,
-  password: string,
+export type SignUpFormError =
+  | 'onb_firstNameRequired'
+  | 'onb_lastNameRequired'
+  | 'onb_emailInvalid'
+  | 'onb_passwordTooShort'
+  | 'onb_passwordMismatch'
+
+/** The Sign Up form's first error key, in field order, or null when it can be submitted. */
+export function signUpFormError(fields: {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
   confirm: string
-): 'onb_emailInvalid' | 'onb_passwordTooShort' | 'onb_passwordMismatch' | null {
+}): SignUpFormError | null {
+  const { firstName, lastName, email, password, confirm } = fields
+  if (!normalizePersonName(firstName)) return 'onb_firstNameRequired'
+  if (!normalizePersonName(lastName)) return 'onb_lastNameRequired'
   if (!isPlausibleEmail(email)) return 'onb_emailInvalid'
   if (password.length < MIN_PASSWORD_LENGTH) return 'onb_passwordTooShort'
   if (password !== confirm) return 'onb_passwordMismatch'
@@ -129,8 +150,71 @@ export function phoneToE164(country: CountryCode, input: string): string | null 
   return parsed?.isValid() ? parsed.number : null
 }
 
+// ── Persona ─────────────────────────────────────────────────────────────
+/** The persona that reveals the optional free-text note. */
+export const OTHER_CUSTOMER_TYPE = 'other'
+export const MAX_PERSONA_NOTE_LENGTH = 120
+
+/** The optional "Other" note as stored: only kept for 'other', trimmed and capped. */
+export function personaNote(customerType: string, note: string): string {
+  if (customerType !== OTHER_CUSTOMER_TYPE) return ''
+  return note.replace(/\s+/g, ' ').trim().slice(0, MAX_PERSONA_NOTE_LENGTH).trim()
+}
+
 // ── Profile ─────────────────────────────────────────────────────────────
-/** False until the onboarding steps have stored a persona and a phone number. */
-export function isProfileComplete(doc: { phone: string; customerType: string } | null): boolean {
-  return !!doc && !!doc.phone && !!doc.customerType
+// Kept in ./onboardingStatus (no libphonenumber), so the auth provider that
+// every page loads stays light.
+export { isOnboardingComplete } from './onboardingStatus'
+
+// ── Draft ───────────────────────────────────────────────────────────────
+// The answers so far and the card on screen, kept on the device (web
+// localStorage, Expo AsyncStorage) while the wizard runs, so a reload or an
+// app restart comes back to the same card instead of the welcome. Nothing
+// reaches Firestore until the notifications card, as before.
+
+export interface OnboardingDraft {
+  step: Exclude<OnboardingStep, 'done'>
+  customerType: string
+  customerTypeOther: string
+  country: CountryCode
+  phone: string
+  /** "Skip for now" on the WhatsApp card; cleared by continuing with a number. */
+  phoneSkipped: boolean
+}
+
+const MAX_DRAFT_FIELD_LENGTH = 64
+
+/** Per member, so a shared browser never hands one member's answers to another. */
+export function onboardingDraftKey(uid: string): string {
+  return `landly_onboarding_draft_${uid}`
+}
+
+export function serializeOnboardingDraft(draft: OnboardingDraft): string {
+  return JSON.stringify(draft)
+}
+
+/**
+ * The stored draft, or null when there's none or it can't be trusted (bad
+ * JSON, an unknown card, wrong types). Never resumes on the celebration:
+ * that card only shows once the answers are saved.
+ */
+export function parseOnboardingDraft(raw: string | null | undefined): OnboardingDraft | null {
+  if (!raw) return null
+  let value: unknown
+  try {
+    value = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!value || typeof value !== 'object') return null
+  const d = value as Record<string, unknown>
+  const text = (v: unknown, max = MAX_DRAFT_FIELD_LENGTH) => (typeof v === 'string' && v.length <= max ? v : null)
+  const step = d.step
+  if (typeof step !== 'string' || step === 'done' || !ONBOARDING_STEPS.includes(step as OnboardingStep)) return null
+  const customerType = text(d.customerType)
+  const customerTypeOther = text(d.customerTypeOther, MAX_PERSONA_NOTE_LENGTH)
+  const phone = text(d.phone)
+  const country = typeof d.country === 'string' && isSupportedCountry(d.country) ? d.country : null
+  if (customerType === null || customerTypeOther === null || phone === null || country === null || typeof d.phoneSkipped !== 'boolean') return null
+  return { step: step as OnboardingDraft['step'], customerType, customerTypeOther, country, phone, phoneSkipped: d.phoneSkipped }
 }

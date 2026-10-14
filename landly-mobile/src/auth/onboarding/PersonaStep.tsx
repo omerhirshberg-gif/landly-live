@@ -1,12 +1,41 @@
 import { Pressable, StyleSheet, View } from 'react-native'
+import Animated, { type CSSTransitionProperties } from 'react-native-reanimated'
+import { MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE } from '@shared/auth/onboarding'
+import { ONB } from '@shared/brand/onboardingMotion'
 import { CUSTOMER_TYPES } from '@shared/customerTypes'
 import AppText from '../../components/AppText'
+import TextField from '../../components/TextField'
 import { useLang } from '../../i18n/LangProvider'
 import { webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
+import { reveal, SILK_CSS } from './motion'
+
+// Reanimated CSS transition for selection and press (kept out of StyleSheet.create, whose types don't take it).
+const TRANSITION: CSSTransitionProperties = {
+  transitionProperty: ['borderColor', 'backgroundColor', 'transform'],
+  transitionDuration: ONB.ringMs,
+  transitionTimingFunction: SILK_CSS,
+}
 
 // Single-choice chip grid (two columns, so all six fit in three rows).
-export default function PersonaStep({ value, onChange, error }: { value: string; onChange: (value: string) => void; error?: string }) {
+// Choosing "Other" reveals an optional note below the chips, 20px under the
+// grid and 24px above Continue; the stage around the card eases its height
+// as it appears.
+export default function PersonaStep({
+  value,
+  onChange,
+  note,
+  onNoteChange,
+  onSubmit,
+  error,
+}: {
+  value: string
+  onChange: (value: string) => void
+  note: string
+  onNoteChange: (note: string) => void
+  onSubmit: () => void
+  error?: string
+}) {
   const { t } = useLang()
   return (
     <View style={styles.wrap}>
@@ -19,17 +48,38 @@ export default function PersonaStep({ value, onChange, error }: { value: string;
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               onPress={() => onChange(option.value)}
-              style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && styles.pressed]}
+              style={styles.cell}
             >
-              <AppText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{t(option.labelKey)}</AppText>
+              {({ pressed }) => (
+                <Animated.View style={[styles.chip, selected && styles.chipSelected, { transform: [{ scale: pressed ? ONB.pressScale : 1 }] }, TRANSITION]}>
+                  <AppText style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{t(option.labelKey)}</AppText>
+                </Animated.View>
+              )}
             </Pressable>
           )
         })}
       </View>
       {error && (
-        <AppText accessibilityRole="alert" style={styles.error}>
-          {error}
-        </AppText>
+        <Animated.View entering={reveal()}>
+          <AppText accessibilityRole="alert" style={styles.error}>
+            {error}
+          </AppText>
+        </Animated.View>
+      )}
+      {value === OTHER_CUSTOMER_TYPE && (
+        <Animated.View entering={reveal()} style={styles.note}>
+          <TextField
+            label={t('onb_persona_otherLabel')}
+            natural
+            value={note}
+            onChangeText={onNoteChange}
+            placeholder={t('onb_persona_otherPlaceholder')}
+            maxLength={MAX_PERSONA_NOTE_LENGTH}
+            autoComplete="off"
+            returnKeyType="next"
+            onSubmitEditing={onSubmit}
+          />
+        </Animated.View>
       )}
     </View>
   )
@@ -37,11 +87,10 @@ export default function PersonaStep({ value, onChange, error }: { value: string;
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 20 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  cell: { flexBasis: '40%', flexGrow: 1, ...webOnly({ cursor: 'pointer', userSelect: 'none' }) },
   chip: {
-    flexBasis: '45%',
-    flexGrow: 1,
-    minHeight: 52,
+    minHeight: 54,
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: 'center',
@@ -50,11 +99,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.background,
-    ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
-  chipSelected: { borderColor: colors.brand, backgroundColor: colors.brandLight },
-  pressed: { transform: [{ scale: 0.97 }] },
+  chipSelected: { borderColor: colors.brand, backgroundColor: colors.brandLight, boxShadow: '0 0 0 4px rgba(0, 56, 184, 0.12)' },
   chipLabel: { fontSize: 14, lineHeight: 18, fontWeight: '600', color: colors.text, textAlign: 'center' },
   chipLabelSelected: { color: colors.brand },
   error: { marginTop: 8, fontSize: 12, fontWeight: '600', color: colors.danger },
+  // TextField brings its own 16px bottom margin; -12 here plus wrap's 20 leaves 24px above Continue.
+  note: { marginTop: 20, marginBottom: -12 },
 })

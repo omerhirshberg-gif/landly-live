@@ -33,15 +33,29 @@ const PATH = '/api/auth/send-verification'
 // Native's fetch ignores it, hence the response-URL check too). If a remote
 // base still redirects, the request is retried once, token included, straight
 // at the production host; only if that redirects as well is it 'misconfigured'.
-export async function requestVerificationEmail(idToken: string, lang: Lang, apiBaseUrl = ''): Promise<VerificationSendResult> {
+//
+// `names` is sent only with the first request after sign-up: the route
+// stores them on the new profile (the unverified client can't write it).
+export interface SignUpNames {
+  firstName: string
+  lastName: string
+}
+
+export async function requestVerificationEmail(
+  idToken: string,
+  lang: Lang,
+  apiBaseUrl = '',
+  names?: SignUpNames
+): Promise<VerificationSendResult> {
   const base = normalizeApiBaseUrl(apiBaseUrl)
-  const first = await post(`${base}${PATH}`, idToken, lang, !!base)
+  const body = JSON.stringify(names ? { lang, firstName: names.firstName, lastName: names.lastName } : { lang })
+  const first = await post(`${base}${PATH}`, idToken, body, !!base)
   if (first !== 'redirected') return first
   // Same-origin web calls never fall back to production: a redirect there is
   // the site's own setup, not a stale app config.
   if (base && base !== PRODUCTION_API_ORIGIN) {
     console.warn(`[verification] ${base}${PATH} redirects; retrying at ${PRODUCTION_API_ORIGIN}. Point the API base URL at the final host.`)
-    const retry = await post(`${PRODUCTION_API_ORIGIN}${PATH}`, idToken, lang, true)
+    const retry = await post(`${PRODUCTION_API_ORIGIN}${PATH}`, idToken, body, true)
     if (retry !== 'redirected') return retry
   }
   // console.warn, not error: React Native turns console.error into a redbox.
@@ -70,7 +84,7 @@ async function readBody(res: Response): Promise<unknown> {
   }
 }
 
-async function post(url: string, idToken: string, lang: Lang, absolute: boolean): Promise<VerificationSendResult | 'redirected'> {
+async function post(url: string, idToken: string, body: string, absolute: boolean): Promise<VerificationSendResult | 'redirected'> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), VERIFICATION_SEND_TIMEOUT_MS)
   let res: Response
@@ -78,7 +92,7 @@ async function post(url: string, idToken: string, lang: Lang, absolute: boolean)
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ lang }),
+      body,
       redirect: 'manual',
       signal: controller.signal,
     })

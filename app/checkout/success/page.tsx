@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { subscribeToOrder, OrderDocument } from '@/lib/firebase/orders'
 import { formatPrice } from '@/lib/format'
 
@@ -16,6 +17,8 @@ import { formatPrice } from '@/lib/format'
 function CheckoutSuccessContent() {
   const { t } = useLang()
   const { user, loading } = useAuth()
+  // Onboarding first: a member mid-wizard is sent back to it.
+  const held = useOnboardingGuard()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -32,7 +35,7 @@ function CheckoutSuccessContent() {
     return unsubscribe
   }, [orderId, user])
 
-  if (loading || !user || !orderId) {
+  if (loading || !user || held || !orderId) {
     return (
       <>
         <Navbar />

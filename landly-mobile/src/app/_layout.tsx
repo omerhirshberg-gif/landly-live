@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { ONB } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
@@ -34,14 +35,27 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { user, loading } = useAuth()
+  const { user, loading, onboardingComplete } = useAuth()
   const { checking, onboarding } = useSignInGate()
   const { isRtl } = useLang()
 
   // signInCustomer already signs unverified accounts back out; checking
   // emailVerified here too keeps the tabs (whose Firestore reads require a
-  // verified customer) from ever mounting without one.
-  const signedIn = !!user && user.emailVerified && !checking && !onboarding
+  // verified customer) from ever mounting without one. A member who hasn't
+  // finished onboarding never gets them either: launching with such a saved
+  // session opens the login screen, which resumes the wizard.
+  const verified = !!user && user.emailVerified
+  const signedIn = verified && !checking && !onboarding && onboardingComplete !== false
+
+  // At launch the navigator waits for that answer too, so neither the tabs
+  // nor the sign-in form flashes first. Later sign-ins hold the gate with
+  // `checking` instead, so the navigator never unmounts once it's up.
+  const known = !loading && (!verified || onboardingComplete !== null)
+  const [booted, setBooted] = useState(false)
+  useEffect(() => {
+    if (known) setBooted(true)
+  }, [known])
+  const ready = booted || known
 
   // The splash plays its intro, waits for auth, hands over, then removes itself.
   const [splashDone, setSplashDone] = useState(false)
@@ -50,17 +64,18 @@ function RootNavigator() {
   return (
     <View style={[styles.root, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       <StatusBar style="dark" />
-      {!loading && (
+      {ready && (
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
           <Stack.Protected guard={signedIn}>
-            <Stack.Screen name="(tabs)" />
+            {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
+            <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
           </Stack.Protected>
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="(auth)" />
           </Stack.Protected>
         </Stack>
       )}
-      {!splashDone && <SplashScreen ready={!loading} onDone={handleSplashDone} />}
+      {!splashDone && <SplashScreen ready={ready} onDone={handleSplashDone} />}
     </View>
   )
 }

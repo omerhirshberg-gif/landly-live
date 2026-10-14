@@ -17,6 +17,7 @@ import { requestVerificationEmail, VERIFICATION_SEND_TIMEOUT_MS } from '@/lib/au
 import { normalizeApiBaseUrl } from '@/lib/apiOrigin'
 
 const fetchMock = vi.fn()
+const NAMES = { firstName: ' Dana ', lastName: 'Levi' }
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
@@ -38,7 +39,7 @@ describe('signUpCustomer', () => {
   it('returns as soon as the account exists, with the email request still in flight', async () => {
     // A send that never settles: sign-up must not wait for it.
     fetchMock.mockReturnValue(new Promise(() => {}))
-    const result = await signUpCustomer('new@example.com', 'secret123', 'he', 'https://api.test')
+    const result = await signUpCustomer(NAMES, 'new@example.com', 'secret123', 'he', 'https://api.test')
 
     expect(result.email).toBe('new@example.com')
     expect(result.idToken).toBe('id-token')
@@ -48,6 +49,13 @@ describe('signUpCustomer', () => {
       'https://api.test/api/auth/send-verification',
       expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ Authorization: 'Bearer id-token' }) })
     )
+  })
+
+  it('sends the normalized first and last name with the first verification request', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    await signUpCustomer(NAMES, 'new@example.com', 'secret123', 'fr', 'https://api.test')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(init.body as string)).toEqual({ lang: 'fr', firstName: 'Dana', lastName: 'Levi' })
   })
 
   it('takes the token before signing out, and the send still completes', async () => {
@@ -61,26 +69,32 @@ describe('signUpCustomer', () => {
       order.push('signOut')
     })
 
-    const result = await signUpCustomer('new@example.com', 'secret123', 'en')
+    const result = await signUpCustomer(NAMES, 'new@example.com', 'secret123', 'en')
     expect(order).toEqual(['token', 'signOut'])
     await expect(result.send).resolves.toBe('sent')
   })
 
   it('still signs out when the token cannot be read', async () => {
     mocks.getIdToken.mockRejectedValue(new Error('network'))
-    await expect(signUpCustomer('new@example.com', 'secret123', 'en')).rejects.toThrow('network')
+    await expect(signUpCustomer(NAMES, 'new@example.com', 'secret123', 'en')).rejects.toThrow('network')
     expect(mocks.signOut).toHaveBeenCalledTimes(1)
   })
 
   it('leaves no session behind when Firebase rejects the account', async () => {
     mocks.createUserWithEmailAndPassword.mockRejectedValue(Object.assign(new Error('taken'), { code: 'auth/email-already-in-use' }))
-    await expect(signUpCustomer('new@example.com', 'secret123', 'en')).rejects.toThrow('taken')
+    await expect(signUpCustomer(NAMES, 'new@example.com', 'secret123', 'en')).rejects.toThrow('taken')
     expect(mocks.signOut).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
 describe('requestVerificationEmail', () => {
+  it('sends only the language on a resend (no names)', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, type: 'basic', url: '/api/auth/send-verification' })
+    await requestVerificationEmail('id-token', 'he')
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({ lang: 'he' })
+  })
+
   it('gives up and reports no connection once the timeout passes', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.useFakeTimers()
