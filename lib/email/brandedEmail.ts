@@ -68,13 +68,32 @@ function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent)
 </html>`
 }
 
+/** Resend rejected the send; `code` is Resend's error name (e.g. validation_error, daily_quota_exceeded). */
+export class EmailProviderError extends Error {
+  constructor(
+    readonly code: string,
+    readonly statusCode: number | null,
+    message: string
+  ) {
+    super(`Resend send failed: ${message}`)
+    this.name = 'EmailProviderError'
+  }
+}
+
+/** Names the first missing email setting, or null when sending is configured. */
+export function emailConfigProblem(): string | null {
+  if (!process.env.RESEND_API_KEY) return 'RESEND_API_KEY is not configured'
+  if (!process.env.EMAIL_FROM) return 'EMAIL_FROM is not configured'
+  return null
+}
+
 export async function sendBrandedEmail(
   params: { to: string; lang: Lang; origin: string; subject: string } & BrandedEmailContent
 ): Promise<void> {
   const { to, subject, ...content } = params
-  const from = process.env.EMAIL_FROM
-  if (!from) throw new Error('EMAIL_FROM is not configured')
+  const problem = emailConfigProblem()
+  if (problem) throw new Error(problem)
 
-  const { error } = await getResend().emails.send({ from, to, subject, html: buildHtml(content) })
-  if (error) throw new Error(`Resend send failed: ${error.message}`)
+  const { error } = await getResend().emails.send({ from: process.env.EMAIL_FROM!, to, subject, html: buildHtml(content) })
+  if (error) throw new EmailProviderError(error.name, error.statusCode, error.message)
 }

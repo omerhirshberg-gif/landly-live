@@ -6,7 +6,13 @@
 // overrides each value for environments without the root .env (e.g. EAS).
 //
 // API base URL: the deployed web app, for the few calls the client makes to
-// Next.js API routes (e.g. resending the verification email).
+// Next.js API routes (e.g. sending the verification email). It must be the
+// final host: golandly.com redirects to www.golandly.com, and a cross-origin
+// redirect drops the Authorization header. EXPO_PUBLIC_API_BASE_URL overrides
+// it, e.g. with a LAN or tunnel URL of a local `next dev` (a phone can't reach
+// "localhost"). Same value as PRODUCTION_API_ORIGIN in lib/apiOrigin.ts.
+// Expo Go keeps the manifest it loaded, so a change here needs a restart of
+// `expo start` and a full reload of the app, not just Fast Refresh.
 const fs = require('fs')
 const path = require('path')
 
@@ -22,10 +28,21 @@ function readRootEnv() {
 }
 
 const rootEnv = readRootEnv()
+
+// Native Google sign-in (src/auth/googleSignIn.ts): one OAuth client per
+// platform. Each client's reversed ID is registered as a URL scheme so
+// Google's redirect comes back to the app.
+const googleClientIds = {
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+}
+const reversed = (id) => id.split('.').reverse().join('.')
+const googleSchemes = Object.values(googleClientIds).filter(Boolean).map(reversed)
 const firebaseValue = (name) => process.env[`EXPO_PUBLIC_FIREBASE_${name}`] || rootEnv[`NEXT_PUBLIC_FIREBASE_${name}`]
 
 module.exports = ({ config }) => ({
   ...config,
+  scheme: [config.scheme, ...googleSchemes],
   extra: {
     ...config.extra,
     firebase: {
@@ -36,6 +53,7 @@ module.exports = ({ config }) => ({
       messagingSenderId: firebaseValue('MESSAGING_SENDER_ID'),
       appId: firebaseValue('APP_ID'),
     },
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://golandly.com',
+    googleClientIds,
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://www.golandly.com',
   },
 })

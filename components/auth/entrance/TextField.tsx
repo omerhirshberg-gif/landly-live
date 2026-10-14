@@ -1,11 +1,20 @@
 'use client'
 
-import { useId, useState, type InputHTMLAttributes } from 'react'
+import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 
 // Web counterpart of landly-mobile/src/components/TextField.tsx: label, a
 // 52px field with a leading outline icon, a focus ring, and an eye toggle on
 // password fields. `error` replaces `hint` below the field and turns it red.
+// Email, password and phone values are typed left-to-right even in Hebrew;
+// free text (type="text", e.g. a name) follows the page direction.
+// `prefix` sits inside the field before the value (the phone country code).
+// On focus the field box (never the text itself, which would blur) grows to
+// 1.025 with the brand border and halo — a transform, so nothing around it
+// moves. No permanent will-change: with it the browser keeps the box as a
+// bitmap rasterized at 1.0 and stretches it, leaving the typed text soft;
+// without it the text is re-rasterized crisp at 1.025 once the transition
+// settles. Reduced motion keeps the colour change only (mobile: TextField.tsx).
 const ICONS = {
   mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
   lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
@@ -22,9 +31,16 @@ export default function TextField({
   icon,
   hint,
   error,
+  prefix,
   type = 'text',
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; icon?: keyof typeof ICONS; hint?: string; error?: string | null }) {
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & {
+  label: string
+  icon?: keyof typeof ICONS
+  hint?: string
+  error?: string | null
+  prefix?: ReactNode
+}) {
   const { t } = useLang()
   const id = useId()
   const [revealed, setRevealed] = useState(false)
@@ -36,10 +52,11 @@ export default function TextField({
         {label}
       </label>
       <div
-        className={`group flex items-center h-[52px] px-3.5 sm:px-4 rounded-[14px] border bg-slate-50 cursor-text transition-[border-color,box-shadow,background-color] duration-150 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(0,56,184,0.12)] ${
+        className={`group flex items-center h-[52px] px-3.5 sm:px-4 rounded-[14px] border bg-slate-50 cursor-text [transition:transform_200ms_cubic-bezier(0.16,1,0.3,1),box-shadow_200ms_ease,border-color_200ms_ease,background-color_200ms_ease] focus-within:scale-[1.025] motion-reduce:focus-within:scale-100 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(0,56,184,0.12),0_8px_20px_-8px_rgba(0,56,184,0.28)] ${
           error ? 'border-red-600' : 'border-slate-200 focus-within:border-brand'
         }`}
       >
+        {prefix}
         {icon && (
           <svg
             width={18}
@@ -50,7 +67,7 @@ export default function TextField({
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
-            className={`shrink-0 mr-2.5 transition-colors duration-150 ${iconColor}`}
+            className={`shrink-0 me-2.5 transition-colors duration-150 ${iconColor}`}
           >
             <path d={ICONS[icon]} />
           </svg>
@@ -59,6 +76,7 @@ export default function TextField({
           id={id}
           type={password && revealed ? 'text' : type}
           aria-invalid={!!error || undefined}
+          dir={type === 'text' ? undefined : 'ltr'}
           className="flex-1 min-w-0 h-full bg-transparent border-0 p-0 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:ring-0"
           {...props}
         />
@@ -68,7 +86,7 @@ export default function TextField({
             aria-label={t(revealed ? 'mobile_hidePassword' : 'mobile_showPassword')}
             aria-pressed={revealed}
             onClick={() => setRevealed((r) => !r)}
-            className="shrink-0 ml-1 -mr-2 p-2 rounded-lg cursor-pointer"
+            className="shrink-0 ms-1 -me-2 p-2 rounded-lg cursor-pointer"
           >
             <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d={revealed ? EYE_OFF : EYE} />

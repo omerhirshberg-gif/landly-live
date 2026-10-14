@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { requestVerificationEmail, type VerificationSendResult } from '@shared/auth/requestVerificationEmail'
 import type { TranslationKey } from '@shared/i18n/translations'
@@ -10,18 +10,21 @@ import { API_BASE_URL } from '../lib/env'
 import { colors } from '../theme'
 
 const RESULT_MESSAGES: Record<VerificationSendResult, TranslationKey> = {
-  sent: 'verifyNotice_resent',
+  sent: 'verifyNotice_sent',
   rateLimited: 'verifyNotice_rateLimited',
   unauthorized: 'verifyNotice_sessionExpired',
   failed: 'verifyNotice_sendFailed',
+  offline: 'verifyNotice_offline',
+  // Logged to the console with the redirect; to the user it's a failed send.
+  misconfigured: 'verifyNotice_sendFailed',
 }
 
 export interface PendingVerification {
   variant: 'signup' | 'login'
   email: string
   idToken: string
-  /** Result of the send that already happened (signup sends one up front). */
-  initialResult?: VerificationSendResult
+  /** The first send, still in flight (signup sends one up front without waiting for it). */
+  initialSend?: Promise<VerificationSendResult>
 }
 
 // Native counterpart of components/auth/VerifyEmailNotice.tsx. The user has
@@ -31,14 +34,28 @@ export interface PendingVerification {
 export default function VerifyEmailCard({ pending, onBack }: { pending: PendingVerification; onBack: () => void }) {
   const { t, lang } = useLang()
   const signup = pending.variant === 'signup'
-  // After signup the first send's success is implied by the "check your
-  // inbox" copy — only surface it if it went wrong.
-  const [result, setResult] = useState<VerificationSendResult | null>(
-    pending.initialResult && pending.initialResult !== 'sent' ? pending.initialResult : null
-  )
-  const [sending, setSending] = useState(false)
+  const { initialSend } = pending
+  const [result, setResult] = useState<VerificationSendResult | null>(null)
+  // Sign-up's own send is still in flight when the card appears.
+  const [sending, setSending] = useState(!!initialSend)
+
+  // Every send, the first and each resend, ends in a visible outcome: a
+  // success banner, or an error with the resend button as the retry.
+  useEffect(() => {
+    if (!initialSend) return
+    let active = true
+    initialSend.then((sent) => {
+      if (!active) return
+      setResult(sent)
+      setSending(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [initialSend])
 
   const handleResend = async () => {
+    setResult(null)
     setSending(true)
     setResult(await requestVerificationEmail(pending.idToken, lang, API_BASE_URL))
     setSending(false)
@@ -49,7 +66,11 @@ export default function VerifyEmailCard({ pending, onBack }: { pending: PendingV
       <AppText style={styles.title}>{t(signup ? 'verifyNotice_signupTitle' : 'verifyNotice_loginTitle')}</AppText>
       <AppText style={styles.subtitle}>{t(signup ? 'verifyNotice_signupMessage' : 'verifyNotice_loginMessage')}</AppText>
       <AppText ltr style={styles.email}>{pending.email}</AppText>
-      {result && <Notice message={t(RESULT_MESSAGES[result])} tone={result === 'sent' ? 'success' : 'error'} />}
+      {sending ? (
+        <Notice message={t('verifyNotice_sending')} tone="info" />
+      ) : (
+        result && <Notice message={t(RESULT_MESSAGES[result])} tone={result === 'sent' ? 'success' : 'error'} />
+      )}
       <Button
         label={sending ? t('verifyNotice_resendBusy') : t('verifyNotice_resendBtn')}
         onPress={handleResend}

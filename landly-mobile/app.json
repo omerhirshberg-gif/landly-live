@@ -29,6 +29,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
+      "expo-web-browser",
       [
         "expo-localization",
         {

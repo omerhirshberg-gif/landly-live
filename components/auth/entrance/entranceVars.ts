@@ -52,7 +52,6 @@ export const ENTRANCE_VARS = {
   '--from-base-scale': String(FROM.baseScale),
   '--from-arrow-y': `${FROM.arrowY}px`,
   '--from-arrow-scale': String(FROM.arrowScale),
-  '--from-glow-scale': String(FROM.glowScale),
   '--from-wordmark-y': `${FROM.wordmarkY}px`,
   '--from-card-rise': `${FROM.cardRise}px`,
 } as CSSProperties

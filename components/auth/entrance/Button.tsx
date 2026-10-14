@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from 'react'
 
 // Web counterpart of landly-mobile/src/components/Button.tsx: press feedback
 // lands on press-in (scale 0.97 + the darker fill), hover only where a real
-// pointer can hover, and an optional trailing forward arrow.
+// pointer can hover, and an optional trailing forward arrow (flips in RTL).
 export default function Button({
   label,
   busy,
@@ -46,12 +46,12 @@ export default function Button({
       {busy && (
         <span
           aria-hidden="true"
-          className={`mr-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin ${primary ? 'text-white' : 'text-brand'}`}
+          className={`me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin ${primary ? 'text-white' : 'text-brand'}`}
         />
       )}
       <span className={large ? 'text-[17px] font-extrabold tracking-[0.2px]' : 'text-base font-bold'}>{label}</span>
       {arrow && !busy && (
-        <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ml-2.5">
+        <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ms-2.5 rtl:-scale-x-100">
           <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
       )}

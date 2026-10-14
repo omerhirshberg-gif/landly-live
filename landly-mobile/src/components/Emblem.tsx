@@ -1,7 +1,8 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedProps, type SharedValue } from 'react-native-reanimated'
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 import { ARCH, ARROW, EMBLEM_COLORS, EMBLEM_VIEWBOX, STAR } from '@shared/brand/emblemPaths'
+import { webOnly } from '../lib/webStyles'
 
 const VIEWBOX = `0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`
 type Part = typeof STAR
@@ -17,9 +18,15 @@ function PartPaths({ part }: { part: Part }) {
 
 // Every layer is a full-size SVG over the same viewBox, so stacked layers line
 // up exactly and the static emblem is pixel-identical to the assembled intro.
+// The paths are exact geometry (see lib/brand/emblemPaths.ts). iOS and Android
+// always anti-alias them geometrically; on web the CSS shape-rendering asks the
+// browser for the same (react-native-svg has no prop for it, and RN's style
+// types don't know the property).
+const CRISP = webOnly({ shapeRendering: 'geometricPrecision' }) as unknown as ViewStyle
+
 function Layer({ children }: { children: React.ReactNode }) {
   return (
-    <Svg viewBox={VIEWBOX} width="100%" height="100%" style={StyleSheet.absoluteFill}>
+    <Svg viewBox={VIEWBOX} width="100%" height="100%" style={[StyleSheet.absoluteFill, CRISP]}>
       {children}
     </Svg>
   )

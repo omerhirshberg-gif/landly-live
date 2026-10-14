@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps, type TextStyle } from 'react-native'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
-import { webOnly } from '../lib/webStyles'
+import { isWeb, webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
 // Outline icons (Lucide-style 24px paths) shown before the value.
@@ -22,6 +23,13 @@ const EYE_OFF =
 // `natural` for free text such as a name, which follows the language instead.
 // A `secureTextEntry` field gets an eye button that shows/hides the value.
 // `error` replaces `hint` below the field and turns the border red.
+// `prefix` sits inside the field before the value (the phone country code).
+// On focus the field box (never the text itself, which would blur) grows to
+// FOCUS_SCALE along with the brand border and halo: a spring on native, a
+// CSS transition on web. Reduced motion keeps the colour change only.
+const FOCUS_SCALE = 1.025
+const FOCUS_SPRING = { damping: 15, stiffness: 120 }
+
 export default function TextField({
   label,
   icon,
@@ -31,16 +39,36 @@ export default function TextField({
   onFocus,
   onBlur,
   secureTextEntry,
+  prefix,
   ...props
-}: TextInputProps & { label: string; icon?: keyof typeof ICONS; natural?: boolean; hint?: string; error?: string | null }) {
+}: TextInputProps & {
+  label: string
+  icon?: keyof typeof ICONS
+  natural?: boolean
+  hint?: string
+  error?: string | null
+  prefix?: ReactNode
+}) {
   const { t, isRtl } = useLang()
   const rtlText = natural && isRtl
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const reduced = useReducedMotion()
+  const zoom = focused && !reduced
+  const scale = useSharedValue(1)
+
+  useEffect(() => {
+    if (!isWeb) scale.set(withSpring(zoom ? FOCUS_SCALE : 1, FOCUS_SPRING))
+  }, [zoom, scale])
+
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }))
   return (
     <View style={styles.wrap}>
       <AppText style={styles.label}>{label}</AppText>
-      <View style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError]}>
+      <Animated.View
+        style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError, isWeb ? zoom && styles.fieldZoomWeb : scaleStyle]}
+      >
+        {prefix}
         {icon && (
           <Svg
             width={18}
@@ -83,7 +111,7 @@ export default function TextField({
             </Svg>
           </Pressable>
         )}
-      </View>
+      </Animated.View>
       {error ? (
         <AppText accessibilityRole="alert" style={styles.error}>{error}</AppText>
       ) : hint ? (
@@ -105,14 +133,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     backgroundColor: colors.background,
-    ...webOnly({ minHeight: 0, height: 52, paddingHorizontal: 16, cursor: 'text', transitionProperty: 'border-color, box-shadow, background-color', transitionDuration: '150ms' }),
+    ...webOnly({
+      minHeight: 0,
+      height: 52,
+      paddingHorizontal: 16,
+      cursor: 'text',
+      // The zoom is a transform only, so it never moves the layout around it.
+      // No will-change: it would pin the box as a bitmap rasterized at 1.0,
+      // and the scaled text would stay soft instead of re-rasterizing crisp.
+      transitionProperty: 'transform, box-shadow, border-color, background-color',
+      transitionDuration: '200ms',
+      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease, ease, ease',
+    }),
   },
+  fieldZoomWeb: webOnly({ transform: [{ scale: FOCUS_SCALE }] }),
   // Focus ring: brand border plus a soft brand halo (iOS shadow; Android keeps the border).
   fieldFocused: {
     borderColor: colors.brand,
     backgroundColor: colors.white,
     ...Platform.select({
-      web: { boxShadow: '0 0 0 4px rgba(0, 56, 184, 0.12)' },
+      web: { boxShadow: '0 0 0 4px rgba(0, 56, 184, 0.12), 0 8px 20px -8px rgba(0, 56, 184, 0.28)' },
       default: { shadowColor: colors.brand, shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
     }),
   },

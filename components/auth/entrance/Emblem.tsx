@@ -3,8 +3,10 @@ import { ARCH, ARROW, EMBLEM_COLORS, EMBLEM_VIEWBOX, STAR } from '@/lib/brand/em
 import styles from './entrance.module.css'
 
 // Web counterpart of landly-mobile/src/components/Emblem.tsx: the same vector
-// parts, each a full-size SVG over the same viewBox, so stacked layers line
-// up exactly and the static emblem is pixel-identical to the assembled intro.
+// parts (exact geometry, see lib/brand/emblemPaths.ts), each a full-size SVG
+// over the same viewBox, so stacked layers line up exactly and the static
+// emblem is pixel-identical to the assembled intro. geometricPrecision keeps
+// the browser from trading edge accuracy for speed.
 const VIEWBOX = `0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`
 type Part = typeof STAR
 
@@ -19,7 +21,7 @@ function PartPaths({ part }: { part: Part }) {
 
 function Layer({ children }: { children: ReactNode }) {
   return (
-    <svg viewBox={VIEWBOX} className={styles.svg} aria-hidden="true" focusable="false">
+    <svg viewBox={VIEWBOX} className={styles.svg} shapeRendering="geometricPrecision" aria-hidden="true" focusable="false">
       {children}
     </svg>
   )
