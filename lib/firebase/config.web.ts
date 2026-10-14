@@ -1,6 +1,8 @@
 import Constants from 'expo-constants'
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app'
+import * as firebaseAuth from 'firebase/auth'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import type * as BrowserAuth from '@firebase/auth/dist/auth-public'
 import { getFirestore } from 'firebase/firestore'
 
 // Expo web counterpart of ./config.ts (landly-mobile run in a browser) --
@@ -17,6 +19,10 @@ if (!firebaseConfig?.apiKey || !firebaseConfig.projectId) {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 
+// "Remember me" on the login screen switches between this and in-memory, as
+// on native. (landly-mobile's tsconfig types firebase/auth as its React
+// Native build, which lacks the browser persistences this bundle has.)
+export const devicePersistence = (firebaseAuth as unknown as typeof BrowserAuth).browserLocalPersistence
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { requestVerificationEmail, type VerificationSendResult } from '@/lib/auth/requestVerificationEmail'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
@@ -8,10 +8,21 @@ import Button from './entrance/Button'
 import Notice from './entrance/Notice'
 
 const RESULT_MESSAGES: Record<VerificationSendResult, TranslationKey> = {
-  sent: 'verifyNotice_resent',
+  sent: 'verifyNotice_sent',
   rateLimited: 'verifyNotice_rateLimited',
   unauthorized: 'verifyNotice_sessionExpired',
   failed: 'verifyNotice_sendFailed',
+  offline: 'verifyNotice_offline',
+  // Logged to the console with the redirect; to the user it's a failed send.
+  misconfigured: 'verifyNotice_sendFailed',
+}
+
+export interface PendingVerification {
+  variant: 'signup' | 'login'
+  email: string
+  idToken: string
+  /** The first send, still in flight (signup sends one up front without waiting for it). */
+  initialSend?: Promise<VerificationSendResult>
 }
 
 // Shown in place of the signup/login form once an email+password account is
@@ -23,24 +34,37 @@ export default function VerifyEmailNotice({
   variant,
   email,
   idToken,
-  initialResult,
+  initialSend,
   onBack,
 }: {
   variant: 'signup' | 'login'
   email: string
   idToken: string
-  initialResult?: VerificationSendResult
+  initialSend?: Promise<VerificationSendResult>
   onBack: () => void
 }) {
   const { t, lang } = useLang()
-  // After signup the first send already happened, so its success is implied
-  // by the "check your inbox" copy -- only surface it if it went wrong.
-  const [result, setResult] = useState<VerificationSendResult | null>(
-    initialResult && initialResult !== 'sent' ? initialResult : null
-  )
-  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<VerificationSendResult | null>(null)
+  // Sign-up's own send is still in flight when the card appears.
+  const [sending, setSending] = useState(!!initialSend)
+
+  // Every send, the first and each resend, ends in a visible outcome: a
+  // success banner, or an error with the resend button as the retry.
+  useEffect(() => {
+    if (!initialSend) return
+    let active = true
+    initialSend.then((sent) => {
+      if (!active) return
+      setResult(sent)
+      setSending(false)
+    })
+    return () => {
+      active = false
+    }
+  }, [initialSend])
 
   const handleResend = async () => {
+    setResult(null)
     setSending(true)
     setResult(await requestVerificationEmail(idToken, lang))
     setSending(false)
@@ -56,7 +80,11 @@ export default function VerifyEmailNotice({
       </p>
       <p className="-mt-2 mb-6 text-center text-sm font-bold text-slate-700" dir="ltr">{email}</p>
 
-      {result && <Notice tone={result === 'sent' ? 'success' : 'error'}>{t(RESULT_MESSAGES[result])}</Notice>}
+      {sending ? (
+        <Notice tone="info">{t('verifyNotice_sending')}</Notice>
+      ) : (
+        result && <Notice tone={result === 'sent' ? 'success' : 'error'}>{t(RESULT_MESSAGES[result])}</Notice>
+      )}
 
       <Button
         label={sending ? t('verifyNotice_resendBusy') : t('verifyNotice_resendBtn')}

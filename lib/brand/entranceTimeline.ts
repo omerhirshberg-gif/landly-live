@@ -5,7 +5,7 @@
 //
 //   0    – 1100  Star of David + arch: scale 0.85 -> 1, outline first, then fill
 //   1100 – 1750  Arrow bursts out of its tail and springs into place
-//   1750 – 2300  Glow, wordmark and slogan fade in
+//   1750 – 2300  Wordmark and slogan fade in
 //   2300 – 2950  Diagonal shine sweeps bottom-left -> top-right
 export const T = {
   arrow: 1100,
@@ -50,7 +50,6 @@ export const FROM = {
   baseScale: 0.85,
   arrowY: 46,
   arrowScale: 0.55,
-  glowScale: 0.85,
   wordmarkY: 6,
   cardRise: 40,
 } as const

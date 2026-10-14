@@ -1,3 +1,5 @@
+import { EMBLEM_AXIS_X, EMBLEM_VIEWBOX } from '@/lib/brand/emblemPaths'
+import { WORDMARK_COLOR, WORDMARK_PATH, WORDMARK_VIEWBOX } from '@/lib/brand/wordmarkPath'
 import { ArrowLayer, BaseLayer, BaseOutlineLayer, ShineLayer, StaticEmblem } from './Emblem'
 import styles from './entrance.module.css'
 
@@ -10,9 +12,16 @@ import styles from './entrance.module.css'
 export type EntranceMode = 'pending' | 'intro' | 'settled'
 
 // Web counterpart of landly-mobile/src/components/BrandHero.tsx: the vector
-// emblem over a soft blue radial glow, the "Landly" wordmark and the slogan
-// as live text, at the same sizes. The staged timings come from
+// emblem, the vector "Landly" wordmark and the slogan as live text, at the
+// same sizes. The staged timings come from
 // lib/brand/entranceTimeline.ts via entranceVars.ts.
+
+const EMBLEM_WIDTH = 112 // .emblem in entrance.module.css
+// The emblem box is offset so the star's axis, not the box (whose right side
+// holds the arrow's reach), sits over the centre of the text, as in the master
+// logo. Rounded to a whole pixel.
+const EMBLEM_SHIFT = Math.round(((EMBLEM_VIEWBOX.width / 2 - EMBLEM_AXIS_X) * EMBLEM_WIDTH) / EMBLEM_VIEWBOX.width)
+const WORDMARK_VB = `${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`
 export default function BrandHero({ mode }: { mode: EntranceMode }) {
   const intro = mode === 'intro'
   return (
@@ -21,9 +30,7 @@ export default function BrandHero({ mode }: { mode: EntranceMode }) {
       aria-label="Landly — Lifestyle & Growth"
       className={[styles.hero, intro && styles.intro, mode === 'pending' && styles.pending].filter(Boolean).join(' ')}
     >
-      <div className={styles.glow} />
-
-      <div className={styles.emblem}>
+      <div className={styles.emblem} style={{ left: EMBLEM_SHIFT }}>
         {intro ? (
           <>
             <div className={`${styles.layer} ${styles.base}`}>
@@ -52,8 +59,9 @@ export default function BrandHero({ mode }: { mode: EntranceMode }) {
         )}
       </div>
 
-      {/* Intrinsic size for layout; displayed at 104x29.5 like mobile. */}
-      <img src="/logo-wordmark.png" alt="" width={169} height={48} className={styles.wordmark} />
+      <svg viewBox={WORDMARK_VB} className={styles.wordmark} shapeRendering="geometricPrecision" aria-hidden="true" focusable="false">
+        <path d={WORDMARK_PATH} fill={WORDMARK_COLOR} />
+      </svg>
       <span className={styles.slogan}>LIFESTYLE &amp; GROWTH</span>
     </div>
   )

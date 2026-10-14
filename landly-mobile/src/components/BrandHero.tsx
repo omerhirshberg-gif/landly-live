@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { Platform, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,24 +10,31 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import Svg, { Path } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
 import { ArrowLayer, BaseLayer, BaseOutlineLayer, ShineLayer, StaticEmblem } from './Emblem'
-import { EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
+import { EMBLEM_AXIS_X, EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
+import { WORDMARK_COLOR, WORDMARK_PATH, WORDMARK_VIEWBOX } from '@shared/brand/wordmarkPath'
 import { ARROW_SPRING, CURVES, FROM, T } from '@shared/brand/entranceTimeline'
-import RadialGlow from './RadialGlow'
 
-// The vector Landly emblem over a soft blue radial glow, the "Landly"
-// wordmark (assets/logo-wordmark.png, background removed) and the slogan as
-// live text. The splash plays it with `intro`; the login header renders the
+// The vector Landly emblem, the vector "Landly" wordmark
+// (lib/brand/wordmarkPath.ts) and the slogan as live text. The splash plays it with `intro`; the login header renders the
 // finished state at the same size, so the splash can hand its logo over to
 // the login screen without a seam.
 const EMBLEM_W = 112
 export const EMBLEM = { width: EMBLEM_W, height: Math.round((EMBLEM_W * EMBLEM_VIEWBOX.height) / EMBLEM_VIEWBOX.width) }
-const WORDMARK = { width: 104, height: 29.5 } // logo-wordmark.png is 169x48
+// The emblem box is offset so the star's axis, not the box (whose right side
+// holds the arrow's reach), sits over the centre of the text, as in the master
+// logo. Rounded to a whole pixel.
+const EMBLEM_SHIFT = Math.round(((EMBLEM_VIEWBOX.width / 2 - EMBLEM_AXIS_X) * EMBLEM_W) / EMBLEM_VIEWBOX.width)
+// Whole pixels throughout, so nothing lands on a half-pixel row.
+const WORDMARK = { width: 100, height: 28 }
+const WORDMARK_VB = `${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`
+const WORDMARK_GAP = 10
 const GAP = 8
 const SLOGAN_HEIGHT = 14
-export const HERO = { width: 240, height: EMBLEM.height + GAP + WORDMARK.height + GAP + SLOGAN_HEIGHT }
-const GLOW = 340
+const SLOGAN_TRACKING = 3.2
+export const HERO = { width: 240, height: EMBLEM.height + WORDMARK_GAP + WORDMARK.height + GAP + SLOGAN_HEIGHT }
 
 const EASE_OUT = Easing.bezier(...CURVES.easeOut)
 const EASE_OUT_SOFT = Easing.bezier(...CURVES.easeOutSoft)
@@ -74,7 +81,7 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
     arrowOpacity.set(withDelay(T.arrow, withTiming(1, { duration: T.arrowFadeMs })))
     arrowY.set(withDelay(T.arrow, withSpring(0, ARROW_SPRING)))
     arrowScale.set(withDelay(T.arrow, withSpring(1, ARROW_SPRING)))
-    // Stage 3 — glow, wordmark, slogan
+    // Stage 3 — wordmark, slogan
     reveal.set(withDelay(T.reveal, withTiming(1, { duration: T.revealMs, easing: EASE_OUT })))
     slogan.set(withDelay(T.slogan, withTiming(1, { duration: T.shine - T.slogan, easing: EASE_OUT })))
     // Stage 4 — shine sweep, then hand back to the splash
@@ -91,10 +98,6 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
     opacity: arrowOpacity.get(),
     transform: [{ translateY: arrowY.get() }, { scale: arrowScale.get() }],
   }))
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: reveal.get(),
-    transform: [{ scale: FROM.glowScale + (1 - FROM.glowScale) * reveal.get() }],
-  }))
   const wordmarkStyle = useAnimatedStyle(() => ({
     opacity: reveal.get(),
     transform: [{ translateY: FROM.wordmarkY * (1 - reveal.get()) }],
@@ -108,10 +111,6 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       accessibilityRole="image"
       accessibilityLabel="Landly — Lifestyle & Growth"
     >
-      <Animated.View style={[styles.glow, glowStyle]}>
-        <RadialGlow size={GLOW} color="#0066FF" intensity={0.14} style={styles.glowFill} />
-      </Animated.View>
-
       <View style={styles.emblem}>
         {staged ? (
           <>
@@ -135,7 +134,9 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       </View>
 
       <Animated.View style={wordmarkStyle}>
-        <Image source={require('../../assets/logo-wordmark.png')} style={styles.wordmark} resizeMode="contain" />
+        <Svg viewBox={WORDMARK_VB} width={WORDMARK.width} height={WORDMARK.height} style={styles.wordmark}>
+          <Path d={WORDMARK_PATH} fill={WORDMARK_COLOR} />
+        </Svg>
       </Animated.View>
       <Animated.View style={sloganStyle}>
         <Text style={styles.slogan} allowFontScaling={false} numberOfLines={1}>
@@ -148,20 +149,20 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
 
 const styles = StyleSheet.create({
   hero: { ...HERO, alignItems: 'center' },
-  // Centered on the emblem rather than the whole block.
-  glow: { position: 'absolute', width: GLOW, height: GLOW, left: (HERO.width - GLOW) / 2, top: (EMBLEM.height - GLOW) / 2 },
-  glowFill: { left: 0, top: 0 },
-  emblem: EMBLEM,
+  emblem: { ...EMBLEM, left: EMBLEM_SHIFT },
   arrowOrigin: { transformOrigin: '12% 96%' },
-  wordmark: { ...WORDMARK, marginTop: GAP },
-  // Ink colour sampled from the wordmark so the live slogan matches the artwork.
+  wordmark: { ...WORDMARK, marginTop: WORDMARK_GAP },
+  // Same ink as the wordmark. iOS and browsers add the letter-spacing after the
+  // last letter too (Android splits it either side of each letter); the
+  // matching start padding keeps the letters themselves centred.
   slogan: {
     marginTop: GAP,
+    paddingLeft: Platform.OS === 'android' ? 0 : SLOGAN_TRACKING,
     height: SLOGAN_HEIGHT,
     lineHeight: SLOGAN_HEIGHT,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 3.2,
+    letterSpacing: SLOGAN_TRACKING,
     color: '#19264b',
     textAlign: 'center',
     writingDirection: 'ltr',

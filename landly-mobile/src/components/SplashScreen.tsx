@@ -28,7 +28,7 @@ const PULSE = {
 }
 
 // Branded launch overlay. BrandHero plays its staged intro (star, arrow,
-// slogan + glow, shine); once that has finished and `ready` is true, the
+// slogan, shine); once that has finished and `ready` is true, the
 // hero glides to the login screen's hero position while the backdrop fades,
 // so splash and sign-in read as one continuous scene.
 export default function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {

@@ -29,6 +29,9 @@ export async function signInCustomerWithEmail(
     await signOut(auth)
     return { status: 'unverified', email: cred.user.email ?? email, idToken }
   }
+  // Sign-up doesn't wait on Firestore (see signUpCustomer), so the first
+  // verified sign-in is where the profile doc is created.
+  await ensureUserDocument(cred.user, { preferredLanguage: currentLang })
   return {
     status: 'signedIn',
     user: cred.user,

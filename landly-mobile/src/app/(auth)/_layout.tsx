@@ -1,20 +1,7 @@
 import { Stack } from 'expo-router'
-import { StyleSheet, View } from 'react-native'
-import { EnglishOnly } from '../../i18n/LangProvider'
 
-// The auth flow is English-only. The root view sets `direction` from the app
-// language, so this container pins left-to-right for these screens even when
-// the app itself is in Hebrew.
+// Sign in and sign up follow the app language and direction; the root view
+// sets `direction` from it (and the onboarding wizard's first card chooses it).
 export default function AuthLayout() {
-  return (
-    <EnglishOnly>
-      <View style={styles.ltr}>
-        <Stack screenOptions={{ headerShown: false, contentStyle: styles.ltr }} />
-      </View>
-    </EnglishOnly>
-  )
+  return <Stack screenOptions={{ headerShown: false }} />
 }
-
-const styles = StyleSheet.create({
-  ltr: { flex: 1, direction: 'ltr' },
-})

@@ -18,8 +18,9 @@ service cloud.firestore {
     }
 
     // Each user may read and write only their own document, keyed by their auth UID.
-    // create is allowed before verification: the signup page writes this doc
-    // right after creating the account, before the verification email is sent.
+    // create is allowed before verification: older app builds write this doc
+    // right after sign-up (current ones leave it to /api/auth/send-verification,
+    // with the first verified sign-in as fallback).
     // A missing own profile is readable before verification for signup.
     // Business membership always takes precedence over a customer profile.
     match /users/{userId} {

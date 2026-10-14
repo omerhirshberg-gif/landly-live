@@ -3,29 +3,36 @@ import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSh
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { inMemoryPersistence, setPersistence } from 'firebase/auth'
+import { isProfileComplete, passwordStrength, signUpFormError } from '@shared/auth/onboarding'
 import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
+import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { auth, devicePersistence } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
+import { getUserDocument } from '@shared/firebase/users'
+import type { Lang } from '@shared/i18n/translations'
 import { CARD_DELAY_MS, CARD_FADE_MS, CURVES, FROM } from '@shared/brand/entranceTimeline'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
+import GoogleButton from '../../components/GoogleButton'
 import { ENTRANCE_SPRING, useEntrance } from '../../components/Entrance'
 import Notice from '../../components/Notice'
 import BrandHero from '../../components/BrandHero'
 import SegmentedControl from '../../components/SegmentedControl'
 import TextField from '../../components/TextField'
 import { useSignInGate } from '../../auth/SignInGate'
-import SignUpForm from '../../auth/SignUpForm'
+import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSignIn'
+import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
+import PasswordStrengthMeter from '../../auth/onboarding/PasswordStrengthMeter'
 import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmailCard'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
+import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
 import { VIEWPORT_HEIGHT, webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
 
 // Password reset and business login stay on the website for now.
 const openWeb = (path: string) => Linking.openURL(`${API_BASE_URL}${path}`)
-
 
 type Mode = 'signIn' | 'signUp'
 
@@ -33,9 +40,17 @@ const EASE_OUT = Easing.bezier(...CURVES.easeOut)
 // The card rises this far as the splash logo settles into the hero spot.
 const CARD_RISE = FROM.cardRise
 
+// Both tabs share one hero above the card and one tab control inside it, so
+// switching never re-mounts either (the splash logo may still be landing on
+// the hero). Sign Up asks for credentials only; the OnboardingWizard
+// (language, persona, WhatsApp, notifications) replaces the card after a
+// sign-in whose profile is incomplete, with the hero hidden so every card
+// fits the screen without scrolling.
+
 export default function LoginScreen() {
-  const { t, appLang, setLang } = useLang()
-  const { setChecking } = useSignInGate()
+  const { t, lang, setLang } = useLang()
+  const { setChecking, onboarding, setOnboarding } = useSignInGate()
+  const keyboardVisible = useKeyboardVisible()
   const { phase, setHeroRect } = useEntrance()
   const reduced = useReducedMotion()
   const heroRef = useRef<View>(null)
@@ -51,6 +66,24 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [confirm, setConfirm] = useState('')
+  const [signUpError, setSignUpError] = useState<ReturnType<typeof signUpFormError>>(null)
+
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError(null)
+    setBusinessAccount(false)
+    setSignUpError(null)
+  }
+
+  // A signed-in member with an unfinished profile stays behind the gate and
+  // gets the wizard; everyone else is let through to the tabs. Runs while
+  // the gate is still held closed by `checking`.
+  const afterSignIn = async (uid: string, preferredLanguage: Lang | null) => {
+    if (preferredLanguage) setLang(preferredLanguage)
+    if (!isProfileComplete(await getUserDocument(uid))) setOnboarding(true)
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -61,17 +94,16 @@ export default function LoginScreen() {
       // Same contract as the web login: unchecked keeps the session in memory
       // only, so it ends when the app is closed.
       await setPersistence(auth, rememberMe ? devicePersistence : inMemoryPersistence)
-      // The real app language, not this screen's forced English: the account's
-      // saved preference is applied to the app only if it differs from it.
-      const result = await signInCustomerWithEmail(email.trim(), password, appLang)
+      // The account's saved language is applied only if it differs from the current one.
+      const result = await signInCustomerWithEmail(email.trim(), password, lang)
       if (result.status === 'businessAccount') {
         setBusinessAccount(true)
         setSubmitting(false)
       } else if (result.status === 'unverified') {
         setPending({ variant: 'login', email: result.email, idToken: result.idToken })
         setSubmitting(false)
-      } else if (result.preferredLanguage) {
-        setLang(result.preferredLanguage)
+      } else {
+        await afterSignIn(result.user.uid, result.preferredLanguage)
       }
       // On success the root layout swaps this screen for the tabs once the gate opens.
     } catch (err) {
@@ -81,6 +113,56 @@ export default function LoginScreen() {
       setChecking(false)
     }
   }
+
+  // Credentials only. Email+password accounts stay locked until the emailed
+  // link is clicked: signUpCustomer creates the account and signs straight
+  // back out, and the "check your inbox" card replaces the form at once while
+  // the verification email is still on its way (that request also creates
+  // the profile doc). The wizard runs on the first verified sign-in.
+  const handleSignUp = async () => {
+    setError(null)
+    const invalid = signUpFormError(email, password, confirm)
+    setSignUpError(invalid)
+    if (invalid) return
+    setSubmitting(true)
+    // Keeps the root layout from reacting to the brief unverified session.
+    setChecking(true)
+    try {
+      const result = await signUpCustomer(email.trim(), password, lang, API_BASE_URL)
+      setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
+    } catch (err) {
+      setError(getAuthErrorMessage(err))
+    } finally {
+      setChecking(false)
+      setSubmitting(false)
+    }
+  }
+
+  // Google from either tab. Native builds need an OAuth client ID per
+  // platform (see auth/googleSignIn.ts); until then the button explains why.
+  const handleGoogle = async () => {
+    setError(null)
+    setBusinessAccount(false)
+    if (!GOOGLE_SIGN_IN_CONFIGURED) {
+      setError(t('onb_googleUnavailable'))
+      return
+    }
+    setGoogleBusy(true)
+    setChecking(true)
+    try {
+      await setPersistence(auth, rememberMe ? devicePersistence : inMemoryPersistence)
+      const result = await signInWithGoogle(lang)
+      if (result.status === 'businessAccount') setBusinessAccount(true)
+      else if (result.status === 'signedIn') await afterSignIn(result.user.uid, result.preferredLanguage)
+    } catch (err) {
+      setError(getAuthErrorMessage(err))
+    } finally {
+      setChecking(false)
+      setGoogleBusy(false)
+    }
+  }
+
+  const handleWizardComplete = () => setOnboarding(false)
 
   // The card and top bar rise in while the splash logo glides into the hero.
   useEffect(() => {
@@ -105,27 +187,42 @@ export default function LoginScreen() {
   const handleBackToSignIn = () => {
     if (pending) setEmail(pending.email)
     setPassword('')
+    setConfirm('')
     setPending(null)
-    setMode('signIn')
+    switchMode('signIn')
   }
+
+  const signUp = mode === 'signUp'
+  const busy = submitting || googleBusy
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.main}>
+        {/* Onboarding cards are sized to fit without scrolling (no hero,
+            compact header, subtitles dropped while typing); scrolling remains
+            only as a fallback for very large accessibility text, and never bounces. */}
+        <ScrollView
+          contentContainerStyle={[styles.content, onboarding && styles.contentCompact]}
+          keyboardShouldPersistTaps="handled"
+          alwaysBounceVertical={false}
+        >
+          <View style={[styles.main, onboarding && keyboardVisible && styles.mainTop]}>
             {/* Hidden until the splash hands over: its logo is landing on this exact spot. */}
-            <View
-              ref={heroRef}
-              collapsable={false}
-              onLayout={reportHero}
-              style={[styles.header, phase !== 'done' && styles.hidden]}
-            >
-              <BrandHero />
-            </View>
+            {!onboarding && (
+              <View
+                ref={heroRef}
+                collapsable={false}
+                onLayout={reportHero}
+                style={[styles.header, phase !== 'done' && styles.hidden]}
+              >
+                <BrandHero />
+              </View>
+            )}
 
             <Animated.View style={[styles.card, riseStyle]}>
-              {pending ? (
+              {onboarding ? (
+                <OnboardingWizard onComplete={handleWizardComplete} />
+              ) : pending ? (
                 <VerifyEmailCard pending={pending} onBack={handleBackToSignIn} />
               ) : (
                 <>
@@ -135,22 +232,80 @@ export default function LoginScreen() {
                       { value: 'signUp', label: t('signup_title') },
                     ]}
                     value={mode}
-                    onChange={setMode}
+                    onChange={switchMode}
                     style={styles.modeSwitch}
                   />
 
-                  {mode === 'signIn' ? (
-                    <>
-                      {error && <Notice message={error} />}
-                      {businessAccount && (
-                        <View style={styles.businessNotice}>
-                          <Notice message={t('login_businessAccountError')} />
-                          <Pressable accessibilityRole="link" onPress={() => openWeb('/business/login')} hitSlop={8} style={styles.pointer}>
-                            <AppText style={[styles.link, styles.center]}>{t('login_businessAccountLink')}</AppText>
-                          </Pressable>
-                        </View>
-                      )}
+                  {error && <Notice message={error} />}
+                  {businessAccount && (
+                    <View style={styles.businessNotice}>
+                      <Notice message={t('login_businessAccountError')} />
+                      <Pressable accessibilityRole="link" onPress={() => openWeb('/business/login')} hitSlop={8} style={styles.pointer}>
+                        <AppText style={[styles.link, styles.center]}>{t('login_businessAccountLink')}</AppText>
+                      </Pressable>
+                    </View>
+                  )}
 
+                  {signUp ? (
+                    <>
+                      <TextField
+                        label={t('signup_emailLabel')}
+                        icon="mail"
+                        value={email}
+                        onChangeText={(v) => {
+                          setEmail(v)
+                          setSignUpError(null)
+                        }}
+                        error={signUpError === 'onb_emailInvalid' ? t(signUpError) : undefined}
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        keyboardType="email-address"
+                        textContentType="emailAddress"
+                        returnKeyType="next"
+                      />
+                      <TextField
+                        label={t('onb_createPasswordLabel')}
+                        icon="lock"
+                        value={password}
+                        onChangeText={(v) => {
+                          setPassword(v)
+                          setSignUpError(null)
+                        }}
+                        error={signUpError === 'onb_passwordTooShort' ? t(signUpError) : undefined}
+                        secureTextEntry
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="next"
+                      />
+                      <PasswordStrengthMeter strength={passwordStrength(password)} />
+                      <TextField
+                        label={t('onb_confirmPasswordLabel')}
+                        icon="lock"
+                        value={confirm}
+                        onChangeText={(v) => {
+                          setConfirm(v)
+                          setSignUpError(null)
+                        }}
+                        error={signUpError === 'onb_passwordMismatch' ? t(signUpError) : undefined}
+                        secureTextEntry
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="go"
+                        onSubmitEditing={handleSignUp}
+                      />
+                      <View style={styles.cta}>
+                        <Button
+                          label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
+                          onPress={handleSignUp}
+                          busy={submitting}
+                          disabled={!email || !password || !confirm || googleBusy}
+                          large
+                          arrow
+                        />
+                      </View>
+                    </>
+                  ) : (
+                    <>
                       <TextField
                         label={t('login_emailLabel')}
                         icon="mail"
@@ -173,7 +328,6 @@ export default function LoginScreen() {
                         returnKeyType="go"
                         onSubmitEditing={handleSubmit}
                       />
-
                       <View style={styles.actionRow}>
                         <Checkbox label={t('login_rememberMe')} checked={rememberMe} onChange={setRememberMe} />
                         <Pressable
@@ -185,33 +339,32 @@ export default function LoginScreen() {
                           <AppText style={styles.forgotText}>{t('login_forgotLink')}</AppText>
                         </Pressable>
                       </View>
-
                       <Button
                         label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
                         onPress={handleSubmit}
                         busy={submitting}
-                        disabled={!email || !password}
+                        disabled={!email || !password || googleBusy}
                         large
                         arrow
                       />
                     </>
-                  ) : (
-                    <SignUpForm onPendingVerification={setPending} />
                   )}
+
+                  <View style={styles.divider}>
+                    <View style={styles.rule} />
+                    <AppText style={styles.or}>{t('login_orDivider')}</AppText>
+                    <View style={styles.rule} />
+                  </View>
+                  <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onPress={handleGoogle} disabled={busy} />
                 </>
               )}
             </Animated.View>
 
-            {!pending && (
+            {!pending && !onboarding && (
               <Animated.View style={[styles.footer, fadeStyle]}>
-                <AppText style={styles.muted}>{t(mode === 'signIn' ? 'login_noAccount' : 'signup_haveAccount')}</AppText>
-                <Pressable
-                  accessibilityRole="link"
-                  onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')}
-                  hitSlop={12}
-                  style={styles.pointer}
-                >
-                  <AppText style={styles.link}>{t(mode === 'signIn' ? 'login_signupLink' : 'signup_loginLink')}</AppText>
+                <AppText style={styles.muted}>{t(signUp ? 'signup_haveAccount' : 'login_noAccount')}</AppText>
+                <Pressable accessibilityRole="link" onPress={() => switchMode(signUp ? 'signIn' : 'signUp')} hitSlop={12} style={styles.pointer}>
+                  <AppText style={styles.link}>{t(signUp ? 'signup_loginLink' : 'login_signupLink')}</AppText>
                 </Pressable>
               </Animated.View>
             )}
@@ -223,7 +376,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, direction: 'ltr' },
+  safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   content: {
     flexGrow: 1,
@@ -233,6 +386,8 @@ const styles = StyleSheet.create({
     // Web: fill the browser viewport and center the column in it.
     ...webOnly({ minHeight: VIEWPORT_HEIGHT, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }),
   },
+  // Onboarding: less vertical padding, so each card fits one screen.
+  contentCompact: { paddingTop: 4, paddingBottom: 12, ...webOnly({ paddingTop: 12, paddingBottom: 16 }) },
   main: {
     flex: 1,
     justifyContent: 'center',
@@ -240,6 +395,8 @@ const styles = StyleSheet.create({
     // Web: one fixed-width column instead of stretching across the viewport.
     ...webOnly({ width: '100%', maxWidth: 440, alignSelf: 'center', marginHorizontal: 'auto' }),
   },
+  // With the keyboard up, the step sits at the top of the space left above it.
+  mainTop: { justifyContent: 'flex-start', paddingTop: 4 },
   header: { alignSelf: 'center', marginBottom: 24, ...webOnly({ marginBottom: 28 }) },
   hidden: { opacity: 0 },
   card: {
@@ -255,6 +412,7 @@ const styles = StyleSheet.create({
     ...webOnly({ width: '100%', maxWidth: 440, alignSelf: 'center', marginHorizontal: 'auto', padding: 32 }),
   },
   modeSwitch: { marginBottom: 24 },
+  cta: { marginTop: 4 },
   center: { textAlign: 'center' },
   businessNotice: { marginBottom: 16 },
   actionRow: {
@@ -270,5 +428,8 @@ const styles = StyleSheet.create({
   pointer: webOnly({ cursor: 'pointer' }),
   link: { fontSize: 14, fontWeight: '700', color: colors.brand },
   muted: { fontSize: 14, color: colors.textMuted },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 14 },
+  rule: { flex: 1, height: 1, backgroundColor: colors.border },
+  or: { fontSize: 12, fontWeight: '600', color: colors.textFaint, textTransform: 'uppercase' },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 24 },
 })

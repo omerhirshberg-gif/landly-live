@@ -35,13 +35,13 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { user, loading } = useAuth()
-  const { checking } = useSignInGate()
+  const { checking, onboarding } = useSignInGate()
   const { isRtl } = useLang()
 
   // signInCustomer already signs unverified accounts back out; checking
   // emailVerified here too keeps the tabs (whose Firestore reads require a
   // verified customer) from ever mounting without one.
-  const signedIn = !!user && user.emailVerified && !checking
+  const signedIn = !!user && user.emailVerified && !checking && !onboarding
 
   // The splash plays its intro, waits for auth, hands over, then removes itself.
   const [splashDone, setSplashDone] = useState(false)

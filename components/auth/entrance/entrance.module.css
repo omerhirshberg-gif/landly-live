@@ -74,12 +74,47 @@
   }
 }
 
+/* ── Sign-up wizard (compact layout) ────────────────────────────────────
+   No hero and tighter vertical padding, so each step fits one phone
+   screen without scrolling; the column stays centred on larger screens. */
+.compact {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+}
+.compact .main {
+  padding-top: 0;
+}
+.compact .heroSlot {
+  display: none;
+}
+
+/* Steps slide a short way in from the reading direction (--step-from is
+   signed by the wizard for forward/back and LTR/RTL) while fading in. */
+.step {
+  animation: onbStepIn 220ms var(--ease-out) both;
+}
+@keyframes onbStepIn {
+  from {
+    opacity: 0;
+    transform: translateX(var(--step-from, 0));
+  }
+}
+
+/* Short viewports (small phones, landscape): the one-line subtitle goes
+   first, so the fields and buttons still fit. */
+@media (max-height: 640px) {
+  .subtitle {
+    display: none;
+  }
+}
+
 /* ── Brand hero (sizes match BrandHero.tsx on mobile) ───────────────────
-   emblem 112 x 109, wordmark 104 x 29.5, slogan 14, 8px gaps. */
+   emblem 112 x 109 (shifted right so the star's axis is centred), 10px gap,
+   wordmark 100 x 28, 8px gap, slogan 14 — whole pixels throughout, so nothing
+   lands on a half-pixel row. */
 .hero {
   position: relative;
   width: 240px;
-  height: 168.5px;
+  height: 169px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -87,22 +122,6 @@
 
 .pending {
   visibility: hidden;
-}
-
-/* 340px soft brand-blue glow centred on the emblem (not the whole block). */
-.glow {
-  position: absolute;
-  width: 340px;
-  height: 340px;
-  left: -50px;
-  top: -115.5px;
-  pointer-events: none;
-  background: radial-gradient(
-    closest-side,
-    rgba(0, 102, 255, 0.14) 0%,
-    rgba(0, 102, 255, 0.063) 50%,
-    rgba(0, 102, 255, 0) 100%
-  );
 }
 
 .emblem {
@@ -121,6 +140,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  shape-rendering: geometricPrecision;
 }
 
 .arrow {
@@ -138,17 +158,22 @@
 .wordmark {
   position: relative;
   display: block;
-  width: 104px;
-  height: 29.5px;
-  margin-top: 8px;
-  object-fit: contain;
+  flex-shrink: 0;
+  width: 100px;
+  height: 28px;
+  margin-top: 10px;
+  overflow: visible;
 }
 
-/* Ink colour sampled from the wordmark so the live slogan matches the artwork. */
+/* Same ink as the wordmark. Browsers add letter-spacing after the last
+   letter too; the negative end margin takes that trailing space back out of
+   the centred box, so the letters themselves are centred. */
 .slogan {
   position: relative;
   display: block;
+  direction: ltr;
   margin-top: 8px;
+  margin-right: -3.2px;
   height: 14px;
   line-height: 14px;
   font-size: 11px;
@@ -162,7 +187,7 @@
 /* ── Staged intro ───────────────────────────────────────────────────────
      0    – 1100  Star of David + arch: scale up, outline first, then fill
      1100 – 1750  Arrow bursts out of its tail and springs into place
-     1750 – 2300  Glow, wordmark and slogan fade in
+     1750 – 2300  Wordmark and slogan fade in
      2300 – 2950  Diagonal shine sweeps bottom-left -> top-right */
 .intro .base {
   animation: landlyBaseIn var(--t-arrow) var(--ease-out-soft) both;
@@ -193,9 +218,6 @@
   }
 }
 
-.intro .glow {
-  animation: landlyGlowIn var(--t-reveal-ms) var(--ease-out) var(--t-reveal) both;
-}
 .intro .wordmark {
   animation: landlyRise var(--t-reveal-ms) var(--ease-out) var(--t-reveal) both;
 }
@@ -219,9 +241,6 @@
 }
 @keyframes landlyArrowIn {
   from { transform: translateY(var(--from-arrow-y)) scale(var(--from-arrow-scale)); }
-}
-@keyframes landlyGlowIn {
-  from { opacity: 0; transform: scale(var(--from-glow-scale)); }
 }
 @keyframes landlyRise {
   from { opacity: 0; transform: translateY(var(--from-wordmark-y)); }
@@ -284,5 +303,8 @@
   .root[data-entrance='intro'] .card,
   .root[data-entrance='settled'] .card {
     animation: landlyFadeIn var(--card-fade-ms) var(--ease-out) var(--card-delay) both;
+  }
+  .step {
+    animation: landlyFadeIn 150ms var(--ease-out) both;
   }
 }
