@@ -33,5 +33,5 @@ export function useEntrance() {
   return ctx
 }
 
-// One spring for everything that moves in the entrance.
-export const ENTRANCE_SPRING = { damping: 15, stiffness: 90 }
+// One spring for everything that moves in the entrance (shared with the web login page).
+export { ENTRANCE_SPRING } from '@shared/brand/entranceTimeline'

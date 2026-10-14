@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native'
 import Animated, { useAnimatedProps, type SharedValue } from 'react-native-reanimated'
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
-import { ARCH, ARROW, EMBLEM_COLORS, EMBLEM_VIEWBOX, STAR } from './emblemPaths'
+import { ARCH, ARROW, EMBLEM_COLORS, EMBLEM_VIEWBOX, STAR } from '@shared/brand/emblemPaths'
 
 const VIEWBOX = `0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`
 type Part = typeof STAR

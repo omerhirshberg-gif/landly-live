@@ -1,0 +1,288 @@
+/* Auth entrance — web counterpart of the Expo login screen.
+   Every duration, curve and spring arrives as a custom property from
+   entranceVars.ts (lib/brand/entranceTimeline.ts), so this file only says
+   *what* moves. Static rules describe each element's final state; the intro
+   keyframes run from the start pose (fill-mode: both), so dropping an
+   animation always leaves the finished screen. */
+
+/* ── Screen layout ──────────────────────────────────────────────────────
+   Below 640px it matches the native app (20px gutters, 8/24 vertical
+   padding inside the safe area, 20px card padding); from 640px up it matches
+   the Expo web build (24px gutters, 32px card padding). */
+.root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  color: #334155;
+  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 20px)
+    calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 20px);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The app renders in the platform's system face (SF Pro on iOS, Roboto on
+   Android); so does this screen. Beats the site-wide `*{font-family:Heebo}`,
+   leaving Font Awesome glyphs (the back link's arrow) on their icon font. */
+.root,
+.root *:not([class*='fa-']) {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* The marketing site's mobile sticky-CTA padding doesn't belong here. */
+:global(body):has(.root) {
+  padding-bottom: 0;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 16px;
+}
+
+.heroSlot {
+  align-self: center;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 20px;
+  /* Hairline contact, soft mid and wide ambient shadow — same layers as mobile. */
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 20px -4px rgba(15, 23, 42, 0.06),
+    0 28px 56px -16px rgba(15, 23, 42, 0.14);
+}
+
+@media (min-width: 640px) {
+  .root {
+    padding: calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 40px);
+  }
+  .heroSlot {
+    margin-bottom: 28px;
+  }
+  .card {
+    padding: 32px;
+  }
+}
+
+/* ── Brand hero (sizes match BrandHero.tsx on mobile) ───────────────────
+   emblem 112 x 109, wordmark 104 x 29.5, slogan 14, 8px gaps. */
+.hero {
+  position: relative;
+  width: 240px;
+  height: 168.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pending {
+  visibility: hidden;
+}
+
+/* 340px soft brand-blue glow centred on the emblem (not the whole block). */
+.glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  left: -50px;
+  top: -115.5px;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    rgba(0, 102, 255, 0.14) 0%,
+    rgba(0, 102, 255, 0.063) 50%,
+    rgba(0, 102, 255, 0) 100%
+  );
+}
+
+.emblem {
+  position: relative;
+  width: 112px;
+  height: 109px;
+  flex-shrink: 0;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.arrow {
+  transform-origin: 12% 96%;
+}
+
+.outlineOut {
+  opacity: 0;
+}
+
+.shineBand {
+  transform: translateX(var(--shine-distance));
+}
+
+.wordmark {
+  position: relative;
+  display: block;
+  width: 104px;
+  height: 29.5px;
+  margin-top: 8px;
+  object-fit: contain;
+}
+
+/* Ink colour sampled from the wordmark so the live slogan matches the artwork. */
+.slogan {
+  position: relative;
+  display: block;
+  margin-top: 8px;
+  height: 14px;
+  line-height: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3.2px;
+  color: #19264b;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* ── Staged intro ───────────────────────────────────────────────────────
+     0    – 1100  Star of David + arch: scale up, outline first, then fill
+     1100 – 1750  Arrow bursts out of its tail and springs into place
+     1750 – 2300  Glow, wordmark and slogan fade in
+     2300 – 2950  Diagonal shine sweeps bottom-left -> top-right */
+.intro .base {
+  animation: landlyBaseIn var(--t-arrow) var(--ease-out-soft) both;
+}
+.intro .outlineIn {
+  animation: landlyFadeIn var(--t-outline-in) var(--ease-out) both;
+}
+.intro .outlineOut {
+  animation: landlyFadeOut var(--t-outline-out) var(--ease-default) var(--t-outline-out-delay) both;
+}
+.intro .fill {
+  animation: landlyFadeIn var(--t-fill) var(--ease-in-out) var(--t-fill-delay) both;
+}
+
+/* Opacity on a short timing, transform on the spring — two animations, as
+   on mobile. Browsers without linear() get an overshooting bezier instead. */
+.intro .arrow {
+  animation-name: landlyFadeIn, landlyArrowIn;
+  animation-duration: var(--t-arrow-fade), var(--t-arrow-stage);
+  animation-timing-function: var(--ease-default), cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-delay: var(--t-arrow), var(--t-arrow);
+  animation-fill-mode: both, both;
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  .intro .arrow {
+    animation-duration: var(--t-arrow-fade), var(--arrow-spring-ms);
+    animation-timing-function: var(--ease-default), var(--arrow-spring);
+  }
+}
+
+.intro .glow {
+  animation: landlyGlowIn var(--t-reveal-ms) var(--ease-out) var(--t-reveal) both;
+}
+.intro .wordmark {
+  animation: landlyRise var(--t-reveal-ms) var(--ease-out) var(--t-reveal) both;
+}
+.intro .slogan {
+  animation: landlyFadeIn var(--t-slogan-ms) var(--ease-out) var(--t-slogan) both;
+}
+.intro .shineBand {
+  animation: landlyShine var(--t-shine-ms) var(--ease-in-out) var(--t-shine) both;
+}
+
+@keyframes landlyFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes landlyFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes landlyBaseIn {
+  from { transform: scale(var(--from-base-scale)); }
+}
+@keyframes landlyArrowIn {
+  from { transform: translateY(var(--from-arrow-y)) scale(var(--from-arrow-scale)); }
+}
+@keyframes landlyGlowIn {
+  from { opacity: 0; transform: scale(var(--from-glow-scale)); }
+}
+@keyframes landlyRise {
+  from { opacity: 0; transform: translateY(var(--from-wordmark-y)); }
+}
+@keyframes landlyShine {
+  from { transform: translateX(0); }
+}
+@keyframes landlyCardRise {
+  from { transform: translateY(var(--from-card-rise)); }
+}
+
+/* ── Card and chrome entrance ───────────────────────────────────────────
+   The card rises on the entrance spring while fading in; the back link and
+   footer only fade. After the intro it starts with the reveal stage, as the
+   mobile card rises while the splash logo settles. */
+.root[data-entrance='pending'] .chrome,
+.root[data-entrance='pending'] .card {
+  visibility: hidden;
+}
+.root[data-entrance='intro'] {
+  --card-delay: calc(var(--t-reveal) + var(--card-delay-base));
+}
+.root[data-entrance='settled'] {
+  --card-delay: var(--card-delay-base);
+}
+.root[data-entrance='intro'] .chrome,
+.root[data-entrance='settled'] .chrome {
+  animation: landlyFadeIn var(--card-fade-ms) var(--ease-out) var(--card-delay) both;
+}
+.root[data-entrance='intro'] .card,
+.root[data-entrance='settled'] .card {
+  animation-name: landlyFadeIn, landlyCardRise;
+  animation-duration: var(--card-fade-ms), var(--card-fade-ms);
+  animation-timing-function: var(--ease-out), var(--ease-out-soft);
+  animation-delay: var(--card-delay), var(--card-delay);
+  animation-fill-mode: both, both;
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  .root[data-entrance='intro'] .card,
+  .root[data-entrance='settled'] .card {
+    animation-duration: var(--card-fade-ms), var(--card-spring-ms);
+    animation-timing-function: var(--ease-out), var(--card-spring);
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────
+   As on mobile: no staging, no travel — the finished mark fades in and the
+   card follows straight away. */
+@media (prefers-reduced-motion: reduce) {
+  .intro,
+  .intro * {
+    animation: none !important;
+  }
+  .intro {
+    animation: landlyFadeIn var(--t-reduced) var(--ease-out) both !important;
+  }
+  .root[data-entrance] {
+    --card-delay: var(--card-delay-base) !important;
+  }
+  .root[data-entrance='intro'] .card,
+  .root[data-entrance='settled'] .card {
+    animation: landlyFadeIn var(--card-fade-ms) var(--ease-out) var(--card-delay) both;
+  }
+}
