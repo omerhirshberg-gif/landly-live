@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
+import { greetingName } from '@shared/auth/names'
+import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
+import { useAuth } from '@shared/firebase/useAuth'
+import { getUserDocument } from '@shared/firebase/users'
 import AppText from '../../components/AppText'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
@@ -18,8 +23,32 @@ function sortOffers(offers: OfferDocument[]): OfferDocument[] {
   )
 }
 
+// The greeting fades and rises in once the profile is read, so a fallback
+// name never flashes first (web: components/home/LoggedInHome.tsx).
+const GREETING_IN = FadeInDown.duration(ONB.greetingMs)
+  .easing(Easing.bezier(...EASE_SILK))
+  .withInitialValues({ opacity: 0, transform: [{ translateY: ONB.screenRisePx }] })
+
 export default function PerksScreen() {
   const { t } = useLang()
+  const { user } = useAuth()
+  // undefined while the profile loads; null greets without a name (never the email).
+  const [name, setName] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getUserDocument(user.uid)
+      .then((doc) => {
+        if (!cancelled) setName(greetingName(doc, user.displayName))
+      })
+      .catch(() => {
+        if (!cancelled) setName(greetingName(null, user.displayName))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -57,6 +86,15 @@ export default function PerksScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
         ListHeaderComponent={
           <View style={styles.header}>
+            <View style={styles.greetingSlot}>
+              {name !== undefined && (
+                <Animated.View entering={GREETING_IN}>
+                  <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={1}>
+                    {name ? t('home_welcome').replace('{name}', name) : t('home_welcome_generic')}
+                  </AppText>
+                </Animated.View>
+              )}
+            </View>
             <AppText style={styles.label}>{t('deals_label')}</AppText>
             <AppText style={styles.title}>{t('deals_title')}</AppText>
             {failed && <Notice message={t('mobile_load_error')} />}
@@ -81,6 +119,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, flexGrow: 1 },
   header: { marginBottom: 16 },
+  greetingSlot: { minHeight: 34, marginBottom: 12 },
+  greeting: { fontSize: 26, lineHeight: 34, fontWeight: '900', color: colors.textStrong },
   label: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: '900', color: colors.textStrong },
   spinner: { marginTop: 48 },

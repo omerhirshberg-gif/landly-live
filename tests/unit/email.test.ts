@@ -56,7 +56,8 @@ function request() {
 describe('configured origin', () => {
   it('ignores all host headers in both email flows', async () => {
     expect((await reset(request())).status).toBe(200)
-    expect(mocks.reset).toHaveBeenCalledWith('person@landly.test', { url: 'https://landly.test/reset-password/success', handleCodeInApp: true })
+    expect(mocks.reset).toHaveBeenCalledWith('person@landly.test')
+    expect(mocks.reset.mock.calls[0]).toHaveLength(1)
     expect((await verify(request())).status).toBe(200)
     const emails = mocks.send.mock.calls.map(([email]) => email.html)
     expect(emails).toHaveLength(2)
@@ -64,6 +65,8 @@ describe('configured origin', () => {
       expect(email).not.toContain('attacker.invalid')
       expect(email).toContain('https://landly.test/logo.jpg')
     }
+    expect(emails[0]).toContain('href="https://landly.test/reset-password?oobCode=reset"')
+    expect(emails[0]).not.toContain('firebase.test')
     expect(emails[1]).toContain('href="https://landly.test/verify-email?oobCode=verify"')
   })
   it.each(['', 'not a URL', 'http://landly.test', 'javascript:alert(1)', 'https://user:pass@landly.test', 'https://landly.test/path', 'https://landly.test/?q=x', 'https://landly.test/#fragment'])('rejects invalid APP_URL %j without sending either email', async (origin) => {
@@ -82,7 +85,27 @@ describe('configured origin', () => {
     vi.stubEnv('NODE_ENV', 'development')
     expect(applicationOrigin()).toBe('http://localhost:3000')
   })
+  it.each(['http://192.168.7.57:3000', 'http://10.0.0.4:3000', 'http://172.16.0.2:3000', 'http://172.31.255.1:3000'])('allows HTTP private LAN %s only in development', (origin) => {
+    vi.stubEnv('APP_URL', origin)
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => applicationOrigin()).toThrow()
+    vi.stubEnv('NODE_ENV', 'development')
+    expect(applicationOrigin()).toBe(origin)
+  })
+  it.each(['http://172.32.0.1:3000', 'http://172.15.0.1:3000', 'http://8.8.8.8:3000', 'http://192.168.1.1.evil.test:3000'])('rejects HTTP non-private host %s even in development', (origin) => {
+    vi.stubEnv('APP_URL', origin)
+    vi.stubEnv('NODE_ENV', 'development')
+    expect(() => applicationOrigin()).toThrow()
+  })
   it('normalizes the trailing slash', () => { expect(applicationOrigin()).toBe('https://landly.test') })
+  it('builds the reset link on a LAN APP_URL in development without sending Firebase a continue URL', async () => {
+    vi.stubEnv('APP_URL', 'http://192.168.7.57:3000')
+    vi.stubEnv('NODE_ENV', 'development')
+    expect((await reset(request())).status).toBe(200)
+    expect(mocks.reset.mock.calls).toEqual([['person@landly.test']])
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+    expect(mocks.send.mock.calls[0][0].html).toContain('href="http://192.168.7.57:3000/reset-password?oobCode=reset"')
+  })
   it('escapes the full href and src, including quotes, ampersands and angle brackets', async () => {
     await sendBrandedEmail({
       to: 'person@landly.test', lang: 'en', origin: 'https://test.invalid/"<>&\'',

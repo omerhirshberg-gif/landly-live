@@ -8,6 +8,7 @@ import { corsHeaders } from '@/lib/auth/cors'
 import type { Lang } from '@/lib/i18n/translations'
 import { isValidLang, applicationOrigin } from '@/lib/auth/requestContext'
 import { isVerificationIpRateLimited, isVerificationUidRateLimited } from '@/lib/auth/verificationRateLimit'
+import { fullName, normalizePersonName } from '@/lib/auth/names'
 
 // gRPC status for a create() on a doc that's already there.
 const ALREADY_EXISTS = 6
@@ -17,11 +18,14 @@ const ALREADY_EXISTS = 6
 // the UI's critical path; admin/orphans relies on every customer account
 // having one. create() never overwrites an existing doc. A failure is only
 // logged: signInCustomerWithEmail also creates it on the first verified sign-in.
-async function ensureCustomerProfile(uid: string, email: string, lang: Lang) {
+// The names come from the sign-up form (only the first request carries them).
+async function ensureCustomerProfile(uid: string, email: string, lang: Lang, names: { firstName: string; lastName: string }) {
   try {
     await getAdminDb().collection('users').doc(uid).create({
       email,
-      displayName: '',
+      firstName: names.firstName,
+      lastName: names.lastName,
+      displayName: fullName(names.firstName, names.lastName),
       phone: '',
       customerType: '',
       wishlistOfferIds: [],
@@ -31,6 +35,20 @@ async function ensureCustomerProfile(uid: string, email: string, lang: Lang) {
     })
   } catch (err) {
     if ((err as { code?: unknown })?.code !== ALREADY_EXISTS) logFailure('profile', uid, err)
+  }
+}
+
+// The unverified client can't write its own Auth profile after signing out,
+// so the display name is set here too -- only if it's still empty, so a
+// later edit from the profile page is never overwritten. That's also where
+// ensureUserDocument finds the name if the create above ever failed.
+async function ensureAuthDisplayName(uid: string, current: string | undefined, names: { firstName: string; lastName: string }) {
+  const displayName = fullName(names.firstName, names.lastName)
+  if (!displayName || current) return
+  try {
+    await getAdminAuth().updateUser(uid, { displayName })
+  } catch (err) {
+    logFailure('profile', uid, err)
   }
 }
 
@@ -112,8 +130,12 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null)
   const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
+  const names = { firstName: normalizePersonName(body?.firstName), lastName: normalizePersonName(body?.lastName) }
   // Runs alongside the email; it never throws.
-  const profile = ensureCustomerProfile(decoded.uid, userRecord.email, lang)
+  const profile = Promise.all([
+    ensureCustomerProfile(decoded.uid, userRecord.email, lang, names),
+    ensureAuthDisplayName(decoded.uid, userRecord.displayName, names),
+  ])
   const fail = async (step: Step, err: unknown, reason: 'config' | 'link' | 'provider') => {
     logFailure(step, decoded.uid, err)
     await profile
@@ -133,8 +155,9 @@ export async function POST(request: Request) {
   try {
     // Only the oobCode is taken from Firebase's link. The email points at our
     // own /verify-email page, which applies the code client-side, so users
-    // never land on Firebase's hosted __/auth/action widget (see
-    // app/reset-password/success/page.tsx for why that widget is a problem).
+    // never land on Firebase's hosted __/auth/action widget (the Console's
+    // action URL setting is broken for this project; /api/auth/forgot-password
+    // does the same for reset links).
     const firebaseLink = await adminAuth.generateEmailVerificationLink(userRecord.email)
     const oobCode = new URL(firebaseLink).searchParams.get('oobCode')
     if (!oobCode) throw new Error('generateEmailVerificationLink returned no oobCode')

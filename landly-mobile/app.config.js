@@ -10,7 +10,9 @@
 // final host: golandly.com redirects to www.golandly.com, and a cross-origin
 // redirect drops the Authorization header. EXPO_PUBLIC_API_BASE_URL overrides
 // it, e.g. with a LAN or tunnel URL of a local `next dev` (a phone can't reach
-// "localhost"). Same value as PRODUCTION_API_ORIGIN in lib/apiOrigin.ts.
+// "localhost"). Left unset, src/lib/env.ts picks the default: in development
+// the `next dev` server on port 3000 of the machine running Metro, otherwise
+// PRODUCTION_API_ORIGIN from lib/apiOrigin.ts.
 // Expo Go keeps the manifest it loaded, so a change here needs a restart of
 // `expo start` and a full reload of the app, not just Fast Refresh.
 const fs = require('fs')
@@ -54,6 +56,6 @@ module.exports = ({ config }) => ({
       appId: firebaseValue('APP_ID'),
     },
     googleClientIds,
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://www.golandly.com',
+    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || undefined,
   },
 })

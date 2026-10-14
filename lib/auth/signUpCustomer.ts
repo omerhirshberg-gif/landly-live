@@ -1,6 +1,7 @@
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
-import { requestVerificationEmail, type VerificationSendResult } from '@/lib/auth/requestVerificationEmail'
+import { requestVerificationEmail, type SignUpNames, type VerificationSendResult } from '@/lib/auth/requestVerificationEmail'
+import { normalizePersonName } from '@/lib/auth/names'
 import type { Lang } from '@/lib/i18n/translations'
 
 export interface CustomerSignUpResult {
@@ -19,7 +20,10 @@ export interface CustomerSignUpResult {
 // the users/{uid} doc is written server-side by that same request (with
 // signInCustomerWithEmail as the fallback on the first verified sign-in), so
 // the UI can switch to the verify card as soon as Firebase has created the account.
+// The first and last name ride along on that request: the route writes them
+// to the new profile and to the Auth display name.
 export async function signUpCustomer(
+  names: SignUpNames,
   email: string,
   password: string,
   lang: Lang,
@@ -28,7 +32,10 @@ export async function signUpCustomer(
   const cred = await createUserWithEmailAndPassword(auth, email, password)
   try {
     const idToken = await cred.user.getIdToken()
-    const send = requestVerificationEmail(idToken, lang, apiBaseUrl)
+    const send = requestVerificationEmail(idToken, lang, apiBaseUrl, {
+      firstName: normalizePersonName(names.firstName),
+      lastName: normalizePersonName(names.lastName),
+    })
     return { email: cred.user.email ?? email, idToken, send }
   } finally {
     await signOut(auth)

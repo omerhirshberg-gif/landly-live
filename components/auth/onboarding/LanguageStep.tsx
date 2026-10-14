@@ -3,59 +3,63 @@
 import { ONBOARDING_LANGS } from '@/lib/auth/onboarding'
 import { useLang } from '@/lib/i18n/useLang'
 import { RTL_LANGS, type Lang } from '@/lib/i18n/translations'
+import styles from '../entrance/entrance.module.css'
 import { radioKeyDown } from './radioNav'
 
-// Step 1. Picking a card switches the whole site's language and direction at
-// once (LangProvider persists it); a tap also moves on to the next step,
-// while arrow keys only select, leaving Enter / Continue to advance. All
-// five languages as compact rows, so the card fits a small phone without
-// scrolling.
-export default function LanguageStep({ labelledBy, onPick }: { labelledBy: string; onPick: () => void }) {
-  const { lang, setLang, isRtl } = useLang()
-  const choose = (code: Lang) => {
-    if (code !== lang) setLang(code)
-  }
+// Picking a row selects it at once; the wizard then cross-fades the card into
+// the new language and direction and stays here until Continue. All five
+// languages (Hebrew last) as compact full-width rows, so the card fits a
+// small phone without scrolling: flag and native name on the leading side
+// (the flag in a fixed box, so every name starts on one line), the radio on
+// the trailing side.
+export default function LanguageStep({ labelledBy, selected, onSelect }: { labelledBy: string; selected: Lang; onSelect: (code: Lang) => void }) {
+  const { isRtl } = useLang()
   return (
-    <div role="radiogroup" aria-labelledby={labelledBy} className="grid gap-2 mb-4">
+    <div role="radiogroup" aria-labelledby={labelledBy} className="grid w-full gap-2 mb-4">
       {ONBOARDING_LANGS.map((option) => {
-        const selected = option.code === lang
+        const checked = option.code === selected
         return (
           <button
             key={option.code}
             type="button"
             role="radio"
-            aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => {
-              choose(option.code)
-              onPick()
-            }}
-            onKeyDown={(e) => radioKeyDown(e, isRtl, (i) => choose(ONBOARDING_LANGS[i].code))}
-            className={`flex items-center justify-between gap-3 min-h-[52px] px-4 rounded-[14px] border-[1.5px] text-start cursor-pointer select-none transition-[border-color,background-color,transform] duration-150 active:scale-[0.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 ${
-              selected ? 'border-brand bg-brandLight' : 'border-slate-200 bg-slate-50 [@media(hover:hover)]:hover:border-slate-300'
+            aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
+            onClick={() => onSelect(option.code)}
+            onKeyDown={(e) => radioKeyDown(e, isRtl, (i) => onSelect(ONBOARDING_LANGS[i].code))}
+            className={`${styles.choice} flex w-full items-center justify-between gap-3 min-h-[52px] lg:min-h-[56px] px-4 py-3 lg:py-3.5 rounded-[14px] border-[1.5px] text-start cursor-pointer select-none focus-visible:outline-none ${
+              checked ? 'border-brand bg-brandLight' : 'border-slate-200 bg-slate-50 [@media(hover:hover)]:hover:border-slate-300'
             }`}
           >
-            <span className="flex items-center gap-2.5 min-w-0">
-              <span aria-hidden="true" className="text-xl leading-6">
+            <span className="flex flex-1 items-center gap-2.5 min-w-0">
+              <span aria-hidden="true" className="w-7 shrink-0 text-center text-xl leading-6">
                 {option.flag}
               </span>
               <span
                 lang={option.code}
                 dir={(RTL_LANGS as readonly string[]).includes(option.code) ? 'rtl' : 'ltr'}
-                className={`text-[17px] font-bold ${selected ? 'text-brand' : 'text-slate-800'}`}
+                className={`min-w-0 flex-1 truncate text-start text-[17px] font-bold transition-colors duration-300 ${checked ? 'text-brand' : 'text-slate-800'}`}
               >
                 {option.label}
               </span>
             </span>
             <span
               aria-hidden="true"
-              className={`h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? 'border-brand bg-brand' : 'border-slate-300 bg-white'}`}
+              className={`h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors duration-300 ${checked ? 'border-brand bg-brand' : 'border-slate-300 bg-white'}`}
             >
-              {selected && (
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-              )}
+              <svg
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth={3.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${checked ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
             </span>
           </button>
         )

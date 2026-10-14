@@ -309,3 +309,17 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
   0%{ transform:scale(0); opacity:0; }
   100%{ transform:scale(1); opacity:1; }
 }
+
+/* Home greeting: fades and rises in once the member's name is known, on the
+   onboarding's silk curve (lib/brand/onboardingMotion.ts: greetingMs). */
+.greet-in{
+  animation: greetIn 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes greetIn{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  .greet-in{ animation: greetFade 200ms ease-out both; }
+  @keyframes greetFade{ from{ opacity:0; } to{ opacity:1; } }
+}

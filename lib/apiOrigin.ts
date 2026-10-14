@@ -18,3 +18,20 @@ const APEX = /^(?:https?:)?\/\/golandly\.com(?=[:/?#]|$)(?::\d+)?/i
 export function normalizeApiBaseUrl(base: string): string {
   return base.trim().replace(APEX, PRODUCTION_API_ORIGIN).replace(/\/+$/, '')
 }
+
+/** The port `next dev` listens on by default. */
+export const DEV_WEB_PORT = 3000
+
+/**
+ * In development, the Next.js dev server on the machine running Metro:
+ * `hostUri` is Expo's "host:port" of the bundler (e.g. "192.168.7.57:8081"),
+ * and the web app runs on the same machine on port 3000. Only a LAN IPv4
+ * address or localhost qualifies; a tunnel host (`expo start --tunnel`)
+ * doesn't forward port 3000, so it returns null there.
+ */
+export function devApiOrigin(hostUri: string | null | undefined): string | null {
+  const host = hostUri?.trim().replace(/^[a-z]+:\/\//i, '').split(/[/:]/)[0] ?? ''
+  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) && host.split('.').every((part) => Number(part) <= 255)
+  if (!ipv4 && host !== 'localhost') return null
+  return `http://${host}:${DEV_WEB_PORT}`
+}

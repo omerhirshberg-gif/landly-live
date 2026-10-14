@@ -14,15 +14,19 @@ import LoggedInHome from '@/components/home/LoggedInHome'
 import HomeFaqPrompt from '@/components/home/HomeFaqPrompt'
 import TermsModal from '@/components/modals/TermsModal'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 
 export default function Home() {
   const { user, loading } = useAuth()
+  // A member who hasn't finished onboarding (say, reloading mid-wizard) is
+  // sent back to it; the blank shell holds until that's known.
+  const held = useOnboardingGuard()
   const [termsOpen, setTermsOpen] = useState(false)
 
   const openTerms = () => setTermsOpen(true)
   const closeTerms = () => setTermsOpen(false)
 
-  if (loading) {
+  if (loading || held) {
     return (
       <>
         <Navbar />

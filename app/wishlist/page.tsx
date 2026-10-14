@@ -7,12 +7,15 @@ import Navbar from '@/components/layout/Navbar'
 import OfferCard from '@/components/discover/OfferCard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
+import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useWishlist } from '@/lib/firebase/useWishlist'
 import { getOffersByIds, type OfferDocument } from '@/lib/firebase/offers'
 
 export default function WishlistPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
+  // Onboarding first: a member mid-wizard is sent back to it.
+  const held = useOnboardingGuard()
   const router = useRouter()
   const { wishlistIds } = useWishlist()
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
@@ -30,7 +33,7 @@ export default function WishlistPage() {
     return () => { cancelled = true }
   }, [user, wishlistIds])
 
-  if (loading || !user) {
+  if (loading || !user || held) {
     return (
       <>
         <Navbar />

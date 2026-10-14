@@ -32,14 +32,17 @@ export async function POST(request: Request) {
 
   try {
     const origin = applicationOrigin()
-    const resetLink = await getAdminAuth().generatePasswordResetLink(email, {
-      // See app/reset-password/success/page.tsx: Firebase's Console "Customize
-      // action URL" field is broken for this project, so the link still routes
-      // through Firebase's hosted __/auth/action widget, which consumes the
-      // oobCode and redirects here as continueUrl.
-      url: `${origin}/reset-password/success`,
-      handleCodeInApp: true,
-    })
+    // Only the oobCode is taken from Firebase's link, as in send-verification.
+    // The link's host comes from the Console's action URL template (broken for
+    // this project), so the email points at our own /reset-password page,
+    // which checks and applies the code client-side. No ActionCodeSettings:
+    // a continue URL only matters on Firebase's hosted widget, which users
+    // never reach, and Firebase rejects one outside the project's authorized
+    // domains (auth/unauthorized-continue-uri), e.g. a LAN APP_URL in dev.
+    const firebaseLink = await getAdminAuth().generatePasswordResetLink(email)
+    const oobCode = new URL(firebaseLink).searchParams.get('oobCode')
+    if (!oobCode) throw new Error('generatePasswordResetLink returned no oobCode')
+    const resetLink = `${origin}/reset-password?oobCode=${encodeURIComponent(oobCode)}`
     await sendPasswordResetEmail({ to: email, lang, resetLink, origin })
   } catch (err) {
     // Deliberately swallowed: a nonexistent account (auth/user-not-found) and
