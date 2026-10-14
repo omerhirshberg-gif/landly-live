@@ -6,6 +6,7 @@ import { inMemoryPersistence, setPersistence } from 'firebase/auth'
 import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
 import { auth, devicePersistence } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
+import { CARD_DELAY_MS, CARD_FADE_MS, CURVES, FROM } from '@shared/brand/entranceTimeline'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
@@ -28,9 +29,9 @@ const openWeb = (path: string) => Linking.openURL(`${API_BASE_URL}${path}`)
 
 type Mode = 'signIn' | 'signUp'
 
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1)
+const EASE_OUT = Easing.bezier(...CURVES.easeOut)
 // The card rises this far as the splash logo settles into the hero spot.
-const CARD_RISE = 40
+const CARD_RISE = FROM.cardRise
 
 export default function LoginScreen() {
   const { t, appLang, setLang } = useLang()
@@ -84,8 +85,8 @@ export default function LoginScreen() {
   // The card and top bar rise in while the splash logo glides into the hero.
   useEffect(() => {
     if (!entering || phase !== 'settling') return
-    cardY.set(withDelay(60, withSpring(0, ENTRANCE_SPRING)))
-    cardOpacity.set(withDelay(60, withTiming(1, { duration: 420, easing: EASE_OUT })))
+    cardY.set(withDelay(CARD_DELAY_MS, withSpring(0, ENTRANCE_SPRING)))
+    cardOpacity.set(withDelay(CARD_DELAY_MS, withTiming(1, { duration: CARD_FADE_MS, easing: EASE_OUT })))
   }, [entering, phase, cardY, cardOpacity])
 
   const riseStyle = useAnimatedStyle(() => ({
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     // Layered: a hairline contact shadow, a soft mid shadow and a wide ambient
     // one. boxShadow renders natively on the New Architecture and on web alike.
     boxShadow:

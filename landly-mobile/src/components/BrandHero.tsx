@@ -12,7 +12,8 @@ import Animated, {
 } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { ArrowLayer, BaseLayer, BaseOutlineLayer, ShineLayer, StaticEmblem } from './Emblem'
-import { EMBLEM_VIEWBOX } from './emblemPaths'
+import { EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
+import { ARROW_SPRING, CURVES, FROM, T } from '@shared/brand/entranceTimeline'
 import RadialGlow from './RadialGlow'
 
 // The vector Landly emblem over a soft blue radial glow, the "Landly"
@@ -28,30 +29,25 @@ const SLOGAN_HEIGHT = 14
 export const HERO = { width: 240, height: EMBLEM.height + GAP + WORDMARK.height + GAP + SLOGAN_HEIGHT }
 const GLOW = 340
 
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1)
-const EASE_OUT_SOFT = Easing.bezier(0.22, 1, 0.36, 1)
-const EASE_IN_OUT = Easing.bezier(0.65, 0, 0.35, 1)
-// Low damping ratio (~0.4): the arrow overshoots and rings briefly as it docks.
-const ARROW_SPRING = { damping: 12, stiffness: 220, mass: 1 }
+const EASE_OUT = Easing.bezier(...CURVES.easeOut)
+const EASE_OUT_SOFT = Easing.bezier(...CURVES.easeOutSoft)
+const EASE_IN_OUT = Easing.bezier(...CURVES.easeInOut)
 
-// The staged intro (ms):
-//   0    – 1100  Star of David + arch: scale 0.85 -> 1, outline first, then fill
-//   1100 – 1750  Arrow bursts out of its tail and springs into place
-//   1750 – 2300  Glow, wordmark and slogan fade in
-//   2300 – 2950  Diagonal shine sweeps bottom-left -> top-right
-const T = { arrow: 1100, reveal: 1750, slogan: 1870, shine: 2300, shineMs: 650 }
+// The staged intro's timings and curves live in lib/brand/entranceTimeline.ts,
+// shared with the web login page (components/auth/BrandHero.tsx) so both
+// platforms play the same sequence.
 
 export default function BrandHero({ intro = false, onIntroDone }: { intro?: boolean; onIntroDone?: () => void }) {
   const reduced = useReducedMotion()
   const staged = intro && !reduced
   const start = (from: number) => (staged ? from : 1)
 
-  const baseScale = useSharedValue(staged ? 0.85 : 1)
+  const baseScale = useSharedValue(staged ? FROM.baseScale : 1)
   const outline = useSharedValue(0)
   const fill = useSharedValue(start(0))
   const arrowOpacity = useSharedValue(start(0))
-  const arrowY = useSharedValue(staged ? 46 : 0)
-  const arrowScale = useSharedValue(staged ? 0.55 : 1)
+  const arrowY = useSharedValue(staged ? FROM.arrowY : 0)
+  const arrowScale = useSharedValue(staged ? FROM.arrowScale : 1)
   const reveal = useSharedValue(start(0))
   const slogan = useSharedValue(start(0))
   const shine = useSharedValue(staged ? 0 : 1)
@@ -62,19 +58,24 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
     if (!intro) return
     const done = () => onIntroDone?.()
     if (!staged) {
-      whole.set(withTiming(1, { duration: 400, easing: EASE_OUT }, (fin) => fin && scheduleOnRN(done)))
+      whole.set(withTiming(1, { duration: T.reducedMs, easing: EASE_OUT }, (fin) => fin && scheduleOnRN(done)))
       return
     }
     // Stage 1 — Star of David assembly
     baseScale.set(withTiming(1, { duration: T.arrow, easing: EASE_OUT_SOFT }))
-    outline.set(withSequence(withTiming(1, { duration: 450, easing: EASE_OUT }), withDelay(350, withTiming(0, { duration: 300 }))))
-    fill.set(withDelay(350, withTiming(1, { duration: T.arrow - 350, easing: EASE_IN_OUT })))
+    outline.set(
+      withSequence(
+        withTiming(1, { duration: T.outlineInMs, easing: EASE_OUT }),
+        withDelay(T.outlineHoldMs, withTiming(0, { duration: T.outlineOutMs })),
+      ),
+    )
+    fill.set(withDelay(T.fillDelay, withTiming(1, { duration: T.arrow - T.fillDelay, easing: EASE_IN_OUT })))
     // Stage 2 — arrow burst
-    arrowOpacity.set(withDelay(T.arrow, withTiming(1, { duration: 140 })))
+    arrowOpacity.set(withDelay(T.arrow, withTiming(1, { duration: T.arrowFadeMs })))
     arrowY.set(withDelay(T.arrow, withSpring(0, ARROW_SPRING)))
     arrowScale.set(withDelay(T.arrow, withSpring(1, ARROW_SPRING)))
     // Stage 3 — glow, wordmark, slogan
-    reveal.set(withDelay(T.reveal, withTiming(1, { duration: 550, easing: EASE_OUT })))
+    reveal.set(withDelay(T.reveal, withTiming(1, { duration: T.revealMs, easing: EASE_OUT })))
     slogan.set(withDelay(T.slogan, withTiming(1, { duration: T.shine - T.slogan, easing: EASE_OUT })))
     // Stage 4 — shine sweep, then hand back to the splash
     shine.set(withDelay(T.shine, withTiming(1, { duration: T.shineMs, easing: EASE_IN_OUT }, (fin) => fin && scheduleOnRN(done))))
@@ -92,11 +93,11 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
   }))
   const glowStyle = useAnimatedStyle(() => ({
     opacity: reveal.get(),
-    transform: [{ scale: 0.85 + 0.15 * reveal.get() }],
+    transform: [{ scale: FROM.glowScale + (1 - FROM.glowScale) * reveal.get() }],
   }))
   const wordmarkStyle = useAnimatedStyle(() => ({
     opacity: reveal.get(),
-    transform: [{ translateY: 6 * (1 - reveal.get()) }],
+    transform: [{ translateY: FROM.wordmarkY * (1 - reveal.get()) }],
   }))
   const sloganStyle = useAnimatedStyle(() => ({ opacity: slogan.get() }))
 

@@ -14,8 +14,8 @@ export default function GoogleButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full inline-flex items-center justify-center gap-3 border-1.5 border-slate-200 rounded-xl bg-white text-slate-700 font-bold text-sm py-3 hover:border-slate-300 hover:bg-slate-50 transition disabled:opacity-60 disabled:cursor-not-allowed"
-      style={{ borderWidth: 1.5, minHeight: 48 }}
+      // Same metrics as the auth screen's large secondary button.
+      className="w-full inline-flex items-center justify-center gap-3 min-h-[54px] sm:min-h-[52px] px-5 rounded-[14px] border border-slate-200 bg-white text-slate-700 font-bold text-base select-none cursor-pointer transition-[transform,background-color] duration-150 ease-out [@media(hover:hover)]:hover:enabled:bg-slate-50 active:enabled:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
         <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.56 2.7-3.87 2.7-6.62z" />
