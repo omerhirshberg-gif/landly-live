@@ -70,6 +70,7 @@ export default function Footer({
               <div className="font-bold text-white mb-3">{t('footer_col_legal')}</div>
               <ul className="space-y-2">
                 <li><button onClick={onOpenTerms} className="hover:text-white transition">{t('terms_link')}</button></li>
+                <li><Link href="/privacy" className="hover:text-white transition">{t('privacy_link')}</Link></li>
                 <li><a href="/support#faq" className="hover:text-white transition">{t('faq_label_short')}</a></li>
               </ul>
             </div>

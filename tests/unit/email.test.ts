@@ -63,7 +63,8 @@ describe('configured origin', () => {
     expect(emails).toHaveLength(2)
     for (const email of emails) {
       expect(email).not.toContain('attacker.invalid')
-      expect(email).toContain('https://landly.test/logo.jpg')
+      expect(email).toContain('src="https://www.golandly.com/logo-mark.png"')
+      expect(email).not.toContain('https://landly.test/logo')
     }
     expect(emails[0]).toContain('href="https://landly.test/reset-password?oobCode=reset"')
     expect(emails[0]).not.toContain('firebase.test')
@@ -104,7 +105,11 @@ describe('configured origin', () => {
     expect((await reset(request())).status).toBe(200)
     expect(mocks.reset.mock.calls).toEqual([['person@landly.test']])
     expect(mocks.send).toHaveBeenCalledTimes(1)
-    expect(mocks.send.mock.calls[0][0].html).toContain('href="http://192.168.7.57:3000/reset-password?oobCode=reset"')
+    const html = mocks.send.mock.calls[0][0].html
+    expect(html).toContain('href="http://192.168.7.57:3000/reset-password?oobCode=reset"')
+    // Mail clients can't reach a LAN address, so the logo always comes from production.
+    expect(html).toContain('src="https://www.golandly.com/logo-mark.png"')
+    expect(html).not.toContain('http://192.168.7.57:3000/logo')
   })
   it('escapes the full href and src, including quotes, ampersands and angle brackets', async () => {
     await sendBrandedEmail({
@@ -113,8 +118,55 @@ describe('configured origin', () => {
       buttonLink: 'https://test.invalid/?a=1&b="<tag>\'', footnote: 'Footnote',
     })
     const html = mocks.send.mock.calls[0][0].html
-    expect(html).toContain('src="https://test.invalid/&quot;&lt;&gt;&amp;&#39;/logo.jpg"')
+    expect(html).toContain('href="https://test.invalid/&quot;&lt;&gt;&amp;&#39;/support"')
     expect(html).toContain('href="https://test.invalid/?a=1&amp;b=&quot;&lt;tag&gt;&#39;"')
+    expect(html).not.toContain('<tag>')
+  })
+})
+
+describe('branded email layout', () => {
+  async function render(lang: 'en' | 'he') {
+    await sendBrandedEmail({
+      to: 'person@landly.test', lang, origin: 'https://landly.test',
+      subject: 'Subject', heading: 'Heading', body: 'Body', buttonLabel: 'Go',
+      buttonLink: 'https://landly.test/verify-email?oobCode=x', footnote: 'Ignore me',
+    })
+    return mocks.send.mock.calls.at(-1)![0].html as string
+  }
+
+  it('shares one shell: logo with explicit size, button, link fallback, security note and footer', async () => {
+    const html = await render('en')
+    expect(html).toContain('width="48" height="46"')
+    expect(html).toContain('border-radius:12px')
+    expect(html).toContain('v:roundrect')
+    expect(html.match(/href="https:\/\/landly\.test\/verify-email\?oobCode=x"/g)!.length).toBeGreaterThanOrEqual(3)
+    expect(html).toContain('Security note')
+    expect(html).toContain('Ignore me')
+    expect(html).toContain('mailto:team.landly@gmail.com')
+    expect(html).toContain('href="https://landly.test/support"')
+    expect(html).not.toMatch(/<script|<link|<style/i)
+  })
+
+  it('uses the all-light palette: slate canvas, white bordered card, blue accent, no dark blocks', async () => {
+    const html = await render('en')
+    expect(html).toContain('background-color:#F8FAFC')
+    expect(html).toContain('border:1px solid #E2E8F0;border-radius:16px')
+    expect(html).toContain('bgcolor="#0066FF"')
+    expect(html).toContain('fillcolor="#0066FF"')
+    expect(html).toContain('color:#0038B8;letter-spacing:-0.5px;">Landly<')
+    expect(html).toMatch(/background-color:#F1F5F9;border:1px solid #E2E8F0;border-left:3px solid #2563EB/)
+    // #0F172A survives only as heading text colour, never as a background.
+    expect(html).not.toMatch(/(background-color:|bgcolor=")#(0F172A|1E293B|334155)/i)
+    expect(html).not.toContain('#1E293B')
+  })
+
+  it('renders Hebrew right-to-left with the security accent on the right', async () => {
+    const html = await render('he')
+    expect(html).toContain('<html lang="he" dir="rtl"')
+    expect(html).toContain('text-align:right')
+    expect(html).toContain('border-right:3px solid #2563EB')
+    expect(html).toContain('הערת אבטחה')
+    expect(html).toContain('<p dir="ltr"')
   })
 })
 
