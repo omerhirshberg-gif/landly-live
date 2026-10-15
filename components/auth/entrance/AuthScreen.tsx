@@ -3,15 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  browserLocalPersistence,
-  browserSessionPersistence,
-  setPersistence,
-  signInWithPopup,
-} from 'firebase/auth'
-import { auth, googleProvider } from '@/lib/firebase/config'
+import { browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
+import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
-import { finishCustomerGoogleSignIn, signInCustomerWithEmail } from '@/lib/auth/signInCustomer'
+import { signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
+import { completeGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
 import {
   greetingName,
   isOnboardingComplete,
@@ -86,6 +82,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
   const [googleBusy, setGoogleBusy] = useState(false)
+  // Google refuses sign-in inside in-app browsers (Instagram, Facebook, ...):
+  // tapping the button there explains how to open the page in a real browser.
+  const [inAppNotice, setInAppNotice] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  // A Google redirect sign-in (the popup fallback) lands back here; its result
+  // is handled before the restore below looks at the session, so a new
+  // member goes through the same customer rules and into the wizard.
+  const [redirectChecked, setRedirectChecked] = useState(false)
+  const redirectStarted = useRef(false)
   // A Google sign-up skips verification, so the brand panel's journey moves straight to Personalize.
   const [via, setVia] = useState<SignInMethod>('email')
   const [confirm, setConfirm] = useState('')
@@ -119,7 +124,27 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   // Decided once, on the session the page loaded with; sign-ins made here go through afterSignIn.
   useEffect(() => {
-    if (restoreDecided.current || authLoading) return
+    if (redirectStarted.current) return
+    redirectStarted.current = true
+    completeGoogleRedirect(lang)
+      .then(async (result) => {
+        if (!result) return
+        restoreDecided.current = true
+        setVia('google')
+        await handleGoogleResult(result, { fade: false })
+        setRestoring(false)
+      })
+      .catch((err) => {
+        restoreDecided.current = true
+        setError(getAuthErrorMessage(err))
+        setRestoring(false)
+      })
+      .finally(() => setRedirectChecked(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per page load, in the language it loaded with
+  }, [])
+
+  useEffect(() => {
+    if (restoreDecided.current || authLoading || !redirectChecked) return
     if (!user?.emailVerified) {
       restoreDecided.current = true
       setRestoring(false)
@@ -140,7 +165,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         setRestoring(false)
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openWizard only reads storage and sets state
-  }, [authLoading, user, onboardingComplete, router])
+  }, [authLoading, user, onboardingComplete, router, redirectChecked])
 
   const fadeOutThen = (next: () => void) => {
     setLeaving(true)
@@ -176,7 +201,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
   // Where a successful sign-in goes: home, or the wizard first if
   // onboarding was never finished (new accounts always start there).
-  const afterSignIn = async (uid: string, preferredLanguage: Lang | null) => {
+  // `fade: false` after a redirect, where there's no form on screen to fade from.
+  const afterSignIn = async (uid: string, preferredLanguage: Lang | null, { fade = true } = {}) => {
     if (preferredLanguage) setLang(preferredLanguage)
     const doc = await getUserDocument(uid)
     const complete = isOnboardingComplete(doc)
@@ -187,10 +213,23 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       return
     }
     setOnboardingName(greetingName(doc, auth.currentUser?.displayName))
+    if (!fade) {
+      openWizard(uid)
+      return
+    }
     fadeOutThen(() => {
       openWizard(uid)
       setLeaving(false)
     })
+  }
+
+  // The popup and redirect paths end the same way.
+  const handleGoogleResult = async (result: CustomerSignInResult, options?: { fade: boolean }) => {
+    if (result.status === 'businessAccount') setBusinessAccount(true)
+    else if (result.status === 'signedIn') {
+      setVia('google')
+      await afterSignIn(result.user.uid, result.preferredLanguage, options)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -247,19 +286,30 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const handleGoogle = async () => {
     setError(null)
     setBusinessAccount(false)
+    if (isEmbeddedBrowser(navigator.userAgent)) {
+      setInAppNotice(true)
+      return
+    }
     setGoogleBusy(true)
+    let redirecting = false
     try {
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-      const result = await finishCustomerGoogleSignIn(await signInWithPopup(auth, googleProvider), lang)
-      if (result.status === 'businessAccount') setBusinessAccount(true)
-      else if (result.status === 'signedIn') {
-        setVia('google')
-        await afterSignIn(result.user.uid, result.preferredLanguage)
-      }
+      const outcome = await startGoogleWebSignIn(lang, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+      if (outcome.kind === 'redirecting') redirecting = true
+      else await handleGoogleResult(outcome.result)
     } catch (err) {
       setError(getAuthErrorMessage(err))
     } finally {
-      setGoogleBusy(false)
+      // Leaving for Google: keep the buttons disabled until the page unloads.
+      if (!redirecting) setGoogleBusy(false)
+    }
+  }
+
+  const copyPageLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkCopied(true)
+    } catch {
+      // Clipboard blocked (common in in-app browsers): the notice still says what to do.
     }
   }
 
@@ -463,6 +513,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               )}
 
               {divider}
+              {inAppNotice && (
+                <Notice tone="info">
+                  <p>{t('auth_inAppBrowser_body')}</p>
+                  <button type="button" onClick={copyPageLink} className="mt-2 underline underline-offset-2">
+                    {t(linkCopied ? 'auth_inAppBrowser_copied' : 'auth_inAppBrowser_copy')}
+                  </button>
+                </Notice>
+              )}
               <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onClick={handleGoogle} disabled={busy} />
             </>
           )}

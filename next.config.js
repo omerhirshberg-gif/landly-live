@@ -11,9 +11,22 @@ const lanAddresses = Object.values(os.networkInterfaces())
   .filter((address) => address && (address.family === 'IPv4' || address.family === 4) && !address.internal)
   .map((address) => address.address)
 
+// Firebase Auth's sign-in helper, served from our own origin so it's
+// first-party on browsers that partition third-party storage (see
+// lib/firebase/authDomain.ts). Always the project's firebaseapp.com host,
+// never NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, which may name this site itself.
+const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'landly-be752'
+const firebaseAuthOrigin = `https://${firebaseProjectId}.firebaseapp.com`
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: lanAddresses,
+  async rewrites() {
+    return [
+      { source: '/__/auth/:path*', destination: `${firebaseAuthOrigin}/__/auth/:path*` },
+      { source: '/__/firebase/:path*', destination: `${firebaseAuthOrigin}/__/firebase/:path*` },
+    ]
+  },
 }
 
 module.exports = nextConfig
