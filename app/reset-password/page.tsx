@@ -13,9 +13,9 @@ import Notice from '@/components/auth/entrance/Notice'
 import TextField from '@/components/auth/entrance/TextField'
 import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
 import styles from '@/components/auth/entrance/entrance.module.css'
-import PasswordStrengthMeter from '@/components/auth/onboarding/PasswordStrengthMeter'
+import PasswordRequirements from '@/components/auth/onboarding/PasswordRequirements'
 import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
-import { MIN_PASSWORD_LENGTH, passwordStrength } from '@/lib/auth/onboarding'
+import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import { auth } from '@/lib/firebase/config'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -34,7 +34,7 @@ import { useLang } from '@/lib/i18n/useLang'
 // panel beside the card from 1024px, the hero above it below that, in the
 // site language and direction.
 type Status = 'checking' | 'ready' | 'invalid' | 'submitting'
-type FieldError = 'onb_passwordTooShort' | 'onb_passwordMismatch'
+type FieldError = 'onb_passwordWeak' | 'onb_passwordMismatch'
 
 const DEAD_CODE = new Set(['auth/expired-action-code', 'auth/invalid-action-code', 'auth/user-disabled', 'auth/user-not-found'])
 
@@ -47,6 +47,7 @@ function ResetPasswordContent() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [fieldError, setFieldError] = useState<FieldError | null>(null)
+  const [passwordFocused, setPasswordFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -69,7 +70,8 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!oobCode || status !== 'ready') return
-    if (password.length < MIN_PASSWORD_LENGTH) return setFieldError('onb_passwordTooShort')
+    // Same rule as sign-up (lib/auth/passwordValidation.ts).
+    if (!isStrongPassword(password)) return setFieldError('onb_passwordWeak')
     if (password !== confirm) return setFieldError('onb_passwordMismatch')
     setFieldError(null)
     setError(null)
@@ -80,7 +82,7 @@ function ResetPasswordContent() {
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : ''
       if (DEAD_CODE.has(code)) return setStatus('invalid')
-      if (code === 'auth/weak-password') setFieldError('onb_passwordTooShort')
+      if (code === 'auth/weak-password') setFieldError('onb_passwordWeak')
       else setError(t('forgot_error_generic'))
       setStatus('ready')
     }
@@ -162,11 +164,20 @@ function ResetPasswordContent() {
                   setPassword(e.target.value)
                   setFieldError(null)
                 }}
-                error={fieldError === 'onb_passwordTooShort' ? t(fieldError) : undefined}
+                // Checklist while focused; the one-line error on blur if still weak.
+                onFocus={() => {
+                  setPasswordFocused(true)
+                  if (fieldError === 'onb_passwordWeak') setFieldError(null)
+                }}
+                onBlur={() => {
+                  setPasswordFocused(false)
+                  if (password && !isStrongPassword(password) && !fieldError) setFieldError('onb_passwordWeak')
+                }}
+                error={fieldError === 'onb_passwordWeak' ? t(fieldError) : undefined}
                 autoComplete="new-password"
                 enterKeyHint="next"
               />
-              <PasswordStrengthMeter strength={passwordStrength(password)} />
+              <PasswordRequirements password={password} visible={passwordFocused} />
               <TextField
                 label={t('onb_confirmPasswordLabel')}
                 icon="lock"

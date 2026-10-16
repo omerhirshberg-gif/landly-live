@@ -4,10 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as WebBrowser from 'expo-web-browser'
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { inMemoryPersistence, setPersistence } from 'firebase/auth'
-import { greetingName, isOnboardingComplete, passwordStrength, signUpFormError, type OnboardingDraft, type SignUpFormError } from '@shared/auth/onboarding'
+import { greetingName, isOnboardingComplete, signUpFormError, type OnboardingDraft, type SignUpFormError } from '@shared/auth/onboarding'
 import { EASE_FADE, EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
+import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { auth, devicePersistence } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
 import { getUserDocument } from '@shared/firebase/users'
@@ -17,6 +18,7 @@ import { CARD_DELAY_MS, CARD_FADE_MS, CURVES, FROM } from '@shared/brand/entranc
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
+import ConsentText from '../../components/ConsentText'
 import GoogleButton from '../../components/GoogleButton'
 import { ENTRANCE_SPRING, useEntrance } from '../../components/Entrance'
 import Notice from '../../components/Notice'
@@ -27,7 +29,7 @@ import { useSignInGate } from '../../auth/SignInGate'
 import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSignIn'
 import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
 import { loadOnboardingDraft } from '../../auth/onboarding/draftStorage'
-import PasswordStrengthMeter from '../../auth/onboarding/PasswordStrengthMeter'
+import PasswordRequirements from '../../auth/onboarding/PasswordRequirements'
 import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmailCard'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
@@ -97,6 +99,8 @@ export default function LoginScreen() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
   // The gate closes (`onboarding`) the moment sign-in finds onboarding
   // unfinished; the wizard itself only replaces the card once it has faded out.
   const [wizardShown, setWizardShown] = useState(false)
@@ -205,14 +209,14 @@ export default function LoginScreen() {
   // the profile doc). The wizard runs on the first verified sign-in.
   const handleSignUp = async () => {
     setError(null)
-    const invalid = signUpFormError({ firstName, lastName, email, password, confirm })
+    const invalid = signUpFormError({ firstName, lastName, email, password, confirm, agreedToTerms })
     setSignUpError(invalid)
     if (invalid) return
     setSubmitting(true)
     // Keeps the root layout from reacting to the brief unverified session.
     setChecking(true)
     try {
-      const result = await signUpCustomer({ firstName, lastName }, email.trim(), password, lang, API_BASE_URL)
+      const result = await signUpCustomer({ firstName, lastName, agreedToTerms }, email.trim(), password, lang, API_BASE_URL)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -413,13 +417,23 @@ export default function LoginScreen() {
                             setPassword(v)
                             setSignUpError(null)
                           }}
-                          error={signUpError === 'onb_passwordTooShort' ? t(signUpError) : undefined}
+                          // The checklist replaces the one-line error while focused, and
+                          // the error comes back on blur if the password is still weak.
+                          onFocus={() => {
+                            setPasswordFocused(true)
+                            if (signUpError === 'onb_passwordWeak') setSignUpError(null)
+                          }}
+                          onBlur={() => {
+                            setPasswordFocused(false)
+                            if (password && !isStrongPassword(password) && !signUpError) setSignUpError('onb_passwordWeak')
+                          }}
+                          error={signUpError === 'onb_passwordWeak' ? t(signUpError) : undefined}
                           secureTextEntry
                           autoComplete="new-password"
                           textContentType="newPassword"
                           returnKeyType="next"
                         />
-                        <PasswordStrengthMeter strength={passwordStrength(password)} />
+                        <PasswordRequirements password={password} visible={passwordFocused} />
                         <TextField
                           label={t('onb_confirmPasswordLabel')}
                           icon="lock"
@@ -435,6 +449,20 @@ export default function LoginScreen() {
                           returnKeyType="go"
                           onSubmitEditing={handleSignUp}
                         />
+                        <View style={styles.consent}>
+                          <Checkbox
+                            label={<ConsentText template={t('signup_terms_agree')} t={t} onOpen={openWebSheet} />}
+                            checked={agreedToTerms}
+                            onChange={(checked) => {
+                              setAgreedToTerms(checked)
+                              if (signUpError === 'signup_termsRequired') setSignUpError(null)
+                            }}
+                            invalid={signUpError === 'signup_termsRequired'}
+                          />
+                          {signUpError === 'signup_termsRequired' && (
+                            <AppText accessibilityRole="alert" style={styles.consentError}>{t('signup_termsRequired')}</AppText>
+                          )}
+                        </View>
                         <View style={styles.cta}>
                           <Button
                             label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
@@ -498,6 +526,10 @@ export default function LoginScreen() {
                       <View style={styles.rule} />
                     </View>
                     <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onPress={handleGoogle} disabled={busy} />
+                    {/* On both tabs: Google from either one can create an account. */}
+                    <AppText style={styles.disclosure}>
+                      <ConsentText template={t('auth_google_disclosure')} t={t} onOpen={openWebSheet} />
+                    </AppText>
                   </>
                 )}
               </Animated.View>
@@ -558,6 +590,10 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', gap: 12 },
   nameCell: { flex: 1, minWidth: 0 },
   cta: { marginTop: 4 },
+  consent: { marginTop: 4, marginBottom: 20 },
+  consentError: { marginTop: 8, fontSize: 13, fontWeight: '600', color: colors.danger },
+  // Centred in both directions (overrides AppText's reading-side alignment).
+  disclosure: { marginTop: 12, fontSize: 12, lineHeight: 18, color: colors.textMuted, textAlign: 'center' },
   center: { textAlign: 'center' },
   businessNotice: { marginBottom: 16 },
   actionRow: {

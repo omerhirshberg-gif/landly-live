@@ -10,12 +10,12 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 
 let resend: Resend | undefined
 
-function getResend(): Resend {
+export function getResend(): Resend {
   if (!resend) resend = new Resend(process.env.RESEND_API_KEY)
   return resend
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 }
 

@@ -179,6 +179,23 @@ describe('verification email: customer profile', () => {
     expect(mocks.send).toHaveBeenCalledTimes(1)
   })
 
+  it('records the sign-up form Terms/Privacy consent on the new profile', async () => {
+    const req = new Request('https://landly.test/api/auth/send-verification', {
+      method: 'POST', body: JSON.stringify({ lang: 'en', firstName: 'Dana', lastName: 'Levi', agreedToTerms: true }),
+    })
+    expect((await verify(req)).status).toBe(200)
+    const data = mocks.createDoc.mock.calls[0][0]
+    expect(data.agreedToTerms).toBe(true)
+    expect(data.termsAgreedAt).toBeDefined()
+  })
+
+  it('records no consent when the request does not carry it', async () => {
+    expect((await verify(request())).status).toBe(200)
+    const data = mocks.createDoc.mock.calls[0][0]
+    expect(data).not.toHaveProperty('agreedToTerms')
+    expect(data).not.toHaveProperty('termsAgreedAt')
+  })
+
   it('leaves an existing doc alone and still sends the email', async () => {
     mocks.createDoc.mockRejectedValue(Object.assign(new Error('exists'), { code: 6 }))
     expect((await verify(request())).status).toBe(200)

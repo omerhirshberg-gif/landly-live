@@ -1,10 +1,65 @@
 'use client'
 
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import Navbar from '@/components/layout/Navbar'
+import Notice from '@/components/auth/entrance/Notice'
 import { useLang } from '@/lib/i18n/useLang'
+import type { TranslationKey } from '@/lib/i18n/translations'
+
+// Translucent fields on the brand-blue mentor card.
+const ON_BRAND = { background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.28)', color: '#fff' }
+
+// Codes match MENTOR_LANGUAGES in lib/email/sendMentorRequest.ts, so the team
+// sees the English language name whatever the site language.
+const MENTOR_LANGUAGE_OPTIONS: [string, TranslationKey][] = [
+  ['ru', 'lang_russian'],
+  ['fr', 'lang_french'],
+  ['es', 'lang_spanish'],
+  ['en', 'lang_english'],
+]
+
+const EMPTY_FIELDS = { name: '', email: '', mentorLanguage: '', aliyahDate: '', website: '' }
 
 export default function OlimPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const [fields, setFields] = useState(EMPTY_FIELDS)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'sent'>('idle')
+  // A key rather than text, so an error already on screen follows a language switch.
+  const [error, setError] = useState<TranslationKey | null>(null)
+
+  const update = (key: keyof typeof EMPTY_FIELDS) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setFields((prev) => ({ ...prev, [key]: e.target.value }))
+      if (status === 'sent') setStatus('idle')
+    }
+
+  // POSTs to /api/mentor/inquiry, which emails team.landly@gmail.com with
+  // Reply-To set to the member. Inputs are only cleared once the send succeeds.
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (isSubmitting) return
+    setError(null)
+    setStatus('idle')
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/mentor/inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...fields, lang }),
+        signal: AbortSignal.timeout(20_000),
+      })
+      if (res.status === 429) return setError('olim_form_rate_limited')
+      if (res.status === 400) return setError('olim_form_invalid')
+      if (!res.ok) throw new Error('request failed')
+      setFields(EMPTY_FIELDS)
+      setStatus('sent')
+    } catch {
+      setError('olim_form_error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <>
@@ -47,20 +102,27 @@ export default function OlimPage() {
           <div className="bg-brand rounded-3xl p-6 sm:p-8 text-white">
             <h2 className="text-xl sm:text-2xl font-black mb-2">{t('olim_mentor_form_title')}</h2>
             <p className="text-blue-100 text-sm mb-6">{t('olim_mentor_form_sub')}</p>
-            <form action="https://formspree.io/f/xykrpjgo" method="POST" className="space-y-4">
-              <input type="hidden" name="type" value="Aliyah Mentor Request" />
+            {status === 'sent' && <Notice tone="success">{t('olim_form_success')}</Notice>}
+            {error && <Notice>{t(error)}</Notice>}
+            <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting || undefined}>
+              {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <input type="text" name="name" required placeholder={t('form_name_ph')} className="inp" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.28)', color: '#fff' }} />
-                <input type="email" name="email" required placeholder="your@email.com" className="inp" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.28)', color: '#fff' }} />
+                <input type="text" name="name" required maxLength={100} autoComplete="name" dir="auto" aria-label={t('form_name')} placeholder={t('form_name_ph')} className="inp" style={ON_BRAND} value={fields.name} onChange={update('name')} />
+                <input type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" aria-label={t('form_email')} placeholder="your@email.com" className="inp rtl:text-right" style={ON_BRAND} value={fields.email} onChange={update('email')} />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <select name="language" className="inp" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.28)', color: '#fff' }}>
+                {/* Options get dark text: some browsers draw the open list on white using the select's own (white) color. */}
+                <select name="mentorLanguage" aria-label={t('olim_lang_placeholder')} className="inp [&>option]:text-slate-900" style={ON_BRAND} value={fields.mentorLanguage} onChange={update('mentorLanguage')}>
                   <option value="">{t('olim_lang_placeholder')}</option>
-                  <option>{t('lang_russian')}</option><option>{t('lang_french')}</option><option>{t('lang_spanish')}</option><option>{t('lang_english')}</option>
+                  {MENTOR_LANGUAGE_OPTIONS.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
                 </select>
-                <input type="text" name="aliyah_date" placeholder={t('olim_date_ph')} className="inp" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.28)', color: '#fff' }} />
+                <input type="text" name="aliyahDate" maxLength={60} dir="auto" aria-label={t('olim_date_ph')} placeholder={t('olim_date_ph')} className="inp" style={ON_BRAND} value={fields.aliyahDate} onChange={update('aliyahDate')} />
               </div>
-              <button type="submit" className="tap-target w-full text-center justify-center bg-white text-brand font-bold py-3.5 rounded-full hover:bg-brandLight transition shadow-lg">{t('olim_request_btn')}</button>
+              <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="tap-target w-full flex items-center text-center justify-center bg-white text-brand font-bold py-3.5 rounded-full hover:enabled:bg-brandLight transition shadow-lg disabled:opacity-80 disabled:cursor-not-allowed">
+                {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
+                {t(isSubmitting ? 'support_form_sending' : 'olim_request_btn')}
+              </button>
             </form>
           </div>
         </div>

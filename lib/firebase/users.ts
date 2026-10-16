@@ -28,7 +28,10 @@ export interface UserDocument {
  * server-side by /api/auth/send-verification, names included; sign-up itself
  * writes nothing). Here the names can only come from the Auth display name.
  */
-export async function ensureUserDocument(user: User, { preferredLanguage = 'en' }: { preferredLanguage?: string } = {}) {
+export async function ensureUserDocument(
+  user: User,
+  { preferredLanguage = 'en', agreedToTerms = false }: { preferredLanguage?: string; agreedToTerms?: boolean } = {}
+) {
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
   if (snap.exists()) return
@@ -43,6 +46,8 @@ export async function ensureUserDocument(user: User, { preferredLanguage = 'en' 
     wishlistOfferIds: [],
     preferredLanguage,
     createdAt: serverTimestamp(),
+    // Only when this sign-in path showed the Terms/Privacy disclosure (Google).
+    ...(agreedToTerms ? { agreedToTerms: true, termsAgreedAt: serverTimestamp() } : {}),
   })
 }
 

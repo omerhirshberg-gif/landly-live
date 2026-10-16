@@ -19,7 +19,13 @@ const ALREADY_EXISTS = 6
 // having one. create() never overwrites an existing doc. A failure is only
 // logged: signInCustomerWithEmail also creates it on the first verified sign-in.
 // The names come from the sign-up form (only the first request carries them).
-async function ensureCustomerProfile(uid: string, email: string, lang: Lang, names: { firstName: string; lastName: string }) {
+async function ensureCustomerProfile(
+  uid: string,
+  email: string,
+  lang: Lang,
+  names: { firstName: string; lastName: string },
+  agreedToTerms: boolean
+) {
   try {
     await getAdminDb().collection('users').doc(uid).create({
       email,
@@ -32,6 +38,8 @@ async function ensureCustomerProfile(uid: string, email: string, lang: Lang, nam
       preferredLanguage: lang,
       notificationsOptIn: false,
       createdAt: FieldValue.serverTimestamp(),
+      // The sign-up form's Terms/Privacy checkbox (required there to submit).
+      ...(agreedToTerms ? { agreedToTerms: true, termsAgreedAt: FieldValue.serverTimestamp() } : {}),
     })
   } catch (err) {
     if ((err as { code?: unknown })?.code !== ALREADY_EXISTS) logFailure('profile', uid, err)
@@ -133,7 +141,7 @@ export async function POST(request: Request) {
   const names = { firstName: normalizePersonName(body?.firstName), lastName: normalizePersonName(body?.lastName) }
   // Runs alongside the email; it never throws.
   const profile = Promise.all([
-    ensureCustomerProfile(decoded.uid, userRecord.email, lang, names),
+    ensureCustomerProfile(decoded.uid, userRecord.email, lang, names, body?.agreedToTerms === true),
     ensureAuthDisplayName(decoded.uid, userRecord.displayName, names),
   ])
   const fail = async (step: Step, err: unknown, reason: 'config' | 'link' | 'provider') => {
