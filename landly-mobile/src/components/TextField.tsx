@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps, type TextStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
@@ -48,6 +48,8 @@ export default function TextField({
   hint?: string
   error?: string | null
   prefix?: ReactNode
+  /** Reaches the TextInput through ...props (React 19 passes ref as a prop). */
+  ref?: Ref<TextInput>
 }) {
   const { t, isRtl } = useLang()
   const rtlText = natural && isRtl

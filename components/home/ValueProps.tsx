@@ -17,7 +17,7 @@ export default function ValueProps() {
   const { t } = useLang()
 
   return (
-    // id="deals" keeps the navbar's /#deals link and scroll-spy pointing here.
+    // id="deals" keeps old /#deals links and globals.css's scroll margin working.
     // Tighter top than bottom so the section sits close under the hero.
     <section id="deals" className="pt-12 pb-16 sm:pt-14 sm:pb-20 lg:pt-16 lg:pb-24 bg-[#F8FAFC]">
       <div className="max-w-7xl mx-auto px-5 sm:px-6">

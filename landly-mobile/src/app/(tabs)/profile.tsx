@@ -1,32 +1,32 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { signOut } from 'firebase/auth'
+import { signOut, type User } from 'firebase/auth'
+import type { CountryCode } from 'libphonenumber-js'
+import { formatPhone, phoneToE164, splitPhone } from '@shared/auth/onboarding'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
-import { getUserDocument, updateUserLanguage, type UserDocument } from '@shared/firebase/users'
+import { invalidateMemberProfile, useMemberProfile } from '@shared/firebase/useMemberProfile'
+import { updateUserLanguage, updateUserPhone } from '@shared/firebase/users'
+import { customerTypeLabel } from '@shared/customerTypes'
 import { LANGUAGES } from '@shared/i18n/languages'
 import type { Lang } from '@shared/i18n/translations'
 import AppText from '../../components/AppText'
+import AvatarPicker from '../../components/AvatarPicker'
 import Button from '../../components/Button'
+import Notice from '../../components/Notice'
+import SecuritySheet from '../../components/SecuritySheet'
+import TextField from '../../components/TextField'
+import CountryCodePicker from '../../auth/onboarding/CountryCodePicker'
 import { useLang } from '../../i18n/LangProvider'
-import { colors, radius } from '../../theme'
+import { webOnly } from '../../lib/webStyles'
+import { colors, radius, type } from '../../theme'
 
 export default function ProfileScreen() {
   const { t, lang, setLang } = useLang()
   const { user } = useAuth()
-  const [profile, setProfile] = useState<UserDocument | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    getUserDocument(user.uid)
-      .then((doc) => { if (!cancelled) setProfile(doc) })
-      .catch(() => {
-        // Falls back to the Auth record below
-      })
-    return () => { cancelled = true }
-  }, [user])
+  // Falls back to the Auth record until (or if) users/{uid} is read.
+  const { profile, initials, photoURL } = useMemberProfile(user)
 
   // Same account-level preference the website reads on login.
   const chooseLanguage = (next: Lang) => {
@@ -39,13 +39,40 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <AppText style={styles.title}>{t('dash_tab_profile')}</AppText>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
+          {t('dash_tab_profile')}
+        </AppText>
+
+        <View style={[styles.card, styles.identity]}>
+          {user && <AvatarPicker user={user} uri={photoURL} initials={initials} />}
+          {!!name && <AppText style={styles.identityName}>{name}</AppText>}
+          {!!email && (
+            <AppText ltr style={styles.identityEmail}>
+              {email}
+            </AppText>
+          )}
+        </View>
 
         <View style={styles.card}>
           <Row label={t('profile_name_label')} value={name || t('profile_no_phone')} />
           <Row label={t('profile_email_label')} value={email} ltr />
-          <Row label={t('profile_phone_label')} value={profile?.phone || t('profile_no_phone')} ltr={!!profile?.phone} last />
+          {user ? (
+            <PhoneRow user={user} stored={profile?.phone ?? ''} />
+          ) : (
+            <Row label={t('profile_phone_label')} value={t('profile_no_phone')} />
+          )}
+          {/* Read-only; "Other" shows what the member typed for it. */}
+          <Row
+            label={t('signup_customerTypeLabel')}
+            value={customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? t('profile_no_phone')}
+            last
+          />
         </View>
 
         <AppText style={styles.sectionTitle}>{t('profile_language_title')}</AppText>
@@ -67,9 +94,126 @@ export default function ProfileScreen() {
           })}
         </View>
 
+        {/* Password and sign-in method live in their own sheet, off the personal details. */}
+        {user && <SecuritySheet user={user} />}
+
         <Button label={t('nav_logout')} onPress={() => signOut(auth)} variant="secondary" />
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+const SAVED_NOTICE_MS = 3000
+
+// The phone number, editable in place with the onboarding's field (country
+// code picker + number). Saves E.164 to users/{uid}.phone, the same value the
+// website's account page writes; an empty field removes the number.
+function PhoneRow({ user, stored }: { user: User; stored: string }) {
+  const { t } = useLang()
+  // The just-saved number shows at once, before users/{uid} is read again.
+  const [saved, setSaved] = useState<string | null>(null)
+  const phone = saved ?? stored
+  const [editing, setEditing] = useState(false)
+  const [country, setCountry] = useState<CountryCode>('IL')
+  const [input, setInput] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState(false)
+
+  // Once the re-read profile carries it, the stored value takes over again.
+  useEffect(() => {
+    if (saved !== null && stored === saved) setSaved(null)
+  }, [stored, saved])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(false), SAVED_NOTICE_MS)
+    return () => clearTimeout(timer)
+  }, [notice])
+
+  const startEdit = () => {
+    const split = splitPhone(phone)
+    setCountry(split.country)
+    setInput(split.national)
+    setError(null)
+    setNotice(false)
+    setEditing(true)
+  }
+
+  const save = async () => {
+    const trimmed = input.trim()
+    const next = trimmed ? phoneToE164(country, trimmed) : ''
+    if (next === null) {
+      setError(t('phone_invalid_error'))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await updateUserPhone(user.uid, next)
+      setSaved(next)
+      invalidateMemberProfile(user.uid)
+      setEditing(false)
+      setNotice(true)
+    } catch {
+      setError(t('profile_save_error'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <View style={[styles.row, styles.rowBorder]}>
+        <TextField
+          label={t('profile_phone_label')}
+          prefix={<CountryCodePicker value={country} onChange={(code) => { setCountry(code); setError(null) }} />}
+          value={input}
+          onChangeText={(value) => { setInput(value); setError(null) }}
+          error={error}
+          placeholder={country === 'IL' ? '50 123 4567' : undefined}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          returnKeyType="done"
+          onSubmitEditing={save}
+          autoFocus
+        />
+        <View style={styles.editActions}>
+          <View style={styles.editAction}>
+            <Button label={t('profile_cancel_btn')} onPress={() => setEditing(false)} disabled={busy} variant="secondary" />
+          </View>
+          <View style={styles.editAction}>
+            <Button label={t('profile_save_btn')} onPress={save} busy={busy} />
+          </View>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={[styles.row, styles.rowBorder]}>
+      <View style={styles.phoneRow}>
+        <View style={styles.phoneText}>
+          <AppText style={styles.rowLabel}>{t('profile_phone_label')}</AppText>
+          <AppText ltr={!!phone} style={styles.rowValue}>{phone ? formatPhone(phone) : t('profile_no_phone')}</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('profile_edit_btn')} ${t('profile_phone_label')}`}
+          onPress={startEdit}
+          hitSlop={8}
+          style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
+        >
+          <AppText style={styles.editText}>{t('profile_edit_btn')}</AppText>
+        </Pressable>
+      </View>
+      {notice && (
+        <View style={styles.savedNotice}>
+          <Notice message={t('profile_save_success')} tone="success" />
+        </View>
+      )}
+    </View>
   )
 }
 
@@ -84,23 +228,48 @@ function Row({ label, value, ltr, last }: { label: string; value: string; ltr?: 
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16 },
-  title: { fontSize: 24, fontWeight: '900', color: colors.textStrong, marginBottom: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textMuted, marginBottom: 8 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
+  title: { marginBottom: 16 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textFaint, marginBottom: 8 },
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     marginBottom: 24,
   },
+  identity: { alignItems: 'center', paddingVertical: 20 },
+  identityName: { marginTop: 12, fontSize: 18, fontWeight: '700', color: colors.heading, textAlign: 'center' },
+  identityEmail: { marginTop: 2, fontSize: 14, color: colors.body, textAlign: 'center' },
   row: { paddingVertical: 14 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  rowLabel: { fontSize: 12, color: colors.textMuted, marginBottom: 2 },
-  rowValue: { fontSize: 16, fontWeight: '600', color: colors.textStrong },
-  langRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
-  langLabel: { fontSize: 16, color: colors.text },
+  rowLabel: { fontSize: 12, color: colors.textFaint, marginBottom: 2 },
+  rowValue: { fontSize: 16, fontWeight: '600', color: colors.heading },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  phoneText: { flex: 1, minWidth: 0 },
+  editButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: colors.brandLight,
+    justifyContent: 'center',
+    ...webOnly({ cursor: 'pointer' }),
+  },
+  editPressed: { backgroundColor: colors.brandTint },
+  editText: { fontSize: 15, fontWeight: '600', color: colors.brand },
+  editActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  editAction: { flex: 1 },
+  savedNotice: { marginTop: 12, marginBottom: -16 },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    paddingVertical: 12,
+    ...webOnly({ cursor: 'pointer' }),
+  },
+  langLabel: { fontSize: 16, color: colors.body },
   langSelected: { fontWeight: '700', color: colors.brand },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand },
 })

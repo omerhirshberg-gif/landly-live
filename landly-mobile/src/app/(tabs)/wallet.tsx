@@ -9,7 +9,7 @@ import Button from '../../components/Button'
 import Notice from '../../components/Notice'
 import VoucherPass from '../../components/VoucherPass'
 import { useLang } from '../../i18n/LangProvider'
-import { colors } from '../../theme'
+import { colors, type } from '../../theme'
 
 type ActiveVoucher = VoucherDocument & { id: string }
 
@@ -47,12 +47,13 @@ export default function WalletScreen() {
         keyExtractor={(voucher) => voucher.id}
         renderItem={({ item }) => <VoucherPass voucher={item} />}
         contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={false} onRefresh={() => setAttempt((n) => n + 1)} tintColor={colors.brand} />
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <AppText style={styles.title}>{t('mobile_tab_wallet')}</AppText>
+            <AppText accessibilityRole="header" style={type.screenTitle}>{t('mobile_tab_wallet')}</AppText>
             {failed && <Notice message={t('mobile_load_error')} />}
           </View>
         }
@@ -63,7 +64,7 @@ export default function WalletScreen() {
             <View style={styles.empty}>
               <AppText style={styles.emptyTitle}>{t('dash_perks_empty_title')}</AppText>
               <AppText style={styles.emptySub}>{t('dash_perks_empty_sub')}</AppText>
-              <Button label={t('nav_cta')} onPress={() => router.navigate('/')} />
+              <Button label={t('nav_cta')} onPress={() => router.navigate({ pathname: '/perks', params: { category: '' } })} />
             </View>
           )
         }
@@ -74,11 +75,10 @@ export default function WalletScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, flexGrow: 1 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: '900', color: colors.textStrong },
   spinner: { marginTop: 48 },
   empty: { alignItems: 'stretch', marginTop: 48, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 4 },
-  emptySub: { fontSize: 14, color: colors.textMuted, textAlign: 'center', marginBottom: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
+  emptySub: { fontSize: 14, color: colors.body, textAlign: 'center', marginBottom: 20 },
 })

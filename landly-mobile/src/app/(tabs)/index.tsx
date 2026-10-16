@@ -1,27 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
-import { greetingName } from '@shared/auth/names'
+import Svg, { Path } from 'react-native-svg'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
-import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
+import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useAuth } from '@shared/firebase/useAuth'
-import { getUserDocument } from '@shared/firebase/users'
+import { useMemberProfile } from '@shared/firebase/useMemberProfile'
+import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
 import AppText from '../../components/AppText'
+import Avatar from '../../components/Avatar'
+import Button from '../../components/Button'
+import CategoryChips from '../../components/CategoryChips'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
+import SectionHeader from '../../components/SectionHeader'
 import { useLang } from '../../i18n/LangProvider'
-import { API_BASE_URL } from '../../lib/env'
-import { colors } from '../../theme'
+import { openOffer } from '../../lib/openOffer'
+import { colors, radius, type } from '../../theme'
 
-// Bestsellers first, then newest — the same offers collection the website reads.
-function sortOffers(offers: OfferDocument[]): OfferDocument[] {
-  return [...offers].sort(
-    (a, b) =>
-      Number(b.isBestseller) - Number(a.isBestseller) ||
-      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
-  )
-}
+const CURATED_COUNT = 4
 
 // The greeting fades and rises in once the profile is read, so a fallback
 // name never flashes first (web: components/home/LoggedInHome.tsx).
@@ -29,33 +28,37 @@ const GREETING_IN = FadeInDown.duration(ONB.greetingMs)
   .easing(Easing.bezier(...EASE_SILK))
   .withInitialValues({ opacity: 0, transform: [{ translateY: ONB.screenRisePx }] })
 
-export default function PerksScreen() {
+// The signed-in dashboard: greeting, the live active-pass count, the
+// categories, and a few curated offers. Same sections as the website's
+// member home (components/home/LoggedInHome.tsx).
+const fetchOffers = async () => sortFeaturedOffers(await getAllOffers()).slice(0, CURATED_COUNT)
+
+export default function HomeScreen() {
   const { t } = useLang()
   const { user } = useAuth()
-  // undefined while the profile loads; null greets without a name (never the email).
-  const [name, setName] = useState<string | null | undefined>(undefined)
-
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    getUserDocument(user.uid)
-      .then((doc) => {
-        if (!cancelled) setName(greetingName(doc, user.displayName))
-      })
-      .catch(() => {
-        if (!cancelled) setName(greetingName(null, user.displayName))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [user])
+  const router = useRouter()
+  const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
+  // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
+  const [activeCount, setActiveCount] = useState<number | null>(null)
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
+  // Live: a web purchase or a business redemption updates the badge in moments.
+  useEffect(() => {
+    if (!user) return
+    return subscribeToUserVouchers(
+      user.uid,
+      'active',
+      (vouchers) => setActiveCount(vouchers.length),
+      () => setActiveCount(null)
+    )
+  }, [user])
+
+  // Pull-to-refresh reloads; the first load runs in the effect below.
   const load = useCallback(async () => {
     try {
-      setOffers(sortOffers(await getAllOffers()))
+      setOffers(await fetchOffers())
       setFailed(false)
     } catch {
       setFailed(true)
@@ -63,8 +66,20 @@ export default function PerksScreen() {
   }, [])
 
   useEffect(() => {
-    load()
-  }, [load])
+    let cancelled = false
+    fetchOffers()
+      .then((next) => {
+        if (cancelled) return
+        setOffers(next)
+        setFailed(false)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const onRefresh = async () => {
     setRefreshing(true)
@@ -72,59 +87,100 @@ export default function PerksScreen() {
     setRefreshing(false)
   }
 
-  // Checkout (Tranzila) runs on the website; the voucher it creates then
-  // appears live in the wallet tab.
-  const openOffer = (offer: OfferDocument) => Linking.openURL(`${API_BASE_URL}/offers/${offer.id}`)
+  const openPass = () => router.navigate('/wallet')
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <FlatList
-        data={offers ?? []}
-        keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} />}
+      <ScrollView
         contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.greetingSlot}>
-              {name !== undefined && (
-                <Animated.View entering={GREETING_IN}>
-                  <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={1}>
-                    {name ? t('home_welcome').replace('{name}', name) : t('home_welcome_generic')}
-                  </AppText>
-                </Animated.View>
-              )}
+      >
+        <View style={styles.greetingSlot}>
+          {loaded && (
+            <Animated.View entering={GREETING_IN} style={styles.greetingRow}>
+              <Avatar uri={photoURL} initials={initials} size={52} />
+              <View style={styles.greetingText}>
+                <AppText accessibilityRole="header" style={type.greeting} numberOfLines={1}>
+                  {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+                </AppText>
+                <AppText style={type.body} numberOfLines={1}>
+                  {t('deals_title')}
+                </AppText>
+              </View>
+            </Animated.View>
+          )}
+        </View>
+
+        <View style={styles.passCard}>
+          <View style={styles.passRow}>
+            <View style={styles.iconBox}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.brand} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM14 6v2M14 11v2M14 16v2" />
+              </Svg>
             </View>
-            <AppText style={styles.label}>{t('deals_label')}</AppText>
-            <AppText style={styles.title}>{t('deals_title')}</AppText>
-            {failed && <Notice message={t('mobile_load_error')} />}
+            <AppText style={styles.passLabel}>{t('home_pass_label')}</AppText>
+            <View style={styles.countPill} accessibilityLiveRegion="polite">
+              <AppText ltr style={styles.countText}>
+                {activeCount ?? '–'}
+              </AppText>
+            </View>
           </View>
-        }
-        ListEmptyComponent={
-          offers === null ? (
-            failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
-          ) : (
-            <View style={styles.empty}>
-              <AppText style={styles.emptyTitle}>{t('deals_empty_title')}</AppText>
-              <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
-            </View>
-          )
-        }
-      />
+          <AppText style={[type.body, styles.passMessage]}>
+            {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
+          </AppText>
+          <Button label={t('home_pass_cta')} onPress={openPass} />
+        </View>
+
+        <SectionHeader title={t('home_deals_title')} />
+        <CategoryChips active={null} onSelect={(category) => router.navigate({ pathname: '/perks', params: { category: category ?? '' } })} />
+
+        <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { category: '' } })} />
+        {failed && <Notice message={t('mobile_load_error')} />}
+        {offers === null ? (
+          !failed && <ActivityIndicator color={colors.brand} style={styles.spinner} />
+        ) : offers.length === 0 ? (
+          <View style={styles.empty}>
+            <AppText style={styles.emptyTitle}>{t('deals_empty_title')}</AppText>
+            <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
+          </View>
+        ) : (
+          offers.map((offer) => <OfferCard key={offer.id} offer={offer} onPress={() => openOffer(offer)} />)
+        )}
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, flexGrow: 1 },
-  header: { marginBottom: 16 },
-  greetingSlot: { minHeight: 34, marginBottom: 12 },
-  greeting: { fontSize: 26, lineHeight: 34, fontWeight: '900', color: colors.textStrong },
-  label: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, marginBottom: 4 },
-  title: { fontSize: 24, fontWeight: '900', color: colors.textStrong },
-  spinner: { marginTop: 48 },
-  empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 4 },
-  emptySub: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
+  greetingSlot: { minHeight: 56, marginBottom: 20, justifyContent: 'center' },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  greetingText: { flex: 1, minWidth: 0 },
+  passCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  passRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center' },
+  passLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.body },
+  countPill: {
+    minWidth: 40,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brandLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { fontSize: 16, fontWeight: '700', color: colors.brand, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  passMessage: { marginBottom: 16 },
+  spinner: { marginTop: 32 },
+  empty: { alignItems: 'center', marginTop: 24, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
+  emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },
 })

@@ -20,6 +20,8 @@ export interface UserDocument {
   notificationsOptIn: boolean
   /** The onboarding cards were finished (users/{uid}.onboardingCompletedAt is set). */
   onboardingCompleted: boolean
+  /** Download URL of the uploaded avatar (avatars/{uid}), or '' for none. */
+  photoURL: string
 }
 
 /**
@@ -67,6 +69,7 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     preferredLanguage: data.preferredLanguage ?? 'en',
     notificationsOptIn: data.notificationsOptIn === true,
     onboardingCompleted: data.onboardingCompletedAt != null,
+    photoURL: typeof data.photoURL === 'string' ? data.photoURL : '',
   }
 }
 
@@ -87,6 +90,11 @@ export async function completeOnboardingProfile(
   data: { phone: string; customerType: string; customerTypeOther: string; preferredLanguage: string; notificationsOptIn: boolean }
 ) {
   await updateDoc(doc(db, 'users', uid), { ...data, onboardingCompletedAt: serverTimestamp() })
+}
+
+/** E.164 (phoneToE164), or '' to remove the number. */
+export async function updateUserPhone(uid: string, phone: string) {
+  await updateDoc(doc(db, 'users', uid), { phone })
 }
 
 export async function updateUserLanguage(uid: string, preferredLanguage: string) {

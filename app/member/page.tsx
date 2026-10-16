@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { getUserDocument } from '@/lib/firebase/users'
 import { greetingName } from '@/lib/auth/names'
-import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, customerTypeLabel } from '@/lib/customerTypes'
 
 export default function MemberPage() {
   const { t } = useLang()
@@ -21,6 +21,7 @@ export default function MemberPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<MemberTab>('perks')
   const [customerType, setCustomerType] = useState('')
+  const [customerTypeOther, setCustomerTypeOther] = useState('')
   const [greeting, setGreeting] = useState<string | null>(null)
 
   useEffect(() => {
@@ -33,13 +34,15 @@ export default function MemberPage() {
     getUserDocument(user.uid).then((doc) => {
       if (cancelled) return
       setCustomerType(doc?.customerType ?? '')
+      setCustomerTypeOther(doc?.customerTypeOther ?? '')
       setGreeting(greetingName(doc, user.displayName))
     })
     return () => { cancelled = true }
   }, [user])
 
   const segmentOption = CUSTOMER_TYPES.find((o) => o.value === customerType)
-  const segmentLabel = segmentOption ? t(segmentOption.labelKey) : t('dash_segment_value_unset')
+  // "Other" shows what the member typed for it.
+  const segmentLabel = customerTypeLabel(customerType, customerTypeOther, t) ?? t('dash_segment_value_unset')
   const segmentColor = segmentOption?.color ?? CUSTOMER_TYPE_UNSET_COLOR
 
   // First name from the profile, else the display name — never the email.
@@ -52,7 +55,7 @@ export default function MemberPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen bg-slate-50" />
+        <div className="pt-16 member-canvas" />
       </>
     )
   }
@@ -60,13 +63,13 @@ export default function MemberPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 bg-slate-50">
+      <div className="pt-16 member-canvas">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
 
           <div className="flex items-start justify-between mb-6 gap-3">
             <div>
               <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{welcomeMessage}</h1>
+              <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink">{welcomeMessage}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
                 <span className="segment-badge" style={{ background: segmentColor }}>
                   <span>{segmentLabel}</span>

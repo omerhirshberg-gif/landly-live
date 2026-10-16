@@ -142,6 +142,22 @@ export function phoneToE164(country: CountryCode, input: string): string | null 
   return parsed?.isValid() ? parsed.number : null
 }
 
+/**
+ * A stored number split back into the picker's country and the digits after
+ * the calling code, for editing it (Expo Profile tab). Empty or unparsable
+ * input starts on the default country with the raw text kept.
+ */
+export function splitPhone(e164: string): { country: CountryCode; national: string } {
+  const parsed = e164 ? parsePhoneNumberFromString(e164) : undefined
+  if (!parsed?.country) return { country: DEFAULT_COUNTRY, national: e164 }
+  return { country: parsed.country, national: parsed.nationalNumber }
+}
+
+/** "+972 50 123 4567" for display; anything unparsable is shown as stored. */
+export function formatPhone(e164: string): string {
+  return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164
+}
+
 // ── Persona ─────────────────────────────────────────────────────────────
 /** The persona that reveals the optional free-text note. */
 export const OTHER_CUSTOMER_TYPE = 'other'

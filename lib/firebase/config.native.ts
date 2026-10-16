@@ -3,6 +3,7 @@ import Constants from 'expo-constants'
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app'
 import { getAuth, getReactNativePersistence, GoogleAuthProvider, initializeAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 // React Native counterpart of ./config.ts — Metro picks this file over
 // config.ts on iOS/Android, Next.js never sees it. Same exports, same
@@ -25,4 +26,6 @@ const app = isFirstInit ? initializeApp(firebaseConfig) : getApp()
 export const devicePersistence = getReactNativePersistence(AsyncStorage)
 export const auth = isFirstInit ? initializeAuth(app, { persistence: devicePersistence }) : getAuth(app)
 export const db = getFirestore(app)
+// Member avatars (avatars/{uid}, see storage.rules).
+export const storage = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()

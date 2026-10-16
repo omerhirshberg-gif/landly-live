@@ -76,7 +76,7 @@ export default function PrivacyPolicy() {
   return (
     <article className="text-[#334155] text-base leading-[1.7] break-words">
       <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0066FF] mb-2">Landly Ltd.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0066FF] mb-2">Landly</p>
         <h1 className="text-3xl sm:text-4xl font-black text-[#0F172A] leading-tight mb-3">Privacy Policy</h1>
         <p className="text-sm text-slate-500">
           Last updated: <time dateTime={PRIVACY_POLICY_UPDATED.iso}>{PRIVACY_POLICY_UPDATED.label}</time>
@@ -104,8 +104,8 @@ export default function PrivacyPolicy() {
       <Section id="who-we-are">
         <p>
           The Landly website at <A href="https://www.golandly.com">www.golandly.com</A> and the Landly mobile apps
-          are operated by <strong>Landly Ltd.</strong>, Tel Aviv-Yafo, Israel (&quot;Landly&quot;, &quot;we&quot;,
-          &quot;us&quot;). Landly Ltd. is the controller (database owner) responsible for the personal information
+          are operated by <strong>Landly</strong>, Tel Aviv-Yafo, Israel (&quot;we&quot;, &quot;us&quot;).
+          Landly is the controller (database owner) responsible for the personal information
           described in this policy.
         </p>
         <p>
@@ -474,7 +474,7 @@ export default function PrivacyPolicy() {
 
       <Section id="contact">
         <address className="not-italic rounded-xl border border-slate-200 bg-[#F8FAFC] p-5 sm:p-6 space-y-1">
-          <p className="font-bold text-[#0F172A]">Landly Ltd.</p>
+          <p className="font-bold text-[#0F172A]">Landly</p>
           <p>Tel Aviv-Yafo, Israel</p>
           <p>Privacy and support: <Email /></p>
           <p>Website: <A href="https://www.golandly.com">www.golandly.com</A></p>
