@@ -3,75 +3,152 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { User } from 'firebase/auth'
-import { greetingName } from '@/lib/auth/names'
-import { getUserDocument } from '@/lib/firebase/users'
+import OfferCard from '@/components/discover/OfferCard'
+import Avatar from '@/components/ui/Avatar'
+import { CATEGORY_TILES } from '@/lib/categories'
+import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
+import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
+import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
 import { useLang } from '@/lib/i18n/useLang'
 
-// No vouchers/redemptions collection exists in Firestore yet (see firestore.rules) —
-// show the honest zero until real voucher data is wired up.
-const ACTIVE_VOUCHER_COUNT = 0
+const CURATED_COUNT = 8
 
-// "Welcome, {firstName}" from the profile (falling back to the display name,
-// never the email). The greeting row holds its space until the profile is
-// read, then fades and rises in, so a fallback name never flashes first.
+// The signed-in home: the member's greeting, their live active-pass count,
+// the categories, and a row of curated offers. Guest marketing (hero, value
+// props, How it works, the Aliyah card) never renders here. Same sections as
+// the Expo Home tab (landly-mobile/src/app/(tabs)/index.tsx).
+//
+// "Welcome, {firstName}" comes from the profile (falling back to the display
+// name, never the email). The greeting row holds its space until the profile
+// is read, then fades and rises in, so a fallback name never flashes first.
 export default function LoggedInHome({ user }: { user: User }) {
   const { t } = useLang()
-  const [name, setName] = useState<string | null | undefined>(undefined)
+  const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
+  // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
+  const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [offers, setOffers] = useState<OfferDocument[] | null>(null)
+
+  // Live, like the Expo wallet: a purchase or a redemption updates the count without a reload.
+  useEffect(
+    () =>
+      subscribeToUserVouchers(
+        user.uid,
+        'active',
+        (vouchers) => setActiveCount(vouchers.length),
+        () => setActiveCount(null)
+      ),
+    [user.uid]
+  )
 
   useEffect(() => {
     let cancelled = false
-    getUserDocument(user.uid)
-      .then((doc) => {
-        if (!cancelled) setName(greetingName(doc, user.displayName))
+    getAllOffers()
+      .then((all) => {
+        if (!cancelled) setOffers(sortFeaturedOffers(all).slice(0, CURATED_COUNT))
       })
       .catch(() => {
-        if (!cancelled) setName(greetingName(null, user.displayName))
+        if (!cancelled) setOffers([])
       })
     return () => {
       cancelled = true
     }
-  }, [user])
-
-  const resolved = name !== undefined
-  const initial = (name?.charAt(0) || '').toLocaleUpperCase()
+  }, [])
 
   return (
-    <div className="pt-16 bg-slate-50 min-h-screen">
-      <div className="max-w-3xl mx-auto px-5 sm:px-6 py-10 sm:py-14">
-        <div className={`flex items-center gap-3 mb-8 min-h-12 ${resolved ? 'greet-in' : 'invisible'}`}>
-          <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-black text-lg flex-shrink-0" aria-hidden="true">
-            {initial || <i className="fa-solid fa-user text-base"></i>}
+    <main className="member-canvas pt-16">
+      {/* No footer for members: the bottom padding clears the iPhone home indicator instead. */}
+      <div className="max-w-member mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 lg:pt-12 pb-[calc(4rem+env(safe-area-inset-bottom))]">
+        <header className={`flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
+          <Link href="/account" aria-label={t('nav_account')} className="tap-target rounded-full">
+            <Avatar src={photoURL} initials={initials} size={56} />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink truncate">
+              {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+            </h1>
+            <p className="text-[15px] text-body mt-0.5">{t('deals_title')}</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-            {name ? t('home_welcome').replace('{name}', name) : t('home_welcome_generic')}
-          </h1>
-        </div>
+        </header>
 
-        <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col">
-            <i className="fa-solid fa-gift text-brand text-xl mb-3"></i>
-            <p className="text-sm text-slate-700 leading-relaxed mb-4 flex-1">
-              {t('home_vouchers_message').replace('{count}', String(ACTIVE_VOUCHER_COUNT))}
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
+          <section className="bg-white border border-line rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-10 h-10 rounded-xl bg-brandLight text-brand flex items-center justify-center" aria-hidden="true">
+                <i className="fa-solid fa-ticket"></i>
+              </span>
+              <span className="text-sm font-semibold text-body">{t('home_pass_label')}</span>
+              <span className="ms-auto inline-flex items-center min-w-[2.25rem] h-8 px-3 justify-center rounded-full bg-brandLight text-brand text-base font-bold tabular-nums" aria-live="polite">
+                {activeCount ?? '–'}
+              </span>
+            </div>
+            <p className="text-sm text-body leading-relaxed mb-5 flex-1">
+              {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
             </p>
-            <Link href="/member" className="tap-target btn-primary text-center justify-center">
-              {t('home_vouchers_cta')}
+            <Link href="/member" className="ds-btn ds-btn-primary ds-btn-md w-full">
+              {t('home_pass_cta')}
             </Link>
-          </div>
+          </section>
 
-          <div className="bg-brand rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col text-white">
-            <i className="fa-solid fa-compass text-xl mb-3"></i>
-            <div className="font-bold text-base mb-1">{t('home_discover_title')}</div>
-            <p className="text-blue-200 text-sm leading-relaxed mb-4 flex-1">{t('home_discover_sub')}</p>
-            <Link
-              href="/categories"
-              className="tap-target inline-flex items-center justify-center gap-2 bg-white text-brand font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandLight transition"
-            >
+          <section className="lg:col-span-2 bg-brand rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col text-white">
+            <i className="fa-solid fa-compass text-xl mb-3" aria-hidden="true"></i>
+            <h2 className="text-xl font-bold mb-1">{t('home_discover_title')}</h2>
+            <p className="text-blue-100 text-sm leading-relaxed mb-5 flex-1">{t('home_discover_sub')}</p>
+            <Link href="/categories" className="ds-btn ds-btn-secondary ds-btn-md self-start">
               <span>{t('home_discover_cta')}</span>
-              <i className="fa-solid fa-arrow-right text-xs"></i>
+              <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+            </Link>
+          </section>
+        </div>
+
+        <section className="mt-10" aria-labelledby="home-deals-title">
+          <h2 id="home-deals-title" className="text-xl font-bold text-ink mb-4">{t('home_deals_title')}</h2>
+          {/* Thumb-scrollable chips with faded edges on phones, wrapping on wider screens */}
+          <div className="edge-fade -mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 overflow-x-auto sm:flex-wrap pb-1 [scrollbar-width:none]">
+            {CATEGORY_TILES.map((tile) => (
+              <Link key={tile.category} href={`/categories/${encodeURIComponent(tile.category)}`} className="tap-target ds-chip">
+                <span aria-hidden="true">{tile.emoji}</span>
+                <span>{t(tile.labelKey)}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10" aria-labelledby="home-curated-title">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h2 id="home-curated-title" className="text-xl font-bold text-ink">{t('home_curated_title')}</h2>
+            <Link href="/categories" className="tap-target inline-flex items-center text-sm font-semibold text-brand hover:underline">
+              {t('home_see_all')}
             </Link>
           </div>
-        </div>
+          {offers === null ? (
+            <div className="flex gap-4 overflow-hidden" aria-hidden="true">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="flex-shrink-0 w-[180px] sm:w-[200px] h-[230px] rounded-2xl bg-white border border-line animate-pulse" />
+              ))}
+            </div>
+          ) : offers.length === 0 ? (
+            <div className="bg-white border border-line rounded-2xl p-6 text-center">
+              <p className="font-bold text-ink mb-1">{t('deals_empty_title')}</p>
+              <p className="text-sm text-body">{t('deals_empty_sub')}</p>
+            </div>
+          ) : (
+            <div className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-4 overflow-x-auto pb-2 snap-x [scrollbar-width:none]">
+              {offers.map((offer) => (
+                <div key={offer.id} className="snap-start">
+                  <OfferCard offer={offer} showWishlistButton />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <p className="mt-12 text-center text-sm text-body">
+          {t('home_faq_prompt_pre')}{' '}
+          <Link href="/support" className="text-brand font-semibold hover:underline">
+            {t('home_faq_prompt_link')}
+          </Link>
+        </p>
       </div>
-    </div>
+    </main>
   )
 }

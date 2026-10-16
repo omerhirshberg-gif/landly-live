@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import AccountTabs, { AccountTab } from '@/components/account/AccountTabs'
 import ProfileSection from '@/components/account/ProfileSection'
 import LanguageSection from '@/components/account/LanguageSection'
-import SecuritySection from '@/components/account/SecuritySection'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
@@ -17,7 +15,6 @@ export default function AccountPage() {
   // Onboarding first: a member mid-wizard is sent back to it.
   const held = useOnboardingGuard()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<AccountTab>('profile')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -27,38 +24,28 @@ export default function AccountPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen bg-slate-50" />
+        <div className="pt-16 member-canvas" />
       </>
     )
   }
 
-  // Google-only accounts have no password to change, so no Security tab — and
-  // with only Profile left, the tab bar is hidden entirely.
-  const hasPasswordProvider = user.providerData.some((p) => p.providerId === 'password')
-
   return (
     <>
       <Navbar />
-      <div className="pt-16 bg-slate-50 min-h-screen">
+      <div className="pt-16 member-canvas">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
           <div className="mb-6">
             <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{t('nav_account')}</h1>
+            <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink">{t('nav_account')}</h1>
           </div>
 
-          {/* Tabs: Profile / Security */}
-          {hasPasswordProvider && (
-            <div className="mb-5">
-              <AccountTabs active={activeTab} onChange={setActiveTab} />
-            </div>
-          )}
-          {activeTab === 'profile' && (
-            <div className="space-y-6">
-              <ProfileSection user={user} />
-              <LanguageSection user={user} />
-            </div>
-          )}
-          {activeTab === 'security' && hasPasswordProvider && <SecuritySection user={user} />}
+          {/* Personal details only: password and sign-in live in Privacy &
+              Security (components/account/SecurityDialog.tsx), opened from the
+              avatar menu or the drawer. */}
+          <div className="space-y-6">
+            <ProfileSection user={user} />
+            <LanguageSection user={user} />
+          </div>
         </div>
       </div>
     </>

@@ -37,6 +37,14 @@
           "supportsRTL": false,
           "forcesRTL": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Landly uses your photos so you can choose a profile picture.",
+          "cameraPermission": "Landly uses the camera so you can take a profile picture.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

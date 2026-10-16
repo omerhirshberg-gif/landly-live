@@ -16,6 +16,7 @@ export default function OfferCard({ offer, showWishlistButton = false }: { offer
   const [imgError, setImgError] = useState(false)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const showImage = !!offer.imageUrl && !imgError
+  const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
 
   return (
     <Link
@@ -29,6 +30,11 @@ export default function OfferCard({ offer, showWishlistButton = false }: { offer
           <img src={offer.imageUrl} alt={offer.title} onError={() => setImgError(true)} className="w-full h-full object-cover" />
         ) : (
           <i className="fa-regular fa-image text-3xl text-slate-300"></i>
+        )}
+        {discount > 0 && (
+          <span className="absolute bottom-2.5 start-2.5 bg-brand text-white text-[11px] font-extrabold tracking-wide px-2 py-1 rounded-lg shadow-sm">
+            {t('offer_percent_off').replace('{n}', String(discount))}
+          </span>
         )}
         {tile && (
           <span className="absolute top-2.5 start-2.5 bg-white/95 text-[10px] font-bold text-slate-500 px-2 py-0.5 rounded-full shadow-sm">
@@ -56,8 +62,14 @@ export default function OfferCard({ offer, showWishlistButton = false }: { offer
         <div className="text-xs text-slate-700 mt-1.5 truncate">{offer.title}</div>
         <div className="flex items-center gap-1 mt-2" dir="ltr">
           <span className="text-sm font-black text-brand">{formatPrice(offer.offerPrice)}</span>
-          <span className="text-[11px] text-slate-400 line-through">{formatPrice(offer.originalPrice)}</span>
-          <span className="deal-badge !mb-0">-{getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)}%</span>
+          {offer.originalPrice > offer.offerPrice && (
+            <span className="text-[11px] text-slate-400 line-through">{formatPrice(offer.originalPrice)}</span>
+          )}
+        </div>
+        {/* The whole card is the link; this line just says what tapping does. */}
+        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 text-xs font-bold text-brand">
+          <span>{t('offer_view_cta')}</span>
+          <i className="fa-solid fa-arrow-right text-[10px] rtl:-scale-x-100" aria-hidden="true"></i>
         </div>
       </div>
     </Link>

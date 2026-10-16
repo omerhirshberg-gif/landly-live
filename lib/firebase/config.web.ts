@@ -4,6 +4,7 @@ import * as firebaseAuth from 'firebase/auth'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import type * as BrowserAuth from '@firebase/auth/dist/auth-public'
 import { getFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 // Expo web counterpart of ./config.ts (landly-mobile run in a browser) --
 // Metro picks this file over config.ts for platform=web, Next.js never sees
@@ -25,4 +26,6 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 export const devicePersistence = (firebaseAuth as unknown as typeof BrowserAuth).browserLocalPersistence
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+// Member avatars (avatars/{uid}, see storage.rules).
+export const storage = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()

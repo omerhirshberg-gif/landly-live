@@ -130,7 +130,7 @@ function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent)
             <td align="center" bgcolor="#FFFFFF" style="padding:24px 32px 32px 32px;background-color:#FFFFFF;border-top:1px solid #E2E8F0;border-radius:0 0 16px 16px;font-family:${FONT_STACK};">
               <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#64748B;">${escapeHtml(t.email_footerHelp)}</p>
               <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;"><a href="${supportHref}" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(SUPPORT_EMAIL)}</a>&nbsp;&nbsp;<span style="color:#CBD5E1;">|</span>&nbsp;&nbsp;<a href="${escapeHtml(`${origin}/support`)}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(t.email_footerSupport)}</a></p>
-              <p style="margin:0;font-size:12px;line-height:18px;color:#94A3B8;">&copy; ${year} ${escapeHtml(t.footer_copyright_notice)}<br>${escapeHtml(t.footer_location)}</p>
+              <p style="margin:0;font-size:12px;line-height:18px;color:#94A3B8;">&copy; ${year} Landly. ${escapeHtml(t.footer_copyright_notice)}<br>${escapeHtml(t.footer_location)}</p>
             </td>
           </tr>
         </table>

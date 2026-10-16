@@ -13,11 +13,13 @@ import { auth } from '@/lib/firebase/config'
 import { updateUserLanguage } from '@/lib/firebase/users'
 import type { Lang } from '@/lib/i18n/translations'
 import { LANGUAGES } from '@/lib/i18n/languages'
+import SecurityDialog from '@/components/account/SecurityDialog'
+import AccountMenu from './AccountMenu'
 import MobileMenu from './MobileMenu'
 
-// The only sections the navbar itself links to (Footer's own #hero link is
-// out of scope) — order matters for useScrollSpy's tie-breaking.
-const HOME_ANCHOR_IDS = ['deals', 'how'] as const
+// The only homepage section the navbar scroll-spies on — Deals now goes to the
+// /categories catalog instead of the #deals overview.
+const HOME_ANCHOR_IDS = ['how'] as const
 
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLang()
@@ -25,6 +27,7 @@ export default function Navbar() {
   const { wishlistIds } = useWishlist()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -71,6 +74,12 @@ export default function Navbar() {
     router.push('/')
   }
 
+  // Privacy & Security, from the avatar menu or the drawer (which closes first).
+  const openSecurity = () => {
+    closeMobileMenu()
+    setSecurityOpen(true)
+  }
+
   const goHome = () => {
     closeMobileMenu()
     if (pathname === '/') {
@@ -105,18 +114,18 @@ export default function Navbar() {
           </a>
 
           <div dir={contentDir} className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-4 xl:gap-6 whitespace-nowrap text-[13px] font-semibold text-slate-600">
-            <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className={navLinkClass('/')}>{t('nav_home')}</a>
             {user ? (
               <>
+                {/* Members get three links: the logo is Home, the avatar menu is the
+                    account, and "How it works" is a guest section they never see */}
                 <Link href="/categories" className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
-                <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
                 <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
-                <Link href="/account" className={navLinkClass('/account')}>{t('nav_account')}</Link>
               </>
             ) : (
               <>
-                <Link href="/#deals" className={navLinkClass('/#deals')}>{t('nav_deals')}</Link>
+                <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className={navLinkClass('/')}>{t('nav_home')}</a>
+                <Link href="/categories" className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
                 <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
                 <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/business" className={navLinkClass('/business')}>{t('nav_biz')}</Link>
@@ -126,8 +135,9 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Desktop only: on phones and tablets the wishlist is in the drawer, keeping the bar to logo, language and menu */}
             {user && (
-              <Link href="/wishlist" aria-label={t('nav_wishlist')} className={`tap-target relative flex items-center justify-center w-10 h-10 rounded-full transition ${isNavLinkActive(pathname, '/wishlist', activeAnchorId) ? 'text-brand bg-brandLight' : 'text-slate-600 hover:text-brand'}`}>
+              <Link href="/wishlist" aria-label={t('nav_wishlist')} className={`tap-target relative hidden lg:flex items-center justify-center w-10 h-10 rounded-full transition ${isNavLinkActive(pathname, '/wishlist', activeAnchorId) ? 'text-brand bg-brandLight' : 'text-slate-600 hover:text-brand'}`}>
                 <i className="fa-solid fa-heart text-base"></i>
                 {wishlistIds.length > 0 && (
                   <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{wishlistIds.length}</span>
@@ -135,15 +145,11 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Account actions: the blue and white capsules, then a hairline before the language picker */}
+            {/* Account actions: the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
             <div className="hidden sm:flex items-center gap-4">
               {user ? (
-                <>
-                  <Link href="/member" className={accountPillClass}>{t('nav_perks')}</Link>
-                  <button onClick={handleSignOut} className="tap-target inline-flex items-center gap-1.5 text-[13px] font-bold text-red-600 border-2 border-red-200 rounded-full px-4 py-2.5 hover:bg-red-50 hover:border-red-600 transition">
-                    <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i> <span>{t('nav_logout')}</span>
-                  </button>
-                </>
+                // Avatar + name pill; My Perks, account, wishlist and Sign Out live in its menu
+                <AccountMenu onSignOut={handleSignOut} onOpenSecurity={openSecurity} />
               ) : (
                 <>
                   {/* Sign Up is the blue pill; Sign In the white one beside the language switcher */}
@@ -195,7 +201,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} onOpenSecurity={openSecurity} activeAnchorId={activeAnchorId} />
+      <SecurityDialog open={securityOpen} onClose={() => setSecurityOpen(false)} />
     </>
   )
 }

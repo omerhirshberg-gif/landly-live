@@ -7,7 +7,7 @@ import PrivacyPolicy from '@/components/legal/PrivacyPolicy'
 export const metadata: Metadata = {
   title: 'Privacy Policy — Landly',
   description:
-    'How Landly Ltd. collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google.',
+    'How Landly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google.',
   alternates: { canonical: 'https://www.golandly.com/privacy' },
   robots: { index: true, follow: true },
 }

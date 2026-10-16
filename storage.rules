@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Firebase Storage holds one thing today: member avatars, written by the web
+// uploader (components/account/AvatarUploader.tsx) and the Expo picker
+// (landly-mobile/src/components/AvatarPicker.tsx) through uploadAvatar
+// in lib/firebase/avatar.ts. Both compress to a ≤512px JPEG first, so the
+// 2MB cap only stops a client that skipped that.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Readable by anyone holding the download URL (it's an <img> src on the
+    // site and in the app). Only the member themselves may write it: signed
+    // in, email verified, a customer (not a business account — same test as
+    // isCustomer() in firestore.rules), an image, under 2MB. No deletes.
+    match /avatars/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true
+        && !firestore.exists(/databases/(default)/documents/businesses/$(request.auth.uid))
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

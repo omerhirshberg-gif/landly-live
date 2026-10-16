@@ -70,24 +70,36 @@ describe('navbar layout lock', () => {
   })
 })
 
+describe('desktop Deals link', () => {
+  it.each(['en', 'he'] as const)('opens the /categories catalog, not the #deals overview (%s)', (lang) => {
+    const nav = render(lang).slice(0, render(lang).indexOf('</nav>'))
+    expect(nav).toMatch(new RegExp(`href="/categories">${translations[lang].nav_deals}<`))
+    expect(nav).not.toContain('href="/#deals"')
+  })
+})
+
 describe('mobile drawer', () => {
   const drawer = (lang: Lang, loggedIn = false) => {
     const html = render(lang, { loggedIn })
     return html.slice(html.indexOf('</nav>'))
   }
 
-  it('leads with Home, then the consumer links', () => {
-    for (const loggedIn of [false, true]) {
-      const d = drawer('en', loggedIn)
-      const home = d.search(new RegExp(`<a [^>]*href="/"[^>]*>${translations.en.nav_home}<`))
-      expect(home).toBeGreaterThan(-1)
-      expect(home).toBeLessThan(d.indexOf('href="/#how"'))
-    }
+  it('leads guests with Home, then the consumer links', () => {
     const d = drawer('en')
+    const home = d.search(new RegExp(`<a [^>]*href="/"[^>]*>${translations.en.nav_home}<`))
+    expect(home).toBeGreaterThan(-1)
+    expect(home).toBeLessThan(d.indexOf('href="/#how"'))
     expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/olim"'))
     expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/olim"'))
     expect(d.indexOf('href="/olim"')).toBeLessThan(d.indexOf('href="/support"'))
     expect(d).not.toContain('href="/#deals"')
+  })
+
+  it('sends guests to the /categories catalog from Deals, right after Home', () => {
+    const d = drawer('en')
+    const deals = d.indexOf(`href="/categories">${translations.en.nav_deals}<`)
+    expect(deals).toBeGreaterThan(d.indexOf(`>${translations.en.nav_home}<`))
+    expect(deals).toBeLessThan(d.indexOf('href="/#how"'))
   })
 
   it('puts For Businesses under a divider, after the consumer links', () => {
@@ -124,8 +136,97 @@ describe('header account actions', () => {
     expect(signIn).toBeLessThan(nav.indexOf('fa-globe'))
   })
 
-  it('signed in keeps My Perks', () => {
-    expect(render('en', { loggedIn: true })).toMatch(/href="\/member">My Perks</)
+  it.each(['en', 'he'] as const)('signed in: the bar links are Explore Perks, Making Aliyah? and Support only (%s)', (lang) => {
+    const html = render(lang, { loggedIn: true })
+    const nav = html.slice(0, html.indexOf('</nav>'))
+    const t = translations[lang]
+    const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-3 flex-shrink-0"'))
+    const hrefs = [...centre.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
+    expect(hrefs).toEqual(['/categories', '/olim', '/support'])
+    expect(centre).toContain(`>${t.nav_cta}<`)
+    // The logo is Home and the avatar menu is the account: no text links for either.
+    expect(centre).not.toContain(`>${t.nav_home}<`)
+    expect(centre).not.toContain(`>${t.nav_account}<`)
+  })
+
+  it('signed out: the bar still offers Home', () => {
+    const nav = render('en').slice(0, render('en').indexOf('</nav>'))
+    expect(nav).toMatch(new RegExp(`href="/"[^>]*>${translations.en.nav_home}<`))
+  })
+
+  it.each(['en', 'he'] as const)('signed in: an avatar pill opens the account menu instead of a plain Sign Out button (%s)', (lang) => {
+    const html = render(lang, { loggedIn: true })
+    const nav = html.slice(0, html.indexOf('</nav>'))
+    const t = translations[lang]
+    expect(nav).toMatch(new RegExp(`<button type="button" aria-haspopup="menu" aria-expanded="false" aria-label="${t.account_menu_label}"`))
+    expect(nav).toContain('ds-avatar-fallback')
+    expect(nav).not.toContain('fa-arrow-right-from-bracket')
+    expect(nav).not.toContain(`>${t.nav_logout}<`)
+    // The pill sits before the divider and the language picker.
+    expect(nav.indexOf('aria-haspopup="menu"')).toBeLessThan(nav.indexOf('fa-globe'))
+  })
+
+  it('signed in: drops the How it works link but keeps Making Aliyah', () => {
+    const html = render('en', { loggedIn: true })
+    const nav = html.slice(0, html.indexOf('</nav>'))
+    const drawer = html.slice(html.indexOf('</nav>'))
+    for (const part of [nav, drawer]) {
+      expect(part).not.toContain('href="/#how"')
+      expect(part).toContain('href="/olim"')
+    }
+  })
+
+  it.each(['en', 'he'] as const)('signed in: the drawer opens with the member card, then Explore Perks, Wishlist, Making Aliyah?, Support and Privacy & Security (%s)', (lang) => {
+    const html = render(lang, { loggedIn: true })
+    const drawer = html.slice(html.indexOf('</nav>'))
+    const t = translations[lang]
+    const links = drawer.slice(0, drawer.indexOf('mt-auto'))
+    expect([...links.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/account', '/categories', '/wishlist', '/olim', '/support', '/member'])
+    // Privacy & Security is a button (it opens the dialog), after Support and before the pass banner.
+    const security = links.indexOf(`>${t.nav_security.replace('&', '&amp;')}<`)
+    expect(security).toBeGreaterThan(links.indexOf('href="/support"'))
+    expect(security).toBeLessThan(links.indexOf('href="/member"'))
+    expect(links).toContain('fa-shield-halved')
+    expect(drawer).not.toContain(`>${t.nav_home}<`)
+    expect(drawer).not.toContain(`>${t.nav_perks}<`)
+  })
+
+  it('signed in: the member card is an interactive /account link with a Profile cue', () => {
+    const html = render('en', { loggedIn: true })
+    const drawer = html.slice(html.indexOf('</nav>'))
+    const card = drawer.match(/<a [^>]*href="\/account"[^>]*>(.*?)<\/a>/)!
+    expect(card[0]).toContain('rounded-[14px]')
+    expect(card[0]).toContain('active:bg-slate-50')
+    expect(card[1]).toContain('ds-avatar-fallback')
+    expect(card[1]).toContain(`<span class="sr-only">${translations.en.nav_account}: </span>`)
+    expect(card[1]).toContain(`>${translations.en.dash_tab_profile}<i class="fa-solid fa-chevron-right`)
+  })
+
+  it('signed in: the My Digital Pass banner opens /member, then Sign Out and the legal links sit at the bottom', () => {
+    const html = render('en', { loggedIn: true })
+    const drawer = html.slice(html.indexOf('</nav>'))
+    const t = translations.en
+    const banner = drawer.match(/<a [^>]*href="\/member"[^>]*>(.*?)<\/a>/)!
+    expect(banner[0]).toContain('bg-gradient-to-br from-brand to-brandDark')
+    expect(banner[1]).toContain('fa-qrcode')
+    expect(banner[1]).toContain(t.nav_pass_title)
+    expect(banner[1]).toContain(t.nav_pass_sub.replace('&', '&amp;'))
+    const footer = drawer.slice(drawer.indexOf('mt-auto'))
+    expect(footer).toMatch(/<button type="button" class="ds-btn ds-btn-secondary w-full">Sign Out<\/button>/)
+    expect(footer.indexOf('href="/terms"')).toBeGreaterThan(footer.indexOf('>Sign Out<'))
+    expect(footer.indexOf('href="/privacy"')).toBeGreaterThan(footer.indexOf('href="/terms"'))
+  })
+
+  it('signed in: the wishlist heart is desktop-only (hidden below lg)', () => {
+    const html = render('en', { loggedIn: true })
+    const nav = html.slice(0, html.indexOf('</nav>'))
+    expect(nav).toMatch(/class="tap-target relative hidden lg:flex[^"]*" href="\/wishlist"/)
+  })
+
+  it('signed in: the Privacy & Security dialog is mounted, closed, for the menus to open', () => {
+    // The menu itself renders only when open; its trigger and the dialog shell are always there.
+    const html = render('en', { loggedIn: true })
+    expect(html).toContain('<dialog dir="ltr" aria-labelledby="security-dialog-title"')
   })
 })
 
@@ -182,14 +283,14 @@ describe('button hierarchy', () => {
   })
 })
 
-describe('mobile drawer: text-only layout', () => {
+describe('mobile drawer: signed-out text-only layout', () => {
   const drawer = (lang: Lang, loggedIn = false) => {
     const html = render(lang, { loggedIn })
     return html.slice(html.indexOf('</nav>'))
   }
 
-  it.each(cases())('renders no icons ($lang, loggedIn=$loggedIn)', ({ lang, loggedIn }) => {
-    const d = drawer(lang, loggedIn)
+  it.each(['en', 'he'] as const)('renders no icons when signed out (%s)', (lang) => {
+    const d = drawer(lang)
     expect(d).not.toContain('<i ')
     expect(d).not.toContain('<svg')
     expect(d).not.toContain('<img')
@@ -216,7 +317,8 @@ describe('mobile drawer: text-only layout', () => {
     expect(d.indexOf('href="/terms"')).toBeGreaterThan(d.indexOf('href="/signup"'))
     expect(d.indexOf('href="/privacy"')).toBeGreaterThan(d.indexOf('href="/terms"'))
     expect(d.indexOf('team.landly@gmail.com')).toBeGreaterThan(d.indexOf('href="/privacy"'))
-    expect(d).toContain('Landly Ltd.')
+    expect(d).toContain('<bdi>Landly</bdi>')
+    expect(d).not.toContain('Ltd')
     expect(d).toContain(`>${t.nav_terms_link}</a>`)
     expect(d).toContain(`>${t.nav_privacy_link}</a>`)
   })
@@ -232,10 +334,6 @@ describe('mobile drawer: text-only layout', () => {
     expect(links.map((m) => m[3].replace(/&#x27;/g, "'"))).toEqual([translations[lang].nav_terms_link, translations[lang].nav_privacy_link])
   })
 })
-
-function cases() {
-  return (['en', 'he'] as const).flatMap((lang) => [false, true].map((loggedIn) => ({ lang, loggedIn })))
-}
 
 describe('mobile drawer: Home link', () => {
   it.each(['en', 'ru', 'es', 'fr', 'he'] as const)('is the first item, text-only, styled like the others (%s)', (lang) => {
@@ -261,7 +359,7 @@ describe('account capsules, divider and language picker', () => {
   it.each([false, true])('puts a hairline divider between the account buttons and the language picker (loggedIn=%s)', (loggedIn) => {
     const nav = navOf('en', loggedIn)
     const divider = nav.indexOf('<div class="hidden sm:block h-4 w-[1px] bg-slate-200 mx-1" aria-hidden="true"></div>')
-    expect(divider).toBeGreaterThan(nav.indexOf(loggedIn ? 'href="/member"' : 'href="/login"'))
+    expect(divider).toBeGreaterThan(nav.indexOf(loggedIn ? 'aria-haspopup="menu"' : 'href="/login"'))
     expect(divider).toBeLessThan(nav.indexOf('fa-globe'))
   })
 

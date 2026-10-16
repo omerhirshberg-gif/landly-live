@@ -10,7 +10,8 @@ const text = html.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&apos;/g, "'").replac
 
 describe('privacy policy', () => {
   it('identifies the company, contact and date', () => {
-    expect(text).toContain('Landly Ltd.')
+    expect(text).toContain('operated by Landly , Tel Aviv-Yafo')
+    expect(text).not.toContain('Ltd')
     expect(text).toContain('Tel Aviv-Yafo, Israel')
     expect(html).toContain('href="mailto:team.landly@gmail.com"')
     expect(html).toMatch(/<time dateTime="\d{4}-\d{2}-\d{2}">/)

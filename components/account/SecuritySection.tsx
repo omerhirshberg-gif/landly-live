@@ -5,17 +5,28 @@ import type { User } from 'firebase/auth'
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import { isStrongPassword } from '@/lib/auth/passwordValidation'
+import PasswordRequirements from '@/components/auth/onboarding/PasswordRequirements'
 
+// The new password follows the sign-up rule (lib/auth/passwordValidation.ts):
+// the checklist ticks while the field is focused, and a weak password is
+// refused before Firebase is asked (Expo: components/ChangePassword.tsx).
 export default function SecuritySection({ user }: { user: User }) {
   const { t } = useLang()
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newFocused, setNewFocused] = useState(false)
+  const [weak, setWeak] = useState(false)
   const [pwSaving, setPwSaving] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isStrongPassword(newPassword)) {
+      setWeak(true)
+      return
+    }
     setPwSaving(true)
     setPwMsg(null)
     try {
@@ -50,9 +61,39 @@ export default function SecuritySection({ user }: { user: User }) {
         </div>
         <div>
           <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_new_password_label')}</label>
-          <input type="password" required minLength={6} className="inp" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <input
+            type="password"
+            required
+            className="inp"
+            autoComplete="new-password"
+            aria-invalid={weak || undefined}
+            aria-describedby={weak ? 'new-password-weak' : undefined}
+            value={newPassword}
+            onChange={(e) => {
+              setNewPassword(e.target.value)
+              setWeak(false)
+            }}
+            // Checklist while focused; the one-line error on blur if still weak.
+            onFocus={() => {
+              setNewFocused(true)
+              setWeak(false)
+            }}
+            onBlur={() => {
+              setNewFocused(false)
+              if (newPassword && !isStrongPassword(newPassword)) setWeak(true)
+            }}
+          />
+          {weak && !newFocused && (
+            <p id="new-password-weak" role="alert" className="text-xs text-red-600 font-semibold mt-1.5">{t('onb_passwordWeak')}</p>
+          )}
+          {/* Inside the field block, so the form spacing adds no gap while it's closed. The
+              checklist tucks 6px under a field with a bottom margin; this input has none, so
+              the wrapper adds it while open. */}
+          <div className={`transition-[padding] duration-[220ms] motion-reduce:transition-none ${newFocused ? 'pt-4 -mb-1' : ''}`}>
+            <PasswordRequirements password={newPassword} visible={newFocused} />
+          </div>
         </div>
-        <button type="submit" disabled={pwSaving} className="tap-target btn-primary w-full disabled:opacity-70">
+        <button type="submit" disabled={pwSaving} className="ds-btn ds-btn-primary w-full">
           {pwSaving ? t('profile_change_password_busy') : t('profile_change_password_btn')}
         </button>
       </form>

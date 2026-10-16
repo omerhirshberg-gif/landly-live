@@ -1,17 +1,59 @@
 import type { ColorValue } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
+import { colors } from '../theme'
 
-// Outline icons (Lucide-style 24px paths) for the three tabs.
-const PATHS = {
+export type TabIconName = 'home' | 'perks' | 'pass' | 'profile'
+
+// Lucide-style 24px icons for the web tab bar (_layout.web.tsx; iOS and
+// Android use system symbols): an outline when inactive, a solid brand-blue
+// fill when active. Details inside a filled shape (the gift's ribbon, the
+// ticket's perforation) are cut out in white.
+const OUTLINE: Record<TabIconName, string> = {
+  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   perks: 'M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z',
-  wallet: 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 10h18M7 15h4',
+  pass: 'M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM14 6v2M14 11v2M14 16v2',
   profile: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-} as const
+}
 
-export default function TabIcon({ name, color, size }: { name: keyof typeof PATHS; color: ColorValue; size: number }) {
+const FILLED: Record<TabIconName, { fill: string; stroke?: string; cut?: string }> = {
+  home: { fill: OUTLINE.home },
+  perks: {
+    fill: 'M4 12h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM2 8a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z',
+    stroke: 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z',
+    cut: 'M12 8v13',
+  },
+  pass: {
+    fill: 'M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z',
+    cut: 'M14 7.5v1M14 11.5v1M14 15.5v1',
+  },
+  profile: { fill: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2z' },
+}
+
+export default function TabIcon({
+  name,
+  color,
+  size,
+  focused = false,
+}: {
+  name: TabIconName
+  color: ColorValue
+  size: number
+  focused?: boolean
+}) {
+  const stroke = { stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  if (!focused) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...stroke}>
+        <Path d={OUTLINE[name]} />
+      </Svg>
+    )
+  }
+  const filled = FILLED[name]
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d={PATHS[name]} />
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d={filled.fill} fill={color} {...stroke} />
+      {filled.stroke && <Path d={filled.stroke} fill="none" {...stroke} />}
+      {filled.cut && <Path d={filled.cut} fill="none" stroke={colors.white} strokeWidth={2} strokeLinecap="round" />}
     </Svg>
   )
 }

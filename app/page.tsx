@@ -20,7 +20,7 @@ export default function Home() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen bg-slate-50" />
+        <div className="pt-16 member-canvas" />
       </>
     )
   }
@@ -29,10 +29,11 @@ export default function Home() {
     return (
       <>
         <Navbar />
+        {/* Members get their dashboard only, like an app: no hero, value
+            props, How it works, Aliyah card or marketing footer. Support
+            sits at the end of the dashboard; Terms and Privacy are in the
+            account menu and the mobile drawer. */}
         <LoggedInHome user={user} />
-        <HowItWorks variant="member" />
-        <HomeFaqPrompt />
-        <Footer />
       </>
     )
   }

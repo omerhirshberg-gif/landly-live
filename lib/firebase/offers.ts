@@ -56,6 +56,16 @@ export function getOfferDiscountPercent(originalPrice: number, offerPrice: numbe
   return Math.round((1 - offerPrice / originalPrice) * 100)
 }
 
+// Bestsellers first, then newest: the order the member home screens (web
+// LoggedInHome, Expo Home and Perks tabs) show offers in.
+export function sortFeaturedOffers(offers: OfferDocument[]): OfferDocument[] {
+  return [...offers].sort(
+    (a, b) =>
+      Number(b.isBestseller) - Number(a.isBestseller) ||
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
+  )
+}
+
 // Shared by /categories (search across all offers) and /categories/[category]
 // (search within one category's already-fetched list) so matching stays in sync.
 export function offerMatchesQuery(offer: OfferDocument, normalizedQuery: string): boolean {
