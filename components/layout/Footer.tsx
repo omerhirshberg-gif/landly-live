@@ -5,16 +5,15 @@ import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { SUPPORT_EMAIL } from '@/lib/config'
 
-export default function Footer({
-  onOpenTerms,
-}: {
-  onOpenTerms: () => void
-}) {
+export default function Footer() {
   const { t } = useLang()
   const { user } = useAuth()
 
   return (
-    <footer className="bg-slate-900 text-slate-400 py-12 sm:py-14 px-5 sm:px-6">
+    <footer
+      className="bg-slate-900 text-slate-400 pt-12 sm:pt-14 px-5 sm:px-6"
+      style={{ paddingBottom: 'calc(3rem + env(safe-area-inset-bottom))' }}
+    >
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between gap-10 mb-10 sm:mb-12">
           <div className="max-w-xs">
@@ -40,7 +39,7 @@ export default function Footer({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-sm">
             <div>
               <div className="font-bold text-white mb-3">{t('footer_col_product')}</div>
               <ul className="space-y-2">
@@ -69,25 +68,20 @@ export default function Footer({
             <div>
               <div className="font-bold text-white mb-3">{t('footer_col_legal')}</div>
               <ul className="space-y-2">
-                <li><button onClick={onOpenTerms} className="hover:text-white transition">{t('terms_link')}</button></li>
+                <li><Link href="/terms" className="hover:text-white transition">{t('terms_link')}</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition">{t('privacy_link')}</Link></li>
                 <li><a href="/support#faq" className="hover:text-white transition">{t('faq_label_short')}</a></li>
               </ul>
             </div>
-            <div>
-              <div className="font-bold text-white mb-3">{t('footer_col_download')}</div>
-              <ul className="space-y-2">
-                <li aria-disabled="true" className="flex items-center gap-1.5 opacity-50 cursor-not-allowed">
-                  <i className="fa-brands fa-apple text-xs"></i> <span>{t('footer_appstore')}</span>
-                  <span className="bg-white/10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">{t('deals_card_soon_badge')}</span>
-                </li>
-                <li aria-disabled="true" className="flex items-center gap-1.5 opacity-50 cursor-not-allowed">
-                  <i className="fa-brands fa-google-play text-xs"></i> <span>{t('footer_googleplay')}</span>
-                  <span className="bg-white/10 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">{t('deals_card_soon_badge')}</span>
-                </li>
-              </ul>
-            </div>
           </div>
+        </div>
+        {/* The page's only mention of the native apps — a quiet status line, not a CTA */}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-slate-500 mb-6">
+          <span className="inline-flex items-center gap-1.5"><i className="fa-brands fa-apple" aria-hidden="true"></i>{t('footer_appstore')}</span>
+          <span className="w-1 h-1 rounded-full bg-slate-700" aria-hidden="true"></span>
+          <span className="inline-flex items-center gap-1.5"><i className="fa-brands fa-google-play" aria-hidden="true"></i>{t('footer_googleplay')}</span>
+          <span className="text-slate-600" aria-hidden="true">—</span>
+          <span>{t('app_banner_text')}</span>
         </div>
         <div className="border-t border-slate-800 pt-6 text-xs text-center">© {new Date().getFullYear()} Landly · <span>{t('footer_location')}</span> · <span>{t('footer_copyright_suffix')}</span> · <span>{t('footer_copyright_notice')}</span></div>
       </div>

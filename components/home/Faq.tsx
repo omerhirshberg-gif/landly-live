@@ -9,11 +9,7 @@ interface FaqItemData {
   body: React.ReactNode
 }
 
-export default function Faq({
-  onOpenTerms,
-}: {
-  onOpenTerms: () => void
-}) {
+export default function Faq() {
   const { t } = useLang()
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
@@ -25,7 +21,7 @@ export default function Faq({
       body: (
         <>
           <span>{t('faq5_a')}</span> <span>{t('faq_see_full')}</span>{' '}
-          <button onClick={onOpenTerms} className="text-brand underline font-semibold">{t('terms_link')}</button>.
+          <Link href="/terms" className="text-brand underline font-semibold">{t('terms_link')}</Link>.
         </>
       ),
     },

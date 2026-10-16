@@ -1,6 +1,7 @@
 import { getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import type { Lang } from '@/lib/i18n/translations'
 import { normalizePersonName } from './names'
+import { isStrongPassword } from './passwordValidation'
 
 // The post-sign-in onboarding rules, shared by the web AuthScreen and the
 // mobile login screen so both ask the same questions in the same order and
@@ -51,18 +52,15 @@ export function isPlausibleEmail(email: string): boolean {
 }
 
 // ── Password ────────────────────────────────────────────────────────────
-/** Firebase Auth's own minimum. */
-export const MIN_PASSWORD_LENGTH = 6
-
-/** 0 = empty, 1 = weak (too short or one kind of character), 2 = fair, 3 = strong. */
-export type PasswordStrength = 0 | 1 | 2 | 3
+// The rule itself lives in passwordValidation.ts (also used by /reset-password).
 
 export type SignUpFormError =
   | 'onb_firstNameRequired'
   | 'onb_lastNameRequired'
   | 'onb_emailInvalid'
-  | 'onb_passwordTooShort'
+  | 'onb_passwordWeak'
   | 'onb_passwordMismatch'
+  | 'signup_termsRequired'
 
 /** The Sign Up form's first error key, in field order, or null when it can be submitted. */
 export function signUpFormError(fields: {
@@ -71,23 +69,17 @@ export function signUpFormError(fields: {
   email: string
   password: string
   confirm: string
+  /** The Terms of Service / Privacy Policy checkbox above "Create Account". */
+  agreedToTerms: boolean
 }): SignUpFormError | null {
-  const { firstName, lastName, email, password, confirm } = fields
+  const { firstName, lastName, email, password, confirm, agreedToTerms } = fields
   if (!normalizePersonName(firstName)) return 'onb_firstNameRequired'
   if (!normalizePersonName(lastName)) return 'onb_lastNameRequired'
   if (!isPlausibleEmail(email)) return 'onb_emailInvalid'
-  if (password.length < MIN_PASSWORD_LENGTH) return 'onb_passwordTooShort'
+  if (!isStrongPassword(password)) return 'onb_passwordWeak'
   if (password !== confirm) return 'onb_passwordMismatch'
+  if (!agreedToTerms) return 'signup_termsRequired'
   return null
-}
-
-export function passwordStrength(password: string): PasswordStrength {
-  if (!password) return 0
-  if (password.length < MIN_PASSWORD_LENGTH) return 1
-  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((re) => re.test(password)).length
-  if (password.length >= 10 && kinds >= 3) return 3
-  if (password.length >= 8 && kinds >= 2) return 2
-  return 1
 }
 
 // ── Phone ───────────────────────────────────────────────────────────────

@@ -43,7 +43,9 @@ export async function signInCustomerWithEmail(
 export async function finishCustomerGoogleSignIn(cred: UserCredential, currentLang: Lang): Promise<CustomerSignInResult> {
   // Before ensureUserDocument, so a business never gets a customer doc.
   if (await signOutIfBusinessAccount(cred.user.uid)) return { status: 'businessAccount' }
-  await ensureUserDocument(cred.user, { preferredLanguage: currentLang })
+  // Google skips the sign-up checkbox: consent is the disclosure under the
+  // "Continue with Google" button, recorded when the account's doc is created.
+  await ensureUserDocument(cred.user, { preferredLanguage: currentLang, agreedToTerms: true })
   return {
     status: 'signedIn',
     user: cred.user,

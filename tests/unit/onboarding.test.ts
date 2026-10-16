@@ -15,7 +15,6 @@ import {
   ONBOARDING_LANGS,
   ONBOARDING_STEPS,
   nextStep,
-  passwordStrength,
   phoneToE164,
   prevStep,
   signUpFormError,
@@ -100,22 +99,18 @@ describe('identity and password', () => {
     expect(isPlausibleEmail('dana example.com')).toBe(false)
   })
 
-  it('checks the Sign Up form in field order: names, email, length, then the confirmation', () => {
-    const ok = { firstName: 'Dana', lastName: 'Levi', email: 'dana@example.com', password: 'secret1', confirm: 'secret1' }
+  it('checks the Sign Up form in field order: names, email, password strength, the confirmation, then the Terms checkbox', () => {
+    const ok = { firstName: 'Dana', lastName: 'Levi', email: 'dana@example.com', password: 'Secret1', confirm: 'Secret1', agreedToTerms: true }
     expect(signUpFormError({ ...ok, firstName: '  ' })).toBe('onb_firstNameRequired')
     expect(signUpFormError({ ...ok, lastName: '' })).toBe('onb_lastNameRequired')
     expect(signUpFormError({ ...ok, email: 'dana@example' })).toBe('onb_emailInvalid')
-    expect(signUpFormError({ ...ok, password: 'abc', confirm: 'abc' })).toBe('onb_passwordTooShort')
-    expect(signUpFormError({ ...ok, confirm: 'secret2' })).toBe('onb_passwordMismatch')
+    expect(signUpFormError({ ...ok, password: 'Ab1', confirm: 'Ab1' })).toBe('onb_passwordWeak')
+    expect(signUpFormError({ ...ok, password: 'secret1', confirm: 'secret1' })).toBe('onb_passwordWeak')
+    expect(signUpFormError({ ...ok, confirm: 'Secret2' })).toBe('onb_passwordMismatch')
+    expect(signUpFormError({ ...ok, agreedToTerms: false })).toBe('signup_termsRequired')
+    // Field errors come first; the checkbox error only once the fields are valid.
+    expect(signUpFormError({ ...ok, email: '', agreedToTerms: false })).toBe('onb_emailInvalid')
     expect(signUpFormError(ok)).toBeNull()
-  })
-
-  it('scores password strength', () => {
-    expect(passwordStrength('')).toBe(0)
-    expect(passwordStrength('abc12')).toBe(1)
-    expect(passwordStrength('abcdefgh')).toBe(1)
-    expect(passwordStrength('abcdefg1')).toBe(2)
-    expect(passwordStrength('Abcdefgh1!')).toBe(3)
   })
 })
 

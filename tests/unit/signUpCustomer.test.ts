@@ -55,7 +55,14 @@ describe('signUpCustomer', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     await signUpCustomer(NAMES, 'new@example.com', 'secret123', 'fr', 'https://api.test')
     const init = fetchMock.mock.calls[0][1] as RequestInit
-    expect(JSON.parse(init.body as string)).toEqual({ lang: 'fr', firstName: 'Dana', lastName: 'Levi' })
+    expect(JSON.parse(init.body as string)).toEqual({ lang: 'fr', firstName: 'Dana', lastName: 'Levi', agreedToTerms: false })
+  })
+
+  it('passes the Terms/Privacy consent along with the names', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    await signUpCustomer({ ...NAMES, agreedToTerms: true }, 'new@example.com', 'secret123', 'en', 'https://api.test')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(init.body as string)).toMatchObject({ agreedToTerms: true })
   })
 
   it('takes the token before signing out, and the send still completes', async () => {

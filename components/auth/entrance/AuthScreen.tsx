@@ -12,7 +12,6 @@ import {
   greetingName,
   isOnboardingComplete,
   parseOnboardingDraft,
-  passwordStrength,
   signUpFormError,
   type OnboardingDraft,
   type OnboardingStep,
@@ -20,6 +19,7 @@ import {
 } from '@/lib/auth/onboarding'
 import { ONB } from '@/lib/brand/onboardingMotion'
 import { signUpCustomer } from '@/lib/auth/signUpCustomer'
+import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import type { SignInMethod } from '@/lib/auth/brandPanelSteps'
 import { getUserDocument } from '@/lib/firebase/users'
 import { useAuth } from '@/lib/firebase/useAuth'
@@ -30,7 +30,7 @@ import BusinessAccountNotice from '../BusinessAccountNotice'
 import GoogleButton from '../GoogleButton'
 import VerifyEmailNotice, { type PendingVerification } from '../VerifyEmailNotice'
 import OnboardingWizard, { readOnboardingDraft } from '../onboarding/OnboardingWizard'
-import PasswordStrengthMeter from '../onboarding/PasswordStrengthMeter'
+import PasswordRequirements from '../onboarding/PasswordRequirements'
 import AuthBrandPanel from './AuthBrandPanel'
 import BrandHero, { type EntranceMode } from './BrandHero'
 import Button from './Button'
@@ -38,6 +38,7 @@ import Checkbox from './Checkbox'
 import Notice from './Notice'
 import SegmentedControl from './SegmentedControl'
 import TextField from './TextField'
+import ConsentText from './ConsentText'
 import { ENTRANCE_VARS } from './entranceVars'
 import { ONBOARDING_VARS } from '../onboarding/onboardingVars'
 import styles from './entrance.module.css'
@@ -97,6 +98,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
   const { user, loading: authLoading, onboardingComplete, setOnboardingComplete } = useAuth()
   // Signed in, but onboarding isn't finished: the card becomes the wizard,
   // starting from the member's saved progress, if any.
@@ -267,12 +270,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const invalid = signUpFormError({ firstName, lastName, email, password, confirm })
+    const invalid = signUpFormError({ firstName, lastName, email, password, confirm, agreedToTerms })
     setSignUpError(invalid)
     if (invalid) return
     setSubmitting(true)
     try {
-      const result = await signUpCustomer({ firstName, lastName }, email.trim(), password, lang)
+      const result = await signUpCustomer({ firstName, lastName, agreedToTerms }, email.trim(), password, lang)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -442,11 +445,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       setPassword(e.target.value)
                       setSignUpError(null)
                     }}
-                    error={signUpError === 'onb_passwordTooShort' ? t(signUpError) : undefined}
+                    // The checklist replaces the one-line error while focused, and
+                    // the error comes back on blur if the password is still weak.
+                    onFocus={() => {
+                      setPasswordFocused(true)
+                      if (signUpError === 'onb_passwordWeak') setSignUpError(null)
+                    }}
+                    onBlur={() => {
+                      setPasswordFocused(false)
+                      if (password && !isStrongPassword(password) && !signUpError) setSignUpError('onb_passwordWeak')
+                    }}
+                    error={signUpError === 'onb_passwordWeak' ? t(signUpError) : undefined}
                     autoComplete="new-password"
                     enterKeyHint="next"
                   />
-                  <PasswordStrengthMeter strength={passwordStrength(password)} />
+                  <PasswordRequirements password={password} visible={passwordFocused} />
                   <TextField
                     label={t('onb_confirmPasswordLabel')}
                     icon="lock"
@@ -461,7 +474,25 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     enterKeyHint="go"
                   />
 
-                  <div className="mt-1">
+                  <div className="mt-1 mb-5">
+                    <Checkbox
+                      label={<span className="leading-5"><ConsentText template={t('signup_terms_agree')} t={t} /></span>}
+                      checked={agreedToTerms}
+                      onChange={(checked) => {
+                        setAgreedToTerms(checked)
+                        if (signUpError === 'signup_termsRequired') setSignUpError(null)
+                      }}
+                      invalid={signUpError === 'signup_termsRequired'}
+                      describedBy={signUpError === 'signup_termsRequired' ? 'signup-terms-error' : undefined}
+                    />
+                    {signUpError === 'signup_termsRequired' && (
+                      <p id="signup-terms-error" role="alert" className="mt-2 text-[13px] font-semibold text-red-600">
+                        {t('signup_termsRequired')}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
                     <Button
                       type="submit"
                       label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
@@ -522,6 +553,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 </Notice>
               )}
               <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onClick={handleGoogle} disabled={busy} />
+              {/* On both tabs: Google from either one can create an account. */}
+              <p className="mt-3 text-center text-xs leading-5 text-slate-500">
+                <ConsentText template={t('auth_google_disclosure')} t={t} />
+              </p>
             </>
           )}
         </div>

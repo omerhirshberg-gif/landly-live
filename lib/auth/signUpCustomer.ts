@@ -35,6 +35,7 @@ export async function signUpCustomer(
     const send = requestVerificationEmail(idToken, lang, apiBaseUrl, {
       firstName: normalizePersonName(names.firstName),
       lastName: normalizePersonName(names.lastName),
+      agreedToTerms: names.agreedToTerms,
     })
     return { email: cred.user.email ?? email, idToken, send }
   } finally {

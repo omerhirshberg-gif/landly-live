@@ -35,10 +35,13 @@ const PATH = '/api/auth/send-verification'
 // at the production host; only if that redirects as well is it 'misconfigured'.
 //
 // `names` is sent only with the first request after sign-up: the route
-// stores them on the new profile (the unverified client can't write it).
+// stores them on the new profile (the unverified client can't write it),
+// along with the Terms/Privacy consent given on the sign-up form.
 export interface SignUpNames {
   firstName: string
   lastName: string
+  /** The sign-up form's Terms of Service / Privacy Policy checkbox. */
+  agreedToTerms?: boolean
 }
 
 export async function requestVerificationEmail(
@@ -48,7 +51,9 @@ export async function requestVerificationEmail(
   names?: SignUpNames
 ): Promise<VerificationSendResult> {
   const base = normalizeApiBaseUrl(apiBaseUrl)
-  const body = JSON.stringify(names ? { lang, firstName: names.firstName, lastName: names.lastName } : { lang })
+  const body = JSON.stringify(
+    names ? { lang, firstName: names.firstName, lastName: names.lastName, agreedToTerms: names.agreedToTerms === true } : { lang }
+  )
   const first = await post(`${base}${PATH}`, idToken, body, !!base)
   if (first !== 'redirected') return first
   // Same-origin web calls never fall back to production: a redirect there is
