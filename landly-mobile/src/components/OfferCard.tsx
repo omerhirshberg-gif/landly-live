@@ -3,21 +3,36 @@ import Svg, { Path } from 'react-native-svg'
 import { CATEGORY_TILES } from '@shared/categories'
 import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
 import { formatPrice } from '@shared/format'
+import { useWishlist } from '@shared/firebase/useWishlist'
 import AppText from './AppText'
+import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
+import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
 // A perk: photo with its category badge (top start) and "{n}% OFF" banner
 // (top end), then merchant, title, location, price and a "View deal" line.
 // The whole card is the button; the CTA line only says what tapping does.
+// The heart at the photo's bottom end corner saves or un-saves the perk in
+// the member's wishlist, shared live with the website (web: the heart at
+// its top end, where this card has the discount banner).
 // Same anatomy as the website's components/discover/OfferCard.tsx.
 export default function OfferCard({ offer, onPress }: { offer: OfferDocument; onPress: () => void }) {
   const { t, isRtl } = useLang()
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
+  const { isWishlisted, toggleWishlist } = useWishlist()
+  const saved = isWishlisted(offer.id)
+  const wishlistLabel = saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')
   return (
     <Pressable
       accessibilityRole="button"
+      // The card is one element to a screen reader, which can't reach the
+      // heart inside it, so saving is also offered as an action on the card.
+      accessibilityActions={[{ name: 'wishlist', label: wishlistLabel }]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === 'wishlist') toggleWishlist(offer.id)
+      }}
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -39,6 +54,16 @@ export default function OfferCard({ offer, onPress }: { offer: OfferDocument; on
             <AppText style={styles.bannerText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
           </View>
         )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={wishlistLabel}
+          accessibilityState={{ selected: saved }}
+          hitSlop={6}
+          onPress={() => toggleWishlist(offer.id)}
+          style={({ pressed }) => [styles.overlayBottomEnd, styles.heart, saved && styles.heartSaved, pressed && styles.heartPressed]}
+        >
+          <LineIcon name="heart" size={18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2.2} />
+        </Pressable>
       </View>
       <View style={styles.body}>
         <AppText style={styles.business}>{offer.businessName}</AppText>
@@ -86,6 +111,19 @@ const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 12 },
   overlayStart: { start: 12 },
   overlayEnd: { end: 12 },
+  overlayBottomEnd: { position: 'absolute', bottom: 12, end: 12 },
+  // Web: the white / red-500 heart on components/discover/OfferCard.tsx.
+  heart: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    ...webOnly({ cursor: 'pointer' }),
+  },
+  heartSaved: { backgroundColor: '#ef4444' },
+  heartPressed: { transform: [{ scale: 0.92 }] },
   category: {
     maxWidth: '55%',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

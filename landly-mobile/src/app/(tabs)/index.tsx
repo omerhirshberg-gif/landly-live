@@ -12,7 +12,7 @@ import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
 import AppText from '../../components/AppText'
 import Avatar from '../../components/Avatar'
 import Button from '../../components/Button'
-import CategoryChips from '../../components/CategoryChips'
+import CategoryRail from '../../components/CategoryRail'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
 import SectionHeader from '../../components/SectionHeader'
@@ -133,9 +133,12 @@ export default function HomeScreen() {
         </View>
 
         <SectionHeader title={t('home_deals_title')} />
-        <CategoryChips active={null} onSelect={(category) => router.navigate({ pathname: '/perks', params: { category: category ?? '' } })} />
+        <CategoryRail
+          onSelect={(category) => router.push({ pathname: '/category/[category]', params: { category } })}
+          onViewAll={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })}
+        />
 
-        <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { category: '' } })} />
+        <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
         {failed && <Notice message={t('mobile_load_error')} />}
         {offers === null ? (
           !failed && <ActivityIndicator color={colors.brand} style={styles.spinner} />

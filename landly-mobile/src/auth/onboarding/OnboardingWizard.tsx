@@ -11,6 +11,7 @@ import { useAuth } from '@shared/firebase/useAuth'
 import type { Lang, TranslationKey } from '@shared/i18n/translations'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
+import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import TextField from '../../components/TextField'
 import { useLang } from '../../i18n/LangProvider'
@@ -31,13 +32,14 @@ import { FADE_CSS, rise, SILK_CSS, stepEntering, stepExiting } from './motion'
 
 type WizardData = Omit<OnboardingDraft, 'step'>
 
-const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false }
+const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', countryOfOrigin: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false }
 
-type FieldErrors = Partial<Record<'customerType' | 'phone', string>>
+type FieldErrors = Partial<Record<'customerType' | 'countryOfOrigin' | 'phone', string>>
 
 const TITLES: Partial<Record<OnboardingStep, { title: TranslationKey; subtitle: TranslationKey }>> = {
   language: { title: 'onb_lang_title', subtitle: 'onb_lang_subtitle' },
   persona: { title: 'onb_persona_title', subtitle: 'onb_persona_subtitle' },
+  origin: { title: 'onb_origin_title', subtitle: 'onb_origin_subtitle' },
   phone: { title: 'onb_phone_title', subtitle: 'onb_phone_subtitle' },
   notifications: { title: 'onb_notif_title', subtitle: 'onb_notif_subtitle' },
 }
@@ -50,8 +52,8 @@ const STAGE_PAD_X = isWeb ? 32 : 20
 const STAGE_PAD_Y = 12
 
 // Post-sign-in onboarding (native counterpart of components/auth/onboarding/
-// OnboardingWizard.tsx): welcome, language, persona, WhatsApp number,
-// notifications and a celebration, one card at a time. It only runs for a
+// OnboardingWizard.tsx): welcome, language, persona, country of origin,
+// WhatsApp number, notifications and a celebration, one card at a time. It only runs for a
 // signed-in, verified member who hasn't finished it — the sign-in gate stays
 // closed (`onboarding`) until "Let's explore" — so the answers are saved with
 // a single update when the notifications card is left. Step order:
@@ -89,7 +91,14 @@ export default function OnboardingWizard({
   const [direction, setDirection] = useState<1 | -1>(1)
   const [data, setData] = useState<WizardData>(() =>
     draft
-      ? { customerType: draft.customerType, customerTypeOther: draft.customerTypeOther, country: draft.country, phone: draft.phone, phoneSkipped: draft.phoneSkipped }
+      ? {
+          customerType: draft.customerType,
+          customerTypeOther: draft.customerTypeOther,
+          countryOfOrigin: draft.countryOfOrigin,
+          country: draft.country,
+          phone: draft.phone,
+          phoneSkipped: draft.phoneSkipped,
+        }
       : EMPTY_DATA
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -157,6 +166,7 @@ export default function OnboardingWizard({
   const validate = (): boolean => {
     const errors: FieldErrors = {}
     if (step === 'persona' && !data.customerType) errors.customerType = t('mobile_signup_typeRequired')
+    if (step === 'origin' && !data.countryOfOrigin) errors.countryOfOrigin = t('onb_originRequired')
     if (step === 'phone' && !phoneToE164(data.country, data.phone)) errors.phone = t('phone_invalid_error')
     setFieldErrors(errors)
     return !Object.values(errors).some(Boolean)
@@ -193,6 +203,7 @@ export default function OnboardingWizard({
         phone: e164,
         customerType: data.customerType,
         customerTypeOther: personaNote(data.customerType, data.customerTypeOther),
+        countryOfOrigin: data.countryOfOrigin,
         preferredLanguage: lang,
         notificationsOptIn,
       })
@@ -271,6 +282,18 @@ export default function OnboardingWizard({
           onNoteChange={(v) => set('customerTypeOther', v)}
           onSubmit={handleContinue}
           error={fieldErrors.customerType}
+        />,
+        <View key="actions">{continueButton}</View>,
+      ]
+    }
+    if (step === 'origin') {
+      return [
+        intro,
+        <CountryOfOriginList
+          key="body"
+          value={data.countryOfOrigin}
+          onChange={(code) => set('countryOfOrigin', code)}
+          error={fieldErrors.countryOfOrigin}
         />,
         <View key="actions">{continueButton}</View>,
       ]

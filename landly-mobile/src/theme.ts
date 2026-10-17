@@ -33,7 +33,20 @@ export const colors = {
   successBorder: '#bbf7d0', // green-200
 }
 
-export const radius = { md: 12, lg: 16, pill: 9999 }
+// The brand-tinted 44pt icon squares at the end of the Perks search row (Near
+// Me, Wishlist). Web: the `action` variant of components/discover/NearMeButton.tsx.
+export const actionTint = { bg: '#eff6ff', bgPressed: '#dbeafe', border: '#bfdbfecc', text: '#1d4ed8' } // blue-50/100/200-80%/700
+
+export const radius ={ md: 12, lg: 16, pill: 9999 }
+
+// The selected filter chip's lift (web: .filter-chip's shadow-sm).
+export const chipShadow = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+  elevation: 1,
+} as const
 
 // The member type scale, shared by every post-login screen (web: LoggedInHome,
 // /member and /account use the same sizes and weights).

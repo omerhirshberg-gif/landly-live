@@ -7,7 +7,7 @@ import { translations, type TranslationKey } from '@/lib/i18n/translations'
 
 vi.mock('@/lib/firebase/users', () => ({ getUserDocument: () => new Promise(() => {}), updateUserPhone: vi.fn() }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ invalidateMemberProfile: vi.fn() }))
-vi.mock('@/components/account/AvatarUploader', () => ({ default: () => 'AVATAR_UPLOADER' }))
+vi.mock('@/components/profile/AvatarUploader', () => ({ default: () => 'AVATAR_UPLOADER' }))
 
 const en = (key: TranslationKey) => translations.en[key]
 const he = (key: TranslationKey) => translations.he[key]
@@ -36,7 +36,7 @@ describe('customerTypeLabel', () => {
 })
 
 describe('web profile section', async () => {
-  const { default: ProfileSection } = await import('@/components/account/ProfileSection')
+  const { default: ProfileSection } = await import('@/components/profile/ProfileSection')
   const html = renderToStaticMarkup(
     createElement(
       LangContext.Provider,

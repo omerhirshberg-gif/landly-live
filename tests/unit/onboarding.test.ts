@@ -25,8 +25,8 @@ import { CUSTOMER_TYPES } from '@/lib/customerTypes'
 import { translations } from '@/lib/i18n/translations'
 
 describe('step order', () => {
-  it('runs welcome, the four questions and the celebration, with no credentials among them', () => {
-    expect(ONBOARDING_STEPS).toEqual(['welcome', 'language', 'persona', 'phone', 'notifications', 'done'])
+  it('runs welcome, the five questions and the celebration, with no credentials among them', () => {
+    expect(ONBOARDING_STEPS).toEqual(['welcome', 'language', 'persona', 'origin', 'phone', 'notifications', 'done'])
   })
 
   it('moves forward and back between neighbours only', () => {
@@ -34,7 +34,10 @@ describe('step order', () => {
     expect(nextStep('language')).toBe('persona')
     expect(nextStep('notifications')).toBe('done')
     expect(nextStep('done')).toBeNull()
-    expect(prevStep('phone')).toBe('persona')
+    expect(nextStep('persona')).toBe('origin')
+    expect(nextStep('origin')).toBe('phone')
+    expect(prevStep('phone')).toBe('origin')
+    expect(prevStep('origin')).toBe('persona')
     expect(prevStep('language')).toBe('welcome')
     expect(prevStep('welcome')).toBeNull()
   })
@@ -49,7 +52,7 @@ describe('step order', () => {
   })
 
   it('reports progress continuously from the welcome (empty) to the celebration (full)', () => {
-    expect(ONBOARDING_STEPS.map(onboardingProgress)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1])
+    expect(ONBOARDING_STEPS.map(onboardingProgress)).toEqual([0, 1 / 6, 2 / 6, 3 / 6, 4 / 6, 5 / 6, 1])
   })
 
   it('lists the personas in the spec order', () => {
@@ -174,6 +177,7 @@ describe('onboarding draft', () => {
     step: 'phone',
     customerType: 'student',
     customerTypeOther: '',
+    countryOfOrigin: 'FR',
     country: 'IL',
     phone: '50 123 4567',
     phoneSkipped: false,
@@ -181,6 +185,11 @@ describe('onboarding draft', () => {
 
   it('round-trips the card and the answers', () => {
     expect(parseOnboardingDraft(serializeOnboardingDraft(draft))).toEqual(draft)
+  })
+
+  it('resumes a draft saved before the origin card with the origin unanswered', () => {
+    const { countryOfOrigin: _omitted, ...older } = draft
+    expect(parseOnboardingDraft(JSON.stringify(older))).toEqual({ ...draft, countryOfOrigin: '' })
   })
 
   it('keeps one draft per member', () => {
@@ -199,6 +208,8 @@ describe('onboarding draft', () => {
     expect(parseOnboardingDraft('"phone"')).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, step: 'password' }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, country: 'XX' }))).toBeNull()
+    expect(parseOnboardingDraft(JSON.stringify({ ...draft, countryOfOrigin: 'XX' }))).toBeNull()
+    expect(parseOnboardingDraft(JSON.stringify({ ...draft, countryOfOrigin: 7 }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, phoneSkipped: 'no' }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, phone: 42 }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, customerTypeOther: 'x'.repeat(500) }))).toBeNull()

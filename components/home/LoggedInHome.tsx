@@ -5,7 +5,8 @@ import Link from 'next/link'
 import type { User } from 'firebase/auth'
 import OfferCard from '@/components/discover/OfferCard'
 import Avatar from '@/components/ui/Avatar'
-import { CATEGORY_TILES } from '@/lib/categories'
+import CategoryRail from '@/components/perks/CategoryRail'
+import SegmentBadge from '@/components/member/SegmentBadge'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
@@ -16,14 +17,16 @@ const CURATED_COUNT = 8
 // The signed-in home: the member's greeting, their live active-pass count,
 // the categories, and a row of curated offers. Guest marketing (hero, value
 // props, How it works, the Aliyah card) never renders here. Same sections as
-// the Expo Home tab (landly-mobile/src/app/(tabs)/index.tsx).
+// the Expo Home tab (landly-mobile/src/app/(tabs)/index.tsx), less its
+// Explore card: on the web the navbar carries Explore Perks.
 //
-// "Welcome, {firstName}" comes from the profile (falling back to the display
+// The greeting, persona and pass count share one banner. "Welcome,
+// {firstName}" comes from the profile (falling back to the display
 // name, never the email). The greeting row holds its space until the profile
 // is read, then fades and rises in, so a fallback name never flashes first.
 export default function LoggedInHome({ user }: { user: User }) {
   const { t } = useLang()
-  const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
+  const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
   // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
@@ -58,59 +61,44 @@ export default function LoggedInHome({ user }: { user: User }) {
     <main className="member-canvas pt-16">
       {/* No footer for members: the bottom padding clears the iPhone home indicator instead. */}
       <div className="max-w-member mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 lg:pt-12 pb-[calc(4rem+env(safe-area-inset-bottom))]">
-        <header className={`flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
-          <Link href="/account" aria-label={t('nav_account')} className="tap-target rounded-full">
-            <Avatar src={photoURL} initials={initials} size={56} />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink truncate">
-              {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
-            </h1>
-            <p className="text-[15px] text-body mt-0.5">{t('deals_title')}</p>
-          </div>
-        </header>
-
-        <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-          <section className="bg-white border border-line rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="w-10 h-10 rounded-xl bg-brandLight text-brand flex items-center justify-center" aria-hidden="true">
-                <i className="fa-solid fa-ticket"></i>
-              </span>
-              <span className="text-sm font-semibold text-body">{t('home_pass_label')}</span>
-              <span className="ms-auto inline-flex items-center min-w-[2.25rem] h-8 px-3 justify-center rounded-full bg-brandLight text-brand text-base font-bold tabular-nums" aria-live="polite">
-                {activeCount ?? '–'}
-              </span>
-            </div>
-            <p className="text-sm text-body leading-relaxed mb-5 flex-1">
-              {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
-            </p>
-            <Link href="/member" className="ds-btn ds-btn-primary ds-btn-md w-full">
-              {t('home_pass_cta')}
+        {/* One white banner: who the member is on the leading side, their live
+            pass count and the way into My Pass on the trailing side. A row from
+            md; on phones it stacks, the count and the button sharing the last
+            line (the button drops under the count when that line is too narrow).
+            Explore lives in the navbar and the rails below, so nothing
+            here repeats it. Hebrew mirrors it through the page's dir. */}
+        <section aria-labelledby="home-welcome" className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 sm:p-6 lg:p-7 flex flex-col gap-5 md:flex-row md:items-center md:justify-between md:gap-8">
+          <div className={`flex items-center gap-3 sm:gap-4 min-w-0 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
+            <Link href="/profile" aria-label={t('nav_profile')} className="tap-target flex-shrink-0 rounded-full">
+              <Avatar src={photoURL} initials={initials} size={56} />
             </Link>
-          </section>
+            <div className="min-w-0">
+              <h1 id="home-welcome" className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink truncate">
+                {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5">
+                <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
+                <p className="text-[15px] text-body">{t('deals_title')}</p>
+              </div>
+            </div>
+          </div>
 
-          <section className="lg:col-span-2 bg-brand rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col text-white">
-            <i className="fa-solid fa-compass text-xl mb-3" aria-hidden="true"></i>
-            <h2 className="text-xl font-bold mb-1">{t('home_discover_title')}</h2>
-            <p className="text-blue-100 text-sm leading-relaxed mb-5 flex-1">{t('home_discover_sub')}</p>
-            <Link href="/categories" className="ds-btn ds-btn-secondary ds-btn-md self-start">
-              <span>{t('home_discover_cta')}</span>
+          <div className="flex flex-wrap items-center gap-3 md:flex-col md:flex-nowrap md:items-end md:gap-2.5 flex-shrink-0">
+            <span className="inline-flex items-center gap-2 h-11 md:h-9 px-3.5 rounded-full bg-brandLight text-brand text-sm font-semibold whitespace-nowrap">
+              <i className="fa-solid fa-ticket text-xs" aria-hidden="true"></i>
+              <span className="text-base font-bold tabular-nums" aria-live="polite">{activeCount ?? '–'}</span>
+              <span>{t('home_pass_label')}</span>
+            </span>
+            <Link href="/member" className="ds-btn ds-btn-primary ds-btn-md flex-1 basis-40 md:flex-none md:basis-auto">
+              <span>{t('home_pass_cta')}</span>
               <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
             </Link>
-          </section>
-        </div>
-
-        <section className="mt-10" aria-labelledby="home-deals-title">
-          <h2 id="home-deals-title" className="text-xl font-bold text-ink mb-4">{t('home_deals_title')}</h2>
-          {/* Thumb-scrollable chips with faded edges on phones, wrapping on wider screens */}
-          <div className="edge-fade -mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 overflow-x-auto sm:flex-wrap pb-1 [scrollbar-width:none]">
-            {CATEGORY_TILES.map((tile) => (
-              <Link key={tile.category} href={`/categories/${encodeURIComponent(tile.category)}`} className="tap-target ds-chip">
-                <span aria-hidden="true">{tile.emoji}</span>
-                <span>{t(tile.labelKey)}</span>
-              </Link>
-            ))}
           </div>
+        </section>
+
+        <section className="mt-8 lg:mt-10" aria-labelledby="home-deals-title">
+          <h2 id="home-deals-title" className="text-xl font-bold text-ink mb-4">{t('home_deals_title')}</h2>
+          <CategoryRail />
         </section>
 
         <section className="mt-10" aria-labelledby="home-curated-title">

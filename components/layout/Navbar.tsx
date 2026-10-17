@@ -13,7 +13,6 @@ import { auth } from '@/lib/firebase/config'
 import { updateUserLanguage } from '@/lib/firebase/users'
 import type { Lang } from '@/lib/i18n/translations'
 import { LANGUAGES } from '@/lib/i18n/languages'
-import SecurityDialog from '@/components/account/SecurityDialog'
 import AccountMenu from './AccountMenu'
 import MobileMenu from './MobileMenu'
 
@@ -27,7 +26,6 @@ export default function Navbar() {
   const { wishlistIds } = useWishlist()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [securityOpen, setSecurityOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -36,14 +34,17 @@ export default function Navbar() {
 
   const activeAnchorId = useScrollSpy(HOME_ANCHOR_IDS, pathname === '/')
 
+  const isActive = (href: string) => isNavLinkActive(pathname, href, activeAnchorId)
+  // Hover tints only where there's a real pointer, so a tap never leaves one stuck on.
   const navLinkClass = (href: string) =>
-    `transition ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand font-bold underline decoration-2 underline-offset-[9px]' : 'hover:text-brand'}`
+    `transition truncate py-3 ${isActive(href) ? 'text-brand font-bold underline decoration-2 underline-offset-[9px]' : '[@media(hover:hover)]:hover:text-brand'}`
+  const ariaCurrent = (href: string) => (isActive(href) ? ('page' as const) : undefined)
 
   // Both account pills share size and shape; the transparent border keeps the
   // blue one exactly as tall as the outlined one.
   const pillBase = 'tap-target inline-flex items-center text-[13px] font-bold px-4 py-2 rounded-full border transition-colors'
-  const accountPillClass = `${pillBase} bg-brand text-white border-transparent hover:bg-brandDark shadow-md`
-  const accountSecondaryPillClass = `${pillBase} bg-[#FFFFFF] text-[#0B1B3D] border-[#E2E8F0] hover:border-slate-300 hover:text-brand`
+  const accountPillClass = `${pillBase} bg-brand text-white border-transparent [@media(hover:hover)]:hover:bg-brandDark shadow-md`
+  const accountSecondaryPillClass = `${pillBase} bg-[#FFFFFF] text-[#0B1B3D] border-[#E2E8F0] [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:text-brand`
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
@@ -74,12 +75,6 @@ export default function Navbar() {
     router.push('/')
   }
 
-  // Privacy & Security, from the avatar menu or the drawer (which closes first).
-  const openSecurity = () => {
-    closeMobileMenu()
-    setSecurityOpen(true)
-  }
-
   const goHome = () => {
     closeMobileMenu()
     if (pathname === '/') {
@@ -104,52 +99,49 @@ export default function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         {/* The bar's physical order is locked in every language: logo on the
-            left, language switcher and hamburger on the right. dir="ltr" stops
+            left, language switcher and hamburger on the right (below lg it's
+            just the logo and the hamburger; the drawer holds the rest). dir="ltr" stops
             Hebrew's html[dir=rtl] from mirroring it; the centre links get the
-            page direction back so they still read in the language's order. */}
-        <div dir="ltr" className="relative max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target">
+            page direction back so they still read in the language's order.
+            From lg it's three columns, the outer two equal, so the links sit
+            in the true centre of the bar rather than of the space between the
+            logo and the (wider) account controls. */}
+        <div dir="ltr" className="relative max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,max-content)_1fr] lg:gap-6">
+          <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target justify-self-start">
             <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
             <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
           </a>
 
-          <div dir={contentDir} className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-4 xl:gap-6 whitespace-nowrap text-[13px] font-semibold text-slate-600">
+          <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-[13px] font-semibold text-slate-600">
             {user ? (
               <>
-                {/* Members get three links: the logo is Home, the avatar menu is the
-                    account, and "How it works" is a guest section they never see */}
-                <Link href="/categories" className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
-                <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
-                <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
+                {/* Members get Home, Explore Perks, Wishlist, My Pass,
+                    Making Aliyah? and Support; "How it works" is a guest section they never see */}
+                <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
+                <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
+                <WishlistNavLink count={wishlistIds.length} active={isActive('/wishlist')} label={t('nav_wishlist')} />
+                <Link href="/member" aria-current={ariaCurrent('/member')} className={navLinkClass('/member')}>{t('nav_my_pass')}</Link>
+                <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+                <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             ) : (
               <>
-                <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className={navLinkClass('/')}>{t('nav_home')}</a>
-                <Link href="/categories" className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
-                <Link href="/#how" className={navLinkClass('/#how')}>{t('nav_how')}</Link>
-                <Link href="/olim" className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
-                <Link href="/business" className={navLinkClass('/business')}>{t('nav_biz')}</Link>
-                <Link href="/support" className={navLinkClass('/support')}>{t('nav_support')}</Link>
+                <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
+                <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
+                <Link href="/#how" aria-current={ariaCurrent('/#how')} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
+                <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+                <Link href="/business" aria-current={ariaCurrent('/business')} className={navLinkClass('/business')}>{t('nav_biz')}</Link>
+                <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Desktop only: on phones and tablets the wishlist is in the drawer, keeping the bar to logo, language and menu */}
-            {user && (
-              <Link href="/wishlist" aria-label={t('nav_wishlist')} className={`tap-target relative hidden lg:flex items-center justify-center w-10 h-10 rounded-full transition ${isNavLinkActive(pathname, '/wishlist', activeAnchorId) ? 'text-brand bg-brandLight' : 'text-slate-600 hover:text-brand'}`}>
-                <i className="fa-solid fa-heart text-base"></i>
-                {wishlistIds.length > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-brand text-white text-[9px] font-bold">{wishlistIds.length}</span>
-                )}
-              </Link>
-            )}
-
-            {/* Account actions: the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
-            <div className="hidden sm:flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-shrink-0 justify-self-end">
+            {/* Account actions (desktop only): the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
+            <div className="hidden lg:flex items-center gap-4">
               {user ? (
-                // Avatar + name pill; My Perks, account, wishlist and Sign Out live in its menu
-                <AccountMenu onSignOut={handleSignOut} onOpenSecurity={openSecurity} />
+                // Avatar + name pill; Profile, My Pass, Settings and Sign Out live in its menu
+                <AccountMenu onSignOut={handleSignOut} />
               ) : (
                 <>
                   {/* Sign Up is the blue pill; Sign In the white one beside the language switcher */}
@@ -158,19 +150,20 @@ export default function Navbar() {
                 </>
               )}
             </div>
-            <div className="hidden sm:block h-4 w-[1px] bg-slate-200 mx-1" aria-hidden="true" />
+            <div className="hidden lg:block h-4 w-[1px] bg-slate-200 mx-1" aria-hidden="true" />
 
             {/* Language dropdown — the menu is pinned under the trigger's right
                 edge inline, overriding globals.css's html[dir=rtl] left:0 rule
-                (written for when the switcher sat on the left in Hebrew) */}
-            <div className="lang-dropdown" ref={langDropdownRef}>
+                (written for when the switcher sat on the left in Hebrew). Desktop only:
+                below lg the drawer's Language & Region row replaces it */}
+            <div className="lang-dropdown hidden lg:block" ref={langDropdownRef}>
               {/* A plain trigger (no capsule) so it doesn't compete with the account buttons */}
               <button
                 type="button"
                 onClick={toggleLangMenu}
                 aria-expanded={langMenuOpen}
                 aria-haspopup="true"
-                className="tap-target flex items-center gap-1.5 text-[13px] font-semibold text-slate-600 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 hover:text-[#0B1B3D] transition-colors"
+                className="tap-target flex items-center gap-1.5 text-[13px] font-semibold text-slate-600 rounded-lg px-2.5 py-1.5 [@media(hover:hover)]:hover:bg-slate-100 [@media(hover:hover)]:hover:text-[#0B1B3D] transition-colors"
               >
                 <i className="fa-solid fa-globe text-xs" aria-hidden="true"></i>
                 <span>{lang.toUpperCase()}</span>
@@ -194,15 +187,35 @@ export default function Navbar() {
             </div>
 
             {/* Hamburger (mobile/tablet only) */}
-            <button className="lg:hidden tap-target flex items-center justify-center" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menu">
+            <button type="button" className="lg:hidden tap-target flex items-center justify-center" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
               <div className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}><span></span><span></span><span></span></div>
             </button>
           </div>
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} onOpenSecurity={openSecurity} activeAnchorId={activeAnchorId} />
-      <SecurityDialog open={securityOpen} onClose={() => setSecurityOpen(false)} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
     </>
+  )
+}
+
+// The members' Wishlist link: the label truncates on its own so the saved
+// count beside it is never clipped, and the active underline sits on the
+// label only. The badge follows the label in reading order (start/end
+// margins), so in Hebrew it's on the label's left.
+function WishlistNavLink({ count, active, label }: { count: number; active: boolean; label: string }) {
+  return (
+    <Link
+      href="/wishlist"
+      aria-current={active ? 'page' : undefined}
+      className={`inline-flex min-w-0 items-center gap-1.5 py-3 transition ${active ? 'text-brand font-bold' : '[@media(hover:hover)]:hover:text-brand'}`}
+    >
+      <span className={active ? 'truncate underline decoration-2 underline-offset-[9px]' : 'truncate'}>{label}</span>
+      {count > 0 && (
+        <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1.5 inline-flex items-center justify-center rounded-full bg-brand text-white text-[10px] font-bold leading-none tabular-nums">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </Link>
   )
 }

@@ -8,21 +8,29 @@ import { clientIp } from '@/lib/auth/clientIp'
 const WINDOW_MS = 15 * 60 * 1000
 const MAX_REQUESTS = 5
 
-function createLimiter(): (request: Request) => boolean {
+function createKeyLimiter(max: number): (key: string) => boolean {
   const requestCounts = new Map<string, { count: number; resetAt: number }>()
-  return (request) => {
-    const ip = clientIp(request)
+  return (key) => {
     const now = Date.now()
-    const entry = requestCounts.get(ip)
+    const entry = requestCounts.get(key)
     if (!entry || now > entry.resetAt) {
-      requestCounts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+      requestCounts.set(key, { count: 1, resetAt: now + WINDOW_MS })
       return false
     }
     entry.count += 1
-    return entry.count > MAX_REQUESTS
+    return entry.count > max
   }
+}
+
+function createLimiter(): (request: Request) => boolean {
+  const byIp = createKeyLimiter(MAX_REQUESTS)
+  return (request) => byIp(clientIp(request))
 }
 
 export const isSupportMessageRateLimited = createLimiter()
 export const isBusinessInquiryRateLimited = createLimiter()
 export const isMentorRequestRateLimited = createLimiter()
+export const isDeletionRequestRateLimited = createLimiter()
+// The deletion form is signed in, so it's also capped per account, which an
+// attacker can't rotate the way they can an IP.
+export const isDeletionRequestUidRateLimited = createKeyLimiter(3)

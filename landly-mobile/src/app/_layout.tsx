@@ -5,11 +5,13 @@ import { I18nManager, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
+import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
 import { EntranceProvider } from '../components/Entrance'
 import SplashScreen from '../components/SplashScreen'
 import { LangProvider, useLang } from '../i18n/LangProvider'
+import { pageFlipOptions } from '../lib/pageFlip'
 import { colors } from '../theme'
 
 // Native RTL is disabled (expo-localization plugin in app.json), so the app
@@ -23,11 +25,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <LangProvider>
         <AuthProvider>
-          <SignInGateProvider>
-            <EntranceProvider>
-              <RootNavigator />
-            </EntranceProvider>
-          </SignInGateProvider>
+          {/* The website's wishlist, live from the member's user document, so a
+              perk saved on either side shows up on the other */}
+          <WishlistProvider>
+            <SignInGateProvider>
+              <EntranceProvider>
+                <RootNavigator />
+              </EntranceProvider>
+            </SignInGateProvider>
+          </WishlistProvider>
         </AuthProvider>
       </LangProvider>
     </SafeAreaProvider>
@@ -69,6 +75,12 @@ function RootNavigator() {
           <Stack.Protected guard={signedIn}>
             {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
             <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
+            {/* The Profile tab's gear pushes Settings over the tabs; a swipe turns it back. */}
+            <Stack.Screen name="settings" options={pageFlipOptions(isRtl)} />
+            {/* A category tile (Perks grid, Home rail) opens its folder the same way. */}
+            <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
+            {/* So does the heart at the end of the Perks search row. */}
+            <Stack.Screen name="wishlist" options={pageFlipOptions(isRtl)} />
           </Stack.Protected>
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="(auth)" />

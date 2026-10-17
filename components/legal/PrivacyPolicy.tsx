@@ -11,7 +11,7 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 // analytics, push tokens, in-app deletion -- update the matching section and
 // PRIVACY_POLICY_UPDATED.
 
-export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-15', label: 'October 15, 2026' }
+export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-17', label: 'October 17, 2026' }
 
 const MAIL = `mailto:${SUPPORT_EMAIL}`
 
@@ -147,6 +147,11 @@ export default function PrivacyPolicy() {
             Your member type, which you choose so we can show relevant perks: Student, New Immigrant (Oleh
             Chadash), Taglit, Long-term program (such as Masa), Traveler, or Other. If you choose Other, the short
             description you type.
+          </li>
+          <li>Your country of origin, which you choose during onboarding.</li>
+          <li>
+            Where in Israel you live, if you choose to tell us: one of North, Haifa &amp; Krayot, Center, Tel Aviv &amp;
+            Gush Dan, Jerusalem or South, or that you are not in Israel yet.
           </li>
           <li>Your preferred language for the Service and our emails.</li>
           <li>The offers you save to your wishlist.</li>
@@ -379,8 +384,8 @@ export default function PrivacyPolicy() {
       <Section id="retention">
         <List>
           <li>
-            <strong>Account and profile data</strong> (including Google user data, member type, phone number,
-            preferences and wishlist) is kept for as long as your account exists and is deleted when you ask us to
+            <strong>Account and profile data</strong> (including Google user data, member type, country of origin,
+            region, phone number, preferences and wishlist) is kept for as long as your account exists and is deleted when you ask us to
             delete your account.
           </li>
           <li>
@@ -397,14 +402,20 @@ export default function PrivacyPolicy() {
       </Section>
 
       <Section id="deletion">
-        <p>You can ask us to delete your Landly account and personal data at any time:</p>
+        <p>
+          You can ask us to delete your Landly account and personal data at any time. You can submit an account
+          deletion request directly through your app settings under Settings → Delete Account (or via the website
+          settings), or by contacting our team at <Email />.
+        </p>
         <ol className="list-decimal ps-6 space-y-2 marker:font-semibold marker:text-[#0F172A]">
           <li>
-            Email <Email /> from the address registered to your Landly account, with the subject
-            &quot;Delete my account&quot;.
+            In the app or on the website, confirm the request while signed in. You can tell us why you are leaving,
+            but you do not have to. The request, with any reason you give, is sent to our team.
           </li>
           <li>
-            We may ask you to confirm the request from that address, so that nobody else can delete your account.
+            By email, write from the address registered to your Landly account, with the subject &quot;Delete my
+            account&quot;. We may ask you to confirm the request from that address, so that nobody else can delete
+            your account.
           </li>
           <li>
             We will delete your account, your sign-in record (including any Google user data) and your profile
@@ -414,13 +425,12 @@ export default function PrivacyPolicy() {
         <p>
           Order, transaction and voucher records that we must keep by law are retained as described in{' '}
           <A href="#retention">Data retention</A> and are no longer linked to an active account. Unredeemed vouchers
-          are cancelled when the account is deleted. A self-service deletion option inside the app is coming soon;
-          until then, email is the way to request deletion.
+          are cancelled when the account is deleted.
         </p>
         <p>
           If you signed in with Google, you can also remove Landly&apos;s access from your Google Account at{' '}
           <A href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</A>; this stops
-          future access but does not by itself delete the data we hold, so please also email us.
+          future access but does not by itself delete the data we hold, so please also send us a deletion request.
         </p>
       </Section>
 
@@ -431,7 +441,7 @@ export default function PrivacyPolicy() {
         </p>
         <List>
           <li><strong>Access</strong>: ask for a copy of the personal information we hold about you;</li>
-          <li><strong>Correction</strong>: correct inaccurate or incomplete information (you can also edit most details on your account page);</li>
+          <li><strong>Correction</strong>: correct inaccurate or incomplete information (you can also edit most details on your Profile page);</li>
           <li><strong>Deletion</strong>: ask us to delete your information, as described above;</li>
           <li><strong>Restriction and objection</strong>: ask us to limit or stop certain processing;</li>
           <li><strong>Portability</strong>: receive the information you gave us in a common, machine-readable format;</li>

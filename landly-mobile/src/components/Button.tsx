@@ -26,7 +26,8 @@ export default function Button({
   onPress: () => void
   disabled?: boolean
   busy?: boolean
-  variant?: 'primary' | 'secondary'
+  /** danger: the red fill for destructive actions (the account-deletion submit). */
+  variant?: 'primary' | 'secondary' | 'danger'
   /** 52px hero CTA with a soft brand shadow; the default is the 48px medium size. */
   large?: boolean
   /** Trailing forward arrow; points the reading direction (flips in RTL). */
@@ -34,6 +35,9 @@ export default function Button({
 }) {
   const { isRtl } = useLang()
   const primary = variant === 'primary'
+  const danger = variant === 'danger'
+  // Primary and danger are both solid fills with white text.
+  const filled = primary || danger
   const inactive = disabled || busy
   const [pressed, setPressed] = useState(false)
   // Hover only fires with a mouse (web); native never sets it.
@@ -55,10 +59,10 @@ export default function Button({
         style={[
           styles.base,
           large && styles.large,
-          primary ? styles.primary : styles.secondary,
+          primary ? styles.primary : danger ? styles.danger : styles.secondary,
           primary && large && !inactive && styles.primaryShadow,
-          hovered && !inactive && (primary ? styles.primaryHovered : styles.secondaryHovered),
-          pressed && (primary ? styles.primaryPressed : styles.secondaryPressed),
+          hovered && !inactive && (primary ? styles.primaryHovered : danger ? styles.dangerPressed : styles.secondaryHovered),
+          pressed && (primary ? styles.primaryPressed : danger ? styles.dangerPressed : styles.secondaryPressed),
           inactive && styles.disabled,
           {
             transform: [{ scale: pressed ? ONB.pressScale : hovered && !inactive ? ONB.hoverScale : 1 }],
@@ -68,8 +72,8 @@ export default function Button({
           },
         ]}
       >
-        {busy && <ActivityIndicator color={primary ? colors.white : colors.brand} style={styles.spinner} />}
-        <AppText style={[styles.label, large && styles.largeLabel, { color: primary ? colors.white : colors.heading }]}>
+        {busy && <ActivityIndicator color={filled ? colors.white : colors.brand} style={styles.spinner} />}
+        <AppText style={[styles.label, large && styles.largeLabel, { color: filled ? colors.white : colors.heading }]}>
           {label}
         </AppText>
         {arrow && !busy && (
@@ -78,7 +82,7 @@ export default function Button({
             height={20}
             viewBox="0 0 24 24"
             fill="none"
-            stroke={primary ? colors.white : colors.brand}
+            stroke={filled ? colors.white : colors.brand}
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -122,6 +126,8 @@ const styles = StyleSheet.create({
   primaryPressed: { backgroundColor: colors.brandDark },
   secondary: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   secondaryPressed: { backgroundColor: colors.brandLight },
+  danger: { backgroundColor: colors.danger },
+  dangerPressed: { backgroundColor: '#b91c1c' }, // red-700
   disabled: { opacity: 0.7 },
   spinner: { marginEnd: 8 },
   label: { fontSize: 16, fontWeight: '600', textAlign: 'center' },

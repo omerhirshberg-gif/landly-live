@@ -1,26 +1,32 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import type { User } from 'firebase/auth'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
 import { getUserDocument, updateUserPhone } from '@/lib/firebase/users'
 import { customerTypeLabel } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
+import { ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@/lib/profile/countryOfOrigin'
 import AvatarUploader from './AvatarUploader'
 
-// The member's profile on /account (desktop and mobile browsers). Name,
-// email and customer type are read-only; only the phone number is editable,
-// in place, like the Expo Profile tab. A customer type of "Other" shows what
-// the member typed for it during onboarding.
+// The member's profile on /profile (desktop and mobile browsers). Name,
+// email and customer type are read-only; the phone number is editable in
+// place, like the Expo Profile tab. Country of origin and region in Israel
+// show here with an Edit link to their settings pages, where they're chosen
+// (members from before the origin card see "Not set"). A customer type of
+// "Other" shows what the member typed for it during onboarding.
 export default function ProfileSection({ user }: { user: User }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
 
   const [loadingDoc, setLoadingDoc] = useState(true)
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
   const [phone, setPhone] = useState('')
   const [customerType, setCustomerType] = useState('')
   const [customerTypeOther, setCustomerTypeOther] = useState('')
+  const [countryOfOrigin, setCountryOfOrigin] = useState('')
+  const [israelRegion, setIsraelRegion] = useState('')
 
   const [editingPhone, setEditingPhone] = useState(false)
   const [phoneInput, setPhoneInput] = useState('')
@@ -36,6 +42,8 @@ export default function ProfileSection({ user }: { user: User }) {
       setPhone(doc?.phone ?? '')
       setCustomerType(doc?.customerType ?? '')
       setCustomerTypeOther(doc?.customerTypeOther ?? '')
+      setCountryOfOrigin(doc?.countryOfOrigin ?? '')
+      setIsraelRegion(doc?.israelRegion ?? '')
       if (doc?.displayName) setDisplayName(doc.displayName)
       setLoadingDoc(false)
     })
@@ -160,7 +168,40 @@ export default function ProfileSection({ user }: { user: User }) {
             {loadingDoc ? '…' : customerTypeLabel(customerType, customerTypeOther, t) ?? t('signup_customerType_placeholder')}
           </dd>
         </div>
+        <EditableRow
+          label={t('profile_origin_label')}
+          value={loadingDoc ? '…' : originLabel(countryOfOrigin, lang) ?? t('profile_origin_unset')}
+          href="/settings/language-region/origin"
+          disabled={loadingDoc}
+        />
+        <EditableRow
+          label={t('profile_region_label')}
+          value={loadingDoc ? '…' : isIsraelRegion(israelRegion) ? t(ISRAEL_REGION_KEYS[israelRegion]) : t('profile_origin_unset')}
+          href="/settings/language-region"
+          disabled={loadingDoc}
+        />
       </dl>
+    </div>
+  )
+}
+
+// A read-only detail with an Edit link to the settings page that changes it.
+function EditableRow({ label, value, href, disabled }: { label: string; value: string; href: string; disabled: boolean }) {
+  const { t } = useLang()
+  return (
+    <div>
+      <dt className="text-xs font-semibold text-slate-500 mb-0.5">{label}</dt>
+      <dd className="text-sm font-bold text-slate-900 flex items-center justify-between gap-3">
+        <span className="min-w-0 break-words">{value}</span>
+        <Link
+          href={href}
+          aria-label={`${t('profile_edit_btn')} ${label}`}
+          aria-disabled={disabled || undefined}
+          className={`tap-target flex-shrink-0 inline-flex items-center h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors ${disabled ? 'pointer-events-none opacity-60' : ''}`}
+        >
+          {t('profile_edit_btn')}
+        </Link>
+      </dd>
     </div>
   )
 }

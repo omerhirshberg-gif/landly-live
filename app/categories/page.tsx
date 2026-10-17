@@ -1,59 +1,66 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import NearMeButton from '@/components/discover/NearMeButton'
 import OfferCard from '@/components/discover/OfferCard'
+import CategoryGrid from '@/components/perks/CategoryGrid'
+import PerksToolbar from '@/components/perks/PerksToolbar'
+import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
 import { useLang } from '@/lib/i18n/useLang'
-import { TranslationKey } from '@/lib/i18n/translations'
 import { sortByDistance, reverseGeocode, Coordinates } from '@/lib/geo'
 import type { Business } from '@/lib/types/business'
-import { CATEGORY_TILES } from '@/lib/categories'
-import { getAllOffers, getBestsellerOffers, isOfferNew, offerMatchesQuery, OfferDocument } from '@/lib/firebase/offers'
+import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
+import { getAllOffers, getBestsellerOffers, isOfferNew, OfferDocument } from '@/lib/firebase/offers'
+import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery } from '@/lib/perks/perksFilter'
 
 // No businesses onboarded yet — populated once real listings exist.
 const BUSINESSES: Business[] = []
 
-type Tile = { emoji: string; labelKey: TranslationKey; newDot?: boolean; category?: string; href?: string }
-
-function CompactTile({ tile, t }: { tile: Tile; t: (key: TranslationKey) => string }) {
-  const content = (
-    <>
-      <span>{tile.emoji}</span>
-      <span>{t(tile.labelKey)}</span>
-      {tile.newDot && <span className="new-badge-dot"></span>}
-    </>
-  )
-  const className =
-    'inline-flex items-center gap-2 flex-shrink-0 bg-white border border-slate-100 rounded-full px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-brand hover:text-brand transition whitespace-nowrap'
-  const href = tile.href ?? (tile.category ? `/categories/${encodeURIComponent(tile.category)}` : undefined)
-  return href ? (
-    <Link href={href} className={className}>
-      {content}
-    </Link>
-  ) : (
-    <div className={className}>{content}</div>
+// A curated highlight row (New, Best Sellers): title, "See more", and the
+// first six offers in a horizontal strip.
+function OfferRow({ emoji, title, href, offers, seeMore }: { emoji: string; title: string; href: string; offers: OfferDocument[]; seeMore: string }) {
+  return (
+    <div className="py-8 first:pt-0 last:pb-0">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{emoji}</span>
+          <h2 className="text-base font-bold text-slate-900">{title}</h2>
+        </div>
+        <Link href={href} className="text-sm font-bold text-brand hover:underline flex-shrink-0">
+          {seeMore}
+        </Link>
+      </div>
+      <div className="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-x pb-1">
+        {offers.slice(0, 6).map((offer) => (
+          <OfferCard key={offer.id} offer={offer} />
+        ))}
+      </div>
+    </div>
   )
 }
 
-const TILES: Tile[] = [
-  { emoji: '✨', labelKey: 'row_new', newDot: true, href: '/categories/new' },
-  { emoji: '🔥', labelKey: 'row_bestsellers', href: '/categories/bestsellers' },
-  ...CATEGORY_TILES,
-]
+function Spinner() {
+  return (
+    <div className="dash-empty-state">
+      <i className="fa-solid fa-spinner fa-spin"></i>
+    </div>
+  )
+}
 
-export default function CategoriesPage() {
-  const { t, isRtl } = useLang()
+// The perks catalog. At rest (All, no search, Recommended) it's the
+// overview: the search row (no chips or Sort), category tiles with counts,
+// then the New and Best Sellers rows. A search, a tapped tile (?cat=) or a
+// non-default sort switches to one filtered, sorted grid of offers, and only
+// then do the chips and Sort appear. The filters live in the URL (?cat=&sort=&q=), so the view
+// survives reloads and can be shared; all filtering runs on the one fetched
+// list (lib/perks/perksFilter.ts, shared with the app's Perks tab).
+function PerksBrowser() {
+  const { t, lang } = useLang()
+  const { query, setQuery, appliedQuery, category, setCategory, sort, setSort } = usePerksUrlState()
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null)
   const [placeName, setPlaceName] = useState<string | null>(null)
-  // Draft values reflect what's in the controls right now; "applied" values are
-  // what actually drive the results view, and only change on explicit submit
-  // (Search button / Enter) — except clearing, which resets both immediately.
-  const [query, setQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [appliedQuery, setAppliedQuery] = useState('')
-  const [appliedCategoryFilter, setAppliedCategoryFilter] = useState('')
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
   const [bestsellerOffers, setBestsellerOffers] = useState<OfferDocument[] | undefined>(undefined)
 
@@ -64,46 +71,21 @@ export default function CategoriesPage() {
     getBestsellerOffers().then(setBestsellerOffers)
   }, [])
 
-  const handleSearchSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    setAppliedQuery(query)
-    setAppliedCategoryFilter(categoryFilter)
-  }
+  const filters = { query: appliedQuery, category, sort }
+  const filtering = hasActivePerkFilters(filters)
+  const normalizedQuery = normalizeQuery(appliedQuery)
 
-  const handleClearSearch = () => {
-    setQuery('')
-    setAppliedQuery('')
-  }
-
-  const handleCategoryChange = (value: string) => {
-    setCategoryFilter(value)
-    if (value === '') setAppliedCategoryFilter('') // clearing back to "All Categories" resets instantly
-  }
-
-  const normalizedQuery = appliedQuery.trim().toLowerCase()
-  const isSearching = normalizedQuery.length > 0
-  const isCategoryFiltering = appliedCategoryFilter !== ''
-  const isFiltering = isSearching || isCategoryFiltering
-
-  const filteredResults = isFiltering
-    ? (offers ?? []).filter(
-        (offer) =>
-          (!isCategoryFiltering || offer.category === appliedCategoryFilter) &&
-          (!isSearching || offerMatchesQuery(offer, normalizedQuery))
-      )
-    : []
-  const categoryFilterLabel = CATEGORY_TILES.find((c) => c.category === appliedCategoryFilter)?.labelKey
-
+  const counts = useMemo(() => (offers ? countOffersByCategory(offers) : null), [offers])
+  const results = useMemo(
+    () => (offers && filtering ? filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang) : []),
+    // `t` changes identity every render; `lang` covers what it depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [offers, filtering, appliedQuery, category, sort, lang]
+  )
+  // A search across All also surfaces the categories it names.
+  const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   const newOffers = offers?.filter((offer) => isOfferNew(offer.createdAt)) ?? []
-
-  const offersByCategory = offers
-    ? offers.reduce<Map<string, OfferDocument[]>>((groups, offer) => {
-        const group = groups.get(offer.category) ?? []
-        group.push(offer)
-        groups.set(offer.category, group)
-        return groups
-      }, new Map())
-    : null
+  const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
 
   useEffect(() => {
     if (!userLocation) {
@@ -126,195 +108,149 @@ export default function CategoriesPage() {
       }, new Map())
     : null
 
+  // The page heading carries the selected category, so the results heading
+  // only names a search, or "All" for a sort over everything; a category on
+  // its own shows just the count under the page heading.
+  const pageTitle = selectedTile ? t(selectedTile.labelKey) : t('cats_page_title')
+  const resultsTitle = normalizedQuery
+    ? t('cats_search_results_title').replace('{query}', appliedQuery.trim())
+    : selectedTile
+      ? null
+      : t('cats_filter_all')
+
   return (
     <>
-      <Navbar />
-      <div className="pt-16">
-        <div className="max-w-7xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{t('cats_page_title')}</h1>
-            <NearMeButton onLocate={setUserLocation} />
-          </div>
+      <PageHeading title={pageTitle} />
+      <div className="mb-8">
+        <PerksToolbar
+          query={query}
+          onQueryChange={setQuery}
+          category={category}
+          onCategoryChange={setCategory}
+          sort={sort}
+          onSortChange={setSort}
+          showFilters={filtering}
+          action={<NearMeButton variant="action" onLocate={setUserLocation} onClear={() => setUserLocation(null)} />}
+        />
+      </div>
 
-          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 mb-8">
-            <div className="relative flex-1">
-              <i className={`fa-solid fa-magnifying-glass absolute top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none ${isRtl ? 'left-4' : 'right-4'}`}></i>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t('cats_search_placeholder')}
-                className="inp !pl-11 !pr-11"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                  className={`tap-target absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 text-slate-400 hover:text-slate-600 ${isRtl ? 'right-2' : 'left-2'}`}
-                >
-                  <i className="fa-solid fa-xmark text-sm"></i>
-                </button>
+      {filtering ? (
+        <div className="mb-10 space-y-8">
+          {matchingTiles.length > 0 && (
+            <section>
+              <h2 className="text-base font-bold text-slate-900 mb-3">{t('cats_matching_categories')}</h2>
+              <CategoryGrid tiles={matchingTiles} counts={counts} />
+            </section>
+          )}
+
+          {offers === undefined ? (
+            <Spinner />
+          ) : results.length > 0 ? (
+            <section aria-live="polite">
+              <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
+                {resultsTitle && <h2 className="text-base font-bold text-slate-900 break-words">{resultsTitle}</h2>}
+                <span className="text-sm text-slate-500">{perksCountLabel(results.length, t)}</span>
+              </div>
+              <div className="flex flex-wrap gap-2.5 sm:gap-3 touch-pan-y touch-pinch-zoom">
+                {results.map((offer) => (
+                  <OfferCard key={offer.id} offer={offer} />
+                ))}
+              </div>
+            </section>
+          ) : (
+            matchingTiles.length === 0 && (
+              <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
+                <i className={normalizedQuery ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-tags'}></i>
+                <div className="font-bold text-slate-700 text-base mb-1">
+                  {normalizedQuery ? t('cats_search_no_results_title').replace('{query}', appliedQuery.trim()) : t('deals_empty_title')}
+                </div>
+                <p className="text-sm text-slate-500 max-w-xs">{normalizedQuery ? t('cats_search_no_results_sub') : t('deals_empty_sub')}</p>
+              </div>
+            )
+          )}
+        </div>
+      ) : (
+        <>
+          {nearby && (
+            <div className="mb-8">
+              <h2 className={`text-sm font-bold text-slate-900 ${nearby.length > 0 && placeName ? 'mb-1' : 'mb-3'}`}>{t('discover_nearby_title')}</h2>
+              {nearby.length > 0 && placeName && (
+                <p className="text-xs text-slate-500 mb-3">{t('discover_nearby_place').replace('{place}', placeName)}</p>
               )}
-            </div>
-
-            <select
-              value={categoryFilter}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              aria-label={t('cats_category_label')}
-              className="inp sm:w-auto"
-            >
-              <option value="">{t('cats_all_categories')}</option>
-              {CATEGORY_TILES.map((c) => (
-                <option key={c.category} value={c.category}>
-                  {t(c.labelKey)}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="submit"
-              className="tap-target bg-brand text-white font-bold text-sm px-6 py-2.5 rounded-full hover:opacity-90 transition sm:w-auto"
-            >
-              {t('cats_search_button')}
-            </button>
-          </form>
-
-          {isFiltering ? (
-            <div className="mb-10">
-              <h2 className="text-base font-bold text-slate-900 mb-3">
-                {isSearching
-                  ? t('cats_search_results_title').replace('{query}', appliedQuery.trim())
-                  : t('cats_showing_category_title').replace('{category}', categoryFilterLabel ? t(categoryFilterLabel) : appliedCategoryFilter)}
-              </h2>
-              {filteredResults.length > 0 ? (
-                <div className="flex flex-wrap gap-2.5 sm:gap-3">
-                  {filteredResults.map((offer) => (
-                    <OfferCard key={offer.id} offer={offer} />
-                  ))}
-                </div>
-              ) : isSearching ? (
-                <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                  <i className="fa-solid fa-magnifying-glass"></i>
-                  <div className="font-bold text-slate-700 text-base mb-1">{t('cats_search_no_results_title').replace('{query}', appliedQuery.trim())}</div>
-                  <p className="text-sm text-slate-500 max-w-xs">{t('cats_search_no_results_sub')}</p>
-                </div>
-              ) : (
+              {nearby.length === 0 ? (
                 <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
                   <i className="fa-solid fa-tags"></i>
                   <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
                   <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
                 </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {nearby && (
-                <div className="mb-8">
-                  <h2 className={`text-sm font-bold text-slate-900 ${nearby.length > 0 && placeName ? 'mb-1' : 'mb-3'}`}>{t('discover_nearby_title')}</h2>
-                  {nearby.length > 0 && placeName && (
-                    <p className="text-xs text-slate-500 mb-3">{t('discover_nearby_place').replace('{place}', placeName)}</p>
-                  )}
-                  {nearby.length === 0 ? (
-                    <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                      <i className="fa-solid fa-tags"></i>
-                      <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
-                      <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {Array.from(nearbyByCategory!.entries()).map(([category, businesses]) => (
-                        <div key={category}>
-                          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2.5">{category}</h3>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                            {businesses.map((business) => (
-                              <div key={business.id} className="bg-white border border-slate-100 rounded-2xl p-4">
-                                <div className="font-bold text-slate-900 text-sm">{business.name}</div>
-                              </div>
-                            ))}
+              ) : (
+                <div className="space-y-6">
+                  {Array.from(nearbyByCategory!.entries()).map(([group, businesses]) => (
+                    <div key={group}>
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2.5">{group}</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                        {businesses.map((business) => (
+                          <div key={business.id} className="bg-white border border-slate-100 rounded-2xl p-4">
+                            <div className="font-bold text-slate-900 text-sm">{business.name}</div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {(newOffers.length > 0 || (bestsellerOffers && bestsellerOffers.length > 0) || (offersByCategory && offersByCategory.size > 0)) && (
-                <div className="divide-y divide-slate-100 mb-10">
-                  {newOffers.length > 0 && (
-                    <div className="py-8 first:pt-0 last:pb-0">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">✨</span>
-                          <h2 className="text-base font-bold text-slate-900">{t('row_new')}</h2>
-                        </div>
-                        <Link href="/categories/new" className="text-sm font-bold text-brand hover:underline flex-shrink-0">
-                          {t('cats_see_more')}
-                        </Link>
-                      </div>
-                      <div className="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-x pb-1">
-                        {newOffers.slice(0, 6).map((offer) => (
-                          <OfferCard key={offer.id} offer={offer} />
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {bestsellerOffers && bestsellerOffers.length > 0 && (
-                    <div className="py-8 first:pt-0 last:pb-0">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">🔥</span>
-                          <h2 className="text-base font-bold text-slate-900">{t('row_bestsellers')}</h2>
-                        </div>
-                        <Link href="/categories/bestsellers" className="text-sm font-bold text-brand hover:underline flex-shrink-0">
-                          {t('cats_see_more')}
-                        </Link>
-                      </div>
-                      <div className="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-x pb-1">
-                        {bestsellerOffers.slice(0, 6).map((offer) => (
-                          <OfferCard key={offer.id} offer={offer} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {offersByCategory && CATEGORY_TILES.map((tile) => {
-                    const categoryOffers = offersByCategory.get(tile.category)
-                    if (!categoryOffers || categoryOffers.length === 0) return null
-                    return (
-                      <div key={tile.category} className="py-8 first:pt-0 last:pb-0">
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{tile.emoji}</span>
-                            <h2 className="text-base font-bold text-slate-900">{t(tile.labelKey)}</h2>
-                          </div>
-                          <Link href={`/categories/${encodeURIComponent(tile.category)}`} className="text-sm font-bold text-brand hover:underline flex-shrink-0">
-                            {t('cats_see_more')}
-                          </Link>
-                        </div>
-                        <div className="flex gap-2.5 sm:gap-3 overflow-x-auto scroll-x pb-1">
-                          {categoryOffers.slice(0, 6).map((offer) => (
-                            <OfferCard key={offer.id} offer={offer} />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 mb-3">{t('cats_all_categories_title')}</h2>
-                <div className="flex gap-2 overflow-x-auto scroll-x pb-1">
-                  {TILES.map((tile, i) => (
-                    <CompactTile key={i} tile={tile} t={t} />
                   ))}
                 </div>
-              </div>
-            </>
+              )}
+            </div>
           )}
+
+          <section className="mb-10">
+            <h2 className="text-base font-bold text-slate-900 mb-3">{t('cats_all_categories_title')}</h2>
+            <CategoryGrid tiles={CATEGORY_TILES} counts={counts} />
+          </section>
+
+          {(newOffers.length > 0 || (bestsellerOffers && bestsellerOffers.length > 0)) && (
+            <div className="divide-y divide-slate-100 mb-10">
+              {newOffers.length > 0 && (
+                <OfferRow emoji="✨" title={t('row_new')} href="/categories/new" offers={newOffers} seeMore={t('cats_see_more')} />
+              )}
+              {bestsellerOffers && bestsellerOffers.length > 0 && (
+                <OfferRow emoji="🔥" title={t('row_bestsellers')} href="/categories/bestsellers" offers={bestsellerOffers} seeMore={t('cats_see_more')} />
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+// The heading names the selected category, so it reads ?cat= and lives
+// inside the Suspense boundary. Its fallback holds the same height with no
+// text: a ?cat= link never flashes "All Categories" before hydration, and
+// nothing shifts when the real heading arrives.
+function PageHeading({ title }: { title?: string }) {
+  return title ? (
+    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-5 break-words">{title}</h1>
+  ) : (
+    <div aria-hidden="true" className="h-8 sm:h-9 mb-5" />
+  )
+}
+
+export default function CategoriesPage() {
+  return (
+    <>
+      <Navbar />
+      <div className="pt-16">
+        <div className="max-w-member mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          <Suspense
+            fallback={
+              <>
+                <PageHeading />
+                <Spinner />
+              </>
+            }
+          >
+            <PerksBrowser />
+          </Suspense>
         </div>
       </div>
     </>

@@ -3,7 +3,7 @@ import Animated, { cubicBezier } from 'react-native-reanimated'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
-import { colors } from '../theme'
+import { colors, radius } from '../theme'
 
 // Strong ease-out. Native Reanimated CSS only accepts the predefined keywords
 // as strings, so a custom curve must be built with cubicBezier().
@@ -12,30 +12,36 @@ const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1)
 // Equal-width segments with a sliding active pill. The pill is translated by
 // whole multiples of its own width (percent translate), so nothing has to be
 // measured. `left` and translateX are physical, so in RTL — where the row
-// flips — the pill's visual slot is mirrored to match.
+// flips — the pill's visual slot is mirrored to match. `brand` is the
+// member dashboard's look (web: .dash-tabs): a rounded grey track with a
+// solid brand pill under white text.
 export default function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
   style,
+  tone = 'surface',
 }: {
   options: readonly { value: T; label: string }[]
   value: T
   onChange: (value: T) => void
   style?: StyleProp<ViewStyle>
+  tone?: 'surface' | 'brand'
 }) {
+  const brand = tone === 'brand'
   const { isRtl } = useLang()
   const count = options.length
   const index = Math.max(0, options.findIndex((o) => o.value === value))
   const slot = isRtl ? count - 1 - index : index
 
   return (
-    <View accessibilityRole="tablist" style={[styles.track, style]}>
+    <View accessibilityRole="tablist" style={[styles.track, brand && styles.brandTrack, style]}>
       <View style={[styles.inner]} pointerEvents="box-none">
         <Animated.View
           pointerEvents="none"
           style={[
             styles.pill,
+            brand && styles.brandPill,
             {
               width: `${100 / count}%`,
               transform: [{ translateX: `${slot * 100}%` }],
@@ -58,7 +64,7 @@ export default function SegmentedControl<T extends string>({
               <AppText
                 style={[
                   styles.label,
-                  { color: active ? colors.brand : colors.textMuted },
+                  { color: active ? (brand ? colors.white : colors.brand) : brand ? colors.body : colors.textMuted },
                 ]}
               >
                 {option.label}
@@ -96,4 +102,14 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
   label: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  brandTrack: { borderRadius: radius.pill, backgroundColor: '#eef2f7' },
+  brandPill: {
+    borderRadius: radius.pill,
+    backgroundColor: colors.brand,
+    shadowColor: colors.brand,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
 })

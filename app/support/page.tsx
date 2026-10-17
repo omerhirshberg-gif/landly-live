@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { Suspense, useState, type ChangeEvent, type FormEvent } from 'react'
 import Navbar from '@/components/layout/Navbar'
+import BackToSettings from '@/components/settings/BackToSettings'
 import Faq from '@/components/home/Faq'
 import Notice from '@/components/auth/entrance/Notice'
 import { useLang } from '@/lib/i18n/useLang'
@@ -65,6 +66,9 @@ export default function SupportPage() {
       <Navbar />
       <div className="pt-16">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
+          <Suspense fallback={null}>
+            <BackToSettings className="mb-3 sm:mb-6" />
+          </Suspense>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-8">{t('support_title')}</h1>
 
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">

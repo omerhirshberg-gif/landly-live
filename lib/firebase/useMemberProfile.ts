@@ -7,7 +7,7 @@ import { greetingName } from '@/lib/auth/names'
 import { getUserDocument, type UserDocument } from './users'
 
 // The signed-in member's name and avatar for the post-login surfaces (web
-// navbar pill, home greeting, account page; Expo home and profile tabs).
+// navbar pill, home greeting, /profile; Expo home and profile tabs).
 // Components mounting together share one read of users/{uid}; a read is
 // reused for a short while, so a later sign-in or a profile edit on another
 // device is picked up. An upload (lib/firebase/avatar.ts) publishes its URL

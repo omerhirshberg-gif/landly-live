@@ -23,6 +23,7 @@ import Button from '../entrance/Button'
 import Notice from '../entrance/Notice'
 import TextField from '../entrance/TextField'
 import styles from '../entrance/entrance.module.css'
+import CountryOfOriginPicker from '@/components/profile/CountryOfOriginPicker'
 import CelebrationStep from './CelebrationStep'
 import CountryCodeSelect from './CountryCodeSelect'
 import LanguageStep from './LanguageStep'
@@ -36,7 +37,7 @@ import { ONBOARDING_VARS } from './onboardingVars'
 
 type WizardData = Omit<OnboardingDraft, 'step'>
 
-const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false }
+const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', countryOfOrigin: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false }
 
 function saveDraft(uid: string, draft: OnboardingDraft | null) {
   try {
@@ -56,11 +57,12 @@ export function readOnboardingDraft(uid: string): string | null {
   }
 }
 
-type FieldErrors = Partial<Record<'customerType' | 'phone', string>>
+type FieldErrors = Partial<Record<'customerType' | 'countryOfOrigin' | 'phone', string>>
 
 const TITLES: Partial<Record<OnboardingStep, { title: TranslationKey; subtitle: TranslationKey }>> = {
   language: { title: 'onb_lang_title', subtitle: 'onb_lang_subtitle' },
   persona: { title: 'onb_persona_title', subtitle: 'onb_persona_subtitle' },
+  origin: { title: 'onb_origin_title', subtitle: 'onb_origin_subtitle' },
   phone: { title: 'onb_phone_title', subtitle: 'onb_phone_subtitle' },
   notifications: { title: 'onb_notif_title', subtitle: 'onb_notif_subtitle' },
 }
@@ -68,8 +70,8 @@ const TITLES: Partial<Record<OnboardingStep, { title: TranslationKey; subtitle: 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // Post-sign-in onboarding (web counterpart of landly-mobile/src/auth/
-// onboarding/OnboardingWizard.tsx): welcome, language, persona, WhatsApp
-// number, notifications and a celebration, one card at a time. It only runs
+// onboarding/OnboardingWizard.tsx): welcome, language, persona, country of
+// origin, WhatsApp number, notifications and a celebration, one card at a time. It only runs
 // for a signed-in, verified member who hasn't finished it, so the answers are
 // saved with a single update when the notifications card is left. All answers
 // live in one state object so ← never loses anything. Step order:
@@ -105,7 +107,14 @@ export default function OnboardingWizard({
   const [direction, setDirection] = useState<1 | -1>(1)
   const [data, setData] = useState<WizardData>(() =>
     draft
-      ? { customerType: draft.customerType, customerTypeOther: draft.customerTypeOther, country: draft.country, phone: draft.phone, phoneSkipped: draft.phoneSkipped }
+      ? {
+          customerType: draft.customerType,
+          customerTypeOther: draft.customerTypeOther,
+          countryOfOrigin: draft.countryOfOrigin,
+          country: draft.country,
+          phone: draft.phone,
+          phoneSkipped: draft.phoneSkipped,
+        }
       : EMPTY_DATA
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -195,6 +204,7 @@ export default function OnboardingWizard({
   const validate = (): boolean => {
     const errors: FieldErrors = {}
     if (step === 'persona' && !data.customerType) errors.customerType = t('mobile_signup_typeRequired')
+    if (step === 'origin' && !data.countryOfOrigin) errors.countryOfOrigin = t('onb_originRequired')
     if (step === 'phone' && !phoneToE164(data.country, data.phone)) errors.phone = t('phone_invalid_error')
     setFieldErrors(errors)
     return !Object.values(errors).some(Boolean)
@@ -232,6 +242,7 @@ export default function OnboardingWizard({
         phone: e164,
         customerType: data.customerType,
         customerTypeOther: personaNote(data.customerType, data.customerTypeOther),
+        countryOfOrigin: data.countryOfOrigin,
         preferredLanguage: lang,
         notificationsOptIn,
       })
@@ -289,6 +300,23 @@ export default function OnboardingWizard({
               />
             )}
 
+            {s === 'origin' && (
+              <div className="mb-5">
+                <CountryOfOriginPicker
+                  value={data.countryOfOrigin}
+                  onChange={(code) => set('countryOfOrigin', code)}
+                  labelledBy={id}
+                  invalid={!!fieldErrors.countryOfOrigin}
+                  listClassName="max-h-[min(40dvh,320px)]"
+                />
+                {fieldErrors.countryOfOrigin && (
+                  <p role="alert" className={`${styles.reveal} mt-2 text-xs font-semibold text-red-600`}>
+                    {fieldErrors.countryOfOrigin}
+                  </p>
+                )}
+              </div>
+            )}
+
             {s === 'phone' && (
               <TextField
                 label={t('onb_phoneLabel')}
@@ -337,7 +365,9 @@ export default function OnboardingWizard({
       style={ONBOARDING_VARS}
       data-fading={fading ? '' : undefined}
       onKeyDown={(e) => {
-        if (e.key === 'Escape' && goBack && !(e.target instanceof HTMLSelectElement)) goBack()
+        // Escape in a select, or in a country search with text (it clears it), isn't "back".
+        const clearing = e.target instanceof HTMLInputElement && e.target.type === 'search' && !!e.target.value
+        if (e.key === 'Escape' && goBack && !(e.target instanceof HTMLSelectElement) && !clearing) goBack()
       }}
     >
       <StepHeader step={step} onBack={goBack} />

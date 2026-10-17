@@ -5,7 +5,7 @@ import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, Lang, TranslationKey } from '@/lib/i18n/translations'
 
 const authState: { user: { uid: string; displayName: string | null; photoURL: string | null } | null } = { user: null }
-const profileState = { loaded: true, profile: null, firstName: 'Dana' as string | null, initials: 'DL', photoURL: null as string | null }
+const profileState = { loaded: true, profile: null as unknown, firstName: 'Dana' as string | null, initials: 'DL', photoURL: null as string | null }
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ push: () => {}, replace: () => {} }) }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: authState.user, loading: false }) }))
@@ -69,7 +69,7 @@ describe('member dashboard', () => {
   it.each(['en', 'he'] as const)('greets by first name at the design-system size (%s)', (lang) => {
     profileState.firstName = 'Dana'
     const html = withLang(lang, createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(new RegExp(`<h1 class="text-\\[26px\\] sm:text-\\[28px\\] lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
+    expect(html).toMatch(new RegExp(`<h1 id="home-welcome" class="text-\\[26px\\] sm:text-\\[28px\\] lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
   })
 
   it('shows the monogram fallback when there is no photo, and the photo when there is', () => {
@@ -97,16 +97,55 @@ describe('member dashboard', () => {
   it('titles the sections and uses design-system buttons', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(new RegExp(`<h2 id="home-deals-title" class="text-xl font-bold text-ink[^"]*">${translations.en.home_deals_title}</h2>`))
-    expect(html).toMatch(/class="ds-btn ds-btn-primary ds-btn-md w-full" href="\/member"/)
-    expect(html).toMatch(/class="ds-btn ds-btn-secondary ds-btn-md self-start" href="\/categories"/)
+    expect(html).toMatch(/class="ds-btn ds-btn-primary ds-btn-md [^"]*" href="\/member"><span>Open My Pass<\/span><i class="fa-solid fa-arrow-right text-xs rtl:-scale-x-100"/)
+  })
+
+  it('unifies greeting, persona and pass count in one white banner, with no blue Explore card', () => {
+    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
+    const banner = html.match(/<section aria-labelledby="home-welcome" class="([^"]*)">(.*?)<\/section>/)!
+    for (const c of ['bg-white', 'border-slate-100', 'rounded-2xl', 'shadow-sm', 'p-5', 'sm:p-6', 'lg:p-7', 'flex-col', 'md:flex-row', 'md:items-center', 'md:justify-between']) expect(banner[1].split(' ')).toContain(c)
+    const inner = banner[2]
+    // Leading: avatar → greeting → persona badge ("Member" until one is chosen) → subtitle; trailing: count pill → My Pass.
+    const order = ['href="/profile"', '<h1 id="home-welcome"', 'class="segment-badge"', translations.en.deals_title, 'aria-live="polite"', translations.en.home_pass_label, 'href="/member"'].map((s) => inner.indexOf(s))
+    expect(order.every((i) => i > -1)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(inner).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
+    // The blue card and the count sentence are gone; the rail follows the banner directly.
+    expect(html).not.toContain('bg-brand rounded-2xl')
+    expect(html).not.toContain(translations.en.home_discover_title)
+    expect(html).not.toContain(translations.en.home_vouchers_message.split('{count}')[0])
+    expect(html).toMatch(/<\/section><section class="mt-8 lg:mt-10" aria-labelledby="home-deals-title">/)
+  })
+
+  it('stacks on phones with the My Pass button free to wrap under the count, never overflowing', () => {
+    const html = withLang('he', createElement(LoggedInHome, { user: member as never }))
+    expect(html).toContain('class="flex flex-wrap items-center gap-3 md:flex-col md:flex-nowrap md:items-end md:gap-2.5 flex-shrink-0"')
+    expect(html).toMatch(/class="ds-btn ds-btn-primary ds-btn-md flex-1 basis-40 md:flex-none md:basis-auto" href="\/member"/)
+    // Tap targets: the pill is 44px tall on phones, the avatar link a tap-target.
+    expect(html).toContain('h-11 md:h-9')
+    expect(html).toMatch(/<a aria-label="[^"]*" class="tap-target flex-shrink-0 rounded-full" href="\/profile">/)
+  })
+
+  it('shows the member’s persona in its colour', async () => {
+    const { CUSTOMER_TYPES } = await import('@/lib/customerTypes')
+    const option = CUSTOMER_TYPES[0]
+    const prev = profileState.profile
+    profileState.profile = { customerType: option.value, customerTypeOther: '' } as never
+    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
+    expect(html).toContain(`<span class="segment-badge" style="background:${option.color}"><span>${translations.en[option.labelKey]}</span></span>`)
+    profileState.profile = prev
   })
 })
 
-describe('member dashboard: chips and perk cards', () => {
-  it('styles the category chips as soft tinted pills in an edge-faded row', () => {
+describe('member dashboard: category rail and perk cards', () => {
+  it('shows the categories as round icon tiles in an edge-faded rail ending in "View all"', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(/<div class="edge-fade [^"]*overflow-x-auto[^"]*">/)
-    expect(html).toMatch(/<a class="tap-target ds-chip" href="\/categories\/Restaurants%20and%20Cafes">/)
+    expect(html).toMatch(/<ul class="edge-fade [^"]*overflow-x-auto[^"]*">/)
+    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon">🍽️<\/span><span class="rail-tile-label">Restaurants/)
+    const rail = html.slice(html.indexOf('<ul class="edge-fade'), html.indexOf('</ul>'))
+    const viewAll = rail.lastIndexOf('href="/categories"')
+    expect(rail.slice(viewAll)).toContain(`<span class="rail-tile-label !text-brand">${translations.en.cats_view_all}</span>`)
+    expect(viewAll).toBeGreaterThan(rail.lastIndexOf('href="/categories/Cars%20and%20Transport"'))
   })
 
   const offer = {
