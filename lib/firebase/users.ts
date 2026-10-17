@@ -22,7 +22,14 @@ export interface UserDocument {
   onboardingCompleted: boolean
   /** Download URL of the uploaded avatar (avatars/{uid}), or '' for none. */
   photoURL: string
+  /** ISO alpha-2 code of the country the member moved from, or '' when not set (members from before the origin card). */
+  countryOfOrigin: string
+  /** Where in Israel the member lives (lib/profile/countryOfOrigin.ts ISRAEL_REGIONS), or '' when not set. */
+  israelRegion: string
 }
+
+// A shape check only, so this module stays free of libphonenumber.
+const isoCode = (v: unknown) => (typeof v === 'string' && /^[A-Z]{2}$/.test(v) ? v : '')
 
 /**
  * Creates the users/{uid} doc if it's missing: on every Google sign-in, and on
@@ -70,6 +77,8 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     notificationsOptIn: data.notificationsOptIn === true,
     onboardingCompleted: data.onboardingCompletedAt != null,
     photoURL: typeof data.photoURL === 'string' ? data.photoURL : '',
+    countryOfOrigin: isoCode(data.countryOfOrigin),
+    israelRegion: typeof data.israelRegion === 'string' ? data.israelRegion : '',
   }
 }
 
@@ -87,9 +96,26 @@ export async function updateUserDocument(
  */
 export async function completeOnboardingProfile(
   uid: string,
-  data: { phone: string; customerType: string; customerTypeOther: string; preferredLanguage: string; notificationsOptIn: boolean }
+  data: {
+    phone: string
+    customerType: string
+    customerTypeOther: string
+    countryOfOrigin: string
+    preferredLanguage: string
+    notificationsOptIn: boolean
+  }
 ) {
   await updateDoc(doc(db, 'users', uid), { ...data, onboardingCompletedAt: serverTimestamp() })
+}
+
+/** ISO alpha-2 (lib/profile/countryOfOrigin.ts isCountryCode). */
+export async function updateUserCountryOfOrigin(uid: string, countryOfOrigin: string) {
+  await updateDoc(doc(db, 'users', uid), { countryOfOrigin })
+}
+
+/** One of ISRAEL_REGIONS (lib/profile/countryOfOrigin.ts). */
+export async function updateUserRegion(uid: string, israelRegion: string) {
+  await updateDoc(doc(db, 'users', uid), { israelRegion })
 }
 
 /** E.164 (phoneToE164), or '' to remove the number. */

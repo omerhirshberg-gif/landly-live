@@ -1,38 +1,40 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { router } from 'expo-router'
 import { signOut, type User } from 'firebase/auth'
 import type { CountryCode } from 'libphonenumber-js'
 import { formatPhone, phoneToE164, splitPhone } from '@shared/auth/onboarding'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
 import { invalidateMemberProfile, useMemberProfile } from '@shared/firebase/useMemberProfile'
-import { updateUserLanguage, updateUserPhone } from '@shared/firebase/users'
+import { updateUserPhone } from '@shared/firebase/users'
 import { customerTypeLabel } from '@shared/customerTypes'
-import { LANGUAGES } from '@shared/i18n/languages'
-import type { Lang } from '@shared/i18n/translations'
+import { ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@shared/profile/countryOfOrigin'
 import AppText from '../../components/AppText'
 import AvatarPicker from '../../components/AvatarPicker'
 import Button from '../../components/Button'
 import Notice from '../../components/Notice'
-import SecuritySheet from '../../components/SecuritySheet'
+import LineIcon from '../../components/LineIcon'
 import TextField from '../../components/TextField'
 import CountryCodePicker from '../../auth/onboarding/CountryCodePicker'
 import { useLang } from '../../i18n/LangProvider'
 import { webOnly } from '../../lib/webStyles'
 import { colors, radius, type } from '../../theme'
 
+// The Profile tab (web: /profile): who the member is and their details, with
+// the phone editable in place and country of origin and region editable on
+// their settings screens, which back (the button or the swipe) closes
+// straight back to this tab: they open alone, without the Settings menu
+// under them. The gear at the header's trailing edge (top right,
+// top left in Hebrew) pushes the settings stack, where language, Privacy &
+// Security, help and the account-deletion request live.
 export default function ProfileScreen() {
-  const { t, lang, setLang } = useLang()
+  const { t, lang } = useLang()
   const { user } = useAuth()
   // Falls back to the Auth record until (or if) users/{uid} is read.
-  const { profile, initials, photoURL } = useMemberProfile(user)
-
-  // Same account-level preference the website reads on login.
-  const chooseLanguage = (next: Lang) => {
-    setLang(next)
-    if (user) updateUserLanguage(user.uid, next).catch(() => {})
-  }
+  const { profile, loaded, initials, photoURL } = useMemberProfile(user)
+  const unset = loaded ? t('profile_origin_unset') : '…'
 
   const name = profile?.displayName || user?.displayName || ''
   const email = profile?.email || user?.email || ''
@@ -45,9 +47,20 @@ export default function ProfileScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
-          {t('dash_tab_profile')}
-        </AppText>
+        <View style={styles.header}>
+          <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
+            {t('nav_profile')}
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('settings_gear_label')}
+            onPress={() => router.push('/settings')}
+            hitSlop={6}
+            style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
+          >
+            <LineIcon name="gear" size={24} color={colors.heading} />
+          </Pressable>
+        </View>
 
         <View style={[styles.card, styles.identity]}>
           {user && <AvatarPicker user={user} uri={photoURL} initials={initials} />}
@@ -71,31 +84,19 @@ export default function ProfileScreen() {
           <Row
             label={t('signup_customerTypeLabel')}
             value={customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? t('profile_no_phone')}
+          />
+          <EditRow
+            label={t('profile_origin_label')}
+            value={originLabel(profile?.countryOfOrigin ?? '', lang) ?? unset}
+            onEdit={() => router.push('/settings/origin')}
+          />
+          <EditRow
+            label={t('profile_region_label')}
+            value={profile && isIsraelRegion(profile.israelRegion) ? t(ISRAEL_REGION_KEYS[profile.israelRegion]) : unset}
+            onEdit={() => router.push('/settings/language-region')}
             last
           />
         </View>
-
-        <AppText style={styles.sectionTitle}>{t('profile_language_title')}</AppText>
-        <View style={styles.card}>
-          {LANGUAGES.map((option, i) => {
-            const selected = option.code === lang
-            return (
-              <Pressable
-                key={option.code}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                onPress={() => chooseLanguage(option.code)}
-                style={[styles.langRow, i < LANGUAGES.length - 1 && styles.rowBorder]}
-              >
-                <AppText style={[styles.langLabel, selected && styles.langSelected]}>{option.label}</AppText>
-                {selected && <View style={styles.dot} />}
-              </Pressable>
-            )
-          })}
-        </View>
-
-        {/* Password and sign-in method live in their own sheet, off the personal details. */}
-        {user && <SecuritySheet user={user} />}
 
         <Button label={t('nav_logout')} onPress={() => signOut(auth)} variant="secondary" />
       </ScrollView>
@@ -107,7 +108,7 @@ const SAVED_NOTICE_MS = 3000
 
 // The phone number, editable in place with the onboarding's field (country
 // code picker + number). Saves E.164 to users/{uid}.phone, the same value the
-// website's account page writes; an empty field removes the number.
+// website's /profile page writes; an empty field removes the number.
 function PhoneRow({ user, stored }: { user: User; stored: string }) {
   const { t } = useLang()
   // The just-saved number shows at once, before users/{uid} is read again.
@@ -217,6 +218,30 @@ function PhoneRow({ user, stored }: { user: User; stored: string }) {
   )
 }
 
+// A detail changed on a settings screen: the value, then an Edit button that pushes it.
+function EditRow({ label, value, onEdit, last }: { label: string; value: string; onEdit: () => void; last?: boolean }) {
+  const { t } = useLang()
+  return (
+    <View style={[styles.row, !last && styles.rowBorder]}>
+      <View style={styles.phoneRow}>
+        <View style={styles.phoneText}>
+          <AppText style={styles.rowLabel}>{label}</AppText>
+          <AppText style={styles.rowValue}>{value}</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('profile_edit_btn')} ${label}`}
+          onPress={onEdit}
+          hitSlop={8}
+          style={({ pressed }) => [styles.editButton, pressed && styles.editPressed]}
+        >
+          <AppText style={styles.editText}>{t('profile_edit_btn')}</AppText>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 function Row({ label, value, ltr, last }: { label: string; value: string; ltr?: boolean; last?: boolean }) {
   return (
     <View style={[styles.row, !last && styles.rowBorder]}>
@@ -229,8 +254,11 @@ function Row({ label, value, ltr, last }: { label: string; value: string; ltr?: 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
-  title: { marginBottom: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.textFaint, marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  title: { flex: 1 },
+  // 44pt target at the header's trailing edge; the root view's direction puts it top left in Hebrew.
+  gear: { width: 44, height: 44, borderRadius: 22, marginEnd: -8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  gearPressed: { backgroundColor: colors.borderLight },
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
@@ -261,15 +289,4 @@ const styles = StyleSheet.create({
   editActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   editAction: { flex: 1 },
   savedNotice: { marginTop: 12, marginBottom: -16 },
-  langRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 48,
-    paddingVertical: 12,
-    ...webOnly({ cursor: 'pointer' }),
-  },
-  langLabel: { fontSize: 16, color: colors.body },
-  langSelected: { fontWeight: '700', color: colors.brand },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.brand },
 })

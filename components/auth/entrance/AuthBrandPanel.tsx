@@ -15,6 +15,7 @@ const ONBOARDING_TITLES: Record<OnboardingStep, TranslationKey> = {
   welcome: 'onb_panel_welcome',
   language: 'onb_panel_language',
   persona: 'onb_panel_persona',
+  origin: 'onb_panel_origin',
   phone: 'onb_panel_phone',
   notifications: 'onb_panel_notifications',
   done: 'onb_panel_done',

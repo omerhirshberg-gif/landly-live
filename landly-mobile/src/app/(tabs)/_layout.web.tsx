@@ -30,7 +30,7 @@ export default function TabsLayout() {
           <Tabs.Screen name="index" options={{ title: t('mobile_tab_home'), tabBarIcon: (props) => <Glyph name="home" {...props} /> }} />
           <Tabs.Screen name="perks" options={{ title: t('mobile_tab_perks'), tabBarIcon: (props) => <Glyph name="perks" {...props} /> }} />
           <Tabs.Screen name="wallet" options={{ title: t('mobile_tab_wallet'), tabBarIcon: (props) => <Glyph name="pass" {...props} /> }} />
-          <Tabs.Screen name="profile" options={{ title: t('dash_tab_profile'), tabBarIcon: (props) => <Glyph name="profile" {...props} /> }} />
+          <Tabs.Screen name="profile" options={{ title: t('nav_profile'), tabBarIcon: (props) => <Glyph name="profile" {...props} /> }} />
         </Tabs>
       </View>
     </View>

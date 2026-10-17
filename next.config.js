@@ -21,6 +21,11 @@ const firebaseAuthOrigin = `https://${firebaseProjectId}.firebaseapp.com`
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: lanAddresses,
+  // The member page was /account until it became /profile; old links,
+  // bookmarks and emails keep working.
+  async redirects() {
+    return [{ source: '/account', destination: '/profile', permanent: true }]
+  },
   async rewrites() {
     return [
       { source: '/__/auth/:path*', destination: `${firebaseAuthOrigin}/__/auth/:path*` },

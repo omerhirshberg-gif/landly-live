@@ -19,7 +19,7 @@ const SUCCESS_NOTICE_MS = 4000
 // members only; the sheet shows a note otherwise). Collapsed to one row; opened, it asks for the
 // current password, then a new one that passes the sign-up rule (the
 // checklist ticks while the field is focused). Same Firebase steps as the
-// website's components/account/SecuritySection.tsx: re-authenticate with the
+// website's components/settings/SecuritySection.tsx: re-authenticate with the
 // current password, then update it.
 export default function ChangePassword({ user }: { user: User }) {
   const { t, isRtl } = useLang()

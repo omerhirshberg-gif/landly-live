@@ -6,12 +6,17 @@ import Navbar from '@/components/layout/Navbar'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
+import DashboardStats from '@/components/member/DashboardStats'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { getUserDocument } from '@/lib/firebase/users'
+import { subscribeToUserVouchers, type VoucherDocument } from '@/lib/firebase/vouchers'
+import { totalSaved } from '@/lib/member/savings'
 import { greetingName } from '@/lib/auth/names'
-import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, customerTypeLabel } from '@/lib/customerTypes'
+import SegmentBadge from '@/components/member/SegmentBadge'
+
+type Voucher = VoucherDocument & { id: string }
 
 export default function MemberPage() {
   const { t } = useLang()
@@ -23,6 +28,12 @@ export default function MemberPage() {
   const [customerType, setCustomerType] = useState('')
   const [customerTypeOther, setCustomerTypeOther] = useState('')
   const [greeting, setGreeting] = useState<string | null>(null)
+  // Live, shared by the stats row and both tabs (same listeners as the app's
+  // My Pass): a purchase or a redemption shows up without a reload. null
+  // while loading; a refused read leaves the lists empty.
+  const [active, setActive] = useState<Voucher[] | null>(null)
+  const [redeemed, setRedeemed] = useState<Voucher[] | null>(null)
+  const [saved, setSaved] = useState<number | null>(null)
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -40,10 +51,26 @@ export default function MemberPage() {
     return () => { cancelled = true }
   }, [user])
 
-  const segmentOption = CUSTOMER_TYPES.find((o) => o.value === customerType)
-  // "Other" shows what the member typed for it.
-  const segmentLabel = customerTypeLabel(customerType, customerTypeOther, t) ?? t('dash_segment_value_unset')
-  const segmentColor = segmentOption?.color ?? CUSTOMER_TYPE_UNSET_COLOR
+  useEffect(() => {
+    if (!user) return
+    const stopActive = subscribeToUserVouchers(user.uid, 'active', setActive, () => setActive([]))
+    const stopRedeemed = subscribeToUserVouchers(user.uid, 'redeemed', setRedeemed, () => setRedeemed([]))
+    return () => {
+      stopActive()
+      stopRedeemed()
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!redeemed) return
+    let cancelled = false
+    totalSaved(redeemed)
+      .then((amount) => {
+        if (!cancelled) setSaved(amount)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [redeemed])
 
   // First name from the profile, else the display name — never the email.
   const displayName = greeting ?? greetingName(null, user?.displayName)
@@ -64,46 +91,28 @@ export default function MemberPage() {
     <>
       <Navbar />
       <div className="pt-16 member-canvas">
-        <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
+        <div className="max-w-3xl lg:max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
 
           <div className="flex items-start justify-between mb-6 gap-3">
             <div>
-              <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('dash_label')}</div>
+              <div className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">{t('dash_label')}</div>
               <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink">{welcomeMessage}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                <span className="segment-badge" style={{ background: segmentColor }}>
-                  <span>{segmentLabel}</span>
-                </span>
+                <SegmentBadge customerType={customerType} customerTypeOther={customerTypeOther} />
               </div>
             </div>
           </div>
 
           {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
-            <div className="dash-stat-card text-center">
-              <i className="fa-solid fa-tags text-cyan-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_active_perks_label')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900">0</div>
-            </div>
-            <div className="dash-stat-card text-center">
-              <i className="fa-solid fa-gift text-brand text-base sm:text-lg mb-1.5 sm:mb-2"></i>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_perks_redeemed_label')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900">0</div>
-            </div>
-            <div className="dash-stat-card text-center">
-              <i className="fa-solid fa-sack-dollar text-emerald-600 text-base sm:text-lg mb-1.5 sm:mb-2"></i>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-tight">{t('dash_total_saved')}</div>
-              <div className="text-xs sm:text-base font-black text-slate-900" dir="ltr">₪0</div>
-            </div>
-          </div>
+          <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
 
           {/* Tabs: My Perks / Redeemed */}
           <div className="mb-5">
             <MemberTabs active={activeTab} onChange={setActiveTab} />
           </div>
           <div className="mb-4">
-            {activeTab === 'perks' && <PerksTab />}
-            {activeTab === 'redeemed' && <RedeemedTab />}
+            {activeTab === 'perks' && <PerksTab vouchers={active} />}
+            {activeTab === 'redeemed' && <RedeemedTab vouchers={redeemed} />}
           </div>
         </div>
       </div>

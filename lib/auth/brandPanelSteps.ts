@@ -25,6 +25,7 @@ export type BrandPanelSteps = { label: TranslationKey; items: { label: Translati
 export const ONBOARDING_STEP_ITEMS: readonly { step: OnboardingStep; label: TranslationKey }[] = [
   { step: 'language', label: 'onb_step_language' },
   { step: 'persona', label: 'onb_step_persona' },
+  { step: 'origin', label: 'onb_step_origin' },
   { step: 'phone', label: 'onb_step_phone' },
   { step: 'notifications', label: 'onb_step_notifications' },
 ]

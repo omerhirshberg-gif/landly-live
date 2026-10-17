@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore'
 import { db } from './config'
+import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
 
 export interface OfferDocument {
   id: string
@@ -50,30 +51,22 @@ export function isOfferNew(createdAt: Date | null): boolean {
   return !!createdAt && Date.now() - createdAt.getTime() < NEW_OFFER_WINDOW_MS
 }
 
-// No manual percentage field anywhere — always derived from the two prices.
+// The ordering and matching rules live in lib/perks/perksFilter.ts (pure,
+// shared with the Perks filter engine); these keep their original names.
 export function getOfferDiscountPercent(originalPrice: number, offerPrice: number): number {
-  if (originalPrice <= 0) return 0
-  return Math.round((1 - offerPrice / originalPrice) * 100)
+  return discountPercent(originalPrice, offerPrice)
 }
 
 // Bestsellers first, then newest: the order the member home screens (web
 // LoggedInHome, Expo Home and Perks tabs) show offers in.
 export function sortFeaturedOffers(offers: OfferDocument[]): OfferDocument[] {
-  return [...offers].sort(
-    (a, b) =>
-      Number(b.isBestseller) - Number(a.isBestseller) ||
-      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
-  )
+  return [...offers].sort(compareFeatured)
 }
 
-// Shared by /categories (search across all offers) and /categories/[category]
-// (search within one category's already-fetched list) so matching stays in sync.
+// Title, merchant or stored category name; the Perks engine also matches the
+// translated category label (offerMatchesSearch with a translator).
 export function offerMatchesQuery(offer: OfferDocument, normalizedQuery: string): boolean {
-  return (
-    offer.title.toLowerCase().includes(normalizedQuery) ||
-    offer.businessName.toLowerCase().includes(normalizedQuery) ||
-    offer.category.toLowerCase().includes(normalizedQuery)
-  )
+  return offerMatchesSearch(offer, normalizedQuery)
 }
 
 // Offers are admin-managed only (created manually, same as businesses/{uid})

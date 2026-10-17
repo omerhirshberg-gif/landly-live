@@ -1,5 +1,6 @@
 import { getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import type { Lang } from '@/lib/i18n/translations'
+import { COUNTRY_NAMES } from '@/lib/profile/countryNames'
 import { normalizePersonName } from './names'
 import { isStrongPassword } from './passwordValidation'
 
@@ -8,13 +9,13 @@ import { isStrongPassword } from './passwordValidation'
 // store the same values. Pure functions only — each platform owns its UI.
 //
 // Credentials and name come first (the Sign Up tab); these cards run once
-// the member is signed in and hasn't finished onboarding: a welcome, four
+// the member is signed in and hasn't finished onboarding: a welcome, five
 // questions, then a celebration. Answers are saved when the notifications
 // card is left, so the celebration only shows once they're stored.
 
-export type OnboardingStep = 'welcome' | 'language' | 'persona' | 'phone' | 'notifications' | 'done'
+export type OnboardingStep = 'welcome' | 'language' | 'persona' | 'origin' | 'phone' | 'notifications' | 'done'
 
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['welcome', 'language', 'persona', 'phone', 'notifications', 'done']
+export const ONBOARDING_STEPS: readonly OnboardingStep[] = ['welcome', 'language', 'persona', 'origin', 'phone', 'notifications', 'done']
 
 /** Every app language, offered on the language card (each label in its own language), Hebrew last. */
 export const ONBOARDING_LANGS: readonly { code: Lang; label: string; flag: string }[] = [
@@ -95,7 +96,7 @@ export interface Country {
 }
 
 // Regional-indicator pair: "IL" -> 🇮🇱.
-function flagEmoji(code: string): string {
+export function flagEmoji(code: string): string {
   return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
 }
 
@@ -119,19 +120,17 @@ export function listCountries(): { pinned: Country[]; rest: Country[] } {
 }
 
 /**
- * The country's name in `lang`, or its ISO code where the runtime has no
- * Intl.DisplayNames (older Hermes builds).
+ * The country's full name in `lang` ("Saint Lucia", never "St. Lucia" or
+ * "LC"), from the checked-in table (lib/profile/countryNames.ts), so web and
+ * the app agree whatever the runtime's Intl support. The ISO code only for a
+ * code the table doesn't know.
  */
 export function countryName(code: CountryCode, lang: Lang): string {
-  try {
-    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
-      return new Intl.DisplayNames([lang], { type: 'region' }).of(code) ?? code
-    }
-  } catch {
-    // Unsupported locale — fall through to the code
-  }
-  return code
+  return COUNTRY_NAMES[lang][code] ?? COUNTRY_NAMES.en[code] ?? code
 }
+
+/** Never offered as a country of origin (lib/profile/countryOfOrigin.ts); still in the phone code picker. */
+export const EXCLUDED_ORIGINS: readonly string[] = ['PS']
 
 /**
  * The stored E.164 number, or null if it isn't a valid number. A number
@@ -184,6 +183,9 @@ export interface OnboardingDraft {
   step: Exclude<OnboardingStep, 'done'>
   customerType: string
   customerTypeOther: string
+  /** The country the member moved from (ISO alpha-2), or '' until the origin card is answered. */
+  countryOfOrigin: string
+  /** The phone field's dialing country. */
   country: CountryCode
   phone: string
   /** "Skip for now" on the WhatsApp card; cleared by continuing with a number. */
@@ -223,6 +225,14 @@ export function parseOnboardingDraft(raw: string | null | undefined): Onboarding
   const customerTypeOther = text(d.customerTypeOther, MAX_PERSONA_NOTE_LENGTH)
   const phone = text(d.phone)
   const country = typeof d.country === 'string' && isSupportedCountry(d.country) ? d.country : null
-  if (customerType === null || customerTypeOther === null || phone === null || country === null || typeof d.phoneSkipped !== 'boolean') return null
-  return { step: step as OnboardingDraft['step'], customerType, customerTypeOther, country, phone, phoneSkipped: d.phoneSkipped }
+  // Drafts saved before the origin card have no countryOfOrigin: they resume with it unanswered.
+  // One that's no longer offered (EXCLUDED_ORIGINS) resumes unanswered too.
+  const origin = d.countryOfOrigin ?? ''
+  let countryOfOrigin: string | null = null
+  if (typeof origin === 'string') {
+    if (EXCLUDED_ORIGINS.includes(origin)) countryOfOrigin = ''
+    else if (origin === '' || isSupportedCountry(origin)) countryOfOrigin = origin
+  }
+  if (customerType === null || customerTypeOther === null || phone === null || country === null || countryOfOrigin === null || typeof d.phoneSkipped !== 'boolean') return null
+  return { step: step as OnboardingDraft['step'], customerType, customerTypeOther, countryOfOrigin, country, phone, phoneSkipped: d.phoneSkipped }
 }

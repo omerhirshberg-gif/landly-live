@@ -7,6 +7,7 @@ import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
+import RouteTracker from '@/components/layout/RouteTracker'
 
 export const metadata: Metadata = {
   title: 'Landly — Live Israel Like a Local',
@@ -34,6 +35,7 @@ export default function RootLayout({
       </head>
       <body>
         <AccessibilityWidget />
+        <RouteTracker />
         <AuthProvider>
           <WishlistProvider>
             <LangProvider>

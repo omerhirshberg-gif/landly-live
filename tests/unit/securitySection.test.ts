@@ -6,7 +6,7 @@ import { translations, type TranslationKey } from '@/lib/i18n/translations'
 
 vi.mock('firebase/auth', () => ({ EmailAuthProvider: { credential: vi.fn() }, reauthenticateWithCredential: vi.fn(), updatePassword: vi.fn() }))
 
-const { default: SecuritySection } = await import('@/components/account/SecuritySection')
+const { default: SecuritySection } = await import('@/components/settings/SecuritySection')
 
 // /account's Change Password follows the sign-up password rule, not just a
 // 6-character minimum.

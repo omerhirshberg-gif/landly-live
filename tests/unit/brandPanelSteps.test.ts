@@ -30,12 +30,13 @@ describe('brandPanelSteps', () => {
   })
 
   const expected: Record<OnboardingStep, string[]> = {
-    welcome: ['upcoming', 'upcoming', 'upcoming', 'upcoming'],
-    language: ['current', 'upcoming', 'upcoming', 'upcoming'],
-    persona: ['done', 'current', 'upcoming', 'upcoming'],
-    phone: ['done', 'done', 'current', 'upcoming'],
-    notifications: ['done', 'done', 'done', 'current'],
-    done: ['done', 'done', 'done', 'done'],
+    welcome: ['upcoming', 'upcoming', 'upcoming', 'upcoming', 'upcoming'],
+    language: ['current', 'upcoming', 'upcoming', 'upcoming', 'upcoming'],
+    persona: ['done', 'current', 'upcoming', 'upcoming', 'upcoming'],
+    origin: ['done', 'done', 'current', 'upcoming', 'upcoming'],
+    phone: ['done', 'done', 'done', 'current', 'upcoming'],
+    notifications: ['done', 'done', 'done', 'done', 'current'],
+    done: ['done', 'done', 'done', 'done', 'done'],
   }
 
   for (const step of ONBOARDING_STEPS) {

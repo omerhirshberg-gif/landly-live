@@ -47,7 +47,7 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} md="account_circle" />
-        <NativeTabs.Trigger.Label>{t('dash_tab_profile')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('nav_profile')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   )

@@ -64,7 +64,7 @@ const CARD_RISE = FROM.cardRise
 // Both tabs share one hero above the card and one tab control inside it, so
 // switching never re-mounts either (the splash logo may still be landing on
 // the hero). Sign Up asks for the name and credentials; the
-// OnboardingWizard (welcome, language, persona, WhatsApp, notifications,
+// OnboardingWizard (welcome, language, persona, origin, WhatsApp, notifications,
 // celebration) replaces the card after a sign-in that hasn't finished it,
 // with the hero hidden so every card fits the screen without scrolling. The
 // card fades out before the wizard appears and again before the tabs do.

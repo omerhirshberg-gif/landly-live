@@ -1,27 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
-import { useAuth } from '@/lib/firebase/useAuth'
-import { getUserVouchers, VoucherDocument } from '@/lib/firebase/vouchers'
+import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import VoucherQRCode from './VoucherQRCode'
 
 type ActiveVoucher = VoucherDocument & { id: string }
 
-export default function PerksTab() {
+// My Perks on /member: each active voucher as a scannable pass. The page
+// owns the live list (shared with the stats row); null while it loads.
+export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | null }) {
   const { t } = useLang()
-  const { user } = useAuth()
-  const [vouchers, setVouchers] = useState<ActiveVoucher[] | null>(null)
-
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    getUserVouchers(user.uid, 'active').then((result) => {
-      if (!cancelled) setVouchers(result)
-    })
-    return () => { cancelled = true }
-  }, [user])
 
   if (vouchers === null) {
     return <div className="dash-empty-state" />
