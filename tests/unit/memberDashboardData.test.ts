@@ -28,6 +28,8 @@ const voucher = (id: string, offerId: string, redeemedAt: Date | null = new Date
   status: 'redeemed' as const,
   takenAt: null,
   redeemedAt,
+  expiresAt: null,
+  redemptionTerms: '',
 })
 
 describe('sumSavings', () => {

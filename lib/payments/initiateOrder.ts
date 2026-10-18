@@ -2,8 +2,25 @@ import 'server-only'
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
+import { normalizeRedemptionTerms, normalizeValidityDays } from './voucherTerms'
 
-export async function initiateOrder(db: Firestore, uid: string, offerId: string, terminal: string) {
+/** A stored pre-discount price, or null when there's none worth showing. */
+function originalPriceOf(value: unknown, amount: number): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > amount ? value : null
+}
+
+// The order freezes everything checkout shows (price, original price, voucher
+// validity, redemption terms), so what the member agreed to is what the
+// webhook issues even if the offer is edited meanwhile. `acceptTerms` comes
+// from the Pay button, after the Terms/Refund checkbox: it stamps
+// termsAcceptedAt once on the pending order and changes nothing else.
+export async function initiateOrder(
+  db: Firestore,
+  uid: string,
+  offerId: string,
+  terminal: string,
+  { acceptTerms = false }: { acceptTerms?: boolean } = {}
+) {
   if (!isDocumentId(uid) || !isDocumentId(offerId) || !isDocumentId(`${uid}_${offerId}`)) {
     throw new PaymentError('Invalid offer or user ID.', 400)
   }
@@ -28,10 +45,18 @@ export async function initiateOrder(db: Firestore, uid: string, offerId: string,
       if (amountInAgorot(order.amount) !== order.amountAgorot) {
         throw new PaymentError('Existing order has inconsistent pricing; reconciliation is required.')
       }
+      // Orders created before validity/terms were frozen read them from the offer.
+      const legacyOffer = offerSnap.exists ? offerSnap.data()! : {}
+      const termsAccepted = order.termsAcceptedAt instanceof Timestamp
+      if (acceptTerms && !termsAccepted) tx.update(orderRef, { termsAcceptedAt: Timestamp.now() })
       // A reload is an idempotent read, never a new payment attempt or reprice.
       return {
         orderId: orderRef.id, amount: order.amount, currency: 'ILS' as const,
+        originalPrice: originalPriceOf(order.originalPrice, order.amount),
         offerTitle: order.offerTitle, businessName: order.businessName,
+        validityDays: normalizeValidityDays(order.validityDays ?? legacyOffer.validityDays),
+        redemptionTerms: normalizeRedemptionTerms(order.redemptionTerms ?? legacyOffer.redemptionTerms),
+        termsAccepted: termsAccepted || acceptTerms,
       }
     }
     if (!offerSnap.exists) throw new PaymentError('Offer not found.', 404)
@@ -52,16 +77,22 @@ export async function initiateOrder(db: Firestore, uid: string, offerId: string,
     if (!business.exists) throw new PaymentError('Offer business no longer exists.')
     const amountAgorot = amountInAgorot(offer.offerPrice)
     const amount = amountAgorot / 100
+    const originalPrice = originalPriceOf(offer.originalPrice, amount)
+    const validityDays = normalizeValidityDays(offer.validityDays)
+    const redemptionTerms = normalizeRedemptionTerms(offer.redemptionTerms)
+    const now = Timestamp.now()
     tx.create(orderRef, {
       userId: uid, offerId, businessId: offer.businessId,
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
-      amount, amountAgorot, currency: 'ILS', terminal,
-      status: 'pending', createdAt: Timestamp.now(),
+      amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
+      validityDays, redemptionTerms,
+      status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
     })
     return {
-      orderId: orderRef.id, amount, currency: 'ILS' as const,
+      orderId: orderRef.id, amount, currency: 'ILS' as const, originalPrice,
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',
+      validityDays, redemptionTerms, termsAccepted: acceptTerms,
     }
   })
 }

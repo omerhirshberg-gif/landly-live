@@ -22,6 +22,10 @@ body{overflow-x:hidden;}
 /* ── Touch targets ─────────────────────────────────── */
 button,a{touch-action:manipulation;}
 .tap-target{min-height:44px;min-width:44px;}
+/* Keyboard focus baseline (WCAG 2.4.7 / IS 5568): a visible ring on every link,
+   button and form control that doesn't style its own. :where() keeps it at
+   zero specificity, so any component focus style still wins. */
+:where(a,button,[role="button"],[role="tab"],[role="checkbox"],summary,select,textarea,input:not([type="checkbox"]):not([type="radio"])):focus-visible{outline:2px solid #0038B8;outline-offset:2px;}
 
 /* ── Scroll row ────────────────────────────────────── */
 .scroll-x{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#0038b8 transparent;-webkit-overflow-scrolling:touch;}
@@ -79,6 +83,7 @@ button,a{touch-action:manipulation;}
 /* ── Input ─────────────────────────────────────────── */
 .inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
 .inp:focus{border-color:#0038b8;}
+.inp:focus-visible{box-shadow:0 0 0 3px rgba(0,56,184,.3);}
 select.inp{cursor:pointer;}
 
 /* Dark-theme override for the business login/dashboard pages — layered on top of .inp */
@@ -387,9 +392,9 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Account dropdown: same surface as .lang-menu, opened from the avatar pill. */
 .account-menu{position:absolute;top:calc(100% + 8px);right:0;left:auto;background:#fff;border:1px solid #E2E8F0;border-radius:14px;box-shadow:0 12px 36px rgba(15,23,42,.14);min-width:256px;max-width:min(320px,calc(100vw - 32px));padding:6px;z-index:60;}
 .account-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;color:#0B1B3D;text-align:start;transition:background .15s;}
-.account-item:focus-visible{background:#F1F5F9;outline:none;}
+.account-item:focus-visible{background:#F1F5F9;outline:2px solid #0038B8;outline-offset:-2px;}
 .account-item--danger{color:#DC2626;}
-.account-item--danger:focus-visible{background:#FEF2F2;}
+.account-item--danger:focus-visible{background:#FEF2F2;outline-color:#DC2626;}
 /* Hover tints only where there's a real pointer, so a tap never leaves one stuck on */
 @media (hover:hover){.account-item:hover{background:#F1F5F9;}.account-item--danger:hover{background:#FEF2F2;}}
 .account-divider{height:1px;margin:4px 0;background:#E2E8F0;}
@@ -446,7 +451,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .perks-sheet{animation:perks-sheet .28s cubic-bezier(.32,.72,0,1);}
 .perks-scrim{animation:perks-scrim .2s ease-out;}
 .sort-option{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:600;color:#0B1B3D;text-align:start;-webkit-tap-highlight-color:transparent;transition:background-color .15s;}
-.sort-option:focus-visible{background:#F1F5F9;outline:none;}
+.sort-option:focus-visible{background:#F1F5F9;outline:2px solid #0038B8;outline-offset:-2px;}
 .sort-option[aria-checked="true"]{color:#0038B8;}
 @media (max-width:767px){.sort-option{min-height:52px;font-size:16px;}}
 @media (hover:hover){.sort-option:hover{background:#F1F5F9;}}

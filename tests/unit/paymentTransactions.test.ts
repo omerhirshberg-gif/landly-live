@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Timestamp } from 'firebase-admin/firestore'
 import { claimOfferForOrder } from '@/lib/payments/claimOfferForOrder'
 import { initiateOrder } from '@/lib/payments/initiateOrder'
 import { TransactionStore, deferred } from '../helpers/transactionStore'
@@ -144,6 +145,58 @@ describe('safe initiation', () => {
     expect(db.read('orders/user_offer')).toEqual(before)
     gate.release.resolve()
     await settling
+    fulfilled(db)
+  })
+})
+
+const DAY = 24 * 60 * 60 * 1000
+
+describe('frozen purchase terms', () => {
+  it('snapshots price, original price, validity and redemption terms on the new order', async () => {
+    const db = store(false)
+    db.seed('offers/offer', { ...offer, originalPrice: 20, validityDays: 30, redemptionTerms: ' Sun–Thu only ' })
+    expect(await initiateOrder(db.db, 'user', 'offer', terminal)).toMatchObject({
+      amount: 10.25, originalPrice: 20, validityDays: 30, redemptionTerms: 'Sun–Thu only', termsAccepted: false,
+    })
+    expect(db.read('orders/user_offer')).toMatchObject({ originalPrice: 20, validityDays: 30, redemptionTerms: 'Sun–Thu only', termsAcceptedAt: null })
+  })
+
+  it('defaults validity to 180 days and shows no original price that is not higher', async () => {
+    const db = store(false)
+    db.seed('offers/offer', { ...offer, originalPrice: 10.25 })
+    expect(await initiateOrder(db.db, 'user', 'offer', terminal)).toMatchObject({ originalPrice: null, validityDays: 180, redemptionTerms: '' })
+  })
+
+  it('stamps terms acceptance once, changing nothing else', async () => {
+    const db = store(false)
+    await initiateOrder(db.db, 'user', 'offer', terminal)
+    const created = db.read('orders/user_offer')!
+    expect(await initiateOrder(db.db, 'user', 'offer', terminal, { acceptTerms: true })).toMatchObject({ termsAccepted: true })
+    const accepted = db.read('orders/user_offer')!
+    expect(accepted.termsAcceptedAt).toBeInstanceOf(Timestamp)
+    expect({ ...accepted, termsAcceptedAt: null }).toEqual(created)
+    await initiateOrder(db.db, 'user', 'offer', terminal, { acceptTerms: true })
+    expect(db.read('orders/user_offer')).toEqual(accepted)
+    expect(await initiateOrder(db.db, 'user', 'offer', terminal)).toMatchObject({ termsAccepted: true })
+  })
+
+  it('issues the voucher with the order\'s validity and terms, not the offer\'s later edits', async () => {
+    const db = store(false)
+    db.seed('offers/offer', { ...offer, validityDays: 30, redemptionTerms: 'Original terms' })
+    await initiateOrder(db.db, 'user', 'offer', terminal)
+    db.seed('offers/offer', { ...offer, validityDays: 365, redemptionTerms: 'Edited terms' })
+    await claimOfferForOrder(db.db, event)
+    const voucher = db.read('vouchers/user_offer')!
+    expect(voucher.redemptionTerms).toBe('Original terms')
+    expect(voucher.expiresAt.toMillis() - voucher.takenAt.toMillis()).toBe(30 * DAY)
+  })
+
+  it('gives a legacy order (no frozen terms) the offer\'s, and 180 days by default', async () => {
+    const db = store()
+    await claimOfferForOrder(db.db, event)
+    const voucher = db.read('vouchers/user_offer')!
+    expect(voucher.redemptionTerms).toBe('')
+    expect(voucher.expiresAt.toMillis() - voucher.takenAt.toMillis()).toBe(180 * DAY)
     fulfilled(db)
   })
 })

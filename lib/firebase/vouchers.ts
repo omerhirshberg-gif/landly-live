@@ -1,5 +1,10 @@
-import { collection, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
+import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
 import { db } from './config'
+import { normalizeRedemptionTerms } from '../payments/voucherTerms'
+
+// refunded: cancelled through support after purchase (set by an admin, never
+// by a client); it leaves the wallet like a redeemed one, but was never used.
+export type VoucherStatus = 'active' | 'redeemed' | 'refunded'
 
 export interface VoucherDocument {
   userId: string
@@ -8,9 +13,13 @@ export interface VoucherDocument {
   businessName: string // denormalized
   offerTitle: string // denormalized
   redemptionCode: string
-  status: 'active' | 'redeemed'
+  status: VoucherStatus
   takenAt: Date | null
   redeemedAt: Date | null
+  // Set by the payment webhook from the order's validityDays; null only for
+  // vouchers issued before validity periods existed.
+  expiresAt: Date | null
+  redemptionTerms: string // snapshot from the order, so later offer edits never change a bought voucher
 }
 
 // What a voucher's QR code encodes -- shared so the web member area and the
@@ -37,15 +46,28 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessName: (data.businessName as string) ?? '',
     offerTitle: (data.offerTitle as string) ?? '',
     redemptionCode: (data.redemptionCode as string) ?? '',
-    status: data.status === 'redeemed' ? 'redeemed' : 'active',
+    status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
     takenAt: data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null,
     redeemedAt: data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null,
+    expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toDate() : null,
+    redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
   }
 }
 
 export async function getUserVoucherForOffer(uid: string, offerId: string): Promise<VoucherDocument | null> {
   const snap = await getDocs(voucherForOfferQuery(uid, offerId))
   return snap.empty ? null : toDoc(snap.docs[0].data())
+}
+
+// One voucher by id, live: the checkout success page shows the pass the
+// webhook issued for its order (voucher id = order id). A missing or foreign
+// voucher is permission-denied by the rules, which reads as null here.
+export function subscribeToVoucher(voucherId: string, onChange: (voucher: (VoucherDocument & { id: string }) | null) => void): () => void {
+  return onSnapshot(
+    doc(db, 'vouchers', voucherId),
+    (snap) => onChange(snap.exists() ? { id: snap.id, ...toDoc(snap.data()) } : null),
+    () => onChange(null)
+  )
 }
 
 // Two equality-only filters (userId, status) — Firestore covers this with its

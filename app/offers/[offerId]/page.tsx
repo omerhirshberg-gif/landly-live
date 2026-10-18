@@ -71,7 +71,7 @@ export default function OfferDetailPage() {
         <div className="pt-16 bg-slate-50 min-h-screen">
           <div className="max-w-lg mx-auto px-5 sm:px-6 py-16">
             <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-              <i className="fa-solid fa-tags"></i>
+              <i className="fa-solid fa-tags" aria-hidden="true"></i>
               <div className="font-bold text-slate-700 text-base mb-1">{t('offer_detail_not_found_title')}</div>
               <p className="text-sm text-slate-500 max-w-xs mb-5">{t('offer_detail_not_found_sub')}</p>
               <Link href="/categories" className="tap-target btn-primary">
@@ -101,7 +101,7 @@ export default function OfferDetailPage() {
             href={`/categories/${encodeURIComponent(offer.category)}`}
             className="tap-target inline-flex items-center gap-2 text-sm font-bold text-brand bg-brand/10 border border-brand/20 rounded-full px-4 py-2 transition hover:bg-brand/20 hover:border-brand/40 mb-5"
           >
-            <i className="fa-solid fa-arrow-left text-xs"></i>
+            <i className="fa-solid fa-arrow-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
             <span>{t('offer_detail_back')}</span>
           </Link>
         </div>
@@ -113,7 +113,7 @@ export default function OfferDetailPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={offer.imageUrl} alt={offer.title} onError={() => setImgError(true)} className="w-full h-full object-cover" />
               ) : (
-                <i className="fa-regular fa-image text-4xl text-slate-300"></i>
+                <i className="fa-regular fa-image text-4xl text-slate-300" aria-hidden="true"></i>
               )}
               {user && (
                 <button
@@ -122,7 +122,7 @@ export default function OfferDetailPage() {
                   aria-label={isWishlisted(offer.id) ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
                   className={`tap-target absolute top-3 end-3 w-10 h-10 flex items-center justify-center rounded-full shadow-sm transition ${isWishlisted(offer.id) ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-500 hover:text-red-500'}`}
                 >
-                  <i className={`${isWishlisted(offer.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-base`}></i>
+                  <i className={`${isWishlisted(offer.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-base`} aria-hidden="true"></i>
                 </button>
               )}
             </div>
@@ -145,13 +145,13 @@ export default function OfferDetailPage() {
             <div className="border-t border-slate-100 pt-4 space-y-2 mb-6">
               {formattedExpiry && (
                 <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <i className="fa-regular fa-clock"></i>
+                  <i className="fa-regular fa-clock" aria-hidden="true"></i>
                   <span>{t('offer_detail_expires').replace('{date}', formattedExpiry)}</span>
                 </div>
               )}
               {remaining !== null && (
                 <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <i className="fa-solid fa-ticket"></i>
+                  <i className="fa-solid fa-ticket" aria-hidden="true"></i>
                   <span>{t('offer_detail_remaining').replace('{count}', String(remaining))}</span>
                 </div>
               )}
@@ -164,14 +164,15 @@ export default function OfferDetailPage() {
             )}
 
             {(authLoading || claimLoading) && (
-              <div className="tap-target btn-primary w-full opacity-60 pointer-events-none">
-                <span>…</span>
+              <div role="status" className="tap-target btn-primary w-full opacity-60 pointer-events-none">
+                <span aria-hidden="true">…</span>
+                <span className="sr-only">{t('bizdash_loading')}</span>
               </div>
             )}
 
             {user && !authLoading && !claimLoading && alreadyClaimed && (
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
-                <i className="fa-solid fa-circle-check text-emerald-500 text-lg flex-shrink-0 mt-0.5"></i>
+                <i className="fa-solid fa-circle-check text-emerald-500 text-lg flex-shrink-0 mt-0.5" aria-hidden="true"></i>
                 <div>
                   <div className="font-bold text-slate-700 text-sm mb-1">{t('offer_already_claimed_title')}</div>
                   <p className="text-sm text-slate-500 mb-2">{t('offer_already_claimed_sub')}</p>
@@ -181,9 +182,11 @@ export default function OfferDetailPage() {
             )}
 
             {user && !authLoading && !claimLoading && !alreadyClaimed && (
-              <Link href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="tap-target btn-primary w-full">
+              // A full page load, not a client-side Link: the accessibility widget
+              // script this page ran must not carry over beside the payment iframe.
+              <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="tap-target btn-primary w-full">
                 <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
-              </Link>
+              </a>
             )}
             </div>
           </div>

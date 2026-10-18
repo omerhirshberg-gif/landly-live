@@ -1,3 +1,4 @@
+import { FirebaseError } from 'firebase/app'
 import {
   getRedirectResult,
   setPersistence,
@@ -16,7 +17,8 @@ import type { Lang } from '@/lib/i18n/translations'
 // it, alive. Where a browser refuses popups, it falls back to a full-page
 // redirect; AuthScreen picks the result up on the way back with
 // completeGoogleRedirect(). Both only work reliably on mobile because the
-// auth helper is served first-party (lib/firebase/authDomain.ts).
+// auth helper is served first-party (lib/firebase/authDomain.ts); the
+// redirect marker below covers hosts where it isn't.
 
 /** Popup failures that a redirect can get past; everything else (a closed popup, a network error) is reported. */
 export const REDIRECT_FALLBACK_CODES: ReadonlySet<string> = new Set([
@@ -34,6 +36,42 @@ export type GoogleWebSignInOutcome =
   // The page is navigating to Google; the result arrives on the next load.
   | { kind: 'redirecting' }
 
+// Set just before leaving for Google, so the page that comes back knows a
+// result is due. Browsers that partition storage can lose the SDK's own
+// redirect state on the way (getRedirectResult then resolves null, throws, or
+// never settles) while the session itself survives in IndexedDB; the marker
+// is what lets that session still go through the customer rules.
+const REDIRECT_MARKER_KEY = 'landly_google_redirect'
+const REDIRECT_MARKER_TTL_MS = 10 * 60 * 1000
+/** How long the return from Google waits on getRedirectResult before deciding without it. */
+export const REDIRECT_RESULT_TIMEOUT_MS = 8000
+
+function setRedirectMarker(): void {
+  try {
+    sessionStorage.setItem(REDIRECT_MARKER_KEY, String(Date.now()))
+  } catch {
+    // Storage blocked: getRedirectResult alone decides
+  }
+}
+
+function clearRedirectMarker(): void {
+  try {
+    sessionStorage.removeItem(REDIRECT_MARKER_KEY)
+  } catch {
+    // Storage blocked: nothing was stored
+  }
+}
+
+/** Whether this page load is the return from a Google redirect started here (within the last few minutes). */
+export function hasPendingGoogleRedirect(now = Date.now()): boolean {
+  try {
+    const startedAt = Number(sessionStorage.getItem(REDIRECT_MARKER_KEY))
+    return startedAt > 0 && now - startedAt < REDIRECT_MARKER_TTL_MS
+  } catch {
+    return false
+  }
+}
+
 export async function startGoogleWebSignIn(lang: Lang, persistence: Persistence): Promise<GoogleWebSignInOutcome> {
   await setPersistence(auth, persistence)
   let credential
@@ -42,16 +80,57 @@ export async function startGoogleWebSignIn(lang: Lang, persistence: Persistence)
   } catch (err) {
     if (!shouldFallBackToRedirect(err)) throw err
     // Persistence set above carries over to the user the redirect signs in.
-    await signInWithRedirect(auth, googleProvider)
+    setRedirectMarker()
+    try {
+      await signInWithRedirect(auth, googleProvider)
+    } catch (redirectErr) {
+      clearRedirectMarker()
+      throw redirectErr
+    }
     return { kind: 'redirecting' }
   }
   return { kind: 'signedIn', result: await finishCustomerGoogleSignIn(credential, lang) }
 }
 
-/** After a redirect sign-in: the same customer rules as the popup path, or null when this load isn't one. */
+const TIMED_OUT = Symbol('timedOut')
+
+/**
+ * After a redirect sign-in: the same customer rules as the popup path, or
+ * null when this load isn't one. Never waits on getRedirectResult longer
+ * than REDIRECT_RESULT_TIMEOUT_MS. When the result is lost but a redirect
+ * was started here and a Google session was restored, that session is the
+ * result; when it was started here and nothing came back, it throws.
+ */
 export async function completeGoogleRedirect(lang: Lang): Promise<CustomerSignInResult | null> {
-  const credential = await getRedirectResult(auth)
-  return credential ? finishCustomerGoogleSignIn(credential, lang) : null
+  const expected = hasPendingGoogleRedirect()
+  clearRedirectMarker()
+  const pending = getRedirectResult(auth)
+  // A result that loses the race (or fails after it) is dropped, not left unhandled.
+  pending.catch(() => undefined)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), REDIRECT_RESULT_TIMEOUT_MS)
+  })
+  let failure: unknown = null
+  let credential = null
+  try {
+    const outcome = await Promise.race([pending, timeout])
+    if (outcome !== TIMED_OUT) credential = outcome
+    else if (expected) failure = new FirebaseError('auth/timeout', 'Google sign-in did not finish in time')
+  } catch (err) {
+    failure = err
+  } finally {
+    clearTimeout(timer)
+  }
+  if (credential) return finishCustomerGoogleSignIn(credential, lang)
+  if (expected) {
+    // The session is persisted locally, so reading it never depends on the lost state.
+    await auth.authStateReady()
+    const user = auth.currentUser
+    if (user?.providerData.some((p) => p.providerId === 'google.com')) return finishCustomerGoogleSignIn({ user }, lang)
+  }
+  if (failure) throw failure
+  return null
 }
 
 // In-app browsers (Instagram, Facebook, LinkedIn, TikTok, Snapchat, LINE,

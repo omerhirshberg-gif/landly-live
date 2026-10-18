@@ -39,8 +39,12 @@ export async function signInCustomerWithEmail(
   }
 }
 
-/** Runs after any Google sign-in (web popup or native ID-token credential). */
-export async function finishCustomerGoogleSignIn(cred: UserCredential, currentLang: Lang): Promise<CustomerSignInResult> {
+/**
+ * Runs after any Google sign-in (web popup or native ID-token credential).
+ * Only the user is read, so a web redirect whose result was lost can pass
+ * the restored session's `{ user: auth.currentUser }` instead.
+ */
+export async function finishCustomerGoogleSignIn(cred: Pick<UserCredential, 'user'>, currentLang: Lang): Promise<CustomerSignInResult> {
   // Before ensureUserDocument, so a business never gets a customer doc.
   if (await signOutIfBusinessAccount(cred.user.uid)) return { status: 'businessAccount' }
   // Google skips the sign-up checkbox: consent is the disclosure under the

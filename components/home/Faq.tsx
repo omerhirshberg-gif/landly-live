@@ -52,7 +52,7 @@ export default function Faq() {
                   onClick={() => setOpenIndex(open ? null : i)}
                 >
                   <span className="text-sm sm:text-base">{item.q}</span>
-                  <i className={`fa-solid fa-chevron-down acc-icon text-brand text-sm flex-shrink-0 ${open ? 'open' : ''}`}></i>
+                  <i className={`fa-solid fa-chevron-down acc-icon text-brand text-sm flex-shrink-0 ${open ? 'open' : ''}`} aria-hidden="true"></i>
                 </button>
                 <div className={`acc-body ${open ? 'open' : ''}`}>
                   <div className="px-5 sm:px-6 pb-5 text-slate-500 text-[13.5px] sm:text-[14px] leading-relaxed">

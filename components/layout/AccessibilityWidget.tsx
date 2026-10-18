@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation'
 
 // Route exclusions do not unload code already run on an earlier page during
 // client-side navigation. This residual risk is explicitly accepted; no reloads.
+// /checkout (and /checkout/success) is excluded for card-data security (PCI
+// DSS 6.4.3): no third-party script may run beside the payment iframe.
 export function excludesAccessibilityWidget(pathname: string): boolean {
   return ['/admin', '/business/dashboard', '/business/login', '/login', '/signup',
-    '/forgot-password', '/reset-password', '/verify-email'].some(
+    '/forgot-password', '/reset-password', '/verify-email', '/checkout'].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   )
 }

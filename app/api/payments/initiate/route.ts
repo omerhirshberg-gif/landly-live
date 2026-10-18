@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null)
     if (!isDocumentId(body?.offerId)) return NextResponse.json({ error: 'Invalid offerId.' }, { status: 400 })
     const terminal = paymentTerminal()
-    return NextResponse.json(await initiateOrder(getAdminDb(), uid, body.offerId, terminal))
+    return NextResponse.json(await initiateOrder(getAdminDb(), uid, body.offerId, terminal, { acceptTerms: body.acceptTerms === true }))
   } catch (err) {
     if (err instanceof PaymentError || err instanceof RequestAuthError) return NextResponse.json({ error: err.message }, { status: err.status })
     console.error('Payment initiation failed')

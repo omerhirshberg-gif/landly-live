@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
@@ -20,6 +20,8 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
     totalQuantity: offer.totalQuantity !== null ? String(offer.totalQuantity) : '',
     unlimited: offer.totalQuantity === null,
     isBestseller: offer.isBestseller,
+    validityDays: String(offer.validityDays),
+    redemptionTerms: offer.redemptionTerms,
   }
 }
 
@@ -71,6 +73,7 @@ export default function EditOfferPage() {
             expiryDate: form.expiryDate || null,
             totalQuantity: form.unlimited || !form.totalQuantity ? null : Number(form.totalQuantity),
             isBestseller: form.isBestseller,
+            ...voucherTermsPayload(form),
           },
         }),
       })

@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore'
 import { db } from './config'
 import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
+import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/voucherTerms'
 
 export interface OfferDocument {
   id: string
@@ -18,6 +19,8 @@ export interface OfferDocument {
   expiryDate: Date | null
   totalQuantity: number | null // null = unlimited claims
   claimedCount: number
+  validityDays: number // how long a voucher bought now stays valid; DEFAULT_VOUCHER_VALIDITY_DAYS when unset
+  redemptionTerms: string // the merchant's conditions for using the voucher; '' = none stated
 }
 
 function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
@@ -37,6 +40,8 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     expiryDate: data.expiryDate instanceof Timestamp ? data.expiryDate.toDate() : null,
     totalQuantity: typeof data.totalQuantity === 'number' ? data.totalQuantity : null,
     claimedCount: Number(data.claimedCount) || 0,
+    validityDays: normalizeValidityDays(data.validityDays),
+    redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
   }
 }
 

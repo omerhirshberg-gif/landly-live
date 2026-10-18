@@ -7,7 +7,7 @@ import { browserLocalPersistence, browserSessionPersistence, setPersistence } fr
 import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
-import { completeGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
+import { completeGoogleRedirect, hasPendingGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
 import {
   greetingName,
   isOnboardingComplete,
@@ -92,6 +92,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // member goes through the same customer rules and into the wizard.
   const [redirectChecked, setRedirectChecked] = useState(false)
   const redirectStarted = useRef(false)
+  // Back from a Google redirect started here: the card says sign-in is being
+  // finished instead of staying hidden while the result is fetched (capped
+  // by REDIRECT_RESULT_TIMEOUT_MS, then the form returns with an error).
+  const [finishingGoogle, setFinishingGoogle] = useState(false)
   // A Google sign-up skips verification, so the brand panel's journey moves straight to Personalize.
   const [via, setVia] = useState<SignInMethod>('email')
   const [confirm, setConfirm] = useState('')
@@ -129,6 +133,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   useEffect(() => {
     if (redirectStarted.current) return
     redirectStarted.current = true
+    if (hasPendingGoogleRedirect()) setFinishingGoogle(true)
     completeGoogleRedirect(lang)
       .then(async (result) => {
         if (!result) return
@@ -142,17 +147,23 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         setError(getAuthErrorMessage(err))
         setRestoring(false)
       })
-      .finally(() => setRedirectChecked(true))
+      .finally(() => {
+        setRedirectChecked(true)
+        setFinishingGoogle(false)
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per page load, in the language it loaded with
   }, [])
 
   useEffect(() => {
-    if (restoreDecided.current || authLoading || !redirectChecked) return
+    if (restoreDecided.current || authLoading) return
+    // Nobody signed in: the form can show without waiting on the redirect
+    // check; a result that still arrives goes through handleGoogleResult.
     if (!user?.emailVerified) {
       restoreDecided.current = true
       setRestoring(false)
       return
     }
+    if (!redirectChecked) return
     if (onboardingComplete === null) return
     restoreDecided.current = true
     if (onboardingComplete) {
@@ -300,7 +311,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       if (outcome.kind === 'redirecting') redirecting = true
       else await handleGoogleResult(outcome.result)
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      // A second tap while the popup opens supersedes the first: nothing to report.
+      if ((err as { code?: unknown } | null)?.code !== 'auth/cancelled-popup-request') setError(getAuthErrorMessage(err))
     } finally {
       // Leaving for Google: keep the buttons disabled until the page unloads.
       if (!redirecting) setGoogleBusy(false)
@@ -339,7 +351,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     </div>
   )
 
-  const shown: EntranceMode = restoring ? 'pending' : entrance
+  const shown: EntranceMode = restoring && !finishingGoogle ? 'pending' : entrance
 
   return (
     <div
@@ -363,7 +375,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         </div>
 
         <div className={styles.card}>
-          {wizard ? (
+          {finishingGoogle ? (
+            <div role="status" aria-live="polite" className="flex flex-col items-center gap-4 py-10 text-center">
+              <span aria-hidden="true" className="h-8 w-8 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
+              <p className="text-[15px] font-semibold text-slate-600">{t('auth_googleFinishing')}</p>
+            </div>
+          ) : wizard ? (
             <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onStepChange={setOnbStep} onComplete={handleWizardComplete} />
           ) : pending ? (
             <VerifyEmailNotice
@@ -561,7 +578,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           )}
         </div>
 
-        {!pending && !onboarding && (
+        {!pending && !onboarding && !finishingGoogle && (
           <div className={`${styles.chrome} flex flex-wrap items-center justify-center gap-1.5 mt-6`}>
             <span className="text-sm text-slate-500">{t(signUp ? 'signup_haveAccount' : 'login_noAccount')}</span>
             <button

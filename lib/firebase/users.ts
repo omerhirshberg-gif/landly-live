@@ -55,8 +55,9 @@ export async function ensureUserDocument(
     wishlistOfferIds: [],
     preferredLanguage,
     createdAt: serverTimestamp(),
-    // Only when this sign-in path showed the Terms/Privacy disclosure (Google).
-    ...(agreedToTerms ? { agreedToTerms: true, termsAgreedAt: serverTimestamp() } : {}),
+    // Only when this sign-in path showed the Terms/Privacy disclosure (Google),
+    // which also has the member confirm they are 16 or older.
+    ...(agreedToTerms ? { agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: serverTimestamp() } : {}),
   })
 }
 

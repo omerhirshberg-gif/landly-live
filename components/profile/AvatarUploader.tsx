@@ -62,11 +62,11 @@ export default function AvatarUploader({ user }: { user: User }) {
         <Avatar src={preview ?? photoURL} initials={initials} size={72} />
         {busy && (
           <span className="absolute inset-0 rounded-full bg-[#0B1B3D]/40 flex items-center justify-center">
-            <i className="fa-solid fa-spinner fa-spin text-white"></i>
+            <i className="fa-solid fa-spinner fa-spin text-white" aria-hidden="true"></i>
           </span>
         )}
         <span className="absolute -bottom-0.5 -end-0.5 w-7 h-7 rounded-full bg-white border border-line shadow-sm flex items-center justify-center text-brand">
-          <i className="fa-solid fa-camera text-[11px]"></i>
+          <i className="fa-solid fa-camera text-[11px]" aria-hidden="true"></i>
         </span>
       </button>
       <div className="min-w-0">

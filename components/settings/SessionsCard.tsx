@@ -44,7 +44,7 @@ export default function SessionsCard({ user }: { user: User }) {
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm divide-y divide-slate-100">
         <div className="flex items-center gap-3 min-h-[56px] px-4 py-3">
           <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600" aria-hidden="true">
-            <i className="fa-solid fa-mobile-screen text-sm"></i>
+            <i className="fa-solid fa-mobile-screen text-sm" aria-hidden="true"></i>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[15px] font-semibold text-ink">{t('security_this_device')}</span>

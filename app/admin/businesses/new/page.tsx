@@ -6,7 +6,7 @@ import RevealableText from '@/components/admin/RevealableText'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Link from 'next/link'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
-import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -36,6 +36,7 @@ const emptyForm = {
   totalQuantity: '',
   unlimited: false,
   isBestseller: false,
+  ...EMPTY_VOUCHER_TERMS,
 }
 
 export default function NewBusinessPage() {
@@ -81,6 +82,7 @@ export default function NewBusinessPage() {
             expiryDate: form.expiryDate || null,
             totalQuantity: form.unlimited || !form.totalQuantity ? null : Number(form.totalQuantity),
             isBestseller: form.isBestseller,
+            ...voucherTermsPayload(form),
           },
         }),
       })
@@ -160,32 +162,32 @@ export default function NewBusinessPage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="sm:col-span-2">
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Business name</label>
-              <input required className="inp inp-dark !py-3.5" value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
+              <label htmlFor="biz-name" className="block mb-1.5 text-sm font-bold text-slate-300">Business name</label>
+              <input id="biz-name" required className="inp inp-dark !py-3.5" value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
             </div>
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Business ID (ח.פ)</label>
-              <input required className="inp inp-dark !py-3.5" value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
+              <label htmlFor="biz-id" className="block mb-1.5 text-sm font-bold text-slate-300">Business ID (ח.פ)</label>
+              <input id="biz-id" required className="inp inp-dark !py-3.5" value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
             </div>
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Category</label>
-              <select required className="inp inp-dark !py-3.5" value={form.category} onChange={(e) => update('category', e.target.value)}>
+              <label htmlFor="biz-category" className="block mb-1.5 text-sm font-bold text-slate-300">Category</label>
+              <select id="biz-category" required className="inp inp-dark !py-3.5" value={form.category} onChange={(e) => update('category', e.target.value)}>
                 {BUSINESS_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Location</label>
-              <input required className="inp inp-dark !py-3.5" placeholder="City / address" value={form.location} onChange={(e) => update('location', e.target.value)} />
+              <label htmlFor="biz-location" className="block mb-1.5 text-sm font-bold text-slate-300">Location</label>
+              <input id="biz-location" required className="inp inp-dark !py-3.5" placeholder="City / address" value={form.location} onChange={(e) => update('location', e.target.value)} />
             </div>
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Login email</label>
-              <input type="email" required className="inp inp-dark !py-3.5" value={form.loginEmail} onChange={(e) => update('loginEmail', e.target.value)} />
+              <label htmlFor="biz-email" className="block mb-1.5 text-sm font-bold text-slate-300">Login email</label>
+              <input id="biz-email" type="email" required className="inp inp-dark !py-3.5" value={form.loginEmail} onChange={(e) => update('loginEmail', e.target.value)} />
             </div>
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">Login password</label>
-              <PasswordField required minLength={6} value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
+              <label htmlFor="biz-password" className="block mb-1.5 text-sm font-bold text-slate-300">Login password</label>
+              <PasswordField id="biz-password" required minLength={6} value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
             </div>
           </div>
         </Card>

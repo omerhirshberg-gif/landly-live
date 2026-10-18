@@ -33,11 +33,11 @@ beforeEach(() => {
 describe('consent text templates', () => {
   it('splits a sentence into text and the two links, in the language\'s own order', () => {
     expect(consentParts(translations.en.signup_terms_agree)).toEqual([
-      { text: 'I agree to the ' }, { link: 'terms' }, { text: ' and ' }, { link: 'privacy' },
+      { text: "I confirm I'm 16 or older and agree to the " }, { link: 'terms' }, { text: ' and ' }, { link: 'privacy' },
     ])
     // Hebrew attaches "ו" (and) directly to the second link.
     expect(consentParts(translations.he.signup_terms_agree)).toEqual([
-      { text: 'אני מאשר/ת את ' }, { link: 'terms' }, { text: ' ו' }, { link: 'privacy' },
+      { text: 'אני מאשר/ת שמלאו לי 16 ומעלה ומאשר/ת את ' }, { link: 'terms' }, { text: ' ו' }, { link: 'privacy' },
     ])
   })
 
@@ -54,8 +54,19 @@ describe('consent text templates', () => {
   it('uses the requested Hebrew wording', () => {
     const he = translations.he
     const render = (s: string) => consentParts(s).map((p) => ('link' in p ? (p.link === 'terms' ? he.legal_terms_link : he.legal_privacy_link) : p.text)).join('')
-    expect(render(he.signup_terms_agree)).toBe('אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות')
-    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google, הינך מאשר/ת את תנאי השימוש ומדיניות הפרטיות של Landly.')
+    expect(render(he.signup_terms_agree)).toBe('אני מאשר/ת שמלאו לי 16 ומעלה ומאשר/ת את תנאי השימוש ומדיניות הפרטיות')
+    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google, הינך מאשר/ת שמלאו לך 16 ומעלה ואת תנאי השימוש ומדיניות הפרטיות של Landly.')
+  })
+
+  it.each(LANGS)('every sign-up consent sentence states the 16+ age requirement (%s)', (lang) => {
+    for (const key of ['signup_terms_agree', 'auth_google_disclosure', 'signup_termsRequired'] as const) {
+      expect(translations[lang][key], `${lang}.${key}`).toContain('16')
+    }
+  })
+
+  it.each(LANGS)('the checkout consent links only the Terms, which hold the refund policy (%s)', (lang) => {
+    const links = consentParts(translations[lang].checkout_agree).filter((p) => 'link' in p)
+    expect(links).toEqual([{ link: 'terms' }])
   })
 })
 
@@ -87,7 +98,7 @@ describe('recording consent on the user document', () => {
     expect(mocks.setDoc).toHaveBeenCalledTimes(1)
     const [path, data] = mocks.setDoc.mock.calls[0]
     expect(path).toBe('users/u1')
-    expect(data).toMatchObject({ email: 'g@example.com', preferredLanguage: 'he', agreedToTerms: true, termsAgreedAt: 'SERVER_TS' })
+    expect(data).toMatchObject({ email: 'g@example.com', preferredLanguage: 'he', agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: 'SERVER_TS' })
   })
 
   it('leaves an existing account\'s document untouched', async () => {
@@ -103,5 +114,6 @@ describe('recording consent on the user document', () => {
     const data = mocks.setDoc.mock.calls[0][1]
     expect(data).not.toHaveProperty('agreedToTerms')
     expect(data).not.toHaveProperty('termsAgreedAt')
+    expect(data).not.toHaveProperty('isAgeConfirmed')
   })
 })

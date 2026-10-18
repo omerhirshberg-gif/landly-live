@@ -13,7 +13,8 @@
 // else -- localhost, a LAN address, Vercel previews -- keeps the env value.
 // NEXT_PUBLIC_FIREBASE_AUTH_PROXY=1 switches it on, so the code can deploy
 // ahead of the console change.
-export const PROXIED_AUTH_HOSTS = ['www.golandly.com'] as const
+// The rewrites in next.config.js are host-agnostic, so both names are served.
+export const PROXIED_AUTH_HOSTS = ['www.golandly.com', 'golandly.com'] as const
 
 export function resolveAuthDomain(params: {
   host: string | null | undefined

@@ -59,7 +59,7 @@ export default function MobileMenu({
         className={`${rowBase} text-[15px] font-semibold ${inSettings ? 'bg-brandLight text-brand' : 'text-ink'}`}
       >
         <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-600" aria-hidden="true">
-          <i className="fa-solid fa-gear text-sm"></i>
+          <i className="fa-solid fa-gear text-sm" aria-hidden="true"></i>
         </span>
         <span className="min-w-0 flex-1">{t('nav_settings_heading')}</span>
         <i className="fa-solid fa-chevron-right flex-shrink-0 text-xs text-slate-400 rtl:-scale-x-100" aria-hidden="true"></i>
@@ -155,7 +155,7 @@ const rowBase =
 function ItemIcon({ icon }: { icon: string }) {
   return (
     <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-brandLight text-brand" aria-hidden="true">
-      <i className={`fa-solid ${icon} text-sm`}></i>
+      <i className={`fa-solid ${icon} text-sm`} aria-hidden="true"></i>
     </span>
   )
 }

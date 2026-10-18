@@ -29,7 +29,7 @@ export default function OfferCard({ offer, showWishlistButton = false }: { offer
           // eslint-disable-next-line @next/next/no-img-element
           <img src={offer.imageUrl} alt={offer.title} onError={() => setImgError(true)} className="w-full h-full object-cover" />
         ) : (
-          <i className="fa-regular fa-image text-3xl text-slate-300"></i>
+          <i className="fa-regular fa-image text-3xl text-slate-300" aria-hidden="true"></i>
         )}
         {discount > 0 && (
           <span className="absolute bottom-2.5 start-2.5 bg-brand text-white text-[11px] font-extrabold tracking-wide px-2 py-1 rounded-lg shadow-sm">
@@ -52,7 +52,7 @@ export default function OfferCard({ offer, showWishlistButton = false }: { offer
             aria-label={isWishlisted(offer.id) ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
             className={`tap-target absolute top-2.5 end-2.5 w-8 h-8 flex items-center justify-center rounded-full shadow-sm transition ${isWishlisted(offer.id) ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-500 hover:text-red-500'}`}
           >
-            <i className={`${isWishlisted(offer.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-xs`}></i>
+            <i className={`${isWishlisted(offer.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-xs`} aria-hidden="true"></i>
           </button>
         )}
       </div>

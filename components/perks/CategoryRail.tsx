@@ -25,7 +25,7 @@ export default function CategoryRail() {
       <li className="snap-start flex-shrink-0">
         <Link href="/categories" className="rail-tile group">
           <span aria-hidden="true" className="rail-tile-icon !bg-brand !text-white !text-base">
-            <i className="fa-solid fa-arrow-right rtl:-scale-x-100"></i>
+            <i className="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i>
           </span>
           <span className="rail-tile-label !text-brand">{t('cats_view_all')}</span>
         </Link>

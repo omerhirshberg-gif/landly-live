@@ -44,7 +44,7 @@ function OfferRow({ emoji, title, href, offers, seeMore }: { emoji: string; titl
 function Spinner() {
   return (
     <div className="dash-empty-state">
-      <i className="fa-solid fa-spinner fa-spin"></i>
+      <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
     </div>
   )
 }
@@ -160,7 +160,7 @@ function PerksBrowser() {
           ) : (
             matchingTiles.length === 0 && (
               <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                <i className={normalizedQuery ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-tags'}></i>
+                <i className={normalizedQuery ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-tags'} aria-hidden="true"></i>
                 <div className="font-bold text-slate-700 text-base mb-1">
                   {normalizedQuery ? t('cats_search_no_results_title').replace('{query}', appliedQuery.trim()) : t('deals_empty_title')}
                 </div>
@@ -179,7 +179,7 @@ function PerksBrowser() {
               )}
               {nearby.length === 0 ? (
                 <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                  <i className="fa-solid fa-tags"></i>
+                  <i className="fa-solid fa-tags" aria-hidden="true"></i>
                   <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
                   <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
                 </div>

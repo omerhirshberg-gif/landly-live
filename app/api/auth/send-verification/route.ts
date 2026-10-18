@@ -38,8 +38,9 @@ async function ensureCustomerProfile(
       preferredLanguage: lang,
       notificationsOptIn: false,
       createdAt: FieldValue.serverTimestamp(),
-      // The sign-up form's Terms/Privacy checkbox (required there to submit).
-      ...(agreedToTerms ? { agreedToTerms: true, termsAgreedAt: FieldValue.serverTimestamp() } : {}),
+      // The sign-up form's Terms/Privacy checkbox (required there to submit),
+      // which also confirms the member is 16 or older.
+      ...(agreedToTerms ? { agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: FieldValue.serverTimestamp() } : {}),
     })
   } catch (err) {
     if ((err as { code?: unknown })?.code !== ALREADY_EXISTS) logFailure('profile', uid, err)

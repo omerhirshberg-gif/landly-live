@@ -21,7 +21,7 @@ export default function BackToHomeLink({
         href="/"
         className={`tap-target inline-flex items-center gap-2 text-sm font-bold border rounded-full px-4 py-2 transition ${colors}`}
       >
-        <i className="fa-solid fa-arrow-left text-xs rtl:rotate-180"></i>
+        <i className="fa-solid fa-arrow-left text-xs rtl:rotate-180" aria-hidden="true"></i>
         <span>{label}</span>
       </Link>
     </div>
