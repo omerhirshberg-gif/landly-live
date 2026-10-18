@@ -109,9 +109,9 @@ export default function LoggedInHome({ user }: { user: User }) {
             </Link>
           </div>
           {offers === null ? (
-            <div className="flex gap-4 overflow-hidden" aria-hidden="true">
+            <div className="flex gap-3 overflow-hidden sm:gap-4" aria-hidden="true">
               {Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex-shrink-0 w-[180px] sm:w-[200px] h-[230px] rounded-2xl bg-white border border-line animate-pulse" />
+                <div key={i} className="flex-shrink-0 w-[clamp(240px,72vw,260px)] h-[260px] rounded-2xl bg-white border border-line animate-pulse" />
               ))}
             </div>
           ) : offers.length === 0 ? (
@@ -120,9 +120,11 @@ export default function LoggedInHome({ user }: { user: User }) {
               <p className="text-sm text-body">{t('deals_empty_sub')}</p>
             </div>
           ) : (
-            <div className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-4 overflow-x-auto pb-2 snap-x [scrollbar-width:none]">
+            // Compact rail cards, about 72vw wide, so the next one peeks in; a swipe
+            // settles on a card's start edge, and the row never drags the page sideways.
+            <div className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {offers.map((offer) => (
-                <div key={offer.id} className="snap-start">
+                <div key={offer.id} className="flex shrink-0 snap-start">
                   <OfferCard offer={offer} showWishlistButton />
                 </div>
               ))}

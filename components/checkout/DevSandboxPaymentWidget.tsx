@@ -18,7 +18,8 @@ type Outcome = 'approve' | 'decline'
 // Local development only: shown instead of TranzilaPaymentWidget when
 // /api/payments/initiate reports a sandbox order (lib/payments/devSandbox.ts).
 // The server settles the order through the webhook's own transaction, then
-// the success page reads the result from Firestore as it would after Tranzila.
+// the confirmation (app/order-success) reads the result from Firestore as it
+// would after Tranzila.
 export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, onBack }: DevSandboxPaymentWidgetProps) {
   const { t } = useLang()
   const { user } = useAuth()
@@ -42,7 +43,8 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
         setPending(null)
         return
       }
-      router.push(`/checkout/success?orderId=${encodeURIComponent(orderId)}`)
+      // Replaced, so back from the confirmation never returns to the payment step.
+      router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`)
     } catch {
       setError(t('checkout_error_generic'))
       setPending(null)

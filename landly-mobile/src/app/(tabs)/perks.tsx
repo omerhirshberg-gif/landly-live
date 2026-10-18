@@ -31,8 +31,8 @@ import { colors, type } from '../../theme'
 
 // The searchable catalog: the same offers collection the website reads. With
 // nothing chosen it's the directory: the search row and the category grid,
-// no filters. A search, a tile (which selects that category's chip) or a
-// non-default sort opens the listing, and only then do the category chips
+// no filters; a tile pushes that category's folder (app/category/[category].tsx).
+// A search or a non-default sort opens the listing, and only then do the category chips
 // and the Sort chip appear under the search row (web: the /categories filter
 // toolbar), both running the shared pipeline in lib/perks/perksFilter.ts. The chip and sort live in the
 // route (?cat=…&sort=…), so Home's "See all" can open the tab reset; the
@@ -90,6 +90,11 @@ export default function PerksScreen() {
 
   const setCategory = (next: CategoryFilter) => router.setParams({ cat: next === 'all' ? '' : next })
   const setSort = (next: PerkSort) => router.setParams({ sort: next === DEFAULT_PERK_SORT ? '' : next })
+  // A tile opens its category folder pushed over the tabs, as Home's rail
+  // does, so a full-screen swipe (lib/pageFlip.ts) or Android's back turns it
+  // back to this grid with the search intact. The chips and Sort below only
+  // filter this list in place.
+  const openCategory = (next: string) => router.push({ pathname: '/category/[category]', params: { category: next } })
 
   const normalizedQuery = normalizeQuery(appliedQuery)
   // Nothing chosen: the screen is the category grid.
@@ -158,7 +163,7 @@ export default function PerksScreen() {
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_all_categories_title')}
                 </AppText>
-                <CategoryGrid tiles={CATEGORY_TILES} counts={counts} onSelect={(next) => setCategory(parseCategoryFilter(next))} />
+                <CategoryGrid tiles={CATEGORY_TILES} counts={counts} onSelect={openCategory} />
               </>
             )}
 
@@ -167,7 +172,7 @@ export default function PerksScreen() {
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_matching_categories')}
                 </AppText>
-                <CategoryGrid tiles={matchingTiles} counts={counts} onSelect={(next) => setCategory(parseCategoryFilter(next))} />
+                <CategoryGrid tiles={matchingTiles} counts={counts} onSelect={openCategory} />
               </>
             )}
 

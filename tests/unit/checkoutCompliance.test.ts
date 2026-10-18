@@ -17,7 +17,7 @@ const CHECKOUT_KEYS: TranslationKey[] = [
 ]
 
 describe('payment pages run no third-party script', () => {
-  it.each(['/checkout', '/checkout/success'])('excludes the accessibility widget from %s', (path) => {
+  it.each(['/checkout', '/checkout/success', '/order-success'])('excludes the accessibility widget from %s', (path) => {
     expect(excludesAccessibilityWidget(path)).toBe(true)
   })
 

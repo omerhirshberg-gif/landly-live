@@ -35,7 +35,7 @@ const voucher = (id: string, offerId: string, redeemedAt: Date | null = new Date
   expiresAt: null,
   redemptionTerms: '',
   redemptionMethod: 'in_store' as const,
-  redemptionInstructions: '',
+  redemptionInstructions: '', orderNumber: null, displayOrderNumber: null,
 })
 
 describe('sumSavings', () => {

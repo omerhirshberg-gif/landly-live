@@ -17,6 +17,7 @@ import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem from '@/components/offers/HowToRedeem'
 import BackButton from '@/components/navigation/BackButton'
+import OpenInAppHint from '@/components/layout/OpenInAppHint'
 
 const DATE_LOCALE: Record<Lang, string> = {
   en: 'en-US',
@@ -104,6 +105,7 @@ export default function OfferDetailPage() {
       <Navbar />
       <div className="min-h-dvh bg-[#F8FAFC] pt-16">
         <div className="mx-auto max-w-2xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 sm:pb-12">
+          <OpenInAppHint className="mb-3" />
           <BackButton fallback={`/categories/${encodeURIComponent(offer.category)}`} label={t('offer_detail_back')} className="mb-4" />
 
           {/* One surface: photo, details, how to redeem and the purchase button,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { isTranzilaWebhookSecret } from '@/lib/payments/verifyWebhookSecret'
 import { claimOfferForOrder } from '@/lib/payments/claimOfferForOrder'
+import { scheduleOrderConfirmation } from '@/lib/payments/orderConfirmation'
 import { parseTranzilaNotification } from '@/lib/payments/parseTranzilaNotification'
 import { paymentTerminal, PaymentError } from '@/lib/payments/paymentValidation'
 
@@ -14,8 +15,11 @@ export async function POST(request: Request) {
   }
   try {
     const event = await parseTranzilaNotification(request, paymentTerminal())
+    const db = getAdminDb()
     try {
-      await claimOfferForOrder(getAdminDb(), event)
+      const { alreadyProcessed } = await claimOfferForOrder(db, event)
+      // Only a fresh approval emails the member; retries replay as alreadyProcessed.
+      if (event.approved && !alreadyProcessed) scheduleOrderConfirmation(db, event.orderId)
     } catch (err) {
       // Preserve a minimal reconciliation reference, never raw card/token data.
       console.error('Payment settlement requires attention', {

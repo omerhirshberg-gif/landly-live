@@ -5,8 +5,9 @@ import { PRODUCTION_API_ORIGIN } from '@/lib/apiOrigin'
 import { SUPPORT_EMAIL } from '@/lib/config'
 
 // Shared shell for every transactional email we send ourselves via Resend
-// (password reset, email verification) so they stay visually identical; each
-// email supplies only its heading, body, button and security footnote.
+// (password reset, email verification, order confirmation) so they stay
+// visually identical; each email supplies only its heading, body, button and
+// security footnote, plus optional detail blocks.
 
 let resend: Resend | undefined
 
@@ -25,6 +26,12 @@ export interface BrandedEmailContent {
   buttonLabel: string
   buttonLink: string
   footnote: string
+  /**
+   * Extra rows between the body and the button (the order confirmation's
+   * summary and perk card). Inserted verbatim, so the caller builds it from
+   * tables and inline styles and escapes every value with escapeHtml.
+   */
+  detailsHtml?: string
 }
 
 // Always the production asset, never `${origin}/...`: mail clients fetch
@@ -33,15 +40,15 @@ export interface BrandedEmailContent {
 // 117x112 source shown at 48x46, so it stays sharp on 2x/3x screens.
 export const EMAIL_LOGO_URL = `${PRODUCTION_API_ORIGIN}/logo-mark.png`
 
-const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+export const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 // Layout: all-light. A pale slate canvas (#F8FAFC) around one white card with
 // a brand-blue accent bar on top; header (emblem + live "Landly" text, readable
 // with images off), body, button, security note and a muted footer all sit on
 // white. Tables and inline styles only; the button has a VML twin because
 // Outlook on Windows ignores padding/radius on <a>.
-function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent): string {
-  const { lang, origin, heading, body, buttonLabel, buttonLink, footnote } = params
+export function renderBrandedEmail(params: { lang: Lang; origin: string } & BrandedEmailContent): string {
+  const { lang, origin, heading, body, buttonLabel, buttonLink, footnote, detailsHtml } = params
   const t = translations[lang]
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
   const dir = isRtl ? 'rtl' : 'ltr'
@@ -94,7 +101,12 @@ function buildHtml(params: { lang: Lang; origin: string } & BrandedEmailContent)
               <h1 style="margin:0 0 14px 0;font-family:${FONT_STACK};font-size:26px;line-height:34px;font-weight:800;color:#0F172A;letter-spacing:-0.3px;">${escapeHtml(heading)}</h1>
               <p style="margin:0;font-family:${FONT_STACK};font-size:16px;line-height:1.6;color:#475569;">${escapeHtml(body)}</p>
             </td>
-          </tr>
+          </tr>${detailsHtml ? `
+          <tr>
+            <td bgcolor="#FFFFFF" dir="${dir}" style="padding:24px 40px 0 40px;background-color:#FFFFFF;text-align:${align};font-family:${FONT_STACK};">
+${detailsHtml}
+            </td>
+          </tr>` : ''}
           <tr>
             <td align="center" bgcolor="#FFFFFF" style="padding:32px 40px 8px 40px;background-color:#FFFFFF;">
               <!--[if mso]>
@@ -168,6 +180,6 @@ export async function sendBrandedEmail(
   const problem = emailConfigProblem()
   if (problem) throw new Error(problem)
 
-  const { error } = await getResend().emails.send({ from: process.env.EMAIL_FROM!, to, subject, html: buildHtml(content) })
+  const { error } = await getResend().emails.send({ from: process.env.EMAIL_FROM!, to, subject, html: renderBrandedEmail(content) })
   if (error) throw new EmailProviderError(error.name, error.statusCode, error.message)
 }

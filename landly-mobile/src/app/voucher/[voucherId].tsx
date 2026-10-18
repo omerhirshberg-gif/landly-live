@@ -21,8 +21,8 @@ type Voucher = VoucherDocument & { id: string }
 // from a My Pass card as a page flip (lib/pageFlip.ts): a full-screen swipe
 // in the reading direction turns it back, the same as the header's back
 // button. The perk's photo and the business name up top, then the QR code and
-// the numeric code -- both hidden until tapped (components/VoucherReveal.tsx)
-// -- then how to redeem, validity and terms. Live from Firestore, so a pass
+// the numeric code -- each on the back of a card that turns over when tapped
+// (components/VoucherReveal.tsx) -- then how to redeem, validity and terms, and the order number. Live from Firestore, so a pass
 // the business redeems turns into the "already redeemed" notice in place.
 export default function VoucherScreen() {
   const { t, lang } = useLang()
@@ -109,6 +109,17 @@ export default function VoucherScreen() {
                   <AppText style={styles.terms}>{voucher.redemptionTerms}</AppText>
                 </>
               )}
+
+              {/* Vouchers issued before order numbering have none to show. */}
+              {voucher.displayOrderNumber && (
+                <>
+                  <View style={styles.divider} />
+                  <View style={styles.orderRow}>
+                    <AppText style={styles.orderLabel}>{t('success_order_number_label')}</AppText>
+                    <AppText ltr selectable style={styles.orderNumber}>{voucher.displayOrderNumber}</AppText>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -150,4 +161,7 @@ const styles = StyleSheet.create({
   expired: { color: colors.danger },
   termsLabel: { fontSize: 12, fontWeight: '700', color: colors.textStrong, marginTop: 12, marginBottom: 4 },
   terms: { fontSize: 13, lineHeight: 19, color: colors.textMuted },
+  orderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  orderLabel: { fontSize: 13, color: colors.textMuted },
+  orderNumber: { fontSize: 14, fontWeight: '600', color: colors.text, fontVariant: ['tabular-nums'] },
 })

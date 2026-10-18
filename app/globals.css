@@ -318,6 +318,33 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
   0%{ transform:scale(0); opacity:0; }
   100%{ transform:scale(1); opacity:1; }
 }
+@media (prefers-reduced-motion: reduce){
+  .success-checkmark{ animation: greetFade 200ms ease-out both; }
+}
+
+/* Voucher reveal flip (components/member/VoucherReveal.tsx): a card turns
+   180° on its Y axis, front to back, on a slightly springy curve. Both faces
+   share one grid cell, so the card is as tall as the taller face. In Hebrew
+   it turns the other way, toward the reading direction. Reduced motion
+   swaps the turn for a crossfade. */
+.flip-card{ perspective:1200px; }
+.flip-card-inner{
+  display:grid;
+  -webkit-transform-style:preserve-3d; transform-style:preserve-3d;
+  transition:transform 700ms cubic-bezier(.34,1.3,.64,1);
+}
+.flip-card.is-flipped .flip-card-inner{ transform:rotateY(180deg); }
+[dir="rtl"] .flip-card.is-flipped .flip-card-inner{ transform:rotateY(-180deg); }
+.flip-face{ grid-area:1 / 1; -webkit-backface-visibility:hidden; backface-visibility:hidden; }
+.flip-face-back{ transform:rotateY(180deg); }
+[dir="rtl"] .flip-face-back{ transform:rotateY(-180deg); }
+@media (prefers-reduced-motion: reduce){
+  .flip-card-inner, .flip-card.is-flipped .flip-card-inner, [dir="rtl"] .flip-card.is-flipped .flip-card-inner{ transform:none; transition:none; }
+  .flip-face{ transition:opacity 200ms ease-out; }
+  .flip-card .flip-face-back, [dir="rtl"] .flip-card .flip-face-back{ transform:none; opacity:0; }
+  .flip-card.is-flipped .flip-face-front{ opacity:0; }
+  .flip-card.is-flipped .flip-face-back{ opacity:1; }
+}
 
 /* Home greeting: fades and rises in once the member's name is known, on the
    onboarding's silk curve (lib/brand/onboardingMotion.ts: greetingMs). */

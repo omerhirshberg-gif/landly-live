@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from './config'
+import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 
 // refunded: a paid order cancelled through support (admin-set, Admin SDK only).
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
@@ -20,6 +21,10 @@ export interface OrderDocument {
   status: OrderStatus
   paidAt: Date | null
   voucherId: string | null
+  // The sequential number stamped at settlement (lib/payments/orderNumber.ts);
+  // null while pending, and for orders settled before numbering existed.
+  orderNumber: number | null
+  displayOrderNumber: string | null // "#1001"
 }
 
 function toDoc(data: Record<string, unknown>): OrderDocument {
@@ -35,6 +40,8 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     status: STATUSES.includes(data.status as OrderStatus) ? (data.status as OrderStatus) : 'pending',
     paidAt: data.paidAt instanceof Timestamp ? data.paidAt.toDate() : null,
     voucherId: typeof data.voucherId === 'string' ? data.voucherId : null,
+    orderNumber: isOrderNumber(data.orderNumber) ? data.orderNumber : null,
+    displayOrderNumber: normalizeDisplayOrderNumber(data.displayOrderNumber),
   }
 }
 

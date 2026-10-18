@@ -1,79 +1,144 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 import VoucherQRCode from './VoucherQRCode'
 
 const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2'
+const FACE = 'flex flex-col items-center justify-center rounded-2xl border border-slate-200 p-5 text-center'
+// A faint diagonal weave on the concealed side, like the security print on a ticket.
+const WATERMARK = 'bg-[repeating-linear-gradient(45deg,#F8FAFC_0_10px,#F1F5F9_10px_20px)]'
 
 // The voucher page's two concealed parts (app/member/vouchers/[voucherId]):
-// the QR code and the numeric code each stay hidden until the member taps
-// to show them at the counter, so neither is on screen by default or over a
-// shoulder. The Expo voucher screen (landly-mobile/src/app/voucher) mirrors it.
+// the QR code and the numeric code each sit on the back of a card that turns
+// over (a 3D flip, app/globals.css .flip-card) when the member taps to show
+// it at the counter, so neither is on screen by default or over a shoulder.
+// The back isn't rendered at all until the first reveal; the hidden face is
+// inert, and focus follows the turn to the button on the face now showing.
+// The Expo voucher screen (landly-mobile/src/components/VoucherReveal.tsx)
+// mirrors it.
 
-/** A placeholder card until "Show QR Code"; then the scannable code, black on white. */
+/** Turns the card and moves focus to the face that comes up (never on the first render). */
+function useFlip(frontButton: RefObject<HTMLButtonElement | null>, backButton: RefObject<HTMLButtonElement | null>) {
+  const [shown, setShown] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const turned = useRef(false)
+
+  useEffect(() => {
+    if (!turned.current) return
+    ;(shown ? backButton : frontButton).current?.focus({ preventScroll: true })
+  }, [shown, frontButton, backButton])
+
+  const toggle = () => {
+    turned.current = true
+    setRevealed(true)
+    setShown((value) => !value)
+  }
+  return { shown, revealed, toggle }
+}
+
+function FlipCard({ id, flipped, front, back, className = '' }: { id?: string; flipped: boolean; front: ReactNode; back: ReactNode; className?: string }) {
+  return (
+    <div id={id} className={`flip-card ${flipped ? 'is-flipped' : ''} ${className}`}>
+      <div className="flip-card-inner">
+        <div className="flip-face flip-face-front" inert={flipped} aria-hidden={flipped || undefined}>{front}</div>
+        <div className="flip-face flip-face-back" inert={!flipped} aria-hidden={!flipped || undefined}>{back}</div>
+      </div>
+    </div>
+  )
+}
+
+/** A watermarked card until "Show QR Code"; it turns over to the scannable code, black on white. */
 export function QrReveal({ voucherId }: { voucherId: string }) {
   const { t } = useLang()
-  const [shown, setShown] = useState(false)
   const regionId = useId()
+  const frontButton = useRef<HTMLButtonElement>(null)
+  const backButton = useRef<HTMLButtonElement>(null)
+  const { shown, revealed, toggle } = useFlip(frontButton, backButton)
 
   return (
     <section aria-label={t('voucher_qr_label')} className="flex flex-col items-center text-center">
-      <div id={regionId} className="flex h-[264px] w-[264px] items-center justify-center rounded-2xl border border-slate-200 bg-white p-5">
-        {shown ? (
-          <VoucherQRCode voucherId={voucherId} size={224} />
-        ) : (
-          <div className="flex flex-col items-center gap-3 text-slate-400">
-            <i className="fa-solid fa-qrcode text-6xl opacity-30 blur-[2px]" aria-hidden="true"></i>
-            <p className="max-w-[180px] text-xs text-slate-500">{t('voucher_qr_hidden')}</p>
+      <FlipCard
+        id={regionId}
+        flipped={shown}
+        className="w-[288px] max-w-full"
+        front={
+          <div className={`${FACE} ${WATERMARK} h-full min-h-[360px] gap-4`}>
+            <i className="fa-solid fa-qrcode text-7xl text-slate-400 opacity-30 blur-[2px]" aria-hidden="true"></i>
+            <p className="max-w-[200px] text-sm font-semibold text-slate-600">{t('voucher_qr_tap_reveal')}</p>
+            <p className="max-w-[200px] text-xs text-slate-500">{t('voucher_qr_hidden')}</p>
+            <button
+              ref={frontButton}
+              type="button"
+              onClick={toggle}
+              aria-expanded={false}
+              aria-controls={regionId}
+              className={`tap-target mt-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold text-white shadow-md transition [@media(hover:hover)]:hover:bg-brandDark ${FOCUS}`}
+            >
+              <i className="fa-solid fa-qrcode" aria-hidden="true"></i>
+              <span>{t('voucher_show_qr')}</span>
+            </button>
           </div>
-        )}
-      </div>
-      {shown && <p className="mt-3 text-xs text-slate-500">{t('voucher_qr_label')}</p>}
-      <button
-        type="button"
-        onClick={() => setShown((value) => !value)}
-        aria-expanded={shown}
-        aria-controls={regionId}
-        className={`tap-target mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold transition ${
-          shown
-            ? 'border border-slate-300 bg-white text-slate-800 [@media(hover:hover)]:hover:bg-slate-50'
-            : 'bg-brand text-white shadow-md [@media(hover:hover)]:hover:bg-brandDark'
-        } ${FOCUS}`}
-      >
-        <i className={`fa-solid ${shown ? 'fa-eye-slash' : 'fa-qrcode'}`} aria-hidden="true"></i>
-        <span>{t(shown ? 'voucher_hide_qr' : 'voucher_show_qr')}</span>
-      </button>
+        }
+        back={
+          <div className={`${FACE} h-full min-h-[360px] bg-white`}>
+            {revealed && <VoucherQRCode voucherId={voucherId} size={224} />}
+            <p className="mt-3 text-xs text-slate-500">{t('voucher_qr_label')}</p>
+            <button
+              ref={backButton}
+              type="button"
+              onClick={toggle}
+              aria-expanded={true}
+              aria-controls={regionId}
+              className={`tap-target mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
+            >
+              <i className="fa-solid fa-eye-slash" aria-hidden="true"></i>
+              <span>{t('voucher_hide_qr')}</span>
+            </button>
+          </div>
+        }
+      />
     </section>
   )
 }
 
-/** The redemption code masked as dots until "Show Code"; copying is offered once it's shown. */
+/** The redemption code masked as dots until "Show Code"; the card turns over to the code and its copy button. */
 export function CodeReveal({ code }: { code: string }) {
   const { t } = useLang()
-  const [shown, setShown] = useState(false)
+  const frontButton = useRef<HTMLButtonElement>(null)
+  const backButton = useRef<HTMLButtonElement>(null)
+  const { shown, revealed, toggle } = useFlip(frontButton, backButton)
   const masked = '•'.repeat(Math.max(code.length, 8))
+  const toggleClass = `tap-target inline-flex min-h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`
 
   return (
     <section className="flex flex-col items-center text-center">
-      <div className="text-xs text-slate-500 mb-1">{t('voucher_redemption_code_label')}</div>
-      {shown ? (
-        <div className="text-3xl font-black text-slate-900 tracking-[0.2em] tabular-nums select-all" dir="ltr">{code}</div>
-      ) : (
-        <div className="text-3xl font-black text-slate-300 tracking-[0.2em]" dir="ltr" role="img" aria-label={t('voucher_code_hidden')}>{masked}</div>
-      )}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShown((value) => !value)}
-          aria-pressed={shown}
-          className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
-        >
-          <i className={`fa-solid ${shown ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true"></i>
-          <span>{t(shown ? 'voucher_hide_code' : 'voucher_show_code')}</span>
-        </button>
-        {shown && <CopyCodeButton code={code} />}
-      </div>
+      <div className="text-xs text-slate-500 mb-2">{t('voucher_redemption_code_label')}</div>
+      <FlipCard
+        flipped={shown}
+        className="w-[320px] max-w-full"
+        front={
+          <div className={`${FACE} ${WATERMARK} h-full min-h-[148px]`}>
+            <div className="text-3xl font-black text-slate-300 tracking-[0.2em]" dir="ltr" role="img" aria-label={t('voucher_code_hidden')}>{masked}</div>
+            <button ref={frontButton} type="button" onClick={toggle} aria-pressed={false} className={`mt-3 ${toggleClass}`}>
+              <i className="fa-solid fa-eye" aria-hidden="true"></i>
+              <span>{t('voucher_show_code')}</span>
+            </button>
+          </div>
+        }
+        back={
+          <div className={`${FACE} h-full min-h-[148px] bg-white`}>
+            {revealed && <div className="text-3xl font-black text-slate-900 tracking-[0.2em] tabular-nums select-all" dir="ltr">{code}</div>}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <button ref={backButton} type="button" onClick={toggle} aria-pressed={true} className={toggleClass}>
+                <i className="fa-solid fa-eye-slash" aria-hidden="true"></i>
+                <span>{t('voucher_hide_code')}</span>
+              </button>
+              {revealed && <CopyCodeButton code={code} />}
+            </div>
+          </div>
+        }
+      />
     </section>
   )
 }
@@ -96,6 +161,8 @@ function CopyCodeButton({ code }: { code: string }) {
     try {
       await navigator.clipboard.writeText(code)
       setStatus('copied')
+      // A tap of feedback where the browser supports it (Android Chrome).
+      navigator.vibrate?.(15)
     } catch {
       setStatus('failed')
     }

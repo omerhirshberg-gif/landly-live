@@ -20,7 +20,10 @@ export const OFFER_FEED_GRID = 'grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 l
 interface OfferCardProps {
   offer: OfferDocument
   showWishlistButton?: boolean
-  /** 'rail': fixed width in a horizontal scroller. 'grid': fills its grid cell. */
+  /**
+   * 'rail': a compact, fixed-width card for a horizontal scroller (240-260px,
+   * a 124px photo, smaller type), so the next card peeks in. 'grid': fills its grid cell.
+   */
   layout?: 'rail' | 'grid'
   /** The category pill on the photo. Off in a list already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
@@ -35,6 +38,7 @@ interface OfferCardProps {
 // with the CTA. Same anatomy as the Expo app's OfferCard.
 export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', showCategoryBadge = true }: OfferCardProps) {
   const { t } = useLang()
+  const rail = layout === 'rail'
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
@@ -45,18 +49,18 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
     <Link
       href={`/offers/${offer.id}`}
       className={`group flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-[#CBD5E1] [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0 ${
-        layout === 'grid' ? 'w-full' : 'w-[220px] flex-shrink-0 sm:w-[240px]'
+        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0' : 'w-full'
       }`}
     >
-      {/* A full-width card on a phone gets a wide photo (2:1, capped at 180px, as in the Expo app) so the image doesn't crowd out the text. */}
-      <div className={`relative overflow-hidden bg-[#F0F7FF] ${layout === 'grid' ? 'aspect-[2/1] max-h-[180px] md:aspect-[16/10] md:max-h-none' : 'aspect-[4/3]'}`}>
+      {/* A full-width card on a phone gets a wide photo (2:1, capped at 180px, as in the Expo app) so the image doesn't crowd out the text; a rail card a short fixed one. */}
+      <div className={`relative overflow-hidden bg-[#F0F7FF] ${rail ? 'h-[124px]' : 'aspect-[2/1] max-h-[180px] md:aspect-[16/10] md:max-h-none'}`}>
         <PerkImage src={offer.imageUrl} alt={offer.title} category={offer.category} businessName={offer.businessName} />
         {showCategoryBadge && tile && (
           <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0B1B3D] shadow-sm">
             {t(tile.labelKey)}
           </span>
         )}
-        <DiscountBadge percent={discount} className="absolute bottom-2.5 start-2.5" />
+        <DiscountBadge percent={discount} size={rail ? 'sm' : 'md'} className="absolute bottom-2.5 start-2.5" />
         {showWishlistButton && user && (
           <button
             type="button"
@@ -81,12 +85,12 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         )}
       </div>
 
-      <div className={`flex flex-1 flex-col ${layout === 'grid' ? 'p-3 sm:p-4' : 'p-3.5 sm:p-4'}`}>
-        <div className="truncate text-base font-bold leading-snug text-[#0B1B3D]" dir="auto">
+      <div className={`flex flex-1 flex-col ${rail ? 'p-3' : 'p-3 sm:p-4'}`}>
+        <div className={`truncate font-bold leading-snug text-[#0B1B3D] ${rail ? 'text-[15px]' : 'text-base'}`} dir="auto">
           {offer.businessName}
         </div>
         {/* A rail keeps two lines reserved so neighbouring cards line up; a grid row stretches its cards anyway. */}
-        <p className={`mt-0.5 line-clamp-2 text-sm leading-snug text-[#475569] ${layout === 'grid' ? '' : 'min-h-[2.5em]'}`} dir="auto">
+        <p className={`mt-0.5 line-clamp-2 leading-snug text-[#475569] ${rail ? 'min-h-[2.5em] text-[13px]' : 'text-sm'}`} dir="auto">
           {offer.title}
         </p>
 
@@ -101,14 +105,14 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         </div>
 
         {/* Price at the start, "View deal" at the end, on one row. */}
-        <div className="mt-auto flex items-center justify-between gap-3 pt-2.5">
+        <div className={`mt-auto flex items-center justify-between pt-2.5 ${rail ? 'gap-2' : 'gap-3'}`}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2" dir="ltr">
-            <span className="text-lg font-extrabold tracking-tight text-[#0038B8]">{formatPrice(offer.offerPrice)}</span>
+            <span className={`font-extrabold tracking-tight text-[#0038B8] ${rail ? 'text-base' : 'text-lg'}`}>{formatPrice(offer.offerPrice)}</span>
             {discount > 0 && (
-              <span className="text-sm text-[#94A3B8] line-through decoration-[#94A3B8]/70">{formatPrice(offer.originalPrice)}</span>
+              <span className={`text-[#94A3B8] line-through decoration-[#94A3B8]/70 ${rail ? 'text-xs' : 'text-sm'}`}>{formatPrice(offer.originalPrice)}</span>
             )}
           </div>
-          <span className="flex flex-shrink-0 items-center gap-1.5 text-sm font-semibold text-[#0038B8]">
+          <span className={`flex flex-shrink-0 items-center gap-1.5 font-semibold text-[#0038B8] ${rail ? 'text-[13px]' : 'text-sm'}`}>
             <span>{t('offer_view_cta')}</span>
             <i
               className="fa-solid fa-arrow-right text-[11px] transition-transform rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5"
