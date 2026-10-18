@@ -5,7 +5,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import type * as BrowserAuth from '@firebase/auth/dist/auth-public'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
-import { assertDevFirebaseProject } from './envGuard'
+import { assertDevFirebaseProject, assertFirebaseConfigConsistent } from './envGuard'
 
 // Expo web counterpart of ./config.ts (landly-mobile run in a browser) --
 // Metro picks this file over config.ts for platform=web, Next.js never sees
@@ -19,6 +19,7 @@ if (!firebaseConfig?.apiKey || !firebaseConfig.projectId) {
   throw new Error('Firebase config missing — see landly-mobile/app.config.js')
 }
 assertDevFirebaseProject(firebaseConfig.projectId, __DEV__)
+assertFirebaseConfigConsistent(firebaseConfig, __DEV__ ? 'local' : 'unchecked')
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 

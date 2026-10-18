@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import NearMeButton from '@/components/discover/NearMeButton'
-import OfferCard from '@/components/discover/OfferCard'
+import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
@@ -151,9 +151,9 @@ function PerksBrowser() {
                 {resultsTitle && <h2 className="text-base font-bold text-slate-900 break-words">{resultsTitle}</h2>}
                 <span className="text-sm text-slate-500">{perksCountLabel(results.length, t)}</span>
               </div>
-              <div className="flex flex-wrap gap-2.5 sm:gap-3 touch-pan-y touch-pinch-zoom">
+              <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
                 {results.map((offer) => (
-                  <OfferCard key={offer.id} offer={offer} />
+                  <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={category === 'all'} />
                 ))}
               </div>
             </section>

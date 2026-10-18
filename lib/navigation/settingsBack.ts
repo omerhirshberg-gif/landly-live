@@ -2,6 +2,8 @@
 // it (components/settings/SettingsPageShell.tsx, useSwipeBack.ts). Pure, so
 // the hierarchy and the gesture thresholds are tested on their own.
 
+import type { BackAction } from './back'
+
 /**
  * A settings sub-page's parent: one level up the URL
  * (/settings/language-region/origin -> /settings/language-region,
@@ -21,7 +23,7 @@ export function settingsParent(pathname: string): string | null {
  */
 export const SETTINGS_EDIT_OPENERS: readonly string[] = ['/profile']
 
-export type BackAction = { kind: 'back' } | { kind: 'replace'; href: string } | { kind: 'push'; href: string }
+export type { BackAction }
 
 /**
  * What back does. A sub-page always lands on its parent: through the

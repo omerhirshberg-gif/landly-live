@@ -1,6 +1,7 @@
 import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
 import { db } from './config'
 import { normalizeRedemptionTerms } from '../payments/voucherTerms'
+import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 
 // refunded: cancelled through support after purchase (set by an admin, never
 // by a client); it leaves the wallet like a redeemed one, but was never used.
@@ -20,6 +21,8 @@ export interface VoucherDocument {
   // vouchers issued before validity periods existed.
   expiresAt: Date | null
   redemptionTerms: string // snapshot from the order, so later offer edits never change a bought voucher
+  redemptionMethod: RedemptionMethod // snapshot like redemptionTerms; 'in_store' for vouchers issued before methods existed
+  redemptionInstructions: string // snapshot like redemptionTerms; '' = the method's default steps
 }
 
 // What a voucher's QR code encodes -- shared so the web member area and the
@@ -51,6 +54,8 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     redeemedAt: data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null,
     expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toDate() : null,
     redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
+    redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
+    redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
   }
 }
 

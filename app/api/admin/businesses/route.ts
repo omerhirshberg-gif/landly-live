@@ -5,6 +5,8 @@ import { isOfferActive } from '@/lib/admin/offerStatus'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
+import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
+import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 
 interface RequestBody {
@@ -27,6 +29,8 @@ interface RequestBody {
     isBestseller?: boolean
     validityDays?: number
     redemptionTerms?: string
+    redemptionMethod?: string
+    redemptionInstructions?: string
   }
 }
 
@@ -94,10 +98,14 @@ export async function POST(request: Request) {
   }
   const priceError = validateOfferPrices(Number(offer.originalPrice), Number(offer.offerPrice))
   if (priceError) return badRequest(priceError)
-  const imageUrl = typeof offer.imageUrl === 'string' ? offer.imageUrl.trim() : ''
+  const imageUrl = normalizeImageUrl(typeof offer.imageUrl === 'string' ? offer.imageUrl : '')
   if (imageUrl && !isValidImageUrl(imageUrl)) return badRequest('offer.imageUrl must be a valid http(s) URL.')
+  const imageProblem = imageUrl ? imageUrlProblem(imageUrl) : null
+  if (imageProblem) return badRequest(`offer.imageUrl: ${imageProblem}`)
   const voucherTerms = parseOfferVoucherTerms(offer)
   if (!voucherTerms.ok) return badRequest(voucherTerms.error)
+  const redemption = parseOfferRedemption(offer)
+  if (!redemption.ok) return badRequest(redemption.error)
 
   const duplicate = await adminDb.collection('businesses').where('businessId', '==', business.businessId).limit(1).get()
   if (!duplicate.empty) {
@@ -147,6 +155,8 @@ export async function POST(request: Request) {
       claimedCount: 0,
       validityDays: voucherTerms.validityDays,
       redemptionTerms: voucherTerms.redemptionTerms,
+      redemptionMethod: redemption.redemptionMethod,
+      redemptionInstructions: redemption.redemptionInstructions,
     })
     await batch.commit()
   } catch {

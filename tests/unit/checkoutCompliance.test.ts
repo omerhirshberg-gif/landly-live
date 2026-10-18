@@ -12,7 +12,7 @@ const LANGS = Object.keys(translations) as Lang[]
 const CHECKOUT_KEYS: TranslationKey[] = [
   'checkout_total_label', 'checkout_original_price_label', 'checkout_discount_label', 'checkout_vat_note',
   'checkout_voucher_details_title', 'checkout_validity', 'voucher_redemption_terms_label',
-  'checkout_cancellation_title', 'checkout_cancellation_body', 'checkout_agree', 'checkout_agree_required',
+  'checkout_cancellation_title', 'checkout_cancellation_body', 'checkout_agree', 'checkout_pay_button', 'checkout_you_save',
   'checkout_loading', 'success_order_number_label', 'success_receipt_note', 'voucher_valid_until', 'voucher_expired_on',
 ]
 

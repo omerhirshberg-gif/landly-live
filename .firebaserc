@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "landly-be752"
+    "default": "landly-be752",
+    "dev": "landly-dev"
   }
 }

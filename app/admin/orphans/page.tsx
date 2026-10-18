@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
-import Card from '@/components/admin/Card'
+import Alert from '@/components/admin/Alert'
+import Card, { CardSkeletons } from '@/components/admin/Card'
+import EmptyState from '@/components/admin/EmptyState'
+import PageHeader from '@/components/admin/PageHeader'
+import { ButtonSpinner } from '@/components/admin/FormSection'
+import { DANGER_BUTTON } from '@/components/admin/formStyles'
 
 interface Orphan {
   uid: string
@@ -47,42 +52,49 @@ export default function OrphansPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-black text-white mb-1">Orphaned login accounts</h1>
-      <p className="text-slate-500 text-sm mb-6">
-        Firebase Auth accounts with no matching business or customer record. Deleting one only removes the
-        login account and frees its email -- there is no Firestore record left to clean up.
-      </p>
+      <PageHeader
+        title="Orphaned login accounts"
+        subtitle={
+          <p className="max-w-3xl">
+            Firebase Auth accounts with no matching business or customer record. Deleting one only removes the login
+            account and frees its email &mdash; there is no Firestore record left to clean up.
+          </p>
+        }
+      />
 
-      {error && (
-        <div className="mb-4 text-sm font-semibold text-red-400 bg-red-950/40 border border-red-900 rounded-xl px-4 py-3">
-          {error}
+      {error && <Alert className="mb-6">{error}</Alert>}
+
+      {orphans === null && !error && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <CardSkeletons count={4} className="h-20" />
         </div>
       )}
+      {orphans?.length === 0 && (
+        <EmptyState icon="fa-circle-check" title="No orphaned accounts" description="Every login account has a matching business or customer record." />
+      )}
 
-      {orphans === null && <p className="text-slate-400">Loading…</p>}
-      {orphans?.length === 0 && <p className="text-slate-400">No orphaned accounts found.</p>}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {orphans?.map((orphan) => (
-          <Card key={orphan.uid} className="flex items-center justify-between gap-4 px-5 py-4">
-            <div className="min-w-0 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+          <Card key={orphan.uid} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFFBEB] text-amber-700">
                 <i className="fa-solid fa-triangle-exclamation text-sm" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="text-white font-semibold truncate">{orphan.email}</div>
-                <div className="text-slate-500 text-xs truncate">
-                  {orphan.providerIds.join(', ') || 'no provider'} · created{' '}
-                  {new Date(orphan.createdAt).toLocaleDateString()} · {orphan.uid}
+                <div className="truncate font-semibold text-[#0B1B3D]" dir="ltr">{orphan.email}</div>
+                <div className="truncate text-xs text-[#94A3B8]">
+                  {orphan.providerIds.join(', ') || 'no provider'} · created {new Date(orphan.createdAt).toLocaleDateString()} ·{' '}
+                  <span className="font-mono">{orphan.uid}</span>
                 </div>
               </div>
             </div>
             <button
-              className="inline-flex items-center gap-2 text-sm font-bold text-red-400 border-2 border-red-900/60 rounded-full px-4 py-2 transition-colors hover:bg-red-950/50 hover:border-red-800 shrink-0 disabled:opacity-50"
+              type="button"
+              className={`${DANGER_BUTTON} w-full sm:w-auto sm:shrink-0`}
               onClick={() => deleteOrphan(orphan)}
               disabled={deletingUid === orphan.uid}
             >
-              <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
+              {deletingUid === orphan.uid ? <ButtonSpinner /> : <i className="fa-solid fa-trash text-xs" aria-hidden="true" />}
               {deletingUid === orphan.uid ? 'Deleting…' : 'Delete'}
             </button>
           </Card>

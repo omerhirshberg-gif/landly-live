@@ -1,20 +1,27 @@
 import { StyleSheet, View } from 'react-native'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { formatRedeemedDate } from '@shared/format'
+import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
+import { REDEMPTION_METHOD_ICONS } from './OfferCard'
+import VoucherThumb from './VoucherThumb'
 import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
 
 // One redeemed voucher in My Pass → Redeemed: no QR (it can't be used again),
-// just what it was and when the business redeemed it (web:
+// just what it was -- with the offer's thumbnail, faded, and a check on its
+// corner -- and when the business redeemed it (web:
 // components/member/RedeemedTab.tsx).
 export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & { id: string } }) {
   const { t, lang } = useLang()
   return (
     <View style={styles.card}>
-      <View style={styles.check}>
-        <LineIcon name="check" size={16} color={colors.success} strokeWidth={2.5} />
+      <View>
+        <VoucherThumb voucher={voucher} muted />
+        <View style={styles.check}>
+          <LineIcon name="check" size={13} color={colors.success} strokeWidth={2.8} />
+        </View>
       </View>
       <View style={styles.text}>
         <AppText style={styles.business} numberOfLines={1}>
@@ -23,9 +30,15 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
         <AppText style={styles.title} numberOfLines={2}>
           {voucher.offerTitle}
         </AppText>
-        {voucher.redeemedAt && (
-          <AppText style={styles.date}>{t('mobile_redeemed_on').replace('{date}', formatRedeemedDate(voucher.redeemedAt, lang))}</AppText>
-        )}
+        <View style={styles.metaRow}>
+          <View style={styles.methodChip}>
+            <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={12} color={colors.textMuted} strokeWidth={2.2} />
+            <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
+          </View>
+          {voucher.redeemedAt && (
+            <AppText style={styles.date}>{t('mobile_redeemed_on').replace('{date}', formatRedeemedDate(voucher.redeemedAt, lang))}</AppText>
+          )}
+        </View>
       </View>
     </View>
   )
@@ -43,9 +56,32 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     backgroundColor: colors.white,
   },
-  check: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.successBg, alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, minWidth: 0, gap: 2 },
-  business: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.brand },
-  title: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.textStrong },
-  date: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  check: {
+    position: 'absolute',
+    bottom: -6,
+    end: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: { flex: 1, minWidth: 0 },
+  business: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.text },
+  title: { fontSize: 14, lineHeight: 20, color: colors.textMuted, marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 10, rowGap: 6, marginTop: 6 },
+  methodChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.borderLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  methodText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  date: { fontSize: 13, color: colors.textMuted },
 })

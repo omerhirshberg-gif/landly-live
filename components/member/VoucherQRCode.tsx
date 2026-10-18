@@ -6,22 +6,23 @@ import { voucherRedeemUrl } from '@/lib/firebase/vouchers'
 
 // Rendered client-side via the browser <canvas> API (qrcode's toDataURL runs
 // isomorphically) so nothing is precomputed or stored — one fewer field to
-// keep in sync with the voucher doc, and no image blob in Firestore.
-export default function VoucherQRCode({ voucherId }: { voucherId: string }) {
+// keep in sync with the voucher doc, and no image blob in Firestore. Drawn at
+// twice its size, black on white, so it stays sharp for a cashier's scanner.
+export default function VoucherQRCode({ voucherId, size = 160 }: { voucherId: string; size?: number }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    QRCode.toDataURL(voucherRedeemUrl(voucherId), { margin: 1, width: 160 })
+    QRCode.toDataURL(voucherRedeemUrl(voucherId), { margin: 1, width: size * 2, color: { dark: '#000000', light: '#ffffff' } })
       .then((url) => { if (!cancelled) setDataUrl(url) })
       .catch(() => { if (!cancelled) setDataUrl(null) })
     return () => { cancelled = true }
-  }, [voucherId])
+  }, [voucherId, size])
 
   if (!dataUrl) {
-    return <div className="w-[160px] h-[160px] rounded-lg bg-slate-100 animate-pulse" />
+    return <div style={{ width: size, height: size }} className="rounded-lg bg-slate-100 animate-pulse" />
   }
 
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={dataUrl} alt="" width={160} height={160} className="rounded-lg" />
+  return <img src={dataUrl} alt="" width={size} height={size} className="rounded-lg" />
 }

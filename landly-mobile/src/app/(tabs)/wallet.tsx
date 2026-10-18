@@ -53,10 +53,11 @@ export default function WalletScreen() {
     }
   }, [user, attempt])
 
+  // Savings count from purchase (lib/member/savings.ts): active and redeemed passes alike.
   useEffect(() => {
-    if (!redeemed) return
+    if (!active || !redeemed) return
     let cancelled = false
-    totalSaved(redeemed)
+    totalSaved([...active, ...redeemed])
       .then((amount) => {
         if (!cancelled) setSaved(amount)
       })
@@ -64,7 +65,7 @@ export default function WalletScreen() {
     return () => {
       cancelled = true
     }
-  }, [redeemed])
+  }, [active, redeemed])
 
   const segment = CUSTOMER_TYPES.find((o) => o.value === profile?.customerType)
   // "Other" shows what the member typed for it.

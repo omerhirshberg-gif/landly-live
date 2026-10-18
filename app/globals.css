@@ -13,7 +13,7 @@
 
 *{font-family:'Heebo',sans-serif;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
-/* Sideways overscroll stays with the browser, so its edge swipe (iOS Safari) and back gesture (Chrome) step back through the settings pages; never set it to none or contain on the page */
+/* Sideways overscroll stays with the browser, so its edge swipe (iOS Safari) and back gesture (Chrome) step back through every page (settings, offers, checkout); never set it to none or contain on the page, and never touch-action:none on html/body (tests/unit/backNavigation.test.ts) */
 html,body{overscroll-behavior-x:auto;}
 /* Anchor targets get top offset so smooth-scroll lands cleanly below the fixed navbar (65px) instead of hiding the section heading behind it */
 #deals, #how, #pricing, #faq, #waitlist{scroll-margin-top:80px;}
@@ -455,6 +455,16 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .sort-option[aria-checked="true"]{color:#0038B8;}
 @media (max-width:767px){.sort-option{min-height:52px;font-size:16px;}}
 @media (hover:hover){.sort-option:hover{background:#F1F5F9;}}
+/* Checkout (app/checkout/page.tsx): a soft brand glow behind the summary,
+   the Pay bar stuck to the bottom on phones above the home indicator, and
+   the gradient Pay button. */
+.checkout-canvas{background:radial-gradient(900px 360px at 50% -80px,#DCE8FF 0%,rgba(220,232,255,0) 70%),#F8FAFC;}
+.checkout-paybar{padding-bottom:calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,#F8FAFC 72%,rgba(248,250,252,0));}
+@media (min-width:640px){.checkout-paybar{padding-bottom:0;background:none;}}
+.checkout-pay{background:linear-gradient(135deg,#0038B8 0%,#1D4ED8 60%,#2563EB 100%);box-shadow:0 12px 28px -12px rgba(0,56,184,.65);transition:transform .15s ease-out,box-shadow .15s ease-out,filter .15s ease-out;}
+.checkout-pay:active{transform:scale(.98);}
+@media (hover:hover){.checkout-pay:hover{filter:brightness(1.08);box-shadow:0 16px 32px -12px rgba(0,56,184,.7);}}
+@media (prefers-reduced-motion: reduce){.checkout-pay{transition:none;}.checkout-pay:active{transform:none;}}
 @media (prefers-reduced-motion: reduce){
   .filter-chip,.rail-arrow{transition:none;}
   .filter-chip:active{transform:none;}

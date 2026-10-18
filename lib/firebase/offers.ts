@@ -2,6 +2,8 @@ import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'fireb
 import { db } from './config'
 import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
 import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/voucherTerms'
+import { normalizeImageUrl } from '../offers/imageUrl'
+import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 
 export interface OfferDocument {
   id: string
@@ -21,6 +23,8 @@ export interface OfferDocument {
   claimedCount: number
   validityDays: number // how long a voucher bought now stays valid; DEFAULT_VOUCHER_VALIDITY_DAYS when unset
   redemptionTerms: string // the merchant's conditions for using the voucher; '' = none stated
+  redemptionMethod: RedemptionMethod // in store, online or by phone; 'in_store' for offers from before methods existed
+  redemptionInstructions: string // the merchant's own steps, one per line; '' = the method's default steps
 }
 
 function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
@@ -29,7 +33,8 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     businessId: (data.businessId as string) ?? '',
     businessName: (data.businessName as string) ?? '',
     location: (data.location as string) ?? '',
-    imageUrl: (data.imageUrl as string) ?? '',
+    // Normalized on read too, so links saved before the admin routes did it still render.
+    imageUrl: normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : ''),
     title: (data.title as string) ?? '',
     description: (data.description as string) ?? '',
     originalPrice: Number(data.originalPrice) || 0,
@@ -42,6 +47,8 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     claimedCount: Number(data.claimedCount) || 0,
     validityDays: normalizeValidityDays(data.validityDays),
     redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
+    redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
+    redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
   }
 }
 

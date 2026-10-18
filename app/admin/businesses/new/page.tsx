@@ -2,13 +2,17 @@
 
 import { useState } from 'react'
 import PasswordField from '@/components/admin/PasswordField'
-import RevealableText from '@/components/admin/RevealableText'
+import RevealableText, { CopyButton } from '@/components/admin/RevealableText'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Link from 'next/link'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
 import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
+import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
+import PageHeader from '@/components/admin/PageHeader'
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
 interface SuccessResult {
@@ -101,34 +105,48 @@ export default function NewBusinessPage() {
 
   if (result) {
     return (
-      <div>
-        <BackLink href="/admin/businesses">Back</BackLink>
-        <h1 className="text-2xl font-black text-white mb-1">Business created</h1>
-        <p className="text-sm text-slate-400 mb-6">Relay these login details to the business owner.</p>
+      <div className="max-w-2xl">
+        <BackLink href="/admin/businesses">Back to businesses</BackLink>
 
-        <Card className="p-5 space-y-3 mb-6">
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Business</div>
-            <div className="text-white font-semibold">{result.businessName}</div>
+        <Card className="overflow-hidden">
+          <div className="flex items-start gap-4 border-b border-[#E2E8F0] bg-[#ECFDF5] px-5 py-5 sm:px-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <i className="fa-solid fa-check text-lg" aria-hidden="true" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#0B1B3D]">Business created</h1>
+              <p className="mt-0.5 text-sm text-emerald-800">Relay these login details to the business owner.</p>
+            </div>
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Login email</div>
-            <div className="text-white font-mono">{result.loginEmail}</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Login password</div>
-            <RevealableText className="text-white font-mono">{result.loginPassword}</RevealableText>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">First offer</div>
-            <div className="text-white font-semibold">{result.offerTitle}</div>
-            <div className="text-slate-500 text-xs font-mono">{result.offerId}</div>
-          </div>
+
+          <dl className="divide-y divide-[#E2E8F0]">
+            <ResultRow label="Business">
+              <span className="font-semibold text-[#0B1B3D]" dir="auto">{result.businessName}</span>
+            </ResultRow>
+            <ResultRow label="Login email">
+              <div className="flex items-center gap-1">
+                <span className="min-w-0 break-all font-mono text-[#0B1B3D]" dir="ltr">{result.loginEmail}</span>
+                <CopyButton value={result.loginEmail} label="Copy email" />
+              </div>
+            </ResultRow>
+            <ResultRow label="Login password">
+              <RevealableText className="font-mono text-[#0B1B3D]">{result.loginPassword}</RevealableText>
+            </ResultRow>
+            <ResultRow label="First offer">
+              <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
+              <div className="font-mono text-xs text-[#94A3B8]">{result.offerId}</div>
+            </ResultRow>
+          </dl>
         </Card>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link href={`/admin/offers/new?businessUid=${result.uid}`} className={PRIMARY_BUTTON}>
+            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+            Add another offer to this business
+          </Link>
           <button
-            className="btn-secondary"
+            type="button"
+            className={SECONDARY_BUTTON}
             onClick={() => {
               setForm(emptyForm)
               setResult(null)
@@ -136,73 +154,78 @@ export default function NewBusinessPage() {
           >
             Add another business
           </button>
-          <Link href={`/admin/offers/new?businessUid=${result.uid}`} className="btn-primary">
-            Add another offer to this business
-          </Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl">
-      <BackLink href="/admin/businesses">Back</BackLink>
-      <h1 className="text-2xl font-black text-white mb-6">Add new business</h1>
+    <div className="max-w-3xl">
+      <BackLink href="/admin/businesses">Back to businesses</BackLink>
+      <PageHeader title="Add new business" subtitle="Creates the business, its login, and its first offer in one step." />
 
-      {error && (
-        <div className="mb-4 text-sm font-semibold text-red-400 bg-red-950/40 border border-red-900 rounded-xl px-4 py-3">
-          {error}
-        </div>
-      )}
+      {error && <Alert className="mb-6">{error}</Alert>}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <Card className="p-6">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-            Business details
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <FormSection icon="fa-store" title="Business details" description="How the business appears to members.">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label htmlFor="biz-name" className="block mb-1.5 text-sm font-bold text-slate-300">Business name</label>
-              <input id="biz-name" required className="inp inp-dark !py-3.5" value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
+              <label htmlFor="biz-name" className={ADMIN_LABEL}>Business name</label>
+              <input id="biz-name" required dir="auto" className={ADMIN_INPUT} value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
             </div>
             <div>
-              <label htmlFor="biz-id" className="block mb-1.5 text-sm font-bold text-slate-300">Business ID (ח.פ)</label>
-              <input id="biz-id" required className="inp inp-dark !py-3.5" value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
+              <label htmlFor="biz-id" className={ADMIN_LABEL}>Business ID (ח.פ)</label>
+              <input id="biz-id" required inputMode="numeric" dir="ltr" className={ADMIN_INPUT} value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
             </div>
             <div>
-              <label htmlFor="biz-category" className="block mb-1.5 text-sm font-bold text-slate-300">Category</label>
-              <select id="biz-category" required className="inp inp-dark !py-3.5" value={form.category} onChange={(e) => update('category', e.target.value)}>
+              <label htmlFor="biz-category" className={ADMIN_LABEL}>Category</label>
+              <select id="biz-category" required className={`${ADMIN_INPUT} cursor-pointer`} value={form.category} onChange={(e) => update('category', e.target.value)}>
                 {BUSINESS_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label htmlFor="biz-location" className="block mb-1.5 text-sm font-bold text-slate-300">Location</label>
-              <input id="biz-location" required className="inp inp-dark !py-3.5" placeholder="City / address" value={form.location} onChange={(e) => update('location', e.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="biz-email" className="block mb-1.5 text-sm font-bold text-slate-300">Login email</label>
-              <input id="biz-email" type="email" required className="inp inp-dark !py-3.5" value={form.loginEmail} onChange={(e) => update('loginEmail', e.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="biz-password" className="block mb-1.5 text-sm font-bold text-slate-300">Login password</label>
-              <PasswordField id="biz-password" required minLength={6} value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
+              <label htmlFor="biz-location" className={ADMIN_LABEL}>Location</label>
+              <input id="biz-location" required dir="auto" className={ADMIN_INPUT} placeholder="City / address" value={form.location} onChange={(e) => update('location', e.target.value)} />
             </div>
           </div>
-        </Card>
+        </FormSection>
 
-        <Card className="p-6">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-            First offer
-          </h2>
+        <FormSection icon="fa-key" title="Login credentials" description="The business owner signs in to the business dashboard with these.">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              <label htmlFor="biz-email" className={ADMIN_LABEL}>Login email</label>
+              <input id="biz-email" type="email" required dir="ltr" autoComplete="off" className={ADMIN_INPUT} value={form.loginEmail} onChange={(e) => update('loginEmail', e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="biz-password" className={ADMIN_LABEL}>Login password</label>
+              <PasswordField id="biz-password" required minLength={6} autoComplete="new-password" value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
+              <p className={ADMIN_HINT}>At least 6 characters.</p>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection icon="fa-tags" title="First offer" description="The perk members will see for this business.">
           <OfferFormFields value={form} onChange={updateOffer} />
-        </Card>
+        </FormSection>
 
-        <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
-          {submitting ? 'Creating…' : 'Create business'}
-        </button>
+        <FormActions>
+          <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>
+            {submitting && <ButtonSpinner />}
+            {submitting ? 'Creating…' : 'Create business'}
+          </button>
+        </FormActions>
       </form>
+    </div>
+  )
+}
+
+function ResultRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="px-5 py-4 sm:px-6">
+      <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">{label}</dt>
+      <dd className="mt-1">{children}</dd>
     </div>
   )
 }

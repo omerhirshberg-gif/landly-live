@@ -61,16 +61,17 @@ export default function MemberPage() {
     }
   }, [user])
 
+  // Savings count from purchase (lib/member/savings.ts): active and redeemed passes alike.
   useEffect(() => {
-    if (!redeemed) return
+    if (!active || !redeemed) return
     let cancelled = false
-    totalSaved(redeemed)
+    totalSaved([...active, ...redeemed])
       .then((amount) => {
         if (!cancelled) setSaved(amount)
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [redeemed])
+  }, [active, redeemed])
 
   // First name from the profile, else the display name — never the email.
   const displayName = greeting ?? greetingName(null, user?.displayName)

@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { currentAuthDomain } from './authDomain'
-import { assertDevFirebaseProject } from './envGuard'
+import { assertFirebaseConfigConsistent, assertFirebaseProjectForTarget, currentFirebaseDeployTarget } from './envGuard'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,7 +15,13 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-assertDevFirebaseProject(firebaseConfig.projectId, process.env.NODE_ENV === 'development')
+const deployTarget = currentFirebaseDeployTarget()
+assertFirebaseProjectForTarget(firebaseConfig.projectId, deployTarget)
+// The env authDomain, not firebaseConfig's: on our own host that one is the host itself.
+assertFirebaseConfigConsistent(
+  { ...firebaseConfig, authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN },
+  deployTarget,
+)
 
 const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig)
 

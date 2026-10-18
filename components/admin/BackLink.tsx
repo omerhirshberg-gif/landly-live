@@ -9,7 +9,7 @@ export default function BackLink({ href, children }: { href: string; children: R
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 bg-white/5 border border-white/10 rounded-full pl-3 pr-4 py-1.5 mb-5 transition-colors hover:text-white hover:bg-white/10 hover:border-white/20"
+      className="-ms-1 mb-2 inline-flex min-h-12 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-[#475569] transition-colors hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
     >
       <i className="fa-solid fa-arrow-left text-xs rtl:-scale-x-100" aria-hidden="true" />
       {children}

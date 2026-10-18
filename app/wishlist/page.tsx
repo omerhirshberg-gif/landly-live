@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import OfferCard from '@/components/discover/OfferCard'
+import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
@@ -63,9 +63,9 @@ export default function WishlistPage() {
               </Link>
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2.5 sm:gap-3">
+            <div className={OFFER_FEED_GRID}>
               {offers.map((offer) => (
-                <OfferCard key={offer.id} offer={offer} showWishlistButton />
+                <OfferCard key={offer.id} offer={offer} showWishlistButton layout="grid" />
               ))}
             </div>
           )}

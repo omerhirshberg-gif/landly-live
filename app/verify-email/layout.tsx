@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
+
+export const metadata: Metadata = { title: 'Verify Your Email' }
 
 // /verify-email is a client component, so its viewport lives here. Same as
 // app/login/page.tsx: viewport-fit=cover lets the screen run edge to edge on

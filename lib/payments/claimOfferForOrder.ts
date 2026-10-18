@@ -4,6 +4,7 @@ import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 import type { TranzilaNotification } from './parseTranzilaNotification'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { isValidValidityDays, normalizeRedemptionTerms, normalizeValidityDays, voucherExpiresAtMs } from './voucherTerms'
+import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
 
 function transactionKey(event: TranzilaNotification): string {
   return createHash('sha256').update(JSON.stringify([event.terminal, event.tranzilaTxnId])).digest('hex')
@@ -77,13 +78,17 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     // The terms frozen on the order at checkout; orders from before that read the offer's.
     const validityDays = isValidValidityDays(order.validityDays) ? order.validityDays : normalizeValidityDays(offer.validityDays)
     const redemptionTerms = normalizeRedemptionTerms(typeof order.redemptionTerms === 'string' ? order.redemptionTerms : offer.redemptionTerms)
+    const redemptionMethod = isRedemptionMethod(order.redemptionMethod) ? order.redemptionMethod : normalizeRedemptionMethod(offer.redemptionMethod)
+    const redemptionInstructions = normalizeRedemptionInstructions(
+      typeof order.redemptionInstructions === 'string' ? order.redemptionInstructions : offer.redemptionInstructions,
+    )
     tx.create(voucherRef, {
       userId: order.userId, offerId: order.offerId, businessId: order.businessId,
       businessName: order.businessName, offerTitle: order.offerTitle,
       redemptionCode: String(randomInt(0, 100_000_000)).padStart(8, '0'),
       status: 'active', takenAt: now, redeemedAt: null,
       expiresAt: Timestamp.fromMillis(voucherExpiresAtMs(now.toMillis(), validityDays)),
-      redemptionTerms,
+      redemptionTerms, redemptionMethod, redemptionInstructions,
       paymentTransactionKey: receiptRef.id,
     })
     tx.update(offerRef, { claimedCount: FieldValue.increment(1) })

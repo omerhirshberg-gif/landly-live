@@ -4,6 +4,8 @@ import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
+import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
+import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
 
 interface PatchBody {
@@ -18,6 +20,8 @@ interface PatchBody {
     isBestseller?: boolean
     validityDays?: number
     redemptionTerms?: string
+    redemptionMethod?: string
+    redemptionInstructions?: string
   }
 }
 
@@ -58,10 +62,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   }
   const priceError = validateOfferPrices(Number(offer.originalPrice), Number(offer.offerPrice))
   if (priceError) return badRequest(priceError)
-  const imageUrl = typeof offer.imageUrl === 'string' ? offer.imageUrl.trim() : ''
+  const imageUrl = normalizeImageUrl(typeof offer.imageUrl === 'string' ? offer.imageUrl : '')
   if (imageUrl && !isValidImageUrl(imageUrl)) return badRequest('offer.imageUrl must be a valid http(s) URL.')
+  const imageProblem = imageUrl ? imageUrlProblem(imageUrl) : null
+  if (imageProblem) return badRequest(`offer.imageUrl: ${imageProblem}`)
   const voucherTerms = parseOfferVoucherTerms(offer)
   if (!voucherTerms.ok) return badRequest(voucherTerms.error)
+  const redemption = parseOfferRedemption(offer)
+  if (!redemption.ok) return badRequest(redemption.error)
 
   const ref = getAdminDb().collection('offers').doc(offerId)
   const snap = await ref.get()
@@ -85,6 +93,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     // Orders already created keep the terms they were shown (see initiateOrder).
     validityDays: voucherTerms.validityDays,
     redemptionTerms: voucherTerms.redemptionTerms,
+    redemptionMethod: redemption.redemptionMethod,
+    redemptionInstructions: redemption.redemptionInstructions,
   })
 
   return NextResponse.json({ updated: true })

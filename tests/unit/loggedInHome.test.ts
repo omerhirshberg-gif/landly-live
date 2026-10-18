@@ -166,6 +166,8 @@ describe('member dashboard: category rail and perk cards', () => {
     claimedCount: 0,
     validityDays: 180,
     redemptionTerms: '',
+    redemptionMethod: 'in_store' as const,
+    redemptionInstructions: '',
   }
 
   it.each(['en', 'he'] as const)('a perk card shows merchant, category badge, "% OFF" banner and the CTA line (%s)', (lang) => {
@@ -176,6 +178,14 @@ describe('member dashboard: category rail and perk cards', () => {
     expect(html).toContain(`>${t.row_restaurants}<`)
     expect(html).toContain(`>${t.offer_percent_off.replace('{n}', '15')}<`)
     expect(html).toContain(`<span>${t.offer_view_cta}</span>`)
+  })
+
+  it('shows how the perk is redeemed, and a branded panel instead of a broken image when there is no photo', () => {
+    const html = withLang('he', createElement(OfferCard, { offer: { ...offer, imageUrl: '', redemptionMethod: 'phone_booking' as const } }))
+    expect(html).toContain(translations.he.redeem_method_phone_booking)
+    expect(html).toContain('🍽️')
+    expect(html).not.toContain('fa-image')
+    expect(html).not.toContain('<img')
   })
 
   it('drops the banner and the struck-through price when there is no discount', () => {

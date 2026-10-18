@@ -21,6 +21,13 @@ const lanAddresses = Object.values(os.networkInterfaces())
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: lanAddresses,
+  // Where this build runs, for lib/firebase/envGuard.ts -- inlined so the
+  // browser bundle picks the same Firebase project check as the server.
+  // Unset (a local build) becomes '', which the guard treats as local.
+  env: {
+    LANDLY_VERCEL: process.env.VERCEL ?? '',
+    LANDLY_VERCEL_ENV: process.env.VERCEL_ENV ?? '',
+  },
   // The member page was /account until it became /profile; old links,
   // bookmarks and emails keep working.
   async redirects() {

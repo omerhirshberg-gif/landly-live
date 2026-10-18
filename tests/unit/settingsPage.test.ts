@@ -35,7 +35,7 @@ describe('/settings', () => {
   it.each(['en', 'he'] as const)('has a back button and a centred title (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const t = translations[lang]
-    expect(html).toMatch(new RegExp(`<div class="grid grid-cols-\\[44px_1fr_44px\\][^"]*"><button type="button" aria-label="${t.settings_back}"`))
+    expect(html).toMatch(new RegExp(`<div class="grid grid-cols-\\[48px_1fr_48px\\][^"]*"><button type="button" aria-label="${t.settings_back}"`))
     expect(html).toContain('fa-chevron-left rtl:-scale-x-100')
     expect(html).toMatch(new RegExp(`<h1 class="text-center [^"]*">${t.nav_settings_heading}</h1><span aria-hidden="true"></span>`))
   })

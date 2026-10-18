@@ -2,14 +2,18 @@
 
 import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
+import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
-import VoucherQRCode from './VoucherQRCode'
-import VoucherTerms from './VoucherTerms'
+import RedemptionBadge from '@/components/discover/RedemptionBadge'
+import VoucherThumb from './VoucherThumb'
 
 type ActiveVoucher = VoucherDocument & { id: string }
 
-// My Perks on /member: each active voucher as a scannable pass. The page
-// owns the live list (shared with the stats row); null while it loads.
+// My Perks on /member: each active voucher as a compact card with the
+// offer's thumbnail on the start side. Tapping it opens the voucher's own
+// page (app/member/vouchers/[voucherId]), where the QR code and the numeric
+// code each stay hidden until tapped. The page owns the live list
+// (shared with the stats row); null while it loads.
 export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | null }) {
   const { t } = useLang()
 
@@ -37,26 +41,49 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   }
 
   return (
-    <div className="space-y-4">
+    <ul className="mx-auto max-w-xl space-y-3">
       {vouchers.map((voucher) => (
-        <div key={voucher.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{voucher.businessName}</div>
-          <div className="font-bold text-slate-900 mb-4">{voucher.offerTitle}</div>
-          <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-slate-100 pt-4">
-            <VoucherQRCode voucherId={voucher.id} />
-            <div className="text-center sm:text-start">
-              <div className="text-xs text-slate-500 mb-1">{t('voucher_redemption_code_label')}</div>
-              <div className="text-2xl font-black text-slate-900 tracking-[0.2em]" dir="ltr">{voucher.redemptionCode}</div>
-              <p className="text-xs text-slate-500 mt-2 max-w-[220px]">{t('voucher_qr_label')}</p>
-            </div>
-          </div>
-          {(voucher.expiresAt || voucher.redemptionTerms) && (
-            <div className="border-t border-slate-100 mt-4 pt-4">
-              <VoucherTerms voucher={voucher} />
-            </div>
-          )}
-        </div>
+        <li key={voucher.id}>
+          <VoucherCard voucher={voucher} />
+        </li>
       ))}
-    </div>
+    </ul>
+  )
+}
+
+// The whole card is the link to the voucher page; the pill at its foot only
+// says what tapping does. It lifts on hover only on devices that really hover,
+// and presses in slightly on touch.
+function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
+  const { t, lang } = useLang()
+  const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < Date.now()
+
+  return (
+    <Link
+      href={`/member/vouchers/${encodeURIComponent(voucher.id)}`}
+      className="group block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-[box-shadow,transform,border-color] duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-200 [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+    >
+      <div className="flex items-start gap-3 sm:gap-4">
+        <VoucherThumb voucher={voucher} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-base font-bold leading-snug text-[#0B1B3D]" dir="auto">{voucher.businessName}</div>
+          <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-[#475569]" dir="auto">{voucher.offerTitle}</h3>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <RedemptionBadge method={voucher.redemptionMethod} />
+            {voucher.expiresAt && (
+              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
+                <i className={`fa-regular ${expired ? 'fa-calendar-xmark' : 'fa-calendar-check'}`} aria-hidden="true"></i>
+                <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <span className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-bold text-white shadow-md transition-colors [@media(hover:hover)]:group-hover:bg-brandDark">
+        <i className="fa-solid fa-ticket" aria-hidden="true"></i>
+        <span>{t('voucher_show_button')}</span>
+        <i className="fa-solid fa-chevron-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+      </span>
+    </Link>
   )
 }

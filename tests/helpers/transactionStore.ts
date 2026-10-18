@@ -28,7 +28,13 @@ export class TransactionStore {
   read(path: string): DocumentData | undefined { return clone(this.records.get(path)) }
   snapshot() { return clone(Object.fromEntries(this.records)) }
   count(collection: string) { return [...this.records.keys()].filter((key) => key.startsWith(`${collection}/`)).length }
-  private ref(path: string) { return { path, id: path.split('/').at(-1)! } }
+  private ref(path: string) {
+    return {
+      path, id: path.split('/').at(-1)!,
+      // A plain read outside any transaction.
+      get: async () => { const value = this.read(path); return { exists: value !== undefined, data: () => value } },
+    }
+  }
 
   readonly db = {
     collection: (name: string) => ({ doc: (id: string) => this.ref(`${name}/${id}`) }),
@@ -36,7 +42,7 @@ export class TransactionStore {
       for (let retry = 0; retry < 10; retry++) {
         this.attempts++
         const reads = new Map<string, number>()
-        const writes: { kind: 'create' | 'update'; path: string; value: DocumentData }[] = []
+        const writes: { kind: 'create' | 'set' | 'update'; path: string; value: DocumentData }[] = []
         const tx = {
           get: async (ref: { path: string }) => {
             if (writes.length) throw new Error('Reads must precede writes')
@@ -45,6 +51,7 @@ export class TransactionStore {
             return { exists: value !== undefined, data: () => value }
           },
           create: (ref: { path: string }, value: DocumentData) => { writes.push({ kind: 'create', path: ref.path, value }) },
+          set: (ref: { path: string }, value: DocumentData) => { writes.push({ kind: 'set', path: ref.path, value }) },
           update: (ref: { path: string }, value: DocumentData) => { writes.push({ kind: 'update', path: ref.path, value }) },
         }
         const result = await work(tx)
@@ -56,6 +63,8 @@ export class TransactionStore {
         for (const write of writes) {
           if (write.kind === 'create') {
             if (next.has(write.path)) throw new Error('Already exists')
+            next.set(write.path, clone(write.value))
+          } else if (write.kind === 'set') {
             next.set(write.path, clone(write.value))
           } else {
             if (!next.has(write.path)) throw new Error('Missing update target')

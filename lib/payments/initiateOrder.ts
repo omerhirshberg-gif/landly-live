@@ -1,8 +1,34 @@
 import 'server-only'
-import { Firestore, Timestamp } from 'firebase-admin/firestore'
+import { type DocumentData, Firestore, Timestamp } from 'firebase-admin/firestore'
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { normalizeRedemptionTerms, normalizeValidityDays } from './voucherTerms'
+import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
+
+// Never paid and never issued a voucher: the only orders a sandbox may replace.
+function isUnpaid(order: DocumentData, uid: string, offerId: string): boolean {
+  return (order.status === 'pending' || order.status === 'failed')
+    && order.userId === uid && order.offerId === offerId
+    && order.paidAt === null && order.voucherId === null
+}
+
+// Same member, offer and terminal, still pending and untouched by any payment.
+function isRestartable(order: DocumentData, uid: string, offerId: string, terminal: string): boolean {
+  return order.status === 'pending' && order.userId === uid && order.offerId === offerId
+    && order.terminal === terminal && order.currency === 'ILS'
+    && order.tranzilaTxnId === null && order.paidAt === null && order.voucherId === null
+    && isDocumentId(order.businessId) && order.createdAt instanceof Timestamp
+}
+
+// A reload of this exact pending order: same member, offer, terminal, consistent price.
+function isResumable(order: DocumentData, uid: string, offerId: string, terminal: string): boolean {
+  if (!isRestartable(order, uid, offerId, terminal)) return false
+  try {
+    return amountInAgorot(order.amount) === order.amountAgorot
+  } catch {
+    return false
+  }
+}
 
 /** A stored pre-discount price, or null when there's none worth showing. */
 function originalPriceOf(value: unknown, amount: number): number | null {
@@ -14,12 +40,17 @@ function originalPriceOf(value: unknown, amount: number): number | null {
 // webhook issues even if the offer is edited meanwhile. `acceptTerms` comes
 // from the Pay button, after the Terms/Refund checkbox: it stamps
 // termsAcceptedAt once on the pending order and changes nothing else.
+//
+// `sandbox` is passed only for local dev sandbox orders (lib/payments/devSandbox.ts):
+// an unpaid order that can't be resumed (a declined test payment, an older
+// sandbox terminal), or any unpaid order when `restart` is set, is archived to
+// supersededOrders and replaced. Without it, nothing is ever reopened.
 export async function initiateOrder(
   db: Firestore,
   uid: string,
   offerId: string,
   terminal: string,
-  { acceptTerms = false }: { acceptTerms?: boolean } = {}
+  { acceptTerms = false, sandbox }: { acceptTerms?: boolean; sandbox?: { restart: boolean } } = {}
 ) {
   if (!isDocumentId(uid) || !isDocumentId(offerId) || !isDocumentId(`${uid}_${offerId}`)) {
     throw new PaymentError('Invalid offer or user ID.', 400)
@@ -34,12 +65,13 @@ export async function initiateOrder(
     ])
     if (customerBusinessSnap.exists) throw new PaymentError('Business accounts cannot purchase customer offers.', 403)
     if (voucherSnap.exists) throw new PaymentError("You've already claimed this offer.")
-    if (orderSnap.exists) {
-      const order = orderSnap.data()!
-      if (order.status !== 'pending' || order.userId !== uid || order.offerId !== offerId
-        || order.terminal !== terminal || order.currency !== 'ILS'
-        || order.tranzilaTxnId !== null || order.paidAt !== null || order.voucherId !== null
-        || !isDocumentId(order.businessId) || !(order.createdAt instanceof Timestamp)) {
+    const existing = orderSnap.exists ? orderSnap.data()! : null
+    const superseded = existing && sandbox && isUnpaid(existing, uid, offerId)
+      && (sandbox.restart || !isResumable(existing, uid, offerId, terminal))
+      ? existing : null
+    if (existing && !superseded) {
+      const order = existing
+      if (!isRestartable(order, uid, offerId, terminal)) {
         throw new PaymentError('Existing order cannot be restarted; reconciliation is required.')
       }
       if (amountInAgorot(order.amount) !== order.amountAgorot) {
@@ -80,15 +112,26 @@ export async function initiateOrder(
     const originalPrice = originalPriceOf(offer.originalPrice, amount)
     const validityDays = normalizeValidityDays(offer.validityDays)
     const redemptionTerms = normalizeRedemptionTerms(offer.redemptionTerms)
+    const redemptionMethod = normalizeRedemptionMethod(offer.redemptionMethod)
+    const redemptionInstructions = normalizeRedemptionInstructions(offer.redemptionInstructions)
     const now = Timestamp.now()
-    tx.create(orderRef, {
+    const newOrder = {
       userId: uid, offerId, businessId: offer.businessId,
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
-      validityDays, redemptionTerms,
+      validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
       status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
-    })
+    }
+    if (superseded) {
+      tx.create(db.collection('supersededOrders').doc(`${orderRef.id}_${now.toMillis()}`), {
+        ...superseded, orderId: orderRef.id, status: 'superseded', previousStatus: superseded.status, supersededAt: now,
+      })
+      // The order id is reused, so the replacement overwrites rather than merges.
+      tx.set(orderRef, newOrder)
+    } else {
+      tx.create(orderRef, newOrder)
+    }
     return {
       orderId: orderRef.id, amount, currency: 'ILS' as const, originalPrice,
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',

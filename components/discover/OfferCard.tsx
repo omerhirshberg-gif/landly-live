@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
@@ -8,68 +7,114 @@ import { useWishlist } from '@/lib/firebase/useWishlist'
 import { CATEGORY_TILES } from '@/lib/categories'
 import { getOfferDiscountPercent, type OfferDocument } from '@/lib/firebase/offers'
 import { formatPrice } from '@/lib/format'
+import DiscountBadge from './DiscountBadge'
+import PerkImage from './PerkImage'
+import RedemptionBadge from './RedemptionBadge'
 
-export default function OfferCard({ offer, showWishlistButton = false }: { offer: OfferDocument; showWishlistButton?: boolean }) {
+/**
+ * The perk feeds (/categories results, category folders, New, Bestsellers, Wishlist):
+ * one full-width card per row on phones, then two and three columns.
+ */
+export const OFFER_FEED_GRID = 'grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3'
+
+interface OfferCardProps {
+  offer: OfferDocument
+  showWishlistButton?: boolean
+  /** 'rail': fixed width in a horizontal scroller. 'grid': fills its grid cell. */
+  layout?: 'rail' | 'grid'
+  /** The category pill on the photo. Off in a list already scoped to one category, where every card would repeat it. */
+  showCategoryBadge?: boolean
+}
+
+// A perk: photo (or branded fallback) with its category badge, then the
+// business, the offer, where and how it's redeemed, and the price. The whole
+// card is the link; the footer line only says what tapping does. The lift on
+// hover is limited to devices that really hover, so a tap never leaves a
+// phone's card stuck raised. Compact, so a phone's feed shows more than one
+// perk per screen: a 2:1 photo, tight padding, and the price sharing one row
+// with the CTA. Same anatomy as the Expo app's OfferCard.
+export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', showCategoryBadge = true }: OfferCardProps) {
   const { t } = useLang()
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
-  const [imgError, setImgError] = useState(false)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
-  const showImage = !!offer.imageUrl && !imgError
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
+  const saved = isWishlisted(offer.id)
 
   return (
     <Link
       href={`/offers/${offer.id}`}
-      className="flex-shrink-0 w-[180px] sm:w-[200px] bg-white border border-slate-100 rounded-2xl overflow-hidden hover:border-brand hover:shadow-md transition block"
+      className={`group flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-[#CBD5E1] [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0 ${
+        layout === 'grid' ? 'w-full' : 'w-[220px] flex-shrink-0 sm:w-[240px]'
+      }`}
     >
-      <div className="relative aspect-[4/3] bg-slate-50 flex items-center justify-center">
-        {showImage ? (
-          // Pasted external links (Drive/Imgur/etc.), not a whitelisted domain — plain <img> avoids next/image's remote-pattern config.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={offer.imageUrl} alt={offer.title} onError={() => setImgError(true)} className="w-full h-full object-cover" />
-        ) : (
-          <i className="fa-regular fa-image text-3xl text-slate-300" aria-hidden="true"></i>
-        )}
-        {discount > 0 && (
-          <span className="absolute bottom-2.5 start-2.5 bg-brand text-white text-[11px] font-extrabold tracking-wide px-2 py-1 rounded-lg shadow-sm">
-            {t('offer_percent_off').replace('{n}', String(discount))}
-          </span>
-        )}
-        {tile && (
-          <span className="absolute top-2.5 start-2.5 bg-white/95 text-[10px] font-bold text-slate-500 px-2 py-0.5 rounded-full shadow-sm">
+      {/* A full-width card on a phone gets a wide photo (2:1, capped at 180px, as in the Expo app) so the image doesn't crowd out the text. */}
+      <div className={`relative overflow-hidden bg-[#F0F7FF] ${layout === 'grid' ? 'aspect-[2/1] max-h-[180px] md:aspect-[16/10] md:max-h-none' : 'aspect-[4/3]'}`}>
+        <PerkImage src={offer.imageUrl} alt={offer.title} category={offer.category} businessName={offer.businessName} />
+        {showCategoryBadge && tile && (
+          <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0B1B3D] shadow-sm">
             {t(tile.labelKey)}
           </span>
         )}
+        <DiscountBadge percent={discount} className="absolute bottom-2.5 start-2.5" />
         {showWishlistButton && user && (
           <button
+            type="button"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
               toggleWishlist(offer.id)
             }}
-            aria-pressed={isWishlisted(offer.id)}
-            aria-label={isWishlisted(offer.id) ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-            className={`tap-target absolute top-2.5 end-2.5 w-8 h-8 flex items-center justify-center rounded-full shadow-sm transition ${isWishlisted(offer.id) ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-500 hover:text-red-500'}`}
+            aria-pressed={saved}
+            aria-label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
+            // A 48px tap target around a 36px visible circle.
+            className="absolute top-0 end-0 flex h-12 w-12 items-center justify-center"
           >
-            <i className={`${isWishlisted(offer.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-xs`} aria-hidden="true"></i>
+            <span
+              className={`flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors ${
+                saved ? 'bg-red-500 text-white' : 'bg-white/95 text-[#475569] [@media(hover:hover)]:hover:text-red-500'
+              }`}
+            >
+              <i className={`${saved ? 'fa-solid' : 'fa-regular'} fa-heart text-sm`} aria-hidden="true"></i>
+            </span>
           </button>
         )}
       </div>
-      <div className="p-2.5">
-        <div className="font-bold text-slate-900 text-xs truncate">{offer.businessName}</div>
-        {offer.location && <div className="text-[11px] text-slate-400 mt-0.5 truncate">{offer.location}</div>}
-        <div className="text-xs text-slate-700 mt-1.5 truncate">{offer.title}</div>
-        <div className="flex items-center gap-1 mt-2" dir="ltr">
-          <span className="text-sm font-black text-brand">{formatPrice(offer.offerPrice)}</span>
-          {offer.originalPrice > offer.offerPrice && (
-            <span className="text-[11px] text-slate-400 line-through">{formatPrice(offer.originalPrice)}</span>
+
+      <div className={`flex flex-1 flex-col ${layout === 'grid' ? 'p-3 sm:p-4' : 'p-3.5 sm:p-4'}`}>
+        <div className="truncate text-base font-bold leading-snug text-[#0B1B3D]" dir="auto">
+          {offer.businessName}
+        </div>
+        {/* A rail keeps two lines reserved so neighbouring cards line up; a grid row stretches its cards anyway. */}
+        <p className={`mt-0.5 line-clamp-2 text-sm leading-snug text-[#475569] ${layout === 'grid' ? '' : 'min-h-[2.5em]'}`} dir="auto">
+          {offer.title}
+        </p>
+
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <RedemptionBadge method={offer.redemptionMethod} />
+          {offer.location && (
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] text-[#94A3B8]">
+              <i className="fa-solid fa-location-dot text-[10px]" aria-hidden="true"></i>
+              <span className="truncate" dir="auto">{offer.location}</span>
+            </span>
           )}
         </div>
-        {/* The whole card is the link; this line just says what tapping does. */}
-        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 text-xs font-bold text-brand">
-          <span>{t('offer_view_cta')}</span>
-          <i className="fa-solid fa-arrow-right text-[10px] rtl:-scale-x-100" aria-hidden="true"></i>
+
+        {/* Price at the start, "View deal" at the end, on one row. */}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-2.5">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2" dir="ltr">
+            <span className="text-lg font-extrabold tracking-tight text-[#0038B8]">{formatPrice(offer.offerPrice)}</span>
+            {discount > 0 && (
+              <span className="text-sm text-[#94A3B8] line-through decoration-[#94A3B8]/70">{formatPrice(offer.originalPrice)}</span>
+            )}
+          </div>
+          <span className="flex flex-shrink-0 items-center gap-1.5 text-sm font-semibold text-[#0038B8]">
+            <span>{t('offer_view_cta')}</span>
+            <i
+              className="fa-solid fa-arrow-right text-[11px] transition-transform rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5"
+              aria-hidden="true"
+            ></i>
+          </span>
         </div>
       </div>
     </Link>

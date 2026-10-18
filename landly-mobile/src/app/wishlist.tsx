@@ -27,7 +27,11 @@ export default function WishlistScreen() {
   const [pending, setPending] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const cacheRef = useRef(cache)
-  cacheRef.current = cache
+  // Kept current from an effect (render must not write refs); declared first,
+  // so it runs before the lookup effect below in the same commit.
+  useEffect(() => {
+    cacheRef.current = cache
+  }, [cache])
 
   const fetchInto = async (ids: string[], base: Map<string, OfferDocument | null>) => {
     const found = await getOffersByIds(ids)
