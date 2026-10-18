@@ -15,8 +15,8 @@ const lanAddresses = Object.values(os.networkInterfaces())
 // first-party on browsers that partition third-party storage (see
 // lib/firebase/authDomain.ts). Always the project's firebaseapp.com host,
 // never NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, which may name this site itself.
-const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'landly-be752'
-const firebaseAuthOrigin = `https://${firebaseProjectId}.firebaseapp.com`
+// No project configured, no proxy -- never a default project, which would
+// send local sign-ins to production.
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -27,6 +27,9 @@ const nextConfig = {
     return [{ source: '/account', destination: '/profile', permanent: true }]
   },
   async rewrites() {
+    const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    if (!firebaseProjectId) return []
+    const firebaseAuthOrigin = `https://${firebaseProjectId}.firebaseapp.com`
     return [
       { source: '/__/auth/:path*', destination: `${firebaseAuthOrigin}/__/auth/:path*` },
       { source: '/__/firebase/:path*', destination: `${firebaseAuthOrigin}/__/firebase/:path*` },

@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   setPersistence: vi.fn(), popup: vi.fn(), redirect: vi.fn(), redirectResult: vi.fn(), finish: vi.fn(),
@@ -227,14 +227,22 @@ describe('resolveAuthDomain', () => {
 })
 
 describe('next.config.js', () => {
+  const config = createRequire(import.meta.url)('../../next.config.js')
+  afterEach(() => vi.unstubAllEnvs())
+
   it('proxies the auth helper paths to the project firebaseapp.com host, keeping the path', async () => {
-    const config = createRequire(import.meta.url)('../../next.config.js')
+    vi.stubEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'landly-dev')
     const rewrites = await config.rewrites()
     expect(rewrites).toEqual(
       expect.arrayContaining([
-        { source: '/__/auth/:path*', destination: 'https://landly-be752.firebaseapp.com/__/auth/:path*' },
-        { source: '/__/firebase/:path*', destination: 'https://landly-be752.firebaseapp.com/__/firebase/:path*' },
+        { source: '/__/auth/:path*', destination: 'https://landly-dev.firebaseapp.com/__/auth/:path*' },
+        { source: '/__/firebase/:path*', destination: 'https://landly-dev.firebaseapp.com/__/firebase/:path*' },
       ])
     )
+  })
+
+  it('adds no proxy (and never defaults to production) without a project ID', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID', '')
+    expect(await config.rewrites()).toEqual([])
   })
 })

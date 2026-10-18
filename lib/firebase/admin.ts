@@ -2,6 +2,7 @@ import 'server-only'
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { assertDevAdminCredentials } from './envGuard'
 
 // Service-account credentials bypass every Firestore Security Rule -- this
 // file must never be imported by client code. The 'server-only' import
@@ -16,17 +17,21 @@ let app: App | undefined
 
 function getAdminApp(): App {
   if (!app) {
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+    // Env files can't hold real newlines, so the key is stored with
+    // literal "\n" escapes and restored here.
+    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    assertDevAdminCredentials({
+      projectId,
+      clientEmail,
+      privateKey,
+      clientProjectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      isDevelopment: process.env.NODE_ENV === 'development',
+    })
     app = getApps().length
       ? getApps()[0]!
-      : initializeApp({
-          credential: cert({
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            // Env files can't hold real newlines, so the key is stored with
-            // literal "\n" escapes and restored here.
-            privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          }),
-        })
+      : initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
   }
   return app
 }
