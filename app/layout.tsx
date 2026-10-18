@@ -8,9 +8,26 @@ import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
 import RouteTracker from '@/components/layout/RouteTracker'
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '@/lib/config'
 
+// The share image comes from app/opengraph-image.tsx; X falls back to it.
 export const metadata: Metadata = {
-  title: 'Landly — Live Israel Like a Local',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: '%s · Landly' },
+  description: SITE_DESCRIPTION,
+  applicationName: 'Landly',
+  openGraph: {
+    type: 'website',
+    siteName: 'Landly',
+    locale: 'en_US',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 }
 
 export default function RootLayout({

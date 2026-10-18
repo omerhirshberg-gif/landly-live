@@ -7,7 +7,7 @@ import PrivacyPolicy from '@/components/legal/PrivacyPolicy'
 // A server component: the whole policy is in the first HTML response, so it
 // reads without JavaScript (in-app browsers, Google's OAuth reviewers).
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Landly',
+  title: 'Privacy Policy',
   description:
     'How Landly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google.',
   alternates: { canonical: 'https://www.golandly.com/privacy' },

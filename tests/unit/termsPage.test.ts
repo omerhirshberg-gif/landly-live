@@ -37,14 +37,14 @@ describe('terms page', () => {
   })
 
   it('declares an indexable canonical URL', () => {
-    expect(metadata.title).toBe('Terms and Conditions — Landly')
+    expect(metadata.title).toBe('Terms and Conditions')
     expect(metadata.alternates?.canonical).toBe('https://www.golandly.com/terms')
     expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 
-  it('has the five legal sections in order', () => {
+  it('has the six legal sections in order', () => {
     const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1])
-    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers and Deals', '4. Governing Law', '5. Seller and Contact'])
+    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers and Deals', '4. Closing Your Account', '5. Governing Law', '6. Seller and Contact'])
   })
 
   it('identifies the title, date, seller and contact', () => {
@@ -76,14 +76,25 @@ describe('terms page', () => {
     expect(text).toContain('Tel Aviv-Yafo')
   })
 
-  it('has one h1 and a heading for each of its five sections', () => {
-    expect(html.match(/<h1[ >]/g)).toHaveLength(1)
-    expect(html.match(/<section[ >]/g)).toHaveLength(5)
-    expect(html.match(/<h2[ >]/g)).toHaveLength(5)
+  it('explains account closure: where to ask, the 30-day turnaround and unredeemed vouchers', () => {
+    expect(text).toContain('How to close: You can ask us to close your Landly account')
+    expect(text).toContain('Settings → Delete Account')
+    expect(text).toContain('Within 30 days: We delete your account and personal data')
+    expect(text).toContain('Unredeemed vouchers: Closing your account cancels any vouchers you have not redeemed')
+    expect(text).toMatch(/14-day cancellation period, cancel it as described in section 2/)
   })
 
-  it('carries no sign-up CTA or links', () => {
-    expect(html).not.toMatch(/<a[ >]|<button[ >]/)
+  it('has one h1 and a heading for each of its six sections', () => {
+    expect(html.match(/<h1[ >]/g)).toHaveLength(1)
+    expect(html.match(/<section[ >]/g)).toHaveLength(6)
+    expect(html.match(/<h2[ >]/g)).toHaveLength(6)
+  })
+
+  it('carries no sign-up CTA, and its only link goes to account deletion', () => {
+    expect(html).not.toMatch(/<button[ >]/)
+    const hrefs = [...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1])
+    expect(hrefs).toEqual(['/settings/delete-account'])
+    expect(text).toContain('Go to Delete Account')
     expect(text).not.toMatch(/Join Now|Sign Up/)
   })
 
