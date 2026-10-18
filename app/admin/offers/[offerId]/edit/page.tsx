@@ -4,8 +4,14 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
-import Card from '@/components/admin/Card'
+import { CardSkeletons } from '@/components/admin/Card'
+import EmptyState from '@/components/admin/EmptyState'
+import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
+import PageHeader from '@/components/admin/PageHeader'
+import StatusBadge from '@/components/admin/StatusBadge'
+import { PRIMARY_BUTTON } from '@/components/admin/formStyles'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
@@ -22,6 +28,8 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
     isBestseller: offer.isBestseller,
     validityDays: String(offer.validityDays),
     redemptionTerms: offer.redemptionTerms,
+    redemptionMethod: offer.redemptionMethod,
+    redemptionInstructions: offer.redemptionInstructions,
   }
 }
 
@@ -90,58 +98,71 @@ export default function EditOfferPage() {
     }
   }
 
-  if (offer === undefined) return <p className="text-slate-400">Loading…</p>
-  if (offer === null) return <p className="text-slate-400">Offer not found.</p>
+  if (offer === undefined) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        <CardSkeletons count={1} className="h-24" />
+        <CardSkeletons count={1} className="h-96" />
+      </div>
+    )
+  }
+  if (offer === null) {
+    return (
+      <div className="max-w-3xl">
+        <BackLink href="/admin/offers">Back to offers</BackLink>
+        <EmptyState icon="fa-tags" title="Offer not found" description="It may have been deleted." />
+      </div>
+    )
+  }
 
   const backHref = `/admin/businesses/${offer.businessId}`
 
   return (
-    <div className="max-w-2xl">
-      <BackLink href={backHref}>Back</BackLink>
-      <h1 className="text-2xl font-black text-white mb-6">Edit offer</h1>
+    <div className="max-w-3xl">
+      <BackLink href={backHref}>Back to business</BackLink>
+      <PageHeader title="Edit offer" subtitle={<span dir="auto">{offer.title}</span>} />
 
-      {error && (
-        <div className="mb-4 text-sm font-semibold text-red-400 bg-red-950/40 border border-red-900 rounded-xl px-4 py-3">
-          {error}
-        </div>
-      )}
+      {error && <Alert className="mb-6">{error}</Alert>}
 
-      <Card className="p-6 mb-6">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-          Business
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Business</div>
-            <div className="text-white font-semibold">{offer.businessName}</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Category</div>
-            <div className="text-white font-semibold">{offer.category}</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Created</div>
-            <div className="text-white font-semibold">{offer.createdAt ? offer.createdAt.toLocaleDateString() : '—'}</div>
-          </div>
-        </div>
-        <p className="text-xs text-slate-500 mt-4">
-          Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
-        </p>
-      </Card>
+      <div className="space-y-6">
+        <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
+              <dd className="mt-1 font-semibold text-[#0B1B3D]" dir="auto">{offer.businessName}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Category</dt>
+              <dd className="mt-1">
+                <StatusBadge tone="blue">
+                  <span dir="auto">{offer.category}</span>
+                </StatusBadge>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Created</dt>
+              <dd className="mt-1 font-semibold text-[#0B1B3D]">{offer.createdAt ? offer.createdAt.toLocaleDateString() : '—'}</dd>
+            </div>
+          </dl>
+          <p className="mt-4 text-xs text-[#94A3B8]">
+            Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
+          </p>
+        </FormSection>
 
-      {form && (
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <Card className="p-6">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-              Offer
-            </h2>
-            <OfferFormFields value={form} onChange={updateForm} />
-          </Card>
-          <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
-            {submitting ? 'Saving…' : 'Save changes'}
-          </button>
-        </form>
-      )}
+        {form && (
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <FormSection icon="fa-tags" title="Offer" description="Changes apply to new purchases; existing vouchers keep their terms.">
+              <OfferFormFields value={form} onChange={updateForm} />
+            </FormSection>
+            <FormActions>
+              <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>
+                {submitting && <ButtonSpinner />}
+                {submitting ? 'Saving…' : 'Save changes'}
+              </button>
+            </FormActions>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

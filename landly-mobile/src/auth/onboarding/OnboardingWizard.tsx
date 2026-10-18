@@ -116,8 +116,11 @@ export default function OnboardingWizard({
     if (step !== 'done') saveOnboardingDraft(uid, { step, ...data })
   }, [uid, step, data])
 
+  // Deliberately a second commit: the outgoing card must first commit with the
+  // new direction's `exiting` (see `nav` above), so this can't move into render.
   useEffect(() => {
     if (!nav) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the step change must follow a committed render
     setError(null)
     setStep(nav.target)
     setNav(null)

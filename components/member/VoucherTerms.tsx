@@ -5,7 +5,7 @@ import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 
 // A voucher's validity and redemption terms, as frozen when it was bought.
-// Shared by the wallet (PerksTab) and the checkout success page; the mobile
+// Shared by the voucher page and the checkout success page; the mobile
 // VoucherPass shows the same two lines.
 export default function VoucherTerms({ voucher }: { voucher: Pick<VoucherDocument, 'expiresAt' | 'redemptionTerms'> }) {
   const { t, lang } = useLang()

@@ -191,6 +191,29 @@ describe('frozen purchase terms', () => {
     expect(voucher.expiresAt.toMillis() - voucher.takenAt.toMillis()).toBe(30 * DAY)
   })
 
+  it('freezes the redemption method and instructions onto the order and then the voucher', async () => {
+    const db = store(false)
+    db.seed('offers/offer', { ...offer, redemptionMethod: 'phone_booking', redemptionInstructions: ' Call 03-555-1234 ' })
+    await initiateOrder(db.db, 'user', 'offer', terminal)
+    expect(db.read('orders/user_offer')).toMatchObject({ redemptionMethod: 'phone_booking', redemptionInstructions: 'Call 03-555-1234' })
+    db.seed('offers/offer', { ...offer, redemptionMethod: 'online', redemptionInstructions: 'Edited' })
+    await claimOfferForOrder(db.db, event)
+    expect(db.read('vouchers/user_offer')).toMatchObject({ redemptionMethod: 'phone_booking', redemptionInstructions: 'Call 03-555-1234' })
+  })
+
+  it('defaults an offer without a method to in-store', async () => {
+    const db = store(false)
+    await initiateOrder(db.db, 'user', 'offer', terminal)
+    expect(db.read('orders/user_offer')).toMatchObject({ redemptionMethod: 'in_store', redemptionInstructions: '' })
+  })
+
+  it('gives a legacy order (no frozen method) the offer\'s method', async () => {
+    const db = store()
+    db.seed('offers/offer', { ...offer, redemptionMethod: 'online', redemptionInstructions: 'Use the code at checkout' })
+    await claimOfferForOrder(db.db, event)
+    expect(db.read('vouchers/user_offer')).toMatchObject({ redemptionMethod: 'online', redemptionInstructions: 'Use the code at checkout' })
+  })
+
   it('gives a legacy order (no frozen terms) the offer\'s, and 180 days by default', async () => {
     const db = store()
     await claimOfferForOrder(db.db, event)

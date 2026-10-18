@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
+import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
+import { SearchInput } from '@/components/admin/ListToolbar'
+import PageHeader from '@/components/admin/PageHeader'
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 
 interface Business {
@@ -115,105 +121,122 @@ function NewOfferForm() {
 
   if (result) {
     return (
-      <div>
+      <div className="max-w-2xl">
         <BackLink href={backHref}>Back</BackLink>
-        <h1 className="text-2xl font-black text-white mb-1">Offer created</h1>
-        <Card className="p-5 space-y-3 mb-6">
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Business</div>
-            <div className="text-white font-semibold">{result.businessName}</div>
+        <Card className="overflow-hidden">
+          <div className="flex items-start gap-4 border-b border-[#E2E8F0] bg-[#ECFDF5] px-5 py-5 sm:px-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <i className="fa-solid fa-check text-lg" aria-hidden="true" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#0B1B3D]">Offer created</h1>
+              <p className="mt-0.5 text-sm text-emerald-800">It&apos;s live for members now.</p>
+            </div>
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-500 uppercase">Offer</div>
-            <div className="text-white font-semibold">{result.offerTitle}</div>
-            <div className="text-slate-500 text-xs font-mono">{result.offerId}</div>
-          </div>
+          <dl className="divide-y divide-[#E2E8F0]">
+            <div className="px-5 py-4 sm:px-6">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
+              <dd className="mt-1 font-semibold text-[#0B1B3D]" dir="auto">{result.businessName}</dd>
+            </div>
+            <div className="px-5 py-4 sm:px-6">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Offer</dt>
+              <dd className="mt-1">
+                <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
+                <div className="font-mono text-xs text-[#94A3B8]">{result.offerId}</div>
+              </dd>
+            </div>
+          </dl>
         </Card>
-        <button
-          className="btn-secondary"
-          onClick={() => {
-            setOffer(emptyOffer)
-            setResult(null)
-          }}
-        >
-          Add another offer
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            className={PRIMARY_BUTTON}
+            onClick={() => {
+              setOffer(emptyOffer)
+              setResult(null)
+            }}
+          >
+            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+            Add another offer
+          </button>
+          <Link href={backHref} className={SECONDARY_BUTTON}>
+            Done
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <BackLink href={backHref}>Back</BackLink>
-      <h1 className="text-2xl font-black text-white mb-6">Add offer to existing business</h1>
+      <PageHeader title="Add offer to existing business" subtitle="Pick the business, then describe the perk." />
 
-      {(error || loadError) && (
-        <div className="mb-4 text-sm font-semibold text-red-400 bg-red-950/40 border border-red-900 rounded-xl px-4 py-3">
-          {error ?? loadError}
-        </div>
-      )}
+      {(error || loadError) && <Alert className="mb-6">{error ?? loadError}</Alert>}
 
-      <Card className="p-6 mb-6">
-        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-          Business
-        </h2>
-        {selected ? (
-          <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3.5">
-            <div>
-              <div className="text-white font-semibold">{selected.businessName}</div>
-              <div className="text-slate-500 text-xs">{selected.businessId}</div>
+      <div className="space-y-6">
+        <FormSection icon="fa-store" title="Business" description="Which business is offering this perk.">
+          {selected ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-[#0038B8]/20 bg-[#F0F7FF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{selected.businessName}</div>
+                <div className="text-xs text-[#475569]" dir="ltr">{selected.businessId}</div>
+              </div>
+              <button type="button" className={SECONDARY_BUTTON} onClick={() => setSelectedUid(null)}>
+                Change
+              </button>
             </div>
-            <button type="button" className="btn-secondary !min-h-0 !py-2 !px-4 text-sm" onClick={() => setSelectedUid(null)}>
-              Change
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <input
-              type="search"
-              aria-label="Search businesses"
-              className="inp inp-dark !py-3.5"
-              placeholder="Search by business name or ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              aria-label="Business"
-              size={6}
-              className="inp inp-dark"
-              value=""
-              onChange={(e) => setSelectedUid(e.target.value)}
-            >
-              <option value="" disabled>
-                {businesses === null
-                  ? 'Loading businesses…'
-                  : filtered.length === 0
-                    ? 'No businesses found'
-                    : `${filtered.length} business${filtered.length === 1 ? '' : 'es'}`}
-              </option>
-              {filtered.map((b) => (
-                <option key={b.uid} value={b.uid}>
-                  {b.businessName} ({b.businessId})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </Card>
+          ) : (
+            <div className="space-y-3">
+              <SearchInput label="Search businesses" placeholder="Search by business name or ID…" value={search} onChange={setSearch} />
+              <div className="max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-[#E2E8F0]" role="group" aria-label="Businesses">
+                {businesses === null ? (
+                  <p className="px-4 py-3 text-sm text-[#94A3B8]">Loading businesses…</p>
+                ) : filtered.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-[#94A3B8]">No businesses found</p>
+                ) : (
+                  <ul className="divide-y divide-[#E2E8F0]">
+                    {filtered.map((b) => (
+                      <li key={b.uid}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUid(b.uid)}
+                          className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-start transition-colors hover:bg-[#F8FAFC] focus-visible:bg-[#F0F7FF] focus-visible:outline-none"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold text-[#0B1B3D]" dir="auto">{b.businessName}</span>
+                            <span className="block text-xs text-[#94A3B8]" dir="ltr">{b.businessId}</span>
+                          </span>
+                          <i className="fa-solid fa-chevron-right text-xs text-[#CBD5E1] rtl:-scale-x-100" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {businesses !== null && filtered.length > 0 && (
+                <p className="text-xs text-[#94A3B8]">
+                  {filtered.length} business{filtered.length === 1 ? '' : 'es'}
+                </p>
+              )}
+            </div>
+          )}
+        </FormSection>
 
-      {selected && (
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <Card className="p-6">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wide mb-5 pb-3 border-b border-white/10">
-              Offer
-            </h2>
-            <OfferFormFields value={offer} onChange={updateOffer} />
-          </Card>
-          <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-70">
-            {submitting ? 'Creating…' : 'Create offer'}
-          </button>
-        </form>
-      )}
+        {selected && (
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <FormSection icon="fa-tags" title="Offer" description="The perk members will see.">
+              <OfferFormFields value={offer} onChange={updateOffer} />
+            </FormSection>
+            <FormActions>
+              <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>
+                {submitting && <ButtonSpinner />}
+                {submitting ? 'Creating…' : 'Create offer'}
+              </button>
+            </FormActions>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

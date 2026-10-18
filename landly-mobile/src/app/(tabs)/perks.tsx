@@ -119,7 +119,7 @@ export default function PerksScreen() {
       <FlatList
         data={visible}
         keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} />}
+        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={category === 'all'} />}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"

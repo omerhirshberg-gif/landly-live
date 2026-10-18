@@ -33,6 +33,8 @@ function offer(overrides: Partial<OfferDocument> & { id: string }): OfferDocumen
     claimedCount: 0,
     validityDays: 180,
     redemptionTerms: '',
+    redemptionMethod: 'in_store',
+    redemptionInstructions: '',
     ...overrides,
   }
 }

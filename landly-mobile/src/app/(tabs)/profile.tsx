@@ -121,10 +121,9 @@ function PhoneRow({ user, stored }: { user: User; stored: string }) {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(false)
 
-  // Once the re-read profile carries it, the stored value takes over again.
-  useEffect(() => {
-    if (saved !== null && stored === saved) setSaved(null)
-  }, [stored, saved])
+  // Once the re-read profile carries it, the stored value takes over again
+  // (adjusted during render, as React recommends for state that follows props).
+  if (saved !== null && stored === saved) setSaved(null)
 
   useEffect(() => {
     if (!notice) return

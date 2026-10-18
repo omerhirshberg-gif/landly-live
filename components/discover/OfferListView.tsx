@@ -1,9 +1,9 @@
 'use client'
 
 import { ReactNode, useEffect, useState } from 'react'
-import Link from 'next/link'
+import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
-import OfferCard from '@/components/discover/OfferCard'
+import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import { perksCountLabel } from '@/lib/categories'
 
@@ -46,13 +46,7 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
 
   return (
     <div className="folder-in max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      <Link
-        href="/categories"
-        className="tap-target -ms-2 inline-flex items-center gap-1 rounded-full pe-3 ps-2 text-sm font-semibold text-brand transition-colors hover:bg-brandLight mb-4"
-      >
-        <i aria-hidden="true" className="fa-solid fa-chevron-left text-xs rtl:-scale-x-100"></i>
-        <span>{t('cats_detail_back')}</span>
-      </Link>
+      <BackButton fallback="/categories" label={t('cats_detail_back')} className="mb-4" />
 
       <div className="flex items-center gap-3 sm:gap-4 mb-8">
         <span aria-hidden="true" className="flex h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-100 bg-white text-[32px] sm:text-4xl leading-none">
@@ -81,9 +75,9 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
           <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2.5 sm:gap-3 touch-pan-y touch-pinch-zoom">
+        <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
           {visibleOffers.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} />
+            <OfferCard key={offer.id} offer={offer} layout="grid" />
           ))}
         </div>
       )}

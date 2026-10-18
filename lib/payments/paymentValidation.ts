@@ -1,4 +1,5 @@
 import 'server-only'
+import { DEV_SANDBOX_TERMINAL, isPaymentSandboxEnabled } from './devSandbox'
 
 export class PaymentError extends Error {
   constructor(message: string, public readonly status: number = 409) {
@@ -17,6 +18,12 @@ export function paymentTerminal(): string {
     throw new PaymentError('Payment terminal is not configured.', 503)
   }
   return terminal
+}
+
+/** The terminal a new checkout uses: the real one, or the local dev sandbox's. */
+export function checkoutTerminal(): string {
+  if (!process.env.TRANZILA_TERMINAL && isPaymentSandboxEnabled()) return DEV_SANDBOX_TERMINAL
+  return paymentTerminal()
 }
 
 // Decimal parsing, never parseFloat or rounding: 10.005 is not a 10.01 payment.

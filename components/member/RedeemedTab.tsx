@@ -3,11 +3,13 @@
 import { useLang } from '@/lib/i18n/useLang'
 import { formatRedeemedDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
+import RedemptionBadge from '@/components/discover/RedemptionBadge'
+import VoucherThumb from './VoucherThumb'
 
 type RedeemedVoucher = VoucherDocument & { id: string }
 
-// Redeemed on /member: what each used voucher was and when the business
-// redeemed it. No QR, since it can't be used again (app: components/
+// Redeemed on /member: what each used voucher was -- with the offer's
+// thumbnail, muted -- and when the business redeemed it. No QR, since it can't be used again (app: components/
 // RedeemedPass.tsx). The page owns the live list; null while it loads.
 export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] | null }) {
   const { t, lang } = useLang()
@@ -27,20 +29,27 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="mx-auto max-w-xl space-y-3">
       {vouchers.map((voucher) => (
-        <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4">
-          <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700">
-            <i className="fa-solid fa-check text-sm" aria-hidden="true"></i>
-          </span>
+        <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:gap-4">
+          {/* Muted, with a check on its corner: this one's been used. */}
+          <div className="relative flex-shrink-0">
+            <VoucherThumb voucher={voucher} muted />
+            <span aria-hidden="true" className="absolute -bottom-1.5 -end-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-50 text-green-700 ring-2 ring-white">
+              <i className="fa-solid fa-check text-[11px]" aria-hidden="true"></i>
+            </span>
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-bold uppercase tracking-widest text-brand">{voucher.businessName}</div>
-            <div className="mt-0.5 line-clamp-2 break-words font-bold text-slate-900">{voucher.offerTitle}</div>
-            {voucher.redeemedAt && (
-              <div className="mt-1 text-[13px] text-slate-500">
-                {t('mobile_redeemed_on').replace('{date}', formatRedeemedDate(voucher.redeemedAt, lang))}
-              </div>
-            )}
+            <div className="truncate text-base font-bold leading-snug text-slate-700" dir="auto">{voucher.businessName}</div>
+            <div className="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-slate-500" dir="auto">{voucher.offerTitle}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <RedemptionBadge method={voucher.redemptionMethod} />
+              {voucher.redeemedAt && (
+                <span className="text-[13px] text-slate-500">
+                  {t('mobile_redeemed_on').replace('{date}', formatRedeemedDate(voucher.redeemedAt, lang))}
+                </span>
+              )}
+            </div>
           </div>
         </li>
       ))}

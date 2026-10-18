@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB } from '@shared/brand/onboardingMotion'
@@ -8,6 +8,7 @@ import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
+import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
 import SplashScreen from '../components/SplashScreen'
 import { LangProvider, useLang } from '../i18n/LangProvider'
@@ -57,10 +58,9 @@ function RootNavigator() {
   // nor the sign-in form flashes first. Later sign-ins hold the gate with
   // `checking` instead, so the navigator never unmounts once it's up.
   const known = !loading && (!verified || onboardingComplete !== null)
+  // A latch: once known, the navigator stays up (set during render, not in an effect).
   const [booted, setBooted] = useState(false)
-  useEffect(() => {
-    if (known) setBooted(true)
-  }, [known])
+  if (known && !booted) setBooted(true)
   const ready = booted || known
 
   // The splash plays its intro, waits for auth, hands over, then removes itself.
@@ -70,8 +70,9 @@ function RootNavigator() {
   return (
     <View style={[styles.root, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       <StatusBar style="dark" />
+      {/* Every pushed screen can be swiped back; the page-flip screens below add the full-screen drag. */}
       {ready && (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+        <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: colors.background } }}>
           <Stack.Protected guard={signedIn}>
             {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
             <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
@@ -81,6 +82,10 @@ function RootNavigator() {
             <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
             {/* So does the heart at the end of the Perks search row. */}
             <Stack.Screen name="wishlist" options={pageFlipOptions(isRtl)} />
+            {/* A My Pass card's "View Voucher" opens the voucher on its own screen. */}
+            <Stack.Screen name="voucher/[voucherId]" options={pageFlipOptions(isRtl)} />
+            {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
+            <Stack.Screen name="offer/[offerId]" options={pageFlipOptions(isRtl)} />
           </Stack.Protected>
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="(auth)" />
@@ -88,6 +93,7 @@ function RootNavigator() {
         </Stack>
       )}
       {!splashDone && <SplashScreen ready={ready} onDone={handleSplashDone} />}
+      {__DEV__ && <DevEnvironmentBadge />}
     </View>
   )
 }

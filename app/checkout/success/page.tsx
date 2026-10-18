@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
@@ -12,6 +13,7 @@ import { subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/voucher
 import { formatPrice, priceDifference } from '@/lib/format'
 import VoucherQRCode from '@/components/member/VoucherQRCode'
 import VoucherTerms from '@/components/member/VoucherTerms'
+import HowToRedeem from '@/components/offers/HowToRedeem'
 
 // Renders only from a live Firestore read of orders/{orderId} — never from
 // URL params — since payment confirmation happens asynchronously via the
@@ -68,7 +70,9 @@ function CheckoutSuccessContent() {
     <>
       <Navbar />
       <div className="pt-16 bg-slate-50 min-h-screen">
-        <div className="max-w-lg mx-auto px-5 sm:px-6 py-8 sm:py-10">
+        <div className="max-w-lg mx-auto px-5 sm:px-6 pt-4 pb-8 sm:pt-8 sm:pb-10">
+          {/* Never back into the payment step: always on to the member's passes. */}
+          <BackButton fallback="/member" label={t('success_back_to_account')} force className="mb-3" />
           <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-sm text-center">
             {/* One live region for every state, so the confirmation is announced as it arrives. */}
             <div role="status" aria-live="polite">
@@ -134,6 +138,9 @@ function CheckoutSuccessContent() {
                     <div>
                       <div className="text-xs text-slate-500 mb-1">{t('voucher_redemption_code_label')}</div>
                       <div className="text-2xl font-black text-slate-900 tracking-[0.2em]" dir="ltr">{voucher.redemptionCode}</div>
+                    </div>
+                    <div className="w-full text-start mt-2 border-t border-slate-100 pt-4">
+                      <HowToRedeem method={voucher.redemptionMethod} instructions={voucher.redemptionInstructions} variant="inline" />
                     </div>
                     <div className="w-full text-start mt-2">
                       <VoucherTerms voucher={voucher} />

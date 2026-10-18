@@ -75,14 +75,15 @@ const CARD_RISE = FROM.cardRise
 
 export default function LoginScreen() {
   const { t, lang, setLang } = useLang()
-  const { setChecking, onboarding, setOnboarding } = useSignInGate()
+  const { setChecking, setOnboarding } = useSignInGate()
   const { user, onboardingComplete, setOnboardingComplete } = useAuth()
   const keyboardVisible = useKeyboardVisible()
   const { phase, setHeroRect } = useEntrance()
   const reduced = useReducedMotion()
   const heroRef = useRef<View>(null)
   // Arriving after launch (e.g. after signing out) there's no entrance to play.
-  const entering = useRef(phase !== 'done').current
+  // Fixed at mount, like the shared values it seeds.
+  const [entering] = useState(() => phase !== 'done')
   const cardY = useSharedValue(entering && !reduced ? CARD_RISE : 0)
   const cardOpacity = useSharedValue(entering ? 0 : 1)
   const heroOpacity = useSharedValue(1)
