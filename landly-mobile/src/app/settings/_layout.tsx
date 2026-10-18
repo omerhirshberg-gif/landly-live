@@ -4,7 +4,8 @@ import { pageFlipOptions } from '../../lib/pageFlip'
 import { colors } from '../../theme'
 
 // The settings stack, pushed over the tabs from the Profile tab's gear:
-// Settings, then Language & Region (and its Country of origin list), Privacy
+// Settings, then Language & Region (and its Country of origin list), Customer
+// type (opened from Profile's Edit button), Privacy
 // & Security, Support & Help, Terms of Service and Privacy Policy, all native
 // screens. Every push is a page flip (lib/pageFlip.ts): a full-screen swipe
 // turns it back, in the reading direction of the chosen language. Each
@@ -22,6 +23,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="language-region" />
       <Stack.Screen name="origin" />
+      <Stack.Screen name="member-type" />
       <Stack.Screen name="privacy-security" />
       <Stack.Screen name="support" />
       <Stack.Screen name="terms" />

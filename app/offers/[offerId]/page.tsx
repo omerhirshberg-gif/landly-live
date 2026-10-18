@@ -16,6 +16,8 @@ import PerkImage from '@/components/discover/PerkImage'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem from '@/components/offers/HowToRedeem'
+import OfferGuestTeaser from '@/components/offers/OfferGuestTeaser'
+import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
 
@@ -157,8 +159,9 @@ export default function OfferDetailPage() {
                 <DiscountBadge percent={discount} size="lg" />
               </div>
 
+              {/* Guests get a short version; members the whole text. */}
               {offer.description && (
-                <p className="mt-5 whitespace-pre-line text-[15px] leading-relaxed text-[#475569]" dir="auto">{offer.description}</p>
+                <p className={`mt-5 whitespace-pre-line text-[15px] leading-relaxed text-[#475569] ${user ? '' : 'line-clamp-4'}`} dir="auto">{offer.description}</p>
               )}
 
               {(formattedExpiry || remaining !== null) && (
@@ -179,24 +182,33 @@ export default function OfferDetailPage() {
               )}
             </div>
 
-            <div className="border-t border-slate-100 px-5 py-6 sm:px-8 sm:py-7">
-              <HowToRedeem
-                method={offer.redemptionMethod}
-                instructions={offer.redemptionInstructions}
-                terms={offer.redemptionTerms}
-                includePurchaseStep={!alreadyClaimed}
-                variant="section"
-              />
-            </div>
+            {/* Members get How to redeem (steps, counter instructions, terms);
+                guests a teaser banner instead, its sign-in links in the bar
+                below. Neither while auth is still being read, so a guest
+                never sees the steps flash in first. Codes live only on the
+                member's own voucher pages. */}
+            {user ? (
+              <div className="border-t border-slate-100 px-5 py-6 sm:px-8 sm:py-7">
+                <HowToRedeem
+                  method={offer.redemptionMethod}
+                  instructions={offer.redemptionInstructions}
+                  terms={offer.redemptionTerms}
+                  includePurchaseStep={!alreadyClaimed}
+                  variant="section"
+                />
+              </div>
+            ) : !authLoading && (
+              <div className="border-t border-slate-100 px-5 pt-6 pb-2 sm:px-8 sm:pt-7 sm:pb-0">
+                <OfferGuestTeaser />
+              </div>
+            )}
 
             {/* The card's last row. On phones it sticks to the bottom of the screen,
-                above the home indicator, while the card is in view. */}
-            <div className="sticky bottom-0 z-10 rounded-b-3xl border-t border-slate-100 bg-white/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:px-8 sm:pb-8 sm:pt-6 sm:backdrop-blur-none">
-              {!user && !authLoading && (
-                <Link href="/login" className="tap-target btn-primary w-full">
-                  <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
-                </Link>
-              )}
+                above the home indicator, while the card is in view; floating buttons
+                (the WhatsApp widget) rise above it there (data-floating-clearance). */}
+            <div data-floating-clearance="" className="sticky bottom-0 z-10 rounded-b-3xl border-t border-slate-100 bg-white/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:px-8 sm:pb-8 sm:pt-6 sm:backdrop-blur-none">
+              {/* Guests read everything above; buying and vouchers are for members. */}
+              {!user && !authLoading && <OfferMemberGate offerId={offer.id} />}
 
               {(authLoading || claimLoading) && (
                 <div role="status" className="tap-target btn-primary w-full opacity-60 pointer-events-none">

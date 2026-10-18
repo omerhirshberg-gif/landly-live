@@ -3,16 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { User } from 'firebase/auth'
-import OfferCard from '@/components/discover/OfferCard'
 import Avatar from '@/components/ui/Avatar'
 import CategoryRail from '@/components/perks/CategoryRail'
+import CuratedOffers from './CuratedOffers'
 import SegmentBadge from '@/components/member/SegmentBadge'
-import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
 import { useLang } from '@/lib/i18n/useLang'
-
-const CURATED_COUNT = 8
 
 // The signed-in home: the member's greeting, their live active-pass count,
 // the categories, and a row of curated offers. Guest marketing (hero, value
@@ -29,7 +26,6 @@ export default function LoggedInHome({ user }: { user: User }) {
   const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
   // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
   const [activeCount, setActiveCount] = useState<number | null>(null)
-  const [offers, setOffers] = useState<OfferDocument[] | null>(null)
 
   // Live, like the Expo wallet: a purchase or a redemption updates the count without a reload.
   useEffect(
@@ -42,20 +38,6 @@ export default function LoggedInHome({ user }: { user: User }) {
       ),
     [user.uid]
   )
-
-  useEffect(() => {
-    let cancelled = false
-    getAllOffers()
-      .then((all) => {
-        if (!cancelled) setOffers(sortFeaturedOffers(all).slice(0, CURATED_COUNT))
-      })
-      .catch(() => {
-        if (!cancelled) setOffers([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   return (
     <main className="member-canvas pt-16">
@@ -76,9 +58,8 @@ export default function LoggedInHome({ user }: { user: User }) {
               <h1 id="home-welcome" className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink truncate">
                 {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
               </h1>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5">
+              <div className="mt-1.5">
                 <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
-                <p className="text-[15px] text-body">{t('deals_title')}</p>
               </div>
             </div>
           </div>
@@ -101,36 +82,9 @@ export default function LoggedInHome({ user }: { user: User }) {
           <CategoryRail />
         </section>
 
-        <section className="mt-10" aria-labelledby="home-curated-title">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 id="home-curated-title" className="text-xl font-bold text-ink">{t('home_curated_title')}</h2>
-            <Link href="/categories" className="tap-target inline-flex items-center text-sm font-semibold text-brand hover:underline">
-              {t('home_see_all')}
-            </Link>
-          </div>
-          {offers === null ? (
-            <div className="flex gap-3 overflow-hidden sm:gap-4" aria-hidden="true">
-              {Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex-shrink-0 w-[clamp(240px,72vw,260px)] h-[260px] rounded-2xl bg-white border border-line animate-pulse" />
-              ))}
-            </div>
-          ) : offers.length === 0 ? (
-            <div className="bg-white border border-line rounded-2xl p-6 text-center">
-              <p className="font-bold text-ink mb-1">{t('deals_empty_title')}</p>
-              <p className="text-sm text-body">{t('deals_empty_sub')}</p>
-            </div>
-          ) : (
-            // Compact rail cards, about 72vw wide, so the next one peeks in; a swipe
-            // settles on a card's start edge, and the row never drags the page sideways.
-            <div className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {offers.map((offer) => (
-                <div key={offer.id} className="flex shrink-0 snap-start">
-                  <OfferCard offer={offer} showWishlistButton />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <div className="mt-10">
+          <CuratedOffers showWishlistButton />
+        </div>
 
         <p className="mt-12 text-center text-sm text-body">
           {t('home_faq_prompt_pre')}{' '}

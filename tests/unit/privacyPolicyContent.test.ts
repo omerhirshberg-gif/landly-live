@@ -45,7 +45,7 @@ describe('shared privacy policy content', () => {
     }
   })
 
-  it('links only to real sections or web pages', () => {
+  it('links only to real sections, web pages or the support phone line', () => {
     const ids = new Set(PRIVACY_POLICY_SECTIONS.map((s) => s.id))
     for (const section of PRIVACY_POLICY_SECTIONS) {
       for (const block of section.blocks) {
@@ -53,7 +53,7 @@ describe('shared privacy policy content', () => {
         for (const run of runs) {
           if (typeof run === 'object' && 'href' in run) {
             if (run.href.startsWith('#')) expect(ids.has(run.href.slice(1)), run.href).toBe(true)
-            else expect(run.href).toMatch(/^https:\/\//)
+            else expect(run.href).toMatch(/^(https:\/\/|tel:\+\d+$)/)
           }
         }
       }

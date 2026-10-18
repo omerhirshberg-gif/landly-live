@@ -17,7 +17,9 @@ const TRANSITION: CSSTransitionProperties = {
   transitionTimingFunction: SILK_CSS,
 }
 
-// Single-choice chip grid (two columns, so all six fit in three rows).
+// Single-choice chip grid in two columns; with an odd number of types the
+// last chip ("Other") grows across the row (flexGrow), so no row is left half
+// empty. Also the Member type settings screen (app/settings/member-type).
 // Choosing "Other" reveals an optional note below the chips, 20px under the
 // grid and 24px above Continue; the stage around the card eases its height
 // as it appears.

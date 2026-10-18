@@ -21,8 +21,8 @@ import { colors, radius, type } from '../../theme'
 type Voucher = VoucherDocument & { id: string }
 type PassTab = 'perks' | 'redeemed'
 
-// The member dashboard (web: /member): greeting and customer-type badge,
-// the Active / Redeemed / Saved snapshot, then My Perks (scannable passes)
+// The member dashboard (web: /member): the My Pass title and customer-type
+// badge (no welcome: Home already greets the member), the Active / Redeemed / Saved snapshot, then My Perks (scannable passes)
 // and Redeemed. Both lists are live from Firestore: a purchase on the
 // website appears within moments, and a pass the business redeems moves
 // across the same way.
@@ -30,7 +30,7 @@ export default function WalletScreen() {
   const { t } = useLang()
   const { user } = useAuth()
   const router = useRouter()
-  const { loaded, profile, firstName } = useMemberProfile(user)
+  const { loaded, profile } = useMemberProfile(user)
   const [tab, setTab] = useState<PassTab>('perks')
   const [active, setActive] = useState<Voucher[] | null>(null)
   const [redeemed, setRedeemed] = useState<Voucher[] | null>(null)
@@ -70,7 +70,6 @@ export default function WalletScreen() {
   const segment = CUSTOMER_TYPES.find((o) => o.value === profile?.customerType)
   // "Other" shows what the member typed for it.
   const segmentLabel = customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? t('dash_segment_value_unset')
-  const welcome = firstName ? t('dash_welcome').replace('{name}', firstName) : t('dash_welcome_generic')
 
   const list = tab === 'perks' ? active : redeemed
 
@@ -85,21 +84,20 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => setAttempt((n) => n + 1)} tintColor={colors.brand} />}
         ListHeaderComponent={
           <View style={styles.header}>
-            <AppText style={styles.eyebrow}>{t('dash_label')}</AppText>
-            {/* The name waits for the profile read, so a fallback never flashes first. */}
             <View style={styles.identity}>
-              {loaded && (
-                <>
-                  <AppText accessibilityRole="header" style={type.screenTitle}>
-                    {welcome}
-                  </AppText>
+              <AppText accessibilityRole="header" style={type.screenTitle}>
+                {t('pass_screen_title')}
+              </AppText>
+              {/* The badge waits for the profile read, so a fallback never flashes first; its slot holds the space. */}
+              <View style={styles.badgeSlot}>
+                {loaded && (
                   <View style={[styles.badge, { backgroundColor: segment?.color ?? CUSTOMER_TYPE_UNSET_COLOR }]}>
                     <AppText style={styles.badgeText} numberOfLines={1}>
                       {segmentLabel}
                     </AppText>
                   </View>
-                </>
-              )}
+                )}
+              </View>
             </View>
 
             <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
@@ -149,9 +147,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 20, gap: 0 },
-  // web: text-xs font-semibold tracking-wider uppercase, muted.
-  eyebrow: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: colors.textFaint, marginBottom: 4 },
-  identity: { minHeight: 70, marginBottom: 20, alignItems: 'flex-start', gap: 10 },
+  identity: { marginBottom: 20, alignItems: 'flex-start', gap: 10 },
+  badgeSlot: { minHeight: 26, maxWidth: '100%' },
   // The customer-type badge (web: .segment-badge): solid type colour, white text.
   badge: { maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 5, borderRadius: radius.pill },
   badgeText: { fontSize: 12, fontWeight: '800', color: colors.white },

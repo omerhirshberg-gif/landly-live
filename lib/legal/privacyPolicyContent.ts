@@ -1,4 +1,4 @@
-import { SUPPORT_EMAIL } from '@/lib/config'
+import { SUPPORT_EMAIL, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_DISPLAY } from '@/lib/config'
 
 // The privacy policy as plain data, for the app's native Privacy Policy
 // screen (landly-mobile/src/app/settings/privacy.tsx). The website renders
@@ -37,10 +37,11 @@ const a = (link: string, href: string): PolicyInline => ({ link, href })
 const code = (text: string): PolicyInline => ({ code: text })
 const EMAIL: PolicyInline = { email: true }
 const SITE = a('www.golandly.com', 'https://www.golandly.com')
+const PHONE = a(SUPPORT_WHATSAPP_DISPLAY, SUPPORT_PHONE_TEL)
 const GOOGLE_PERMISSIONS = a('myaccount.google.com/permissions', 'https://myaccount.google.com/permissions')
 
 export const PRIVACY_POLICY_TITLE = 'Privacy Policy'
-export const PRIVACY_POLICY_UPDATED_LABEL = 'October 17, 2026'
+export const PRIVACY_POLICY_UPDATED_LABEL = 'October 18, 2026'
 
 export const PRIVACY_POLICY_INTRO: PolicyInline[] = [
   'Landly is a lifestyle and growth perks club for people living in, moving to or visiting Israel. This Privacy Policy explains what personal information we collect when you use Landly, why we collect it, who we share it with, how long we keep it, and the choices and rights you have. We collect only what we need to run the service, we do not sell your personal information, and we do not use advertising or analytics trackers.',
@@ -52,7 +53,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
     title: 'Who we are',
     blocks: [
       p('The Landly website at ', SITE, ' and the Landly mobile apps are operated by ', b('Landly'), ', Tel Aviv-Yafo, Israel ("we", "us"). Landly is the controller (database owner) responsible for the personal information described in this policy.'),
-      p('For any privacy question or request, contact us at ', EMAIL, '.'),
+      p('For any privacy question or request, contact us at ', EMAIL, ' or by phone or WhatsApp at ', PHONE, '.'),
     ],
   },
   {
@@ -77,7 +78,8 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
       ),
       h3('Membership and profile details'),
       ul(
-        ['Your member type, which you choose so we can show relevant perks: Student, New Immigrant (Oleh Chadash), Taglit, Long-term program (such as Masa), Traveler, or Other. If you choose Other, the short description you type.'],
+        ['Your member type, which you choose so we can show relevant perks and community offers: Student, New Immigrant (Oleh Chadash), Lone Soldier, Taglit, Long-term program (such as Masa), Traveler, or Other. If you choose Other, the short description you type.'],
+        ['Your member type is your own statement and you can change it at any time. We do not ask for proof of it, and we ', b('do not request or collect'), ' military service records, ID documents or any official or classified military information.'],
         ['Your country of origin, which you choose during onboarding.'],
         ['Where in Israel you live, if you choose to tell us: one of North, Haifa & Krayot, Center, Tel Aviv & Gush Dan, Jerusalem or South, or that you are not in Israel yet.'],
         ['Your preferred language for the Service and our emails.'],
@@ -97,6 +99,8 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
       p("Paid offers are processed by our payment provider, Tranzila. You enter your card details on Tranzila's secure payment page. Landly never receives or stores your full card number or security code; we receive only the outcome of the payment and a transaction reference."),
       h3('Messages you send us'),
       p('When you contact us through the support form, by email or on WhatsApp, we receive your name, contact details and the content of your message.'),
+      h3('Aliyah mentor requests'),
+      p('If you ask to be matched with a personal Aliyah mentor on our Making Aliyah page (available to signed-in members), we receive the name you enter, your account email address and account reference, your preferred mentor language, your planned Aliyah date, any notes you add and the language you use the Service in. The request is sent to the Landly team, who use it only to match you with a mentor. We share these details ', b('exclusively'), ' with the verified community mentor matched to you, solely for matching and guiding you, and never with partner businesses or for marketing.'),
       h3('Technical information'),
       p('Like any website, our servers and hosting provider receive technical data with each request, such as your IP address, browser or device type and the pages requested. We use it to deliver the Service, keep it secure and limit abuse (for example, rate-limiting repeated sign-in, password-reset and verification email requests). We do not use it to build advertising profiles.'),
     ],
@@ -154,6 +158,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         [b('Notifications about perks'), ': only if you opted in, which you can change at any time (consent).'],
         [b('Security and fraud prevention'), ': verifying accounts, rate-limiting abuse and protecting members and partner businesses (legitimate interests).'],
         [b('Customer support'), ': answering your questions and requests (performance of contract and legitimate interests).'],
+        [b('Aliyah mentor matching'), ': only when you ask for a mentor, matching you with one and passing your request to that mentor (performance of our contract with you, at your request).'],
         [b('Legal compliance'), ': keeping transaction records required by tax and accounting law and responding to lawful requests (legal obligation).'],
       ),
       p('We do not use your information for automated decision-making that has legal or similarly significant effects on you, and we do not sell it or use it for third-party advertising.'),
@@ -174,9 +179,8 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
       ul(
         [b('Google Firebase and Google Cloud'), ' (Firebase Authentication, Cloud Firestore): account sign-in and secure storage of account, profile, order and voucher data.'],
         [b('Vercel'), ': hosting of the website and our server functions, including request logs.'],
-        [b('Resend'), ': delivery of transactional emails such as email verification and password resets.'],
+        [b('Resend'), ': delivery of transactional emails such as email verification, password resets and order confirmations, and of the messages you send through our support, business and mentor request forms to our team.'],
         [b('Tranzila'), ': secure payment processing for paid offers.'],
-        [b('Formspree'), ': delivery of messages sent through our support form.'],
         [b('Google Fonts and Cloudflare (cdnjs)'), ': delivery of fonts and icons used by the website. Your browser contacts these services directly, which reveals your IP address to them.'],
         [b('Apple App Store and Google Play'), ": distribution of the mobile apps. If you allow notifications, your device's operating system delivers them."],
       ),
@@ -225,6 +229,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         [b('Account and profile data'), ' (including Google user data, member type, country of origin, region, phone number, preferences and wishlist) is kept for as long as your account exists and is deleted when you ask us to delete your account.'],
         [b('Order, transaction and voucher records'), ' are kept for up to 7 years, as required by Israeli tax and bookkeeping law, and then deleted. During that period they are used only for legal, accounting and dispute purposes.'],
         [b('Support messages'), ' are kept as long as needed to resolve your request and handle any follow-up.'],
+        [b('Mentor requests'), ' are kept as long as needed to match you with a mentor and handle any follow-up.'],
         [b('Server logs'), ' are kept for a short period by our hosting provider for security and troubleshooting.'],
       ),
     ],
@@ -287,7 +292,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
     blocks: [
       {
         kind: 'address',
-        lines: [[b('Landly')], ['Tel Aviv-Yafo, Israel'], ['Privacy and support: ', EMAIL], ['Website: ', SITE]],
+        lines: [[b('Landly')], ['Tel Aviv-Yafo, Israel'], ['Privacy and support: ', EMAIL], ['Phone / WhatsApp: ', PHONE], ['Website: ', SITE]],
       },
     ],
   },

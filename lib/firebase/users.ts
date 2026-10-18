@@ -1,6 +1,7 @@
 import type { User } from 'firebase/auth'
 import { arrayRemove, arrayUnion, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { splitDisplayName } from '@/lib/auth/names'
+import { personaNote, type CustomerType } from '@/lib/customerTypes'
 import { db } from './config'
 
 export interface UserDocument {
@@ -122,6 +123,15 @@ export async function updateUserRegion(uid: string, israelRegion: string) {
 /** E.164 (phoneToE164), or '' to remove the number. */
 export async function updateUserPhone(uid: string, phone: string) {
   await updateDoc(doc(db, 'users', uid), { phone })
+}
+
+/**
+ * The member type from the Member type settings page (web and app). The
+ * "Other" note goes through personaNote, so it's kept only for 'other' and
+ * cleared for every other type.
+ */
+export async function updateUserCustomerType(uid: string, customerType: CustomerType, note: string) {
+  await updateDoc(doc(db, 'users', uid), { customerType, customerTypeOther: personaNote(customerType, note) })
 }
 
 export async function updateUserLanguage(uid: string, preferredLanguage: string) {

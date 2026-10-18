@@ -416,6 +416,52 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .member-canvas{min-height:100vh;min-height:100dvh;background:#F8FAFC;}
 /* Wide screens get a soft blue wash at the top so the page isn't a flat sheet */
 @media (min-width:1024px){.member-canvas{background:linear-gradient(180deg,#EEF3FB 0,#F8FAFC 420px) #F8FAFC;}}
+/* The floating buttons' shared bottom line: the WhatsApp badge (bottom right)
+   and the accessibility button (bottom left) sit on it, clear of the iPhone
+   home indicator. --floating-lift is how far bottom bars (cookie notice, an
+   offer's purchase bar) push both up; the WhatsApp widget sets it. */
+:root{--floating-base:max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));}
+/* The accessibility button (cdn.enable.co.il), moved onto that line with its
+   centre level with the 56px WhatsApp badge's. Its script places it with an
+   inline top on a panel parked just below the screen, then lifts it its own
+   height (translateY(-100%)), so its bottom edge sits (-top - 1px) above the
+   screen's bottom edge (the panel's 1px top border). Raised (base + 8px) for
+   its 40px icon; up to 480px wide it's scaled to 52px from its bottom edge,
+   so (base + 2px). !important beats the script's inline style; if the vendor
+   ever changes its markup, the button just stays where Enable put it. */
+body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floating-lift, 0px) + 9px)) !important;}
+@media screen and (max-width:480px){
+  body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floating-lift, 0px) + 3px)) !important;}
+}
+/* Floating WhatsApp widget (components/layout/WhatsAppWidget.tsx). It glides
+   up and down as bars cover the bottom of the screen; the glow breathes
+   slowly behind the badge; the bubble rises in. All still under reduced motion. */
+.wa-widget{transition:transform .25s ease;}
+.wa-glow{animation:wa-breathe 3.2s ease-in-out infinite;}
+@keyframes wa-breathe{0%,100%{transform:scale(1);opacity:.35;}50%{transform:scale(1.32);opacity:0;}}
+.wa-bubble{animation:wa-bubble-in .32s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom right;}
+@keyframes wa-bubble-in{from{opacity:0;transform:translateY(6px) scale(.96);}}
+@media (prefers-reduced-motion: reduce){
+  .wa-widget{transition:none;}
+  .wa-glow{animation:none;opacity:0;}
+  .wa-bubble{animation:none;}
+}
+/* Guest home section hairlines (SectionDivider): when the section between two
+   rendered nothing, the second one goes, so there's never a double line. */
+.section-divider + .section-divider{display:none;}
+/* Guest home backdrop (app/page.tsx): white at the top into ice and ocean
+   blue for What's inside and the perk examples, tapering back to the
+   footer's #F8FAFC so it meets the footer without a step. Two soft radial
+   spots on top give it depth instead of a flat ramp; their mixing also
+   softens 8-bit banding. Sections set no background, so this runs the full
+   scroll height; at least one viewport tall (toolbar-aware where supported). */
+.home-ambient{
+  min-height:100vh;min-height:100dvh;
+  background:
+    radial-gradient(60% 22% at 88% 34%,rgba(56,189,248,.20) 0%,rgba(56,189,248,0) 70%),
+    radial-gradient(55% 20% at 8% 52%,rgba(125,211,252,.35) 0%,rgba(125,211,252,0) 70%),
+    linear-gradient(180deg,#FFFFFF 0%,#E0F2FE 18%,#BAE6FD 45%,#E0F2FE 75%,#F8FAFC 100%);
+}
 /* Account dropdown: same surface as .lang-menu, opened from the avatar pill. */
 .account-menu{position:absolute;top:calc(100% + 8px);right:0;left:auto;background:#fff;border:1px solid #E2E8F0;border-radius:14px;box-shadow:0 12px 36px rgba(15,23,42,.14);min-width:256px;max-width:min(320px,calc(100vw - 32px));padding:6px;z-index:60;}
 .account-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;color:#0B1B3D;text-align:start;transition:background .15s;}

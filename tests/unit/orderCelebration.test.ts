@@ -48,7 +48,9 @@ describe('order confirmation (web)', () => {
     const page = read('app/order-success/page.tsx')
     expect(page).toContain('subscribeToOrder(orderId, setOrder)')
     expect(page).toContain('{paid && <Confetti />}')
-    expect(page).toContain('<CopyOrderIdButton orderId={orderId} />')
+    // The sequential order number (#1001, ...) is shown and copied; the document id only for orders from before it.
+    expect(page).toContain('{orderReference(order.displayOrderNumber, orderId)}')
+    expect(page).toContain('<CopyOrderIdButton value={order.displayOrderNumber ?? orderId} />')
     expect(page).toContain('href={`/member/vouchers/${encodeURIComponent(voucherId)}`}')
     expect(page).toContain('href="/member"')
     expect(page).toContain('env(safe-area-inset-bottom)')

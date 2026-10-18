@@ -31,6 +31,7 @@ export const isSupportMessageRateLimited = createLimiter()
 export const isBusinessInquiryRateLimited = createLimiter()
 export const isMentorRequestRateLimited = createLimiter()
 export const isDeletionRequestRateLimited = createLimiter()
-// The deletion form is signed in, so it's also capped per account, which an
-// attacker can't rotate the way they can an IP.
+// The deletion and mentor forms are signed in, so they're also capped per
+// account, which an attacker can't rotate the way they can an IP.
 export const isDeletionRequestUidRateLimited = createKeyLimiter(3)
+export const isMentorRequestUidRateLimited = createKeyLimiter(3)

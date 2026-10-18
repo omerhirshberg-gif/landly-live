@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { SUPPORT_EMAIL } from '@/lib/config'
+import { SUPPORT_EMAIL, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_DISPLAY } from '@/lib/config'
 
 // The privacy policy text. Kept free of hooks and client-only code so the
 // /privacy route renders it on the server (reviewers such as Google's OAuth
@@ -11,7 +11,7 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 // analytics, push tokens, in-app deletion -- update the matching section and
 // PRIVACY_POLICY_UPDATED.
 
-export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-17', label: 'October 17, 2026' }
+export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-18', label: 'October 18, 2026' }
 
 const MAIL = `mailto:${SUPPORT_EMAIL}`
 
@@ -71,6 +71,12 @@ function A({ href, children }: { href: string; children: ReactNode }) {
 }
 
 const Email = () => <A href={MAIL}>{SUPPORT_EMAIL}</A>
+// The number reads left to right even inside right-to-left text.
+const Phone = () => (
+  <span dir="ltr">
+    <A href={SUPPORT_PHONE_TEL}>{SUPPORT_WHATSAPP_DISPLAY}</A>
+  </span>
+)
 
 export default function PrivacyPolicy() {
   return (
@@ -109,7 +115,7 @@ export default function PrivacyPolicy() {
           described in this policy.
         </p>
         <p>
-          For any privacy question or request, contact us at <Email />.
+          For any privacy question or request, contact us at <Email /> or by phone or WhatsApp at <Phone />.
         </p>
       </Section>
 
@@ -144,9 +150,14 @@ export default function PrivacyPolicy() {
         <H3>Membership and profile details</H3>
         <List>
           <li>
-            Your member type, which you choose so we can show relevant perks: Student, New Immigrant (Oleh
-            Chadash), Taglit, Long-term program (such as Masa), Traveler, or Other. If you choose Other, the short
-            description you type.
+            Your member type, which you choose so we can show relevant perks and community offers: Student, New
+            Immigrant (Oleh Chadash), Lone Soldier, Taglit, Long-term program (such as Masa), Traveler, or Other. If
+            you choose Other, the short description you type.
+          </li>
+          <li>
+            Your member type is your own statement and you can change it at any time. We do not ask for proof of it,
+            and we <strong>do not request or collect</strong> military service records, ID documents or any official
+            or classified military information.
           </li>
           <li>Your country of origin, which you choose during onboarding.</li>
           <li>
@@ -189,6 +200,16 @@ export default function PrivacyPolicy() {
         <p>
           When you contact us through the support form, by email or on WhatsApp, we receive your name, contact
           details and the content of your message.
+        </p>
+
+        <H3>Aliyah mentor requests</H3>
+        <p>
+          If you ask to be matched with a personal Aliyah mentor on our Making Aliyah page (available to signed-in
+          members), we receive the name you enter, your account email address and account reference, your preferred
+          mentor language, your planned Aliyah date, any notes you add and the language you use the Service in. The
+          request is sent to the Landly team, who use it only to match you with a mentor. We share these details{' '}
+          <strong>exclusively</strong> with the verified community mentor matched to you, solely for matching and
+          guiding you, and never with partner businesses or for marketing.
         </p>
 
         <H3>Technical information</H3>
@@ -290,6 +311,10 @@ export default function PrivacyPolicy() {
             legitimate interests).
           </li>
           <li>
+            <strong>Aliyah mentor matching</strong>: only when you ask for a mentor, matching you with one and passing
+            your request to that mentor (performance of our contract with you, at your request).
+          </li>
+          <li>
             <strong>Legal compliance</strong>: keeping transaction records required by tax and accounting law and
             responding to lawful requests (legal obligation).
           </li>
@@ -322,10 +347,11 @@ export default function PrivacyPolicy() {
             <strong>Vercel</strong>: hosting of the website and our server functions, including request logs.
           </li>
           <li>
-            <strong>Resend</strong>: delivery of transactional emails such as email verification and password resets.
+            <strong>Resend</strong>: delivery of transactional emails such as email verification, password resets and
+            order confirmations, and of the messages you send through our support, business and mentor request forms
+            to our team.
           </li>
           <li><strong>Tranzila</strong>: secure payment processing for paid offers.</li>
-          <li><strong>Formspree</strong>: delivery of messages sent through our support form.</li>
           <li>
             <strong>Google Fonts and Cloudflare (cdnjs)</strong>: delivery of fonts and icons used by the website.
             Your browser contacts these services directly, which reveals your IP address to them.
@@ -395,6 +421,10 @@ export default function PrivacyPolicy() {
           </li>
           <li>
             <strong>Support messages</strong> are kept as long as needed to resolve your request and handle any
+            follow-up.
+          </li>
+          <li>
+            <strong>Mentor requests</strong> are kept as long as needed to match you with a mentor and handle any
             follow-up.
           </li>
           <li><strong>Server logs</strong> are kept for a short period by our hosting provider for security and troubleshooting.</li>
@@ -487,6 +517,7 @@ export default function PrivacyPolicy() {
           <p className="font-bold text-[#0F172A]">Landly</p>
           <p>Tel Aviv-Yafo, Israel</p>
           <p>Privacy and support: <Email /></p>
+          <p>Phone / WhatsApp: <Phone /></p>
           <p>Website: <A href="https://www.golandly.com">www.golandly.com</A></p>
         </address>
       </Section>

@@ -1,9 +1,10 @@
 import 'server-only'
-import { isValidEmail, singleLine } from './formFields'
+import { isValidEmail, multiLine, singleLine } from './formFields'
 import { buildTeamInboxEmail, sendToTeamInbox } from './teamInboxEmail'
 
 // The /olim "Connect with a Personal Mentor" form, delivered to the team inbox
-// (teamInboxEmail.ts) with Reply-To set to the member.
+// (teamInboxEmail.ts) with Reply-To set to the member. Signed-in members only:
+// the uid and email come from the verified ID token, never the body.
 
 // Mentor languages offered on the form; the client sends the code, the team
 // sees the English name.
@@ -15,30 +16,42 @@ export const MENTOR_LANGUAGES = {
 } as const
 export type MentorLanguage = keyof typeof MENTOR_LANGUAGES
 
-export const MENTOR_LIMITS = { name: 100, email: 254, aliyahDate: 60 } as const
+export const MENTOR_LIMITS = { name: 100, email: 254, aliyahDate: 60, notes: 1000 } as const
 
-export interface MentorRequest {
+/** What the member typed; who they are is added from the token. */
+export interface MentorRequestFields {
   name: string
-  email: string
   mentorLanguage: MentorLanguage | ''
   aliyahDate: string
+  notes: string
   lang: string
 }
 
+export interface MentorRequest extends MentorRequestFields {
+  uid: string
+  email: string
+}
+
 /** Cleans the raw request body, or returns null when any required field is missing or invalid. */
-export function parseMentorRequest(body: unknown): MentorRequest | null {
+export function parseMentorRequest(body: unknown): MentorRequestFields | null {
   if (!body || typeof body !== 'object') return null
   const raw = body as Record<string, unknown>
   const str = (key: string) => (typeof raw[key] === 'string' ? (raw[key] as string) : '')
   const name = singleLine(str('name'))
-  const email = singleLine(str('email'))
   const aliyahDate = singleLine(str('aliyahDate'))
   const mentorLanguage = Object.hasOwn(MENTOR_LANGUAGES, str('mentorLanguage')) ? (str('mentorLanguage') as MentorLanguage) : ''
+  const notes = multiLine(str('notes'))
   const lang = singleLine(str('lang')).slice(0, 8)
   if (!name || name.length > MENTOR_LIMITS.name) return null
-  if (!isValidEmail(email, MENTOR_LIMITS.email)) return null
   if (aliyahDate.length > MENTOR_LIMITS.aliyahDate) return null
-  return { name, email, mentorLanguage, aliyahDate, lang }
+  if (notes.length > MENTOR_LIMITS.notes) return null
+  return { name, mentorLanguage, aliyahDate, notes, lang }
+}
+
+/** The account email from the token, if it can safely be the Reply-To. */
+export function mentorReplyEmail(email: string | undefined): string | null {
+  const clean = singleLine(email ?? '')
+  return isValidEmail(clean, MENTOR_LIMITS.email) ? clean : null
 }
 
 function mentorEmail(req: MentorRequest) {
@@ -52,8 +65,9 @@ function mentorEmail(req: MentorRequest) {
       { label: 'Mentor language', value: language || 'Not specified' },
       { label: 'Planned Aliyah date', value: req.aliyahDate || 'Not specified' },
       { label: 'Site language', value: req.lang || 'unknown' },
+      { label: 'Member UID', value: req.uid },
     ],
-    message: `${req.name} asked to be matched with a personal Aliyah mentor.`,
+    message: req.notes || `${req.name} asked to be matched with a personal Aliyah mentor.`,
     replyName: req.name,
     source: 'the Landly "Connect with a Personal Mentor" form',
   }

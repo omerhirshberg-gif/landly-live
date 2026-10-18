@@ -18,23 +18,30 @@ export default function ValueProps() {
 
   return (
     // id="deals" keeps old /#deals links and globals.css's scroll margin working.
-    // Tighter top than bottom so the section sits close under the hero.
-    <section id="deals" className="pt-12 pb-16 sm:pt-14 sm:pb-20 lg:pt-16 lg:pb-24 bg-[#F8FAFC]">
+    // Same padding as the other sections, so the hairlines between them sit
+    // evenly. No background: the guest home's gradient (app/page.tsx) shows through.
+    <section id="deals" className="py-12 sm:py-14 lg:py-16">
       <div className="max-w-7xl mx-auto px-5 sm:px-6">
-        <div className="max-w-2xl mx-auto text-center mb-10 sm:mb-12">
+        <div className="max-w-2xl mx-auto text-center mb-5 sm:mb-12">
           <div className="text-xs font-bold tracking-widest text-brand uppercase mb-3">{t('vp_label')}</div>
           <h2 className="text-3xl sm:text-4xl font-black text-[#0B1B3D] mb-3" style={{ letterSpacing: '-0.025em' }}>{t('vp_title')}</h2>
           <p className="text-[#475569] text-[15px] sm:text-base leading-relaxed">{t('vp_sub')}</p>
         </div>
 
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Phones: one swipeable row of compact cards (the next one peeks in, a
+            swipe settles on a card's centre, the page never drags sideways), so
+            the perk examples below are a short scroll away instead of four
+            stacked screens. From sm: the grid, two columns then four. The py
+            keeps the cards' shadow and hover lift clear of the row's clipping. */}
+        <ul className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
           {PILLARS.map((p) => (
             <li
               key={p.titleKey}
-              // Same three shadow layers as the auth card (entrance.module.css .card).
-              className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-2xl p-6 sm:p-7 shadow-[0_1px_2px_rgba(15,23,42,.04),0_8px_20px_-4px_rgba(15,23,42,.06),0_28px_56px_-16px_rgba(15,23,42,.14)] transition duration-200 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-[0_1px_2px_rgba(15,23,42,.05),0_10px_24px_-4px_rgba(15,23,42,.08),0_32px_64px_-16px_rgba(0,56,184,.18)] motion-reduce:transform-none"
+              // From sm, the same three shadow layers as the auth card (entrance.module.css .card);
+              // a lighter one on phones, where the row would clip the deep layers.
+              className="w-[230px] flex-shrink-0 snap-center sm:w-auto bg-white/95 backdrop-blur-sm border border-[#E2E8F0] rounded-2xl p-5 sm:p-7 shadow-sm sm:shadow-[0_1px_2px_rgba(15,23,42,.04),0_8px_20px_-4px_rgba(15,23,42,.06),0_28px_56px_-16px_rgba(15,23,42,.14)] transition duration-200 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-[0_1px_2px_rgba(15,23,42,.05),0_10px_24px_-4px_rgba(15,23,42,.08),0_32px_64px_-16px_rgba(0,56,184,.18)] motion-reduce:transform-none"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#F0F7FF] text-brand flex items-center justify-center mb-4">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#F0F7FF] text-brand flex items-center justify-center mb-3 sm:mb-4">
                 <i className={`fa-solid ${p.icon} text-lg`} aria-hidden="true"></i>
               </div>
               <h3 className="font-bold text-[17px] text-[#0B1B3D] mb-1.5">{t(p.titleKey)}</h3>

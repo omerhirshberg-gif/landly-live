@@ -23,17 +23,18 @@ describe('footer', () => {
     expect(html).toContain(`© ${new Date().getFullYear()} <bdi>Landly</bdi>. ${translations[lang].footer_copyright_notice}`)
   })
 
-  it.each(LANGS)('links only what the navbar does not — FAQ, legal and the business portal (%s)', (lang) => {
+  it.each(LANGS)('links About Us, then what the navbar does not — FAQ, legal and the business portal (%s)', (lang) => {
     const html = render(lang)
     const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]).filter((h) => !h.startsWith('http'))
-    expect(hrefs).toEqual(['/support#faq', '/terms', '/privacy', '/business/login', 'mailto:team.landly@gmail.com'])
+    expect(hrefs).toEqual(['/about', '/support#faq', '/terms', '/privacy', '/business/login', 'mailto:team.landly@gmail.com'])
+    expect(html).toContain(`>${translations[lang].footer_about}</a>`)
     expect(html).toContain(translations[lang].footer_biz_login)
   })
 
   it.each(LANGS)('puts a quiet dot between links only, never before the first or after the last (%s)', (lang) => {
     const nav = render(lang).match(/<nav aria-label="Footer"[\s\S]*?<\/nav>/)![0]
     const dot = '<span class="text-slate-300 select-none mx-2 sm:mx-3" aria-hidden="true">·</span>'
-    expect(nav.split(dot).length - 1).toBe(3)
+    expect(nav.split(dot).length - 1).toBe(4)
     expect(nav).toMatch(/^<nav[^>]*><span[^>]*><a /)
     expect(nav).toMatch(/<\/a><\/span><\/nav>$/)
   })
