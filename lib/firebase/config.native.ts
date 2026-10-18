@@ -4,16 +4,18 @@ import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/a
 import { getAuth, getReactNativePersistence, GoogleAuthProvider, initializeAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { assertDevFirebaseProject } from './envGuard'
 
 // React Native counterpart of ./config.ts — Metro picks this file over
 // config.ts on iOS/Android, Next.js never sees it. Same exports, same
 // Firebase project: landly-mobile/app.config.js fills `extra.firebase` from
-// the repo-root .env's NEXT_PUBLIC_FIREBASE_* values, so web and mobile
-// can't point at different environments.
+// the repo-root .env/.env.local NEXT_PUBLIC_FIREBASE_* values, so web and
+// mobile can't point at different environments.
 const firebaseConfig = Constants.expoConfig?.extra?.firebase as FirebaseOptions | undefined
 if (!firebaseConfig?.apiKey || !firebaseConfig.projectId) {
   throw new Error('Firebase config missing — see landly-mobile/app.config.js')
 }
+assertDevFirebaseProject(firebaseConfig.projectId, __DEV__)
 
 const isFirstInit = getApps().length === 0
 const app = isFirstInit ? initializeApp(firebaseConfig) : getApp()

@@ -1,6 +1,6 @@
 // Extends app.json with values that must match the web app exactly.
 //
-// Firebase: read from the repo-root .env (the same NEXT_PUBLIC_FIREBASE_*
+// Firebase: read from the repo-root .env and .env.local (the same NEXT_PUBLIC_FIREBASE_*
 // values Next.js uses), so mobile and web always share one Firebase project
 // and a purchase on the web shows up in the app. EXPO_PUBLIC_FIREBASE_*
 // overrides each value for environments without the root .env (e.g. EAS).
@@ -18,13 +18,18 @@
 const fs = require('fs')
 const path = require('path')
 
+// .env.local is read after .env and wins, as in Next.js -- that's where the
+// landly-dev (staging) project lives for local development, so Expo and
+// `next dev` share it.
 function readRootEnv() {
-  const file = path.join(__dirname, '..', '.env')
-  if (!fs.existsSync(file)) return {}
   const env = {}
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    const match = line.match(/^\s*(NEXT_PUBLIC_FIREBASE_[A-Z_]+)\s*=\s*(.*?)\s*$/)
-    if (match) env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, '$2')
+  for (const name of ['.env', '.env.local']) {
+    const file = path.join(__dirname, '..', name)
+    if (!fs.existsSync(file)) continue
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const match = line.match(/^\s*(NEXT_PUBLIC_FIREBASE_[A-Z_]+)\s*=\s*(.*?)\s*$/)
+      if (match) env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, '$2')
+    }
   }
   return env
 }

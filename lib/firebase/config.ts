@@ -3,6 +3,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { currentAuthDomain } from './authDomain'
+import { assertDevFirebaseProject } from './envGuard'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,6 +14,8 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
+
+assertDevFirebaseProject(firebaseConfig.projectId, process.env.NODE_ENV === 'development')
 
 const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig)
 
