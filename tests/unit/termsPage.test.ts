@@ -44,28 +44,34 @@ describe('terms page', () => {
 
   it('has the five legal sections in order', () => {
     const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1])
-    expect(headings).toEqual(['1. Payments', '2. Refund Policy', '3. Vouchers and Deals', '4. Governing Law', '5. Contact'])
+    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers and Deals', '4. Governing Law', '5. Seller and Contact'])
   })
 
-  it('identifies the title, date and contact', () => {
+  it('identifies the title, date, seller and contact', () => {
     expect(text).toContain('Terms and Conditions')
-    expect(text).toContain('Last updated: January 2025')
+    expect(text).toContain('Last updated: October 2026')
+    expect(text).toContain('Landly operates from Tel Aviv-Yafo, Israel')
     expect(text).toContain('team.landly@gmail.com')
   })
 
   it('states the pay-per-offer payment model', () => {
     expect(text).toContain('pay-per-offer')
     expect(text).toMatch(/no subscription or recurring billing/)
+    expect(text).toContain('include VAT')
   })
 
-  it('states the refund policy before and after redemption', () => {
-    expect(text).toContain('Before redemption: You may request a full refund')
+  it('states the 14-day cancellation policy, its fee and how to cancel', () => {
+    expect(text).toContain('Within 14 days: You may cancel a purchase within 14 days of the purchase date, as long as the voucher has not been redeemed')
+    expect(text).toContain('5% of the price or ₪100, whichever is lower')
+    expect(text).toContain('How to cancel: Email team.landly@gmail.com with your order number')
     expect(text).toContain('After redemption: Once a voucher has been redeemed')
     expect(text).toContain('final and non-refundable')
   })
 
   it('covers vouchers and governing law', () => {
-    expect(text).toMatch(/Vouchers are non-transferable/)
+    expect(text).toContain('180 days from purchase unless stated otherwise')
+    expect(text).toMatch(/redemption terms shown on the offer/)
+    expect(text).toMatch(/non-transferable/)
     expect(text).toContain('laws of the State of Israel')
     expect(text).toContain('Tel Aviv-Yafo')
   })

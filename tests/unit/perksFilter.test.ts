@@ -31,6 +31,8 @@ function offer(overrides: Partial<OfferDocument> & { id: string }): OfferDocumen
     expiryDate: null,
     totalQuantity: null,
     claimedCount: 0,
+    validityDays: 180,
+    redemptionTerms: '',
     ...overrides,
   }
 }

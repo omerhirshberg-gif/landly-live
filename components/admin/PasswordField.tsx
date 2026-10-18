@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 interface Props {
+  id?: string
   value: string
   onChange: (value: string) => void
   required?: boolean
@@ -12,12 +13,13 @@ interface Props {
 // Masked by default (shoulder-surfing/screen-share protection) with a
 // click-to-reveal toggle, since the admin still needs to read this value
 // back to relay it to the business owner.
-export default function PasswordField({ value, onChange, required, minLength }: Props) {
+export default function PasswordField({ id, value, onChange, required, minLength }: Props) {
   const [visible, setVisible] = useState(false)
 
   return (
     <div className="relative">
       <input
+        id={id}
         type={visible ? 'text' : 'password'}
         required={required}
         minLength={minLength}

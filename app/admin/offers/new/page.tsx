@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -26,6 +26,7 @@ const emptyOffer: OfferFormValue = {
   totalQuantity: '',
   unlimited: false,
   isBestseller: false,
+  ...EMPTY_VOUCHER_TERMS,
 }
 
 function NewOfferForm() {
@@ -95,6 +96,7 @@ function NewOfferForm() {
             expiryDate: offer.expiryDate || null,
             totalQuantity: offer.unlimited || !offer.totalQuantity ? null : Number(offer.totalQuantity),
             isBestseller: offer.isBestseller,
+            ...voucherTermsPayload(offer),
           },
         }),
       })
@@ -168,12 +170,15 @@ function NewOfferForm() {
         ) : (
           <div className="space-y-3">
             <input
+              type="search"
+              aria-label="Search businesses"
               className="inp inp-dark !py-3.5"
               placeholder="Search by business name or ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <select
+              aria-label="Business"
               size={6}
               className="inp inp-dark"
               value=""

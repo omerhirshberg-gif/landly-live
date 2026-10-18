@@ -73,13 +73,13 @@ export default function BusinessLoginPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">{t('login_emailLabel')}</label>
-              <input type="email" required className="inp inp-dark" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <label htmlFor="business-login-email" className="block mb-1.5 text-sm font-bold text-slate-300">{t('login_emailLabel')}</label>
+              <input id="business-login-email" type="email" required className="inp inp-dark" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
 
             <div>
-              <label className="block mb-1.5 text-sm font-bold text-slate-300">{t('login_passwordLabel')}</label>
-              <input type="password" required className="inp inp-dark" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <label htmlFor="business-login-password" className="block mb-1.5 text-sm font-bold text-slate-300">{t('login_passwordLabel')}</label>
+              <input id="business-login-password" type="password" required className="inp inp-dark" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
 
             <div className="flex items-center justify-between">

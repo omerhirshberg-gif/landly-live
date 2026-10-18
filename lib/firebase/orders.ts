@@ -1,7 +1,10 @@
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from './config'
 
-export type OrderStatus = 'pending' | 'paid' | 'failed'
+// refunded: a paid order cancelled through support (admin-set, Admin SDK only).
+export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
+
+const STATUSES: readonly OrderStatus[] = ['pending', 'paid', 'failed', 'refunded']
 
 export interface OrderDocument {
   userId: string
@@ -9,7 +12,10 @@ export interface OrderDocument {
   businessId: string
   businessName: string
   offerTitle: string
-  amount: number
+  amount: number // the price paid, VAT included
+  // The offer's pre-discount price when the order was created; null for
+  // orders that predate it (no discount line is shown then).
+  originalPrice: number | null
   currency: 'ILS'
   status: OrderStatus
   paidAt: Date | null
@@ -24,8 +30,9 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     businessName: (data.businessName as string) ?? '',
     offerTitle: (data.offerTitle as string) ?? '',
     amount: Number(data.amount) || 0,
+    originalPrice: typeof data.originalPrice === 'number' && data.originalPrice > 0 ? data.originalPrice : null,
     currency: 'ILS',
-    status: data.status === 'paid' ? 'paid' : data.status === 'failed' ? 'failed' : 'pending',
+    status: STATUSES.includes(data.status as OrderStatus) ? (data.status as OrderStatus) : 'pending',
     paidAt: data.paidAt instanceof Timestamp ? data.paidAt.toDate() : null,
     voucherId: typeof data.voucherId === 'string' ? data.voucherId : null,
   }

@@ -19,7 +19,7 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
   if (vouchers.length === 0) {
     return (
       <div className="dash-empty-state">
-        <i className="fa-solid fa-receipt"></i>
+        <i className="fa-solid fa-receipt" aria-hidden="true"></i>
         <div className="font-bold text-slate-700 text-base mb-1">{t('dash_redeemed_empty_title')}</div>
         <p className="text-sm text-slate-500 max-w-xs">{t('dash_redeemed_empty_sub')}</p>
       </div>
@@ -31,7 +31,7 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
       {vouchers.map((voucher) => (
         <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4">
           <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700">
-            <i className="fa-solid fa-check text-sm"></i>
+            <i className="fa-solid fa-check text-sm" aria-hidden="true"></i>
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-xs font-bold uppercase tracking-widest text-brand">{voucher.businessName}</div>

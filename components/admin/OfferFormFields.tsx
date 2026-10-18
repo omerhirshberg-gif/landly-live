@@ -1,3 +1,8 @@
+'use client'
+
+import { useId } from 'react'
+import { DEFAULT_VOUCHER_VALIDITY_DAYS, MAX_REDEMPTION_TERMS_LENGTH, MAX_VOUCHER_VALIDITY_DAYS } from '@/lib/payments/voucherTerms'
+
 export interface OfferFormValue {
   title: string
   description: string
@@ -8,6 +13,16 @@ export interface OfferFormValue {
   totalQuantity: string
   unlimited: boolean
   isBestseller: boolean
+  validityDays: string
+  redemptionTerms: string
+}
+
+/** The voucher-terms fields of a blank offer form. */
+export const EMPTY_VOUCHER_TERMS = { validityDays: String(DEFAULT_VOUCHER_VALIDITY_DAYS), redemptionTerms: '' }
+
+/** The form's voucher terms as the admin offer routes take them. */
+export function voucherTermsPayload(value: OfferFormValue) {
+  return { validityDays: Number(value.validityDays), redemptionTerms: value.redemptionTerms }
 }
 
 interface Props {
@@ -15,20 +30,26 @@ interface Props {
   onChange: <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) => void
 }
 
+const LABEL = 'block mb-1.5 text-sm font-bold text-slate-300'
+
 export default function OfferFormFields({ value, onChange }: Props) {
+  const id = useId()
+  const field = (name: string) => `${id}-${name}`
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
       <div className="sm:col-span-2">
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Title</label>
-        <input required className="inp inp-dark !py-3.5" value={value.title} onChange={(e) => onChange('title', e.target.value)} />
+        <label htmlFor={field('title')} className={LABEL}>Title</label>
+        <input id={field('title')} required className="inp inp-dark !py-3.5" value={value.title} onChange={(e) => onChange('title', e.target.value)} />
       </div>
       <div className="sm:col-span-2">
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Description</label>
-        <textarea className="inp inp-dark" rows={3} value={value.description} onChange={(e) => onChange('description', e.target.value)} />
+        <label htmlFor={field('description')} className={LABEL}>Description</label>
+        <textarea id={field('description')} className="inp inp-dark" rows={3} value={value.description} onChange={(e) => onChange('description', e.target.value)} />
       </div>
       <div>
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Original price</label>
+        <label htmlFor={field('originalPrice')} className={LABEL}>Original price</label>
         <input
+          id={field('originalPrice')}
           type="number"
           min={0}
           step="0.01"
@@ -39,8 +60,9 @@ export default function OfferFormFields({ value, onChange }: Props) {
         />
       </div>
       <div>
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Offer price</label>
+        <label htmlFor={field('offerPrice')} className={LABEL}>Offer price (incl. VAT)</label>
         <input
+          id={field('offerPrice')}
           type="number"
           min={0}
           step="0.01"
@@ -51,12 +73,39 @@ export default function OfferFormFields({ value, onChange }: Props) {
         />
       </div>
       <div>
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Expiry date</label>
-        <input type="date" className="inp inp-dark !py-3.5" value={value.expiryDate} onChange={(e) => onChange('expiryDate', e.target.value)} />
+        <label htmlFor={field('expiryDate')} className={LABEL}>Expiry date</label>
+        <input id={field('expiryDate')} type="date" className="inp inp-dark !py-3.5" value={value.expiryDate} onChange={(e) => onChange('expiryDate', e.target.value)} />
+      </div>
+      <div>
+        <label htmlFor={field('validityDays')} className={LABEL}>Voucher valid for (days after purchase)</label>
+        <input
+          id={field('validityDays')}
+          type="number"
+          min={1}
+          max={MAX_VOUCHER_VALIDITY_DAYS}
+          step={1}
+          required
+          className="inp inp-dark !py-3.5"
+          value={value.validityDays}
+          onChange={(e) => onChange('validityDays', e.target.value)}
+        />
       </div>
       <div className="sm:col-span-2">
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Image URL</label>
+        <label htmlFor={field('redemptionTerms')} className={LABEL}>Redemption terms</label>
+        <textarea
+          id={field('redemptionTerms')}
+          className="inp inp-dark"
+          rows={3}
+          maxLength={MAX_REDEMPTION_TERMS_LENGTH}
+          placeholder="e.g. Dine-in only, Sun–Thu. Book ahead by phone. One voucher per table."
+          value={value.redemptionTerms}
+          onChange={(e) => onChange('redemptionTerms', e.target.value)}
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor={field('imageUrl')} className={LABEL}>Image URL</label>
         <input
+          id={field('imageUrl')}
           type="url"
           className="inp inp-dark !py-3.5"
           placeholder="https://... (link to an externally-hosted photo, e.g. Drive or Imgur)"
@@ -65,8 +114,9 @@ export default function OfferFormFields({ value, onChange }: Props) {
         />
       </div>
       <div className="sm:col-span-2">
-        <label className="block mb-1.5 text-sm font-bold text-slate-300">Total quantity</label>
+        <label htmlFor={field('totalQuantity')} className={LABEL}>Total quantity</label>
         <input
+          id={field('totalQuantity')}
           type="number"
           min={1}
           className="inp inp-dark !py-3.5 disabled:opacity-50"

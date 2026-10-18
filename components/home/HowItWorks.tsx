@@ -45,7 +45,7 @@ export default function HowItWorks({ variant = 'guest' }: { variant?: 'guest' | 
             <h3 className="font-black text-[19px] mb-2 leading-tight">{t('step4_title')}</h3>
             <p className="text-white/80 text-sm leading-relaxed mb-5">{t('step4_desc')}</p>
             <div className="inline-flex items-center gap-2 text-sm font-bold text-white border border-white/30 rounded-full px-4 py-2">
-              {t('step4_link')} <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+              {t('step4_link')} <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
             </div>
           </Link>
         </div>

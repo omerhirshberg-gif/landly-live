@@ -72,11 +72,11 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
 
       {visibleOffers === undefined ? (
         <div className="dash-empty-state">
-          <i className="fa-solid fa-spinner fa-spin"></i>
+          <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
         </div>
       ) : visibleOffers.length === 0 ? (
         <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-          <i className="fa-solid fa-tags"></i>
+          <i className="fa-solid fa-tags" aria-hidden="true"></i>
           <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
           <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
         </div>

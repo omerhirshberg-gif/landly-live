@@ -164,6 +164,8 @@ describe('member dashboard: category rail and perk cards', () => {
     expiryDate: null,
     totalQuantity: null,
     claimedCount: 0,
+    validityDays: 180,
+    redemptionTerms: '',
   }
 
   it.each(['en', 'he'] as const)('a perk card shows merchant, category badge, "% OFF" banner and the CTA line (%s)', (lang) => {

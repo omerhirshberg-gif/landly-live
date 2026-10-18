@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
+import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { getAdminDb } from '@/lib/firebase/admin'
 
 interface PatchBody {
@@ -15,6 +16,8 @@ interface PatchBody {
     expiryDate: string | null
     totalQuantity: number | null
     isBestseller?: boolean
+    validityDays?: number
+    redemptionTerms?: string
   }
 }
 
@@ -57,6 +60,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   if (priceError) return badRequest(priceError)
   const imageUrl = typeof offer.imageUrl === 'string' ? offer.imageUrl.trim() : ''
   if (imageUrl && !isValidImageUrl(imageUrl)) return badRequest('offer.imageUrl must be a valid http(s) URL.')
+  const voucherTerms = parseOfferVoucherTerms(offer)
+  if (!voucherTerms.ok) return badRequest(voucherTerms.error)
 
   const ref = getAdminDb().collection('offers').doc(offerId)
   const snap = await ref.get()
@@ -77,6 +82,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     expiryDate: offer.expiryDate ? Timestamp.fromDate(new Date(offer.expiryDate)) : null,
     totalQuantity: offer.totalQuantity,
     isBestseller: !!offer.isBestseller,
+    // Orders already created keep the terms they were shown (see initiateOrder).
+    validityDays: voucherTerms.validityDays,
+    redemptionTerms: voucherTerms.redemptionTerms,
   })
 
   return NextResponse.json({ updated: true })

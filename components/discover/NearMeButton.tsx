@@ -85,7 +85,7 @@ export default function NearMeButton({
           disabled={state === 'requesting'}
           className="tap-target inline-flex items-center gap-2 border-2 border-brand text-brand font-bold text-sm px-5 py-2.5 rounded-full hover:bg-brandLight transition disabled:opacity-60"
         >
-          <i className="fa-solid fa-location-crosshairs text-xs"></i>
+          <i className="fa-solid fa-location-crosshairs text-xs" aria-hidden="true"></i>
           <span>{t('geo_near_me_btn')}</span>
         </button>
         {message[state] && (

@@ -4,6 +4,7 @@ import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
+import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 
 interface RequestBody {
@@ -24,6 +25,8 @@ interface RequestBody {
     expiryDate: string | null
     totalQuantity: number | null
     isBestseller?: boolean
+    validityDays?: number
+    redemptionTerms?: string
   }
 }
 
@@ -93,6 +96,8 @@ export async function POST(request: Request) {
   if (priceError) return badRequest(priceError)
   const imageUrl = typeof offer.imageUrl === 'string' ? offer.imageUrl.trim() : ''
   if (imageUrl && !isValidImageUrl(imageUrl)) return badRequest('offer.imageUrl must be a valid http(s) URL.')
+  const voucherTerms = parseOfferVoucherTerms(offer)
+  if (!voucherTerms.ok) return badRequest(voucherTerms.error)
 
   const duplicate = await adminDb.collection('businesses').where('businessId', '==', business.businessId).limit(1).get()
   if (!duplicate.empty) {
@@ -140,6 +145,8 @@ export async function POST(request: Request) {
       expiryDate: offer.expiryDate ? Timestamp.fromDate(new Date(offer.expiryDate)) : null,
       totalQuantity: offer.totalQuantity,
       claimedCount: 0,
+      validityDays: voucherTerms.validityDays,
+      redemptionTerms: voucherTerms.redemptionTerms,
     })
     await batch.commit()
   } catch {

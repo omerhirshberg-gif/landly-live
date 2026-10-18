@@ -15,19 +15,26 @@ interface TranzilaPaymentWidgetProps {
 // need, so no restructuring of the checkout page should be required. Payment
 // confirmation itself never happens client-side even once wired up: the
 // voucher is only created after app/api/payments/tranzila-webhook confirms
-// payment server-to-server.
+// payment server-to-server. No third-party script runs beside it: the
+// accessibility widget is excluded from /checkout (AccessibilityWidget.tsx).
 export default function TranzilaPaymentWidget({ offerTitle, amount, onBack }: TranzilaPaymentWidgetProps) {
   const { t } = useLang()
 
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-sm text-center">
-      <i className="fa-solid fa-lock text-brand text-2xl mb-4"></i>
+      <i className="fa-solid fa-lock text-brand text-2xl mb-4" aria-hidden="true"></i>
       <h2 className="text-lg font-bold text-slate-900 mb-2">{t('checkout_payment_coming_soon_title')}</h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-1">{t('checkout_payment_coming_soon_sub')}</p>
-      <p className="text-sm font-semibold text-slate-700 mt-4" dir="ltr">{offerTitle} — {formatPrice(amount)}</p>
+      <p className="text-sm font-semibold text-slate-700 mt-4">
+        <span>{offerTitle}</span> — <span dir="ltr">{formatPrice(amount)}</span>
+      </p>
 
-      <button onClick={onBack} className="tap-target inline-flex items-center gap-2 text-brand font-bold text-sm hover:underline mt-6">
-        <i className="fa-solid fa-arrow-left text-xs"></i>
+      <button
+        type="button"
+        onClick={onBack}
+        className="tap-target inline-flex items-center gap-2 text-brand font-bold text-sm hover:underline mt-6 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+      >
+        <i className="fa-solid fa-arrow-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
         <span>{t('checkout_back_to_summary')}</span>
       </button>
     </div>

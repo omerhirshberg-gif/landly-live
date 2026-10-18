@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import VoucherQRCode from './VoucherQRCode'
+import VoucherTerms from './VoucherTerms'
 
 type ActiveVoucher = VoucherDocument & { id: string }
 
@@ -13,14 +14,18 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   const { t } = useLang()
 
   if (vouchers === null) {
-    return <div className="dash-empty-state" />
+    return (
+      <div role="status" className="dash-empty-state">
+        <span className="sr-only">{t('bizdash_loading')}</span>
+      </div>
+    )
   }
 
   if (vouchers.length === 0) {
     return (
       <div>
         <div className="dash-empty-state">
-          <i className="fa-solid fa-gift"></i>
+          <i className="fa-solid fa-gift" aria-hidden="true"></i>
           <div className="font-bold text-slate-700 text-base mb-1">{t('dash_perks_empty_title')}</div>
           <p className="text-sm text-slate-500 max-w-xs mb-5">{t('dash_perks_empty_sub')}</p>
           <Link href="/categories" className="tap-target btn-primary">
@@ -42,9 +47,14 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
             <div className="text-center sm:text-start">
               <div className="text-xs text-slate-500 mb-1">{t('voucher_redemption_code_label')}</div>
               <div className="text-2xl font-black text-slate-900 tracking-[0.2em]" dir="ltr">{voucher.redemptionCode}</div>
-              <p className="text-xs text-slate-400 mt-2 max-w-[220px]">{t('voucher_qr_label')}</p>
+              <p className="text-xs text-slate-500 mt-2 max-w-[220px]">{t('voucher_qr_label')}</p>
             </div>
           </div>
+          {(voucher.expiresAt || voucher.redemptionTerms) && (
+            <div className="border-t border-slate-100 mt-4 pt-4">
+              <VoucherTerms voucher={voucher} />
+            </div>
+          )}
         </div>
       ))}
     </div>

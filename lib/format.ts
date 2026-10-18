@@ -23,3 +23,18 @@ export function formatRedeemedDate(date: Date, lang: string): string {
     return date.toLocaleDateString()
   }
 }
+
+// A voucher's validity date, spelled out in the reader's language: "April 16,
+// 2027", "16 באפריל 2027". Same Hermes fallback as formatRedeemedDate.
+export function formatLongDate(date: Date, lang: string): string {
+  try {
+    return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+  } catch {
+    return date.toLocaleDateString()
+  }
+}
+
+/** The difference between two prices, computed in agorot so 100 - 79.9 is 20.1, not 20.099999. */
+export function priceDifference(original: number, paid: number): number {
+  return (Math.round(original * 100) - Math.round(paid * 100)) / 100
+}

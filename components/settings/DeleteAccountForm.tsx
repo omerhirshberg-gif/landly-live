@@ -42,7 +42,7 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
     <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-4">
         <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-red-50 text-red-600" aria-hidden="true">
-          <i className={`fa-solid ${result === 'sent' ? 'fa-check' : 'fa-trash-can'}`}></i>
+          <i className={`fa-solid ${result === 'sent' ? 'fa-check' : 'fa-trash-can'}`} aria-hidden="true"></i>
         </span>
         <h2 className="flex-1 min-w-0 text-lg font-bold text-ink">
           {result === 'sent' ? t('del_success_title') : t('del_title')}

@@ -96,7 +96,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
           data-hidden={!edges.start || undefined}
           className="rail-arrow"
         >
-          <i className="fa-solid fa-chevron-left rtl:-scale-x-100"></i>
+          <i className="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
         </button>
       )}
       <div
@@ -138,7 +138,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
           data-hidden={!edges.end || undefined}
           className="rail-arrow"
         >
-          <i className="fa-solid fa-chevron-right rtl:-scale-x-100"></i>
+          <i className="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
         </button>
       )}
     </div>

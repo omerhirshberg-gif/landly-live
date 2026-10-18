@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   setPersistence: vi.fn(), popup: vi.fn(), redirect: vi.fn(), redirectResult: vi.fn(), finish: vi.fn(),
+  auth: { name: 'auth', currentUser: null as unknown, authStateReady: vi.fn() },
 }))
 vi.mock('firebase/auth', () => ({
   setPersistence: mocks.setPersistence,
@@ -10,18 +11,38 @@ vi.mock('firebase/auth', () => ({
   signInWithRedirect: mocks.redirect,
   getRedirectResult: mocks.redirectResult,
 }))
-vi.mock('@/lib/firebase/config', () => ({ auth: { name: 'auth' }, googleProvider: { providerId: 'google.com' } }))
+vi.mock('@/lib/firebase/config', () => ({ auth: mocks.auth, googleProvider: { providerId: 'google.com' } }))
 vi.mock('@/lib/auth/signInCustomer', () => ({ finishCustomerGoogleSignIn: mocks.finish }))
 
-import { completeGoogleRedirect, isEmbeddedBrowser, shouldFallBackToRedirect, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
+import {
+  completeGoogleRedirect,
+  hasPendingGoogleRedirect,
+  isEmbeddedBrowser,
+  REDIRECT_RESULT_TIMEOUT_MS,
+  shouldFallBackToRedirect,
+  startGoogleWebSignIn,
+} from '@/lib/auth/googleWebSignIn'
 import { resolveAuthDomain } from '@/lib/firebase/authDomain'
 
 const firebaseError = (code: string) => Object.assign(new Error(code), { code })
 const persistence = { type: 'LOCAL' } as never
 const signedIn = { status: 'signedIn', user: { uid: 'u1' }, preferredLanguage: null }
+const googleUser = { uid: 'u1', providerData: [{ providerId: 'google.com' }] }
+
+// A Map-backed sessionStorage, the same whatever Node version runs the suite.
+const store = new Map<string, string>()
+vi.stubGlobal('sessionStorage', {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useRealTimers()
+  store.clear()
+  mocks.auth.currentUser = null
+  mocks.auth.authStateReady.mockResolvedValue(undefined)
   mocks.setPersistence.mockResolvedValue(undefined)
   mocks.redirect.mockResolvedValue(undefined)
   mocks.finish.mockResolvedValue(signedIn)
@@ -31,7 +52,7 @@ describe('startGoogleWebSignIn', () => {
   it('uses the popup and the shared customer rules when it works', async () => {
     mocks.popup.mockResolvedValue({ user: { uid: 'u1' } })
     expect(await startGoogleWebSignIn('he', persistence)).toEqual({ kind: 'signedIn', result: signedIn })
-    expect(mocks.setPersistence).toHaveBeenCalledWith({ name: 'auth' }, persistence)
+    expect(mocks.setPersistence).toHaveBeenCalledWith(mocks.auth, persistence)
     expect(mocks.setPersistence.mock.invocationCallOrder[0]).toBeLessThan(mocks.popup.mock.invocationCallOrder[0])
     expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'he')
     expect(mocks.redirect).not.toHaveBeenCalled()
@@ -40,7 +61,7 @@ describe('startGoogleWebSignIn', () => {
   it.each(['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'])('falls back to a redirect on %s', async (code) => {
     mocks.popup.mockRejectedValue(firebaseError(code))
     expect(await startGoogleWebSignIn('en', persistence)).toEqual({ kind: 'redirecting' })
-    expect(mocks.redirect).toHaveBeenCalledWith({ name: 'auth' }, { providerId: 'google.com' })
+    expect(mocks.redirect).toHaveBeenCalledWith(mocks.auth, { providerId: 'google.com' })
     expect(mocks.finish).not.toHaveBeenCalled()
   })
 
@@ -67,6 +88,96 @@ describe('completeGoogleRedirect', () => {
     mocks.redirectResult.mockResolvedValue({ user: { uid: 'u1' } })
     expect(await completeGoogleRedirect('fr')).toBe(signedIn)
     expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'fr')
+  })
+
+  it('marks the page before leaving for Google, and not on a popup sign-in', async () => {
+    mocks.popup.mockRejectedValue(firebaseError('auth/popup-blocked'))
+    mocks.redirect.mockImplementation(async () => {
+      expect(hasPendingGoogleRedirect()).toBe(true)
+    })
+    await startGoogleWebSignIn('en', persistence)
+    expect(mocks.redirect).toHaveBeenCalled()
+    store.clear()
+    mocks.popup.mockResolvedValue({ user: { uid: 'u1' } })
+    await startGoogleWebSignIn('en', persistence)
+    expect(hasPendingGoogleRedirect()).toBe(false)
+  })
+
+  it('drops the mark when the redirect cannot start', async () => {
+    mocks.popup.mockRejectedValue(firebaseError('auth/popup-blocked'))
+    mocks.redirect.mockRejectedValue(firebaseError('auth/network-request-failed'))
+    await expect(startGoogleWebSignIn('en', persistence)).rejects.toMatchObject({ code: 'auth/network-request-failed' })
+    expect(hasPendingGoogleRedirect()).toBe(false)
+  })
+
+  it('ignores a stale mark', () => {
+    store.set('landly_google_redirect', String(Date.now() - 11 * 60 * 1000))
+    expect(hasPendingGoogleRedirect()).toBe(false)
+  })
+
+  it('finishes with the restored Google session when the result was lost', async () => {
+    store.set('landly_google_redirect', String(Date.now()))
+    mocks.redirectResult.mockResolvedValue(null)
+    mocks.auth.currentUser = googleUser
+    expect(await completeGoogleRedirect('he')).toBe(signedIn)
+    expect(mocks.finish).toHaveBeenCalledWith({ user: googleUser }, 'he')
+    expect(hasPendingGoogleRedirect()).toBe(false)
+  })
+
+  it('recovers the session when the result fails on missing state', async () => {
+    store.set('landly_google_redirect', String(Date.now()))
+    mocks.redirectResult.mockRejectedValue(firebaseError('auth/missing-initial-state'))
+    mocks.auth.currentUser = googleUser
+    expect(await completeGoogleRedirect('en')).toBe(signedIn)
+  })
+
+  it('reports the failure when no session was restored', async () => {
+    store.set('landly_google_redirect', String(Date.now()))
+    mocks.redirectResult.mockRejectedValue(firebaseError('auth/missing-initial-state'))
+    await expect(completeGoogleRedirect('en')).rejects.toMatchObject({ code: 'auth/missing-initial-state' })
+    expect(hasPendingGoogleRedirect()).toBe(false)
+  })
+
+  it('never runs the Google rules on an email session', async () => {
+    store.set('landly_google_redirect', String(Date.now()))
+    mocks.redirectResult.mockResolvedValue(null)
+    mocks.auth.currentUser = { uid: 'u2', providerData: [{ providerId: 'password' }] }
+    expect(await completeGoogleRedirect('en')).toBeNull()
+    expect(mocks.finish).not.toHaveBeenCalled()
+  })
+
+  it('stops waiting on a hung result: the session if there is one, else a timeout', async () => {
+    vi.useFakeTimers()
+    mocks.redirectResult.mockReturnValue(new Promise(() => undefined))
+    store.set('landly_google_redirect', String(Date.now()))
+    const failed = expect(completeGoogleRedirect('en')).rejects.toMatchObject({ code: 'auth/timeout' })
+    await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
+    await failed
+
+    store.set('landly_google_redirect', String(Date.now()))
+    mocks.auth.currentUser = googleUser
+    const recovered = completeGoogleRedirect('en')
+    await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
+    expect(await recovered).toBe(signedIn)
+  })
+
+  it('treats a hung result on an ordinary load as no result', async () => {
+    vi.useFakeTimers()
+    mocks.redirectResult.mockReturnValue(new Promise(() => undefined))
+    const result = completeGoogleRedirect('en')
+    await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
+    expect(await result).toBeNull()
+  })
+
+  it('leaves no unhandled rejection when a result fails after the timeout', async () => {
+    vi.useFakeTimers()
+    let reject!: (err: unknown) => void
+    mocks.redirectResult.mockReturnValue(new Promise((_, r) => (reject = r)))
+    const result = completeGoogleRedirect('en')
+    await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
+    expect(await result).toBeNull()
+    reject(firebaseError('auth/internal-error'))
+    await vi.advanceTimersByTimeAsync(0)
   })
 })
 
@@ -104,13 +215,13 @@ describe('isEmbeddedBrowser', () => {
 
 describe('resolveAuthDomain', () => {
   const env = 'landly-be752.firebaseapp.com'
-  it('serves the helper first-party on production once the proxy is on', () => {
-    expect(resolveAuthDomain({ host: 'www.golandly.com', envAuthDomain: env, proxyEnabled: true })).toBe('www.golandly.com')
+  it.each(['www.golandly.com', 'golandly.com', 'GOLANDLY.com'])('serves the helper first-party on %s once the proxy is on', (host) => {
+    expect(resolveAuthDomain({ host, envAuthDomain: env, proxyEnabled: true })).toBe(host.toLowerCase())
   })
-  it('keeps firebaseapp.com while the flag is off', () => {
-    expect(resolveAuthDomain({ host: 'www.golandly.com', envAuthDomain: env, proxyEnabled: false })).toBe(env)
+  it.each(['www.golandly.com', 'golandly.com'])('keeps firebaseapp.com on %s while the flag is off', (host) => {
+    expect(resolveAuthDomain({ host, envAuthDomain: env, proxyEnabled: false })).toBe(env)
   })
-  it.each([null, 'localhost:3000', '192.168.7.57:3000', 'landly-git-branch.vercel.app', 'golandly.com'])('keeps the env value on %s', (host) => {
+  it.each([null, 'localhost:3000', '192.168.7.57:3000', 'landly-git-branch.vercel.app', 'app.golandly.com'])('keeps the env value on %s', (host) => {
     expect(resolveAuthDomain({ host, envAuthDomain: env, proxyEnabled: true })).toBe(env)
   })
 })

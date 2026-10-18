@@ -8,7 +8,7 @@ import { TranslationKey } from '@/lib/i18n/translations'
 // RTL for Hebrew); the server HTML is the English default.
 const SECTIONS: { heading: TranslationKey; body: (TranslationKey | [TranslationKey, TranslationKey])[] }[] = [
   { heading: 'terms_h1', body: ['terms_p1'] },
-  { heading: 'terms_h2', body: [['terms_p2a_label', 'terms_p2a'], ['terms_p2b_label', 'terms_p2b']] },
+  { heading: 'terms_h2', body: [['terms_p2a_label', 'terms_p2a'], ['terms_p2b_label', 'terms_p2b'], ['terms_p2c_label', 'terms_p2c']] },
   { heading: 'terms_h3', body: ['terms_p3'] },
   { heading: 'terms_h6', body: ['terms_p6'] },
   { heading: 'terms_h7', body: ['terms_p7'] },
