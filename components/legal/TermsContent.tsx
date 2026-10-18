@@ -1,15 +1,27 @@
 'use client'
 
+import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
 import { TranslationKey } from '@/lib/i18n/translations'
 
 // The sections formerly shown in the home-page TermsModal, now on /terms.
 // Client-rendered through useLang so it follows the member's language (and
-// RTL for Hebrew); the server HTML is the English default.
-const SECTIONS: { heading: TranslationKey; body: (TranslationKey | [TranslationKey, TranslationKey])[] }[] = [
+// RTL for Hebrew); the server HTML is the English default. A section's `link`
+// is website-only: the app's Terms screen (lib/legal/termsSections.ts) names
+// the same Settings path in the text instead.
+const SECTIONS: {
+  heading: TranslationKey
+  body: (TranslationKey | [TranslationKey, TranslationKey])[]
+  link?: { href: string; label: TranslationKey }
+}[] = [
   { heading: 'terms_h1', body: ['terms_p1'] },
   { heading: 'terms_h2', body: [['terms_p2a_label', 'terms_p2a'], ['terms_p2b_label', 'terms_p2b'], ['terms_p2c_label', 'terms_p2c']] },
   { heading: 'terms_h3', body: ['terms_p3'] },
+  {
+    heading: 'terms_h4',
+    body: [['terms_p4a_label', 'terms_p4a'], ['terms_p4b_label', 'terms_p4b'], ['terms_p4c_label', 'terms_p4c']],
+    link: { href: '/settings/delete-account', label: 'terms_p4_link' },
+  },
   { heading: 'terms_h6', body: ['terms_p6'] },
   { heading: 'terms_h7', body: ['terms_p7'] },
 ]
@@ -33,6 +45,14 @@ export default function TermsContent() {
               ) : (
                 <p key={p}>{t(p)}</p>
               )
+            )}
+            {s.link && (
+              <p className="mt-3">
+                <Link href={s.link.href} className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-[#0038B8] underline-offset-4 hover:underline">
+                  {t(s.link.label)}
+                  <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+                </Link>
+              </p>
             )}
           </section>
         ))}

@@ -7,7 +7,7 @@ import TermsContent from '@/components/legal/TermsContent'
 // Same shell as /privacy. The terms text lives in the i18n table, so the
 // content itself is a client component; this server page owns the metadata.
 export const metadata: Metadata = {
-  title: 'Terms and Conditions — Landly',
+  title: 'Terms and Conditions',
   description: 'Landly payments, refund policy, voucher rules, governing law and contact details.',
   alternates: { canonical: 'https://www.golandly.com/terms' },
   robots: { index: true, follow: true },
