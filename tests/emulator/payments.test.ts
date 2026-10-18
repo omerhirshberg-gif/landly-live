@@ -9,7 +9,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8787') {
   throw new Error('Run npm run test:emulator; only the isolated loopback emulator is permitted.')
 }
 const db = new Firestore({ projectId: 'demo-landly-payments' })
-const collections = ['orders', 'offers', 'businesses', 'vouchers', 'paymentTransactions']
+const collections = ['orders', 'offers', 'businesses', 'vouchers', 'paymentTransactions', 'metadata']
 
 async function snapshot() {
   const entries = await Promise.all(collections.map(async (name) => {

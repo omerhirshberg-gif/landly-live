@@ -4,9 +4,10 @@ import { business, offer, pending } from '../helpers/paymentFixtures'
 
 const mocks = vi.hoisted(() => {
   class MockRequestAuthError extends Error { status: 401 | 403 | 503; constructor(message: string, status: 401 | 403 | 503) { super(message); this.status = status } }
-  return { getDb: vi.fn(), verifiedUid: vi.fn(), MockRequestAuthError }
+  return { getDb: vi.fn(), verifiedUid: vi.fn(), scheduleConfirmation: vi.fn(), MockRequestAuthError }
 })
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: mocks.getDb }))
+vi.mock('@/lib/payments/orderConfirmation', () => ({ scheduleOrderConfirmation: mocks.scheduleConfirmation }))
 // Far more calls than the per-minute payment budget; the limiter has its own tests.
 vi.mock('@/lib/auth/uidRateLimit', () => ({ checkUidRateLimit: () => null }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({ requireVerifiedCustomerUid: mocks.verifiedUid, RequestAuthError: mocks.MockRequestAuthError }))
@@ -147,17 +148,20 @@ describe('sandbox settlement route', () => {
     expect(voucher?.redemptionTerms).toBe('Frozen terms')
     expect(store.read('offers/offer')?.claimedCount).toBe(1)
     expect(store.count('paymentTransactions')).toBe(1)
+    expect(mocks.scheduleConfirmation).toHaveBeenCalledExactlyOnceWith(store.db, 'user_offer')
   })
   it('marks a declined payment failed without a voucher', async () => {
     expect((await settle('decline')).status).toBe(200)
     expect(store.read('orders/user_offer')?.status).toBe('failed')
     expect(store.count('vouchers')).toBe(0)
+    expect(mocks.scheduleConfirmation).not.toHaveBeenCalled()
   })
   it('changes nothing on a repeat call', async () => {
     await settle('approve')
     const before = store.snapshot()
     expect((await settle('approve')).status).toBe(409)
     expect(store.snapshot()).toEqual(before)
+    expect(mocks.scheduleConfirmation).toHaveBeenCalledTimes(1)
   })
   it("refuses another member's order", async () => {
     mocks.verifiedUid.mockResolvedValue('someone-else')

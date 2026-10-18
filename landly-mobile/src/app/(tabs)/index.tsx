@@ -14,7 +14,7 @@ import Avatar from '../../components/Avatar'
 import Button from '../../components/Button'
 import CategoryRail from '../../components/CategoryRail'
 import Notice from '../../components/Notice'
-import OfferCard from '../../components/OfferCard'
+import OfferCarousel from '../../components/OfferCarousel'
 import SectionHeader from '../../components/SectionHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
@@ -29,7 +29,8 @@ const GREETING_IN = FadeInDown.duration(ONB.greetingMs)
   .withInitialValues({ opacity: 0, transform: [{ translateY: ONB.screenRisePx }] })
 
 // The signed-in dashboard: greeting, the live active-pass count, the
-// categories, and a few curated offers. Same sections as the website's
+// categories, and a few curated offers in a horizontal carousel of compact
+// cards (components/OfferCarousel.tsx). Same sections as the website's
 // member home (components/home/LoggedInHome.tsx).
 const fetchOffers = async () => sortFeaturedOffers(await getAllOffers()).slice(0, CURATED_COUNT)
 
@@ -148,7 +149,7 @@ export default function HomeScreen() {
             <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
           </View>
         ) : (
-          offers.map((offer) => <OfferCard key={offer.id} offer={offer} onPress={() => openOffer(offer)} />)
+          <OfferCarousel offers={offers} onOpen={openOffer} />
         )}
       </ScrollView>
     </SafeAreaView>

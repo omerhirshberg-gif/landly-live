@@ -82,6 +82,7 @@ const EXPECTED: [string, string][] = [
   ['/settings/delete-account', 'Delete Account | Landly'],
   ['/checkout', 'Checkout | Landly'],
   ['/checkout/success', 'Order Confirmed | Landly'],
+  ['/order-success', 'Order Confirmed | Landly'],
   ['/login', 'Sign In | Landly'],
   ['/signup', 'Create Account | Landly'],
   ['/forgot-password', 'Forgot Password | Landly'],

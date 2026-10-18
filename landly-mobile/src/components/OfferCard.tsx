@@ -19,6 +19,14 @@ export const REDEMPTION_METHOD_ICONS: Record<RedemptionMethod, LineIconName> = {
   phone_booking: 'phone',
 }
 
+/**
+ * 'standard': full width, for the vertical feeds (Perks, a category, the
+ * wishlist). 'compact': the same card with a short photo and smaller type.
+ * 'carousel': compact, filling the fixed-width slot its horizontal rail gives
+ * it, with two title lines reserved so neighbouring cards line up.
+ */
+export type OfferCardVariant = 'standard' | 'compact' | 'carousel'
+
 // A press settles quickly without bouncing past rest.
 const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 
@@ -30,17 +38,21 @@ const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 // more perks per screen: a 2:1 photo capped at 180pt, and the price sharing
 // one row with the CTA. A list already scoped to one category passes
 // `showCategoryBadge={false}`, since every card would repeat the same pill.
-// Same anatomy as the website's components/discover/OfferCard.tsx.
+// Same anatomy as the website's components/discover/OfferCard.tsx, whose
+// 'rail' layout is the carousel variant here.
 export default function OfferCard({
   offer,
   onPress,
   showCategoryBadge = true,
+  variant = 'standard',
 }: {
   offer: OfferDocument
   onPress: () => void
   showCategoryBadge?: boolean
+  variant?: OfferCardVariant
 }) {
   const { t, isRtl } = useLang()
+  const compact = variant !== 'standard'
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const { isWishlisted, toggleWishlist } = useWishlist()
@@ -68,61 +80,70 @@ export default function OfferCard({
       onPressIn={() => pressTo(0.98)}
       onPressOut={() => pressTo(1)}
     >
-      <Animated.View style={[styles.card, pressStyle]}>
-        <View style={styles.media}>
+      <Animated.View style={[styles.card, variant === 'carousel' && styles.cardCarousel, pressStyle]}>
+        <View style={[styles.media, compact ? styles.mediaCompact : styles.mediaStandard]}>
           <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />
           {showCategoryBadge && tile && (
             <View style={[styles.overlay, styles.overlayStart, styles.category]}>
-              <AppText style={styles.categoryText} numberOfLines={1}>
+              <AppText style={[styles.categoryText, compact && styles.categoryTextCompact]} numberOfLines={1}>
                 {`${tile.emoji} ${t(tile.labelKey)}`}
               </AppText>
             </View>
           )}
           {discount > 0 && (
-            <View style={[styles.overlayBottomStart, styles.discount]}>
-              <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
+            <View style={[styles.overlayBottomStart, styles.discount, compact && styles.discountCompact]}>
+              <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
             </View>
           )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={wishlistLabel}
             accessibilityState={{ selected: saved }}
-            // 36px circle + 6px slop on each side = a 48px touch target.
-            hitSlop={6}
+            // A 36px circle + 6px slop (compact: 32px + 8px) = a 48px touch target.
+            hitSlop={compact ? 8 : 6}
             onPress={() => toggleWishlist(offer.id)}
-            style={({ pressed }) => [styles.overlayBottomEnd, styles.heart, saved && styles.heartSaved, pressed && styles.heartPressed]}
+            style={({ pressed }) => [
+              styles.overlayBottomEnd,
+              styles.heart,
+              compact && styles.heartCompact,
+              saved && styles.heartSaved,
+              pressed && styles.heartPressed,
+            ]}
           >
-            <LineIcon name="heart" size={18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2.2} />
+            <LineIcon name="heart" size={compact ? 16 : 18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2.2} />
           </Pressable>
         </View>
 
-        <View style={styles.body}>
-          <AppText style={styles.business} numberOfLines={1}>{offer.businessName}</AppText>
-          <AppText style={styles.title} numberOfLines={2}>{offer.title}</AppText>
+        <View style={[styles.body, compact && styles.bodyCompact]}>
+          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>{offer.businessName}</AppText>
+          <AppText style={[styles.title, compact && styles.titleCompact, variant === 'carousel' && styles.titleReserved]} numberOfLines={2}>
+            {offer.title}
+          </AppText>
 
-          <View style={styles.metaRow}>
+          {/* Compact: one line, the location giving way to the method. */}
+          <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
             <View style={styles.methodChip}>
-              <LineIcon name={REDEMPTION_METHOD_ICONS[offer.redemptionMethod]} size={13} color={colors.brand} strokeWidth={2.2} />
-              <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
+              <LineIcon name={REDEMPTION_METHOD_ICONS[offer.redemptionMethod]} size={compact ? 12 : 13} color={colors.brand} strokeWidth={2.2} />
+              <AppText style={[styles.methodText, compact && styles.metaTextCompact]}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
             </View>
             {!!offer.location && (
               <View style={styles.location}>
                 <LineIcon name="pin" size={13} color={colors.textFaint} strokeWidth={2} />
-                <AppText style={styles.locationText} numberOfLines={1}>{offer.location}</AppText>
+                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>{offer.location}</AppText>
               </View>
             )}
           </View>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, compact && styles.footerCompact]}>
             <View style={styles.priceRow}>
-              <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
-              {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}
+              <AppText ltr style={[styles.price, compact && styles.priceCompact]}>{formatPrice(offer.offerPrice)}</AppText>
+              {discount > 0 && <AppText ltr style={[styles.original, compact && styles.originalCompact]}>{formatPrice(offer.originalPrice)}</AppText>}
             </View>
             <View style={styles.cta}>
-              <AppText style={styles.ctaText}>{t('offer_view_cta')}</AppText>
+              <AppText style={[styles.ctaText, compact && styles.ctaTextCompact]}>{t('offer_view_cta')}</AppText>
               <Svg
-                width={14}
-                height={14}
+                width={compact ? 13 : 14}
+                height={compact ? 13 : 14}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke={colors.brand}
@@ -155,16 +176,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  // The rail spaces its cards itself.
+  cardCarousel: { marginBottom: 0 },
   // Clips the photo to the card's top corners (the card itself can't clip, or iOS would drop its shadow).
   media: {
     width: '100%',
-    aspectRatio: 2,
-    maxHeight: 180,
     borderTopLeftRadius: radius.lg - 1,
     borderTopRightRadius: radius.lg - 1,
     overflow: 'hidden',
     backgroundColor: colors.brandTint,
   },
+  mediaStandard: { aspectRatio: 2, maxHeight: 180 },
+  mediaCompact: { height: 124 },
   overlay: { position: 'absolute', top: 10 },
   overlayStart: { start: 10 },
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
@@ -178,6 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     ...webOnly({ cursor: 'pointer' }),
   },
+  heartCompact: { width: 32, height: 32 },
   heartSaved: { backgroundColor: '#ef4444' },
   heartPressed: { transform: [{ scale: 0.92 }] },
   category: {
@@ -188,10 +212,17 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   categoryText: { fontSize: 11, fontWeight: '600', color: colors.heading },
+  categoryTextCompact: { fontSize: 10 },
   body: { padding: 12 },
+  bodyCompact: { paddingHorizontal: 10, paddingTop: 9, paddingBottom: 10 },
   business: { fontSize: 16, fontWeight: '700', color: colors.heading, lineHeight: 22 },
+  businessCompact: { fontSize: 14, lineHeight: 19 },
   title: { fontSize: 14, lineHeight: 20, color: colors.body, marginTop: 2 },
+  titleCompact: { fontSize: 13, lineHeight: 18, marginTop: 1 },
+  titleReserved: { minHeight: 36 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  metaRowCompact: { flexWrap: 'nowrap', gap: 6, marginTop: 6 },
+  metaTextCompact: { fontSize: 11 },
   methodChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -206,9 +237,12 @@ const styles = StyleSheet.create({
   locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 1 },
   // Price at the start, "View deal" at the end, on one row.
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10 },
+  footerCompact: { gap: 8, marginTop: 8 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, flexShrink: 1 },
   price: { fontSize: 18, fontWeight: '800', color: colors.brand },
+  priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },
+  originalCompact: { fontSize: 12 },
   // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1).
   discount: {
     backgroundColor: '#047857',
@@ -221,8 +255,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  discountCompact: { paddingHorizontal: 7, paddingVertical: 3 },
   discountText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
+  discountTextCompact: { fontSize: 11, letterSpacing: 0.3 },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
   ctaText: { fontSize: 14, fontWeight: '700', color: colors.brand },
+  ctaTextCompact: { fontSize: 13 },
   flip: { transform: [{ scaleX: -1 }] },
 })

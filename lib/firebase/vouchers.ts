@@ -2,6 +2,7 @@ import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } 
 import { db } from './config'
 import { normalizeRedemptionTerms } from '../payments/voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
+import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 
 // refunded: cancelled through support after purchase (set by an admin, never
 // by a client); it leaves the wallet like a redeemed one, but was never used.
@@ -23,6 +24,9 @@ export interface VoucherDocument {
   redemptionTerms: string // snapshot from the order, so later offer edits never change a bought voucher
   redemptionMethod: RedemptionMethod // snapshot like redemptionTerms; 'in_store' for vouchers issued before methods existed
   redemptionInstructions: string // snapshot like redemptionTerms; '' = the method's default steps
+  // Its order's sequential number ("#1001"); null for vouchers issued before numbering existed.
+  orderNumber: number | null
+  displayOrderNumber: string | null
 }
 
 // What a voucher's QR code encodes -- shared so the web member area and the
@@ -56,6 +60,8 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
     redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
     redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
+    orderNumber: isOrderNumber(data.orderNumber) ? data.orderNumber : null,
+    displayOrderNumber: normalizeDisplayOrderNumber(data.displayOrderNumber),
   }
 }
 

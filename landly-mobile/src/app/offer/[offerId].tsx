@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import * as WebBrowser from 'expo-web-browser'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES } from '@shared/categories'
 import { getOffer, getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
@@ -17,7 +16,6 @@ import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
-import { API_BASE_URL } from '../../lib/env'
 import { cachedOffer } from '../../lib/openOffer'
 import { webOnly } from '../../lib/webStyles'
 import { colors, radius } from '../../theme'
@@ -27,10 +25,10 @@ import { colors, radius } from '../../theme'
 // direction turns it back, the same as the header's back button. The photo
 // with the wishlist heart, the business, the offer and its price, the
 // description, validity and how to redeem; the Buy button sits in a bar
-// pinned above the home indicator. Checkout runs on the website, in an in-app
-// browser sheet (SFSafariViewController / Chrome Custom Tabs), so closing it
-// lands back here -- where the claim check runs again, turning a completed
-// purchase into the "already claimed" notice.
+// pinned above the home indicator. Buy pushes the native checkout
+// (app/checkout/[offerId].tsx); a finished purchase replaces it with the new
+// voucher, so coming back here re-runs the claim check on focus, turning the
+// Buy bar into the "already claimed" notice.
 export default function OfferScreen() {
   const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
@@ -40,7 +38,6 @@ export default function OfferScreen() {
   // The tapped card's data first (if any); undefined while loading, null when missing.
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(() => (offerId ? cachedOffer(offerId) : undefined))
   const [claimed, setClaimed] = useState<boolean | null>(null)
-  const [opening, setOpening] = useState(false)
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
 
@@ -67,33 +64,20 @@ export default function OfferScreen() {
     [uid, offerId]
   )
 
-  useEffect(() => {
-    let cancelled = false
-    fetchClaimed().then((next) => {
-      if (!cancelled) setClaimed(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [fetchClaimed])
-
-  const buy = async () => {
-    if (!offer) return
-    const url = `${API_BASE_URL}/checkout?offerId=${encodeURIComponent(offer.id)}`
-    setOpening(true)
-    try {
-      await WebBrowser.openBrowserAsync(url, {
-        controlsColor: colors.brand,
-        toolbarColor: colors.white,
-        dismissButtonStyle: 'close',
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false
+      fetchClaimed().then((next) => {
+        if (!cancelled) setClaimed(next)
       })
-    } catch {
-      // A sheet is already showing: fall back to the system browser.
-      await Linking.openURL(url).catch(() => {})
-    }
-    setOpening(false)
-    // The sheet resolves on dismiss: a finished purchase shows as claimed.
-    setClaimed(await fetchClaimed())
+      return () => {
+        cancelled = true
+      }
+    }, [fetchClaimed])
+  )
+
+  const buy = () => {
+    if (offer) router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id } })
   }
 
   const discount = offer ? getOfferDiscountPercent(offer.originalPrice, offer.offerPrice) : 0
@@ -221,7 +205,7 @@ export default function OfferScreen() {
               <Button
                 label={t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}
                 onPress={buy}
-                busy={opening || claimed === null}
+                busy={claimed === null}
                 disabled={expired}
                 large
               />

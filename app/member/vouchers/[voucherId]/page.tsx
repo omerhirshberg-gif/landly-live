@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
+import OpenInAppHint from '@/components/layout/OpenInAppHint'
 import PerkImage from '@/components/discover/PerkImage'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import HowToRedeem from '@/components/offers/HowToRedeem'
@@ -19,10 +20,11 @@ type Voucher = VoucherDocument & { id: string }
 
 // One voucher as its own page, opened from a My Pass card: the perk's photo
 // and the business name up top, then the QR code and the numeric code --
-// both hidden until tapped (components/member/VoucherReveal.tsx) -- then how
-// to redeem and the validity and terms. Live from Firestore, so a pass the
-// business redeems turns into the "already redeemed" notice in place. Back
-// returns to My Pass; the browser's back and edge swipe do the same.
+// each on the back of a card that turns over when tapped
+// (components/member/VoucherReveal.tsx) -- then how to redeem and the
+// validity and terms. Live from Firestore, so a pass the business redeems
+// turns into the "already redeemed" notice in place. Back returns to My
+// Pass; the browser's back and edge swipe do the same.
 export default function VoucherPage() {
   const { t } = useLang()
   const { user, loading } = useAuth()
@@ -73,6 +75,7 @@ export default function VoucherPage() {
       <Navbar />
       <div className="pt-16 member-canvas min-h-screen min-h-dvh">
         <div className="max-w-xl mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-12">
+          <OpenInAppHint className="mb-3" />
           <BackButton fallback="/member" label={t('nav_my_pass')} className="mb-3" />
 
           {voucher === null ? (
@@ -112,6 +115,13 @@ export default function VoucherPage() {
                 {(voucher.expiresAt || voucher.redemptionTerms) && (
                   <div className="mt-6 border-t border-slate-100 pt-6">
                     <VoucherTerms voucher={voucher} />
+                  </div>
+                )}
+                {/* Vouchers issued before order numbering have none to show. */}
+                {voucher.displayOrderNumber && (
+                  <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-6 text-sm">
+                    <span className="text-slate-500">{t('success_order_number_label')}</span>
+                    <span className="font-mono font-semibold text-slate-800" dir="ltr">{voucher.displayOrderNumber}</span>
                   </div>
                 )}
               </div>

@@ -4,9 +4,10 @@ import { business, event, notification, offer, pending, terminal } from '../help
 
 const mocks = vi.hoisted(() => {
   class MockRequestAuthError extends Error { status: 401 | 403 | 503; constructor(message: string, status: 401 | 403 | 503) { super(message); this.status = status } }
-  return { getDb: vi.fn(), verifiedUid: vi.fn(), MockRequestAuthError }
+  return { getDb: vi.fn(), verifiedUid: vi.fn(), scheduleConfirmation: vi.fn(), MockRequestAuthError }
 })
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: mocks.getDb }))
+vi.mock('@/lib/payments/orderConfirmation', () => ({ scheduleOrderConfirmation: mocks.scheduleConfirmation }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({ requireVerifiedCustomerUid: mocks.verifiedUid, RequestAuthError: mocks.MockRequestAuthError }))
 import { POST as callback } from '@/app/api/payments/tranzila-webhook/route'
 import { POST as initiate } from '@/app/api/payments/initiate/route'
@@ -41,6 +42,15 @@ it('acknowledges success and retries with plain OK', async () => {
   const before = store.snapshot()
   expect(await (await callback(notification())).text()).toBe('OK')
   expect(store.snapshot()).toEqual(before)
+  // The retry replays as alreadyProcessed: one confirmation email, not two.
+  expect(mocks.scheduleConfirmation).toHaveBeenCalledExactlyOnceWith(store.db, event.orderId)
+})
+it('sends no confirmation for a declined payment or a failed commit', async () => {
+  store.beforeCommit = async () => { throw new Error('unavailable') }
+  expect((await callback(notification())).status).toBe(503)
+  store.beforeCommit = undefined
+  expect((await callback(notification({ Response: '004' }))).status).toBe(200)
+  expect(mocks.scheduleConfirmation).not.toHaveBeenCalled()
 })
 it('returns 503 on commit failure and successfully processes a retry', async () => {
   const before = store.snapshot()

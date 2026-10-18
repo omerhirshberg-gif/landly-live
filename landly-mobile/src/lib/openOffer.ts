@@ -10,8 +10,8 @@ export function cachedOffer(offerId: string): OfferDocument | undefined {
 }
 
 // A perk card opens its offer on a native screen (app/offer/[offerId].tsx)
-// pushed over the current one, never the system browser. Only checkout runs
-// on the website, in an in-app browser sheet opened from that screen.
+// pushed over the current one, never the system browser -- and so is its
+// checkout (app/checkout/[offerId].tsx).
 export function openOffer(offer: OfferDocument) {
   seen.set(offer.id, offer)
   router.push({ pathname: '/offer/[offerId]', params: { offerId: offer.id } })

@@ -13,7 +13,11 @@ function store(withOrder = true) {
   return db
 }
 function fulfilled(db: TransactionStore) {
-  expect(db.read('orders/user_offer')).toMatchObject({ status: 'paid', tranzilaTxnId: '123', voucherId: 'user_offer' })
+  expect(db.read('orders/user_offer')).toMatchObject({
+    status: 'paid', tranzilaTxnId: '123', voucherId: 'user_offer', orderNumber: 1001, displayOrderNumber: '#1001',
+  })
+  expect(db.read('vouchers/user_offer')).toMatchObject({ orderNumber: 1001, displayOrderNumber: '#1001' })
+  expect(db.read('metadata/counters')).toEqual({ orderSequence: 1001 })
   expect(db.count('vouchers')).toBe(1)
   expect(db.count('paymentTransactions')).toBe(1)
   expect(db.read('offers/offer')?.claimedCount).toBe(1)
@@ -26,7 +30,7 @@ function pauseNextCommit(db: TransactionStore) {
 }
 
 describe('atomic payment settlement', () => {
-  it('commits all five documents together', async () => {
+  it('commits all six documents together', async () => {
     const db = store()
     await claimOfferForOrder(db.db, event)
     fulfilled(db)
@@ -56,6 +60,44 @@ describe('atomic payment settlement', () => {
     expect(await first).toEqual({ alreadyProcessed: true })
     expect(db.attempts).toBe(3)
     fulfilled(db)
+  })
+  it('numbers orders sequentially from the existing counter, on order and voucher alike', async () => {
+    const db = store()
+    db.seed('orders/other_offer', { ...pending, userId: 'other' })
+    await claimOfferForOrder(db.db, event)
+    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456' })
+    expect(db.read('orders/other_offer')).toMatchObject({ orderNumber: 1002, displayOrderNumber: '#1002' })
+    expect(db.read('vouchers/other_offer')).toMatchObject({ orderNumber: 1002, displayOrderNumber: '#1002' })
+    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1002 })
+  })
+  it('gives concurrent settlements of different orders distinct numbers', async () => {
+    const db = store(), gate = pauseNextCommit(db)
+    db.seed('orders/other_offer', { ...pending, userId: 'other' })
+    const first = claimOfferForOrder(db.db, event)
+    await gate.entered.promise
+    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456' })
+    gate.release.resolve()
+    await first
+    expect(db.read('orders/other_offer')?.orderNumber).toBe(1001)
+    expect(db.read('orders/user_offer')?.orderNumber).toBe(1002)
+    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1002 })
+  })
+  it('continues from a seeded counter and never spends a number on a declined payment', async () => {
+    const db = store()
+    db.seed('metadata/counters', { orderSequence: 1041 })
+    db.seed('orders/other_offer', { ...pending, userId: 'other' })
+    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456', approved: false, responseCode: '005' })
+    expect(db.read('orders/other_offer')?.orderNumber).toBeUndefined()
+    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1041 })
+    await claimOfferForOrder(db.db, event)
+    expect(db.read('orders/user_offer')).toMatchObject({ orderNumber: 1042, displayOrderNumber: '#1042' })
+  })
+  it('leaves everything unchanged when the counter is corrupt', async () => {
+    const db = store()
+    db.seed('metadata/counters', { orderSequence: 'oops' })
+    const before = db.snapshot()
+    await expect(claimOfferForOrder(db.db, event)).rejects.toThrow('Order counter is inconsistent')
+    expect(db.snapshot()).toEqual(before)
   })
   it('rejects reuse of a transaction on another order', async () => {
     const db = store()

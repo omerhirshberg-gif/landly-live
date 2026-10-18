@@ -5,6 +5,7 @@ import type { TranzilaNotification } from './parseTranzilaNotification'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { isValidValidityDays, normalizeRedemptionTerms, normalizeValidityDays, voucherExpiresAtMs } from './voucherTerms'
 import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
+import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START } from './orderNumber'
 
 function transactionKey(event: TranzilaNotification): string {
   return createHash('sha256').update(JSON.stringify([event.terminal, event.tranzilaTxnId])).digest('hex')
@@ -60,10 +61,20 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     }
     const offerRef = db.collection('offers').doc(order.offerId)
     const businessRef = db.collection('businesses').doc(order.businessId)
-    const [offerSnap, businessSnap] = await Promise.all([tx.get(offerRef), tx.get(businessRef)])
+    const counterRef = db.collection(ORDER_COUNTER_PATH.collection).doc(ORDER_COUNTER_PATH.doc)
+    const [offerSnap, businessSnap, counterSnap] = await Promise.all([tx.get(offerRef), tx.get(businessRef), tx.get(counterRef)])
     if (!offerSnap.exists || !businessSnap.exists) {
       throw new PaymentError('Offer or business no longer exists; reconciliation is required.')
     }
+    // The counter is read in this transaction, so concurrent settlements
+    // conflict and retry rather than share a number; a failed or declined
+    // payment never consumes one.
+    const lastOrderNumber = counterSnap.exists ? counterSnap.data()!.orderSequence : ORDER_SEQUENCE_START
+    if (!Number.isSafeInteger(lastOrderNumber) || lastOrderNumber < ORDER_SEQUENCE_START) {
+      throw new PaymentError('Order counter is inconsistent; reconciliation is required.')
+    }
+    const orderNumber = lastOrderNumber + 1
+    const displayOrderNumber = formatOrderNumber(orderNumber)
     const offer = offerSnap.data()!
     if (offer.businessId !== order.businessId || !Number.isInteger(offer.claimedCount) || offer.claimedCount < 0
       || (offer.totalQuantity !== null && (!Number.isInteger(offer.totalQuantity) || offer.totalQuantity < 1))
@@ -90,12 +101,16 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       expiresAt: Timestamp.fromMillis(voucherExpiresAtMs(now.toMillis(), validityDays)),
       redemptionTerms, redemptionMethod, redemptionInstructions,
       paymentTransactionKey: receiptRef.id,
+      orderNumber, displayOrderNumber,
     })
+    if (counterSnap.exists) tx.update(counterRef, { orderSequence: FieldValue.increment(1) })
+    else tx.create(counterRef, { orderSequence: orderNumber })
     tx.update(offerRef, { claimedCount: FieldValue.increment(1) })
     tx.update(businessRef, { 'voucherStats.active': FieldValue.increment(1) })
     tx.update(orderRef, {
       status: 'paid', paidAt: now, tranzilaTxnId: event.tranzilaTxnId,
       responseCode: event.responseCode, voucherId: voucherRef.id,
+      orderNumber, displayOrderNumber,
     })
     tx.create(receiptRef, { ...event, processedAt: now })
     return { alreadyProcessed: false }

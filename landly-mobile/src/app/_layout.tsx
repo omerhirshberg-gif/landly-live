@@ -1,6 +1,6 @@
-import { Stack } from 'expo-router'
+import { type Href, router, Stack, usePathname } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB } from '@shared/brand/onboardingMotion'
@@ -12,6 +12,7 @@ import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
 import SplashScreen from '../components/SplashScreen'
 import { LangProvider, useLang } from '../i18n/LangProvider'
+import { clearPendingDeepLink, pendingDeepLink } from '../lib/deepLinks'
 import { pageFlipOptions } from '../lib/pageFlip'
 import { colors } from '../theme'
 
@@ -63,6 +64,26 @@ function RootNavigator() {
   if (known && !booted) setBooted(true)
   const ready = booted || known
 
+  // An offer or voucher link (app/+native-intent.tsx) that arrived signed out
+  // was bounced to sign-in by Stack.Protected; open it once the member is in.
+  // One that reached its screen directly is simply forgotten.
+  const pathname = usePathname()
+  useEffect(() => {
+    if (pathname === pendingDeepLink()) clearPendingDeepLink()
+  }, [pathname])
+  const sawSignedOut = useRef(false)
+  useEffect(() => {
+    if (!ready) return
+    if (!signedIn) {
+      sawSignedOut.current = true
+      return
+    }
+    const target = pendingDeepLink()
+    clearPendingDeepLink()
+    if (target && sawSignedOut.current) router.push(target as Href)
+    sawSignedOut.current = false
+  }, [ready, signedIn])
+
   // The splash plays its intro, waits for auth, hands over, then removes itself.
   const [splashDone, setSplashDone] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [])
@@ -86,6 +107,9 @@ function RootNavigator() {
             <Stack.Screen name="voucher/[voucherId]" options={pageFlipOptions(isRtl)} />
             {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
             <Stack.Screen name="offer/[offerId]" options={pageFlipOptions(isRtl)} />
+            {/* The offer's Buy opens checkout in the app too; a purchase replaces it with the confirmation. */}
+            <Stack.Screen name="checkout/[offerId]" options={pageFlipOptions(isRtl)} />
+            <Stack.Screen name="order-success/[orderId]" options={pageFlipOptions(isRtl)} />
           </Stack.Protected>
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="(auth)" />
