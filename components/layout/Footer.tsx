@@ -5,9 +5,10 @@ import { useLang } from '@/lib/i18n/useLang'
 import { SUPPORT_EMAIL } from '@/lib/config'
 
 // Navigation (Home, Deals, How It Works, Olim, Businesses, Support) and the
-// account actions live in the navbar and mobile drawer; the footer only adds
-// what they don't — FAQ, legal and the business portal. Deals (/categories)
-// is the navbar's discovery link, so the footer doesn't repeat it.
+// account actions live in the navbar and mobile drawer; the footer adds
+// About Us (the company link people look for at the bottom of a page, also
+// in the guest navbar), then FAQ, legal and the business portal. Deals
+// (/categories) is the navbar's discovery link, so the footer doesn't repeat it.
 // hover: is gated to real pointers so a tap doesn't leave a link stuck blue
 // on iOS/Android; the 44px tap-target box keeps wrapped rows easy to hit.
 const linkClass = 'tap-target inline-flex items-center gap-1.5 whitespace-nowrap text-sm transition-colors duration-150 cursor-pointer underline-offset-4 [@media(hover:hover)]:hover:text-[#0038B8] [@media(hover:hover)]:hover:underline focus-visible:text-[#0038B8] focus-visible:underline'
@@ -23,6 +24,7 @@ export default function Footer() {
   const { t } = useLang()
 
   const links = [
+    { href: '/about', label: t('footer_about') },
     { href: '/support#faq', label: t('faq_label_short') },
     { href: '/terms', label: t('terms_link') },
     { href: '/privacy', label: t('privacy_link') },

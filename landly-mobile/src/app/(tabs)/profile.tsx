@@ -23,10 +23,10 @@ import { webOnly } from '../../lib/webStyles'
 import { colors, radius, type } from '../../theme'
 
 // The Profile tab (web: /profile): who the member is and their details, with
-// the phone editable in place and country of origin and region editable on
-// their settings screens, which back (the button or the swipe) closes
-// straight back to this tab: they open alone, without the Settings menu
-// under them. The gear at the header's trailing edge (top right,
+// the phone editable in place and customer type, country of origin and
+// region editable on their settings screens, which back (the button or the
+// swipe) closes straight back to this tab: they open alone, without the
+// Settings menu under them. The gear at the header's trailing edge (top right,
 // top left in Hebrew) pushes the settings stack, where language, Privacy &
 // Security, help and the account-deletion request live.
 export default function ProfileScreen() {
@@ -80,10 +80,11 @@ export default function ProfileScreen() {
           ) : (
             <Row label={t('profile_phone_label')} value={t('profile_no_phone')} />
           )}
-          {/* Read-only; "Other" shows what the member typed for it. */}
-          <Row
+          {/* "Other" shows what the member typed for it. */}
+          <EditRow
             label={t('signup_customerTypeLabel')}
-            value={customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? t('profile_no_phone')}
+            value={customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? unset}
+            onEdit={() => router.push('/settings/member-type')}
           />
           <EditRow
             label={t('profile_origin_label')}

@@ -42,7 +42,8 @@ describe('cookie notice bar', () => {
 
   it('sits under the navbar and drawer and clears the iOS home indicator', () => {
     const html = render('en')
-    expect(html).toMatch(/^<div class="fixed bottom-0 inset-x-0 z-\[900\]/)
+    // Marked so floating buttons (the WhatsApp widget) rise above it while it shows.
+    expect(html).toMatch(/^<div data-floating-clearance="" class="fixed bottom-0 inset-x-0 z-\[900\]/)
     expect(html).toContain('padding-bottom:calc(0.875rem + env(safe-area-inset-bottom, 0px))')
   })
 

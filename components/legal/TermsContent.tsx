@@ -16,7 +16,7 @@ const SECTIONS: {
 }[] = [
   { heading: 'terms_h1', body: ['terms_p1'] },
   { heading: 'terms_h2', body: [['terms_p2a_label', 'terms_p2a'], ['terms_p2b_label', 'terms_p2b'], ['terms_p2c_label', 'terms_p2c']] },
-  { heading: 'terms_h3', body: ['terms_p3'] },
+  { heading: 'terms_h3', body: ['terms_p3', ['terms_p3b_label', 'terms_p3b']] },
   {
     heading: 'terms_h4',
     body: [['terms_p4a_label', 'terms_p4a'], ['terms_p4b_label', 'terms_p4b'], ['terms_p4c_label', 'terms_p4c']],

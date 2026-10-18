@@ -112,6 +112,7 @@ export default function MobileMenu({
             <Link href="/categories" onClick={onClose} className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
             <Link href="/#how" onClick={onClose} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
             <Link href="/olim" onClick={onClose} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+            <Link href="/about" onClick={onClose} className={navLinkClass('/about')}>{t('nav_about')}</Link>
             <Link href="/support" onClick={onClose} className={navLinkClass('/support')}>{t('nav_support')}</Link>
             {/* B2B sits apart from the consumer links, quieter, under its own divider */}
             <div className="mt-2 pt-2 border-t border-slate-100">

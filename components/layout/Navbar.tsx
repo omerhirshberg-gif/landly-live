@@ -97,7 +97,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
+      <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/70 backdrop-blur-md border-b border-sky-100/60 shadow-sm">
         {/* The bar's physical order is locked in every language: logo on the
             left, language switcher and hamburger on the right (below lg it's
             just the logo and the hamburger; the drawer holds the rest). dir="ltr" stops
@@ -130,6 +130,10 @@ export default function Navbar() {
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
                 <Link href="/#how" aria-current={ariaCurrent('/#how')} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
                 <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
+                {/* From 1280px: below that, the guest bar has no room for a seventh
+                    link in Russian, Spanish or French, so About is in the footer
+                    (and, under 1024px, the drawer). */}
+                <Link href="/about" aria-current={ariaCurrent('/about')} className={`${navLinkClass('/about')} hidden xl:inline`}>{t('nav_about')}</Link>
                 <Link href="/business" aria-current={ariaCurrent('/business')} className={navLinkClass('/business')}>{t('nav_biz')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>

@@ -1,6 +1,7 @@
 import { getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import type { Lang } from '@/lib/i18n/translations'
 import { COUNTRY_NAMES } from '@/lib/profile/countryNames'
+import { MAX_PERSONA_NOTE_LENGTH } from '@/lib/customerTypes'
 import { normalizePersonName } from './names'
 import { isStrongPassword } from './passwordValidation'
 
@@ -159,14 +160,9 @@ export function formatPhone(e164: string): string {
 
 // ── Persona ─────────────────────────────────────────────────────────────
 /** The persona that reveals the optional free-text note. */
-export const OTHER_CUSTOMER_TYPE = 'other'
-export const MAX_PERSONA_NOTE_LENGTH = 120
-
-/** The optional "Other" note as stored: only kept for 'other', trimmed and capped. */
-export function personaNote(customerType: string, note: string): string {
-  if (customerType !== OTHER_CUSTOMER_TYPE) return ''
-  return note.replace(/\s+/g, ' ').trim().slice(0, MAX_PERSONA_NOTE_LENGTH).trim()
-}
+// The "Other" note rules live with the types (lib/customerTypes.ts, which
+// pulls in no phone or country data); re-exported for the onboarding code.
+export { MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, personaNote } from '@/lib/customerTypes'
 
 // ── Profile ─────────────────────────────────────────────────────────────
 // Kept in ./onboardingStatus (no libphonenumber), so the auth provider that

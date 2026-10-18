@@ -7,6 +7,7 @@ const PRIVATE_PATHS = [
   '/admin',
   '/api',
   '/checkout',
+  '/order-success',
   '/settings',
   '/profile',
   '/member',

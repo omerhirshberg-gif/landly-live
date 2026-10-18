@@ -11,12 +11,12 @@ import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@/lib/profile/countryOfOrigin'
 import AvatarUploader from './AvatarUploader'
 
-// The member's profile on /profile (desktop and mobile browsers). Name,
-// email and customer type are read-only; the phone number is editable in
-// place, like the Expo Profile tab. Country of origin and region in Israel
-// show here with an Edit link to their settings pages, where they're chosen
+// The member's profile on /profile (desktop and mobile browsers). Name and
+// email are read-only; the phone number is editable in place, like the Expo
+// Profile tab. Customer type, country of origin and region in Israel show
+// here with an Edit link to their settings pages, where they're chosen
 // (members from before the origin card see "Not set"). A customer type of
-// "Other" shows what the member typed for it during onboarding.
+// "Other" shows what the member typed for it.
 export default function ProfileSection({ user }: { user: User }) {
   const { t, lang } = useLang()
 
@@ -162,12 +162,12 @@ export default function ProfileSection({ user }: { user: User }) {
             </>
           )}
         </div>
-        <div>
-          <dt className={dt}>{t('signup_customerTypeLabel')}</dt>
-          <dd className={`${dd} break-words`}>
-            {loadingDoc ? '…' : customerTypeLabel(customerType, customerTypeOther, t) ?? t('signup_customerType_placeholder')}
-          </dd>
-        </div>
+        <EditableRow
+          label={t('signup_customerTypeLabel')}
+          value={loadingDoc ? '…' : customerTypeLabel(customerType, customerTypeOther, t) ?? t('signup_customerType_placeholder')}
+          href="/settings/member-type"
+          disabled={loadingDoc}
+        />
         <EditableRow
           label={t('profile_origin_label')}
           value={loadingDoc ? '…' : originLabel(countryOfOrigin, lang) ?? t('profile_origin_unset')}

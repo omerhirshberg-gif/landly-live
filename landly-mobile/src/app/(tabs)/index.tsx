@@ -100,15 +100,11 @@ export default function HomeScreen() {
         <View style={styles.greetingSlot}>
           {loaded && (
             <Animated.View entering={GREETING_IN} style={styles.greetingRow}>
-              <Avatar uri={photoURL} initials={initials} size={52} />
-              <View style={styles.greetingText}>
-                <AppText accessibilityRole="header" style={type.greeting} numberOfLines={1}>
-                  {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
-                </AppText>
-                <AppText style={type.body} numberOfLines={1}>
-                  {t('deals_title')}
-                </AppText>
-              </View>
+              <Avatar uri={photoURL} initials={initials} size={48} />
+              {/* Just the welcome: no tagline under it, so the header stays one compact row. */}
+              <AppText accessibilityRole="header" style={[type.greeting, styles.greetingText]} numberOfLines={1}>
+                {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+              </AppText>
             </Animated.View>
           )}
         </View>
@@ -158,8 +154,11 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
-  greetingSlot: { minHeight: 56, marginBottom: 20, justifyContent: 'center' },
+  // The SafeAreaView already clears the status bar / Dynamic Island, so the
+  // greeting needs only a few points more, not a second gap.
+  content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
+  // Holds the avatar's height while the profile loads, so nothing jumps.
+  greetingSlot: { minHeight: 48, marginBottom: 16, justifyContent: 'center' },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   greetingText: { flex: 1, minWidth: 0 },
   passCard: {

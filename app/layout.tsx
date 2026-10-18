@@ -6,28 +6,35 @@ import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
+import WhatsAppWidget from '@/components/layout/WhatsAppWidget'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
 import RouteTracker from '@/components/layout/RouteTracker'
 import DevEnvironmentBadge from '@/components/layout/DevEnvironmentBadge'
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '@/lib/config'
+import JsonLd from '@/components/seo/JsonLd'
+import { SITE_URL } from '@/lib/config'
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/jsonLd'
+import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo/site'
 
-// The share image comes from app/opengraph-image.tsx; X falls back to it.
+// The site-wide defaults (lib/seo/site.ts has the search copy). No canonical
+// here: every page would inherit it and claim to be the home page, so the
+// public pages set their own (pageMetadata). The share image comes from
+// app/opengraph-image.tsx; X falls back to it.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE_TITLE, template: '%s | Landly' },
-  description: SITE_DESCRIPTION,
+  title: { default: HOME_TITLE, template: '%s | Landly' },
+  description: HOME_DESCRIPTION,
   applicationName: 'Landly',
   openGraph: {
     type: 'website',
     siteName: 'Landly',
     locale: 'en_US',
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
   },
   twitter: {
     card: 'summary_large_image',
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
   },
 }
 
@@ -52,6 +59,8 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* Who Landly is and its perk search, for search engines, on every page. */}
+        <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <AccessibilityWidget />
         <RouteTracker />
         <DevEnvironmentBadge />
@@ -60,6 +69,7 @@ export default function RootLayout({
             <LangProvider>
               <PreferredLanguageSync />
               {children}
+              <WhatsAppWidget />
               <CookieNotice />
             </LangProvider>
           </WishlistProvider>

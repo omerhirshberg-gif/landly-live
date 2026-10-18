@@ -26,7 +26,8 @@ vi.mock('@/components/home/ValueProps', () => ({ default: () => 'GUEST_VALUE_PRO
 vi.mock('@/components/home/HowItWorks', () => ({ default: () => 'HOW_IT_WORKS' }))
 vi.mock('@/components/home/HomeFaqPrompt', () => ({ default: () => 'FAQ_PROMPT' }))
 
-const { default: Home } = await import('@/app/page')
+// The client page; app/page.tsx only wraps it with metadata and structured data.
+const { default: Home } = await import('@/components/home/HomePage')
 const { default: LoggedInHome } = await import('@/components/home/LoggedInHome')
 const { default: OfferCard } = await import('@/components/discover/OfferCard')
 
@@ -43,6 +44,15 @@ describe('home page composition', () => {
     authState.user = null
     const html = withLang('en', createElement(Home))
     for (const marker of ['GUEST_HERO', 'GUEST_VALUE_PROPS', 'HOW_IT_WORKS', 'FAQ_PROMPT', 'FOOTER']) expect(html).toContain(marker)
+  })
+
+  it('guests get the real perk examples under What\'s inside, not the members\' curated rail', () => {
+    authState.user = null
+    const html = withLang('en', createElement(Home))
+    expect(html).not.toContain(translations.en.home_curated_title)
+    const examples = html.indexOf('id="home-examples-title"')
+    expect(examples).toBeGreaterThan(html.indexOf('GUEST_VALUE_PROPS'))
+    expect(examples).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
   })
 
   it('members get only their dashboard: no hero, value props, How it works or Aliyah card', () => {
@@ -105,8 +115,8 @@ describe('member dashboard', () => {
     const banner = html.match(/<section aria-labelledby="home-welcome" class="([^"]*)">(.*?)<\/section>/)!
     for (const c of ['bg-white', 'border-slate-100', 'rounded-2xl', 'shadow-sm', 'p-5', 'sm:p-6', 'lg:p-7', 'flex-col', 'md:flex-row', 'md:items-center', 'md:justify-between']) expect(banner[1].split(' ')).toContain(c)
     const inner = banner[2]
-    // Leading: avatar → greeting → persona badge ("Member" until one is chosen) → subtitle; trailing: count pill → My Pass.
-    const order = ['href="/profile"', '<h1 id="home-welcome"', 'class="segment-badge"', translations.en.deals_title, 'aria-live="polite"', translations.en.home_pass_label, 'href="/member"'].map((s) => inner.indexOf(s))
+    // Leading: avatar → greeting → persona badge ("Member" until one is chosen), no subtitle; trailing: count pill → My Pass.
+    const order = ['href="/profile"', '<h1 id="home-welcome"', 'class="segment-badge"', 'aria-live="polite"', translations.en.home_pass_label, 'href="/member"'].map((s) => inner.indexOf(s))
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(inner).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
@@ -192,5 +202,28 @@ describe('member dashboard: category rail and perk cards', () => {
     const html = withLang('en', createElement(OfferCard, { offer: { ...offer, offerPrice: 40 } }))
     expect(html).not.toContain('% OFF')
     expect(html).not.toContain('line-through')
+  })
+})
+
+describe('guest home section dividers', () => {
+  it('puts a soft, symmetrical hairline at each of the four section boundaries', () => {
+    authState.user = null
+    const html = withLang('en', createElement(Home))
+    const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"></div></div>'
+    expect(html.split(divider)).toHaveLength(5)
+    const at = (marker: string) => html.indexOf(marker)
+    const between = (a: string, b: string) => {
+      const d = html.indexOf(divider, at(a))
+      return d > at(a) && d < at(b)
+    }
+    expect(between('GUEST_HERO', 'GUEST_VALUE_PROPS')).toBe(true)
+    expect(between('GUEST_VALUE_PROPS', 'id="home-examples-title"')).toBe(true)
+    expect(between('id="home-examples-title"', 'HOW_IT_WORKS')).toBe(true)
+    expect(between('HOW_IT_WORKS', 'FOOTER')).toBe(true)
+  })
+
+  it('never doubles up when a section between two lines renders nothing', async () => {
+    const { readFileSync } = await import('node:fs')
+    expect(readFileSync('app/globals.css', 'utf8')).toContain('.section-divider + .section-divider{display:none;}')
   })
 })

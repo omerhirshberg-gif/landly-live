@@ -56,7 +56,7 @@ describe('step order', () => {
   })
 
   it('lists the personas in the spec order', () => {
-    expect(CUSTOMER_TYPES.map((c) => c.value)).toEqual(['student', 'new_immigrant', 'taglit', 'long_term_program', 'traveler', 'other'])
+    expect(CUSTOMER_TYPES.map((c) => c.value)).toEqual(['student', 'new_immigrant', 'lone_soldier', 'taglit', 'long_term_program', 'traveler', 'other'])
   })
 })
 

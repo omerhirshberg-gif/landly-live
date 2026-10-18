@@ -20,7 +20,7 @@ export default function HowItWorks({ variant = 'guest' }: { variant?: 'guest' | 
         ] as const)
 
   return (
-    <section id="how" className="py-16 sm:py-20 lg:py-24 bg-white">
+    <section id="how" className="py-12 sm:py-14 lg:py-16">
       <div className="max-w-7xl mx-auto px-5 sm:px-6">
         <div className="max-w-2xl mb-10 sm:mb-12">
           <div className="text-xs font-bold tracking-widest text-brand uppercase mb-3">{t('how_label')}</div>
@@ -29,7 +29,7 @@ export default function HowItWorks({ variant = 'guest' }: { variant?: 'guest' | 
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {steps.map((step, i) => (
-            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_1px_2px_rgba(15,23,42,.04),0_4px_16px_rgba(15,23,42,.05)]" key={step.titleKey}>
+            <div className="bg-white/95 backdrop-blur-sm border border-[#E2E8F0] rounded-2xl p-6 text-center shadow-[0_1px_2px_rgba(15,23,42,.04),0_4px_16px_rgba(15,23,42,.05)]" key={step.titleKey}>
               <div className="step-num">{i + 1}</div>
               <div className="text-3xl mb-3" aria-hidden="true">{step.icon}</div>
               <h3 className="font-bold text-[17px] text-[#0B1B3D] mb-2">{t(step.titleKey)}</h3>

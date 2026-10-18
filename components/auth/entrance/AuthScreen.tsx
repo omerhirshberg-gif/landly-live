@@ -19,6 +19,7 @@ import {
 } from '@/lib/auth/onboarding'
 import { ONB } from '@/lib/brand/onboardingMotion'
 import { signUpCustomer } from '@/lib/auth/signUpCustomer'
+import { safeRedirectPath } from '@/lib/auth/safeRedirect'
 import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import type { SignInMethod } from '@/lib/auth/brandPanelSteps'
 import { getUserDocument } from '@/lib/firebase/users'
@@ -46,6 +47,12 @@ import styles from './entrance.module.css'
 type Mode = 'signIn' | 'signUp'
 
 const PATHS: Record<Mode, string> = { signIn: '/login', signUp: '/signup' }
+// Where a finished sign-in (or the wizard after it) goes: the page's
+// ?redirect= when it's a same-site path (e.g. the /olim mentor gate, an
+// offer's member gate), else home. Read when needed, so it is always the URL
+// the browser is on.
+const redirectParam = () => new URLSearchParams(window.location.search).get('redirect')
+const destination = () => safeRedirectPath(redirectParam())
 // The staged intro plays once per browser session; later visits get the
 // settled hero and just the card entrance.
 const INTRO_SEEN_KEY = 'landly_auth_intro_seen'
@@ -167,7 +174,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     if (onboardingComplete === null) return
     restoreDecided.current = true
     if (onboardingComplete) {
-      router.replace('/')
+      router.replace(destination())
       return
     }
     const uid = user.uid
@@ -205,15 +212,24 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setEntrance(seen ? 'settled' : 'intro')
   }, [])
 
+  // Back from a ?redirect= page should return to where the guest was, not to
+  // this screen (which would only bounce a signed-in member onwards), so that
+  // trip replaces it in history.
+  const goToDestination = () => {
+    if (redirectParam()) router.replace(destination())
+    else router.push(destination())
+  }
+
   const switchMode = (next: Mode) => {
     setMode(next)
     setError(null)
     setBusinessAccount(false)
     setSignUpError(null)
-    window.history.replaceState(null, '', PATHS[next])
+    // The query (?redirect=) carries over to the other tab.
+    window.history.replaceState(null, '', PATHS[next] + window.location.search)
   }
 
-  // Where a successful sign-in goes: home, or the wizard first if
+  // Where a successful sign-in goes: destination(), or the wizard first if
   // onboarding was never finished (new accounts always start there).
   // `fade: false` after a redirect, where there's no form on screen to fade from.
   const afterSignIn = async (uid: string, preferredLanguage: Lang | null, { fade = true } = {}) => {
@@ -223,7 +239,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     // The doc may have only just been created, so this read is the one the guards go by.
     setOnboardingComplete(complete)
     if (complete) {
-      router.push('/')
+      goToDestination()
       return
     }
     setOnboardingName(greetingName(doc, auth.currentUser?.displayName))
@@ -329,8 +345,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   }
 
   // The celebration's "Let's explore": fade the screen out, then go home
-  // (whose greeting fades in on arrival).
-  const handleWizardComplete = () => fadeOutThen(() => router.push('/'))
+  // (whose greeting fades in on arrival), or back to the ?redirect= page.
+  const handleWizardComplete = () => fadeOutThen(goToDestination)
 
   // Back from "check your inbox": land on Sign In with the email filled in.
   const handleBackToSignIn = () => {

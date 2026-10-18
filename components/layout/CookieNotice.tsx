@@ -47,7 +47,9 @@ export default function CookieNotice() {
 /** The bar itself, split out so it renders (and tests) without the storage check. */
 export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => string; onDismiss: () => void }) {
   return (
+    // data-floating-clearance: floating buttons (the WhatsApp widget) rise above the bar while it shows.
     <div
+      data-floating-clearance=""
       className="fixed bottom-0 inset-x-0 z-[900] bg-slate-900 text-slate-300 px-5 pt-3.5 sm:px-6"
       style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom, 0px))' }}
     >
