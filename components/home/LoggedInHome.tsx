@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { User } from 'firebase/auth'
 import Avatar from '@/components/ui/Avatar'
+import AvatarLightbox from '@/components/ui/AvatarLightbox'
 import CategoryRail from '@/components/perks/CategoryRail'
 import CuratedOffers from './CuratedOffers'
 import SegmentBadge from '@/components/member/SegmentBadge'
@@ -26,6 +27,7 @@ export default function LoggedInHome({ user }: { user: User }) {
   const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
   // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
   const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [photoOpen, setPhotoOpen] = useState(false)
 
   // Live, like the Expo wallet: a purchase or a redemption updates the count without a reload.
   useEffect(
@@ -40,7 +42,7 @@ export default function LoggedInHome({ user }: { user: User }) {
   )
 
   return (
-    <main className="member-canvas pt-16">
+    <main className="member-canvas below-header">
       {/* No footer for members: the bottom padding clears the iPhone home indicator instead. */}
       <div className="max-w-member mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10 lg:pt-12 pb-[calc(4rem+env(safe-area-inset-bottom))]">
         {/* One white banner: who the member is on the leading side, their live
@@ -51,9 +53,16 @@ export default function LoggedInHome({ user }: { user: User }) {
             here repeats it. Hebrew mirrors it through the page's dir. */}
         <section aria-labelledby="home-welcome" className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 sm:p-6 lg:p-7 flex flex-col gap-5 md:flex-row md:items-center md:justify-between md:gap-8">
           <div className={`flex items-center gap-3 sm:gap-4 min-w-0 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
-            <Link href="/profile" aria-label={t('nav_profile')} className="tap-target flex-shrink-0 rounded-full">
-              <Avatar src={photoURL} initials={initials} size={56} />
-            </Link>
+            {/* With a photo, the avatar opens it full size; a monogram has nothing to zoom, so it opens /profile. */}
+            {photoURL ? (
+              <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('avatar_view')} aria-haspopup="dialog" className="tap-target flex-shrink-0 rounded-full cursor-zoom-in">
+                <Avatar src={photoURL} initials={initials} size={56} />
+              </button>
+            ) : (
+              <Link href="/profile" aria-label={t('nav_profile')} className="tap-target flex-shrink-0 rounded-full">
+                <Avatar src={photoURL} initials={initials} size={56} />
+              </Link>
+            )}
             <div className="min-w-0">
               <h1 id="home-welcome" className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink truncate">
                 {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
@@ -76,6 +85,7 @@ export default function LoggedInHome({ user }: { user: User }) {
             </Link>
           </div>
         </section>
+        {photoURL && <AvatarLightbox src={photoURL} open={photoOpen} onClose={() => setPhotoOpen(false)} />}
 
         <section className="mt-8 lg:mt-10" aria-labelledby="home-deals-title">
           <h2 id="home-deals-title" className="text-xl font-bold text-ink mb-4">{t('home_deals_title')}</h2>

@@ -91,6 +91,7 @@ const EXPECTED: [string, string][] = [
   ['/reset-password', 'Reset Password | Landly'],
   ['/reset-password/success', 'Password Updated | Landly'],
   ['/verify-email', 'Verify Your Email | Landly'],
+  ['/confirm-email-change', 'Confirm Your New Email | Landly'],
   ['/privacy', 'Privacy Policy | Landly'],
   ['/terms', 'Terms and Conditions | Landly'],
   ['/business', 'Business Portal | Landly Business'],

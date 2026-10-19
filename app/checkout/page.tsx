@@ -164,7 +164,7 @@ function CheckoutContent() {
     return (
       <>
         <Navbar />
-        <div className="checkout-canvas pt-16 min-h-screen min-h-dvh">
+        <div className="checkout-canvas below-header min-h-screen min-h-dvh">
           <div role="status" className="max-w-xl mx-auto px-5 sm:px-6 py-16 flex flex-col items-center gap-3 text-slate-500">
             <i className="fa-solid fa-spinner fa-spin text-brand text-2xl" aria-hidden="true"></i>
             <span className="text-sm">{t('checkout_loading')}</span>
@@ -181,7 +181,7 @@ function CheckoutContent() {
   return (
     <>
       <Navbar />
-      <div className="checkout-canvas pt-16 min-h-screen min-h-dvh">
+      <div className="checkout-canvas below-header min-h-screen min-h-dvh">
         <div className="max-w-xl mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-6 sm:pb-12">
           <BackButton fallback={backFallback} className="mb-3" />
           <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('checkout_label')}</div>
@@ -206,7 +206,7 @@ function CheckoutContent() {
                   type="button"
                   onClick={handleResume}
                   disabled={restarting}
-                  className="tap-target min-h-12 flex-1 inline-flex items-center justify-center gap-2 bg-brand text-white font-bold text-sm px-4 rounded-full transition [@media(hover:hover)]:hover:bg-brandDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60"
+                  className="ds-btn ds-btn-primary ds-btn-md ds-btn-wrap flex-1"
                 >
                   <i className="fa-solid fa-play text-xs rtl:-scale-x-100" aria-hidden="true"></i>
                   <span>{t('checkout_sandbox_resume_button')}</span>
@@ -216,7 +216,7 @@ function CheckoutContent() {
                   onClick={handleRestart}
                   disabled={restarting}
                   aria-busy={restarting || undefined}
-                  className="tap-target min-h-12 flex-1 inline-flex items-center justify-center gap-2 bg-white text-slate-800 border border-slate-300 font-bold text-sm px-4 rounded-full transition [@media(hover:hover)]:hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60"
+                  className="ds-btn ds-btn-secondary ds-btn-md ds-btn-wrap flex-1"
                 >
                   <i className={`fa-solid ${restarting ? 'fa-spinner fa-spin' : 'fa-rotate-right'} text-xs`} aria-hidden="true"></i>
                   <span>{t('checkout_sandbox_reset_button')}</span>
@@ -228,11 +228,11 @@ function CheckoutContent() {
           {order && step === 'summary' && (
             <>
               <article className="relative overflow-hidden rounded-3xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-20px_rgba(0,56,184,0.35)] ring-1 ring-slate-200/70">
-                <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-[#0038B8] via-[#2563EB] to-emerald-500" />
+                <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-brand to-emerald-500" />
                 <div className="p-5 sm:p-7">
                   {/* Who and what: photo (or the category panel), business, offer, method. */}
                   <div className="flex items-start gap-4">
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#F0F7FF] ring-1 ring-slate-200/70">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brandTint ring-1 ring-slate-200/70">
                       {offer && (
                         <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} />
                       )}
@@ -245,7 +245,7 @@ function CheckoutContent() {
                   </div>
 
                   {/* The itemised price, VAT included, and what the member saves. */}
-                  <div className="mt-6 rounded-2xl bg-gradient-to-br from-[#F0F7FF] to-white p-4 sm:p-5 ring-1 ring-[#DCE8FF]">
+                  <div className="mt-6 rounded-2xl bg-gradient-to-br from-brandTint to-white p-4 sm:p-5 ring-1 ring-brandLight">
                     <dl className="space-y-2">
                       {order.originalPrice !== null && discount > 0 && (
                         <>
@@ -278,7 +278,7 @@ function CheckoutContent() {
                   <section aria-labelledby="checkout-voucher-heading" className="mt-6">
                     <h2 id="checkout-voucher-heading" className="text-sm font-bold text-ink mb-2">{t('checkout_voucher_details_title')}</h2>
                     <p className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#F0F7FF] text-brand">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brandTint text-brand">
                         <i className="fa-regular fa-calendar-check text-xs" aria-hidden="true"></i>
                       </span>
                       <span>{t('checkout_validity').replace('{days}', String(order.validityDays))}</span>
@@ -315,7 +315,7 @@ function CheckoutContent() {
                   onClick={handlePay}
                   disabled={proceeding}
                   aria-busy={proceeding || undefined}
-                  className="checkout-pay tap-target flex h-14 w-full items-center justify-center gap-2 rounded-full text-base font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60"
+                  className="checkout-pay ds-btn ds-btn-primary ds-btn-wrap w-full"
                 >
                   <i className={`fa-solid ${proceeding ? 'fa-spinner fa-spin' : 'fa-lock'} text-sm`} aria-hidden="true"></i>
                   <span dir="auto">{payLabel}</span>

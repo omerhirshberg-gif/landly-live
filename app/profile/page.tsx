@@ -26,7 +26,7 @@ export default function ProfilePage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 member-canvas" />
+        <div className="below-header member-canvas" />
       </>
     )
   }
@@ -34,7 +34,7 @@ export default function ProfilePage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 member-canvas">
+      <div className="below-header member-canvas">
         <div className="max-w-3xl lg:max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
           <div className="mb-6">
             <div className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">{t('dash_label')}</div>

@@ -4,11 +4,13 @@ import * as ImagePicker from 'expo-image-picker'
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
+import { GestureDetector } from 'react-native-gesture-handler'
 import type { User } from 'firebase/auth'
 import { AVATAR_QUALITY, AVATAR_SIZE, coverCrop } from '@shared/avatar/avatar'
 import { uploadAvatar } from '@shared/firebase/avatar'
 import AppText from './AppText'
 import Avatar from './Avatar'
+import AvatarViewer, { useAvatarPeek } from './AvatarViewer'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
@@ -18,11 +20,14 @@ type Source = 'camera' | 'library'
 // The Profile tab's avatar: tap it to take a photo or choose one from the
 // library (iOS action sheet; a bottom sheet on Android; straight to the file
 // picker on web, whose input already offers the camera on phones). The pick
-// shows at once, is cropped square and shrunk to a ≤512px JPEG on the
+// shows at once, is cropped square and shrunk to a ≤1024px JPEG on the
 // device, then uploaded to avatars/{uid} through the same helper as the web
 // uploader; every avatar in the app switches when it lands. The camera badge
-// marks it as editable: there is no separate "Add photo" link, and the avatar
-// itself carries the spoken label (Add / Change photo, Uploading).
+// marks it as editable: there is no separate "Add photo" link. With no photo
+// yet, the avatar itself carries the spoken label (Add photo, Uploading); once
+// there is one, tapping the avatar opens it full size (AvatarViewer, with a
+// Change photo button), a long press peeks at it until let go
+// (useAvatarPeek), and the camera badge goes straight to the picker.
 export default function AvatarPicker({
   user,
   uri,
@@ -39,6 +44,9 @@ export default function AvatarPicker({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [viewing, setViewing] = useState(false)
+  // iOS: the action sheet waits for the viewer to finish closing (onDismiss).
+  const [pickAfterViewer, setPickAfterViewer] = useState(false)
 
   const pick = async (source: Source) => {
     setSheetOpen(false)
@@ -96,31 +104,73 @@ export default function AvatarPicker({
     }
   }
 
-  const hasPhoto = !!(preview || uri)
+  const photo = preview ?? uri
+  const hasPhoto = !!photo
+  const peek = useAvatarPeek(photo)
   const label = busy ? t('avatar_uploading') : hasPhoto ? t('avatar_change') : t('avatar_add')
+
+  const changeFromViewer = () => {
+    setViewing(false)
+    // Web must open the file input inside the tap; Android's sheet and picker
+    // don't mind the closing modal.
+    if (Platform.OS === 'ios') setPickAfterViewer(true)
+    else open()
+  }
 
   return (
     <View style={styles.wrap}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ busy, disabled: busy }}
-        onPress={open}
-        style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
-      >
-        <Avatar uri={preview ?? uri} initials={initials} size={size} />
-        {busy && (
-          <View style={[styles.busy, { borderRadius: size / 2 }]}>
-            <ActivityIndicator color={colors.white} />
-          </View>
-        )}
-        <View style={styles.badge}>
+      <View>
+        <GestureDetector gesture={peek.gesture}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={hasPhoto && !busy ? t('avatar_view') : label}
+            accessibilityState={{ busy, disabled: busy && !hasPhoto }}
+            onPressIn={peek.pressIn}
+            onPress={() => {
+              if (peek.wasPeek()) return
+              if (hasPhoto) setViewing(true)
+              else open()
+            }}
+            style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+          >
+            <Avatar uri={photo} initials={initials} size={size} />
+            {busy && (
+              <View style={[styles.busy, { borderRadius: size / 2 }]}>
+                <ActivityIndicator color={colors.white} />
+              </View>
+            )}
+          </Pressable>
+        </GestureDetector>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityState={{ busy, disabled: busy }}
+          // With no photo the avatar is the same control, so this one stays out of the screen reader's way.
+          accessibilityElementsHidden={!hasPhoto}
+          importantForAccessibility={hasPhoto ? 'auto' : 'no-hide-descendants'}
+          onPress={open}
+          hitSlop={8}
+          style={styles.badge}
+        >
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
             <Path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" />
             <Circle cx="12" cy="13" r="3" />
           </Svg>
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
+      {photo && (
+        <AvatarViewer
+          uri={photo}
+          visible={viewing}
+          onClose={() => setViewing(false)}
+          action={{ label: t('avatar_change'), onPress: changeFromViewer }}
+          onDismissed={() => {
+            if (!pickAfterViewer) return
+            setPickAfterViewer(false)
+            open()
+          }}
+        />
+      )}
       {error && (
         <AppText accessibilityRole="alert" style={styles.error}>
           {error}
@@ -161,7 +211,7 @@ function SourceSheet({ visible, onPick, onClose }: { visible: boolean; onPick: (
   )
 }
 
-// Centre square, ≤512px, JPEG. The editors already return a square on iOS
+// Centre square, ≤1024px, JPEG. The editors already return a square on iOS
 // and Android; web (no editor) and odd results get the centre crop here.
 async function compress(uri: string, width: number, height: number): Promise<string> {
   const context = ImageManipulator.manipulate(uri)
@@ -200,6 +250,7 @@ const styles = StyleSheet.create({
     borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+    ...webOnly({ cursor: 'pointer' }),
   },
   error: { marginTop: 10, fontSize: 13, fontWeight: '600', color: colors.danger, textAlign: 'center' },
   scrim: { flex: 1, backgroundColor: 'rgba(11, 27, 61, 0.32)' },

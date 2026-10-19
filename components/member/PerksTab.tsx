@@ -30,9 +30,9 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
       <div>
         <div className="dash-empty-state">
           <i className="fa-solid fa-gift" aria-hidden="true"></i>
-          <div className="font-bold text-slate-700 text-base mb-1">{t('dash_perks_empty_title')}</div>
-          <p className="text-sm text-slate-500 max-w-xs mb-5">{t('dash_perks_empty_sub')}</p>
-          <Link href="/categories" className="tap-target btn-primary">
+          <div className="font-bold text-ink text-base mb-1">{t('dash_perks_empty_title')}</div>
+          <p className="text-sm text-body max-w-xs mb-5">{t('dash_perks_empty_sub')}</p>
+          <Link href="/categories" className="ds-btn ds-btn-primary">
             <span>{t('nav_cta')}</span>
           </Link>
         </div>
@@ -51,9 +51,11 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   )
 }
 
-// The whole card is the link to the voucher page; the pill at its foot only
-// says what tapping does. It lifts on hover only on devices that really hover,
-// and presses in slightly on touch.
+// The whole card is the link to the voucher page: thumbnail on the start
+// side, then business, offer, method and validity, and a chevron on the end
+// side (pointing left in Hebrew) that says it opens. No separate button. It
+// lifts on hover only on devices that really hover, and presses in slightly
+// on touch.
 function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
   const { t, lang } = useLang()
   const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < Date.now()
@@ -61,29 +63,28 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
   return (
     <Link
       href={`/member/vouchers/${encodeURIComponent(voucher.id)}`}
-      className="group block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-[box-shadow,transform,border-color] duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-200 [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+      className="group flex min-h-12 items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm transition-all duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:gap-4 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
     >
-      <div className="flex items-start gap-3 sm:gap-4">
-        <VoucherThumb voucher={voucher} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-bold leading-snug text-[#0B1B3D]" dir="auto">{voucher.businessName}</div>
-          <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-[#475569]" dir="auto">{voucher.offerTitle}</h3>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <RedemptionBadge method={voucher.redemptionMethod} />
-            {voucher.expiresAt && (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
-                <i className={`fa-regular ${expired ? 'fa-calendar-xmark' : 'fa-calendar-check'}`} aria-hidden="true"></i>
-                <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
-              </span>
-            )}
-          </div>
+      <VoucherThumb voucher={voucher} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-base font-bold leading-snug text-ink" dir="auto">{voucher.businessName}</div>
+        <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{voucher.offerTitle}</h3>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <RedemptionBadge method={voucher.redemptionMethod} />
+          {voucher.expiresAt && (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
+              <i className={`fa-regular ${expired ? 'fa-calendar-xmark' : 'fa-calendar-check'}`} aria-hidden="true"></i>
+              <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
+            </span>
+          )}
         </div>
       </div>
-      <span className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand text-sm font-bold text-white shadow-md transition-colors [@media(hover:hover)]:group-hover:bg-brandDark">
-        <i className="fa-solid fa-ticket" aria-hidden="true"></i>
-        <span>{t('voucher_show_button')}</span>
-        <i className="fa-solid fa-chevron-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
-      </span>
+      {/* Screen readers hear what the card does; sighted members see the chevron. */}
+      <span className="sr-only">{t('voucher_show_button')}</span>
+      <i
+        className="fa-solid fa-chevron-right flex-shrink-0 text-sm text-muted transition-[color,transform] duration-200 rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 [@media(hover:hover)]:group-hover:text-brand rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+        aria-hidden="true"
+      ></i>
     </Link>
   )
 }

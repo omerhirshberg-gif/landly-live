@@ -4,10 +4,13 @@
 // share it without pulling Firebase in.
 import { normalizePersonName, splitDisplayName } from '@/lib/auth/names'
 
-/** The longest edge, in pixels, of the photo that's uploaded. */
-export const AVATAR_SIZE = 512
-/** JPEG quality of the uploaded photo. */
-export const AVATAR_QUALITY = 0.85
+/**
+ * The longest edge, in pixels, of the photo that's uploaded: enough for the
+ * full-size viewer (up to 360pt) to stay sharp on 3x retina screens.
+ */
+export const AVATAR_SIZE = 1024
+/** JPEG quality of the uploaded photo (a 1024px square lands around 150–350KB). */
+export const AVATAR_QUALITY = 0.9
 /** Matches storage.rules: anything larger is refused server-side. */
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
@@ -34,6 +37,22 @@ export function resolveAvatarUrl(
     if (typeof candidate === 'string' && /^https?:\/\//.test(candidate)) return candidate
   }
   return null
+}
+
+/**
+ * Google profile photos come as a small thumbnail (`…=s96-c`), blurry once
+ * shown any larger; this asks for `px` pixels instead (at most AVATAR_SIZE,
+ * as large as our own uploads). Uploaded photos (Storage) pass through.
+ */
+export function sizedAvatarUrl(url: string, px: number): string {
+  if (!/^https:\/\/[^/]+\.googleusercontent\.com\//.test(url)) return url
+  const edge = Math.max(1, Math.min(AVATAR_SIZE, Math.ceil(px)))
+  return url.replace(/=s\d+(-c)?$/, `=s${edge}-c`)
+}
+
+/** The full-size viewer's source: the original upload, or Google's photo at 1024px. */
+export function fullSizeAvatarUrl(url: string): string {
+  return sizedAvatarUrl(url, AVATAR_SIZE)
 }
 
 /**

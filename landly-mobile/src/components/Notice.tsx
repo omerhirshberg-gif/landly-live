@@ -6,7 +6,7 @@ const TONES = {
   error: { box: { backgroundColor: colors.dangerBg, borderColor: colors.dangerBorder }, text: colors.danger },
   success: { box: { backgroundColor: colors.successBg, borderColor: colors.successBorder }, text: colors.success },
   // blue-50 / blue-200, as on the web.
-  info: { box: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }, text: colors.brand },
+  info: { box: { backgroundColor: colors.brandTint, borderColor: colors.brandLight }, text: colors.brand },
 } as const
 
 // `info` is a progress line ("Sending…"), announced politely rather than as an alert.

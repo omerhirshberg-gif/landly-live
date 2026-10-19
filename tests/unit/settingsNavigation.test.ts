@@ -125,11 +125,13 @@ describe('swipe to go back', () => {
 })
 
 describe('native settings stack', () => {
-  it('anchors the Settings menu for deep links, but Profile\'s Edit opens alone so back returns to Profile', () => {
+  it('anchors the Settings menu for deep links; Profile edits its details in place, with one Edit profile button', () => {
     expect(readFileSync('landly-mobile/src/app/settings/_layout.tsx', 'utf8')).toContain("export const unstable_settings = { anchor: 'index' }")
     const profile = readFileSync('landly-mobile/src/app/(tabs)/profile.tsx', 'utf8')
-    expect(profile).toContain("router.push('/settings/origin')")
-    expect(profile).toContain("router.push('/settings/language-region')")
+    expect(profile.match(/t\('profile_edit_profile_btn'\)/g)).toHaveLength(1)
+    expect(profile).not.toContain("t('profile_edit_btn')")
+    expect(profile).toContain('await updateUserProfileDetails(user.uid, next)')
+    expect(profile).not.toMatch(/router\.push\('\/settings\/(origin|language-region|member-type)'\)/)
     expect(profile).not.toContain('withAnchor')
   })
 

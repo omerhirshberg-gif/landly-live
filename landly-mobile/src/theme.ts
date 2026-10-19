@@ -26,16 +26,33 @@ export const colors = {
   textMuted: '#64748b', // slate-500
   textFaint: '#94a3b8', // slate-400, subtitles and inactive tabs (web: text-muted)
   danger: '#dc2626', // red-600
+  dangerPressed: '#b91c1c', // red-700
   dangerBg: '#fef2f2', // red-50
   dangerBorder: '#fecaca', // red-200
   success: '#15803d', // green-700
   successBg: '#f0fdf4', // green-50
   successBorder: '#bbf7d0', // green-200
+  // The amber "Verification required" notice (web: bg-amber-50 border-amber-200 text-amber-900).
+  warningBg: '#fffbeb', // amber-50
+  warningBorder: '#fde68a', // amber-200
+  warningText: '#78350f', // amber-900
+  warningIcon: '#d97706', // amber-600
+  warningAction: '#fcd34d', // amber-300, the action button's border
+  warningPressed: '#fef3c7', // amber-100
+  // The WhatsApp badge in the phone verification sheet.
+  whatsapp: '#128c4b',
+  whatsappBg: '#e7f8ee',
+  // The discount badge and savings line: emerald-700, so white text on it
+  // passes AA (web: components/discover/DiscountBadge.tsx).
+  discount: '#047857',
+  // A saved (wishlisted) heart (web: bg-red-500).
+  heart: '#ef4444',
 }
 
 // The brand-tinted 44pt icon squares at the end of the Perks search row (Near
-// Me, Wishlist). Web: the `action` variant of components/discover/NearMeButton.tsx.
-export const actionTint = { bg: '#eff6ff', bgPressed: '#dbeafe', border: '#bfdbfecc', text: '#1d4ed8' } // blue-50/100/200-80%/700
+// Me, Wishlist). Web: the `action` variant of components/discover/NearMeButton.tsx
+// (border-line bg-brandTint text-brand, brandLight when pressed).
+export const actionTint = { bg: colors.brandTint, bgPressed: colors.brandLight, border: colors.border, text: colors.brand }
 
 export const radius ={ md: 12, lg: 16, pill: 9999 }
 

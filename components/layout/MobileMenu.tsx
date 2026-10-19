@@ -15,7 +15,8 @@ import { useWishlist } from '@/lib/firebase/useWishlist'
 // opens /profile), the product links (Home, My Pass, Explore Perks, Wishlist,
 // Making Aliyah?), a Settings link to /settings (language, Privacy &
 // Security, support, legal and account deletion live there), then Sign Out
-// in a footer that sticks above the safe area. Guests get the text links,
+// in a footer that sticks above the safe area. Guests get the same icon rows
+// for the public pages (Partner with Us among them, after Making Aliyah?),
 // the same Settings link, then Sign In.
 // The drawer's height is set in globals.css (.mobile-menu, 100dvh minus the bar).
 export default function MobileMenu({
@@ -37,16 +38,11 @@ export default function MobileMenu({
   activeAnchorId: string | null
 }) {
   const pathname = usePathname()
-  const { wishlistIds } = useWishlist()
+  const { wishlistCount } = useWishlist()
 
-  const itemBase =
-    'tap-target flex items-center justify-start min-h-[48px] px-3.5 py-2.5 rounded-xl text-start transition-colors [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100'
-  const navLinkClass = (href: string) =>
-    `${itemBase} text-base font-bold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-[#0B1B3D]'}`
-  const memberLinkClass = (href: string) =>
+  const linkClass = (href: string) =>
     `${rowBase} text-[15px] font-semibold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-ink'}`
-  const primaryClass =
-    'tap-target flex items-center justify-center min-h-[48px] bg-brand text-white text-base font-bold rounded-xl px-5 hover:bg-brandDark transition-colors'
+  const primaryClass = 'ds-btn ds-btn-primary ds-btn-md w-full'
 
   // Settings and each of its sub-pages count as "here".
   const inSettings = isNavLinkActive(pathname, '/settings', null)
@@ -75,15 +71,15 @@ export default function MobileMenu({
           <MemberCard onClose={onClose} active={pathname === '/profile'} label={t('nav_profile')} />
 
           <div className="flex flex-col gap-1 mt-4">
-            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={memberLinkClass('/')}>
+            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
               <ItemIcon icon="fa-house" />
               <span className="min-w-0 flex-1">{t('nav_home')}</span>
             </a>
             {/* My Pass opens /member, where the active passes and their QR codes are */}
-            <IconLink href="/member" icon="fa-qrcode" label={t('nav_my_pass')} onClose={onClose} className={memberLinkClass('/member')} />
-            <IconLink href="/categories" icon="fa-gift" label={t('nav_cta')} onClose={onClose} className={memberLinkClass('/categories')} />
-            <IconLink href="/wishlist" icon="fa-heart" label={t('nav_wishlist')} onClose={onClose} className={memberLinkClass('/wishlist')} count={wishlistIds.length} />
-            <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={memberLinkClass('/olim')} />
+            <IconLink href="/member" icon="fa-qrcode" label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
+            <IconLink href="/categories" icon="fa-gift" label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
+            <IconLink href="/wishlist" icon="fa-heart" label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
+            <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
           </div>
 
           {settingsLink}
@@ -97,7 +93,7 @@ export default function MobileMenu({
             <button
               type="button"
               onClick={onSignOut}
-              className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white text-[15px] font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+              className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-red-200 bg-white text-[15px] font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
             >
               <i className="fa-solid fa-arrow-right-from-bracket text-sm rtl:-scale-x-100" aria-hidden="true"></i>
               {t('nav_logout')}
@@ -107,23 +103,18 @@ export default function MobileMenu({
       ) : (
         <div className="min-h-full flex flex-col px-4 pt-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
           <div className="flex flex-col gap-1">
-            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={navLinkClass('/')}>{t('nav_home')}</a>
+            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
+              <ItemIcon icon="fa-house" />
+              <span className="min-w-0 flex-1">{t('nav_home')}</span>
+            </a>
             {/* Guests browse the same catalog members do, before signing in */}
-            <Link href="/categories" onClick={onClose} className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
-            <Link href="/#how" onClick={onClose} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
-            <Link href="/olim" onClick={onClose} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
-            <Link href="/about" onClick={onClose} className={navLinkClass('/about')}>{t('nav_about')}</Link>
-            <Link href="/support" onClick={onClose} className={navLinkClass('/support')}>{t('nav_support')}</Link>
-            {/* B2B sits apart from the consumer links, quieter, under its own divider */}
-            <div className="mt-2 pt-2 border-t border-slate-100">
-              <Link
-                href="/business"
-                onClick={onClose}
-                className={`${itemBase} text-[15px] font-semibold ${isNavLinkActive(pathname, '/business', activeAnchorId) ? 'text-brand bg-brandLight' : 'text-slate-500'}`}
-              >
-                {t('nav_biz')}
-              </Link>
-            </div>
+            <IconLink href="/categories" icon="fa-gift" label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
+            <IconLink href="/#how" icon="fa-list-check" label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
+            <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
+            {/* B2B onboarding, for guests only: members are consumers and never see it */}
+            <IconLink href="/business" icon="fa-handshake" label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
+            <IconLink href="/about" icon="fa-circle-info" label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
+            <IconLink href="/support" icon="fa-headset" label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
           </div>
 
           {/* Language, Terms and Privacy are on /settings, for guests too */}
@@ -148,7 +139,7 @@ export default function MobileMenu({
   )
 }
 
-// The 48px row shared by the member links and the Settings link.
+// The 48px row shared by the drawer's icon links and the Settings link.
 const rowBase =
   'tap-target flex items-center gap-3 min-h-[48px] px-3 py-2 rounded-xl text-start transition-colors [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100'
 

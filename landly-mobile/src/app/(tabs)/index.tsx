@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import { GestureDetector } from 'react-native-gesture-handler'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -11,6 +12,7 @@ import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
 import AppText from '../../components/AppText'
 import Avatar from '../../components/Avatar'
+import AvatarViewer, { useAvatarPeek } from '../../components/AvatarViewer'
 import Button from '../../components/Button'
 import CategoryRail from '../../components/CategoryRail'
 import Notice from '../../components/Notice'
@@ -18,6 +20,7 @@ import OfferCarousel from '../../components/OfferCarousel'
 import SectionHeader from '../../components/SectionHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
+import { webOnly } from '../../lib/webStyles'
 import { colors, radius, type } from '../../theme'
 
 const CURATED_COUNT = 4
@@ -44,6 +47,8 @@ export default function HomeScreen() {
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
+  const peek = useAvatarPeek(photoURL)
 
   // Live: a web purchase or a business redemption updates the badge in moments.
   useEffect(() => {
@@ -100,7 +105,25 @@ export default function HomeScreen() {
         <View style={styles.greetingSlot}>
           {loaded && (
             <Animated.View entering={GREETING_IN} style={styles.greetingRow}>
-              <Avatar uri={photoURL} initials={initials} size={48} />
+              {/* With a photo, a tap opens it full size and a long press peeks at it; a monogram stays decorative. */}
+              {photoURL ? (
+                <GestureDetector gesture={peek.gesture}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('avatar_view')}
+                    onPressIn={peek.pressIn}
+                    onPress={() => {
+                      if (!peek.wasPeek()) setPhotoOpen(true)
+                    }}
+                    hitSlop={4}
+                    style={({ pressed }) => [styles.avatarButton, pressed && styles.avatarPressed]}
+                  >
+                    <Avatar uri={photoURL} initials={initials} size={48} />
+                  </Pressable>
+                </GestureDetector>
+              ) : (
+                <Avatar uri={photoURL} initials={initials} size={48} />
+              )}
               {/* Just the welcome: no tagline under it, so the header stays one compact row. */}
               <AppText accessibilityRole="header" style={[type.greeting, styles.greetingText]} numberOfLines={1}>
                 {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
@@ -148,6 +171,7 @@ export default function HomeScreen() {
           <OfferCarousel offers={offers} onOpen={openOffer} />
         )}
       </ScrollView>
+      {photoURL && <AvatarViewer uri={photoURL} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </SafeAreaView>
   )
 }
@@ -160,6 +184,8 @@ const styles = StyleSheet.create({
   // Holds the avatar's height while the profile loads, so nothing jumps.
   greetingSlot: { minHeight: 48, marginBottom: 16, justifyContent: 'center' },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarButton: { borderRadius: radius.pill, ...webOnly({ cursor: 'zoom-in' }) },
+  avatarPressed: { opacity: 0.85 },
   greetingText: { flex: 1, minWidth: 0 },
   passCard: {
     backgroundColor: colors.white,

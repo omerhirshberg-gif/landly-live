@@ -61,7 +61,7 @@ export default function NearMeButton({
           className={`tap-target inline-flex h-11 w-11 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:px-3.5 ${
             state === 'granted'
               ? 'border-brand bg-brand text-white [@media(hover:hover)]:hover:bg-brandDark'
-              : 'border-blue-200/80 bg-blue-50 text-blue-700 [@media(hover:hover)]:hover:bg-blue-100'
+              : 'border-line bg-brandTint text-brand [@media(hover:hover)]:hover:bg-brandLight'
           }`}
         >
           <i aria-hidden="true" className={`fa-solid text-base sm:text-xs ${state === 'requesting' ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'}`}></i>

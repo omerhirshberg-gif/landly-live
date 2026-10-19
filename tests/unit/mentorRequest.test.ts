@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => {
     requireCustomer: vi.fn(),
     MockRequestAuthError,
     auth: { user: null as null | { uid: string; email: string | null; displayName: string | null }, loading: false },
-    profile: { profile: null as null | { firstName: string; lastName: string; displayName: string } },
+    profile: { profile: null as null | { firstName: string; lastName: string; displayName: string }, loaded: false, firstName: null as string | null },
   }
 })
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
@@ -38,7 +38,7 @@ beforeEach(() => {
   mocks.uidLimited.mockReturnValue(false)
   mocks.requireCustomer.mockResolvedValue(token)
   mocks.auth = { user: null, loading: false }
-  mocks.profile = { profile: null }
+  mocks.profile = { profile: null, loaded: false, firstName: null }
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
@@ -157,15 +157,15 @@ describe('/olim mentor card', () => {
     expect(html).toContain(esc(t.olim_gate_message))
     expect(html).not.toContain('<form')
     expect(html).not.toContain('type="submit"')
-    expect(html).toContain(`href="/signup?redirect=%2Folim%23mentor">${esc(t.olim_gate_signup)}</a>`)
-    expect(html).toContain(`href="/login?redirect=%2Folim%23mentor">${esc(t.olim_gate_login)}</a>`)
+    expect(html).toContain(`href="/signup?redirect=%2Folim%23mentor-section">${esc(t.olim_gate_signup)}</a>`)
+    expect(html).toContain(`href="/login?redirect=%2Folim%23mentor-section">${esc(t.olim_gate_login)}</a>`)
   })
 
   it.each(Object.keys(translations) as Lang[])('has the Lone Soldiers section for search and visitors (%s)', (lang) => {
     const t = translations[lang]
     const html = render(lang)
     expect(html).toContain(`<section id="lone-soldiers" aria-labelledby="lone-soldiers-title"`)
-    expect(html).toContain(`<h2 id="lone-soldiers-title" class="text-xl sm:text-2xl font-black text-slate-900 mb-2">${esc(t.olim_lone_title)}</h2>`)
+    expect(html).toContain(`<h2 id="lone-soldiers-title" class="text-xl sm:text-2xl font-black text-ink mb-2">${esc(t.olim_lone_title)}</h2>`)
     expect(html).toContain(esc(t.olim_lone_desc))
     expect(t.olim_lone_desc).toContain(t.signup_customerType_loneSoldier)
   })
@@ -193,9 +193,9 @@ describe('/olim mentor card', () => {
 
   it('pre-fills the profile name and the read-only account email', () => {
     signIn()
-    mocks.profile = { profile: { firstName: 'Olga', lastName: 'Petrova', displayName: 'Olga Petrova' } }
+    mocks.profile = { profile: { firstName: 'Olga', lastName: 'Petrova', displayName: 'Olga Petrova' }, loaded: true, firstName: 'Olga' }
     const html = render('en')
-    expect(html).toMatch(/name="name"[^>]*value="Olga Petrova"/)
+    expect(html).toMatch(/readOnly=""[^>]*name="name" value="Olga Petrova"/)
     expect(html).toMatch(/type="email"[^>]*readOnly=""[^>]*value="olga@example.com"/)
   })
 
@@ -204,8 +204,76 @@ describe('/olim mentor card', () => {
     expect(render('en')).toMatch(/name="name"[^>]*value="Olga P"/)
   })
 
+  it('leaves the name editable only for a member with no name on file', () => {
+    mocks.auth = { user: { uid: 'user-1', email: 'olga@example.com', displayName: null }, loading: false }
+    const html = render('en')
+    expect(html).toMatch(/<input type="text"[^>]*name="name" value=""/)
+    expect(html).not.toMatch(/readOnly=""[^>]*name="name"/)
+  })
+
   it('keeps the email field left-to-right, aligned to the reading side', () => {
     signIn()
     expect(render('he')).toMatch(/type="email"[^>]*dir="ltr"[^>]*class="inp rtl:text-right/)
+  })
+})
+
+describe('/olim follows auth', () => {
+  function render(lang: Lang) {
+    const t = (key: TranslationKey) => translations[lang][key]
+    const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
+    return renderToStaticMarkup(createElement(LangContext.Provider, { value: { lang, setLang: () => {}, t, isRtl } }, createElement(OlimPage)))
+  }
+  const esc = (text: string) => text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const signIn = () => {
+    mocks.auth = { user: { uid: 'user-1', email: 'olga@example.com', displayName: 'Olga P' }, loading: false }
+    mocks.profile = { profile: { firstName: 'Olga', lastName: 'Petrova', displayName: 'Olga Petrova' }, loaded: true, firstName: 'Olga' }
+  }
+
+  it.each(Object.keys(translations) as Lang[])('pitches guests the community, the free promise and the join steps (%s)', (lang) => {
+    const t = translations[lang]
+    const html = render(lang)
+    for (const key of ['olim_hero_badge', 'olim_title', 'olim_sub', 'olim_free_badge', 'olim_free_note', 'olim_step1_title', 'olim_step2_title', 'olim_step3_title', 'olim_final_title'] as const) expect(html).toContain(esc(t[key]))
+    expect(html).toContain(`<a class="ds-btn ds-btn-inverse ds-btn-wrap shadow-[0_8px_24px_rgba(0,0,0,.18)]" href="/signup">${esc(t.olim_cta_join)}`)
+    expect(html).toContain(`<a class="ds-btn ds-btn-outline-inverse ds-btn-wrap" href="/login">${esc(t.nav_login)}</a>`)
+    expect(html).not.toContain(esc(t.olim_member_badge))
+    expect(html).not.toContain(esc(t.olim_mstep1_title))
+  })
+
+  it.each(Object.keys(translations) as Lang[])('welcomes members back with their status, member steps and member CTAs (%s)', (lang) => {
+    signIn()
+    const t = translations[lang]
+    const html = render(lang)
+    expect(html).toContain(esc(t.olim_member_welcome.replace('{name}', 'Olga')))
+    for (const key of ['olim_member_badge', 'olim_member_sub', 'olim_member_how_sub', 'olim_member_status_note', 'olim_mstep1_title', 'olim_mstep2_title', 'olim_mstep3_title', 'olim_step_done', 'olim_member_final_title'] as const) expect(html).toContain(esc(t[key]))
+    expect(html).toContain(`<a class="ds-btn ds-btn-inverse ds-btn-wrap shadow-[0_8px_24px_rgba(0,0,0,.18)]" href="/categories">${esc(t.olim_cta_explore)}`)
+    expect(html).toContain(`<a href="#mentor-section" class="ds-btn ds-btn-outline-inverse ds-btn-wrap">${esc(t.olim_cta_mentor)}</a>`)
+    expect(html).toContain(`href="/profile">${esc(t.olim_mstep1_link)}`)
+    expect(html).toContain('<section id="mentor-section"')
+    for (const key of ['olim_title', 'olim_free_badge', 'olim_step1_title', 'olim_final_title'] as const) expect(html).not.toContain(esc(t[key]))
+    expect(html).not.toContain('href="/signup"')
+  })
+
+  it('holds the member greeting hidden until the profile is read', () => {
+    signIn()
+    mocks.profile = { profile: null, loaded: false, firstName: null }
+    expect(render('en')).toMatch(/<h1 id="olim-title" class="[^"]*\binvisible\b/)
+  })
+
+  it('shows the guest copy, and no CTAs, while auth loads', () => {
+    mocks.auth = { user: null, loading: true }
+    const html = render('en')
+    expect(html).toContain(esc(translations.en.olim_title))
+    expect(html).not.toContain('href="/signup">')
+    expect(html).not.toContain(esc(translations.en.olim_member_badge))
+  })
+
+  it('keeps old /olim#mentor links landing on the mentor card', () => {
+    expect(render('en')).toMatch(/<div id="mentor" class="[^"]*scroll-mt-/)
+  })
+
+  it('drops the olim-only hero badge in every language', () => {
+    for (const lang of Object.keys(translations) as Lang[]) expect(translations[lang].olim_hero_badge).not.toBe(translations[lang].olim_title)
+    expect(translations.en.olim_hero_badge).toBe('Built for Newcomers, Lone Soldiers & the International Community')
+    expect(translations.en.olim_cta_explore).toBe('Explore Community Perks')
   })
 })

@@ -209,7 +209,7 @@ describe('guest home section dividers', () => {
   it('puts a soft, symmetrical hairline at each of the four section boundaries', () => {
     authState.user = null
     const html = withLang('en', createElement(Home))
-    const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"></div></div>'
+    const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-brand/25 to-transparent"></div></div>'
     expect(html.split(divider)).toHaveLength(5)
     const at = (marker: string) => html.indexOf(marker)
     const between = (a: string, b: string) => {

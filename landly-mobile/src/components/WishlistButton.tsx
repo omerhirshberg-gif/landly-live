@@ -12,8 +12,7 @@ import { actionTint, colors, radius } from '../theme'
 // corner. It pushes the wishlist (app/wishlist.tsx) as a page flip.
 export default function WishlistButton() {
   const { t } = useLang()
-  const { wishlistIds } = useWishlist()
-  const count = wishlistIds.length
+  const { wishlistCount: count } = useWishlist()
 
   return (
     <Pressable

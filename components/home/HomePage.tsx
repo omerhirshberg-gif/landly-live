@@ -24,7 +24,7 @@ export default function HomePage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 member-canvas" />
+        <div className="below-header member-canvas" />
       </>
     )
   }

@@ -1,84 +1,133 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useMemo, useState } from 'react'
 import type { User } from 'firebase/auth'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
-import { getUserDocument, updateUserPhone } from '@/lib/firebase/users'
-import { customerTypeLabel } from '@/lib/customerTypes'
+import { updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
+import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
+import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, resendEmailChange } from '@/lib/account/contactChange'
+import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
-import { ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@/lib/profile/countryOfOrigin'
+import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
 import AvatarUploader from './AvatarUploader'
+import ChangeEmailForm from './ChangeEmailForm'
+import OtpDialog from './OtpDialog'
+import PendingChangeNotice from './PendingChangeNotice'
 
-// The member's profile on /profile (desktop and mobile browsers). Name and
-// email are read-only; the phone number is editable in place, like the Expo
-// Profile tab. Customer type, country of origin and region in Israel show
-// here with an Edit link to their settings pages, where they're chosen
-// (members from before the origin card see "Not set"). A customer type of
-// "Other" shows what the member typed for it.
+interface Details {
+  phone: string
+  customerType: string
+  customerTypeOther: string
+  countryOfOrigin: string
+  israelRegion: string
+}
+
+const detailsOf = (profile: UserDocument | null): Details => ({
+  phone: profile?.phone ?? '',
+  customerType: profile?.customerType ?? '',
+  customerTypeOther: profile?.customerTypeOther ?? '',
+  countryOfOrigin: profile?.countryOfOrigin ?? '',
+  israelRegion: profile?.israelRegion ?? '',
+})
+
+type Status = { tone: 'info' | 'error'; text: string } | null
+
+// The member's profile on /profile (desktop and mobile browsers). The name
+// is read-only (a lock marks it). One "Edit profile" button at the header's
+// end (top right, top left in Hebrew) turns the phone number, customer type,
+// country of origin and region in Israel into fields at once; "Save changes"
+// writes them to users/{uid} in one update, "Cancel" drops them (app: the
+// Profile tab). A customer type of "Other" shows, and edits, what the member
+// typed for it; members from before the origin card see "Not set".
+//
+// Email and phone changes are verified before they apply. The email row's
+// "Change" (email+password members; Google accounts keep the lock) sends a
+// link to the new address; a new phone number gets a 6-digit WhatsApp code
+// (OtpDialog) when verification is on (/api/account/change-phone decides,
+// otherwise it saves as before). Meanwhile the amber PendingChangeNotice
+// sits under the row, and users/{uid} is read live, so it disappears the
+// moment the change is verified, on any device.
 export default function ProfileSection({ user }: { user: User }) {
   const { t, lang } = useLang()
 
-  const [loadingDoc, setLoadingDoc] = useState(true)
-  const [displayName, setDisplayName] = useState(user.displayName ?? '')
-  const [phone, setPhone] = useState('')
-  const [customerType, setCustomerType] = useState('')
-  const [customerTypeOther, setCustomerTypeOther] = useState('')
-  const [countryOfOrigin, setCountryOfOrigin] = useState('')
-  const [israelRegion, setIsraelRegion] = useState('')
+  const { profile, loaded } = useLiveUserDocument(user.uid)
+  const loadingDoc = !loaded
+  const displayName = profile?.displayName || user.displayName || ''
+  const email = profile?.email || user.email || ''
+  const stored = detailsOf(profile)
+  const pendingEmail = profile?.pendingEmail ?? ''
+  const pendingPhone = profile?.pendingPhone ?? ''
+  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
 
-  const [editingPhone, setEditingPhone] = useState(false)
-  const [phoneInput, setPhoneInput] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Details>(stored)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    setLoadingDoc(true)
-    getUserDocument(user.uid).then((doc) => {
-      if (cancelled) return
-      setPhone(doc?.phone ?? '')
-      setCustomerType(doc?.customerType ?? '')
-      setCustomerTypeOther(doc?.customerTypeOther ?? '')
-      setCountryOfOrigin(doc?.countryOfOrigin ?? '')
-      setIsraelRegion(doc?.israelRegion ?? '')
-      if (doc?.displayName) setDisplayName(doc.displayName)
-      setLoadingDoc(false)
-    })
-    return () => { cancelled = true }
-  }, [user.uid])
+  const [emailFormOpen, setEmailFormOpen] = useState(false)
+  const [otp, setOtp] = useState<{ phone: string; resendIn: number } | null>(null)
+  const [pendingBusy, setPendingBusy] = useState<'resendEmail' | 'cancelEmail' | 'cancelPhone' | null>(null)
+  const [emailStatus, setEmailStatus] = useState<Status>(null)
+  const [phoneStatus, setPhoneStatus] = useState<Status>(null)
+
+  const countries = useMemo(() => listOriginCountries(lang), [lang])
+
+  const change = (patch: Partial<Details>) => setDraft((d) => ({ ...d, ...patch }))
 
   const startEdit = () => {
-    setPhoneInput(phone)
+    setDraft(stored)
     setSaveMsg(null)
     setPhoneError(null)
-    setEditingPhone(true)
+    setEmailFormOpen(false)
+    setEditing(true)
   }
 
   const cancelEdit = () => {
-    setEditingPhone(false)
+    setEditing(false)
     setPhoneError(null)
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaveMsg(null)
-    const trimmedPhone = phoneInput.trim()
+    const phone = draft.phone.trim()
     // Empty removes the number; anything else must be a valid number.
-    if (trimmedPhone && !isValidPhoneNumber(trimmedPhone)) {
+    if (phone && !isValidPhoneNumber(phone)) {
       setPhoneError(t('phone_invalid_error'))
       return
     }
     setPhoneError(null)
     setSaving(true)
     try {
-      await updateUserPhone(user.uid, trimmedPhone)
-      setPhone(trimmedPhone)
+      // A new number is verified first when verification is on: the other
+      // fields save now and the number waits in pendingPhone for its code.
+      let savedPhone = phone
+      let verify: { phone: string; resendIn: number } | null = null
+      if (phone && phone !== stored.phone) {
+        const start = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' })
+        if (start.ok && start.mode === 'otp') {
+          verify = { phone, resendIn: start.resendIn }
+        } else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter && phone === pendingPhone) {
+          // A code for this very number went out moments ago: enter that one.
+          verify = { phone, resendIn: start.retryAfter }
+        } else if (!start.ok) {
+          setPhoneError(t(contactChangeErrorKey(start.reason)))
+          return
+        }
+        if (verify) savedPhone = stored.phone
+      }
+      const next = { ...draft, phone: savedPhone, customerType: isCustomerType(draft.customerType) ? draft.customerType : '' as const }
+      await updateUserProfileDetails(user.uid, next)
       invalidateMemberProfile(user.uid)
-      setEditingPhone(false)
-      setSaveMsg({ type: 'success', text: t('profile_save_success') })
+      setEditing(false)
+      if (verify) {
+        setPhoneStatus(null)
+        setOtp(verify)
+      } else {
+        setSaveMsg({ type: 'success', text: t('profile_save_success') })
+      }
     } catch {
       setSaveMsg({ type: 'error', text: t('profile_save_error') })
     } finally {
@@ -86,8 +135,198 @@ export default function ProfileSection({ user }: { user: User }) {
     }
   }
 
+  const pendingAction = async (
+    kind: NonNullable<typeof pendingBusy>,
+    run: (idToken: string) => ReturnType<typeof cancelPendingChange>,
+    setStatus: (status: Status) => void,
+    success: Status
+  ) => {
+    setPendingBusy(kind)
+    setStatus(null)
+    const result = await user.getIdToken().then(run).catch(() => CONTACT_CHANGE_FAILED)
+    setPendingBusy(null)
+    setStatus(result.ok ? success : { tone: 'error', text: t(contactChangeErrorKey(result.reason)) })
+  }
+
   const dt = 'text-xs font-semibold text-slate-500 mb-0.5'
-  const dd = 'text-sm font-bold text-slate-900'
+  const dd = 'text-sm font-bold text-slate-900 break-words'
+  const label = 'block mb-1.5 text-sm font-bold text-slate-700'
+  // 16px text so iOS Safari doesn't zoom the page on focus; 48px tall touch target.
+  const field = 'w-full h-12 px-4 rounded-[12px] border-[1.5px] border-slate-200 bg-white text-base text-slate-900 focus:outline-none focus:border-brand'
+  const loading = (value: string) => (loadingDoc ? '…' : value)
+
+  const lockedRow = (rowLabel: string, value: string, ltr?: boolean) => (
+    <div>
+      <dt className={`${dt} flex items-center gap-1.5`}>
+        {rowLabel}
+        <i className="fa-solid fa-lock text-[10px] text-slate-400" aria-hidden="true"></i>
+        <span className="sr-only">({t('profile_locked_label')})</span>
+      </dt>
+      <dd className={`${dd} ${editing ? 'text-slate-500' : ''}`} dir={ltr ? 'ltr' : undefined}>{value}</dd>
+    </div>
+  )
+
+  const emailRow = canChangeEmail ? (
+    <div>
+      <dt className={dt}>{t('profile_email_label')}</dt>
+      <dd>
+        <div className="flex items-center justify-between gap-3">
+          <span className={`${dd} min-w-0 ${editing ? 'text-slate-500' : ''}`} dir="ltr">{email}</span>
+          {!editing && !emailFormOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                setEmailStatus(null)
+                setEmailFormOpen(true)
+              }}
+              aria-label={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
+              className="tap-target flex-shrink-0 inline-flex items-center justify-center px-3 rounded-[12px] text-sm font-semibold text-brand hover:bg-brandLight transition-colors"
+            >
+              {t('profile_change_email_btn')}
+            </button>
+          )}
+        </div>
+        {emailFormOpen && !editing && (
+          <ChangeEmailForm user={user} onSent={() => setEmailFormOpen(false)} onCancel={() => setEmailFormOpen(false)} />
+        )}
+        <PendingChangeNotice
+          show={!!pendingEmail && !emailFormOpen}
+          message={t('pending_email_body')}
+          placeholder="{email}"
+          value={pendingEmail}
+          icon="fa-solid fa-envelope-circle-check"
+          actionLabel={t('pending_email_resend')}
+          onAction={() => pendingAction('resendEmail', (idToken) => resendEmailChange(idToken, lang), setEmailStatus, { tone: 'info', text: t('pending_email_resent') })}
+          actionBusy={pendingBusy === 'resendEmail'}
+          onCancel={() => pendingAction('cancelEmail', (idToken) => cancelPendingChange(idToken, 'email'), setEmailStatus, null)}
+          cancelBusy={pendingBusy === 'cancelEmail'}
+          status={emailStatus}
+        />
+      </dd>
+    </div>
+  ) : (
+    lockedRow(t('profile_email_label'), email, true)
+  )
+
+  const phoneNotice = (
+    <PendingChangeNotice
+      show={!!pendingPhone}
+      message={t('pending_phone_body')}
+      placeholder="{phone}"
+      value={pendingPhone ? formatPhoneNumberIntl(pendingPhone) || pendingPhone : ''}
+      icon="fa-brands fa-whatsapp"
+      actionLabel={t('pending_phone_enter')}
+      onAction={() => {
+        setPhoneStatus(null)
+        setOtp({ phone: pendingPhone, resendIn: 0 })
+      }}
+      onCancel={() => pendingAction('cancelPhone', (idToken) => cancelPendingChange(idToken, 'phone'), setPhoneStatus, null)}
+      cancelBusy={pendingBusy === 'cancelPhone'}
+      status={phoneStatus}
+    />
+  )
+
+  const details = (
+    <dl className="space-y-4">
+      {lockedRow(t('profile_name_label'), displayName || '—')}
+      {emailRow}
+      {editing ? (
+        <>
+          <div>
+            <dt><label htmlFor="profile-phone" className={label}>{t('profile_phone_label')}</label></dt>
+            <dd>
+              <PhoneInput
+                id="profile-phone"
+                international
+                countryCallingCodeEditable={false}
+                defaultCountry="IL"
+                autoComplete="tel"
+                autoFocus
+                value={draft.phone}
+                onChange={(value) => {
+                  change({ phone: value ?? '' })
+                  setPhoneError(null)
+                }}
+              />
+              {phoneError && <p role="alert" className="text-xs text-red-600 font-semibold mt-1.5">{phoneError}</p>}
+              {phoneNotice}
+            </dd>
+          </div>
+          <div>
+            <dt><label htmlFor="profile-customer-type" className={label}>{t('signup_customerTypeLabel')}</label></dt>
+            <dd>
+              <select id="profile-customer-type" value={draft.customerType} onChange={(e) => change({ customerType: e.target.value })} className={field}>
+                {!isCustomerType(draft.customerType) && <option value="">{t('signup_customerType_placeholder')}</option>}
+                {CUSTOMER_TYPES.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
+              </select>
+              {draft.customerType === OTHER_CUSTOMER_TYPE && (
+                <>
+                  <label htmlFor="profile-customer-type-other" className={`${label} mt-3`}>{t('onb_persona_otherLabel')}</label>
+                  <input
+                    id="profile-customer-type-other"
+                    type="text"
+                    value={draft.customerTypeOther}
+                    onChange={(e) => change({ customerTypeOther: e.target.value })}
+                    placeholder={t('onb_persona_otherPlaceholder')}
+                    maxLength={MAX_PERSONA_NOTE_LENGTH}
+                    autoComplete="off"
+                    className={field}
+                  />
+                </>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt><label htmlFor="profile-origin" className={label}>{t('profile_origin_label')}</label></dt>
+            <dd>
+              <select id="profile-origin" value={draft.countryOfOrigin} onChange={(e) => change({ countryOfOrigin: e.target.value })} className={field}>
+                <option value="">{t('profile_origin_unset')}</option>
+                <optgroup label={t('origin_common')}>
+                  {countries.pinned.map((c) => <option key={c.code} value={c.code}>{`${c.flag} ${c.name}`}</option>)}
+                </optgroup>
+                <optgroup label={t('origin_all')}>
+                  {countries.rest.map((c) => <option key={c.code} value={c.code}>{`${c.flag} ${c.name}`}</option>)}
+                </optgroup>
+              </select>
+            </dd>
+          </div>
+          <div>
+            <dt><label htmlFor="profile-region" className={label}>{t('profile_region_label')}</label></dt>
+            <dd>
+              <select id="profile-region" value={draft.israelRegion} onChange={(e) => change({ israelRegion: e.target.value })} className={field}>
+                <option value="">{t('profile_origin_unset')}</option>
+                {ISRAEL_REGIONS.map((r) => <option key={r} value={r}>{t(ISRAEL_REGION_KEYS[r])}</option>)}
+              </select>
+            </dd>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <dt className={dt}>{t('profile_phone_label')}</dt>
+            <dd>
+              <div className={dd} dir={stored.phone ? 'ltr' : undefined}>
+                {loading(stored.phone ? formatPhoneNumberIntl(stored.phone) || stored.phone : t('profile_no_phone'))}
+              </div>
+              {phoneNotice}
+            </dd>
+          </div>
+          <div>
+            <dt className={dt}>{t('signup_customerTypeLabel')}</dt>
+            <dd className={dd}>{loading(customerTypeLabel(stored.customerType, stored.customerTypeOther, t) ?? t('signup_customerType_placeholder'))}</dd>
+          </div>
+          <div>
+            <dt className={dt}>{t('profile_origin_label')}</dt>
+            <dd className={dd}>{loading(originLabel(stored.countryOfOrigin, lang) ?? t('profile_origin_unset'))}</dd>
+          </div>
+          <div>
+            <dt className={dt}>{t('profile_region_label')}</dt>
+            <dd className={dd}>{loading(isIsraelRegion(stored.israelRegion) ? t(ISRAEL_REGION_KEYS[stored.israelRegion]) : t('profile_origin_unset'))}</dd>
+          </div>
+        </>
+      )}
+    </dl>
+  )
 
   return (
     <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
@@ -98,110 +337,50 @@ export default function ProfileSection({ user }: { user: User }) {
         </div>
       )}
 
-      <h3 className="text-base font-bold text-slate-900 pb-4 mb-5 border-b border-slate-100">{t('dash_tab_profile')}</h3>
-      <dl className="space-y-4">
-        <div>
-          <dt className={dt}>{t('profile_name_label')}</dt>
-          <dd className={dd}>{displayName || '—'}</dd>
-        </div>
-        <div>
-          <dt className={dt}>{t('profile_email_label')}</dt>
-          <dd className={dd} dir="ltr">{user.email}</dd>
-        </div>
-        <div>
-          {editingPhone ? (
-            <>
-              <dt>
-                <label htmlFor="profile-phone" className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_phone_label')}</label>
-              </dt>
-              <dd>
-                <form onSubmit={handleSave}>
-                  <PhoneInput
-                    id="profile-phone"
-                    international
-                    countryCallingCodeEditable={false}
-                    defaultCountry="IL"
-                    autoComplete="tel"
-                    autoFocus
-                    value={phoneInput}
-                    onChange={(value) => {
-                      setPhoneInput(value ?? '')
-                      setPhoneError(null)
-                    }}
-                  />
-                  {phoneError && <p role="alert" className="text-xs text-red-600 font-semibold mt-1.5">{phoneError}</p>}
-                  {/* Stacked full-width on phones, side by side from sm up */}
-                  <div className="flex flex-col-reverse sm:flex-row gap-3 mt-3">
-                    <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
-                      {t('profile_cancel_btn')}
-                    </button>
-                    <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md w-full sm:w-auto">
-                      {saving ? '…' : t('profile_save_btn')}
-                    </button>
-                  </div>
-                </form>
-              </dd>
-            </>
-          ) : (
-            <>
-              <dt className={dt}>{t('profile_phone_label')}</dt>
-              <dd className={`${dd} flex items-center justify-between gap-3`}>
-                <span className="min-w-0" dir={phone ? 'ltr' : undefined}>
-                  {loadingDoc ? '…' : (phone ? formatPhoneNumberIntl(phone) || phone : t('profile_no_phone'))}
-                </span>
-                <button
-                  type="button"
-                  onClick={startEdit}
-                  disabled={loadingDoc}
-                  aria-label={`${t('profile_edit_btn')} ${t('profile_phone_label')}`}
-                  className="tap-target flex-shrink-0 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors disabled:opacity-60"
-                >
-                  {t('profile_edit_btn')}
-                </button>
-              </dd>
-            </>
-          )}
-        </div>
-        <EditableRow
-          label={t('signup_customerTypeLabel')}
-          value={loadingDoc ? '…' : customerTypeLabel(customerType, customerTypeOther, t) ?? t('signup_customerType_placeholder')}
-          href="/settings/member-type"
-          disabled={loadingDoc}
+      {/* The Edit button sits at the header's end: right in LTR, left in Hebrew. */}
+      <div className="flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
+        <h3 className="text-base font-bold text-slate-900">{t('dash_tab_profile')}</h3>
+        {!editing && (
+          <button
+            type="button"
+            onClick={startEdit}
+            disabled={loadingDoc}
+            className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors disabled:opacity-60"
+          >
+            <i className="fa-solid fa-pen text-xs" aria-hidden="true"></i>
+            {t('profile_edit_profile_btn')}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <form onSubmit={handleSave} noValidate>
+          {details}
+          {/* Stacked full-width on phones (Save on top), side by side at the end from sm up */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pb-[env(safe-area-inset-bottom,0px)]">
+            <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
+              {t('profile_cancel_btn')}
+            </button>
+            <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md w-full sm:w-auto">
+              {saving ? '…' : t('profile_save_changes_btn')}
+            </button>
+          </div>
+        </form>
+      ) : (
+        details
+      )}
+      {otp && (
+        <OtpDialog
+          user={user}
+          phone={otp.phone}
+          resendIn={otp.resendIn}
+          onClose={() => setOtp(null)}
+          onVerified={() => {
+            setOtp(null)
+            invalidateMemberProfile(user.uid)
+            setSaveMsg({ type: 'success', text: t('otp_success') })
+          }}
         />
-        <EditableRow
-          label={t('profile_origin_label')}
-          value={loadingDoc ? '…' : originLabel(countryOfOrigin, lang) ?? t('profile_origin_unset')}
-          href="/settings/language-region/origin"
-          disabled={loadingDoc}
-        />
-        <EditableRow
-          label={t('profile_region_label')}
-          value={loadingDoc ? '…' : isIsraelRegion(israelRegion) ? t(ISRAEL_REGION_KEYS[israelRegion]) : t('profile_origin_unset')}
-          href="/settings/language-region"
-          disabled={loadingDoc}
-        />
-      </dl>
-    </div>
-  )
-}
-
-// A read-only detail with an Edit link to the settings page that changes it.
-function EditableRow({ label, value, href, disabled }: { label: string; value: string; href: string; disabled: boolean }) {
-  const { t } = useLang()
-  return (
-    <div>
-      <dt className="text-xs font-semibold text-slate-500 mb-0.5">{label}</dt>
-      <dd className="text-sm font-bold text-slate-900 flex items-center justify-between gap-3">
-        <span className="min-w-0 break-words">{value}</span>
-        <Link
-          href={href}
-          aria-label={`${t('profile_edit_btn')} ${label}`}
-          aria-disabled={disabled || undefined}
-          className={`tap-target flex-shrink-0 inline-flex items-center h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors ${disabled ? 'pointer-events-none opacity-60' : ''}`}
-        >
-          {t('profile_edit_btn')}
-        </Link>
-      </dd>
+      )}
     </div>
   )
 }

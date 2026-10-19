@@ -64,55 +64,55 @@ export default function SupportPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16">
+      <div className="below-header member-canvas">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
           <Suspense fallback={null}>
             <BackToSettings className="mb-3 sm:mb-6" />
           </Suspense>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-8">{t('support_title')}</h1>
+          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink mb-8">{t('support_title')}</h1>
 
           <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">
             <div className="bg-brandLight border border-brand/20 rounded-2xl p-5">
               <div className="text-2xl mb-2">📧</div>
-              <div className="font-bold text-slate-900 mb-1">{t('support_email_us')}</div>
+              <div className="font-bold text-ink mb-1">{t('support_email_us')}</div>
               <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand text-sm font-semibold hover:underline">{SUPPORT_EMAIL}</a>
-              <p className="text-xs text-slate-500 mt-2">{t('support_email_note')}</p>
+              <p className="text-xs text-body mt-2">{t('support_email_note')}</p>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
               <div className="text-2xl mb-2">💬</div>
-              <div className="font-bold text-slate-900 mb-1">{t('support_whatsapp')}</div>
+              <div className="font-bold text-ink mb-1">{t('support_whatsapp')}</div>
               <a href={SUPPORT_WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" dir="ltr" className="text-brand text-sm font-semibold hover:underline">{SUPPORT_WHATSAPP_DISPLAY}</a>
-              <p className="text-sm text-slate-600 mt-1">{t('support_whatsapp_note')}</p>
+              <p className="text-sm text-body mt-1">{t('support_whatsapp_note')}</p>
             </div>
           </div>
 
           <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-6">{t('support_form_title')}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-ink mb-6">{t('support_form_title')}</h2>
             {status === 'sent' && <Notice tone="success">{t('support_form_success')}</Notice>}
             {error && <Notice>{error}</Notice>}
             <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting || undefined}>
               {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
               <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label htmlFor="support-name" className="block text-sm font-semibold text-slate-700 mb-1.5">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp" value={fields.name} onChange={update('name')} /></div>
-                <div><label htmlFor="support-email" className="block text-sm font-semibold text-slate-700 mb-1.5">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="your@email.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
+                <div><label htmlFor="support-name" className="block text-sm font-semibold text-ink mb-1.5">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp" value={fields.name} onChange={update('name')} /></div>
+                <div><label htmlFor="support-email" className="block text-sm font-semibold text-ink mb-1.5">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="your@email.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
               </div>
               <div>
-                <label htmlFor="support-subject" className="block text-sm font-semibold text-slate-700 mb-1.5">{t('form_subject')}</label>
+                <label htmlFor="support-subject" className="block text-sm font-semibold text-ink mb-1.5">{t('form_subject')}</label>
                 <select id="support-subject" name="subject" className="inp" value={fields.subject} onChange={update('subject')}>
                   {SUBJECT_OPTIONS.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
                 </select>
               </div>
-              <div><label htmlFor="support-message" className="block text-sm font-semibold text-slate-700 mb-1.5">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} dir="auto" placeholder={t('form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
-              <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="tap-target w-full flex items-center text-center justify-center bg-brand text-white font-bold py-3 rounded-full hover:enabled:bg-brandDark transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed">
+              <div><label htmlFor="support-message" className="block text-sm font-semibold text-ink mb-1.5">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} dir="auto" placeholder={t('form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
+              <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
                 {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
                 {t(isSubmitting ? 'support_form_sending' : 'btn_send_message')}
               </button>
             </form>
           </div>
         </div>
+        <Faq />
       </div>
-      <Faq />
     </>
   )
 }

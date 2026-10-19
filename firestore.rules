@@ -23,11 +23,36 @@ service cloud.firestore {
     // with the first verified sign-in as fallback).
     // A missing own profile is readable before verification for signup.
     // Business membership always takes precedence over a customer profile.
+    //
+    // The account email and any pending email/phone change are server-only
+    // (the /api/account change routes, Admin SDK): a client could otherwise
+    // swap its email without opening the new inbox, or plant a pending
+    // change. The member still reads them (the profile's amber notice), and
+    // still writes `phone` directly from onboarding and settings; changes
+    // from the profile screens go through the WhatsApp code when it's on.
+    function serverOnlyUserKeys() {
+      return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt'];
+    }
+
     match /users/{userId} {
-      allow create: if isCustomer() && request.auth.uid == userId;
+      allow create: if isCustomer() && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny(serverOnlyUserKeys());
       allow read: if isCustomer() && request.auth.uid == userId
         && (resource == null || isVerified());
-      allow update, delete: if isCustomer() && request.auth.uid == userId && isVerified();
+      allow update: if isCustomer() && request.auth.uid == userId && isVerified()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(serverOnlyUserKeys().concat(['email']));
+      allow delete: if isCustomer() && request.auth.uid == userId && isVerified();
+    }
+
+    // Email change links (SHA-256 of the token) and phone codes (hashed,
+    // with their attempt count): read and written by the /api/account change
+    // routes only. A readable token or code would let a member confirm an
+    // inbox or number they don't own.
+    match /emailChangeRequests/{userId} {
+      allow read, write: if false;
+    }
+    match /phoneVerifications/{userId} {
+      allow read, write: if false;
     }
 
     // Business accounts are created manually (Firebase Console) or via the

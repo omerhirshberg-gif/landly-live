@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 const TONES = {
   error: 'bg-red-50 border-red-200 text-red-600',
   success: 'bg-green-50 border-green-200 text-green-700',
-  info: 'bg-blue-50 border-blue-200 text-brand',
+  info: 'bg-brandTint border-brandLight text-brand',
 } as const
 
 // Web counterpart of landly-mobile/src/components/Notice.tsx. `info` is a

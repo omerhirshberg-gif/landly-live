@@ -14,9 +14,9 @@ export default function FounderCard({ founder }: { founder: Founder }) {
   return (
     <article
       aria-labelledby={`founder-${founder.id}`}
-      className="flex h-full flex-col items-center text-center sm:flex-row sm:items-start sm:text-start gap-5 bg-white/95 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-sky-100 shadow-sm transition-all [@media(hover:hover)]:hover:shadow-md motion-reduce:transition-none"
+      className="flex h-full flex-col items-center text-center sm:flex-row sm:items-start sm:text-start gap-5 bg-white/95 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-line shadow-sm transition-all [@media(hover:hover)]:hover:shadow-md motion-reduce:transition-none"
     >
-      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-4 ring-sky-50">
+      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-4 ring-brandTint">
         {founder.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={founder.photo} alt={name} width={96} height={96} className="h-full w-full object-cover" />

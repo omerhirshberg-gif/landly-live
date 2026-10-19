@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { Image, PixelRatio, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
+import { sizedAvatarUrl } from '@shared/avatar/avatar'
 import { colors } from '../theme'
 
 // The member's photo, else a brand-blue gradient monogram (native counterpart
 // of components/ui/Avatar.tsx). A photo that fails to load (an expired Google
 // URL) falls back to the monogram. Decorative: the name always sits next to
-// it, so it's hidden from screen readers.
+// it, so it's hidden from screen readers. Google photos are asked for at the
+// screen's pixel density, sharp on retina screens.
 export default function Avatar({ uri, initials, size = 40 }: { uri: string | null; initials: string; size?: number }) {
   const [failedUri, setFailedUri] = useState<string | null>(null)
   const showPhoto = !!uri && failedUri !== uri
@@ -17,7 +19,7 @@ export default function Avatar({ uri, initials, size = 40 }: { uri: string | nul
       style={[styles.base, { width: size, height: size, borderRadius: size / 2 }]}
     >
       {showPhoto ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" onError={() => setFailedUri(uri)} />
+        <Image source={{ uri: sizedAvatarUrl(uri, size * PixelRatio.get()) }} style={StyleSheet.absoluteFill} resizeMode="cover" onError={() => setFailedUri(uri)} />
       ) : (
         <>
           <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">

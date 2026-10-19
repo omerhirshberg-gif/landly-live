@@ -56,6 +56,12 @@ function isNotExpired(offer: OfferDocument, now: number): boolean {
   return !offer.expiryDate || offer.expiryDate.getTime() >= now
 }
 
+// Still claimable: unlimited, or not every voucher claimed yet. The Perks
+// rails show only these (sold-out offers stay reachable from search and links).
+export function isOfferAvailable(offer: Pick<OfferDocument, 'totalQuantity' | 'claimedCount'>): boolean {
+  return offer.totalQuantity === null || offer.claimedCount < offer.totalQuantity
+}
+
 const NEW_OFFER_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 // Computed on read, not stored — "new" is a rolling 14-day window off createdAt.

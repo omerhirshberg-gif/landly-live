@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth'
-import { arrayRemove, arrayUnion, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, type DocumentData } from 'firebase/firestore'
 import { splitDisplayName } from '@/lib/auth/names'
 import { personaNote, type CustomerType } from '@/lib/customerTypes'
 import { db } from './config'
@@ -27,6 +27,10 @@ export interface UserDocument {
   countryOfOrigin: string
   /** Where in Israel the member lives (lib/profile/countryOfOrigin.ts ISRAEL_REGIONS), or '' when not set. */
   israelRegion: string
+  /** A new email waiting for its confirmation link to be opened (server-written), or ''. */
+  pendingEmail: string
+  /** A new E.164 number waiting for its WhatsApp code (server-written), or ''. */
+  pendingPhone: string
 }
 
 // A shape check only, so this module stays free of libphonenumber.
@@ -64,8 +68,27 @@ export async function ensureUserDocument(
 
 export async function getUserDocument(uid: string): Promise<UserDocument | null> {
   const snap = await getDoc(doc(db, 'users', uid))
-  if (!snap.exists()) return null
-  const data = snap.data()
+  return snap.exists() ? toUserDocument(snap.data()) : null
+}
+
+/**
+ * Live users/{uid} for the profile screens (web /profile, the app's Profile
+ * tab): a verified email or phone change applied on another device -- or by
+ * the server -- clears its amber notice at once. Returns the unsubscribe.
+ */
+export function subscribeUserDocument(
+  uid: string,
+  onNext: (profile: UserDocument | null) => void,
+  onError: (error: Error) => void
+): () => void {
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => onNext(snap.exists() ? toUserDocument(snap.data()) : null),
+    onError
+  )
+}
+
+function toUserDocument(data: DocumentData): UserDocument {
   return {
     email: data.email ?? '',
     firstName: typeof data.firstName === 'string' ? data.firstName : '',
@@ -81,6 +104,8 @@ export async function getUserDocument(uid: string): Promise<UserDocument | null>
     photoURL: typeof data.photoURL === 'string' ? data.photoURL : '',
     countryOfOrigin: isoCode(data.countryOfOrigin),
     israelRegion: typeof data.israelRegion === 'string' ? data.israelRegion : '',
+    pendingEmail: typeof data.pendingEmail === 'string' ? data.pendingEmail : '',
+    pendingPhone: typeof data.pendingPhone === 'string' ? data.pendingPhone : '',
   }
 }
 
@@ -132,6 +157,24 @@ export async function updateUserPhone(uid: string, phone: string) {
  */
 export async function updateUserCustomerType(uid: string, customerType: CustomerType, note: string) {
   await updateDoc(doc(db, 'users', uid), { customerType, customerTypeOther: personaNote(customerType, note) })
+}
+
+/**
+ * The /profile "Edit profile" form (web and app) in one write: phone (E.164,
+ * or '' to remove it), member type with its "Other" note (through
+ * personaNote), country of origin and region in Israel ('' leaves them unset).
+ */
+export async function updateUserProfileDetails(
+  uid: string,
+  data: { phone: string; customerType: CustomerType | ''; customerTypeOther: string; countryOfOrigin: string; israelRegion: string }
+) {
+  await updateDoc(doc(db, 'users', uid), {
+    phone: data.phone,
+    customerType: data.customerType,
+    customerTypeOther: personaNote(data.customerType, data.customerTypeOther),
+    countryOfOrigin: data.countryOfOrigin,
+    israelRegion: data.israelRegion,
+  })
 }
 
 export async function updateUserLanguage(uid: string, preferredLanguage: string) {

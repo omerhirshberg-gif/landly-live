@@ -19,7 +19,7 @@ export default function PrivacyPage() {
     <>
       <Navbar />
       <main
-        className="min-h-screen bg-[#F8FAFC] pt-16 overflow-x-hidden"
+        className="member-canvas below-header overflow-x-hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div

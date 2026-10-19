@@ -99,8 +99,9 @@ describe('/profile', () => {
     const html = render(lang, ProfilePage)
     expect(html).toMatch(new RegExp(`<h1[^>]*>${translations[lang].nav_profile}</h1>`))
     expect(html).not.toMatch(/lang="(en|ru|es|fr|he)"/)
-    expect(html).toContain('href="/settings/language-region/origin"')
-    expect(html).toContain('href="/settings/language-region"')
+    // Origin and region are edited in place behind the single Edit profile button.
+    expect(html).toContain(`>${translations[lang].profile_edit_profile_btn}</button>`)
+    expect(html).not.toContain('href="/settings/')
   })
 
   it('redirects /account to /profile permanently', async () => {

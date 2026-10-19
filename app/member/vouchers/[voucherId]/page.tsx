@@ -60,7 +60,7 @@ export default function VoucherPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 member-canvas min-h-screen min-h-dvh">
+        <div className="below-header member-canvas min-h-screen min-h-dvh">
           <div role="status" className="max-w-xl mx-auto px-5 py-16 flex justify-center text-slate-400">
             <i className="fa-solid fa-spinner fa-spin text-2xl text-brand" aria-hidden="true"></i>
             <span className="sr-only">{t('bizdash_loading')}</span>
@@ -73,7 +73,7 @@ export default function VoucherPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 member-canvas min-h-screen min-h-dvh">
+      <div className="below-header member-canvas min-h-screen min-h-dvh">
         <div className="max-w-xl mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-12">
           <OpenInAppHint className="mb-3" />
           <BackButton fallback="/member" label={t('nav_my_pass')} className="mb-3" />

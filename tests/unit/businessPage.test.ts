@@ -48,7 +48,7 @@ describe('business page follows the site language', () => {
   it('no longer forces English or left-to-right on the page', () => {
     const html = render('he')
     expect(html).not.toContain('Grow With Landly')
-    expect(html).toMatch(/^<div class="pt-16">/)
+    expect(html).toMatch(/^<div class="below-header member-canvas">/)
   })
 
   it('keeps the email and phone fields left-to-right, aligned to the reading side', () => {

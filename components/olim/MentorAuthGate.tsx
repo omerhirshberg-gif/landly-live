@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { withRedirect } from '@/lib/auth/safeRedirect'
 import { useLang } from '@/lib/i18n/useLang'
+import { MENTOR_SECTION_ID } from './mentorSection'
 
 // Where /login and /signup bring a guest back to: the mentor card itself.
-export const MENTOR_RETURN_PATH = '/olim#mentor'
+export const MENTOR_RETURN_PATH = `/olim#${MENTOR_SECTION_ID}`
 
 // The guest state of the mentor card: no form (nothing a guest can submit),
 // just why the service is members-only and the way in.
@@ -20,7 +21,7 @@ export default function MentorAuthGate() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
         <Link
           href={withRedirect('/signup', MENTOR_RETURN_PATH)}
-          className="tap-target flex items-center justify-center text-center bg-white text-brand font-bold py-3.5 px-8 rounded-full hover:bg-brandLight transition shadow-lg focus-visible:outline-white"
+          className="ds-btn ds-btn-inverse ds-btn-wrap shadow-lg"
         >
           {t('olim_gate_signup')}
         </Link>

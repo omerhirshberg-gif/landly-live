@@ -20,7 +20,7 @@ export default function AboutPage() {
   return (
     <>
       <Navbar />
-      <main className="home-ambient pt-16">
+      <main className="home-ambient below-header">
         <section aria-labelledby="about-title" className="max-w-3xl mx-auto px-5 sm:px-6 pt-10 pb-12 sm:pt-14 sm:pb-14 text-center">
           <h1 id="about-title" className="text-4xl sm:text-5xl font-black text-[#0B1B3D] mb-4" style={{ letterSpacing: '-0.03em' }}>
             {t('about_title')}
@@ -44,7 +44,7 @@ export default function AboutPage() {
         <SectionDivider />
 
         <section aria-labelledby="about-mission-title" className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-sky-100 shadow-sm">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-line shadow-sm">
             <h2 id="about-mission-title" className="text-2xl font-black text-[#0B1B3D] mb-3">{t('about_mission_title')}</h2>
             <p className="text-[15px] sm:text-base leading-relaxed text-[#475569]">{t('about_mission_text')}</p>
           </div>

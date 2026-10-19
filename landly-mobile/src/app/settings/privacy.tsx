@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   bold: { fontWeight: '700', color: colors.textStrong },
   code: { fontFamily: mono, fontSize: 14, backgroundColor: colors.borderLight },
   link: { color: colors.brand, fontWeight: '600', textDecorationLine: 'underline' },
-  callout: { marginTop: 12, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: '#bfd4ff', backgroundColor: '#eff5ff' },
+  callout: { marginTop: 12, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.brandLight, backgroundColor: colors.brandTint },
   calloutText: { color: colors.textStrong },
   address: { marginTop: 12, padding: 16, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, gap: 2 },
 })

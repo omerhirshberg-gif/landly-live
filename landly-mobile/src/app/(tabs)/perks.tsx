@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@shared/categories'
-import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
+import { getAllOffers, isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import type { Coordinates } from '@shared/geo'
 import {
   filterAndSortPerks,
@@ -21,6 +21,7 @@ import CategoryGrid from '../../components/CategoryGrid'
 import NearMeButton from '../../components/NearMeButton'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
+import OfferTileRail from '../../components/OfferTileRail'
 import PerksCategoryChips from '../../components/PerksCategoryChips'
 import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
@@ -30,8 +31,10 @@ import { openOffer } from '../../lib/openOffer'
 import { colors, type } from '../../theme'
 
 // The searchable catalog: the same offers collection the website reads. With
-// nothing chosen it's the directory: the search row and the category grid,
-// no filters; a tile pushes that category's folder (app/category/[category].tsx).
+// nothing chosen it's the overview (web: the /categories overview): the
+// search row, the New on Landly and Best Sellers rails (OfferTileRail, real
+// perks still claimable only), then the category grid, no filters; a tile
+// pushes that category's folder (app/category/[category].tsx).
 // A search or a non-default sort opens the listing, and only then do the category chips
 // and the Sort chip appear under the search row (web: the /categories filter
 // toolbar), both running the shared pipeline in lib/perks/perksFilter.ts. The chip and sort live in the
@@ -108,6 +111,10 @@ export default function PerksScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [browsing, offers, appliedQuery, category, sort, lang]
   )
+  // The overview's two rails: sold-out offers left out, bestsellers then newest.
+  const railOffers = useMemo(() => (offers ? sortFeaturedOffers(offers.filter(isOfferAvailable)) : []), [offers])
+  const newOffers = useMemo(() => railOffers.filter((offer) => isOfferNew(offer.createdAt)), [railOffers])
+  const bestsellerOffers = useMemo(() => railOffers.filter((offer) => offer.isBestseller), [railOffers])
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
   // The screen title names the selected category (web: the /categories h1),
   // so the results heading only names a search, or "All" for a sort over
@@ -160,6 +167,14 @@ export default function PerksScreen() {
 
             {browsing && (
               <>
+                {(newOffers.length > 0 || bestsellerOffers.length > 0) && (
+                  <View style={styles.rails}>
+                    {newOffers.length > 0 && <OfferTileRail emoji="✨" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
+                    {bestsellerOffers.length > 0 && (
+                      <OfferTileRail emoji="🔥" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
+                    )}
+                  </View>
+                )}
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_all_categories_title')}
                 </AppText>
@@ -216,6 +231,7 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: 'row', alignItems: 'center' },
   // Bleed to the start edge only; the rail's own end padding is the gap before the divider.
   chips: { flex: 1, minWidth: 0, marginHorizontal: 0, marginStart: -16 },
+  rails: { gap: 16, marginTop: 4 },
   filterDivider: { width: 1, height: 24, flexShrink: 0, marginEnd: 12, backgroundColor: colors.border },
   sectionTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },
   resultsHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 },

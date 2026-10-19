@@ -11,7 +11,7 @@ export default function NewOffersPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16">
+      <div className="below-header member-canvas">
         <OfferListView
           emoji="✨"
           title={t('row_new')}
