@@ -15,6 +15,7 @@ import { subscribeToUserVouchers, type VoucherDocument } from '@/lib/firebase/vo
 import { totalSaved } from '@/lib/member/savings'
 import { greetingName } from '@/lib/auth/names'
 import SegmentBadge from '@/components/member/SegmentBadge'
+import SectionDivider from '@/components/ui/SectionDivider'
 
 type Voucher = VoucherDocument & { id: string }
 
@@ -106,6 +107,9 @@ export default function MemberPage() {
 
           {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
           <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
+
+          {/* A soft hairline between the member's status and their passes, as on the home page. */}
+          <SectionDivider className="mb-6" />
 
           {/* Tabs: My Perks / Redeemed */}
           <div className="mb-5">

@@ -11,7 +11,22 @@
    Do not reorder, dedupe, or "clean up" — port verbatim only.
 ═══════════════════════════════════════════════════════ */
 
-*{font-family:'Heebo',sans-serif;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* Typography: Heebo for text, inherited from html (a universal font rule
+   would stop every heading font at its first inner <span>). Headings (h1,
+   h2, .font-display) use Manrope (--font-display, app/layout.tsx), which
+   covers Latin and Cyrillic; Hebrew pages keep Heebo for headings too, so a
+   headline never mixes Manrope digits with Heebo letters. :where() keeps the
+   heading rule at zero specificity, so a component's own font or tracking wins. */
+html{font-family:'Heebo',sans-serif;}
+button,input,select,textarea,optgroup{font-family:inherit;}
+:where(h1,h2){font-family:var(--font-display),'Heebo',sans-serif;letter-spacing:-0.02em;}
+[lang="he"] :where(h1,h2),[lang="he"] .font-display{font-family:'Heebo',sans-serif;}
+/* One canvas for the whole site: #F8FAFC with a quiet blue wash over the top
+   420px. body carries the flat colour, so no page falls back to white; the
+   page wrappers (.member-canvas, .home-ambient) add the wash. */
+:root{--canvas:#F8FAFC;--canvas-wash:#EEF3FB;}
+body{background:var(--canvas);}
 html{scroll-behavior:smooth;}
 /* Sideways overscroll stays with the browser, so its edge swipe (iOS Safari) and back gesture (Chrome) step back through every page (settings, offers, checkout); never set it to none or contain on the page, and never touch-action:none on html/body (tests/unit/backNavigation.test.ts) */
 html,body{overscroll-behavior-x:auto;}
@@ -376,13 +391,15 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* ── Member design system (post-login surfaces) ─────────────────────────
    Shared with landly-mobile/src/theme.ts: brand #0038B8, pressed #002A8A,
    tint #E0EFFE, heading #0B1B3D, body #475569, muted #94A3B8, border #E2E8F0,
-   canvas #F8FAFC. Buttons: 52px (48px with .ds-btn-md), 14px radius, 16px semibold.
-   Every CTA uses it except the guest landing hero, whose pill pair is the one
-   deliberate marketing exception (components/home/Hero.tsx). On a dark brand
-   surface (the /olim hero and closing card, the mentor card), .ds-btn-inverse
+   canvas #F8FAFC. Buttons: 52px (48px with .ds-btn-md, 44px with .ds-btn-sm),
+   12px radius, 16px semibold with slightly tight tracking. Every CTA uses it,
+   the guest hero's and the navbar's included. On a dark brand surface (the
+   /olim closing card, the About call to action), .ds-btn-inverse
    is the white button and .ds-btn-outline-inverse the outlined one. */
-.ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 24px;border-radius:14px;border:1px solid transparent;font-size:16px;font-weight:600;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,border-color .2s,color .2s,transform .16s cubic-bezier(.16,1,.3,1);}
+.ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 24px;border-radius:12px;border:1px solid transparent;font-size:16px;font-weight:600;letter-spacing:-0.01em;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,border-color .2s,color .2s,transform .16s cubic-bezier(.16,1,.3,1);}
 .ds-btn-md{height:48px;padding:0 20px;}
+/* The navbar's compact actions: 44px, the minimum tap target. */
+.ds-btn-sm{height:44px;padding:0 16px;font-size:14px;font-weight:700;}
 /* A label that can run long in translation (Russian, French) wraps onto a
    second line instead of clipping; the button grows from its 52px/48px floor. */
 .ds-btn-wrap{height:auto;min-height:52px;padding-top:12px;padding-bottom:12px;white-space:normal;line-height:1.25;text-align:center;}
@@ -418,7 +435,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Home category rail: a 56px round icon over a two-line label, 76px wide so
    four tiles fit a 393px phone with the fifth peeking. Press shrinks the icon. */
 .rail-tile{display:flex;width:76px;flex-direction:column;align-items:center;gap:8px;text-align:center;-webkit-tap-highlight-color:transparent;}
-.rail-tile-icon{display:flex;width:56px;height:56px;align-items:center;justify-content:center;border-radius:9999px;background:#E0EFFE;font-size:26px;line-height:1;transition:transform .15s ease-out,background-color .2s;}
+.rail-tile-icon{display:flex;width:56px;height:56px;align-items:center;justify-content:center;border-radius:9999px;background:#E0EFFE;color:#0038B8;font-size:20px;line-height:1;transition:transform .15s ease-out,background-color .2s;}
 .rail-tile:active .rail-tile-icon{transform:scale(.92);}
 .rail-tile:focus-visible{outline:none;}
 .rail-tile:focus-visible .rail-tile-icon{outline:2px solid #0038B8;outline-offset:2px;}
@@ -427,9 +444,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Monogram fallback avatar: brand-blue gradient behind white initials. */
 .ds-avatar-fallback{background:linear-gradient(135deg,#3B6FE0 0%,#0038B8 55%,#002A8A 100%);}
 /* Member pages fill the visible viewport on mobile browsers (toolbar-aware). */
-.member-canvas{min-height:100vh;min-height:100dvh;background:#F8FAFC;}
-/* Wide screens get a soft blue wash at the top so the page isn't a flat sheet */
-@media (min-width:1024px){.member-canvas{background:linear-gradient(180deg,#EEF3FB 0,#F8FAFC 420px) #F8FAFC;}}
+.member-canvas,.home-ambient{min-height:100vh;min-height:100dvh;background:linear-gradient(180deg,var(--canvas-wash) 0,var(--canvas) 420px) var(--canvas);}
 /* The floating buttons' shared bottom line: the WhatsApp badge (bottom right)
    and the accessibility button (bottom left) sit on it, clear of the iPhone
    home indicator. --floating-lift is how far bottom bars (cookie notice, an
@@ -460,22 +475,9 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
   .wa-glow{animation:none;opacity:0;}
   .wa-bubble{animation:none;}
 }
-/* Guest home section hairlines (SectionDivider): when the section between two
+/* Section hairlines (components/ui/SectionDivider.tsx): when the section between two
    rendered nothing, the second one goes, so there's never a double line. */
 .section-divider + .section-divider{display:none;}
-/* Guest home backdrop (app/page.tsx): white at the top into ice and ocean
-   blue for What's inside and the perk examples, tapering back to the
-   footer's #F8FAFC so it meets the footer without a step. Two soft radial
-   spots on top give it depth instead of a flat ramp; their mixing also
-   softens 8-bit banding. Sections set no background, so this runs the full
-   scroll height; at least one viewport tall (toolbar-aware where supported). */
-.home-ambient{
-  min-height:100vh;min-height:100dvh;
-  background:
-    radial-gradient(60% 22% at 88% 34%,rgba(56,189,248,.20) 0%,rgba(56,189,248,0) 70%),
-    radial-gradient(55% 20% at 8% 52%,rgba(125,211,252,.35) 0%,rgba(125,211,252,0) 70%),
-    linear-gradient(180deg,#FFFFFF 0%,#E0F2FE 18%,#BAE6FD 45%,#E0F2FE 75%,#F8FAFC 100%);
-}
 /* Account dropdown: same surface as .lang-menu, opened from the avatar pill. */
 .account-menu{position:absolute;top:calc(100% + 8px);right:0;left:auto;background:#fff;border:1px solid #E2E8F0;border-radius:14px;box-shadow:0 12px 36px rgba(15,23,42,.14);min-width:256px;max-width:min(320px,calc(100vw - 32px));padding:6px;z-index:60;}
 .account-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;color:#0B1B3D;text-align:start;transition:background .15s;}
@@ -625,3 +627,79 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
 @media (prefers-reduced-motion:reduce){.otp-dialog{animation:none;}}
 /* One real input over six drawn boxes: autofill (one-time-code), paste and screen readers all see one field. */
 .otp-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;color:transparent;caret-color:transparent;background:transparent;border:0;letter-spacing:0;}
+/* Guest home ticker tape (components/home/PartnerMarquee.tsx). The track
+   holds its stream twice and slides by exactly half its own width, so the
+   loop restarts on the same pixel; only transform animates, on the GPU. Each
+   item carries its own Star of David divider (no gap), so both halves are
+   exactly equal. In Hebrew it runs the other way. It never stops under the
+   pointer; it pauses while an item has keyboard focus, and while off screen
+   ([data-paused]). The edge fade is symmetric,
+   and clip (hidden first, for engines without it) keeps the page from ever
+   scrolling sideways. Reduced motion: no motion, one wrapped set of items. */
+.marquee{position:relative;overflow:hidden;overflow:clip;contain:paint;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 48px,#000 calc(100% - 48px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 48px,#000 calc(100% - 48px),transparent 100%);}
+.marquee-row{padding-block:2px;}
+.marquee-track{display:flex;width:max-content;animation:marquee var(--marquee-duration,40s) linear infinite;}
+.marquee:not([data-paused]) .marquee-track{will-change:transform;}
+.marquee-half{display:flex;flex-shrink:0;}
+.marquee-item{display:flex;align-items:center;flex-shrink:0;}
+@keyframes marquee{from{transform:translate3d(0,0,0);}to{transform:translate3d(-50%,0,0);}}
+@keyframes marquee-rtl{from{transform:translate3d(0,0,0);}to{transform:translate3d(50%,0,0);}}
+[dir="rtl"] .marquee-track{animation-name:marquee-rtl;}
+.marquee[data-paused] .marquee-track,.marquee-row:focus-within .marquee-track{animation-play-state:paused;}
+@media (prefers-reduced-motion:reduce){
+  .marquee{-webkit-mask-image:none;mask-image:none;padding-inline:16px;}
+  .marquee-track{animation:none;width:auto;}
+  .marquee-half{flex:1 1 auto;flex-wrap:wrap;justify-content:center;}
+  .marquee-half[aria-hidden],.marquee-item[data-repeat]{display:none;}
+}
+/* Scroll reveal (components/home/Reveal.tsx): visible unless armed, i.e. only
+   once JS has seen it start below the fold. Fade and a 12px rise, staggered
+   by --reveal-delay; reduced motion keeps only the fade. */
+.reveal[data-reveal="armed"]{opacity:0;transform:translate3d(0,12px,0);}
+.reveal[data-reveal="shown"]{transition:opacity .4s ease-out var(--reveal-delay,0ms),transform .5s cubic-bezier(.22,1,.36,1) var(--reveal-delay,0ms);}
+@media (prefers-reduced-motion:reduce){
+  .reveal[data-reveal="armed"]{transform:none;}
+  .reveal[data-reveal="shown"]{transition:opacity .3s ease-out;}
+}
+/* The member pass mockup (components/home/PassShowcase.tsx): the section
+   clips sideways overflow, so the phone's deep shadow never widens the page. */
+.pass-stage{overflow-x:hidden;overflow-x:clip;}
+/* A category card's trailing arrow (components/perks/CategoryGrid.tsx) nudges
+   3px toward the reading direction while hovered, with a real pointer only. */
+.cat-card-nudge{display:inline-flex;transition:transform .2s ease-out,color .2s ease-out;}
+@media (hover:hover){
+  .group:hover .cat-card-nudge{transform:translate3d(3px,0,0);}
+  [dir="rtl"] .group:hover .cat-card-nudge{transform:translate3d(-3px,0,0);}
+}
+@media (prefers-reduced-motion:reduce){.cat-card-nudge{transition:color .2s ease-out;}.group:hover .cat-card-nudge,[dir="rtl"] .group:hover .cat-card-nudge{transform:none;}}
+/* The pass mockup's Wallet-style entrance (components/home/PassShowcase.tsx),
+   played once when it scrolls into view. 'armed' holds the start pose until
+   then: the card tucked below the screen's bottom edge (the screen clips it)
+   at 92%, the QR hidden, the "Show to redeem" pill clear. 'play' runs it:
+     0–900ms     the card slides up on a decelerating spring and seats at full
+                 size, its shadow deepening as it lands
+     500–1000ms  the QR wipes in top to bottom
+     950–1550ms  a shine crosses the QR
+     1000–1400ms the "Show to redeem" pill rises
+   No data-pass (no JS, reduced motion, already on screen at load): the seated card. */
+.pass-shine{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.75) 50%,transparent 70%);transform:translate3d(-120%,0,0);}
+.pass-anim[data-pass="armed"] .pass-card{transform:translate3d(0,120%,0) scale(.92);box-shadow:0 4px 10px -6px rgba(0,56,184,.3);}
+.pass-anim[data-pass="armed"] .pass-qr{clip-path:inset(0 0 100% 0);}
+.pass-anim[data-pass="armed"] .pass-pill{opacity:0;}
+.pass-anim[data-pass="play"] .pass-card{animation:pass-slide-up .9s cubic-bezier(.16,1,.3,1) both;}
+.pass-anim[data-pass="play"] .pass-qr{animation:pass-wipe .5s cubic-bezier(.65,0,.35,1) .5s both;}
+.pass-anim[data-pass="play"] .pass-shine{animation:pass-shine .6s cubic-bezier(.65,0,.35,1) .95s both;}
+.pass-anim[data-pass="play"] .pass-pill{animation:pass-rise .4s cubic-bezier(.22,1,.36,1) 1s both;}
+@keyframes pass-slide-up{
+  from{transform:translate3d(0,120%,0) scale(.92);box-shadow:0 4px 10px -6px rgba(0,56,184,.3);}
+  70%{transform:translate3d(0,0,0) scale(.985);}
+  to{transform:none;box-shadow:0 25px 50px -12px rgba(0,56,184,.5);}
+}
+@keyframes pass-wipe{from{clip-path:inset(0 0 100% 0);}to{clip-path:inset(0 0 0 0);}}
+@keyframes pass-shine{from{transform:translate3d(-120%,0,0);}to{transform:translate3d(120%,0,0);}}
+@keyframes pass-rise{from{opacity:0;transform:translate3d(0,8px,0);}}
+@media (prefers-reduced-motion:reduce){
+  .pass-anim[data-pass] .pass-card,.pass-anim[data-pass] .pass-qr,.pass-anim[data-pass] .pass-pill,.pass-anim[data-pass] .pass-shine{animation:none;opacity:1;transform:none;clip-path:none;box-shadow:none;}
+  .pass-anim[data-pass] .pass-card{box-shadow:0 25px 50px -12px rgba(0,56,184,.5);}
+  .pass-anim[data-pass] .pass-shine{transform:translate3d(-120%,0,0);}
+}

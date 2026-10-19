@@ -38,7 +38,7 @@ describe('/about', () => {
     expect(html).toContain(esc(t.about_sub))
     expect(html).toContain(`>${esc(t.about_founders_title)}</h2>`)
     for (const founder of FOUNDERS) {
-      expect(html).toContain(`<h3 id="founder-${founder.id}" class="text-xl font-black text-[#0B1B3D]">${esc(t[founder.nameKey])}</h3>`)
+      expect(html).toContain(`<h3 id="founder-${founder.id}" class="font-display text-xl font-extrabold text-ink">${esc(t[founder.nameKey])}</h3>`)
       expect(html).toContain(esc(t[founder.bioKey]))
     }
     expect(html.split(`>${esc(t.about_role_cofounder)}</p>`)).toHaveLength(3)
@@ -69,15 +69,16 @@ describe('/about', () => {
     const cards = html.match(/<article aria-labelledby="founder-[^"]+" class="([^"]*)"/g) ?? []
     expect(cards).toHaveLength(2)
     for (const card of cards) {
-      for (const c of ['h-full', 'bg-white/95', 'backdrop-blur-md', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-line', 'shadow-sm', 'transition-all', '[@media(hover:hover)]:hover:shadow-md']) {
+      for (const c of ['h-full', 'bg-white', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-slate-200/80', 'shadow-sm', 'before:h-1', 'before:from-brand', '[@media(hover:hover)]:hover:-translate-y-1', '[@media(hover:hover)]:hover:shadow-md']) {
         expect(card.split('"')[3].split(' ')).toContain(c)
       }
     }
   })
 
-  it('holds a fixed 96px avatar, showing initials until a photo is set', () => {
+  it('holds a fixed 96px rounded-square portrait, showing initials until a photo is set, and the role as a pill', () => {
     const html = render('en', createElement(AboutPage))
-    expect(html.split('<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-4 ring-brandTint">')).toHaveLength(3)
+    expect(html.split('<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl ')).toHaveLength(3)
+    expect(html.split(`rounded-full border border-brand/15 bg-brandTint px-2.5 py-0.5 text-xs font-bold text-brand">${translations.en.about_role_cofounder}</p>`)).toHaveLength(3)
     expect(html).toContain('>AB</span>')
     expect(html).toContain('>OH</span>')
     expect(FOUNDERS.every((f) => f.photo === null)).toBe(true)

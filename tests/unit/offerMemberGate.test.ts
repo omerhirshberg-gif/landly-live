@@ -76,11 +76,11 @@ describe('guest home hero', () => {
 })
 
 describe('guest home background', () => {
-  it('is one soft gradient behind every section, none drawing its own edge', () => {
+  it('is the site canvas behind every section, none drawing its own edge', () => {
     expect(read('components/home/HomePage.tsx')).toContain('<main className="home-ambient">')
-    const ambient = read('app/globals.css').match(/\.home-ambient\{[^}]*\}/)?.[0] ?? ''
-    expect(ambient).toContain('linear-gradient(180deg,#FFFFFF 0%,#E0F2FE 18%,#BAE6FD 45%,#E0F2FE 75%,#F8FAFC 100%)')
-    expect(ambient).toContain('radial-gradient(')
+    const ambient = read('app/globals.css').match(/\.member-canvas,\.home-ambient\{[^}]*\}/)?.[0] ?? ''
+    expect(ambient).toContain('linear-gradient(180deg,var(--canvas-wash) 0,var(--canvas) 420px) var(--canvas)')
+    expect(ambient).not.toContain('radial-gradient(')
     expect(ambient).toContain('min-height:100dvh')
     // Floating cards: near-white glass over it.
     for (const file of ['ValueProps', 'HowItWorks', 'PerkExampleCard']) expect(read(`components/home/${file}.tsx`)).toContain('bg-white/95 backdrop-blur-sm')

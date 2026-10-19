@@ -46,13 +46,28 @@ describe('home page composition', () => {
     for (const marker of ['GUEST_HERO', 'GUEST_VALUE_PROPS', 'HOW_IT_WORKS', 'FAQ_PROMPT', 'FOOTER']) expect(html).toContain(marker)
   })
 
-  it('guests get the real perk examples under What\'s inside, not the members\' curated rail', () => {
+  it('guests get the partner marquee under the hero, then the top savings under What\'s inside, not the perk examples or the members\' curated rail', () => {
+    authState.user = null
+    const offers = ['Cafe Nadi', 'Surf Club', 'Spa Yam', 'Bike Hub', 'Book Nook', 'Gym Tov'].map((businessName, i) => ({
+      id: `o${i}`, businessName, title: `Perk ${i}`, category: 'Restaurants and Cafes', originalPrice: 100 + i * 10, offerPrice: 60,
+    }))
+    const html = withLang('en', createElement(Home, { showcase: { offers } }))
+    expect(html).not.toContain(translations.en.home_curated_title)
+    expect(html).not.toContain('id="home-examples-title"')
+    const marquee = html.indexOf('class="marquee ')
+    expect(marquee).toBeGreaterThan(html.indexOf('GUEST_HERO'))
+    expect(marquee).toBeLessThan(html.indexOf('GUEST_VALUE_PROPS'))
+    const savings = html.indexOf('id="home-savings-title"')
+    expect(savings).toBeGreaterThan(html.indexOf('GUEST_VALUE_PROPS'))
+    expect(savings).toBeLessThan(html.indexOf('id="home-pass-title"'))
+    expect(html.indexOf('id="home-pass-title"')).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
+  })
+
+  it('guests without enough discounted offers get no savings section, no doubled hairline and the category marquee', () => {
     authState.user = null
     const html = withLang('en', createElement(Home))
-    expect(html).not.toContain(translations.en.home_curated_title)
-    const examples = html.indexOf('id="home-examples-title"')
-    expect(examples).toBeGreaterThan(html.indexOf('GUEST_VALUE_PROPS'))
-    expect(examples).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
+    expect(html).not.toContain('id="home-savings-title"')
+    expect(html).toContain(translations.en.landing_marquee_categories)
   })
 
   it('members get only their dashboard: no hero, value props, How it works or Aliyah card', () => {
@@ -151,7 +166,7 @@ describe('member dashboard: category rail and perk cards', () => {
   it('shows the categories as round icon tiles in an edge-faded rail ending in "View all"', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(/<ul class="edge-fade [^"]*overflow-x-auto[^"]*">/)
-    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon">🍽️<\/span><span class="rail-tile-label">Restaurants/)
+    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon"><i class="fa-solid fa-utensils"><\/i><\/span><span class="rail-tile-label">Restaurants/)
     const rail = html.slice(html.indexOf('<ul class="edge-fade'), html.indexOf('</ul>'))
     const viewAll = rail.lastIndexOf('href="/categories"')
     expect(rail.slice(viewAll)).toContain(`<span class="rail-tile-label !text-brand">${translations.en.cats_view_all}</span>`)
@@ -206,20 +221,32 @@ describe('member dashboard: category rail and perk cards', () => {
 })
 
 describe('guest home section dividers', () => {
-  it('puts a soft, symmetrical hairline at each of the four section boundaries', () => {
+  const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-brand/25 to-transparent"></div></div>'
+  const showcase = {
+    offers: ['Cafe Nadi', 'Surf Club', 'Spa Yam'].map((businessName, i) => ({ id: `o${i}`, businessName, title: `Perk ${i}`, category: 'Beach and Sea', originalPrice: 120, offerPrice: 90 })),
+  }
+
+  it('puts a soft, symmetrical hairline at each of the five section boundaries', () => {
     authState.user = null
-    const html = withLang('en', createElement(Home))
-    const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-brand/25 to-transparent"></div></div>'
-    expect(html.split(divider)).toHaveLength(5)
+    const html = withLang('en', createElement(Home, { showcase }))
+    expect(html.split(divider)).toHaveLength(6)
     const at = (marker: string) => html.indexOf(marker)
     const between = (a: string, b: string) => {
       const d = html.indexOf(divider, at(a))
       return d > at(a) && d < at(b)
     }
-    expect(between('GUEST_HERO', 'GUEST_VALUE_PROPS')).toBe(true)
-    expect(between('GUEST_VALUE_PROPS', 'id="home-examples-title"')).toBe(true)
-    expect(between('id="home-examples-title"', 'HOW_IT_WORKS')).toBe(true)
+    expect(between('class="marquee ', 'GUEST_VALUE_PROPS')).toBe(true)
+    expect(between('GUEST_VALUE_PROPS', 'id="home-savings-title"')).toBe(true)
+    expect(between('id="home-savings-title"', 'id="home-pass-title"')).toBe(true)
+    expect(between('id="home-pass-title"', 'HOW_IT_WORKS')).toBe(true)
     expect(between('HOW_IT_WORKS', 'FOOTER')).toBe(true)
+  })
+
+  it('drops the savings section with its hairline, so two never meet', () => {
+    authState.user = null
+    const html = withLang('en', createElement(Home))
+    expect(html.split(divider)).toHaveLength(5)
+    expect(html).not.toContain(divider + divider)
   })
 
   it('never doubles up when a section between two lines renders nothing', async () => {

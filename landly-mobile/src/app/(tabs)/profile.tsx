@@ -16,7 +16,6 @@ import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from 
 import AppText from '../../components/AppText'
 import AvatarPicker from '../../components/AvatarPicker'
 import Button from '../../components/Button'
-import ChangeEmailForm from '../../components/ChangeEmailForm'
 import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import LineIcon from '../../components/LineIcon'
@@ -140,7 +139,6 @@ function ProfileDetails({
   const current = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
-  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(current)
   const [country, setCountry] = useState<CountryCode>('IL')
@@ -149,7 +147,6 @@ function ProfileDetails({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<'saved' | 'verified' | null>(null)
-  const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [otp, setOtp] = useState<{ phone: string; resendIn: number } | null>(null)
   const [pendingBusy, setPendingBusy] = useState<'resendEmail' | 'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
@@ -174,7 +171,6 @@ function ProfileDetails({
     setPhoneError(null)
     setSaveError(null)
     setNotice(null)
-    setEmailFormOpen(false)
     setEditing(true)
   }
 
@@ -272,55 +268,30 @@ function ProfileDetails({
         )}
       </View>
 
-      <LockedRow label={t('profile_name_label')} value={name || t('profile_no_phone')} muted={editing} />
-      {canChangeEmail ? (
-        <View style={[styles.row, styles.rowBorder]}>
-          <View style={styles.emailLine}>
-            <View style={styles.emailValue}>
-              <AppText style={styles.rowLabel}>{t('profile_email_label')}</AppText>
-              <AppText ltr style={[styles.rowValue, editing && styles.rowValueMuted]}>{email}</AppText>
-            </View>
-            {!editing && !emailFormOpen && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
-                onPress={() => {
-                  setEmailStatus(null)
-                  setEmailFormOpen(true)
-                }}
-                hitSlop={8}
-                style={({ pressed }) => [styles.changeButton, pressed && styles.editPressed]}
-              >
-                <AppText style={styles.changeText}>{t('profile_change_email_btn')}</AppText>
-              </Pressable>
-            )}
-          </View>
-          {emailFormOpen && !editing && (
-            <ChangeEmailForm user={user} onSent={() => setEmailFormOpen(false)} onCancel={() => setEmailFormOpen(false)} />
-          )}
-          {!!pendingEmail && !emailFormOpen && (
-            <PendingChangeNotice
-              message={t('pending_email_body')}
-              placeholder="{email}"
-              value={pendingEmail}
-              icon="mail"
-              actionLabel={t('pending_email_resend')}
-              onAction={() =>
-                pendingAction('resendEmail', (idToken) => resendEmailChange(idToken, lang, API_BASE_URL), setEmailStatus, {
-                  tone: 'info',
-                  text: t('pending_email_resent'),
-                })
-              }
-              actionBusy={pendingBusy === 'resendEmail'}
-              onCancel={() => pendingAction('cancelEmail', (idToken) => cancelPendingChange(idToken, 'email', API_BASE_URL), setEmailStatus, null)}
-              cancelBusy={pendingBusy === 'cancelEmail'}
-              status={emailStatus}
-            />
-          )}
-        </View>
-      ) : (
-        <LockedRow label={t('profile_email_label')} value={email} ltr muted={editing} />
-      )}
+      <Row label={t('profile_name_label')} value={name || t('profile_no_phone')} muted={editing} />
+      <View style={[styles.row, styles.rowBorder]}>
+        <AppText style={styles.rowLabel}>{t('profile_email_label')}</AppText>
+        <AppText ltr style={[styles.rowValue, editing && styles.rowValueMuted]}>{email}</AppText>
+        {!!pendingEmail && (
+          <PendingChangeNotice
+            message={t('pending_email_body')}
+            placeholder="{email}"
+            value={pendingEmail}
+            icon="mail"
+            actionLabel={t('pending_email_resend')}
+            onAction={() =>
+              pendingAction('resendEmail', (idToken) => resendEmailChange(idToken, lang, API_BASE_URL), setEmailStatus, {
+                tone: 'info',
+                text: t('pending_email_resent'),
+              })
+            }
+            actionBusy={pendingBusy === 'resendEmail'}
+            onCancel={() => pendingAction('cancelEmail', (idToken) => cancelPendingChange(idToken, 'email', API_BASE_URL), setEmailStatus, null)}
+            cancelBusy={pendingBusy === 'cancelEmail'}
+            status={emailStatus}
+          />
+        )}
+      </View>
 
       {editing ? (
         <>
@@ -424,25 +395,11 @@ function ProfileDetails({
   )
 }
 
-// Name and email: never editable here, marked with a small lock.
-function LockedRow({ label, value, ltr, muted }: { label: string; value: string; ltr?: boolean; muted?: boolean }) {
-  const { t } = useLang()
-  return (
-    <View style={[styles.row, styles.rowBorder]} accessible accessibilityLabel={`${label} (${t('profile_locked_label')}): ${value}`}>
-      <View style={styles.lockedLabel}>
-        <AppText style={styles.rowLabel}>{label}</AppText>
-        <LineIcon name="lock" size={11} color={colors.textFaint} />
-      </View>
-      <AppText ltr={ltr} style={[styles.rowValue, muted && styles.rowValueMuted]}>{value}</AppText>
-    </View>
-  )
-}
-
-function Row({ label, value, ltr, last, children }: { label: string; value: string; ltr?: boolean; last?: boolean; children?: ReactNode }) {
+function Row({ label, value, ltr, last, muted, children }: { label: string; value: string; ltr?: boolean; last?: boolean; muted?: boolean; children?: ReactNode }) {
   return (
     <View style={[styles.row, !last && styles.rowBorder]}>
       <AppText style={styles.rowLabel}>{label}</AppText>
-      <AppText ltr={ltr} style={styles.rowValue}>{value}</AppText>
+      <AppText ltr={ltr} style={[styles.rowValue, muted && styles.rowValueMuted]}>{value}</AppText>
       {children}
     </View>
   )
@@ -472,7 +429,6 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 12, color: colors.textFaint, marginBottom: 2 },
   rowValue: { fontSize: 16, fontWeight: '600', color: colors.heading },
   rowValueMuted: { color: colors.body },
-  lockedLabel: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
   // The title at the start, Edit profile at the trailing edge; the root view's direction mirrors it in Hebrew.
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.heading },
@@ -504,17 +460,6 @@ const styles = StyleSheet.create({
   },
   editPressed: { backgroundColor: colors.brandTint },
   editText: { fontSize: 15, fontWeight: '600', color: colors.brand },
-  // The email row: value at the start, "Change" at the trailing edge.
-  emailLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emailValue: { flex: 1, minWidth: 0 },
-  changeButton: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    justifyContent: 'center',
-    ...webOnly({ cursor: 'pointer' }),
-  },
-  changeText: { fontSize: 15, fontWeight: '600', color: colors.brand },
   editActions: { flexDirection: 'row', gap: 12, paddingTop: 4, paddingBottom: 16 },
   editAction: { flex: 1 },
   savedNotice: { paddingBottom: 16 },

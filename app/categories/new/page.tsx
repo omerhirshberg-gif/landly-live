@@ -13,7 +13,7 @@ export default function NewOffersPage() {
       <Navbar />
       <div className="below-header member-canvas">
         <OfferListView
-          emoji="✨"
+          icon="fa-wand-magic-sparkles"
           title={t('row_new')}
           depKey="new"
           fetchOffers={() => getAllOffers().then((offers) => offers.filter((offer) => isOfferNew(offer.createdAt)))}

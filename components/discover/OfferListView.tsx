@@ -8,7 +8,8 @@ import type { OfferDocument } from '@/lib/firebase/offers'
 import { perksCountLabel } from '@/lib/categories'
 
 interface Props {
-  emoji: string
+  /** A Font Awesome solid class for the heading's icon box, e.g. 'fa-fire'. */
+  icon: string
   title: string
   // Identifies which listing this is (category name, 'new', 'bestsellers') so the
   // effect only refetches when the listing actually changes — not on every
@@ -25,10 +26,10 @@ interface Props {
 }
 
 // A category "folder" (and the New / Best Sellers lists): a back link to the
-// grid, the emoji and title with the perk count, then the offers. It enters
+// grid, the icon and title with the perk count, then the offers. It enters
 // with a short slide from the reading direction (.folder-in). Vertical panning
 // only on the list, so the browser's own edge swipe-back is never contested.
-export default function OfferListView({ emoji, title, depKey, fetchOffers, controls, filterOffers }: Props) {
+export default function OfferListView({ icon, title, depKey, fetchOffers, controls, filterOffers }: Props) {
   const { t } = useLang()
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
 
@@ -49,8 +50,8 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
       <BackButton fallback="/categories" label={t('cats_detail_back')} className="mb-4" />
 
       <div className="flex items-center gap-3 sm:gap-4 mb-8">
-        <span aria-hidden="true" className="flex h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-100 bg-white text-[32px] sm:text-4xl leading-none">
-          {emoji}
+        <span aria-hidden="true" className="flex h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-brand/10 bg-brandTint text-brand shadow-sm">
+          <i className={`fa-solid ${icon} text-xl sm:text-2xl`}></i>
         </span>
         <div className="min-w-0">
           <h1 className="text-[26px] sm:text-[28px] lg:text-3xl font-bold text-ink leading-tight break-words">{title}</h1>

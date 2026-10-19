@@ -25,6 +25,8 @@ module.exports = {
       },
       fontFamily: {
         heebo: ['Heebo', 'sans-serif'],
+        // Headings: Manrope (app/layout.tsx), Heebo for Hebrew and anything it lacks.
+        display: ['var(--font-display)', 'Heebo', 'sans-serif'],
       },
     },
   },

@@ -2,6 +2,8 @@
 
 import { useLang } from '@/lib/i18n/useLang'
 import { TranslationKey } from '@/lib/i18n/translations'
+import { useSnapIndex } from '@/lib/useSnapIndex'
+import SnapDots from '@/components/ui/SnapDots'
 
 // What Landly covers, grouped from the real business categories
 // (lib/categories.ts) — no placeholder merchants, and deliberately no CTA:
@@ -15,6 +17,7 @@ const PILLARS: { icon: string; titleKey: TranslationKey; descKey: TranslationKey
 
 export default function ValueProps() {
   const { t } = useLang()
+  const { ref: rowRef, index: active, scrollTo } = useSnapIndex<HTMLUListElement>(PILLARS.length)
 
   return (
     // id="deals" keeps old /#deals links and globals.css's scroll margin working.
@@ -32,8 +35,10 @@ export default function ValueProps() {
             swipe settles on a card's centre, the page never drags sideways), so
             the perk examples below are a short scroll away instead of four
             stacked screens. From sm: the grid, two columns then four. The py
-            keeps the cards' shadow and hover lift clear of the row's clipping. */}
-        <ul className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
+            keeps the cards' shadow and hover lift clear of the row's clipping.
+            Under the row on phones, pagination dots follow the card in view
+            (useSnapIndex) and bring a card in when tapped. */}
+        <ul ref={rowRef} className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
           {PILLARS.map((p) => (
             <li
               key={p.titleKey}
@@ -49,6 +54,7 @@ export default function ValueProps() {
             </li>
           ))}
         </ul>
+        <SnapDots count={PILLARS.length} active={active} onSelect={scrollTo} className="sm:hidden" />
       </div>
     </section>
   )

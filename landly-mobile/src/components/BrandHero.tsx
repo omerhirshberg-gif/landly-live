@@ -10,7 +10,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
 import { ArrowLayer, BaseLayer, BaseOutlineLayer, ShineLayer, StaticEmblem } from './Emblem'
 import { EMBLEM_AXIS_X, EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
@@ -40,6 +40,14 @@ const EASE_OUT = Easing.bezier(...CURVES.easeOut)
 const EASE_OUT_SOFT = Easing.bezier(...CURVES.easeOutSoft)
 const EASE_IN_OUT = Easing.bezier(...CURVES.easeInOut)
 
+// A soft radial brand glow behind the mark, as on the web login
+// (entrance.module.css .glow): it swells in with the base, peaks as the shine
+// passes and settles at a faint 40%, so the finished logo (and the login
+// header it hands over to) never sits in a halo.
+const GLOW = 200
+const GLOW_REST = 0.4
+const GLOW_TOTAL = T.shine + T.shineMs
+
 // The staged intro's timings and curves live in lib/brand/entranceTimeline.ts,
 // shared with the web login page (components/auth/BrandHero.tsx) so both
 // platforms play the same sequence.
@@ -58,6 +66,8 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
   const reveal = useSharedValue(start(0))
   const slogan = useSharedValue(start(0))
   const shine = useSharedValue(staged ? 0 : 1)
+  const glow = useSharedValue(staged ? 0 : GLOW_REST)
+  const glowScale = useSharedValue(staged ? 0.8 : 1)
   // Reduced motion keeps only a gentle fade of the finished mark.
   const whole = useSharedValue(intro && reduced ? 0 : 1)
 
@@ -68,6 +78,10 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       whole.set(withTiming(1, { duration: T.reducedMs, easing: EASE_OUT }, (fin) => fin && scheduleOnRN(done)))
       return
     }
+    // The glow, across the whole intro (keyframes 35% / 80% / 100%, as on the web).
+    const glowStep = (share: number) => ({ duration: Math.round(GLOW_TOTAL * share), easing: EASE_IN_OUT })
+    glow.set(withSequence(withTiming(0.7, glowStep(0.35)), withTiming(1, glowStep(0.45)), withTiming(GLOW_REST, glowStep(0.2))))
+    glowScale.set(withSequence(withTiming(1, glowStep(0.35)), withTiming(1.06, glowStep(0.45)), withTiming(1, glowStep(0.2))))
     // Stage 1 — Star of David assembly
     baseScale.set(withTiming(1, { duration: T.arrow, easing: EASE_OUT_SOFT }))
     outline.set(
@@ -103,6 +117,7 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
     transform: [{ translateY: FROM.wordmarkY * (1 - reveal.get()) }],
   }))
   const sloganStyle = useAnimatedStyle(() => ({ opacity: slogan.get() }))
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get(), transform: [{ scale: glowScale.get() }] }))
 
   return (
     <Animated.View
@@ -112,6 +127,17 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       accessibilityLabel="Landly — Lifestyle & Growth"
     >
       <View style={styles.emblem}>
+        <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]}>
+          <Svg width={GLOW} height={GLOW}>
+            <Defs>
+              <RadialGradient id="landlyGlow" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor="#0038B8" stopOpacity={0.1} />
+                <Stop offset="1" stopColor="#0038B8" stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Rect width={GLOW} height={GLOW} fill="url(#landlyGlow)" />
+          </Svg>
+        </Animated.View>
         {staged ? (
           <>
             <Animated.View style={[StyleSheet.absoluteFill, baseStyle]}>
@@ -151,6 +177,7 @@ const styles = StyleSheet.create({
   hero: { ...HERO, alignItems: 'center' },
   emblem: { ...EMBLEM, left: EMBLEM_SHIFT },
   arrowOrigin: { transformOrigin: '12% 96%' },
+  glow: { position: 'absolute', width: GLOW, height: GLOW, left: (EMBLEM.width - GLOW) / 2, top: (EMBLEM.height - GLOW) / 2 },
   wordmark: { ...WORDMARK, marginTop: WORDMARK_GAP },
   // Same ink as the wordmark. iOS and browsers add the letter-spacing after the
   // last letter too (Android splits it either side of each letter); the

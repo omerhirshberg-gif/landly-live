@@ -7,6 +7,7 @@ import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import OfferTileRail from '@/components/discover/OfferTileRail'
 import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
+import SectionDivider from '@/components/ui/SectionDivider'
 import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
 import { useLang } from '@/lib/i18n/useLang'
 import { sortByDistance, reverseGeocode, Coordinates } from '@/lib/geo'
@@ -29,7 +30,8 @@ function Spinner() {
 // The perks catalog. At rest (All, no search, Recommended) it's the
 // overview: the search row (no chips or Sort), the New on Landly and Best
 // Sellers rails (OfferTileRail, real perks still claimable only), then the
-// full category grid with counts. A search, a tapped tile (?cat=) or a
+// full category grid with counts, a soft hairline (SectionDivider) between
+// each block, as on the home page. A search, a tapped tile (?cat=) or a
 // non-default sort switches to one filtered, sorted grid of full offer
 // cards, and only then do the chips and Sort appear. The filters live in the URL (?cat=&sort=&q=), so the view
 // survives reloads and can be shared; all filtering runs on the one fetched
@@ -182,15 +184,22 @@ function PerksBrowser() {
           )}
 
           {(newOffers.length > 0 || bestsellerOffers.length > 0) && (
-            <div className="divide-y divide-slate-100 mb-8">
-              {newOffers.length > 0 && (
-                <OfferTileRail emoji="✨" title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} />
-              )}
-              {bestsellerOffers.length > 0 && (
-                <OfferTileRail emoji="🔥" title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} />
-              )}
-            </div>
+            <>
+              <SectionDivider className="mb-8" />
+              {/* The rails pad themselves (py-5), so the hairline between them needs no spacing of its own. */}
+              <div className="mb-8">
+                {newOffers.length > 0 && (
+                  <OfferTileRail icon="fa-wand-magic-sparkles" title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} />
+                )}
+                {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
+                {bestsellerOffers.length > 0 && (
+                  <OfferTileRail icon="fa-fire" title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} />
+                )}
+              </div>
+            </>
           )}
+
+          <SectionDivider className="mb-8" />
 
           <section className="mb-10">
             <h2 className="text-base font-bold text-ink mb-3">{t('cats_all_categories_title')}</h2>

@@ -5,7 +5,7 @@ import { useLang } from '@/lib/i18n/useLang'
 import { CATEGORY_TILES } from '@/lib/categories'
 import type { CategoryFilter } from '@/lib/perks/perksFilter'
 
-const OPTIONS: { key: CategoryFilter; emoji?: string }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category, emoji: tile.emoji }))]
+const OPTIONS: { key: CategoryFilter; icon?: string }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category, icon: tile.icon }))]
 
 // The /categories category filter: "All" plus every category as one
 // horizontally scrolling row of single-choice chips (a radiogroup — arrow
@@ -123,7 +123,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
               onKeyDown={onKeyDown}
               className="filter-chip"
             >
-              {option.emoji && <span aria-hidden="true">{option.emoji}</span>}
+              {option.icon && <i className={`fa-solid ${option.icon} text-[13px]`} aria-hidden="true"></i>}
               <span>{label(option.key)}</span>
             </button>
           )

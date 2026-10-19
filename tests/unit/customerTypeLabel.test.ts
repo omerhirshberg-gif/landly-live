@@ -63,8 +63,9 @@ describe('web profile section', async () => {
     expect(html).not.toContain('href="/settings/')
   })
 
-  it('marks name and email as locked', () => {
-    expect(html.match(/fa-lock/g)).toHaveLength(2)
-    expect(html.match(new RegExp(`\\(${translations.en.profile_locked_label}\\)`, 'g'))).toHaveLength(2)
+  it('shows name and email as plain rows, with no lock and no email Change button', () => {
+    expect(html).not.toContain('fa-lock')
+    expect(html).not.toContain(translations.en.profile_locked_label)
+    expect(html).not.toContain(translations.en.profile_change_email_btn)
   })
 })

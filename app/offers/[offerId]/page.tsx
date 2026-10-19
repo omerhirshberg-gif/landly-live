@@ -132,7 +132,7 @@ export default function OfferDetailPage() {
             <div className="px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-7">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-brandTint px-3 py-1.5 text-xs font-semibold text-brand">
-                  {tile && <span aria-hidden="true">{tile.emoji}</span>}
+                  {tile && <i className={`fa-solid ${tile.icon} text-[11px]`} aria-hidden="true"></i>}
                   {tile ? t(tile.labelKey) : <span dir="auto">{offer.category}</span>}
                 </span>
                 <RedemptionBadge method={offer.redemptionMethod} className="!py-1.5 !text-xs" />
