@@ -6,6 +6,7 @@ import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i
 import { BUSINESS_CATEGORIES } from '@/lib/business/inquiryCategories'
 
 vi.mock('@/components/layout/Navbar', () => ({ default: () => null }))
+vi.mock('@/lib/firebase/offers', () => ({ getAllOffers: () => new Promise(() => {}) }))
 
 const { default: BusinessPage } = await import('@/app/business/page')
 

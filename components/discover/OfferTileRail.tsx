@@ -17,13 +17,14 @@ import OfferTile from './OfferTile'
 // on its own; scrollLeft counts negative there, so distances are measured
 // from the start edge and paging flips its sign.
 export default function OfferTileRail({
-  emoji,
+  icon,
   title,
   offers,
   href,
   seeMore,
 }: {
-  emoji: string
+  /** A Font Awesome solid class for the heading's icon box, e.g. 'fa-fire'. */
+  icon: string
   title: string
   offers: OfferDocument[]
   href?: string
@@ -65,7 +66,9 @@ export default function OfferTileRail({
     <section aria-labelledby={headingId} className="py-5 first:pt-0 last:pb-0">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 id={headingId} className="flex min-w-0 items-center gap-2 text-base font-bold text-slate-900">
-          <span className="text-xl" aria-hidden="true">{emoji}</span>
+          <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-brand/10 bg-brandTint text-brand">
+            <i className={`fa-solid ${icon} text-sm`}></i>
+          </span>
           <span className="truncate">{title}</span>
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">

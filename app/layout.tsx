@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Manrope } from 'next/font/google'
 import 'react-phone-number-input/style.css'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
@@ -19,6 +20,11 @@ import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo/site'
 // here: every page would inherit it and claim to be the home page, so the
 // public pages set their own (pageMetadata). The share image comes from
 // app/opengraph-image.tsx; X falls back to it.
+// The heading font (h1, h2, .font-display; globals.css), self-hosted by
+// next/font so there's no request to Google and no layout shift. Latin and
+// Cyrillic; Hebrew headings stay in Heebo. Exposed as --font-display.
+const manrope = Manrope({ subsets: ['latin', 'cyrillic'], weight: ['700', '800'], variable: '--font-display', display: 'swap' })
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: HOME_TITLE, template: '%s | Landly' },
@@ -44,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" dir="ltr">
+    <html lang="en" dir="ltr" className={manrope.variable}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

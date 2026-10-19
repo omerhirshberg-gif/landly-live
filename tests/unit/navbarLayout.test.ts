@@ -318,7 +318,7 @@ describe('button hierarchy', () => {
     for (const c of ['bg-brand', 'text-white', 'font-bold', '[@media(hover:hover)]:hover:bg-brandDark', 'border-transparent']) expect(upClasses).toContain(c)
     for (const c of ['bg-[#FFFFFF]', 'text-[#0B1B3D]', 'border-[#E2E8F0]', '[@media(hover:hover)]:hover:border-slate-300', '[@media(hover:hover)]:hover:text-brand']) expect(inClasses).toContain(c)
     // Identical box: same padding, text size, radius and a 1px border on both.
-    for (const c of ['px-4', 'py-2', 'text-[13px]', 'rounded-full', 'border']) {
+    for (const c of ['px-4', 'py-2', 'text-[13px]', 'rounded-xl', 'tracking-tight', 'border']) {
       expect(upClasses).toContain(c)
       expect(inClasses).toContain(c)
     }
@@ -332,7 +332,7 @@ describe('button hierarchy', () => {
     )
     const primary = html.match(/<a class="([^"]*)" href="\/signup">/)![1]
     const secondary = html.match(/<a class="([^"]*)" href="\/login">/)![1]
-    for (const shared of ['min-h-[52px]', 'px-8', 'py-3.5', 'rounded-full', 'border', '[@media(hover:hover)]:hover:-translate-y-0.5']) {
+    for (const shared of ['min-h-[52px]', 'px-8', 'py-3.5', 'rounded-xl', 'tracking-tight', 'border', '[@media(hover:hover)]:hover:-translate-y-0.5']) {
       expect(primary.split(' ')).toContain(shared)
       expect(secondary.split(' ')).toContain(shared)
     }

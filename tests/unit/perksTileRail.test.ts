@@ -60,7 +60,7 @@ describe('web OfferTileRail', () => {
   const offers = ['1', '2', '3', '4', '5'].map((id) => offer(id))
 
   it('is one row of tiles scrolling sideways, with a hidden scrollbar and snapping', () => {
-    const html = render('en', createElement(OfferTileRail, { emoji: '✨', title: 'New on Landly', offers }))
+    const html = render('en', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'New on Landly', offers }))
     const rail = html.match(/<div class="(offer-tile-rail[^"]*)">/)![1].split(' ')
     expect(rail).not.toContain('grid-rows-2')
     for (const c of ['grid', 'grid-flow-col', 'auto-cols-[256px]', 'sm:auto-cols-[272px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
@@ -70,7 +70,7 @@ describe('web OfferTileRail', () => {
   })
 
   it('renders compact 140px tiles with a 104px photo strip, the discount pill and both prices', () => {
-    const html = render('en', createElement(OfferTileRail, { emoji: '✨', title: 'x', offers: [offer('1')] }))
+    const html = render('en', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'x', offers: [offer('1')] }))
     expect(html).toContain('h-[140px]')
     expect(html).toContain('w-[104px]')
     expect(html).toContain(translations.en.offer_percent_off.replace('{n}', '20'))
@@ -79,7 +79,7 @@ describe('web OfferTileRail', () => {
   })
 
   it('leaves Hebrew to the page direction, so it fills and starts from the right', () => {
-    const html = render('he', createElement(OfferTileRail, { emoji: '✨', title: 'x', offers }))
+    const html = render('he', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'x', offers }))
     // No dir on the section or the rail: they inherit the page's.
     expect(html).toMatch(/^<section aria-labelledby="[^"]*" class="[^"]*">/)
     expect(html).toMatch(/<div class="offer-tile-rail /)

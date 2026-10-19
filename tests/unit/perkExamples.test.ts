@@ -58,7 +58,7 @@ describe('perk example card', () => {
     const t = translations[lang]
     const html = withLang(lang, createElement(PerkExampleCard, { offer }))
     expect(html).toContain('href="/offers/o1"')
-    expect(html).toContain(`<span class="truncate">${t.row_restaurants}</span><span aria-hidden="true">🍽️</span>`)
+    expect(html).toContain(`<span class="truncate">${t.row_restaurants}</span><i class="fa-solid fa-utensils text-[10px] text-brand" aria-hidden="true"></i>`)
     expect(html).toContain('h-[130px]')
     expect(html).toContain('>Cafe Nadi</div>')
     expect(html).toContain('>Coffee and pastry for 29</p>')

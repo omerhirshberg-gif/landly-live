@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
@@ -11,7 +11,6 @@ import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerT
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
 import AvatarUploader from './AvatarUploader'
-import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
 import PendingChangeNotice from './PendingChangeNotice'
 
@@ -34,16 +33,14 @@ const detailsOf = (profile: UserDocument | null): Details => ({
 type Status = { tone: 'info' | 'error'; text: string } | null
 
 // The member's profile on /profile (desktop and mobile browsers). The name
-// is read-only (a lock marks it). One "Edit profile" button at the header's
+// and email are plain read-only rows. One "Edit profile" button at the header's
 // end (top right, top left in Hebrew) turns the phone number, customer type,
 // country of origin and region in Israel into fields at once; "Save changes"
 // writes them to users/{uid} in one update, "Cancel" drops them (app: the
 // Profile tab). A customer type of "Other" shows, and edits, what the member
 // typed for it; members from before the origin card see "Not set".
 //
-// Email and phone changes are verified before they apply. The email row's
-// "Change" (email+password members; Google accounts keep the lock) sends a
-// link to the new address; a new phone number gets a 6-digit WhatsApp code
+// A new phone number gets a 6-digit WhatsApp code
 // (OtpDialog) when verification is on (/api/account/change-phone decides,
 // otherwise it saves as before). Meanwhile the amber PendingChangeNotice
 // sits under the row, and users/{uid} is read live, so it disappears the
@@ -58,7 +55,6 @@ export default function ProfileSection({ user }: { user: User }) {
   const stored = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
-  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(stored)
@@ -66,7 +62,6 @@ export default function ProfileSection({ user }: { user: User }) {
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
 
-  const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [otp, setOtp] = useState<{ phone: string; resendIn: number } | null>(null)
   const [pendingBusy, setPendingBusy] = useState<'resendEmail' | 'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
@@ -80,7 +75,6 @@ export default function ProfileSection({ user }: { user: User }) {
     setDraft(stored)
     setSaveMsg(null)
     setPhoneError(null)
-    setEmailFormOpen(false)
     setEditing(true)
   }
 
@@ -155,42 +149,20 @@ export default function ProfileSection({ user }: { user: User }) {
   const field = 'w-full h-12 px-4 rounded-[12px] border-[1.5px] border-slate-200 bg-white text-base text-slate-900 focus:outline-none focus:border-brand'
   const loading = (value: string) => (loadingDoc ? '…' : value)
 
-  const lockedRow = (rowLabel: string, value: string, ltr?: boolean) => (
+  const plainRow = (rowLabel: string, value: ReactNode, ltr?: boolean) => (
     <div>
-      <dt className={`${dt} flex items-center gap-1.5`}>
-        {rowLabel}
-        <i className="fa-solid fa-lock text-[10px] text-slate-400" aria-hidden="true"></i>
-        <span className="sr-only">({t('profile_locked_label')})</span>
-      </dt>
-      <dd className={`${dd} ${editing ? 'text-slate-500' : ''}`} dir={ltr ? 'ltr' : undefined}>{value}</dd>
+      <dt className={dt}>{rowLabel}</dt>
+      <dd className={`${dd} ${editing ? 'text-slate-500' : ''}`}>{ltr ? <bdi dir="ltr">{value}</bdi> : value}</dd>
     </div>
   )
 
-  const emailRow = canChangeEmail ? (
+  const emailRow = (
     <div>
       <dt className={dt}>{t('profile_email_label')}</dt>
       <dd>
-        <div className="flex items-center justify-between gap-3">
-          <span className={`${dd} min-w-0 ${editing ? 'text-slate-500' : ''}`} dir="ltr">{email}</span>
-          {!editing && !emailFormOpen && (
-            <button
-              type="button"
-              onClick={() => {
-                setEmailStatus(null)
-                setEmailFormOpen(true)
-              }}
-              aria-label={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
-              className="tap-target flex-shrink-0 inline-flex items-center justify-center px-3 rounded-[12px] text-sm font-semibold text-brand hover:bg-brandLight transition-colors"
-            >
-              {t('profile_change_email_btn')}
-            </button>
-          )}
-        </div>
-        {emailFormOpen && !editing && (
-          <ChangeEmailForm user={user} onSent={() => setEmailFormOpen(false)} onCancel={() => setEmailFormOpen(false)} />
-        )}
+        <div className={`${dd} ${editing ? 'text-slate-500' : ''}`}><bdi dir="ltr">{email}</bdi></div>
         <PendingChangeNotice
-          show={!!pendingEmail && !emailFormOpen}
+          show={!!pendingEmail}
           message={t('pending_email_body')}
           placeholder="{email}"
           value={pendingEmail}
@@ -204,8 +176,6 @@ export default function ProfileSection({ user }: { user: User }) {
         />
       </dd>
     </div>
-  ) : (
-    lockedRow(t('profile_email_label'), email, true)
   )
 
   const phoneNotice = (
@@ -228,7 +198,7 @@ export default function ProfileSection({ user }: { user: User }) {
 
   const details = (
     <dl className="space-y-4">
-      {lockedRow(t('profile_name_label'), displayName || '—')}
+      {plainRow(t('profile_name_label'), displayName || '—')}
       {emailRow}
       {editing ? (
         <>
@@ -305,8 +275,8 @@ export default function ProfileSection({ user }: { user: User }) {
           <div>
             <dt className={dt}>{t('profile_phone_label')}</dt>
             <dd>
-              <div className={dd} dir={stored.phone ? 'ltr' : undefined}>
-                {loading(stored.phone ? formatPhoneNumberIntl(stored.phone) || stored.phone : t('profile_no_phone'))}
+              <div className={dd}>
+                {stored.phone && !loadingDoc ? <bdi dir="ltr">{formatPhoneNumberIntl(stored.phone) || stored.phone}</bdi> : loading(t('profile_no_phone'))}
               </div>
               {phoneNotice}
             </dd>

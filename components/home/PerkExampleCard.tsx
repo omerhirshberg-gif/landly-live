@@ -8,7 +8,7 @@ import { formatPrice } from '@/lib/format'
 import { useLang } from '@/lib/i18n/useLang'
 
 // A perk in the guest home's "Real examples" showcase: lighter than the
-// feeds' OfferCard -- the category pill (emoji and name) on a 130px photo,
+// feeds' OfferCard -- the category pill (icon and name) on a 130px photo,
 // the business and the perk, and a price pill (club price, struck-through
 // original). The whole card links to the offer, which guests can read in full;
 // its purchase bar is where they're asked to sign in.
@@ -27,7 +27,7 @@ export default function PerkExampleCard({ offer }: { offer: OfferDocument }) {
         {tile && (
           <span className="absolute top-2.5 start-2.5 inline-flex max-w-[75%] items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0B1B3D] shadow-sm">
             <span className="truncate">{t(tile.labelKey)}</span>
-            <span aria-hidden="true">{tile.emoji}</span>
+            <i className={`fa-solid ${tile.icon} text-[10px] text-brand`} aria-hidden="true"></i>
           </span>
         )}
       </div>

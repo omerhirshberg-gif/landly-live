@@ -40,9 +40,10 @@ export default function Navbar() {
     `transition truncate py-3 ${isActive(href) ? 'text-brand font-bold underline decoration-2 underline-offset-[9px]' : '[@media(hover:hover)]:hover:text-brand'}`
   const ariaCurrent = (href: string) => (isActive(href) ? ('page' as const) : undefined)
 
-  // Both account pills share size and shape; the transparent border keeps the
-  // blue one exactly as tall as the outlined one.
-  const pillBase = 'tap-target inline-flex items-center text-[13px] font-bold px-4 py-2 rounded-full border transition-colors'
+  // Both account buttons share size and shape (the design system's 12px
+  // radius, globals.css .ds-btn); the transparent border keeps the blue one
+  // exactly as tall as the outlined one.
+  const pillBase = 'tap-target inline-flex items-center text-[13px] font-bold tracking-tight px-4 py-2 rounded-xl border transition-colors'
   const accountPillClass = `${pillBase} bg-brand text-white border-transparent [@media(hover:hover)]:hover:bg-brandDark shadow-md`
   const accountSecondaryPillClass = `${pillBase} bg-[#FFFFFF] text-[#0B1B3D] border-[#E2E8F0] [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:text-brand`
 

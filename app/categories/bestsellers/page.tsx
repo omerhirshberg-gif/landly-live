@@ -12,7 +12,7 @@ export default function BestsellerOffersPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <OfferListView emoji="🔥" title={t('row_bestsellers')} depKey="bestsellers" fetchOffers={getBestsellerOffers} />
+        <OfferListView icon="fa-fire" title={t('row_bestsellers')} depKey="bestsellers" fetchOffers={getBestsellerOffers} />
       </div>
     </>
   )

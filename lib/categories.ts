@@ -22,25 +22,28 @@ export const BUSINESS_CATEGORIES = [
 export interface CategoryTile {
   category: (typeof BUSINESS_CATEGORIES)[number]
   labelKey: TranslationKey
+  /** The Expo app's tile glyph. */
   emoji: string
+  /** The website's vector icon: a Font Awesome solid class, e.g. 'fa-utensils'. */
+  icon: string
 }
 
 // Single source of truth pairing each real category with its display label
-// and emoji, shared by app/categories/page.tsx (tile grid) and
+// emoji (the app) and vector icon (the website), shared by app/categories/page.tsx (tile grid) and
 // the /categories chip rail and lib/perks/perksFilter.ts so they can't drift.
 export const CATEGORY_TILES: CategoryTile[] = [
-  { category: 'Restaurants and Cafes', labelKey: 'row_restaurants', emoji: '🍽️' },
-  { category: 'Beach and Sea', labelKey: 'row_beach', emoji: '🏖️' },
-  { category: 'Attractions and Tours', labelKey: 'cats_attractions_tours', emoji: '🎯' },
-  { category: 'Fashion and Shopping', labelKey: 'row_fashion', emoji: '👗' },
-  { category: 'Sport and Fitness', labelKey: 'row_sport', emoji: '💪' },
-  { category: 'Israel and Global Tourism', labelKey: 'row_tourism', emoji: '🏨' },
-  { category: 'Pampering Bundles', labelKey: 'row_bundles', emoji: '🥂' },
-  { category: 'Beauty and Skincare', labelKey: 'row_beauty', emoji: '💅' },
-  { category: 'Home and Furnishing', labelKey: 'cats_home', emoji: '🏠' },
-  { category: 'Kids and Baby', labelKey: 'cats_kids', emoji: '👶' },
-  { category: 'Insurance and Savings', labelKey: 'cats_insurance', emoji: '📊' },
-  { category: 'Cars and Transport', labelKey: 'cats_cars', emoji: '🚗' },
+  { category: 'Restaurants and Cafes', labelKey: 'row_restaurants', emoji: '🍽️', icon: 'fa-utensils' },
+  { category: 'Beach and Sea', labelKey: 'row_beach', emoji: '🏖️', icon: 'fa-umbrella-beach' },
+  { category: 'Attractions and Tours', labelKey: 'cats_attractions_tours', emoji: '🎯', icon: 'fa-map-location-dot' },
+  { category: 'Fashion and Shopping', labelKey: 'row_fashion', emoji: '👗', icon: 'fa-bag-shopping' },
+  { category: 'Sport and Fitness', labelKey: 'row_sport', emoji: '💪', icon: 'fa-dumbbell' },
+  { category: 'Israel and Global Tourism', labelKey: 'row_tourism', emoji: '🏨', icon: 'fa-plane' },
+  { category: 'Pampering Bundles', labelKey: 'row_bundles', emoji: '🥂', icon: 'fa-champagne-glasses' },
+  { category: 'Beauty and Skincare', labelKey: 'row_beauty', emoji: '💅', icon: 'fa-spa' },
+  { category: 'Home and Furnishing', labelKey: 'cats_home', emoji: '🏠', icon: 'fa-couch' },
+  { category: 'Kids and Baby', labelKey: 'cats_kids', emoji: '👶', icon: 'fa-baby-carriage' },
+  { category: 'Insurance and Savings', labelKey: 'cats_insurance', emoji: '📊', icon: 'fa-shield-heart' },
+  { category: 'Cars and Transport', labelKey: 'cats_cars', emoji: '🚗', icon: 'fa-car-side' },
 ]
 
 // How many offers each category holds, for the grid's "X perks available"

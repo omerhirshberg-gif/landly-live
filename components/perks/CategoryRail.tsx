@@ -16,7 +16,7 @@ export default function CategoryRail() {
         <li key={tile.category} className="snap-start flex-shrink-0">
           <Link href={categoryHref(tile.category)} className="rail-tile group">
             <span aria-hidden="true" className="rail-tile-icon">
-              {tile.emoji}
+              <i className={`fa-solid ${tile.icon}`}></i>
             </span>
             <span className="rail-tile-label">{t(tile.labelKey)}</span>
           </Link>

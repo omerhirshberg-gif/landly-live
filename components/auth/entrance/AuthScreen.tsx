@@ -53,9 +53,6 @@ const PATHS: Record<Mode, string> = { signIn: '/login', signUp: '/signup' }
 // the browser is on.
 const redirectParam = () => new URLSearchParams(window.location.search).get('redirect')
 const destination = () => safeRedirectPath(redirectParam())
-// The staged intro plays once per browser session; later visits get the
-// settled hero and just the card entrance.
-const INTRO_SEEN_KEY = 'landly_auth_intro_seen'
 
 // Web counterpart of the Expo login screen (landly-mobile/src/app/(auth)/
 // login.tsx): brand hero, a floating card with Sign In / Sign Up tabs, and a
@@ -80,7 +77,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const { t, lang, isRtl, setLang } = useLang()
   const router = useRouter()
   const [entrance, setEntrance] = useState<EntranceMode>('pending')
-  const decided = useRef(false)
   const [mode, setMode] = useState<Mode>(initialMode)
   const [rememberMe, setRememberMe] = useState(true)
   const [email, setEmail] = useState('')
@@ -195,21 +191,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     leaveTimer.current = window.setTimeout(next, reduced ? ONB.reducedMs : ONB.screenOutMs)
   }
 
-  // sessionStorage only exists in the browser, so the choice is made after
-  // mount; until then the hero and card stay hidden (the intro's first frame
-  // is blank anyway). The ref keeps Strict Mode's second effect run from
-  // reading the flag this run just wrote.
+  // The staged intro plays every time the screen opens (each arrival at
+  // /login or /signup); switching tabs never re-mounts it, so it never
+  // replays mid-visit. It starts after mount: until then the hero and card
+  // stay hidden, and the intro's first frame is blank anyway.
   useEffect(() => {
-    if (decided.current) return
-    decided.current = true
-    let seen = false
-    try {
-      seen = sessionStorage.getItem(INTRO_SEEN_KEY) === '1'
-      sessionStorage.setItem(INTRO_SEEN_KEY, '1')
-    } catch {
-      // Storage blocked — play the intro, it just won't be remembered
-    }
-    setEntrance(seen ? 'settled' : 'intro')
+    setEntrance('intro')
   }, [])
 
   // Back from a ?redirect= page should return to where the guest was, not to

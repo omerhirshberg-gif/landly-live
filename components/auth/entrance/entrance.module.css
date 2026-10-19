@@ -657,6 +657,22 @@ li[data-state='done'] > .brandStepDot {
   inset: 0;
 }
 
+/* A radial brand glow centred on the mark, behind every layer. It settles at
+   a faint 40%, so the finished logo never sits in a halo; in the intro it
+   swells in with the base, peaks as the shine passes, then settles. */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200px;
+  height: 200px;
+  margin: -100px 0 0 -100px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 56, 184, 0.1), rgba(0, 56, 184, 0));
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .svg {
   display: block;
   width: 100%;
@@ -747,6 +763,15 @@ li[data-state='done'] > .brandStepDot {
 }
 .intro .shineBand {
   animation: landlyShine var(--t-shine-ms) var(--ease-in-out) var(--t-shine) both;
+}
+.intro .glow {
+  animation: landlyGlow calc(var(--t-shine) + var(--t-shine-ms)) var(--ease-in-out) both;
+}
+@keyframes landlyGlow {
+  0% { opacity: 0; transform: scale(0.8); }
+  35% { opacity: 0.7; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 0.4; transform: scale(1); }
 }
 
 @keyframes landlyFadeIn {

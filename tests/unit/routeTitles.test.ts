@@ -13,6 +13,8 @@ vi.mock('@/components/admin/AdminShell', () => ({ default: () => null }))
 vi.mock('@/components/admin/AdminDashboard', () => ({ default: () => null }))
 vi.mock('@/components/business/BusinessDashboardShell', () => ({ default: () => null }))
 vi.mock('@/components/auth/entrance/AuthScreen', () => ({ default: () => null }))
+// next/font only runs under Next's compiler; the root layout's heading font becomes a stub.
+vi.mock('next/font/google', () => ({ Manrope: () => ({ className: '', variable: 'font-display', style: { fontFamily: 'Manrope' } }) }))
 // The root layout's providers import the client SDK, which would start Firebase on import.
 vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {}, storage: {}, googleProvider: {} }))
 

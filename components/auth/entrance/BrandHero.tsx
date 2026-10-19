@@ -6,7 +6,7 @@ import styles from './entrance.module.css'
 /**
  * 'pending' — before the client knows whether to play the intro (hidden; the
  *             intro's first frame is blank anyway, so nothing visibly jumps)
- * 'intro'   — the staged four-stage assembly, once per browser session
+ * 'intro'   — the staged four-stage assembly, each time the screen opens
  * 'settled' — the finished mark, as the mobile login header shows it
  */
 export type EntranceMode = 'pending' | 'intro' | 'settled'
@@ -31,6 +31,9 @@ export default function BrandHero({ mode }: { mode: EntranceMode }) {
       className={[styles.hero, intro && styles.intro, mode === 'pending' && styles.pending].filter(Boolean).join(' ')}
     >
       <div className={styles.emblem} style={{ left: EMBLEM_SHIFT }}>
+        {/* A soft brand glow behind the mark: it swells in with the intro,
+            peaks as the shine passes and settles faint (.glow). */}
+        <span aria-hidden="true" className={styles.glow} />
         {intro ? (
           <>
             <div className={`${styles.layer} ${styles.base}`}>
