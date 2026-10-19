@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const COLORS = ['#0038B8', '#2563EB', '#10B981', '#F59E0B', '#EC4899', '#FACC15']
+const COLORS = ['#0038B8', '#002A8A', '#10B981', '#F59E0B', '#EC4899', '#FACC15']
 const DURATION_MS = 3500
 const COUNT = 140
 

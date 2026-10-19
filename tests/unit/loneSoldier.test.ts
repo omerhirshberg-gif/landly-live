@@ -94,8 +94,8 @@ describe('Member type settings page (web)', () => {
     expect(html).toMatch(new RegExp(`<button type="submit" disabled=""[^>]*>${t.profile_save_btn}</button>`))
   })
 
-  it('is opened from the profile, and back returns there', () => {
-    expect(read('components/profile/ProfileSection.tsx')).toMatch(/label=\{t\('signup_customerTypeLabel'\)\}[\s\S]*?href="\/settings\/member-type"/)
+  it('is also editable from the profile, and back from settings returns there', () => {
+    expect(read('components/profile/ProfileSection.tsx')).toMatch(/id="profile-customer-type"[\s\S]*?CUSTOMER_TYPES\.map/)
     expect(read('lib/navigation/settingsBack.ts')).toContain("SETTINGS_EDIT_OPENERS: readonly string[] = ['/profile']")
   })
 })
@@ -110,8 +110,8 @@ describe('Customer type screen (app)', () => {
     expect(screen).toContain("<Button label={t('profile_save_btn')} onPress={save} busy={saving} disabled={!canSave} />")
   })
 
-  it('is in the settings stack and opened from the Profile tab', () => {
+  it('is in the settings stack, and the Profile tab edits it inline with the same chips', () => {
     expect(read('landly-mobile/src/app/settings/_layout.tsx')).toContain('<Stack.Screen name="member-type" />')
-    expect(read('landly-mobile/src/app/(tabs)/profile.tsx')).toMatch(/<EditRow\s+label=\{t\('signup_customerTypeLabel'\)\}[\s\S]*?router\.push\('\/settings\/member-type'\)/)
+    expect(read('landly-mobile/src/app/(tabs)/profile.tsx')).toMatch(/t\('signup_customerTypeLabel'\)\}<\/AppText>\s*<PersonaStep/)
   })
 })

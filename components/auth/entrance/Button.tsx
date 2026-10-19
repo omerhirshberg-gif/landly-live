@@ -34,10 +34,11 @@ export default function Button({
       aria-busy={busy || undefined}
       className={[
         'w-full flex items-center justify-center px-5 select-none transition-[transform,background-color,box-shadow] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transform-none',
-        large ? 'min-h-[54px] sm:min-h-[52px] rounded-[14px]' : 'min-h-[50px] rounded-xl',
+        // The design-system geometry (globals.css .ds-btn / .ds-btn-md): 52px or 48px, 14px corners.
+        large ? 'min-h-[52px] rounded-[14px]' : 'min-h-[48px] rounded-[14px]',
         primary
-          ? 'bg-brand text-white [@media(hover:hover)]:hover:enabled:bg-[#0031a3] active:enabled:bg-brandDark'
-          : 'bg-white text-brand border border-slate-200 [@media(hover:hover)]:hover:enabled:bg-slate-50 active:enabled:bg-brandLight',
+          ? 'bg-brand text-white [@media(hover:hover)]:hover:enabled:bg-brandDark active:enabled:bg-brandDark'
+          : 'bg-white text-ink border border-line [@media(hover:hover)]:hover:enabled:border-slate-300 [@media(hover:hover)]:hover:enabled:text-brand active:enabled:bg-brandLight',
         primary && large && !inactive && 'shadow-[0_8px_20px_-8px_rgba(0,56,184,0.55)]',
         inactive ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer [@media(hover:hover)]:hover:scale-[1.01] active:scale-[0.98]',
       ]

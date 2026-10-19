@@ -23,7 +23,7 @@ const HOME_ANCHOR_IDS = ['how'] as const
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLang()
   const { user } = useAuth()
-  const { wishlistIds } = useWishlist()
+  const { wishlistCount } = useWishlist()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
@@ -97,7 +97,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[1000] bg-white/70 backdrop-blur-md border-b border-sky-100/60 shadow-sm">
+      <nav className="navbar-safe-top fixed top-0 left-0 right-0 z-[1000] bg-white/70 backdrop-blur-md border-b border-line/60 shadow-sm">
         {/* The bar's physical order is locked in every language: logo on the
             left, language switcher and hamburger on the right (below lg it's
             just the logo and the hamburger; the drawer holds the rest). dir="ltr" stops
@@ -119,7 +119,7 @@ export default function Navbar() {
                     Making Aliyah? and Support; "How it works" is a guest section they never see */}
                 <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
-                <WishlistNavLink count={wishlistIds.length} active={isActive('/wishlist')} label={t('nav_wishlist')} />
+                <WishlistNavLink count={wishlistCount} active={isActive('/wishlist')} label={t('nav_wishlist')} />
                 <Link href="/member" aria-current={ariaCurrent('/member')} className={navLinkClass('/member')}>{t('nav_my_pass')}</Link>
                 <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
@@ -134,7 +134,7 @@ export default function Navbar() {
                     link in Russian, Spanish or French, so About is in the footer
                     (and, under 1024px, the drawer). */}
                 <Link href="/about" aria-current={ariaCurrent('/about')} className={`${navLinkClass('/about')} hidden xl:inline`}>{t('nav_about')}</Link>
-                <Link href="/business" aria-current={ariaCurrent('/business')} className={navLinkClass('/business')}>{t('nav_biz')}</Link>
+                <Link href="/business" aria-current={ariaCurrent('/business')} className={navLinkClass('/business')}>{t('nav_partner')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             )}

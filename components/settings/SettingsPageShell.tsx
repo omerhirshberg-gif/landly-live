@@ -24,7 +24,7 @@ export default function SettingsPageShell({ title, children }: { title: string; 
   return (
     <>
       <Navbar />
-      <div ref={pageRef} className="pt-16 member-canvas min-h-dvh">
+      <div ref={pageRef} className="below-header member-canvas min-h-dvh">
         <div className="max-w-xl lg:max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
           <div className="grid grid-cols-[48px_1fr_48px] items-center mb-5">
             <button

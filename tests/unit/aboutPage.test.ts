@@ -69,7 +69,7 @@ describe('/about', () => {
     const cards = html.match(/<article aria-labelledby="founder-[^"]+" class="([^"]*)"/g) ?? []
     expect(cards).toHaveLength(2)
     for (const card of cards) {
-      for (const c of ['h-full', 'bg-white/95', 'backdrop-blur-md', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-sky-100', 'shadow-sm', 'transition-all', '[@media(hover:hover)]:hover:shadow-md']) {
+      for (const c of ['h-full', 'bg-white/95', 'backdrop-blur-md', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-line', 'shadow-sm', 'transition-all', '[@media(hover:hover)]:hover:shadow-md']) {
         expect(card.split('"')[3].split(' ')).toContain(c)
       }
     }
@@ -77,7 +77,7 @@ describe('/about', () => {
 
   it('holds a fixed 96px avatar, showing initials until a photo is set', () => {
     const html = render('en', createElement(AboutPage))
-    expect(html.split('<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-4 ring-sky-50">')).toHaveLength(3)
+    expect(html.split('<div class="h-24 w-24 flex-shrink-0 overflow-hidden rounded-full ring-4 ring-brandTint">')).toHaveLength(3)
     expect(html).toContain('>AB</span>')
     expect(html).toContain('>OH</span>')
     expect(FOUNDERS.every((f) => f.photo === null)).toBe(true)

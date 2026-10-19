@@ -11,7 +11,7 @@ export default function OfferMemberGate({ offerId }: { offerId: string }) {
 
   return (
     <div className="flex flex-col items-stretch gap-1">
-      <Link href={withRedirect('/login', back)} className="tap-target btn-primary w-full text-center">
+      <Link href={withRedirect('/login', back)} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
         <i className="fa-solid fa-lock text-sm" aria-hidden="true"></i>
         <span>{t('offer_gate_signin')}</span>
       </Link>

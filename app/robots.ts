@@ -19,6 +19,7 @@ const PRIVATE_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/confirm-email-change',
 ]
 
 export default function robots(): MetadataRoute.Robots {

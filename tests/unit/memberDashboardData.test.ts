@@ -96,6 +96,17 @@ describe('member dashboard live data', () => {
     vi.mocked(getOffer).mockReset()
   })
 
+  it('ends each voucher card with a chevron, not a separate View Voucher button', () => {
+    vi.mocked(getOffer).mockReturnValue(new Promise(() => {}))
+    const html = withLang('he', createElement(PerksTab, { vouchers: [{ ...voucher('u1_o1', 'o1'), status: 'active' as const, redeemedAt: null }] }))
+    // The label is for screen readers only; the chevron (mirrored in Hebrew) is the visible cue.
+    expect(html).toContain(`<span class="sr-only">${translations.he.voucher_show_button}</span>`)
+    expect(html).toMatch(/<i class="fa-solid fa-chevron-right [^"]*rtl:-scale-x-100[^"]*" aria-hidden="true"><\/i><\/a>/)
+    expect(html).not.toContain('bg-brand')
+    expect(html).not.toContain('<button')
+    vi.mocked(getOffer).mockReset()
+  })
+
   it('mutes the redeemed thumbnail', () => {
     vi.mocked(getOffer).mockReturnValue(new Promise(() => {}))
     const html = withLang('en', createElement(RedeemedTab, { vouchers: [voucher('v1', 'o1')] }))

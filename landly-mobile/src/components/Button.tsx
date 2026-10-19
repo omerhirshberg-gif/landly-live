@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   secondary: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   secondaryPressed: { backgroundColor: colors.brandLight },
   danger: { backgroundColor: colors.danger },
-  dangerPressed: { backgroundColor: '#b91c1c' }, // red-700
+  dangerPressed: { backgroundColor: colors.dangerPressed },
   disabled: { opacity: 0.7 },
   spinner: { marginEnd: 8 },
   label: { fontSize: 16, fontWeight: '600', textAlign: 'center' },

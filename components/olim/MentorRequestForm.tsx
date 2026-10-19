@@ -25,13 +25,13 @@ const NOTES_MAX = 1000
 
 const EMPTY_FIELDS = { mentorLanguage: '', aliyahDate: '', notes: '', website: '' }
 
-// The signed-in mentor request form. The name starts as the member's profile
-// name and can be edited; the email is the account's, read-only, since the
-// server takes it from the ID token anyway.
+// The signed-in mentor request form. The name and email come from the
+// member's account and are locked (the server takes the email from the ID
+// token anyway); only a member with no name on file types one in.
 export default function MentorRequestForm({ user }: { user: User }) {
   const { t, lang } = useLang()
   const { profile } = useMemberProfile(user)
-  // null until the member types, so the profile name fills in once it loads.
+  // Only used when the account has no name on file to lock in.
   const [typedName, setTypedName] = useState<string | null>(null)
   const [fields, setFields] = useState(EMPTY_FIELDS)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -40,7 +40,8 @@ export default function MentorRequestForm({ user }: { user: User }) {
   const [error, setError] = useState<TranslationKey | null>(null)
 
   const profileName = fullName(profile?.firstName ?? '', profile?.lastName ?? '') || profile?.displayName || user.displayName || ''
-  const name = typedName ?? profileName
+  const nameLocked = !!profileName
+  const name = nameLocked ? profileName : (typedName ?? '')
 
   const update = (key: keyof typeof EMPTY_FIELDS) =>
     (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -94,7 +95,8 @@ export default function MentorRequestForm({ user }: { user: User }) {
         <div className="grid sm:grid-cols-2 gap-4">
           <input
             type="text" name="name" required maxLength={100} autoComplete="name" dir="auto" aria-label={t('form_name')} placeholder={t('form_name_ph')}
-            className="inp" style={ON_BRAND} value={name}
+            readOnly={nameLocked}
+            className={nameLocked ? 'inp cursor-default opacity-80' : 'inp'} style={ON_BRAND} value={name}
             onChange={(e) => { setTypedName(e.target.value); if (status === 'sent') setStatus('idle') }}
           />
           <input type="email" name="email" readOnly dir="ltr" aria-label={t('form_email')} className="inp rtl:text-right cursor-default opacity-80" style={ON_BRAND} value={user.email ?? ''} />
@@ -108,7 +110,7 @@ export default function MentorRequestForm({ user }: { user: User }) {
           <input type="text" name="aliyahDate" maxLength={60} dir="auto" aria-label={t('olim_date_ph')} placeholder={t('olim_date_ph')} className="inp" style={ON_BRAND} value={fields.aliyahDate} onChange={update('aliyahDate')} />
         </div>
         <textarea name="notes" rows={3} maxLength={NOTES_MAX} dir="auto" aria-label={t('olim_notes_ph')} placeholder={t('olim_notes_ph')} className="inp resize-y" style={ON_BRAND} value={fields.notes} onChange={update('notes')} />
-        <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="tap-target w-full flex items-center text-center justify-center bg-white text-brand font-bold py-3.5 rounded-full hover:enabled:bg-brandLight transition shadow-lg disabled:opacity-80 disabled:cursor-not-allowed">
+        <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-inverse ds-btn-wrap w-full shadow-lg">
           {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
           {t(isSubmitting ? 'support_form_sending' : 'olim_request_btn')}
         </button>

@@ -7,6 +7,8 @@ import { translations, type TranslationKey } from '@/lib/i18n/translations'
 
 vi.mock('@/lib/firebase/users', () => ({ getUserDocument: () => new Promise(() => {}), updateUserPhone: vi.fn() }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ invalidateMemberProfile: vi.fn() }))
+// Still loading: the profile reads users/{uid} live (useLiveUserDocument).
+vi.mock('@/lib/firebase/useLiveUserDocument', () => ({ useLiveUserDocument: () => ({ profile: null, loaded: false }) }))
 vi.mock('@/components/profile/AvatarUploader', () => ({ default: () => 'AVATAR_UPLOADER' }))
 
 const en = (key: TranslationKey) => translations.en[key]
@@ -41,7 +43,7 @@ describe('web profile section', async () => {
     createElement(
       LangContext.Provider,
       { value: { lang: 'en', setLang: () => {}, t: en, isRtl: false } },
-      createElement(ProfileSection, { user: { uid: 'u1', displayName: 'Dana Levi', email: 'dana@example.com' } as never })
+      createElement(ProfileSection, { user: { uid: 'u1', displayName: 'Dana Levi', email: 'dana@example.com', providerData: [] } as never })
     )
   )
 
@@ -54,9 +56,15 @@ describe('web profile section', async () => {
     expect(html).not.toContain('<form')
   })
 
-  it('offers exactly one Edit button, on the phone row', () => {
-    const edits = [...html.matchAll(/<button [^>]*>Edit<\/button>/g)]
-    expect(edits).toHaveLength(1)
-    expect(edits[0][0]).toContain(`aria-label="${translations.en.profile_edit_btn} ${translations.en.profile_phone_label}"`)
+  it('offers a single Edit profile button and no per-field Edit buttons', () => {
+    const buttons = [...html.matchAll(/<button [^>]*>[\s\S]*?<\/button>/g)].map((m) => m[0])
+    expect(buttons.filter((b) => b.includes(translations.en.profile_edit_profile_btn))).toHaveLength(1)
+    expect(html).not.toMatch(/>Edit<\/(button|a)>/)
+    expect(html).not.toContain('href="/settings/')
+  })
+
+  it('marks name and email as locked', () => {
+    expect(html.match(/fa-lock/g)).toHaveLength(2)
+    expect(html.match(new RegExp(`\\(${translations.en.profile_locked_label}\\)`, 'g'))).toHaveLength(2)
   })
 })

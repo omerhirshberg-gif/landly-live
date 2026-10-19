@@ -5,6 +5,7 @@ import {
   avatarInitials,
   avatarPath,
   coverCrop,
+  fullSizeAvatarUrl,
   resolveAvatarUrl,
   withAvatarVersion,
 } from '@/lib/avatar/avatar'
@@ -73,7 +74,7 @@ describe('avatarInitials', () => {
 })
 
 describe('coverCrop', () => {
-  it('takes the centred square of a landscape photo and scales it to 512px', () => {
+  it('takes the centred square of a landscape photo and scales it to 1024px', () => {
     expect(coverCrop(4000, 3000)).toEqual({ originX: 500, originY: 0, side: 3000, output: AVATAR_SIZE })
   })
 
@@ -83,5 +84,22 @@ describe('coverCrop', () => {
 
   it('never upscales a small image', () => {
     expect(coverCrop(200, 300).output).toBe(200)
+  })
+
+  it('uploads 1024px, sharp in the full-size viewer on retina screens', () => {
+    expect(AVATAR_SIZE).toBe(1024)
+  })
+})
+
+describe('fullSizeAvatarUrl', () => {
+  it('asks Google for a 1024px photo instead of the thumbnail', () => {
+    expect(fullSizeAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c')).toBe('https://lh3.googleusercontent.com/a/ACg8ocK=s1024-c')
+    expect(fullSizeAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96')).toBe('https://lh3.googleusercontent.com/a/ACg8ocK=s1024-c')
+  })
+
+  it('passes uploaded photos and unsized Google URLs through', () => {
+    const storage = 'https://firebasestorage.googleapis.com/v0/b/x/o/avatars%2Fu1?alt=media&v=1'
+    expect(fullSizeAvatarUrl(storage)).toBe(storage)
+    expect(fullSizeAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK')).toBe('https://lh3.googleusercontent.com/a/ACg8ocK')
   })
 })

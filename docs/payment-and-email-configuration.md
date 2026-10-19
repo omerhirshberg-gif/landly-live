@@ -128,3 +128,26 @@ successful payments from vouchers alone. There is no automatic data migration.
 The unit transaction double provides deterministic scheduling and failure injection;
 the emulator tests independently verify real SDK transactions, concurrent callbacks,
 concurrent initiation, transaction-ID contention, retries, and atomic rollback.
+
+## Email and phone change verification (profile screens)
+
+Email changes from `/profile` (web) and the app's Profile tab are confirmed by a
+single-use link sent to the **new** address through the same Resend pipeline
+(`APP_URL`, `EMAIL_FROM`, `RESEND_API_KEY`). Only the link token's SHA-256 is
+stored, in the server-only `emailChangeRequests/{uid}`; the link expires after
+24 hours. Once confirmed, the previous address receives a security notice.
+
+Phone changes from the profile screens are confirmed by a 6-digit code sent via
+WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
+
+| Variable | Purpose |
+| --- | --- |
+| `FIREBASE_PHONE_AUTH_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`, and codes are only logged to the `next dev` terminal. |
+| `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API token. |
+| `WHATSAPP_PHONE_NUMBER_ID` | The sending number's ID in WhatsApp Manager. |
+| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button), created in en, he, ru, fr and es. |
+| `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0`. |
+
+If the flag is on but any WhatsApp setting is missing, phone edits save directly
+and the server logs the missing setting, so members are never left with a banner
+that cannot clear. Onboarding and sign-up still save the phone directly.

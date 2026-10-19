@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
 
-const COLORS = ['#0038b8', '#2563eb', '#10b981', '#f59e0b', '#ec4899', '#facc15']
+const COLORS = ['#0038b8', '#002a8a', '#10b981', '#f59e0b', '#ec4899', '#facc15']
 const DURATION_MS = 3200
 const COUNT = 48
 // Pixels per second squared: what pulls the pieces back down.

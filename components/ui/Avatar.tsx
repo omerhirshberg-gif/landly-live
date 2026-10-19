@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { sizedAvatarUrl } from '@/lib/avatar/avatar'
 
 // The member's photo, else a brand-blue gradient monogram (web counterpart of
 // landly-mobile/src/components/Avatar.tsx). A photo that fails to load (an
 // expired Google URL) falls back to the monogram. Decorative: the name is
-// always written next to it, so it's hidden from screen readers.
+// always written next to it, so it's hidden from screen readers. Google
+// photos are asked for at 3× the drawn size, sharp on retina screens.
 export default function Avatar({
   src,
   initials,
@@ -27,7 +29,7 @@ export default function Avatar({
     >
       {showPhoto ? (
         // Storage and Google photo URLs, not next/image remote patterns; no-referrer keeps Google's CDN from refusing it.
-        <img src={src} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={() => setFailedSrc(src)} />
+        <img src={sizedAvatarUrl(src, size * 3)} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={() => setFailedSrc(src)} />
       ) : (
         <span className="font-bold leading-none tracking-wide" style={{ fontSize: Math.round(size * (initials.length > 1 ? 0.36 : 0.42)) }}>
           {initials || <PersonGlyph size={Math.round(size * 0.46)} />}

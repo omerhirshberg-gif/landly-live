@@ -83,7 +83,7 @@ export default function MemberPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 member-canvas" />
+        <div className="below-header member-canvas" />
       </>
     )
   }
@@ -91,7 +91,7 @@ export default function MemberPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 member-canvas">
+      <div className="below-header member-canvas">
         <div className="max-w-3xl lg:max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
 
           <div className="flex items-start justify-between mb-6 gap-3">

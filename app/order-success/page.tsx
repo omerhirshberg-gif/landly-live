@@ -67,7 +67,7 @@ function OrderSuccessContent() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen min-h-dvh bg-slate-50" />
+        <div className="below-header member-canvas" />
       </>
     )
   }
@@ -80,7 +80,7 @@ function OrderSuccessContent() {
     <>
       <Navbar />
       {paid && <Confetti />}
-      <div className="pt-16 bg-slate-50 min-h-screen min-h-dvh">
+      <div className="below-header member-canvas">
         <div className="max-w-lg mx-auto px-5 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
           <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
             {/* One live region for every state, so the confirmation is announced as it arrives. */}
@@ -98,7 +98,7 @@ function OrderSuccessContent() {
                   <i className="fa-solid fa-circle-exclamation text-red-500 text-2xl mb-4" aria-hidden="true"></i>
                   <h1 className="text-lg font-bold text-slate-900">{t('checkout_failed_title')}</h1>
                   <p className="text-sm text-slate-500 mt-1">{t('checkout_failed_sub')}</p>
-                  <Link href="/member" className={`tap-target mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-6 font-bold text-white ${FOCUS}`}>
+                  <Link href="/member" className="ds-btn ds-btn-primary mt-6">
                     {t('success_back_to_account')}
                   </Link>
                 </>
@@ -118,7 +118,7 @@ function OrderSuccessContent() {
             {paid && (
               <>
                 {/* What was bought: thumbnail, business and perk, paid and saved. */}
-                <div className="mt-6 flex items-center gap-4 rounded-2xl bg-[#F0F7FF] p-4 text-start ring-1 ring-[#DCE8FF]">
+                <div className="mt-6 flex items-center gap-4 rounded-2xl bg-brandTint p-4 text-start ring-1 ring-brandLight">
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/70">
                     {offer && <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} />}
                   </div>
@@ -161,7 +161,7 @@ function OrderSuccessContent() {
                   {voucherId && (
                     <Link
                       href={`/member/vouchers/${encodeURIComponent(voucherId)}`}
-                      className={`tap-target flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand py-3 font-bold text-white shadow-md transition [@media(hover:hover)]:hover:bg-brandDark ${FOCUS}`}
+                      className="ds-btn ds-btn-primary ds-btn-wrap w-full"
                     >
                       <i className="fa-solid fa-qrcode" aria-hidden="true"></i>
                       <span>{t('success_view_voucher')}</span>
@@ -169,11 +169,11 @@ function OrderSuccessContent() {
                   )}
                   <Link
                     href="/member"
-                    className={`tap-target flex min-h-12 w-full items-center justify-center rounded-full border border-slate-300 bg-white py-3 font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
+                    className="ds-btn ds-btn-secondary ds-btn-wrap w-full"
                   >
                     {t('success_to_my_pass')}
                   </Link>
-                  <Link href="/categories" className={`tap-target flex min-h-12 w-full items-center justify-center rounded-full py-2 text-sm font-bold text-brand ${FOCUS}`}>
+                  <Link href="/categories" className={`tap-target flex min-h-12 w-full items-center justify-center rounded-xl py-2 text-sm font-bold text-brand ${FOCUS}`}>
                     {t('success_keep_exploring')}
                   </Link>
                 </div>
@@ -217,7 +217,7 @@ function CopyOrderIdButton({ value }: { value: string }) {
         type="button"
         onClick={copy}
         aria-label={t('success_copy_order_id')}
-        className={`tap-target inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0F7FF] transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
+        className={`tap-target inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brandTint transition [@media(hover:hover)]:hover:bg-brandLight ${FOCUS}`}
       >
         <i className={`fa-solid ${icon}`} aria-hidden="true"></i>
       </button>

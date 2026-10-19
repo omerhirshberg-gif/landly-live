@@ -53,11 +53,11 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
           {emoji}
         </span>
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight break-words">{title}</h1>
+          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl font-bold text-ink leading-tight break-words">{title}</h1>
           {offers === undefined ? (
             <span aria-hidden="true" className="mt-2 block h-3.5 w-28 rounded-full bg-slate-100 animate-pulse motion-reduce:animate-none" />
           ) : (
-            <p className="mt-1 text-sm text-slate-500">{perksCountLabel(offers.length, t)}</p>
+            <p className="mt-1 text-sm text-body">{perksCountLabel(offers.length, t)}</p>
           )}
         </div>
       </div>
@@ -71,8 +71,8 @@ export default function OfferListView({ emoji, title, depKey, fetchOffers, contr
       ) : visibleOffers.length === 0 ? (
         <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
           <i className="fa-solid fa-tags" aria-hidden="true"></i>
-          <div className="font-bold text-slate-700 text-base mb-1">{t('deals_empty_title')}</div>
-          <p className="text-sm text-slate-500 max-w-xs">{t('deals_empty_sub')}</p>
+          <div className="font-bold text-ink text-base mb-1">{t('deals_empty_title')}</div>
+          <p className="text-sm text-body max-w-xs">{t('deals_empty_sub')}</p>
         </div>
       ) : (
         <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>

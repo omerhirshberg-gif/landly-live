@@ -85,7 +85,7 @@ describe('guest home background', () => {
     // Floating cards: near-white glass over it.
     for (const file of ['ValueProps', 'HowItWorks', 'PerkExampleCard']) expect(read(`components/home/${file}.tsx`)).toContain('bg-white/95 backdrop-blur-sm')
     // The navbar is translucent, so the sky tone shows through at the top.
-    expect(read('components/layout/Navbar.tsx')).toContain('bg-white/70 backdrop-blur-md border-b border-sky-100/60')
+    expect(read('components/layout/Navbar.tsx')).toContain('bg-white/70 backdrop-blur-md border-b border-line/60')
     expect(read('components/home/Hero.tsx')).not.toContain('radial-gradient')
     expect(read('components/home/ValueProps.tsx')).toContain('<section id="deals" className="py-12 sm:py-14 lg:py-16">')
     expect(read('components/home/PerkExamples.tsx')).toContain('className="py-12 sm:py-14 lg:py-16"')

@@ -67,7 +67,7 @@ export default function OfferDetailPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen bg-slate-50" />
+        <div className="below-header member-canvas" />
       </>
     )
   }
@@ -76,13 +76,13 @@ export default function OfferDetailPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 bg-slate-50 min-h-screen">
+        <div className="below-header member-canvas">
           <div className="max-w-lg mx-auto px-5 sm:px-6 py-16">
             <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
               <i className="fa-solid fa-tags" aria-hidden="true"></i>
-              <div className="font-bold text-slate-700 text-base mb-1">{t('offer_detail_not_found_title')}</div>
-              <p className="text-sm text-slate-500 max-w-xs mb-5">{t('offer_detail_not_found_sub')}</p>
-              <Link href="/categories" className="tap-target btn-primary">
+              <div className="font-bold text-ink text-base mb-1">{t('offer_detail_not_found_title')}</div>
+              <p className="text-sm text-body max-w-xs mb-5">{t('offer_detail_not_found_sub')}</p>
+              <Link href="/categories" className="ds-btn ds-btn-primary">
                 <span>{t('offer_detail_back')}</span>
               </Link>
             </div>
@@ -105,7 +105,7 @@ export default function OfferDetailPage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-dvh bg-[#F8FAFC] pt-16">
+      <div className="member-canvas below-header">
         <div className="mx-auto max-w-2xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 sm:pb-12">
           <OpenInAppHint className="mb-3" />
           <BackButton fallback={`/categories/${encodeURIComponent(offer.category)}`} label={t('offer_detail_back')} className="mb-4" />
@@ -114,7 +114,7 @@ export default function OfferDetailPage() {
               split only by hairlines. No overflow-hidden here -- it would stop the
               purchase bar from sticking -- so the photo rounds its own top corners. */}
           <article className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-t-3xl bg-[#F0F7FF]">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-t-3xl bg-brandTint">
               <PerkImage src={offer.imageUrl} alt={offer.title} category={offer.category} businessName={offer.businessName} size="hero" />
               {user && (
                 <button
@@ -131,19 +131,21 @@ export default function OfferDetailPage() {
 
             <div className="px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-7">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] px-3 py-1.5 text-xs font-semibold text-blue-700">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brandTint px-3 py-1.5 text-xs font-semibold text-brand">
                   {tile && <span aria-hidden="true">{tile.emoji}</span>}
                   {tile ? t(tile.labelKey) : <span dir="auto">{offer.category}</span>}
                 </span>
                 <RedemptionBadge method={offer.redemptionMethod} className="!py-1.5 !text-xs" />
               </div>
 
-              <p className="mt-4 text-2xl font-bold leading-tight tracking-tight text-[#0B1B3D] sm:text-3xl" dir="auto">
+              {/* The business is the page's heading (what members search and
+                  recognise); the offer reads as its subtitle. */}
+              <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl" dir="auto">
                 {offer.businessName}
-              </p>
-              <h1 className="mt-2 text-lg font-semibold leading-snug text-[#334155] sm:text-xl" dir="auto">
-                {offer.title}
               </h1>
+              <p className="mt-2 text-lg font-semibold leading-snug text-body sm:text-xl" dir="auto">
+                {offer.title}
+              </p>
               {offer.location && (
                 <p className="mt-2 flex items-center gap-1.5 text-sm text-[#94A3B8]">
                   <i className="fa-solid fa-location-dot text-xs" aria-hidden="true"></i>
@@ -211,14 +213,14 @@ export default function OfferDetailPage() {
               {!user && !authLoading && <OfferMemberGate offerId={offer.id} />}
 
               {(authLoading || claimLoading) && (
-                <div role="status" className="tap-target btn-primary w-full opacity-60 pointer-events-none">
+                <div role="status" className="ds-btn ds-btn-primary w-full opacity-60 pointer-events-none">
                   <span aria-hidden="true">…</span>
                   <span className="sr-only">{t('bizdash_loading')}</span>
                 </div>
               )}
 
               {user && !authLoading && !claimLoading && alreadyClaimed && (
-                <div className="flex items-start gap-3 rounded-2xl bg-[#F8FAFC] p-4">
+                <div className="flex items-start gap-3 rounded-2xl bg-canvas p-4">
                   <i className="fa-solid fa-circle-check mt-0.5 flex-shrink-0 text-lg text-emerald-600" aria-hidden="true"></i>
                   <div>
                     <div className="mb-1 text-sm font-bold text-[#0B1B3D]">{t('offer_already_claimed_title')}</div>
@@ -231,7 +233,7 @@ export default function OfferDetailPage() {
               {user && !authLoading && !claimLoading && !alreadyClaimed && (
                 // A full page load, not a client-side Link: the accessibility widget
                 // script this page ran must not carry over beside the payment iframe.
-                <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="tap-target btn-primary w-full">
+                <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
                   <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
                 </a>
               )}

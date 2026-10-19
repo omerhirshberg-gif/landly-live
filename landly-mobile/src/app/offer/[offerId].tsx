@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   hero: { aspectRatio: 16 / 10, backgroundColor: colors.brandTint },
   // Web: components/discover/DiscountBadge.tsx (solid emerald-700, white text).
-  discount: { position: 'absolute', bottom: 12, start: 12, backgroundColor: '#047857', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  discount: { position: 'absolute', bottom: 12, start: 12, backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   discountText: { fontSize: 13, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
   heart: {
     position: 'absolute',
@@ -241,12 +241,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     ...webOnly({ cursor: 'pointer' }),
   },
-  heartSaved: { backgroundColor: '#ef4444' },
+  heartSaved: { backgroundColor: colors.heart },
   heartPressed: { transform: [{ scale: 0.92 }] },
   body: { padding: 20 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryChip: { backgroundColor: '#eff6ff', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, maxWidth: '100%' },
-  categoryText: { fontSize: 12, fontWeight: '600', color: '#1d4ed8' },
+  categoryChip: { backgroundColor: colors.brandTint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, maxWidth: '100%' },
+  categoryText: { fontSize: 12, fontWeight: '600', color: colors.brand },
   methodChip: {
     flexDirection: 'row',
     alignItems: 'center',

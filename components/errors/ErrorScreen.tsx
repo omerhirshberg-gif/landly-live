@@ -44,7 +44,7 @@ function ActionButton({ action, variant }: { action: Action; variant: 'primary' 
 export default function ErrorScreen({ icon, code, title, body, primary, secondary, footnote, withNavbar = true }: ErrorScreenProps) {
   return (
     <main
-      className={`flex min-h-screen min-h-dvh items-center justify-center bg-canvas overflow-x-hidden ${withNavbar ? 'pt-16' : ''}`}
+      className={`flex min-h-screen min-h-dvh items-center justify-center bg-canvas overflow-x-hidden ${withNavbar ? 'below-header' : ''}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div

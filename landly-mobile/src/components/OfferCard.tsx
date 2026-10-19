@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 12,
-    shadowColor: '#0f172a',
+    shadowColor: colors.textStrong,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer' }),
   },
   heartCompact: { width: 32, height: 32 },
-  heartSaved: { backgroundColor: '#ef4444' },
+  heartSaved: { backgroundColor: colors.heart },
   heartPressed: { transform: [{ scale: 0.92 }] },
   category: {
     maxWidth: '65%',
@@ -245,11 +245,11 @@ const styles = StyleSheet.create({
   originalCompact: { fontSize: 12 },
   // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1).
   discount: {
-    backgroundColor: '#047857',
+    backgroundColor: colors.discount,
     borderRadius: radius.pill,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    shadowColor: '#0f172a',
+    shadowColor: colors.textStrong,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,

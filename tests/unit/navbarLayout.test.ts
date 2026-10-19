@@ -13,7 +13,8 @@ vi.mock('@/lib/firebase/config', () => ({ auth: {} }))
 vi.mock('@/lib/firebase/users', () => ({ updateUserLanguage: vi.fn() }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: authState.user, loading: false }) }))
 const wishlistState: { wishlistIds: string[] } = { wishlistIds: [] }
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => wishlistState }))
+// The badges show wishlistCount (saved perks whose offer still exists); here every id resolves.
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ ...wishlistState, wishlistCount: wishlistState.wishlistIds.length }) }))
 
 const { default: Navbar } = await import('@/components/layout/Navbar')
 
@@ -88,7 +89,7 @@ describe('mobile drawer', () => {
 
   it('leads guests with Home, then the consumer links', () => {
     const d = drawer('en')
-    const home = d.search(new RegExp(`<a [^>]*href="/"[^>]*>${translations.en.nav_home}<`))
+    const home = d.search(new RegExp(`<a [^>]*href="/"[^>]*>(?:(?!</a>).)*>${translations.en.nav_home}<`))
     expect(home).toBeGreaterThan(-1)
     expect(home).toBeLessThan(d.indexOf('href="/#how"'))
     expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/olim"'))
@@ -99,22 +100,34 @@ describe('mobile drawer', () => {
 
   it('sends guests to the /categories catalog from Deals, right after Home', () => {
     const d = drawer('en')
-    const deals = d.indexOf(`href="/categories">${translations.en.nav_deals}<`)
+    const deals = d.search(new RegExp(`href="/categories">(?:(?!</a>).)*>${translations.en.nav_deals}<`))
+    expect(deals).toBeGreaterThan(-1)
     expect(deals).toBeGreaterThan(d.indexOf(`>${translations.en.nav_home}<`))
     expect(deals).toBeLessThan(d.indexOf('href="/#how"'))
   })
 
-  it('puts For Businesses under a divider, after the consumer links', () => {
-    const d = drawer('en')
-    const divider = d.indexOf('border-t border-slate-100')
-    expect(divider).toBeGreaterThan(d.indexOf('href="/support"'))
-    expect(d.indexOf('href="/business"')).toBeGreaterThan(divider)
+  it.each(['en', 'he'] as const)('lists Partner with Us after Making Aliyah?, before About and Support, styled like its neighbours (%s)', (lang) => {
+    const d = drawer(lang)
+    const link = d.match(/<a class="([^"]*)" href="\/business">(.*?)<\/a>/)!
+    expect(link[2]).toContain('fa-handshake')
+    expect(link[2]).toContain(`>${translations[lang].nav_partner}<`)
+    expect(link[1]).toBe(d.match(/<a class="([^"]*)" href="\/about">/)![1])
+    const partner = d.indexOf('href="/business"')
+    expect(partner).toBeGreaterThan(d.indexOf('href="/olim"'))
+    expect(partner).toBeLessThan(d.indexOf('href="/about"'))
+    expect(d.indexOf('href="/about"')).toBeLessThan(d.indexOf('href="/support"'))
+  })
+
+  it('never offers members Partner with Us or any business link', () => {
+    const d = drawer('en', true)
+    expect(d).not.toContain('href="/business')
+    expect(d).not.toContain(`>${translations.en.nav_partner}<`)
   })
 
   it('offers one Sign In button with a quiet sign-up link, and no Explore Perks button', () => {
     const d = drawer('he')
     expect(d).not.toContain(`>${translations.he.nav_cta}<`)
-    expect(d).toMatch(/class="[^"]*bg-brand[^"]*" href="\/login">התחברות</)
+    expect(d).toMatch(/class="ds-btn ds-btn-primary ds-btn-md w-full" href="\/login">התחברות</)
     expect(d.indexOf('href="/signup"')).toBeGreaterThan(d.indexOf('href="/login"'))
     expect(d).toContain(translations.he.nav_new_to_landly)
   })
@@ -243,7 +256,7 @@ describe('header account actions', () => {
     const footer = drawer.match(/<div class="sticky bottom-0[^"]*" style="padding-bottom:calc\(0\.75rem \+ env\(safe-area-inset-bottom\)\)">(.*?)<\/div>/)!
     const button = footer[1].match(/<button type="button" class="([^"]*)">(.*?)<\/button>/)!
     const cls = button[1].split(' ')
-    for (const c of ['h-12', 'w-full', 'rounded-xl', 'border-red-200', 'text-red-600', '[@media(hover:hover)]:hover:bg-red-50', 'active:bg-red-100']) expect(cls).toContain(c)
+    for (const c of ['h-12', 'w-full', 'rounded-[14px]', 'border-red-200', 'text-red-600', '[@media(hover:hover)]:hover:bg-red-50', 'active:bg-red-100']) expect(cls).toContain(c)
     expect(button[2]).toContain(`${translations[lang].nav_logout}`)
     // Sign Out is the last thing in the drawer: no legal links below it.
     expect(drawer.indexOf('href="/terms"')).toBeLessThan(drawer.indexOf('class="sticky bottom-0'))
@@ -340,10 +353,10 @@ describe('mobile drawer: signed-out layout', () => {
     return html.slice(html.indexOf('</nav>'))
   }
 
-  it.each(['en', 'he'] as const)('keeps the guest links text-only, with no images (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('gives every guest link a Font Awesome icon tile, with no images (%s)', (lang) => {
     const d = drawer(lang)
-    // Icons appear only on the settings rows, after the links.
-    expect(d.slice(0, d.indexOf('href="/settings"'))).not.toContain('<i ')
+    const links = d.slice(0, d.indexOf('href="/settings"'))
+    for (const icon of ['fa-house', 'fa-gift', 'fa-list-check', 'fa-plane-departure', 'fa-handshake', 'fa-circle-info', 'fa-headset']) expect(links).toContain(`fa-solid ${icon}`)
     expect(d).not.toContain('<svg')
     expect(d).not.toContain('<img')
   })
@@ -363,7 +376,7 @@ describe('mobile drawer: signed-out layout', () => {
     const t = translations[lang]
     expect(d).not.toContain('bg-[#F0F7FF]')
     expect(d).not.toContain('Live Israel Like a Local')
-    expect(d).toMatch(/class="[^"]*min-h-\[48px\] bg-brand text-white[^"]*rounded-xl[^"]*" href="\/login">/)
+    expect(d).toMatch(/class="ds-btn ds-btn-primary ds-btn-md w-full" href="\/login">/)
     expect(d.indexOf('href="/settings"')).toBeGreaterThan(d.indexOf('href="/business"'))
     expect(d.indexOf('href="/login"')).toBeGreaterThan(d.indexOf('href="/settings"'))
     expect(d.indexOf('href="/signup"')).toBeGreaterThan(d.indexOf('href="/login"'))
@@ -393,17 +406,17 @@ describe('mobile drawer: Settings link', () => {
 })
 
 describe('mobile drawer: Home link', () => {
-  it.each(['en', 'ru', 'es', 'fr', 'he'] as const)('is the first item, text-only, styled like the others (%s)', (lang) => {
+  it.each(['en', 'ru', 'es', 'fr', 'he'] as const)('is the first item, styled like the others (%s)', (lang) => {
     const html = render(lang)
     const d = html.slice(html.indexOf('</nav>'))
-    // Attribute order differs between <a> and <Link>, so read href/class separately.
-    const firstTag = d.match(/<a [^>]*>([^<]*)<\/a>/)!
-    expect(firstTag[0]).toContain('href="/"')
-    expect(firstTag[1]).toBe(translations[lang].nav_home)
-    const homeClass = firstTag[0].match(/class="([^"]*)"/)![1]
+    const firstTag = d.match(/<a [^>]*>(?:(?!<\/a>).)*<\/a>/)![0]
+    expect(firstTag).toContain('href="/"')
+    expect(firstTag).toContain('fa-house')
+    expect(firstTag).toContain(`<span class="min-w-0 flex-1">${translations[lang].nav_home}</span>`)
+    const homeClass = firstTag.match(/class="([^"]*)"/)![1]
     const how = d.match(/<a class="([^"]*)" href="\/#how">/)![1]
     expect(homeClass).toContain('min-h-[48px]')
-    expect(homeClass.replace(/ text-brand bg-brandLight| text-\[#0B1B3D\]/, '')).toBe(how.replace(/ text-brand bg-brandLight| text-\[#0B1B3D\]/, ''))
+    expect(homeClass.replace(/ text-brand bg-brandLight| text-ink/, '')).toBe(how.replace(/ text-brand bg-brandLight| text-ink/, ''))
   })
 })
 

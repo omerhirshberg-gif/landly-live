@@ -1,8 +1,8 @@
 import { AVATAR_QUALITY, coverCrop } from './avatar'
 
 // Browser-only (web and mobile web): crops the picked photo to its centred
-// square and re-encodes it as a ≤512px JPEG, so a 12MP phone photo uploads as
-// ~50KB. The browser applies the photo's EXIF rotation when it decodes, and
+// square and re-encodes it as a ≤1024px JPEG, so a 12MP phone photo uploads as
+// ~150–350KB. The browser applies the photo's EXIF rotation when it decodes, and
 // iOS Safari hands over HEIC picks as JPEG already.
 export async function compressAvatar(file: Blob): Promise<Blob> {
   const url = URL.createObjectURL(file)

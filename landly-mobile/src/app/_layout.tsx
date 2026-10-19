@@ -2,12 +2,14 @@ import { type Href, router, Stack, usePathname } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
+import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
 import SplashScreen from '../components/SplashScreen'
@@ -24,21 +26,27 @@ I18nManager.allowRTL(false)
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <LangProvider>
-        <AuthProvider>
-          {/* The website's wishlist, live from the member's user document, so a
-              perk saved on either side shows up on the other */}
-          <WishlistProvider>
-            <SignInGateProvider>
-              <EntranceProvider>
-                <RootNavigator />
-              </EntranceProvider>
-            </SignInGateProvider>
-          </WishlistProvider>
-        </AuthProvider>
-      </LangProvider>
-    </SafeAreaProvider>
+    // Gesture Handler's root, for gestures outside modals (the avatar's long-press peek).
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <LangProvider>
+          <AuthProvider>
+            {/* The website's wishlist, live from the member's user document, so a
+                perk saved on either side shows up on the other */}
+            <WishlistProvider>
+              <SignInGateProvider>
+                <EntranceProvider>
+                  {/* Draws an avatar's long-press peek above every screen. */}
+                  <AvatarPeekProvider>
+                    <RootNavigator />
+                  </AvatarPeekProvider>
+                </EntranceProvider>
+              </SignInGateProvider>
+            </WishlistProvider>
+          </AuthProvider>
+        </LangProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 

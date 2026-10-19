@@ -9,11 +9,11 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      // pt-16 clears the fixed navbar; the hero is only as tall as its
+      // below-header clears the fixed navbar; the hero is only as tall as its
       // content, so the headline sits close under the navbar. No background
       // of its own: the guest home's one gradient (app/page.tsx) runs behind
       // every section, so there's no cut line below it.
-      className="relative overflow-hidden pt-16"
+      className="relative overflow-hidden below-header"
     >
       <div className="w-full max-w-7xl mx-auto px-5 sm:px-6 pt-8 pb-8 sm:pt-12 sm:pb-10 lg:pt-14 lg:pb-12 text-center">
         <h1

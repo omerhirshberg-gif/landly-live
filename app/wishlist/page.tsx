@@ -37,7 +37,7 @@ export default function WishlistPage() {
     return (
       <>
         <Navbar />
-        <div className="pt-16 min-h-screen bg-slate-50" />
+        <div className="below-header member-canvas" />
       </>
     )
   }
@@ -45,9 +45,9 @@ export default function WishlistPage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 bg-slate-50 min-h-screen">
+      <div className="below-header member-canvas">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-6">{t('wishlist_title')}</h1>
+          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink mb-6">{t('wishlist_title')}</h1>
 
           {offers === undefined ? (
             <div className="dash-empty-state">
@@ -56,9 +56,9 @@ export default function WishlistPage() {
           ) : offers.length === 0 ? (
             <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
               <i className="fa-solid fa-heart" aria-hidden="true"></i>
-              <div className="font-bold text-slate-700 text-base mb-1">{t('wishlist_empty_title')}</div>
-              <p className="text-sm text-slate-500 max-w-xs mb-5">{t('wishlist_empty_sub')}</p>
-              <Link href="/categories" className="tap-target btn-primary">
+              <div className="font-bold text-ink text-base mb-1">{t('wishlist_empty_title')}</div>
+              <p className="text-sm text-body max-w-xs mb-5">{t('wishlist_empty_sub')}</p>
+              <Link href="/categories" className="ds-btn ds-btn-primary">
                 <span>{t('nav_cta')}</span>
               </Link>
             </div>
