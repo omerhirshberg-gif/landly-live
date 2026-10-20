@@ -1,4 +1,6 @@
 import { CATEGORY_TILES, type CategoryTile } from '@/lib/categories'
+import type { OfferTranslations } from '@/lib/offers/offerText'
+import type { BusinessTranslations } from '@/lib/business/businessText'
 import { priceDifference } from '@/lib/format'
 import type { PublicOffer } from '@/lib/offers/publicOffer'
 import { categoryHref, discountPercent } from '@/lib/perks/perksFilter'
@@ -16,6 +18,10 @@ export interface ShowcaseOffer {
   category: string
   originalPrice: number
   offerPrice: number
+  /** For the title in the reader's language (lib/i18n/contentTranslation.ts). */
+  translations?: OfferTranslations | null
+  /** For the business name in the reader's language (lib/business/businessText.ts). */
+  businessTranslations?: BusinessTranslations | null
 }
 
 export interface Showcase {
@@ -30,8 +36,8 @@ const SHOWCASE_MAX = 48
 /** The live offers (newest first) as the client page's showcase. */
 export function toShowcase(offers: readonly PublicOffer[]): Showcase {
   return {
-    offers: offers.slice(0, SHOWCASE_MAX).map(({ id, businessName, title, category, originalPrice, offerPrice }) => ({
-      id, businessName, title, category, originalPrice, offerPrice,
+    offers: offers.slice(0, SHOWCASE_MAX).map(({ id, businessName, businessTranslations, title, category, originalPrice, offerPrice, translations }) => ({
+      id, businessName, businessTranslations: businessTranslations ?? null, title, category, originalPrice, offerPrice, translations: translations ?? null,
     })),
   }
 }
@@ -64,7 +70,7 @@ export function pickTopSavings(offers: readonly ShowcaseOffer[], max = SAVINGS_M
 }
 
 export type MarqueeItem =
-  | { kind: 'offer'; key: string; label: string; icon: string; percent: number; href: string }
+  | { kind: 'offer'; key: string; label: string; businessTranslations?: BusinessTranslations | null; icon: string; percent: number; href: string }
   | { kind: 'category'; key: string; labelKey: TranslationKey; icon: string; href: string }
 
 // Below this many distinct businesses the ticker would repeat one name every
@@ -83,7 +89,7 @@ export function pickMarqueeItems(offers: readonly ShowcaseOffer[]): MarqueeItem[
     const percent = Math.max(0, discountPercent(offer.originalPrice, offer.offerPrice))
     const current = byBusiness.get(key)
     if (current && current.percent >= percent) continue
-    byBusiness.set(key, { kind: 'offer', key: `o-${offer.id}`, label, icon: tile.icon, percent, href: `/offers/${encodeURIComponent(offer.id)}` })
+    byBusiness.set(key, { kind: 'offer', key: `o-${offer.id}`, label, businessTranslations: offer.businessTranslations ?? null, icon: tile.icon, percent, href: `/offers/${encodeURIComponent(offer.id)}` })
   }
 
   return byBusiness.size >= MARQUEE_MIN_BUSINESSES

@@ -10,14 +10,15 @@ import PerksToolbar from '@/components/perks/PerksToolbar'
 import SectionDivider from '@/components/ui/SectionDivider'
 import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
 import { useLang } from '@/lib/i18n/useLang'
-import { sortByDistance, reverseGeocode, Coordinates } from '@/lib/geo'
-import type { Business } from '@/lib/types/business'
+import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@/lib/geo'
 import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
 import { getAllOffers, isOfferAvailable, isOfferNew, OfferDocument, sortFeaturedOffers } from '@/lib/firebase/offers'
-import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery } from '@/lib/perks/perksFilter'
+import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery, offerDistanceKm, sortByNearest } from '@/lib/perks/perksFilter'
 
-// No businesses onboarded yet — populated once real listings exist.
-const BUSINESSES: Business[] = []
+/** The location "Near me" applies: the member's own, or an area they picked instead. */
+type Origin = { coords: Coordinates; area: Area | null }
+
+const NEARBY_MAX = 12
 
 function Spinner() {
   return (
@@ -39,11 +40,9 @@ function Spinner() {
 function PerksBrowser() {
   const { t, lang } = useLang()
   const { query, setQuery, appliedQuery, category, setCategory, sort, setSort } = usePerksUrlState()
-  const [userLocation, setUserLocation] = useState<Coordinates | null>(null)
-  const [placeName, setPlaceName] = useState<string | null>(null)
+  const [origin, setOrigin] = useState<Origin | null>(null)
+  const [geocodedPlace, setGeocodedPlace] = useState<string | null>(null)
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
-
-  const nearby = userLocation ? sortByDistance(BUSINESSES, userLocation) : null
 
   useEffect(() => {
     getAllOffers().then(setOffers)
@@ -54,12 +53,15 @@ function PerksBrowser() {
   const normalizedQuery = normalizeQuery(appliedQuery)
 
   const counts = useMemo(() => (offers ? countOffersByCategory(offers) : null), [offers])
+  const originCoords = origin?.coords ?? null
   const results = useMemo(
-    () => (offers && filtering ? filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang) : []),
+    () => (offers && filtering ? filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang, originCoords) : []),
     // `t` changes identity every render; `lang` covers what it depends on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [offers, filtering, appliedQuery, category, sort, lang]
+    [offers, filtering, appliedQuery, category, sort, lang, originCoords]
   )
+  // "Choose area" when the browser has no location: the cities with perks.
+  const areas = useMemo(() => (offers ? deriveAreas(offers.filter(isOfferAvailable)) : []), [offers])
   // A search across All also surfaces the categories it names.
   const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   // The overview's two rails: one fetch, sold-out offers left out, bestsellers then newest.
@@ -68,26 +70,22 @@ function PerksBrowser() {
   const bestsellerOffers = railOffers.filter((offer) => offer.isBestseller)
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
 
+  // The member's own location gets its city from the cached Geocoding proxy; a picked area names itself.
   useEffect(() => {
-    if (!userLocation) {
-      setPlaceName(null)
-      return
-    }
+    setGeocodedPlace(null)
+    if (!originCoords || origin?.area) return
     let cancelled = false
-    reverseGeocode(userLocation).then((place) => {
-      if (cancelled) return
-      setPlaceName(place ? [place.city, place.state].filter(Boolean).join(', ') : null)
+    reverseGeocode(originCoords, lang).then((city) => {
+      if (!cancelled) setGeocodedPlace(city)
     })
     return () => { cancelled = true }
-  }, [userLocation])
-  const nearbyByCategory = nearby
-    ? nearby.reduce<Map<string, Business[]>>((groups, business) => {
-        const group = groups.get(business.category) ?? []
-        group.push(business)
-        groups.set(business.category, group)
-        return groups
-      }, new Map())
-    : null
+  }, [originCoords, origin?.area, lang])
+  const placeName = origin?.area ? localizedName(origin.area.name, lang) : geocodedPlace
+  // The overview's Nearby section: claimable perks with a location, nearest first.
+  const nearby = useMemo(
+    () => (originCoords ? sortByNearest(railOffers.filter((offer) => offer.geo), originCoords).slice(0, NEARBY_MAX) : null),
+    [railOffers, originCoords]
+  )
 
   // The page heading carries the selected category, so the results heading
   // only names a search, or "All" for a sort over everything; a category on
@@ -111,7 +109,15 @@ function PerksBrowser() {
           sort={sort}
           onSortChange={setSort}
           showFilters={filtering}
-          action={<NearMeButton variant="action" onLocate={setUserLocation} onClear={() => setUserLocation(null)} />}
+          action={
+            <NearMeButton
+              active={!!origin}
+              onLocate={(coords) => setOrigin({ coords, area: null })}
+              onClear={() => setOrigin(null)}
+              areas={areas}
+              onChooseArea={(area) => setOrigin({ coords: area.center, area })}
+            />
+          }
         />
       </div>
 
@@ -134,7 +140,7 @@ function PerksBrowser() {
               </div>
               <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
                 {results.map((offer) => (
-                  <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={category === 'all'} />
+                  <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={category === 'all'} distanceKm={offerDistanceKm(offer, originCoords)} />
                 ))}
               </div>
             </section>
@@ -153,34 +159,33 @@ function PerksBrowser() {
       ) : (
         <>
           {nearby && (
-            <div className="mb-8">
-              <h2 className={`text-sm font-bold text-ink ${nearby.length > 0 && placeName ? 'mb-1' : 'mb-3'}`}>{t('discover_nearby_title')}</h2>
-              {nearby.length > 0 && placeName && (
-                <p className="text-xs text-body mb-3">{t('discover_nearby_place').replace('{place}', placeName)}</p>
+            <section className="mb-8" aria-live="polite">
+              <h2 className={`text-base font-bold text-ink ${placeName ? 'mb-1' : 'mb-3'}`}>{t('discover_nearby_title')}</h2>
+              {placeName && (
+                <p className="text-sm text-body mb-3">
+                  {/* <bdi>: a Hebrew city inside an English sentence (or the reverse) keeps its own order. */}
+                  {t('discover_nearby_place').split('{place}').map((part, i) => (
+                    <span key={i}>
+                      {i > 0 && <bdi className="font-semibold text-ink">{placeName}</bdi>}
+                      {part}
+                    </span>
+                  ))}
+                </p>
               )}
               {nearby.length === 0 ? (
                 <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                  <i className="fa-solid fa-tags" aria-hidden="true"></i>
-                  <div className="font-bold text-ink text-base mb-1">{t('deals_empty_title')}</div>
-                  <p className="text-sm text-body max-w-xs">{t('deals_empty_sub')}</p>
+                  <i className="fa-solid fa-location-dot" aria-hidden="true"></i>
+                  <div className="font-bold text-ink text-base mb-1">{t('geo_nearby_empty_title')}</div>
+                  <p className="text-sm text-body max-w-xs">{t('geo_nearby_empty_sub')}</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {Array.from(nearbyByCategory!.entries()).map(([group, businesses]) => (
-                    <div key={group}>
-                      <h3 className="text-xs font-bold text-muted uppercase tracking-wide mb-2.5">{group}</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                        {businesses.map((business) => (
-                          <div key={business.id} className="bg-white border border-slate-100 rounded-2xl p-4">
-                            <div className="font-bold text-ink text-sm">{business.name}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
+                  {nearby.map((offer) => (
+                    <OfferCard key={offer.id} offer={offer} layout="grid" distanceKm={offerDistanceKm(offer, originCoords)} />
                   ))}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {(newOffers.length > 0 || bestsellerOffers.length > 0) && (

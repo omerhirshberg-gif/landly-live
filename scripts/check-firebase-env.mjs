@@ -39,7 +39,7 @@ function resolveEnv(files) {
     if (existsSync(path)) Object.assign(env, parseEnv(readFileSync(path, 'utf8')))
   }
   for (const [key, value] of Object.entries(process.env)) {
-    if (/^(NEXT_PUBLIC_FIREBASE_|FIREBASE_ADMIN_)/.test(key)) env[key] = value
+    if (/^(NEXT_PUBLIC_FIREBASE_|FIREBASE_ADMIN_|GOOGLE_|LANDLY_TRANSLATION_)/.test(key)) env[key] = value
   }
   return env
 }
@@ -79,6 +79,9 @@ function check(label, target, env) {
   console.log(`     admin project    ${adminProjectId ?? '(unset)'}`)
   console.log(`     admin account    ${clientEmail ?? '(unset)'}`)
   console.log(`     admin key        ${env.FIREBASE_ADMIN_PRIVATE_KEY ? 'present' : '(unset)'}`)
+  // Google Cloud features (docs/google-cloud-configuration.md): informational, never a failure.
+  console.log(`     maps server key  ${env.GOOGLE_MAPS_SERVER_API_KEY ? 'present' : '(unset: address search and city names off)'}`)
+  console.log(`     translation      ${env.LANDLY_TRANSLATION_ENABLED === 'true' ? `on (${env.GOOGLE_TRANSLATE_LOCATION || 'global'})` : '(off: offers save untranslated)'}`)
   for (const message of errors) console.log(`     ✗ ${message}`)
   return errors.length === 0
 }

@@ -5,7 +5,10 @@ import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { formatLongDate } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import { useLang } from '../i18n/LangProvider'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
+import ContentText from './ContentText'
 import LineIcon from './LineIcon'
 import { REDEMPTION_METHOD_ICONS } from './OfferCard'
 import ScalePressable from './ScalePressable'
@@ -25,6 +28,8 @@ type Voucher = VoucherDocument & { id: string }
 // stay hidden until tapped.
 export default function VoucherPass({ voucher }: { voucher: Voucher }) {
   const { t, lang, isRtl } = useLang()
+  const title = localizeText(voucher.offerTitle, voucher.translations, lang, 'title')
+  const name = localizedBusinessName(voucher, lang)
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
   const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < now
@@ -36,15 +41,15 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
     <ScalePressable
       pressedScale={0.98}
       accessibilityRole="button"
-      accessibilityLabel={[voucher.businessName, voucher.offerTitle, validity, t('voucher_show_button')].filter(Boolean).join(', ')}
+      accessibilityLabel={[name.text, title.text, validity, t('voucher_show_button')].filter(Boolean).join(', ')}
       onPress={() => router.push({ pathname: '/voucher/[voucherId]', params: { voucherId: voucher.id } })}
       style={styles.card}
     >
       <View style={styles.row}>
         <VoucherThumb voucher={voucher} />
         <View style={styles.text}>
-          <AppText style={styles.business} numberOfLines={1}>{voucher.businessName}</AppText>
-          <AppText style={styles.title} numberOfLines={2}>{voucher.offerTitle}</AppText>
+          <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
+          <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>
           <View style={styles.methodChip}>
             <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={12} color={colors.brand} strokeWidth={2.2} />
             <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>

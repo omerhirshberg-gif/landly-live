@@ -10,6 +10,8 @@ import { formatPrice, priceDifference } from '@shared/format'
 import type { TranslationKey } from '@shared/i18n/translations'
 import { initiateCheckout, settleSandboxOrder, type CheckoutFailure, type CheckoutOrder } from '@shared/payments/checkoutClient'
 import { cancellationFeeAgorot } from '@shared/payments/voucherTerms'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import ConsentText from '../../components/ConsentText'
@@ -48,7 +50,7 @@ const FAILURE_KEYS: Record<CheckoutFailure, TranslationKey> = {
 // While a payment is in flight the dimmed overlay holds the screen: no swipe
 // back, no Android back, no second tap.
 export default function CheckoutScreen() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
   const { offerId } = useLocalSearchParams<{ offerId: string }>()
   const { user } = useAuth()
@@ -221,8 +223,8 @@ export default function CheckoutScreen() {
                   {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
                 </View>
                 <View style={styles.offerText}>
-                  <AppText style={styles.business} numberOfLines={1}>{order.businessName}</AppText>
-                  <AppText style={styles.offerTitle} accessibilityRole="header">{order.offerTitle}</AppText>
+                  <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                  <AppText style={styles.offerTitle} accessibilityRole="header">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
                 </View>
               </View>
 
@@ -261,7 +263,7 @@ export default function CheckoutScreen() {
               {!!order.redemptionTerms && (
                 <View style={styles.termsBox}>
                   <AppText style={styles.termsLabel}>{t('voucher_redemption_terms_label')}</AppText>
-                  <AppText style={styles.terms}>{order.redemptionTerms}</AppText>
+                  <AppText style={styles.terms}>{localizeText(order.redemptionTerms, order.translations, lang, 'redemptionTerms').text}</AppText>
                 </View>
               )}
 

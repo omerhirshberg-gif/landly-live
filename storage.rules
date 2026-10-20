@@ -1,10 +1,14 @@
 rules_version = '2';
 
-// Firebase Storage holds one thing today: member avatars, written by the web
-// uploader (components/account/AvatarUploader.tsx) and the Expo picker
-// (landly-mobile/src/components/AvatarPicker.tsx) through uploadAvatar
-// in lib/firebase/avatar.ts. Both compress to a ≤512px JPEG first, so the
-// 2MB cap only stops a client that skipped that.
+// Firebase Storage holds two things:
+//  - member avatars, written by the web uploader
+//    (components/profile/AvatarUploader.tsx) and the Expo picker
+//    (landly-mobile/src/components/AvatarPicker.tsx) through uploadAvatar in
+//    lib/firebase/avatar.ts. Both compress to a ≤1024px JPEG first, so the
+//    2MB cap only stops a client that skipped that.
+//  - offer banners, uploaded by admins through /api/admin/uploads (Admin SDK,
+//    which these rules don't apply to: admins don't sign in with Firebase
+//    Auth), so no client may write them.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -20,6 +24,12 @@ service firebase.storage {
         && !firestore.exists(/databases/(default)/documents/businesses/$(request.auth.uid))
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+    }
+
+    // Public (they're <img> srcs on perk cards); written only by the Admin SDK.
+    match /banners/{fileName} {
+      allow read: if true;
+      allow write: if false;
     }
 
     match /{allPaths=**} {

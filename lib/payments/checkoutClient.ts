@@ -1,4 +1,6 @@
 import { normalizeApiBaseUrl } from '@/lib/apiOrigin'
+import type { OfferTranslations } from '@/lib/offers/offerText'
+import type { BusinessTranslations } from '@/lib/business/businessText'
 
 // What /api/payments/initiate returns: the order as frozen when it was created.
 export interface CheckoutOrder {
@@ -9,6 +11,10 @@ export interface CheckoutOrder {
   businessName: string
   validityDays: number
   redemptionTerms: string
+  /** The offer's translations, frozen with the order (lib/offers/offerText.ts); null for older orders. */
+  translations?: OfferTranslations | null
+  /** The business name in other languages, frozen with the order; null for older orders. */
+  businessTranslations?: BusinessTranslations | null
   termsAccepted: boolean
   /** A local development sandbox order (lib/payments/devSandbox.ts). */
   sandbox: boolean

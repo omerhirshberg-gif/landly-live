@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import OfferFormFields, { voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import Alert from '@/components/admin/Alert'
@@ -11,9 +12,10 @@ import EmptyState from '@/components/admin/EmptyState'
 import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge from '@/components/admin/StatusBadge'
-import { PRIMARY_BUTTON } from '@/components/admin/formStyles'
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
+import { manualOverridesOf } from '@/lib/offers/offerText'
 
 function toFormValue(offer: OfferDocument): OfferFormValue {
   return {
@@ -30,6 +32,7 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
     redemptionTerms: offer.redemptionTerms,
     redemptionMethod: offer.redemptionMethod,
     redemptionInstructions: offer.redemptionInstructions,
+    translationOverrides: manualOverridesOf(offer.translations),
   }
 }
 
@@ -41,6 +44,8 @@ export default function EditOfferPage() {
   const [form, setForm] = useState<OfferFormValue | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Saved, but a translation failed: stay to show why instead of leaving at once.
+  const [savedWarning, setSavedWarning] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -52,7 +57,7 @@ export default function EditOfferPage() {
     return () => { cancelled = true }
   }, [offerId])
 
-  const updateForm = (key: keyof OfferFormValue, value: string | boolean) =>
+  const updateForm = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,12 +88,19 @@ export default function EditOfferPage() {
             isBestseller: form.isBestseller,
             ...voucherTermsPayload(form),
           },
+          translationOverrides: form.translationOverrides,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong.')
         setSubmitting(false)
+        return
+      }
+      if (data.translationWarning) {
+        setSavedWarning(data.translationWarning)
+        setSubmitting(false)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
         return
       }
       router.push(`/admin/businesses/${offer!.businessId}`)
@@ -123,6 +135,14 @@ export default function EditOfferPage() {
       <PageHeader title="Edit offer" subtitle={<span dir="auto">{offer.title}</span>} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
+      {savedWarning && (
+        <Alert tone="warning" className="mb-6">
+          <p>Saved. {savedWarning}</p>
+          <Link href={backHref} className={`${SECONDARY_BUTTON} mt-3`}>
+            Back to business
+          </Link>
+        </Alert>
+      )}
 
       <div className="space-y-6">
         <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
@@ -152,7 +172,7 @@ export default function EditOfferPage() {
         {form && (
           <form className="space-y-6" onSubmit={handleSubmit}>
             <FormSection icon="fa-tags" title="Offer" description="Changes apply to new purchases; existing vouchers keep their terms.">
-              <OfferFormFields value={form} onChange={updateForm} />
+              <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} />
             </FormSection>
             <FormActions>
               <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>

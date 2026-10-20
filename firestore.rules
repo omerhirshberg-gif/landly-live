@@ -44,6 +44,22 @@ service cloud.firestore {
       allow delete: if isCustomer() && request.auth.uid == userId && isVerified();
     }
 
+    // Push notification tokens, one document per device (lib/push/pushTokens.ts).
+    // Architecture only for now: nothing writes these yet. The member manages
+    // their own (verified, customers only); the document id is the token's
+    // hash so re-registering a device overwrites rather than duplicates.
+    // Sending happens server side (Admin SDK), never from a client.
+    match /users/{userId}/pushTokens/{tokenId} {
+      allow read, delete: if isCustomer() && request.auth.uid == userId && isVerified();
+      allow create, update: if isCustomer() && request.auth.uid == userId && isVerified()
+        && request.resource.data.keys().hasOnly(['token', 'platform', 'provider', 'lang', 'createdAt', 'updatedAt'])
+        && request.resource.data.token is string && request.resource.data.token.size() <= 4096
+        && request.resource.data.platform in ['ios', 'android', 'web']
+        && request.resource.data.provider in ['expo', 'fcm']
+        && request.resource.data.lang is string && request.resource.data.lang.size() <= 8
+        && request.resource.data.updatedAt == request.time;
+    }
+
     // Email change links (SHA-256 of the token) and phone codes (hashed,
     // with their attempt count): read and written by the /api/account change
     // routes only. A readable token or code would let a member confirm an
@@ -97,6 +113,12 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if isCustomer() && request.auth.uid == resource.data.userId && isVerified();
       allow write: if false;
+    }
+
+    // Reverse-geocode answers (city per ~1 km cell and language), written and
+    // read only by /api/geo/reverse through the Admin SDK.
+    match /geoCache/{cellId} {
+      allow read, write: if false;
     }
 
     // Deny everything else by default (production mode default, made explicit).

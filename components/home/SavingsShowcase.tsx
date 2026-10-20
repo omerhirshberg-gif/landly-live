@@ -7,6 +7,8 @@ import { formatPrice, formatSavings } from '@/lib/format'
 import { offerSavings, type ShowcaseOffer } from '@/lib/home/showcase'
 import { discountPercent } from '@/lib/perks/perksFilter'
 import { useLang } from '@/lib/i18n/useLang'
+import { localizeText } from '@/lib/i18n/contentTranslation'
+import { localizedBusinessName } from '@/lib/business/businessText'
 
 // "What members actually save", in place of the perk examples on the guest
 // home: the live offers with the biggest real savings (lib/home/showcase.ts
@@ -61,6 +63,8 @@ export default function SavingsShowcase({ offers }: { offers: readonly ShowcaseO
 
 function SavingsCard({ offer }: { offer: ShowcaseOffer }) {
   const { t, lang } = useLang()
+  const title = localizeText(offer.title, offer.translations, lang, 'title')
+  const name = localizedBusinessName(offer, lang)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const percent = discountPercent(offer.originalPrice, offer.offerPrice)
   const [savedBefore, savedAfter] = t('landing_savings_badge').split('{amount}')
@@ -86,8 +90,8 @@ function SavingsCard({ offer }: { offer: ShowcaseOffer }) {
         )}
       </div>
 
-      <div className="truncate text-[17px] font-bold leading-snug text-ink" dir="auto">{offer.businessName}</div>
-      <p className="mt-1 line-clamp-2 min-h-[2.5em] text-sm leading-snug text-body" dir="auto">{offer.title}</p>
+      <div className="truncate text-[17px] font-bold leading-snug text-ink" lang={name.lang ?? undefined} dir="auto">{name.text}</div>
+      <p className="mt-1 line-clamp-2 min-h-[2.5em] text-sm leading-snug text-body" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
 
       <div className="mt-auto pt-5 flex flex-wrap items-end justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#ECFDF5] to-[#D1FAE5] px-3 py-2 text-[15px] font-extrabold text-[#047857] ring-1 ring-inset ring-[#047857]/10">

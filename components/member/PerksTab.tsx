@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
+import { localizeText } from '@/lib/i18n/contentTranslation'
+import { localizedBusinessName } from '@/lib/business/businessText'
 import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
@@ -67,8 +69,8 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
     >
       <VoucherThumb voucher={voucher} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-base font-bold leading-snug text-ink" dir="auto">{voucher.businessName}</div>
-        <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{voucher.offerTitle}</h3>
+        <div className="truncate text-base font-bold leading-snug text-ink" dir="auto">{localizedBusinessName(voucher, lang).text}</div>
+        <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</h3>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <RedemptionBadge method={voucher.redemptionMethod} />
           {voucher.expiresAt && (

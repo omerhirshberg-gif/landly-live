@@ -9,7 +9,10 @@ import {
   REDEMPTION_METHODS,
   type RedemptionMethod,
 } from '@/lib/offers/redemption'
+import type { OfferTranslations, TranslationOverrides } from '@/lib/offers/offerText'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
+import ImageUploadField from './ImageUploadField'
+import OfferTranslationsEditor from './OfferTranslationsEditor'
 
 export interface OfferFormValue {
   title: string
@@ -25,7 +28,12 @@ export interface OfferFormValue {
   redemptionTerms: string
   redemptionMethod: RedemptionMethod
   redemptionInstructions: string
+  /** The admin's own translations (lib/offers/offerText.ts); everything else is Google's. */
+  translationOverrides: TranslationOverrides
 }
+
+/** A new offer's translations: none of the admin's own yet. */
+export const EMPTY_OFFER_TRANSLATIONS = { translationOverrides: {} as TranslationOverrides }
 
 /** The voucher-terms and redemption fields of a blank offer form. */
 export const EMPTY_VOUCHER_TERMS = {
@@ -54,6 +62,8 @@ const METHOD_OPTIONS: Record<RedemptionMethod, { label: string; hint: string; ic
 interface Props {
   value: OfferFormValue
   onChange: <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) => void
+  /** The offer's stored translations (edit form), to show Google's wording; none for a new offer. */
+  translations?: OfferTranslations | null
 }
 
 const CHECKBOX_ROW =
@@ -90,7 +100,7 @@ function PriceInput({ id, value, onChange }: { id: string; value: string; onChan
   )
 }
 
-export default function OfferFormFields({ value, onChange }: Props) {
+export default function OfferFormFields({ value, onChange, translations }: Props) {
   const id = useId()
   const field = (name: string) => `${id}-${name}`
 
@@ -113,21 +123,29 @@ export default function OfferFormFields({ value, onChange }: Props) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor={field('imageUrl')} className={ADMIN_LABEL}>Image URL</label>
-          <input
-            id={field('imageUrl')}
-            type="url"
-            dir="ltr"
-            className={ADMIN_INPUT}
-            placeholder="https://…"
-            aria-describedby={field('imageUrl-hint')}
+          <ImageUploadField
             value={value.imageUrl}
-            onChange={(e) => onChange('imageUrl', e.target.value)}
+            onChange={(url) => onChange('imageUrl', url)}
+            linkInput={
+              <>
+                <label htmlFor={field('imageUrl')} className={ADMIN_LABEL}>Image URL</label>
+                <input
+                  id={field('imageUrl')}
+                  type="url"
+                  dir="ltr"
+                  className={ADMIN_INPUT}
+                  placeholder="https://…"
+                  aria-describedby={field('imageUrl-hint')}
+                  value={value.imageUrl}
+                  onChange={(e) => onChange('imageUrl', e.target.value)}
+                />
+                <p id={field('imageUrl-hint')} className={ADMIN_HINT}>
+                  A direct link to a photo. Google Images, Google Drive (shared with anyone with the link) and Imgur links are converted automatically.
+                </p>
+                <ImagePreview url={value.imageUrl} />
+              </>
+            }
           />
-          <p id={field('imageUrl-hint')} className={ADMIN_HINT}>
-            A direct link to a photo. Google Images, Google Drive (shared with anyone with the link) and Imgur links are converted automatically.
-          </p>
-          <ImagePreview url={value.imageUrl} />
         </div>
       </Group>
 
@@ -269,6 +287,18 @@ export default function OfferFormFields({ value, onChange }: Props) {
           </p>
         </div>
       </Group>
+
+      <OfferTranslationsEditor
+        source={{
+          title: value.title,
+          description: value.description,
+          redemptionTerms: value.redemptionTerms,
+          redemptionInstructions: value.redemptionInstructions,
+        }}
+        stored={translations}
+        overrides={value.translationOverrides}
+        onChange={(next) => onChange('translationOverrides', next)}
+      />
     </div>
   )
 }

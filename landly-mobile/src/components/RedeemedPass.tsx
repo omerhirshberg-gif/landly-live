@@ -2,7 +2,10 @@ import { StyleSheet, View } from 'react-native'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { formatRedeemedDate } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
+import ContentText from './ContentText'
 import LineIcon from './LineIcon'
 import { REDEMPTION_METHOD_ICONS } from './OfferCard'
 import VoucherThumb from './VoucherThumb'
@@ -15,6 +18,8 @@ import { colors, radius } from '../theme'
 // components/member/RedeemedTab.tsx).
 export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & { id: string } }) {
   const { t, lang } = useLang()
+  const title = localizeText(voucher.offerTitle, voucher.translations, lang, 'title')
+  const name = localizedBusinessName(voucher, lang)
   return (
     <View style={styles.card}>
       <View>
@@ -25,11 +30,11 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
       </View>
       <View style={styles.text}>
         <AppText style={styles.business} numberOfLines={1}>
-          {voucher.businessName}
+          {name.text}
         </AppText>
-        <AppText style={styles.title} numberOfLines={2}>
-          {voucher.offerTitle}
-        </AppText>
+        <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>
+          {title.text}
+        </ContentText>
         <View style={styles.metaRow}>
           <View style={styles.methodChip}>
             <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={12} color={colors.textMuted} strokeWidth={2.2} />

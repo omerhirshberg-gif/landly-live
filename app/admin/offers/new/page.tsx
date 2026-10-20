@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
@@ -33,6 +33,7 @@ const emptyOffer: OfferFormValue = {
   unlimited: false,
   isBestseller: false,
   ...EMPTY_VOUCHER_TERMS,
+  ...EMPTY_OFFER_TRANSLATIONS,
 }
 
 function NewOfferForm() {
@@ -46,7 +47,7 @@ function NewOfferForm() {
   const [offer, setOffer] = useState<OfferFormValue>(emptyOffer)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string } | null>(null)
+  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string; translationWarning?: string | null } | null>(null)
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
@@ -72,7 +73,7 @@ function NewOfferForm() {
   const backUid = selectedUid ?? preselectUid
   const backHref = backUid ? `/admin/businesses/${backUid}` : '/admin/offers'
 
-  const updateOffer = (key: keyof OfferFormValue, value: string | boolean) =>
+  const updateOffer = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setOffer((prev) => ({ ...prev, [key]: value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,6 +105,7 @@ function NewOfferForm() {
             isBestseller: offer.isBestseller,
             ...voucherTermsPayload(offer),
           },
+          translationOverrides: offer.translationOverrides,
         }),
       })
       const data = await res.json()
@@ -147,6 +149,11 @@ function NewOfferForm() {
             </div>
           </dl>
         </Card>
+        {result.translationWarning && (
+          <Alert tone="warning" className="mt-6">
+            {result.translationWarning}
+          </Alert>
+        )}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             type="button"

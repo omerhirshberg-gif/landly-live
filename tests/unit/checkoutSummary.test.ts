@@ -39,8 +39,9 @@ describe('checkout terms are clickwrap', () => {
 describe('checkout summary', () => {
   it('shows the savings pill only with a discount and marks dynamic text dir="auto"', () => {
     expect(page).toMatch(/\{discount > 0 && \(\s*<span[^>]*emerald/)
-    expect(page).toContain('dir="auto">{order.offerTitle}')
-    expect(page).toContain('dir="auto">{order.businessName}')
+    // The title in the reader's language (the order's frozen translation), still dir="auto".
+    expect(page).toContain('dir="auto">{localizeText(order.offerTitle, order.translations, lang, \'title\').text}')
+    expect(page).toContain('dir="auto">{localizedBusinessName(order, lang).text}')
   })
   it('backs out to the offer, or the categories without one', () => {
     expect(page).toContain('<BackButton fallback={backFallback}')

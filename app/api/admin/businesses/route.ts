@@ -8,6 +8,12 @@ import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
+import { offerPlaceFields, parseGeoAddress } from '@/lib/geo'
+import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
+import { parseTranslationOverrides } from '@/lib/translate/offerTranslations'
+import { parseBusinessNameOverrides } from '@/lib/translate/businessTranslations'
+import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
+import { parseBusinessTranslations } from '@/lib/business/businessText'
 
 interface RequestBody {
   business: {
@@ -17,6 +23,8 @@ interface RequestBody {
     location: string
     loginEmail: string
     loginPassword: string
+    /** Picked from Places autocomplete; absent when the admin typed a free-text location. */
+    address?: unknown
   }
   offer: {
     title: string
@@ -32,6 +40,9 @@ interface RequestBody {
     redemptionMethod?: string
     redemptionInstructions?: string
   }
+  translationOverrides?: unknown
+  /** The admin's own wording for the business name, per language. */
+  businessNameOverrides?: unknown
 }
 
 function badRequest(message: string) {
@@ -62,9 +73,11 @@ export async function GET(request: Request) {
   const businesses = businessesSnap.docs.map((doc) => ({
     uid: doc.id,
     businessName: doc.data().businessName ?? '',
+    translations: parseBusinessTranslations(doc.data().translations),
     businessId: doc.data().businessId ?? '',
     category: doc.data().category ?? '',
     location: doc.data().location ?? '',
+    address: parseGeoAddress(doc.data().address),
     email: doc.data().email ?? '',
     activePerkCount: activeCounts.get(doc.id) ?? 0,
     redeemedTotal: Number(doc.data().voucherStats?.redeemedTotal) || 0,
@@ -106,6 +119,12 @@ export async function POST(request: Request) {
   if (!voucherTerms.ok) return badRequest(voucherTerms.error)
   const redemption = parseOfferRedemption(offer)
   if (!redemption.ok) return badRequest(redemption.error)
+  const address = business.address === undefined || business.address === null ? null : parseGeoAddress(business.address)
+  if (business.address && !address) return badRequest('business.address is not a valid place.')
+  const overrides = parseTranslationOverrides(body.translationOverrides)
+  if (!overrides.ok) return badRequest(overrides.error)
+  const nameOverrides = parseBusinessNameOverrides(body.businessNameOverrides)
+  if (!nameOverrides.ok) return badRequest(nameOverrides.error)
 
   const duplicate = await adminDb.collection('businesses').where('businessId', '==', business.businessId).limit(1).get()
   if (!duplicate.empty) {
@@ -127,21 +146,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create the business login.' }, { status: 500 })
   }
 
+  // Translated before anything is written, so a slow Translation call can't leave a half-created business.
+  const [translated, nameTranslated] = await Promise.all([
+    translationsForSave(offerTextSource(offer, voucherTerms, redemption), null, overrides.overrides),
+    businessTranslationsForSave(business.businessName, null, nameOverrides.overrides),
+  ])
+  if (!translated.ok || !nameTranslated.ok) {
+    await adminAuth.deleteUser(uid)
+    return badRequest(!translated.ok ? translated.error : !nameTranslated.ok ? nameTranslated.error : 'Invalid translations.')
+  }
+
+  const businessDoc = { location: business.location, ...(address ? { address } : {}) }
   const offerRef = adminDb.collection('offers').doc()
   try {
     const batch = adminDb.batch()
     batch.set(adminDb.collection('businesses').doc(uid), {
       businessName: business.businessName,
       businessId: business.businessId,
+      translations: nameTranslated.translations,
       category: business.category,
-      location: business.location,
+      ...businessDoc,
       email: business.loginEmail,
       voucherStats: { active: 0, redeemedTotal: 0, redeemedThisMonth: 0 },
     })
     batch.set(offerRef, {
       businessId: uid,
       businessName: business.businessName,
-      location: business.location,
+      businessTranslations: nameTranslated.translations,
+      ...offerPlaceFields(businessDoc),
       imageUrl,
       title: offer.title,
       description: offer.description,
@@ -157,6 +189,7 @@ export async function POST(request: Request) {
       redemptionTerms: voucherTerms.redemptionTerms,
       redemptionMethod: redemption.redemptionMethod,
       redemptionInstructions: redemption.redemptionInstructions,
+      translations: translated.translations,
     })
     await batch.commit()
   } catch {
@@ -171,5 +204,6 @@ export async function POST(request: Request) {
     businessName: business.businessName,
     loginEmail: business.loginEmail,
     loginPassword: business.loginPassword,
+    translationWarning: [nameTranslated.warning, translated.warning].filter(Boolean).join(' ') || null,
   })
 }

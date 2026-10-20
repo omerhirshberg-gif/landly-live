@@ -7,6 +7,8 @@ import Navbar from '@/components/layout/Navbar'
 import Confetti from '@/components/checkout/Confetti'
 import PerkImage from '@/components/discover/PerkImage'
 import { useLang } from '@/lib/i18n/useLang'
+import { localizeText } from '@/lib/i18n/contentTranslation'
+import { localizedBusinessName } from '@/lib/business/businessText'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
@@ -26,7 +28,7 @@ const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:rin
 // paid and saved, and the way on to the voucher. The Expo app's counterpart
 // is landly-mobile/src/app/order-success/[orderId].tsx.
 function OrderSuccessContent() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { user, loading } = useAuth()
   // Onboarding first: a member mid-wizard is sent back to it.
   const held = useOnboardingGuard()
@@ -123,8 +125,8 @@ function OrderSuccessContent() {
                     {offer && <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{order.businessName}</div>
-                    <div className="mt-0.5 font-bold leading-snug text-ink" dir="auto">{order.offerTitle}</div>
+                    <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                    <div className="mt-0.5 font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="text-sm text-slate-600">
                         {t('success_amount_paid_label')}: <span className="font-black text-ink" dir="ltr">{formatPrice(order.amount)}</span>

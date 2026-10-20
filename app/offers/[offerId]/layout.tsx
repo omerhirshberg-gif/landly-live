@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import JsonLd from '@/components/seo/JsonLd'
 import { getPublicOffer } from '@/lib/firebase/publicOffers'
-import { offerSeoDescription } from '@/lib/offers/publicOffer'
+import { offerInEnglish, offerSeoDescription } from '@/lib/offers/publicOffer'
 import { offerJsonLd } from '@/lib/seo/jsonLd'
 import { pageMetadata } from '@/lib/seo/site'
 
@@ -11,7 +11,8 @@ import { pageMetadata } from '@/lib/seo/site'
 // with its member price) are resolved here on the server. Offers are public
 // (firestore.rules), so this reveals nothing the page doesn't. Any failure
 // (missing offer, no Admin credentials) falls back to a generic title and no
-// structured data rather than failing the page. getPublicOffer is cached per
+// structured data rather than failing the page. Both use the perk's English
+// translation when it has one (offerInEnglish). getPublicOffer is cached per
 // request, so generateMetadata and the layout share one read.
 const FALLBACK_TITLE = 'Perk'
 
@@ -19,8 +20,9 @@ type Params = { params: Promise<{ offerId: string }> }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { offerId } = await params
-  const offer = await getPublicOffer(offerId)
-  if (!offer) return { title: FALLBACK_TITLE }
+  const stored = await getPublicOffer(offerId)
+  if (!stored) return { title: FALLBACK_TITLE }
+  const offer = offerInEnglish(stored)
   return pageMetadata({
     title: offer.title,
     description: offerSeoDescription(offer),
@@ -34,7 +36,7 @@ export default async function Layout({ children, params }: Params & { children: 
   const offer = await getPublicOffer(offerId)
   return (
     <>
-      <JsonLd data={offer ? offerJsonLd(offer) : null} />
+      <JsonLd data={offer ? offerJsonLd(offerInEnglish(offer)) : null} />
       {children}
     </>
   )

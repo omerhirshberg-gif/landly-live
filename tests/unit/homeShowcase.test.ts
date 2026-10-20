@@ -27,7 +27,7 @@ describe('showcase data', () => {
     const live = Array.from({ length: 60 }, (_, i) => ({ ...offer(i), description: 'x', imageUrl: '', createdAt: null, expiryDate: null }) as PublicOffer)
     const showcase = toShowcase(live)
     expect(showcase.offers).toHaveLength(48)
-    expect(Object.keys(showcase.offers[0]).sort()).toEqual(['businessName', 'category', 'id', 'offerPrice', 'originalPrice', 'title'])
+    expect(Object.keys(showcase.offers[0]).sort()).toEqual(['businessName', 'businessTranslations', 'category', 'id', 'offerPrice', 'originalPrice', 'title', 'translations'])
   })
 
   it('counts savings in agorot and never below zero', () => {

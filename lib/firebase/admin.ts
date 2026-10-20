@@ -2,6 +2,7 @@ import 'server-only'
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 import { assertAdminCredentials, currentFirebaseDeployTarget } from './envGuard'
 
 // Service-account credentials bypass every Firestore Security Rule -- this
@@ -42,4 +43,29 @@ export function getAdminAuth(): Auth {
 
 export function getAdminDb(): Firestore {
   return getFirestore(getAdminApp())
+}
+
+/** The Firebase project the Admin service account belongs to (DEV or PROD; see envGuard.ts). */
+export function getAdminProjectId(): string {
+  getAdminApp()
+  return process.env.FIREBASE_ADMIN_PROJECT_ID!
+}
+
+/**
+ * An OAuth access token for Google Cloud APIs (Cloud Translation), from the
+ * same service account. Its scopes include cloud-platform; the account needs
+ * the "Cloud Translation API User" role in each project
+ * (docs/google-cloud-configuration.md). The SDK caches and refreshes it.
+ */
+export async function getAdminAccessToken(): Promise<string> {
+  const credential = getAdminApp().options.credential
+  if (!credential) throw new Error('Firebase Admin has no credential.')
+  return (await credential.getAccessToken()).access_token
+}
+
+/** The project's default Storage bucket (NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, checked by the env guard). */
+export function getAdminBucket() {
+  const name = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  if (!name) throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.')
+  return getStorage(getAdminApp()).bucket(name)
 }

@@ -6,7 +6,12 @@ import { getOffer, type OfferDocument } from '@shared/firebase/offers'
 import { subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
 import { formatLongDate } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
+import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
+import { offerTextSources } from '@shared/offers/offerText'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
+import ContentText from '../../components/ContentText'
+import TranslationNotice from '../../components/TranslationNotice'
 import LineIcon from '../../components/LineIcon'
 import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
@@ -53,6 +58,11 @@ export default function VoucherScreen() {
   }, [offerId])
 
   const expired = !!voucher?.expiresAt && voucher.expiresAt.getTime() < now
+  // The voucher's own translation, frozen at purchase like its terms.
+  const content = useLocalizedContent(offerTextSources(voucher), voucher?.translations, lang)
+  const title = content.text('title')
+  const instructions = content.text('redemptionInstructions')
+  const terms = content.text('redemptionTerms')
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -68,8 +78,9 @@ export default function VoucherScreen() {
               {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
             </View>
             <View style={styles.body}>
-              <AppText style={styles.business} accessibilityRole="header">{voucher.businessName}</AppText>
-              <AppText style={styles.title}>{voucher.offerTitle}</AppText>
+              <AppText style={styles.business} accessibilityRole="header">{localizedBusinessName(voucher, lang).text}</AppText>
+              <ContentText contentLang={title.lang} style={styles.title}>{title.text}</ContentText>
+              {content.machine && <TranslationNotice showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />}
               <View style={styles.methodChip}>
                 <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={13} color={colors.brand} strokeWidth={2.2} />
                 <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
@@ -88,25 +99,25 @@ export default function VoucherScreen() {
 
               <View style={styles.divider} />
               <AppText style={styles.howTitle} accessibilityRole="header">{t('redeem_how_title')}</AppText>
-              {redemptionSteps(voucher.redemptionMethod, voucher.redemptionInstructions, t).map((step, i) => (
+              {redemptionSteps(voucher.redemptionMethod, instructions.text, t).map((step, i) => (
                 <View key={i} style={styles.step} accessibilityLabel={`${i + 1}. ${step}`} accessible>
                   <View style={styles.stepNumber}>
                     <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
                   </View>
-                  <AppText style={styles.stepText}>{step}</AppText>
+                  <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{step}</ContentText>
                 </View>
               ))}
 
-              {(voucher.expiresAt || voucher.redemptionTerms) && <View style={styles.divider} />}
+              {(voucher.expiresAt || terms.text) && <View style={styles.divider} />}
               {voucher.expiresAt && (
                 <AppText style={[styles.validity, expired && styles.expired]}>
                   {t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}
                 </AppText>
               )}
-              {!!voucher.redemptionTerms && (
+              {!!terms.text && (
                 <>
                   <AppText style={styles.termsLabel} accessibilityRole="header">{t('voucher_redemption_terms_label')}</AppText>
-                  <AppText style={styles.terms}>{voucher.redemptionTerms}</AppText>
+                  <ContentText contentLang={terms.lang} style={styles.terms}>{terms.text}</ContentText>
                 </>
               )}
 

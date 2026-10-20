@@ -11,7 +11,10 @@ import EmptyState from '@/components/admin/EmptyState'
 import OfferPrice from '@/components/admin/OfferPrice'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge, { OfferStatusBadge } from '@/components/admin/StatusBadge'
-import { DANGER_BUTTON, PRIMARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import BusinessEditForm from '@/components/admin/BusinessEditForm'
+import { DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import type { GeoAddress } from '@/lib/geo'
+import type { BusinessTranslations } from '@/lib/business/businessText'
 
 interface Business {
   uid: string
@@ -19,6 +22,8 @@ interface Business {
   businessId: string
   category: string
   location: string
+  address: GeoAddress | null
+  translations?: BusinessTranslations | null
 }
 
 interface Offer {
@@ -39,6 +44,8 @@ export default function BusinessDetailPage() {
   const [business, setBusiness] = useState<Business | null | undefined>(undefined)
   const [offers, setOffers] = useState<Offer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [warning, setWarning] = useState<string | null>(null)
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
@@ -109,6 +116,11 @@ export default function BusinessDetailPage() {
       <BackLink href="/admin/businesses">Back to businesses</BackLink>
 
       {error && <Alert className="mb-6">{error}</Alert>}
+      {warning && (
+        <Alert tone="warning" className="mb-6">
+          {warning}
+        </Alert>
+      )}
 
       <PageHeader
         className="mb-8"
@@ -123,8 +135,9 @@ export default function BusinessDetailPage() {
               <span dir="ltr">{business.businessId}</span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8]">
-              <i className="fa-solid fa-location-dot text-[10px]" aria-hidden="true" />
+              <i className={`fa-solid fa-location-dot text-[10px] ${business.address ? 'text-emerald-600' : ''}`} aria-hidden="true" />
               <span dir="auto">{business.location}</span>
+              {!business.address && <StatusBadge tone="amber">Not on the map</StatusBadge>}
             </span>
           </div>
         }
@@ -134,6 +147,10 @@ export default function BusinessDetailPage() {
               <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
               Add offer
             </Link>
+            <button type="button" className={`${SECONDARY_BUTTON} flex-1 sm:flex-none`} onClick={() => setEditing(true)} disabled={editing}>
+              <i className="fa-solid fa-pen text-xs" aria-hidden="true" />
+              Edit details
+            </button>
             <button type="button" className={`${DANGER_BUTTON} flex-1 sm:flex-none`} onClick={deleteBusiness}>
               <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
               Delete business
@@ -141,6 +158,19 @@ export default function BusinessDetailPage() {
           </>
         }
       />
+
+      {editing && (
+        <BusinessEditForm
+          uid={uid}
+          business={business}
+          onCancel={() => setEditing(false)}
+          onSaved={(next, translationWarning) => {
+            setBusiness({ ...business, ...next })
+            setWarning(translationWarning)
+            setEditing(false)
+          }}
+        />
+      )}
 
       {offers === null && !error && (
         <div className="space-y-2">
