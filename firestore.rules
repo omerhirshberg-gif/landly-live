@@ -65,10 +65,9 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
-    // Email change links (SHA-256 of the token) and phone codes (hashed,
-    // with their attempt count): read and written by the /api/account change
-    // routes only. A readable token or code would let a member confirm an
-    // inbox or number they don't own.
+    // Email and phone change codes (hashed, with their attempt count): read
+    // and written by the /api/account change routes only. A readable code
+    // would let a member confirm an inbox or number they don't own.
     match /emailChangeRequests/{userId} {
       allow read, write: if false;
     }

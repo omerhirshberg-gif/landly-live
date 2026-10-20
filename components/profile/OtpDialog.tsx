@@ -3,13 +3,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPhoneNumberIntl } from 'react-phone-number-input'
 import type { User } from 'firebase/auth'
-import { CONTACT_CHANGE_FAILED, contactChangeErrorKey, requestPhoneChange, verifyPhoneCode, type ContactChangeFailure } from '@/lib/account/contactChange'
-import { normalizeOtpInput, OTP_LENGTH } from '@/lib/auth/otp'
+import {
+  CONTACT_CHANGE_FAILED,
+  contactChangeErrorKey,
+  requestPhoneChange,
+  resendEmailChange,
+  verifyEmailCode,
+  verifyPhoneCode,
+  type ContactChangeFailure,
+} from '@/lib/account/contactChange'
+import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@/lib/auth/otp'
 import { useResendCountdown } from '@/lib/auth/useResendCountdown'
 import { useLang } from '@/lib/i18n/useLang'
 
-// "Verify via WhatsApp" on /profile (app: components/OtpSheet.tsx): the
-// 6-digit code for a pending phone change. A native <dialog> opened with
+// The 6-digit code for a pending change on /profile (app:
+// components/OtpSheet.tsx): "Verify via WhatsApp" for a new phone number, or
+// the code emailed to a new address. A native <dialog> opened with
 // showModal() (top layer, focus kept inside, Esc closes), centred from
 // 640px and near the top on phones so the keyboard never covers it.
 //
@@ -19,14 +28,14 @@ import { useLang } from '@/lib/i18n/useLang'
 // 60 seconds after every send.
 export default function OtpDialog({
   user,
-  phone,
+  target,
   resendIn,
   onClose,
   onVerified,
 }: {
   user: User
-  /** The pending E.164 number. */
-  phone: string
+  /** The pending E.164 number or email address. */
+  target: OtpTarget
   /** Seconds before "Resend code" is allowed (from the send that opened this). */
   resendIn: number
   onClose: () => void
@@ -59,8 +68,11 @@ export default function OtpDialog({
     }
   }, [])
 
+  const isEmail = target.kind === 'email'
+  const display = target.kind === 'email' ? target.email : formatPhoneNumberIntl(target.phone) || target.phone
+
   const failure = (result: ContactChangeFailure) => {
-    const message = t(contactChangeErrorKey(result.reason))
+    const message = t(contactChangeErrorKey(result.reason, target.kind))
     return result.reason === 'invalidCode' && result.attemptsLeft
       ? `${message} ${t('otp_attempts_left').replace('{count}', String(result.attemptsLeft))}`
       : message
@@ -71,7 +83,10 @@ export default function OtpDialog({
     setBusy(true)
     setError(null)
     setNotice(null)
-    const result = await verifyPhoneCode(await user.getIdToken(), value).catch(() => CONTACT_CHANGE_FAILED)
+    const idToken = await user.getIdToken().catch(() => null)
+    const result = !idToken
+      ? CONTACT_CHANGE_FAILED
+      : await (isEmail ? verifyEmailCode(idToken, value) : verifyPhoneCode(idToken, value)).catch(() => CONTACT_CHANGE_FAILED)
     setBusy(false)
     if (result.ok) {
       onVerified()
@@ -87,17 +102,23 @@ export default function OtpDialog({
     setResending(true)
     setError(null)
     setNotice(null)
-    const result = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' }).catch(() => CONTACT_CHANGE_FAILED)
+    const idToken = await user.getIdToken().catch(() => null)
+    const result = !idToken
+      ? CONTACT_CHANGE_FAILED
+      : await (target.kind === 'email'
+          ? resendEmailChange(idToken, lang)
+          : requestPhoneChange(idToken, { phone: target.phone, lang, channel: 'whatsapp' })
+        ).catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
     if (result.ok) {
-      if (result.mode === 'direct') {
+      if ('mode' in result && result.mode === 'direct') {
         onClose()
         return
       }
-      restart(result.resendIn)
+      restart('resendIn' in result ? result.resendIn : 0)
       setCode('')
-      // LRI…PDI: the number stays left-to-right inside a Hebrew sentence.
-      setNotice(t('pending_phone_body').replace('{phone}', `⁦${formatPhoneNumberIntl(phone) || phone}⁩`))
+      // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
+      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t('pending_phone_body').replace('{phone}', `⁦${display}⁩`))
       inputRef.current?.focus()
       return
     }
@@ -111,8 +132,6 @@ export default function OtpDialog({
     setError(null)
     if (next.length === OTP_LENGTH) verify(next)
   }
-
-  const display = formatPhoneNumberIntl(phone) || phone
 
   return (
     <dialog
@@ -136,13 +155,17 @@ export default function OtpDialog({
           <i className="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
         </button>
 
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E7F8EE] text-[#128C4B]" aria-hidden="true">
-          <i className="fa-brands fa-whatsapp text-2xl"></i>
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-full ${isEmail ? 'bg-brandLight text-brand' : 'bg-[#E7F8EE] text-[#128C4B]'}`}
+          aria-hidden="true"
+        >
+          <i className={isEmail ? 'fa-solid fa-envelope text-xl' : 'fa-brands fa-whatsapp text-2xl'}></i>
         </div>
-        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t('otp_title')}</h2>
+        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(isEmail ? 'otp_email_title' : 'otp_title')}</h2>
         <p id="otp-dialog-subtitle" className="mt-1 text-sm text-slate-500">
-          {t('otp_subtitle')}{' '}
-          <bdi dir="ltr" className="font-semibold text-slate-700 whitespace-nowrap">{display}</bdi>
+          {t(isEmail ? 'otp_email_subtitle' : 'otp_subtitle')}{' '}
+          {/* An address may be long: it wraps anywhere; a number never breaks. */}
+          <bdi dir="ltr" className={`font-semibold text-slate-700 ${isEmail ? '[overflow-wrap:anywhere]' : 'whitespace-nowrap'}`}>{display}</bdi>
         </p>
 
         <form

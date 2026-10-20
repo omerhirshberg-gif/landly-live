@@ -2,28 +2,26 @@ import { NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { customerOrReply, logContactFailure, preflight, replyFor } from '@/lib/account/contactChangeServer'
-import {
-  createEmailChangeToken,
-  EMAIL_CHANGE_RESEND_COOLDOWN_MS,
-  EMAIL_CHANGE_TTL_MS,
-  normalizeEmail,
-  RECENT_SIGN_IN_SECONDS,
-} from '@/lib/auth/emailChangeToken'
+import { normalizeEmail, RECENT_SIGN_IN_SECONDS } from '@/lib/auth/emailChange'
+import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
+import { generateOtp, hashOtp, OTP_RESEND_COOLDOWN_MS, OTP_TTL_MS } from '@/lib/auth/phoneVerification'
 import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
 import { emailConfigProblem } from '@/lib/email/brandedEmail'
-import { sendEmailChangeVerification } from '@/lib/email/sendEmailChangeEmail'
+import { sendEmailChangeCode } from '@/lib/email/sendEmailChangeEmail'
 import type { Lang } from '@/lib/i18n/translations'
 
 // Starts (or resends) an email change from the profile screens. The new
 // address waits in users/{uid}.pendingEmail -- the live `email` in Auth and
-// Firestore is untouched -- and a single-use link goes to that new inbox;
-// /api/account/verify-email-change applies it once opened.
+// Firestore is untouched -- and a 6-digit code goes to that new inbox;
+// /api/account/verify-email-otp applies it once the member types it.
 //
 // { newEmail, lang }: needs a sign-in from the last few minutes, i.e. the
 // client re-entered the current password first. Email+password accounts
 // only: a Google account's address is its Google identity.
-// { resend: true, lang }: a fresh link to the address already pending (the
-// banner's "Resend email"), at most once a minute; the previous link stops working.
+// { resend: true, lang }: a fresh code to the address already pending (the
+// verification dialog's "Resend code"), at most once a minute; the previous
+// code stops working and the attempts start over.
+// Both answer { pendingEmail, resendIn } for the dialog's countdown.
 export function OPTIONS(request: Request) {
   return preflight(request)
 }
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
     const data = pending?.exists ? pending.data() : undefined
     if (!data || typeof data.newEmail !== 'string') return reply({ error: 'No email change is pending.', reason: 'noPending' }, 409)
     const lastSentAt = data.lastSentAt instanceof Timestamp ? data.lastSentAt.toMillis() : 0
-    const wait = lastSentAt + EMAIL_CHANGE_RESEND_COOLDOWN_MS - Date.now()
+    const wait = lastSentAt + OTP_RESEND_COOLDOWN_MS - Date.now()
     if (wait > 0) return reply({ error: 'Too many requests.', reason: 'rateLimited', retryAfter: Math.ceil(wait / 1000) }, 429)
     newEmail = data.newEmail
   } else {
@@ -76,6 +74,11 @@ export async function POST(request: Request) {
         return reply({ error: 'Authorization service unavailable.', reason: 'unavailable' }, 503)
       }
     }
+    // One code a minute whatever the address, as for a phone change.
+    const previous = await requestRef.get().catch(() => null)
+    const previousSentAt = previous?.get('lastSentAt')
+    const wait = previousSentAt instanceof Timestamp ? previousSentAt.toMillis() + OTP_RESEND_COOLDOWN_MS - Date.now() : 0
+    if (wait > 0) return reply({ error: 'Too many requests.', reason: 'rateLimited', retryAfter: Math.ceil(wait / 1000) }, 429)
     newEmail = parsed
   }
 
@@ -89,14 +92,15 @@ export async function POST(request: Request) {
     return reply({ error: 'Could not send the email.', reason: 'failed' }, 502)
   }
 
-  const { token, tokenHash } = createEmailChangeToken()
+  const code = generateOtp()
   try {
     const batch = db.batch()
     batch.set(requestRef, {
       newEmail,
-      tokenHash,
+      codeHash: hashOtp(uid, code),
+      attempts: 0,
       lang,
-      expiresAt: Timestamp.fromMillis(Date.now() + EMAIL_CHANGE_TTL_MS),
+      expiresAt: Timestamp.fromMillis(Date.now() + OTP_TTL_MS),
       lastSentAt: Timestamp.now(),
     })
     batch.update(db.collection('users').doc(uid), { pendingEmail: newEmail, pendingEmailRequestedAt: FieldValue.serverTimestamp() })
@@ -107,11 +111,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    await sendEmailChangeVerification({ to: newEmail, lang, origin, confirmLink: `${origin}/confirm-email-change?token=${token}` })
+    await sendEmailChangeCode({ to: newEmail, lang, origin, code })
   } catch (err) {
-    // The change stays pending; the banner's "Resend email" tries again.
+    // The change stays pending; the dialog's "Resend code" tries again.
     logContactFailure('change-email', 'send', uid, err)
     return reply({ error: 'Could not send the email.', reason: 'failed' }, 502)
   }
-  return reply({ ok: true, pendingEmail: newEmail })
+  return reply({ ok: true, pendingEmail: newEmail, resendIn: OTP_RESEND_SECONDS })
 }

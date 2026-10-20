@@ -6,11 +6,13 @@ import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-pho
 import { useLang } from '@/lib/i18n/useLang'
 import { updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
 import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
-import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, resendEmailChange } from '@/lib/account/contactChange'
+import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange } from '@/lib/account/contactChange'
+import type { OtpTarget } from '@/lib/auth/otp'
 import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
 import AvatarUploader from './AvatarUploader'
+import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
 import PendingChangeNotice from './PendingChangeNotice'
 
@@ -33,18 +35,21 @@ const detailsOf = (profile: UserDocument | null): Details => ({
 type Status = { tone: 'info' | 'error'; text: string } | null
 
 // The member's profile on /profile (desktop and mobile browsers). The name
-// and email are plain read-only rows. One "Edit profile" button at the header's
+// is a plain read-only row. One "Edit profile" button at the header's
 // end (top right, top left in Hebrew) turns the phone number, customer type,
 // country of origin and region in Israel into fields at once; "Save changes"
 // writes them to users/{uid} in one update, "Cancel" drops them (app: the
 // Profile tab). A customer type of "Other" shows, and edits, what the member
 // typed for it; members from before the origin card see "Not set".
 //
-// A new phone number gets a 6-digit WhatsApp code
-// (OtpDialog) when verification is on (/api/account/change-phone decides,
-// otherwise it saves as before). Meanwhile the amber PendingChangeNotice
-// sits under the row, and users/{uid} is read live, so it disappears the
-// moment the change is verified, on any device.
+// Email and phone changes are verified before they apply, both with a
+// 6-digit code in OtpDialog. The email row's "Change" (email+password
+// members; a Google account's address is its Google identity) opens
+// ChangeEmailForm, which emails the code to the new address; a new phone
+// number gets a WhatsApp code when verification is on
+// (/api/account/change-phone decides, otherwise it saves as before).
+// Meanwhile the amber PendingChangeNotice sits under the row, and users/{uid}
+// is read live, so it disappears the moment the change is verified, on any device.
 export default function ProfileSection({ user }: { user: User }) {
   const { t, lang } = useLang()
 
@@ -55,6 +60,7 @@ export default function ProfileSection({ user }: { user: User }) {
   const stored = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
+  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(stored)
@@ -62,8 +68,9 @@ export default function ProfileSection({ user }: { user: User }) {
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
 
-  const [otp, setOtp] = useState<{ phone: string; resendIn: number } | null>(null)
-  const [pendingBusy, setPendingBusy] = useState<'resendEmail' | 'cancelEmail' | 'cancelPhone' | null>(null)
+  const [emailFormOpen, setEmailFormOpen] = useState(false)
+  const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
+  const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
 
@@ -75,6 +82,7 @@ export default function ProfileSection({ user }: { user: User }) {
     setDraft(stored)
     setSaveMsg(null)
     setPhoneError(null)
+    setEmailFormOpen(false)
     setEditing(true)
   }
 
@@ -98,14 +106,14 @@ export default function ProfileSection({ user }: { user: User }) {
       // A new number is verified first when verification is on: the other
       // fields save now and the number waits in pendingPhone for its code.
       let savedPhone = phone
-      let verify: { phone: string; resendIn: number } | null = null
+      let verify: { target: OtpTarget; resendIn: number } | null = null
       if (phone && phone !== stored.phone) {
         const start = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' })
         if (start.ok && start.mode === 'otp') {
-          verify = { phone, resendIn: start.resendIn }
+          verify = { target: { kind: 'phone', phone }, resendIn: start.resendIn }
         } else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter && phone === pendingPhone) {
           // A code for this very number went out moments ago: enter that one.
-          verify = { phone, resendIn: start.retryAfter }
+          verify = { target: { kind: 'phone', phone }, resendIn: start.retryAfter }
         } else if (!start.ok) {
           setPhoneError(t(contactChangeErrorKey(start.reason)))
           return
@@ -160,16 +168,45 @@ export default function ProfileSection({ user }: { user: User }) {
     <div>
       <dt className={dt}>{t('profile_email_label')}</dt>
       <dd>
-        <div className={`${dd} ${editing ? 'text-slate-500' : ''}`}><bdi dir="ltr">{email}</bdi></div>
+        <div className="flex items-center justify-between gap-3">
+          <div className={`${dd} min-w-0 ${editing ? 'text-slate-500' : ''}`}><bdi dir="ltr">{email}</bdi></div>
+          {canChangeEmail && !editing && !emailFormOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                setEmailStatus(null)
+                setEmailFormOpen(true)
+              }}
+              aria-label={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
+              className="tap-target flex-shrink-0 inline-flex items-center justify-center px-3 rounded-[12px] text-sm font-semibold text-brand hover:bg-brandLight transition-colors"
+            >
+              {t('profile_change_email_btn')}
+            </button>
+          )}
+        </div>
+        {canChangeEmail && emailFormOpen && !editing && (
+          <ChangeEmailForm
+            user={user}
+            pendingEmail={pendingEmail}
+            onSent={(sentTo, resendIn) => {
+              setEmailFormOpen(false)
+              setEmailStatus(null)
+              setOtp({ target: { kind: 'email', email: sentTo }, resendIn })
+            }}
+            onCancel={() => setEmailFormOpen(false)}
+          />
+        )}
         <PendingChangeNotice
-          show={!!pendingEmail}
+          show={!!pendingEmail && !emailFormOpen}
           message={t('pending_email_body')}
           placeholder="{email}"
           value={pendingEmail}
           icon="fa-solid fa-envelope-circle-check"
-          actionLabel={t('pending_email_resend')}
-          onAction={() => pendingAction('resendEmail', (idToken) => resendEmailChange(idToken, lang), setEmailStatus, { tone: 'info', text: t('pending_email_resent') })}
-          actionBusy={pendingBusy === 'resendEmail'}
+          actionLabel={t('pending_email_enter')}
+          onAction={() => {
+            setEmailStatus(null)
+            setOtp({ target: { kind: 'email', email: pendingEmail }, resendIn: 0 })
+          }}
           onCancel={() => pendingAction('cancelEmail', (idToken) => cancelPendingChange(idToken, 'email'), setEmailStatus, null)}
           cancelBusy={pendingBusy === 'cancelEmail'}
           status={emailStatus}
@@ -188,7 +225,7 @@ export default function ProfileSection({ user }: { user: User }) {
       actionLabel={t('pending_phone_enter')}
       onAction={() => {
         setPhoneStatus(null)
-        setOtp({ phone: pendingPhone, resendIn: 0 })
+        setOtp({ target: { kind: 'phone', phone: pendingPhone }, resendIn: 0 })
       }}
       onCancel={() => pendingAction('cancelPhone', (idToken) => cancelPendingChange(idToken, 'phone'), setPhoneStatus, null)}
       cancelBusy={pendingBusy === 'cancelPhone'}
@@ -341,13 +378,17 @@ export default function ProfileSection({ user }: { user: User }) {
       {otp && (
         <OtpDialog
           user={user}
-          phone={otp.phone}
+          target={otp.target}
           resendIn={otp.resendIn}
           onClose={() => setOtp(null)}
           onVerified={() => {
+            const kind = otp.target.kind
             setOtp(null)
             invalidateMemberProfile(user.uid)
-            setSaveMsg({ type: 'success', text: t('otp_success') })
+            // The local Auth record still holds the old address (the next
+            // change re-authenticates with it); the server already changed it.
+            if (kind === 'email') user.reload().catch(() => {})
+            setSaveMsg({ type: 'success', text: t(kind === 'email' ? 'otp_email_success' : 'otp_success') })
           }}
         />
       )}

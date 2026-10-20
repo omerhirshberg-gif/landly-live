@@ -22,3 +22,6 @@ export const isOtpCode = (value: unknown): value is string => typeof value === '
 export function normalizeOtpInput(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, OTP_LENGTH)
 }
+
+/** What a verification dialog or sheet confirms: a pending phone number (WhatsApp) or a pending email address. */
+export type OtpTarget = { kind: 'phone'; phone: string } | { kind: 'email'; email: string }

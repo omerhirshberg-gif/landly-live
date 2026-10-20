@@ -131,11 +131,15 @@ concurrent initiation, transaction-ID contention, retries, and atomic rollback.
 
 ## Email and phone change verification (profile screens)
 
-Email changes from `/profile` (web) and the app's Profile tab are confirmed by a
-single-use link sent to the **new** address through the same Resend pipeline
-(`APP_URL`, `EMAIL_FROM`, `RESEND_API_KEY`). Only the link token's SHA-256 is
-stored, in the server-only `emailChangeRequests/{uid}`; the link expires after
-24 hours. Once confirmed, the previous address receives a security notice.
+Email changes from `/profile` (web) and the app's Profile tab (email+password
+accounts; a Google account's address is its Google identity) are confirmed by a
+6-digit code sent to the **new** address through the same Resend pipeline
+(`APP_URL`, `EMAIL_FROM`, `RESEND_API_KEY`) and typed into the same code dialog
+(web) or sheet (app) as a phone code. Only the code's salted hash is stored, in
+the server-only `emailChangeRequests/{uid}`, with the phone code's rules: it
+expires after 10 minutes, five wrong tries clear the change, and a new code can
+be sent once a minute. Once confirmed, the account's email changes in Firebase
+Auth and Firestore and the previous address receives a security notice.
 
 Phone changes from the profile screens are confirmed by a 6-digit code sent via
 WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
