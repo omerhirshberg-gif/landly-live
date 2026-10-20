@@ -10,12 +10,14 @@ import { useAuth } from '@shared/firebase/useAuth'
 import { invalidateMemberProfile, useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { useLiveUserDocument } from '@shared/firebase/useLiveUserDocument'
 import { updateUserProfileDetails, type UserDocument } from '@shared/firebase/users'
-import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, resendEmailChange, type ContactChangeResult } from '@shared/account/contactChange'
+import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, type ContactChangeResult } from '@shared/account/contactChange'
+import type { OtpTarget } from '@shared/auth/otp'
 import { customerTypeLabel, isCustomerType } from '@shared/customerTypes'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@shared/profile/countryOfOrigin'
 import AppText from '../../components/AppText'
 import AvatarPicker from '../../components/AvatarPicker'
 import Button from '../../components/Button'
+import ChangeEmailForm from '../../components/ChangeEmailForm'
 import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import LineIcon from '../../components/LineIcon'
@@ -115,10 +117,11 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // write as the website's /profile, and "Cancel" drops them. users/{uid} is
 // read live, so a save shows at once.
 //
-// Email and phone changes are verified before they apply (web: the same
-// flow). The email row's "Change" (email+password members; Google accounts
-// keep the lock) sends a link to the new address; a new phone number gets a
-// 6-digit WhatsApp code (OtpSheet) when verification is on
+// Email and phone changes are verified before they apply, both with a
+// 6-digit code in OtpSheet (web: the same flow). The email row's "Change"
+// (email+password members; a Google account's address is its Google
+// identity) opens ChangeEmailForm, which emails the code to the new address;
+// a new phone number gets a WhatsApp code when verification is on
 // (/api/account/change-phone decides, otherwise it saves as before).
 // Meanwhile the amber PendingChangeNotice sits under the row until the
 // change is verified, on any device.
@@ -139,6 +142,8 @@ function ProfileDetails({
   const current = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
+  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
+  const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(current)
   const [country, setCountry] = useState<CountryCode>('IL')
@@ -146,9 +151,9 @@ function ProfileDetails({
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<'saved' | 'verified' | null>(null)
-  const [otp, setOtp] = useState<{ phone: string; resendIn: number } | null>(null)
-  const [pendingBusy, setPendingBusy] = useState<'resendEmail' | 'cancelEmail' | 'cancelPhone' | null>(null)
+  const [notice, setNotice] = useState<'saved' | 'verified' | 'emailVerified' | null>(null)
+  const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
+  const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
 
@@ -171,6 +176,7 @@ function ProfileDetails({
     setPhoneError(null)
     setSaveError(null)
     setNotice(null)
+    setEmailFormOpen(false)
     setEditing(true)
   }
 
@@ -188,14 +194,14 @@ function ProfileDetails({
       // A new number is verified first when verification is on: the other
       // fields save now and the number waits in pendingPhone for its code.
       let savedPhone = phone
-      let verify: { phone: string; resendIn: number } | null = null
+      let verify: { target: OtpTarget; resendIn: number } | null = null
       if (phone && phone !== current.phone) {
         const start = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' }, API_BASE_URL)
         if (start.ok && start.mode === 'otp') {
-          verify = { phone, resendIn: start.resendIn }
+          verify = { target: { kind: 'phone', phone }, resendIn: start.resendIn }
         } else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter && phone === pendingPhone) {
           // A code for this very number went out moments ago: enter that one.
-          verify = { phone, resendIn: start.retryAfter }
+          verify = { target: { kind: 'phone', phone }, resendIn: start.retryAfter }
         } else if (!start.ok) {
           setPhoneError(t(contactChangeErrorKey(start.reason)))
           return
@@ -243,7 +249,7 @@ function ProfileDetails({
       actionLabel={t('pending_phone_enter')}
       onAction={() => {
         setPhoneStatus(null)
-        setOtp({ phone: pendingPhone, resendIn: 0 })
+        setOtp({ target: { kind: 'phone', phone: pendingPhone }, resendIn: 0 })
       }}
       onCancel={() => pendingAction('cancelPhone', (idToken) => cancelPendingChange(idToken, 'phone', API_BASE_URL), setPhoneStatus, null)}
       cancelBusy={pendingBusy === 'cancelPhone'}
@@ -270,22 +276,49 @@ function ProfileDetails({
 
       <Row label={t('profile_name_label')} value={name || t('profile_no_phone')} muted={editing} />
       <View style={[styles.row, styles.rowBorder]}>
-        <AppText style={styles.rowLabel}>{t('profile_email_label')}</AppText>
-        <AppText ltr style={[styles.rowValue, editing && styles.rowValueMuted]}>{email}</AppText>
-        {!!pendingEmail && (
+        <View style={styles.emailLine}>
+          <View style={styles.emailValue}>
+            <AppText style={styles.rowLabel}>{t('profile_email_label')}</AppText>
+            <AppText ltr style={[styles.rowValue, editing && styles.rowValueMuted]}>{email}</AppText>
+          </View>
+          {canChangeEmail && !editing && !emailFormOpen && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
+              onPress={() => {
+                setEmailStatus(null)
+                setEmailFormOpen(true)
+              }}
+              hitSlop={8}
+              style={({ pressed }) => [styles.changeButton, pressed && styles.editPressed]}
+            >
+              <AppText style={styles.changeText}>{t('profile_change_email_btn')}</AppText>
+            </Pressable>
+          )}
+        </View>
+        {canChangeEmail && emailFormOpen && !editing && (
+          <ChangeEmailForm
+            user={user}
+            pendingEmail={pendingEmail}
+            onSent={(sentTo, resendIn) => {
+              setEmailFormOpen(false)
+              setEmailStatus(null)
+              setOtp({ target: { kind: 'email', email: sentTo }, resendIn })
+            }}
+            onCancel={() => setEmailFormOpen(false)}
+          />
+        )}
+        {!!pendingEmail && !emailFormOpen && (
           <PendingChangeNotice
             message={t('pending_email_body')}
             placeholder="{email}"
             value={pendingEmail}
             icon="mail"
-            actionLabel={t('pending_email_resend')}
-            onAction={() =>
-              pendingAction('resendEmail', (idToken) => resendEmailChange(idToken, lang, API_BASE_URL), setEmailStatus, {
-                tone: 'info',
-                text: t('pending_email_resent'),
-              })
-            }
-            actionBusy={pendingBusy === 'resendEmail'}
+            actionLabel={t('pending_email_enter')}
+            onAction={() => {
+              setEmailStatus(null)
+              setOtp({ target: { kind: 'email', email: pendingEmail }, resendIn: 0 })
+            }}
             onCancel={() => pendingAction('cancelEmail', (idToken) => cancelPendingChange(idToken, 'email', API_BASE_URL), setEmailStatus, null)}
             cancelBusy={pendingBusy === 'cancelEmail'}
             status={emailStatus}
@@ -373,7 +406,7 @@ function ProfileDetails({
           />
           {notice && (
             <View style={styles.savedNotice}>
-              <Notice message={t(notice === 'verified' ? 'otp_success' : 'profile_save_success')} tone="success" />
+              <Notice message={t(notice === 'emailVerified' ? 'otp_email_success' : notice === 'verified' ? 'otp_success' : 'profile_save_success')} tone="success" />
             </View>
           )}
         </>
@@ -381,13 +414,17 @@ function ProfileDetails({
       {otp && (
         <OtpSheet
           user={user}
-          phone={otp.phone}
+          target={otp.target}
           resendIn={otp.resendIn}
           onClose={() => setOtp(null)}
           onVerified={() => {
+            const kind = otp.target.kind
             setOtp(null)
             invalidateMemberProfile(user.uid)
-            setNotice('verified')
+            // The local Auth record still holds the old address (the next
+            // change re-authenticates with it); the server already changed it.
+            if (kind === 'email') user.reload().catch(() => {})
+            setNotice(kind === 'email' ? 'emailVerified' : 'verified')
           }}
         />
       )}
@@ -460,6 +497,17 @@ const styles = StyleSheet.create({
   },
   editPressed: { backgroundColor: colors.brandTint },
   editText: { fontSize: 15, fontWeight: '600', color: colors.brand },
+  // The address takes the row's free width (wrapping if long); "Change" sits at its trailing edge.
+  emailLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  emailValue: { flex: 1, minWidth: 0 },
+  changeButton: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    justifyContent: 'center',
+    ...webOnly({ cursor: 'pointer' }),
+  },
+  changeText: { fontSize: 15, fontWeight: '600', color: colors.brand },
   editActions: { flexDirection: 'row', gap: 12, paddingTop: 4, paddingBottom: 16 },
   editAction: { flex: 1 },
   savedNotice: { paddingBottom: 16 },

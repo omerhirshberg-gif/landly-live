@@ -24,13 +24,15 @@ vi.mock('@/lib/firebase/verifyRequestUser', () => ({
 vi.mock('@/lib/auth/uidRateLimit', () => ({ checkUidRateLimit: () => null }))
 
 import { POST as changeEmail } from '@/app/api/account/change-email/route'
-import { POST as verifyEmailChange } from '@/app/api/account/verify-email-change/route'
+import { POST as verifyEmailOtp } from '@/app/api/account/verify-email-otp/route'
 import { POST as changePhone } from '@/app/api/account/change-phone/route'
 import { POST as verifyPhoneOtp } from '@/app/api/account/verify-phone-otp/route'
 import { POST as cancelPending } from '@/app/api/account/cancel-pending/route'
-import { confirmEmailChange, contactChangeErrorKey, requestPhoneChange, verifyPhoneCode } from '@/lib/account/contactChange'
+import { contactChangeErrorKey, requestEmailChange, requestPhoneChange, verifyEmailCode, verifyPhoneCode } from '@/lib/account/contactChange'
 import { isOtpCode, normalizeOtpInput } from '@/lib/auth/otp'
-import { createEmailChangeToken, hashEmailChangeToken, isEmailChangeToken, normalizeEmail } from '@/lib/auth/emailChangeToken'
+import { normalizeEmail } from '@/lib/auth/emailChange'
+import { buildEmailChangeCodeEmail } from '@/lib/email/sendEmailChangeEmail'
+import { renderBrandedEmail } from '@/lib/email/brandedEmail'
 import {
   devProvider,
   generateOtp,
@@ -246,22 +248,29 @@ describe('/api/account/verify-phone-otp', () => {
   })
 })
 
+// The code as it appears in the email's big left-to-right box.
+const CODE_IN_EMAIL = /letter-spacing:10px;color:#0F172A;">(\d{6})</
+const emailedCode = (call = mocks.send.mock.calls.at(-1)!) => (call[0].html as string).match(CODE_IN_EMAIL)?.[1] ?? ''
+const ago = (ms: number) => Timestamp.fromMillis(Date.now() - ms)
+
 describe('/api/account/change-email', () => {
-  it('stores only the token hash, marks the address pending and mails the link to the new inbox', async () => {
+  it('stores only the code hash, marks the address pending and mails a 6-digit code to the new inbox', async () => {
     const res = await changeEmail(post({ newEmail: '  New@Landly.test ', lang: 'he' }))
-    expect(await res.json()).toEqual({ ok: true, pendingEmail: 'new@landly.test' })
+    expect(await res.json()).toEqual({ ok: true, pendingEmail: 'new@landly.test', resendIn: 60 })
     expect(mocks.store.read(`users/${UID}`)).toMatchObject({ email: 'old@landly.test', pendingEmail: 'new@landly.test' })
     expect(mocks.updateUser).not.toHaveBeenCalled()
 
     const sent = mocks.send.mock.calls[0][0]
     expect(sent.to).toBe('new@landly.test')
     expect(sent.subject).toBe(translations.he.emailChange_subject)
-    const token = sent.html.match(/confirm-email-change\?token=([A-Za-z0-9_-]{43})/)?.[1]
-    expect(token).toBeTruthy()
+    expect(sent.html).not.toContain('confirm-email-change')
+    const code = emailedCode()
+    expect(isOtpCode(code)).toBe(true)
     const request = mocks.store.read(`emailChangeRequests/${UID}`)!
-    expect(request.tokenHash).toBe(hashEmailChangeToken(token))
-    expect(JSON.stringify(request)).not.toContain(token)
-    expect(JSON.stringify(mocks.store.read(`users/${UID}`))).not.toContain(token)
+    expect(request).toMatchObject({ newEmail: 'new@landly.test', codeHash: hashOtp(UID, code), attempts: 0, lang: 'he' })
+    expect((request.expiresAt as Timestamp).toMillis() - Date.now()).toBeGreaterThan(9 * 60_000)
+    expect(JSON.stringify(request)).not.toContain(code)
+    expect(JSON.stringify(mocks.store.read(`users/${UID}`))).not.toContain(code)
   })
 
   it('needs a recent password sign-in, a password account and a free, different address', async () => {
@@ -279,34 +288,56 @@ describe('/api/account/change-email', () => {
     expect(mocks.send).not.toHaveBeenCalled()
   })
 
-  it('resends to the pending address without the password, at most once a minute', async () => {
+  it('resends a fresh code to the pending address without the password, at most once a minute', async () => {
     await changeEmail(post({ newEmail: 'new@landly.test' }))
+    const first = emailedCode()
     mocks.token.mockResolvedValue({ uid: UID, auth_time: nowSeconds() - 3600, firebase: {} })
     const tooSoon = await changeEmail(post({ resend: true }))
     expect(tooSoon.status).toBe(429)
-    mocks.store.seed(`emailChangeRequests/${UID}`, { ...mocks.store.read(`emailChangeRequests/${UID}`), lastSentAt: Timestamp.fromMillis(Date.now() - 61_000) })
+    expect((await tooSoon.json()).retryAfter).toBeGreaterThan(55)
+
+    mocks.store.seed(`emailChangeRequests/${UID}`, { ...mocks.store.read(`emailChangeRequests/${UID}`), lastSentAt: ago(61_000), attempts: 3 })
     const res = await changeEmail(post({ resend: true }))
-    expect(await res.json()).toEqual({ ok: true, pendingEmail: 'new@landly.test' })
+    expect(await res.json()).toEqual({ ok: true, pendingEmail: 'new@landly.test', resendIn: 60 })
     expect(mocks.send).toHaveBeenCalledTimes(2)
     expect(mocks.send.mock.calls[1][0].to).toBe('new@landly.test')
+    // A new code with a fresh set of attempts; the previous code no longer matches.
+    const request = mocks.store.read(`emailChangeRequests/${UID}`)!
+    expect(request.attempts).toBe(0)
+    expect(request.codeHash).toBe(hashOtp(UID, emailedCode()))
+    if (emailedCode() !== first) expect(otpMatches(UID, first, request.codeHash as string)).toBe(false)
+  })
+
+  it('sends one code a minute whatever the address', async () => {
+    await changeEmail(post({ newEmail: 'new@landly.test' }))
+    const again = await changeEmail(post({ newEmail: 'other@landly.test' }))
+    expect(again.status).toBe(429)
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+    expect(mocks.store.read(`users/${UID}`)?.pendingEmail).toBe('new@landly.test')
+  })
+
+  it('answers noPending for a resend with nothing pending', async () => {
+    expect((await (await changeEmail(post({ resend: true }))).json()).reason).toBe('noPending')
   })
 })
 
-describe('/api/account/verify-email-change', () => {
+describe('/api/account/verify-email-otp', () => {
   async function startChange() {
     await changeEmail(post({ newEmail: 'new@landly.test', lang: 'fr' }))
-    return mocks.send.mock.calls.at(-1)![0].html.match(/token=([A-Za-z0-9_-]{43})/)[1] as string
+    return emailedCode()
   }
-  const confirm = (token: string) => verifyEmailChange(new Request('https://landly.test/api', { method: 'POST', body: JSON.stringify({ token }) }))
+  const verify = (code: string) => verifyEmailOtp(post({ code }))
+  const wrong = (code: string) => (code === '000000' ? '111111' : '000000')
 
   it('applies the change in Auth and Firestore once, then alerts the previous address', async () => {
-    const token = await startChange()
-    const res = await confirm(token)
-    expect(await res.json()).toEqual({ ok: true })
+    const code = await startChange()
+    const res = await verify(code)
+    expect(await res.json()).toEqual({ ok: true, email: 'new@landly.test' })
     expect(mocks.updateUser).toHaveBeenCalledWith(UID, { email: 'new@landly.test', emailVerified: true })
     const user = mocks.store.read(`users/${UID}`)!
     expect(user.email).toBe('new@landly.test')
     expect(user).not.toHaveProperty('pendingEmail')
+    expect(user).not.toHaveProperty('pendingEmailRequestedAt')
     expect(mocks.store.read(`emailChangeRequests/${UID}`)).toBeUndefined()
 
     const alert = mocks.send.mock.calls.at(-1)![0]
@@ -314,35 +345,115 @@ describe('/api/account/verify-email-change', () => {
     expect(alert.subject).toBe(translations.fr.emailChanged_subject)
     expect(alert.html).toContain('new@landly.test')
 
-    const again = await confirm(token)
-    expect(again.status).toBe(410)
+    const again = await verify(code)
+    expect(again.status).toBe(409)
+    expect((await again.json()).reason).toBe('noPending')
+    expect(mocks.updateUser).toHaveBeenCalledTimes(1)
   })
 
-  it('refuses unknown, malformed and expired links', async () => {
-    expect((await confirm(createEmailChangeToken().token)).status).toBe(410)
-    expect((await confirm('short')).status).toBe(400)
-    const token = await startChange()
-    mocks.store.seed(`emailChangeRequests/${UID}`, { ...mocks.store.read(`emailChangeRequests/${UID}`), expiresAt: Timestamp.fromMillis(Date.now() - 1) })
-    const res = await confirm(token)
+  it('counts wrong codes and gives up after five', async () => {
+    const code = await startChange()
+    for (let left = 4; left >= 1; left--) {
+      const res = await verify(wrong(code))
+      expect(res.status).toBe(400)
+      expect(await res.json()).toMatchObject({ reason: 'invalidCode', attemptsLeft: left })
+    }
+    const last = await verify(wrong(code))
+    expect(last.status).toBe(429)
+    expect((await last.json()).reason).toBe('tooManyAttempts')
+    expect(mocks.store.read(`users/${UID}`)?.pendingEmail).toBeUndefined()
+    expect(mocks.store.read(`emailChangeRequests/${UID}`)).toBeUndefined()
+    // Even the right code is useless now.
+    expect((await verify(code)).status).toBe(409)
+    expect(mocks.updateUser).not.toHaveBeenCalled()
+  })
+
+  it('refuses an expired code and clears the pending change', async () => {
+    const code = await startChange()
+    mocks.store.seed(`emailChangeRequests/${UID}`, { ...mocks.store.read(`emailChangeRequests/${UID}`), expiresAt: ago(1) })
+    const res = await verify(code)
+    expect(res.status).toBe(410)
     expect((await res.json()).reason).toBe('expired')
     expect(mocks.updateUser).not.toHaveBeenCalled()
     expect(mocks.store.read(`users/${UID}`)?.pendingEmail).toBeUndefined()
   })
 
+  it('answers noPending without a change, for a link-era request, or when the pending address moved on, and refuses malformed codes', async () => {
+    expect((await verify('123456')).status).toBe(409)
+
+    // A request from before codes replaced links carries a token hash only.
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', pendingEmail: 'new@landly.test' })
+    mocks.store.seed(`emailChangeRequests/${UID}`, { newEmail: 'new@landly.test', tokenHash: 'f'.repeat(64), expiresAt: Timestamp.fromMillis(Date.now() + 60_000) })
+    expect((await (await verify('123456')).json()).reason).toBe('noPending')
+    expect(mocks.store.read(`emailChangeRequests/${UID}`)).toBeUndefined()
+
+    const code = await startChange()
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', pendingEmail: 'elsewhere@landly.test' })
+    expect((await (await verify(code)).json()).reason).toBe('noPending')
+
+    for (const bad of ['12345', '1234567', 'abcdef', 123456, null]) {
+      expect((await (await verifyEmailOtp(post({ code: bad }))).json()).reason).toBe('invalidCode')
+    }
+    expect(mocks.updateUser).not.toHaveBeenCalled()
+  })
+
   it('drops the change when the address was taken meanwhile', async () => {
-    const token = await startChange()
+    const code = await startChange()
     mocks.updateUser.mockRejectedValueOnce(Object.assign(new Error('taken'), { code: 'auth/email-already-exists' }))
-    const res = await confirm(token)
+    const res = await verify(code)
     expect((await res.json()).reason).toBe('emailInUse')
     expect(mocks.store.read(`users/${UID}`)).toMatchObject({ email: 'old@landly.test' })
     expect(mocks.store.read(`users/${UID}`)?.pendingEmail).toBeUndefined()
   })
 
-  it('keeps the link usable when Auth is briefly unavailable', async () => {
-    const token = await startChange()
+  it('keeps the code usable when Auth is briefly unavailable', async () => {
+    const code = await startChange()
     mocks.updateUser.mockRejectedValueOnce(Object.assign(new Error('down'), { code: 'auth/internal-error' }))
-    expect((await confirm(token)).status).toBe(503)
-    expect((await confirm(token)).status).toBe(200)
+    expect((await verify(code)).status).toBe(503)
+    expect(mocks.store.read(`users/${UID}`)?.pendingEmail).toBe('new@landly.test')
+    expect((await verify(code)).status).toBe(200)
+    expect(mocks.store.read(`users/${UID}`)?.email).toBe('new@landly.test')
+  })
+
+  it('never logs the code or either address', async () => {
+    const error = vi.mocked(console.error)
+    const code = await startChange()
+    mocks.updateUser.mockRejectedValueOnce(Object.assign(new Error('down'), { code: 'auth/internal-error' }))
+    await verify(code)
+    const logged = error.mock.calls.map((c) => c.join(' ')).join('\n')
+    expect(logged).toContain('step=auth')
+    expect(logged).not.toContain(code)
+    expect(logged).not.toContain('new@landly.test')
+    expect(logged).not.toContain('old@landly.test')
+  })
+})
+
+describe('email change code email', () => {
+  it('shows the code in a left-to-right box with no button or link to click', () => {
+    const { subject, ...content } = buildEmailChangeCodeEmail('en', '012345')
+    expect(subject).toBe(translations.en.emailChange_subject)
+    const html = renderBrandedEmail({ lang: 'en', origin: 'https://landly.test', ...content })
+    expect(html).toMatch(/<p dir="ltr"[^>]*>012345<\/p>/)
+    expect(html).toContain(translations.en.emailChange_codeLabel)
+    expect(html).toContain(translations.en.emailChange_ignoreNote)
+    expect(html).not.toContain('v:roundrect')
+    expect(html).not.toContain(translations.en.email_linkFallback)
+    expect(html).not.toContain('href=""')
+  })
+
+  it('renders Hebrew right-to-left around the left-to-right code', () => {
+    const { subject: _subject, ...content } = buildEmailChangeCodeEmail('he', '987654')
+    const html = renderBrandedEmail({ lang: 'he', origin: 'https://landly.test', ...content })
+    expect(html).toContain('<html lang="he" dir="rtl"')
+    expect(html).toMatch(/<p dir="ltr"[^>]*>987654<\/p>/)
+    expect(html).toContain(translations.he.emailChange_codeLabel)
+  })
+
+  it('keeps the button in emails that have one', () => {
+    const html = renderBrandedEmail({ lang: 'en', origin: 'https://landly.test', heading: 'H', body: 'B', buttonLabel: 'Go', buttonLink: 'https://landly.test/go', footnote: 'F' })
+    expect(html).toContain('v:roundrect')
+    expect(html).toContain('href="https://landly.test/go"')
+    expect(html).toContain(translations.en.email_linkFallback)
   })
 })
 
@@ -359,15 +470,7 @@ describe('/api/account/cancel-pending', () => {
   })
 })
 
-describe('email change token', () => {
-  it('is 256 random bits in base64url and stored only as its SHA-256', () => {
-    const { token, tokenHash } = createEmailChangeToken()
-    expect(isEmailChangeToken(token)).toBe(true)
-    expect(tokenHash).toMatch(/^[0-9a-f]{64}$/)
-    expect(hashEmailChangeToken(token)).toBe(tokenHash)
-    expect(createEmailChangeToken().token).not.toBe(token)
-  })
-
+describe('email change address', () => {
   it('normalizes addresses', () => {
     expect(normalizeEmail(' A@B.co ')).toBe('a@b.co')
     expect(normalizeEmail('a@b')).toBeNull()
@@ -386,25 +489,39 @@ describe('client caller (lib/account/contactChange.ts)', () => {
     expect(await requestPhoneChange('t', { phone: '+12025550123', lang: 'en' })).toEqual({ ok: true, mode: 'direct' })
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Network request failed')))
-    expect(await confirmEmailChange('x')).toEqual({ ok: false, reason: 'offline' })
+    expect(await verifyEmailCode('t', '123456')).toEqual({ ok: false, reason: 'offline' })
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 429 })))
-    expect(await confirmEmailChange('x')).toEqual({ ok: false, reason: 'rateLimited' })
+    expect(await requestEmailChange('t', { newEmail: 'new@landly.test', lang: 'en' })).toEqual({ ok: false, reason: 'rateLimited' })
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ reason: 'rateLimited', retryAfter: 42 }), { status: 429 })))
+    expect(await requestEmailChange('t', { newEmail: 'new@landly.test', lang: 'en' })).toEqual({ ok: false, reason: 'rateLimited', retryAfter: 42 })
   })
 
-  it('sends the token only to the confirm route, without an Authorization header', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+  it('sends the email code with the session to the email verify route, through the app base URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, email: 'new@landly.test' }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    await confirmEmailChange('abc')
+    expect(await verifyEmailCode('id-token', '123456', 'https://api.landly.test/')).toEqual({ ok: true, email: 'new@landly.test' })
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/account/verify-email-change')
-    expect(init.headers).not.toHaveProperty('Authorization')
+    expect(url).toBe('https://api.landly.test/api/account/verify-email-otp')
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer id-token' })
+    expect(JSON.parse(init.body)).toEqual({ code: '123456' })
+  })
+
+  it('names the email in the expired and used-up copy for an email change', () => {
+    expect(contactChangeErrorKey('expired', 'email')).toBe('contact_err_expired_email')
+    expect(contactChangeErrorKey('tooManyAttempts', 'email')).toBe('contact_err_tooManyAttempts_email')
+    expect(contactChangeErrorKey('expired')).toBe('contact_err_expired')
+    expect(contactChangeErrorKey('invalidCode', 'email')).toBe('contact_err_invalidCode')
   })
 
   it('maps every reason to copy that exists in all languages', () => {
     const reasons = ['rateLimited', 'unauthorized', 'reauthRequired', 'notPasswordAccount', 'invalidEmail', 'sameEmail', 'emailInUse', 'invalidPhone', 'samePhone', 'delivery', 'noPending', 'invalidCode', 'expired', 'tooManyAttempts', 'invalid', 'failed', 'offline'] as const
     for (const lang of Object.keys(translations) as (keyof typeof translations)[]) {
-      for (const reason of reasons) expect(translations[lang][contactChangeErrorKey(reason)], `${lang}.${reason}`).toBeTruthy()
+      for (const reason of reasons) {
+        expect(translations[lang][contactChangeErrorKey(reason)], `${lang}.${reason}`).toBeTruthy()
+        expect(translations[lang][contactChangeErrorKey(reason, 'email')], `${lang}.${reason} (email)`).toBeTruthy()
+      }
     }
   })
 })
@@ -418,6 +535,11 @@ describe('copy', () => {
       expect(t.emailChanged_body, lang).toContain('{email}')
       expect(t.otp_resend_in, lang).toContain('{seconds}')
       expect(t.otp_title, lang).toContain('💬')
+      for (const key of ['otp_email_title', 'otp_email_subtitle', 'otp_email_success', 'pending_email_enter', 'emailChange_codeLabel'] as const) {
+        expect(t[key], `${lang}.${key}`).toBeTruthy()
+      }
+      // The email copy describes a code, never a link to click.
+      expect(t.emailChange_body, lang).toMatch(/10/)
     }
   })
 })

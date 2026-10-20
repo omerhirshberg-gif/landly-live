@@ -8,7 +8,7 @@ import type { OtpChannel } from '@/lib/auth/otp'
  *
  * reauthRequired -- the email change needs the current password again
  * delivery       -- the code couldn't be sent (WhatsApp/SMS provider refused)
- * invalid        -- the email confirmation link is malformed or already used
+ * invalid        -- an unknown kind of pending change to cancel
  * unauthorized   -- the session expired or was revoked
  * failed         -- the server answered but couldn't finish, or the base redirects
  * offline        -- no answer: no connection, CORS block or the 15s timeout
@@ -84,19 +84,21 @@ async function post<T extends object>(path: string, idToken: string | null, payl
   }
 }
 
-/** Sends the confirmation link to `newEmail`; call right after re-entering the password. */
+export type EmailChangeStart = { pendingEmail: string; resendIn: number }
+
+/** Sends a 6-digit code to `newEmail`; call right after re-entering the password. */
 export function requestEmailChange(idToken: string, params: { newEmail: string; lang: Lang }, apiBaseUrl = '') {
-  return post<{ pendingEmail: string }>('/api/account/change-email', idToken, params, apiBaseUrl)
+  return post<EmailChangeStart>('/api/account/change-email', idToken, params, apiBaseUrl)
 }
 
-/** A fresh link to the address already pending. */
+/** A fresh code to the address already pending. */
 export function resendEmailChange(idToken: string, lang: Lang, apiBaseUrl = '') {
-  return post<{ pendingEmail: string }>('/api/account/change-email', idToken, { resend: true, lang }, apiBaseUrl)
+  return post<EmailChangeStart>('/api/account/change-email', idToken, { resend: true, lang }, apiBaseUrl)
 }
 
-/** The /confirm-email-change page: applies the change the link's token names (no sign-in needed). */
-export function confirmEmailChange(token: string, apiBaseUrl = '') {
-  return post('/api/account/verify-email-change', null, { token }, apiBaseUrl)
+/** Applies the pending email change once its code matches. */
+export function verifyEmailCode(idToken: string, code: string, apiBaseUrl = '') {
+  return post<{ email: string }>('/api/account/verify-email-otp', idToken, { code }, apiBaseUrl)
 }
 
 export type PhoneChangeStart = { mode: 'direct' } | { mode: 'otp'; channel: OtpChannel; resendIn: number }
@@ -114,8 +116,14 @@ export function cancelPendingChange(idToken: string, kind: 'email' | 'phone', ap
   return post('/api/account/cancel-pending', idToken, { kind }, apiBaseUrl)
 }
 
-/** The translation key for a failed step (both platforms use the same copy). */
-export function contactChangeErrorKey(reason: ContactChangeReason) {
+/**
+ * The translation key for a failed step (both platforms use the same copy).
+ * An expired or used-up code tells the member to change the same thing again,
+ * so those two name the email for an email change.
+ */
+export function contactChangeErrorKey(reason: ContactChangeReason, kind: 'email' | 'phone' = 'phone') {
+  if (kind === 'email' && reason === 'expired') return 'contact_err_expired_email'
+  if (kind === 'email' && reason === 'tooManyAttempts') return 'contact_err_tooManyAttempts_email'
   switch (reason) {
     case 'rateLimited': return 'contact_err_rateLimited'
     case 'unauthorized': return 'contact_err_session'

@@ -23,8 +23,9 @@ export function escapeHtml(value: string): string {
 export interface BrandedEmailContent {
   heading: string
   body: string
-  buttonLabel: string
-  buttonLink: string
+  /** The call to action; left out together (the email-change code has nothing to click). */
+  buttonLabel?: string
+  buttonLink?: string
   footnote: string
   /** The note box's title; the 🔒 security note when left out (the welcome email uses its own). */
   noteTitle?: string
@@ -57,8 +58,8 @@ export function renderBrandedEmail(params: { lang: Lang; origin: string } & Bran
   const align = isRtl ? 'right' : 'left'
   // The security note's accent border sits on the reading-start side.
   const startBorder = isRtl ? 'border-right' : 'border-left'
-  const link = escapeHtml(buttonLink)
-  const label = escapeHtml(buttonLabel)
+  const link = escapeHtml(buttonLink ?? '')
+  const label = escapeHtml(buttonLabel ?? '')
   const supportHref = escapeHtml(`mailto:${SUPPORT_EMAIL}`)
   const year = new Date().getFullYear()
 
@@ -108,7 +109,7 @@ export function renderBrandedEmail(params: { lang: Lang; origin: string } & Bran
             <td bgcolor="#FFFFFF" dir="${dir}" style="padding:24px 40px 0 40px;background-color:#FFFFFF;text-align:${align};font-family:${FONT_STACK};">
 ${detailsHtml}
             </td>
-          </tr>` : ''}
+          </tr>` : ''}${buttonLink ? `
           <tr>
             <td align="center" bgcolor="#FFFFFF" style="padding:32px 40px 8px 40px;background-color:#FFFFFF;">
               <!--[if mso]>
@@ -127,7 +128,7 @@ ${detailsHtml}
               <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#64748B;">${escapeHtml(t.email_linkFallback)}</p>
               <p dir="ltr" style="margin:0;font-size:13px;line-height:20px;word-break:break-all;text-align:${align};"><a href="${link}" target="_blank" style="color:#2563EB;text-decoration:underline;">${link}</a></p>
             </td>
-          </tr>
+          </tr>` : ''}
           <tr>
             <td bgcolor="#FFFFFF" style="padding:28px 40px 40px 40px;background-color:#FFFFFF;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}">

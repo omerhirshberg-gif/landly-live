@@ -14,10 +14,21 @@ import { colors, radius } from '../theme'
 // The email row's "Change" panel in the Profile tab (email+password members
 // only; web: components/profile/ChangeEmailForm.tsx). The current password
 // is checked first (re-authentication, as ChangePassword does), then
-// /api/account/change-email sends the confirmation link to the new address;
-// the account keeps its current email until that link is opened, and the
-// amber notice takes over meanwhile.
-export default function ChangeEmailForm({ user, onSent, onCancel }: { user: User; onSent: () => void; onCancel: () => void }) {
+// /api/account/change-email emails a 6-digit code to the new address and
+// onSent opens the code sheet (OtpSheet); the account keeps its current
+// email until the code is entered, and the amber notice takes over meanwhile.
+export default function ChangeEmailForm({
+  user,
+  pendingEmail,
+  onSent,
+  onCancel,
+}: {
+  user: User
+  /** The address already waiting for its code, if any. */
+  pendingEmail: string
+  onSent: (email: string, resendIn: number) => void
+  onCancel: () => void
+}) {
   const { t, lang } = useLang()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,7 +55,11 @@ export default function ChangeEmailForm({ user, onSent, onCancel }: { user: User
     setBusy(false)
     if (result.ok) {
       setPassword('')
-      onSent()
+      onSent(result.pendingEmail, result.resendIn)
+    } else if (result.reason === 'rateLimited' && result.retryAfter && newEmail.toLowerCase() === pendingEmail) {
+      // A code for this very address went out moments ago: enter that one.
+      setPassword('')
+      onSent(pendingEmail, result.retryAfter)
     } else {
       setError(t(contactChangeErrorKey(result.reason)))
     }

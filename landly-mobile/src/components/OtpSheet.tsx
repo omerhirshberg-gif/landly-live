@@ -8,11 +8,16 @@ import {
   CONTACT_CHANGE_FAILED,
   contactChangeErrorKey,
   requestPhoneChange,
+  resendEmailChange,
+  verifyEmailCode,
   verifyPhoneCode,
   type ContactChangeFailure,
+  type ContactChangeResult,
+  type EmailChangeStart,
+  type PhoneChangeStart,
 } from '@shared/account/contactChange'
 import { formatPhone } from '@shared/auth/onboarding'
-import { normalizeOtpInput, OTP_LENGTH } from '@shared/auth/otp'
+import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@shared/auth/otp'
 import { useResendCountdown } from '@shared/auth/useResendCountdown'
 import AppText from './AppText'
 import Button from './Button'
@@ -27,8 +32,9 @@ const ENTER_MS = 280
 const EXIT_MS = 220
 const FOCUS_DELAY_MS = ENTER_MS + 20
 
-// "Verify via WhatsApp" in the Profile tab (web: components/profile/OtpDialog.tsx):
-// the 6-digit code for a pending phone change, in a bottom sheet that slides
+// The 6-digit code for a pending change in the Profile tab (web:
+// components/profile/OtpDialog.tsx): "Verify via WhatsApp" for a new phone
+// number, or the code emailed to a new address, in a bottom sheet that slides
 // up over a fading scrim (Reanimated; still under the OS's reduced-motion
 // setting) and rides above the keyboard. The Modal stays up until the slide
 // out has finished. A Modal is its own layout root, so the language's
@@ -37,18 +43,18 @@ const FOCUS_DELAY_MS = ENTER_MS + 20
 // One real TextInput lies over six drawn boxes, so the iOS/Android
 // one-time-code suggestion, a pasted message and screen readers all meet a
 // single field; the sixth digit submits. "Paste" reads the clipboard for a
-// code copied out of WhatsApp. "Resend code" counts down 60 seconds. The
+// code copied out of WhatsApp or the email. "Resend code" counts down 60 seconds. The
 // whole sheet fits above the keyboard on a 4.7" iPhone SE.
 export default function OtpSheet({
   user,
-  phone,
+  target,
   resendIn,
   onClose,
   onVerified,
 }: {
   user: User
-  /** The pending E.164 number. */
-  phone: string
+  /** The pending E.164 number or email address. */
+  target: OtpTarget
   /** Seconds before "Resend code" is allowed (from the send that opened this). */
   resendIn: number
   onClose: () => void
@@ -86,8 +92,11 @@ export default function OtpSheet({
     if (!busy && shown) dismiss(onClose)
   }
 
+  const isEmail = target.kind === 'email'
+  const display = target.kind === 'email' ? target.email : formatPhone(target.phone)
+
   const failure = (result: ContactChangeFailure) => {
-    const message = t(contactChangeErrorKey(result.reason))
+    const message = t(contactChangeErrorKey(result.reason, target.kind))
     return result.reason === 'invalidCode' && result.attemptsLeft
       ? `${message} ${t('otp_attempts_left').replace('{count}', String(result.attemptsLeft))}`
       : message
@@ -100,7 +109,7 @@ export default function OtpSheet({
     setNotice(null)
     const result = await user
       .getIdToken()
-      .then((idToken) => verifyPhoneCode(idToken, value, API_BASE_URL))
+      .then<ContactChangeResult>((idToken) => (isEmail ? verifyEmailCode(idToken, value, API_BASE_URL) : verifyPhoneCode(idToken, value, API_BASE_URL)))
       .catch(() => CONTACT_CHANGE_FAILED)
     setBusy(false)
     if (result.ok) {
@@ -120,17 +129,22 @@ export default function OtpSheet({
     setNotice(null)
     const result = await user
       .getIdToken()
-      .then((idToken) => requestPhoneChange(idToken, { phone, lang, channel: 'whatsapp' }, API_BASE_URL))
+      .then<ContactChangeResult<EmailChangeStart> | ContactChangeResult<PhoneChangeStart>>((idToken) =>
+        target.kind === 'email'
+          ? resendEmailChange(idToken, lang, API_BASE_URL)
+          : requestPhoneChange(idToken, { phone: target.phone, lang, channel: 'whatsapp' }, API_BASE_URL)
+      )
       .catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
     if (result.ok) {
-      if (result.mode === 'direct') {
+      if ('mode' in result && result.mode === 'direct') {
         dismiss(onClose)
         return
       }
-      restart(result.resendIn)
+      restart('resendIn' in result ? result.resendIn : 0)
       setCode('')
-      setNotice(t('pending_phone_body').replace('{phone}', `⁦${formatPhone(phone)}⁩`))
+      // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
+      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t('pending_phone_body').replace('{phone}', `⁦${display}⁩`))
       inputRef.current?.focus()
       return
     }
@@ -169,10 +183,10 @@ export default function OtpSheet({
           >
             <View style={styles.handle} />
             <View style={styles.header}>
-              <View style={styles.badge}>
-                <LineIcon name="chat" size={20} color={colors.whatsapp} />
+              <View style={[styles.badge, isEmail && styles.badgeEmail]}>
+                <LineIcon name={isEmail ? 'mail' : 'chat'} size={20} color={isEmail ? colors.brand : colors.whatsapp} />
               </View>
-              <AppText accessibilityRole="header" style={styles.title}>{t('otp_title')}</AppText>
+              <AppText accessibilityRole="header" style={styles.title}>{t(isEmail ? 'otp_email_title' : 'otp_title')}</AppText>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('otp_close')}
@@ -185,8 +199,8 @@ export default function OtpSheet({
               </Pressable>
             </View>
             <AppText style={styles.subtitle}>
-              {t('otp_subtitle')}{' '}
-              <AppText style={styles.number}>{`⁦${formatPhone(phone)}⁩`}</AppText>
+              {t(isEmail ? 'otp_email_subtitle' : 'otp_subtitle')}{' '}
+              <AppText style={styles.number}>{`⁦${display}⁩`}</AppText>
             </AppText>
 
             <View style={styles.boxesWrap}>
@@ -265,6 +279,7 @@ const styles = StyleSheet.create({
   handle: { alignSelf: 'center', width: 32, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.whatsappBg, alignItems: 'center', justifyContent: 'center' },
+  badgeEmail: { backgroundColor: colors.brandLight },
   title: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.heading },
   closeButton: { width: 44, height: 44, marginEnd: -10, borderRadius: 22, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
   closePressed: { backgroundColor: colors.borderLight },
