@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import { endOfIsraelDay } from '@/lib/admin/expiryDate'
+import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
@@ -44,6 +46,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ error: 'Offer not found.' }, { status: 404 })
   }
   await ref.delete()
+  revalidateGuestHome()
   // Vouchers keep only the title and terms, never the image, so the banner can go.
   await deleteBannerByUrl(snap.data()?.imageUrl)
   return NextResponse.json({ deleted: true })
@@ -95,7 +98,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     originalPrice: offer.originalPrice,
     offerPrice: offer.offerPrice,
     imageUrl,
-    expiryDate: offer.expiryDate ? Timestamp.fromDate(new Date(offer.expiryDate)) : null,
+    expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,
     totalQuantity: offer.totalQuantity,
     isBestseller: !!offer.isBestseller,
     // Orders already created keep the terms they were shown (see initiateOrder).
@@ -105,6 +108,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     redemptionInstructions: redemption.redemptionInstructions,
     translations: translated.translations,
   })
+  revalidateGuestHome()
   // A replaced upload is never shown again (orders and vouchers don't copy images).
   const previousImageUrl = snap.data()?.imageUrl
   if (typeof previousImageUrl === 'string' && previousImageUrl !== imageUrl) await deleteBannerByUrl(previousImageUrl)

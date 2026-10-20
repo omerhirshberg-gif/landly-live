@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { isAddressStale, offerPlaceFields, parseGeoAddress, type GeoAddress } from '@/lib/geo'
 import { businessNameOverridesOf, parseBusinessTranslations } from '@/lib/business/businessText'
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     await batch.commit()
     updated += 1
   }
+  if (updated > 0) revalidateGuestHome()
   return NextResponse.json({
     checked,
     updated,

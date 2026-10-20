@@ -41,7 +41,7 @@ export default function SupportPage() {
       if (status === 'sent') setStatus('idle')
     }
 
-  // POSTs to /api/support, which emails team.landly@gmail.com with Reply-To
+  // POSTs to /api/support, which emails contact@golandly.com with Reply-To
   // set to the sender. Inputs are only cleared once the send succeeds.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

@@ -380,7 +380,7 @@ describe('mobile drawer: signed-out layout', () => {
     expect(d.indexOf('href="/settings"')).toBeGreaterThan(d.indexOf('href="/business"'))
     expect(d.indexOf('href="/login"')).toBeGreaterThan(d.indexOf('href="/settings"'))
     expect(d.indexOf('href="/signup"')).toBeGreaterThan(d.indexOf('href="/login"'))
-    expect(d.indexOf('team.landly@gmail.com')).toBeGreaterThan(d.indexOf('href="/signup"'))
+    expect(d.indexOf('contact@golandly.com')).toBeGreaterThan(d.indexOf('href="/signup"'))
     expect(d).toContain('<bdi>Landly</bdi>')
     expect(d).not.toContain('Ltd')
     // Guests get no Sign Out, and no loose legal links (they're on /settings).

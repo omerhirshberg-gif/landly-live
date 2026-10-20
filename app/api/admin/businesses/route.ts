@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import { endOfIsraelDay } from '@/lib/admin/expiryDate'
 import { isOfferActive } from '@/lib/admin/offerStatus'
+import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
@@ -182,7 +184,7 @@ export async function POST(request: Request) {
       category: business.category,
       createdAt: Timestamp.now(),
       isBestseller: !!offer.isBestseller,
-      expiryDate: offer.expiryDate ? Timestamp.fromDate(new Date(offer.expiryDate)) : null,
+      expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,
       totalQuantity: offer.totalQuantity,
       claimedCount: 0,
       validityDays: voucherTerms.validityDays,
@@ -196,6 +198,7 @@ export async function POST(request: Request) {
     await adminAuth.deleteUser(uid)
     return NextResponse.json({ error: 'Failed to create the business and offer records.' }, { status: 500 })
   }
+  revalidateGuestHome()
 
   return NextResponse.json({
     uid,

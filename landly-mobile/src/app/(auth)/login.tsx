@@ -101,6 +101,8 @@ export default function LoginScreen() {
   const [lastName, setLastName] = useState('')
   const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  // Optional and unticked by default (Israeli Spam Law / GDPR consent).
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   // The gate closes (`onboarding`) the moment sign-in finds onboarding
   // unfinished; the wizard itself only replaces the card once it has faded out.
@@ -217,7 +219,7 @@ export default function LoginScreen() {
     // Keeps the root layout from reacting to the brief unverified session.
     setChecking(true)
     try {
-      const result = await signUpCustomer({ firstName, lastName, agreedToTerms }, email.trim(), password, lang, API_BASE_URL)
+      const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang, API_BASE_URL)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -463,6 +465,9 @@ export default function LoginScreen() {
                           {signUpError === 'signup_termsRequired' && (
                             <AppText accessibilityRole="alert" style={styles.consentError}>{t('signup_termsRequired')}</AppText>
                           )}
+                          <View style={styles.marketing}>
+                            <Checkbox label={t('signup_marketing_optin')} checked={marketingOptIn} onChange={setMarketingOptIn} />
+                          </View>
                         </View>
                         <View style={styles.cta}>
                           <Button
@@ -593,6 +598,8 @@ const styles = StyleSheet.create({
   cta: { marginTop: 4 },
   consent: { marginTop: 4, marginBottom: 20 },
   consentError: { marginTop: 8, fontSize: 13, fontWeight: '600', color: colors.danger },
+  // 24 apart, so the two boxes' hitSlops (12 each way) never overlap.
+  marketing: { marginTop: 24 },
   // Centred in both directions (overrides AppText's reading-side alignment).
   disclosure: { marginTop: 12, fontSize: 12, lineHeight: 18, color: colors.textMuted, textAlign: 'center' },
   center: { textAlign: 'center' },

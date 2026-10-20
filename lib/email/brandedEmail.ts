@@ -26,6 +26,8 @@ export interface BrandedEmailContent {
   buttonLabel: string
   buttonLink: string
   footnote: string
+  /** The note box's title; the 🔒 security note when left out (the welcome email uses its own). */
+  noteTitle?: string
   /**
    * Extra rows between the body and the button (the order confirmation's
    * summary and perk card). Inserted verbatim, so the caller builds it from
@@ -48,7 +50,7 @@ export const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,He
 // white. Tables and inline styles only; the button has a VML twin because
 // Outlook on Windows ignores padding/radius on <a>.
 export function renderBrandedEmail(params: { lang: Lang; origin: string } & BrandedEmailContent): string {
-  const { lang, origin, heading, body, buttonLabel, buttonLink, footnote, detailsHtml } = params
+  const { lang, origin, heading, body, buttonLabel, buttonLink, footnote, noteTitle, detailsHtml } = params
   const t = translations[lang]
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
   const dir = isRtl ? 'rtl' : 'ltr'
@@ -131,7 +133,7 @@ ${detailsHtml}
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}">
                 <tr>
                   <td bgcolor="#F1F5F9" style="padding:16px 18px;background-color:#F1F5F9;border:1px solid #E2E8F0;${startBorder}:3px solid #2563EB;border-radius:10px;text-align:${align};font-family:${FONT_STACK};">
-                    <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;font-weight:700;color:#0F172A;">&#128274;&nbsp;${escapeHtml(t.email_securityTitle)}</p>
+                    <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;font-weight:700;color:#0F172A;">${noteTitle ? escapeHtml(noteTitle) : `&#128274;&nbsp;${escapeHtml(t.email_securityTitle)}`}</p>
                     <p style="margin:0;font-size:13px;line-height:20px;color:#475569;">${escapeHtml(footnote)}</p>
                   </td>
                 </tr>
@@ -141,7 +143,7 @@ ${detailsHtml}
           <tr>
             <td align="center" bgcolor="#FFFFFF" style="padding:24px 32px 32px 32px;background-color:#FFFFFF;border-top:1px solid #E2E8F0;border-radius:0 0 16px 16px;font-family:${FONT_STACK};">
               <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#64748B;">${escapeHtml(t.email_footerHelp)}</p>
-              <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;"><a href="${supportHref}" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(SUPPORT_EMAIL)}</a>&nbsp;&nbsp;<span style="color:#CBD5E1;">|</span>&nbsp;&nbsp;<a href="${escapeHtml(`${origin}/support`)}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(t.email_footerSupport)}</a></p>
+              <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;"><a href="${supportHref}" dir="ltr" style="color:#2563EB;text-decoration:none;font-weight:600;unicode-bidi:isolate;">${escapeHtml(SUPPORT_EMAIL)}</a>&nbsp;&nbsp;<span style="color:#CBD5E1;">|</span>&nbsp;&nbsp;<a href="${escapeHtml(`${origin}/support`)}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(t.email_footerSupport)}</a></p>
               <p style="margin:0;font-size:12px;line-height:18px;color:#94A3B8;">&copy; ${year} Landly. ${escapeHtml(t.footer_copyright_notice)}<br>${escapeHtml(t.footer_location)}</p>
             </td>
           </tr>
@@ -180,6 +182,13 @@ export async function sendBrandedEmail(
   const problem = emailConfigProblem()
   if (problem) throw new Error(problem)
 
-  const { error } = await getResend().emails.send({ from: process.env.EMAIL_FROM!, to, subject, html: renderBrandedEmail(content) })
+  // Replies from customers land in the team inbox, not the noreply sender.
+  const { error } = await getResend().emails.send({
+    from: process.env.EMAIL_FROM!,
+    to,
+    replyTo: SUPPORT_EMAIL,
+    subject,
+    html: renderBrandedEmail(content),
+  })
   if (error) throw new EmailProviderError(error.name, error.statusCode, error.message)
 }

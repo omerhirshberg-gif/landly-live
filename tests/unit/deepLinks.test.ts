@@ -23,7 +23,7 @@ describe('deep link mapping', () => {
     '/', '/perks', '/offers', '/member', 'landly://settings',
     '/offers/a/b', '/offers/..', '/offers/%2Fescape', '/offers/%E0%A4%A',
     'exp+landly-live://expo-development-client/?url=http%3A%2F%2F192.168.1.5%3A8081',
-    'mailto:team.landly@gmail.com',
+    'mailto:contact@golandly.com',
   ])('leaves %s alone', (link) => {
     expect(appPathForLink(link)).toBeNull()
   })

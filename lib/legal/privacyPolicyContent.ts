@@ -89,6 +89,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
       ul(
         ['Your phone / WhatsApp number, including country code, if you provide it.'],
         ['Your notification preference: whether you agreed to receive notifications. The app records only this yes/no choice; we do not currently store device push-notification tokens.'],
+        ['Your marketing email preference: whether you agreed to receive updates about perks, partners and community news, and when you made that choice.'],
       ),
       h3('Orders, vouchers and redemptions'),
       ul(
@@ -156,12 +157,14 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         [b('Providing the Service'), ': creating and managing your account, showing perks that match your member type, issuing vouchers and digital passes, processing orders and refunds (performance of our contract with you).'],
         [b('Account communications'), ': email verification, password resets, voucher and order confirmations and important service notices (performance of contract and our legitimate interest in operating the Service).'],
         [b('Notifications about perks'), ': only if you opted in, which you can change at any time (consent).'],
+        [b('Marketing emails'), ': updates on exclusive perks, new partners and community news, only if you opted in (consent).'],
         [b('Security and fraud prevention'), ': verifying accounts, rate-limiting abuse and protecting members and partner businesses (legitimate interests).'],
         [b('Customer support'), ': answering your questions and requests (performance of contract and legitimate interests).'],
         [b('Aliyah mentor matching'), ': only when you ask for a mentor, matching you with one and passing your request to that mentor (performance of our contract with you, at your request).'],
         [b('Legal compliance'), ': keeping transaction records required by tax and accounting law and responding to lawful requests (legal obligation).'],
       ),
       p('We do not use your information for automated decision-making that has legal or similarly significant effects on you, and we do not sell it or use it for third-party advertising.'),
+      p('You can stop marketing emails at any time by clicking the "Unsubscribe" link at the bottom of any marketing email, or by emailing ', EMAIL, '. Unsubscribing does not affect transactional emails we must send to run your account, such as email verification, password resets and voucher or order confirmations.'),
     ],
   },
   {
@@ -181,6 +184,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         [b('Google Maps Platform'), ': when you use "Near me", the city name for your approximate area. Your browser or device rounds your location to about one kilometre before it reaches our servers, and we never store it; sorting perks by distance happens on your device.'],
         [b('Vercel'), ': hosting of the website and our server functions, including request logs.'],
         [b('Resend'), ': delivery of transactional emails such as email verification, password resets and order confirmations, and of the messages you send through our support, business and mentor request forms to our team.'],
+        [b('Responder (Rav-Masar)'), ': delivery of our marketing emails and newsletters to members who opted in. Responder receives only your email address, name and preferred language, and uses them solely to send the updates you asked for.'],
         [b('Tranzila'), ': secure payment processing for paid offers.'],
         [b('Google Fonts and Cloudflare (cdnjs)'), ': delivery of fonts and icons used by the website. Your browser contacts these services directly, which reveals your IP address to them.'],
         [b('Apple App Store and Google Play'), ": distribution of the mobile apps. If you allow notifications, your device's operating system delivers them."],
@@ -227,10 +231,11 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
     title: 'Data retention',
     blocks: [
       ul(
-        [b('Account and profile data'), ' (including Google user data, member type, country of origin, region, phone number, preferences and wishlist) is kept for as long as your account exists and is deleted when you ask us to delete your account.'],
+        [b('Account and profile data'), ' (including Google user data, member type, country of origin, region, phone number, preferences (including your marketing email choice) and wishlist) is kept for as long as your account exists and is deleted when you ask us to delete your account.'],
         [b('Order, transaction and voucher records'), ' are kept for up to 7 years, as required by Israeli tax and bookkeeping law, and then deleted. During that period they are used only for legal, accounting and dispute purposes.'],
         [b('Support messages'), ' are kept as long as needed to resolve your request and handle any follow-up.'],
         [b('Mentor requests'), ' are kept as long as needed to match you with a mentor and handle any follow-up.'],
+        [b('Marketing mailing list'), ': if you unsubscribe or delete your account, we remove you from our marketing mailing list.'],
         [b('Server logs'), ' are kept for a short period by our hosting provider for security and troubleshooting.'],
       ),
     ],
@@ -260,7 +265,7 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         [b('Deletion'), ': ask us to delete your information, as described above;'],
         [b('Restriction and objection'), ': ask us to limit or stop certain processing;'],
         [b('Portability'), ': receive the information you gave us in a common, machine-readable format;'],
-        [b('Withdraw consent'), ': for example, turn off notifications, at any time and without affecting earlier processing; and'],
+        [b('Withdraw consent'), ': for example, turn off notifications or unsubscribe from marketing emails, at any time and without affecting earlier processing; and'],
         [b('Complain'), ': lodge a complaint with the Israeli Privacy Protection Authority or, in the EU/UK, with your local data protection authority.'],
       ),
       p('To exercise any of these rights, email ', EMAIL, '. We will respond within 30 days and will not discriminate against you for exercising them.'),

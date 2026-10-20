@@ -70,7 +70,7 @@ describe('privacy policy reflects what the product does today', () => {
     ['web', web],
     ['app', shared],
   ])('%s: offers the in-app deletion request alongside email', (_, text) => {
-    expect(text).toContain('Settings → Delete Account (or via the website settings), or by contacting our team at team.landly@gmail.com.')
+    expect(text).toContain('Settings → Delete Account (or via the website settings), or by contacting our team at contact@golandly.com.')
     expect(text).not.toMatch(/coming soon/i)
     expect(text).not.toContain('until then, email is the way to request deletion')
   })
@@ -85,5 +85,29 @@ describe('privacy policy reflects what the product does today', () => {
     expect(text).toContain(
       'Where in Israel you live, if you choose to tell us: one of North, Haifa & Krayot, Center, Tel Aviv & Gush Dan, Jerusalem or South, or that you are not in Israel yet.'
     )
+  })
+})
+
+describe('privacy policy covers marketing emails', () => {
+  const shared = normalize(PRIVACY_POLICY_SECTIONS.flatMap((s) => s.blocks.flatMap(blockTexts)).join(' '))
+
+  it.each([
+    ['web', web],
+    ['app', shared],
+  ])('%s: names Responder and the one-click unsubscribe, which spares transactional email', (_, text) => {
+    expect(text).toContain('Responder (Rav-Masar): delivery of our marketing emails and newsletters to members who opted in.')
+    expect(text).toContain('Responder receives only your email address, name and preferred language')
+    expect(text).toContain('clicking the "Unsubscribe" link at the bottom of any marketing email')
+    expect(text).toContain('Unsubscribing does not affect transactional emails')
+    expect(text).toContain('email verification, password resets and voucher or order confirmations')
+    expect(text).toContain('Marketing emails: updates on exclusive perks, new partners and community news, only if you opted in (consent).')
+  })
+
+  it.each([
+    ['web', web],
+    ['app', shared],
+  ])('%s: points every email contact at contact@golandly.com', (_, text) => {
+    const addresses = new Set(text.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g))
+    expect([...addresses]).toEqual(['contact@golandly.com'])
   })
 })

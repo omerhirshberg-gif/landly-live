@@ -31,7 +31,7 @@ describe('/api/business/inquiry', () => {
     expect((await post(valid)).status).toBe(200)
     expect(mocks.send).toHaveBeenCalledTimes(1)
     const email = mocks.send.mock.calls[0][0]
-    expect(email.to).toBe('team.landly@gmail.com')
+    expect(email.to).toBe('contact@golandly.com')
     expect(email.replyTo).toBe('avi@cafeyafo.co.il')
     expect(email.subject).toBe('[Landly Business Lead] Café Yafo — Avi Cohen')
     for (const value of ['Café Yafo', 'Avi Cohen', 'avi@cafeyafo.co.il', '+972 50-123-4567', 'Restaurants and Cafes', '10% off']) {

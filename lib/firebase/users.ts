@@ -19,6 +19,8 @@ export interface UserDocument {
   preferredLanguage: string
   /** The member allowed notifications during sign-up (no push tokens are stored yet). */
   notificationsOptIn: boolean
+  /** The member ticked the marketing email checkbox on the sign-up form; false for everyone else. */
+  marketingOptIn: boolean
   /** The onboarding cards were finished (users/{uid}.onboardingCompletedAt is set). */
   onboardingCompleted: boolean
   /** Download URL of the uploaded avatar (avatars/{uid}), or '' for none. */
@@ -59,6 +61,10 @@ export async function ensureUserDocument(
     customerType: '',
     wishlistOfferIds: [],
     preferredLanguage,
+    // Never opted in here: Google sign-ups don't see the sign-up form's
+    // marketing checkbox, and an email account only lands here if the
+    // server-side profile write failed, so its choice is lost, never invented.
+    marketingOptIn: false,
     createdAt: serverTimestamp(),
     // Only when this sign-in path showed the Terms/Privacy disclosure (Google),
     // which also has the member confirm they are 16 or older.
@@ -100,6 +106,7 @@ function toUserDocument(data: DocumentData): UserDocument {
     wishlistOfferIds: Array.isArray(data.wishlistOfferIds) ? data.wishlistOfferIds : [],
     preferredLanguage: data.preferredLanguage ?? 'en',
     notificationsOptIn: data.notificationsOptIn === true,
+    marketingOptIn: data.marketingOptIn === true,
     onboardingCompleted: data.onboardingCompletedAt != null,
     photoURL: typeof data.photoURL === 'string' ? data.photoURL : '',
     countryOfOrigin: isoCode(data.countryOfOrigin),

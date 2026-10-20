@@ -55,7 +55,14 @@ describe('signUpCustomer', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     await signUpCustomer(NAMES, 'new@example.com', 'secret123', 'fr', 'https://api.test')
     const init = fetchMock.mock.calls[0][1] as RequestInit
-    expect(JSON.parse(init.body as string)).toEqual({ lang: 'fr', firstName: 'Dana', lastName: 'Levi', agreedToTerms: false })
+    expect(JSON.parse(init.body as string)).toEqual({ lang: 'fr', firstName: 'Dana', lastName: 'Levi', agreedToTerms: false, marketingOptIn: false })
+  })
+
+  it('sends the marketing opt-in only when the box was ticked', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    await signUpCustomer({ ...NAMES, agreedToTerms: true, marketingOptIn: true }, 'new@example.com', 'secret123', 'he', 'https://api.test')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(init.body as string)).toMatchObject({ agreedToTerms: true, marketingOptIn: true })
   })
 
   it('passes the Terms/Privacy consent along with the names', async () => {

@@ -61,7 +61,7 @@ export default function BusinessPage() {
       if (status === 'sent') setStatus('idle')
     }
 
-  // POSTs to /api/business/inquiry, which emails team.landly@gmail.com with
+  // POSTs to /api/business/inquiry, which emails contact@golandly.com with
   // Reply-To set to the lead. Inputs are only cleared once the send succeeds.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

@@ -23,7 +23,7 @@ const fresh = client('contact-fresh')
 const OWNER = 'users/contact-owner'
 
 beforeAll(async () => {
-  await admin.doc(OWNER).set({ email: 'old@landly.test', phone: '+972501234567', pendingEmail: 'new@landly.test', pendingPhone: '+12025550123' })
+  await admin.doc(OWNER).set({ email: 'old@landly.test', phone: '+972501234567', pendingEmail: 'new@landly.test', pendingPhone: '+12025550123', welcomeEmailSent: true })
   await admin.doc('emailChangeRequests/contact-owner').set({ newEmail: 'new@landly.test', tokenHash: 'hash' })
   await admin.doc('phoneVerifications/contact-owner').set({ phone: '+12025550123', codeHash: 'hash', attempts: 0 })
 })
@@ -38,15 +38,21 @@ it('the member reads their pending change but can still edit ordinary fields and
   const snap = await getDoc(doc(owner, OWNER))
   expect(snap.data()).toMatchObject({ pendingEmail: 'new@landly.test', pendingPhone: '+12025550123' })
   await expect(updateDoc(doc(owner, OWNER), { israelRegion: 'center', phone: '+33612345678' })).resolves.toBeUndefined()
+  await expect(updateDoc(doc(owner, OWNER), { marketingOptIn: false })).resolves.toBeUndefined()
 })
 
-it('the account email and pending fields are server-only', async () => {
+it('the account email, pending fields and welcome-email flag are server-only', async () => {
   for (const patch of [
     { email: 'swap@landly.test' },
     { pendingEmail: 'attacker@landly.test' },
     { pendingEmail: deleteField() },
     { pendingPhone: '+447911123456' },
     { pendingPhoneRequestedAt: null },
+    { welcomeEmailSent: false },
+    { welcomeEmailSent: deleteField() },
+    { welcomeEmailSentAt: null },
+    { marketingOptInAt: null },
+    { marketingOptInSource: 'signup' },
   ]) {
     await expect(updateDoc(doc(owner, OWNER), patch), JSON.stringify(Object.keys(patch))).rejects.toMatchObject({ code: 'permission-denied' })
   }

@@ -36,6 +36,7 @@ export async function signUpCustomer(
       firstName: normalizePersonName(names.firstName),
       lastName: normalizePersonName(names.lastName),
       agreedToTerms: names.agreedToTerms,
+      marketingOptIn: names.marketingOptIn,
     })
     return { email: cred.user.email ?? email, idToken, send }
   } finally {

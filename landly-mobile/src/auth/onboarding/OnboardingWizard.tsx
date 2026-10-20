@@ -7,6 +7,7 @@ import { ONB } from '@shared/brand/onboardingMotion'
 import { auth } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
 import { completeOnboardingProfile } from '@shared/firebase/users'
+import { requestWelcomeEmail } from '@shared/auth/requestWelcomeEmail'
 import { useAuth } from '@shared/firebase/useAuth'
 import type { Lang, TranslationKey } from '@shared/i18n/translations'
 import AppText from '../../components/AppText'
@@ -15,6 +16,7 @@ import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import TextField from '../../components/TextField'
 import { useLang } from '../../i18n/LangProvider'
+import { API_BASE_URL } from '../../lib/env'
 import { requestNotificationPermission } from '../../lib/notificationPermission'
 import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
 import { isWeb, webOnly } from '../../lib/webStyles'
@@ -211,6 +213,8 @@ export default function OnboardingWizard({
         notificationsOptIn,
       })
       saveOnboardingDraft(uid, null)
+      // Not awaited: the welcome email never holds up the celebration card.
+      void requestWelcomeEmail(() => user.getIdToken(), API_BASE_URL)
       // The sign-in gate (`onboarding`) still holds the tabs back until "Let's explore".
       setOnboardingComplete(true)
       setBusy(null)

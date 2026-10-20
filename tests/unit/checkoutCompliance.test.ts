@@ -38,7 +38,7 @@ describe('checkout disclosures are translated', () => {
     expect(t.checkout_validity).toContain('{days}')
     expect(t.checkout_cancellation_body).toContain('{fee}')
     expect(t.checkout_cancellation_body).toContain('14')
-    expect(t.checkout_cancellation_body).toContain('team.landly@gmail.com')
+    expect(t.checkout_cancellation_body).toContain('contact@golandly.com')
     expect(t.voucher_valid_until).toContain('{date}')
     expect(t.voucher_expired_on).toContain('{date}')
   })
