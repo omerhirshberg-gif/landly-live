@@ -7,7 +7,15 @@ const mocks = vi.hoisted(() => ({
   user: null as Record<string, unknown> | null,
   update: vi.fn(),
   txFails: false,
+  addSubscriber: vi.fn(),
+  after: vi.fn(),
 }))
+// after() needs a request scope; here it records the callback and runs it at once.
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (task: () => unknown) => { mocks.after(task); void task() },
+}))
+vi.mock('@/lib/responder/addSubscriber', () => ({ addSubscriber: mocks.addSubscriber }))
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({
   requireVerifiedCustomerUid: mocks.uid,
@@ -75,6 +83,7 @@ beforeEach(() => {
   mocks.uid.mockResolvedValue('member-1')
   mocks.getUser.mockResolvedValue({ email: 'member@landly.test' })
   mocks.send.mockResolvedValue({ error: null })
+  mocks.addSubscriber.mockResolvedValue('created')
   mocks.user = { firstName: 'Dana', preferredLanguage: 'en', onboardingCompletedAt: at(Date.now() - 1000) }
 })
 
@@ -215,6 +224,38 @@ describe('welcome email route', () => {
     expect(mocks.user!.welcomeEmailSent).toBeUndefined()
     expect(error.mock.calls[0][0]).toContain('step=config')
     error.mockRestore()
+  })
+
+  it('adds a member who opted into marketing to Responder, once, with the verified address', async () => {
+    mocks.user!.marketingOptIn = true
+    await call()
+    await call()
+    expect(mocks.after).toHaveBeenCalledTimes(1)
+    expect(mocks.addSubscriber).toHaveBeenCalledTimes(1)
+    expect(mocks.addSubscriber).toHaveBeenCalledWith({ uid: 'member-1', email: 'member@landly.test', firstName: 'Dana' })
+  })
+
+  it('never adds a member who did not opt in', async () => {
+    await call()
+    mocks.user = { firstName: 'Dana', preferredLanguage: 'en', onboardingCompletedAt: at(Date.now() - 1000), marketingOptIn: 'yes' }
+    await call()
+    expect(mocks.send).toHaveBeenCalledTimes(2)
+    expect(mocks.after).not.toHaveBeenCalled()
+    expect(mocks.addSubscriber).not.toHaveBeenCalled()
+  })
+
+  it('does not wait on Responder: a hung sync still sends the welcome', async () => {
+    mocks.user!.marketingOptIn = true
+    mocks.addSubscriber.mockReturnValueOnce(new Promise(() => {}))
+    expect(await (await call()).json()).toEqual({ ok: true, sent: true })
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not sync when the welcome is skipped', async () => {
+    mocks.user!.marketingOptIn = true
+    mocks.user!.onboardingCompletedAt = at(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    await call()
+    expect(mocks.addSubscriber).not.toHaveBeenCalled()
   })
 
   it('answers the Expo web preflight from a loopback origin', async () => {

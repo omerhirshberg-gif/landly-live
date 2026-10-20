@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { requireVerifiedCustomerUid, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
@@ -6,6 +6,7 @@ import { sendWelcomeEmail } from '@/lib/email/sendWelcomeEmail'
 import { EmailProviderError, emailConfigProblem } from '@/lib/email/brandedEmail'
 import { corsHeaders } from '@/lib/auth/cors'
 import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
+import { addSubscriber } from '@/lib/responder/addSubscriber'
 
 // Only a member who finished onboarding this recently is welcomed, so the
 // route can never email members who onboarded before it existed.
@@ -35,6 +36,8 @@ function logFailure(step: Step, uid: string | null, err: unknown) {
 // firestore.rules, so a client can't reset it. A failed send releases the
 // claim; it's logged, not retried. The address comes from the Auth record,
 // the language and first name from the profile the wizard just wrote.
+// A member who ticked the sign-up marketing box is also added to the
+// Responder list here, now that the address is verified (lib/responder).
 // CORS for the app's Expo web build (lib/auth/cors.ts).
 export function OPTIONS(request: Request) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(request) })
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
   }
 
   const ref = getAdminDb().collection('users').doc(uid)
-  let profile: { lang: string; firstName: string } | null
+  let profile: { lang: string; firstName: string; marketingOptIn: boolean } | null
   let skipped: 'notOnboarded' | 'stale' | 'alreadySent' | null = null
   try {
     profile = await getAdminDb().runTransaction(async (tx) => {
@@ -87,6 +90,7 @@ export async function POST(request: Request) {
       return {
         lang: typeof data.preferredLanguage === 'string' ? data.preferredLanguage : 'en',
         firstName: typeof data.firstName === 'string' ? data.firstName : '',
+        marketingOptIn: data.marketingOptIn === true,
       }
     })
   } catch (err) {
@@ -111,6 +115,14 @@ export async function POST(request: Request) {
     logFailure('user', uid, err)
     await release()
     return reply({ error: 'Could not send welcome email.' }, 502)
+  }
+
+  // Run by after(), so it never holds or fails the welcome, yet the platform
+  // keeps the function alive until it settles (a bare floating promise can be
+  // frozen once the response is sent). It never throws and logs its own failures.
+  if (profile.marketingOptIn) {
+    const subscriber = { uid, email, firstName: profile.firstName }
+    after(() => addSubscriber(subscriber))
   }
 
   try {
