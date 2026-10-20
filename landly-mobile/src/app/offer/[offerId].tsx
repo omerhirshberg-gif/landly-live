@@ -9,9 +9,15 @@ import { useAuth } from '@shared/firebase/useAuth'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { formatLongDate, formatPrice } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
+import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
+import { offerTextSources } from '@shared/offers/offerText'
+import { offerFullAddress } from '@shared/geo'
 import AppText from '../../components/AppText'
+import ContentText from '../../components/ContentText'
+import TranslationNotice from '../../components/TranslationNotice'
 import Button from '../../components/Button'
 import LineIcon from '../../components/LineIcon'
+import NavigationButtons from '../../components/NavigationButtons'
 import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
@@ -85,10 +91,27 @@ export default function OfferScreen() {
   const saved = offer ? isWishlisted(offer.id) : false
   const remaining = offer && offer.totalQuantity !== null ? Math.max(offer.totalQuantity - offer.claimedCount, 0) : null
   const expired = !!offer?.expiryDate && offer.expiryDate.getTime() < now
+  // The admin's text in the reader's language, with "Show original" (web: the perk page).
+  const content = useLocalizedContent(offerTextSources(offer), offer?.translations, lang)
+  // The business name has its own translations; one "Show original" switch flips both.
+  const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
+  const businessName = nameContent.text('businessName')
+  const machine = content.machine || nameContent.machine
+  const showingOriginal = content.showingOriginal || nameContent.showingOriginal
+  const toggleOriginal = () => {
+    content.toggleOriginal()
+    nameContent.toggleOriginal()
+  }
+  const title = content.text('title')
+  const description = content.text('description')
+  const instructions = content.text('redemptionInstructions')
+  const terms = content.text('redemptionTerms')
+  // The full address as Google writes it in the reader's language.
+  const place = offer ? offerFullAddress(offer, lang) : ''
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={offer?.businessName ?? ''} fallback="/perks" />
+      <ScreenHeader title={businessName.text} fallback="/perks" />
       {offer === undefined ? (
         <ActivityIndicator color={colors.brand} style={styles.spinner} />
       ) : offer === null ? (
@@ -101,7 +124,7 @@ export default function OfferScreen() {
           <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
             <View style={styles.card}>
               <View style={styles.hero}>
-                <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />
+                <PerkImage uri={offer.imageUrl} category={offer.category} businessName={businessName.text} />
                 {discount > 0 && (
                   <View style={styles.discount}>
                     <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
@@ -131,21 +154,23 @@ export default function OfferScreen() {
                   </View>
                 </View>
 
-                <AppText style={styles.business}>{offer.businessName}</AppText>
-                <AppText style={styles.title} accessibilityRole="header">{offer.title}</AppText>
-                {!!offer.location && (
+                <AppText style={styles.business}>{businessName.text}</AppText>
+                <ContentText contentLang={title.lang} style={styles.title} accessibilityRole="header">{title.text}</ContentText>
+                {!!place && (
                   <View style={styles.location}>
                     <LineIcon name="pin" size={14} color={colors.textFaint} strokeWidth={2} />
-                    <AppText style={styles.locationText}>{offer.location}</AppText>
+                    <AppText style={styles.locationText}>{place}</AppText>
                   </View>
                 )}
+                <NavigationButtons destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: place || offer.location }} />
 
                 <View style={styles.priceRow}>
                   <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
                   {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}
                 </View>
 
-                {!!offer.description && <AppText style={styles.description}>{offer.description}</AppText>}
+                {!!description.text && <ContentText contentLang={description.lang} style={styles.description}>{description.text}</ContentText>}
+                {machine && <TranslationNotice showingOriginal={showingOriginal} onToggle={toggleOriginal} />}
 
                 {(offer.expiryDate || remaining !== null) && (
                   <View style={styles.facts}>
@@ -168,18 +193,19 @@ export default function OfferScreen() {
 
                 <View style={styles.divider} />
                 <AppText style={styles.howTitle} accessibilityRole="header">{t('redeem_how_title')}</AppText>
-                {redemptionSteps(offer.redemptionMethod, offer.redemptionInstructions, t).map((step, i) => (
+                {redemptionSteps(offer.redemptionMethod, instructions.text, t).map((step, i) => (
                   <View key={i} style={styles.step} accessibilityLabel={`${i + 1}. ${step}`} accessible>
                     <View style={styles.stepNumber}>
                       <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
                     </View>
-                    <AppText style={styles.stepText}>{step}</AppText>
+                    {/* The merchant's own steps are in the content's language; the standard ones in the app's. */}
+                    <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{step}</ContentText>
                   </View>
                 ))}
-                {!!offer.redemptionTerms && (
+                {!!terms.text && (
                   <>
                     <AppText style={styles.termsLabel} accessibilityRole="header">{t('voucher_redemption_terms_label')}</AppText>
-                    <AppText style={styles.terms}>{offer.redemptionTerms}</AppText>
+                    <ContentText contentLang={terms.lang} style={styles.terms}>{terms.text}</ContentText>
                   </>
                 )}
               </View>
@@ -259,7 +285,7 @@ const styles = StyleSheet.create({
   methodText: { fontSize: 12, fontWeight: '600', color: colors.body },
   business: { fontSize: 26, lineHeight: 32, fontWeight: '800', color: colors.heading, marginTop: 16 },
   title: { fontSize: 17, lineHeight: 24, fontWeight: '600', color: colors.text, marginTop: 6 },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  location: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
   locationText: { flex: 1, fontSize: 14, color: colors.textFaint },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   price: { fontSize: 28, fontWeight: '800', color: colors.brand },

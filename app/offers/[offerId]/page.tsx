@@ -20,6 +20,11 @@ import OfferGuestTeaser from '@/components/offers/OfferGuestTeaser'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
+import TranslationNotice from '@/components/ui/TranslationNotice'
+import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
+import { offerTextSources } from '@/lib/offers/offerText'
+import { offerFullAddress } from '@/lib/geo'
+import NavigationLinks from '@/components/offers/NavigationLinks'
 
 const DATE_LOCALE: Record<Lang, string> = {
   en: 'en-US',
@@ -63,6 +68,11 @@ export default function OfferDetailPage() {
     return () => { cancelled = true }
   }, [user, offerId])
 
+  // Before the early returns below: hooks run on every render.
+  const content = useLocalizedContent(offerTextSources(offer), offer?.translations, lang)
+  // The business name has its own translations (and source language); one "Show original" switch flips both.
+  const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
+
   if (offer === undefined) {
     return (
       <>
@@ -98,6 +108,18 @@ export default function OfferDetailPage() {
     : null
 
   const claimLoading = !!user && alreadyClaimed === null
+  const title = content.text('title')
+  const description = content.text('description')
+  const instructions = content.text('redemptionInstructions')
+  const terms = content.text('redemptionTerms')
+  const businessName = nameContent.text('businessName')
+  const address = offerFullAddress(offer, lang)
+  const machine = content.machine || nameContent.machine
+  const showingOriginal = content.showingOriginal || nameContent.showingOriginal
+  const toggleOriginal = () => {
+    content.toggleOriginal()
+    nameContent.toggleOriginal()
+  }
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const saved = isWishlisted(offer.id)
@@ -115,7 +137,7 @@ export default function OfferDetailPage() {
               purchase bar from sticking -- so the photo rounds its own top corners. */}
           <article className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
             <div className="relative aspect-[16/10] overflow-hidden rounded-t-3xl bg-brandTint">
-              <PerkImage src={offer.imageUrl} alt={offer.title} category={offer.category} businessName={offer.businessName} size="hero" />
+              <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={businessName.text} size="hero" />
               {user && (
                 <button
                   type="button"
@@ -140,18 +162,23 @@ export default function OfferDetailPage() {
 
               {/* The business is the page's heading (what members search and
                   recognise); the offer reads as its subtitle. */}
-              <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl" dir="auto">
-                {offer.businessName}
+              <h1 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl" lang={businessName.lang ?? undefined} dir="auto">
+                {businessName.text}
               </h1>
-              <p className="mt-2 text-lg font-semibold leading-snug text-body sm:text-xl" dir="auto">
-                {offer.title}
+              <p className="mt-2 text-lg font-semibold leading-snug text-body sm:text-xl" lang={title.lang ?? undefined} dir="auto">
+                {title.text}
               </p>
-              {offer.location && (
-                <p className="mt-2 flex items-center gap-1.5 text-sm text-[#94A3B8]">
-                  <i className="fa-solid fa-location-dot text-xs" aria-hidden="true"></i>
-                  <span dir="auto">{offer.location}</span>
+              {address && (
+                <p className="mt-2 flex items-start gap-1.5 text-sm text-[#94A3B8]">
+                  <i className="fa-solid fa-location-dot mt-[3px] text-xs" aria-hidden="true"></i>
+                  {/* The full address as Google writes it in the reader's language. */}
+                  <span className="min-w-0 break-words" dir="auto">{address}</span>
                 </p>
               )}
+              <NavigationLinks
+                className="mt-3"
+                destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }}
+              />
 
               <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <span className="text-3xl font-extrabold tracking-tight text-[#0038B8]" dir="ltr">{formatPrice(offer.offerPrice)}</span>
@@ -162,8 +189,11 @@ export default function OfferDetailPage() {
               </div>
 
               {/* Guests get a short version; members the whole text. */}
-              {offer.description && (
-                <p className={`mt-5 whitespace-pre-line text-[15px] leading-relaxed text-[#475569] ${user ? '' : 'line-clamp-4'}`} dir="auto">{offer.description}</p>
+              {description.text && (
+                <p className={`mt-5 whitespace-pre-line text-[15px] leading-relaxed text-[#475569] ${user ? '' : 'line-clamp-4'}`} lang={description.lang ?? undefined} dir="auto">{description.text}</p>
+              )}
+              {machine && (
+                <TranslationNotice className="mt-3" showingOriginal={showingOriginal} onToggle={toggleOriginal} />
               )}
 
               {(formattedExpiry || remaining !== null) && (
@@ -193,8 +223,10 @@ export default function OfferDetailPage() {
               <div className="border-t border-slate-100 px-5 py-6 sm:px-8 sm:py-7">
                 <HowToRedeem
                   method={offer.redemptionMethod}
-                  instructions={offer.redemptionInstructions}
-                  terms={offer.redemptionTerms}
+                  instructions={instructions.text}
+                  instructionsLang={instructions.lang}
+                  terms={terms.text}
+                  termsLang={terms.lang}
                   includePurchaseStep={!alreadyClaimed}
                   variant="section"
                 />

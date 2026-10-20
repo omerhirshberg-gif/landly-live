@@ -88,6 +88,8 @@ export async function initiateOrder(
         offerTitle: order.offerTitle, businessName: order.businessName,
         validityDays: normalizeValidityDays(order.validityDays ?? legacyOffer.validityDays),
         redemptionTerms: normalizeRedemptionTerms(order.redemptionTerms ?? legacyOffer.redemptionTerms),
+        translations: order.translations ?? null,
+        businessTranslations: order.businessTranslations ?? null,
         termsAccepted: termsAccepted || acceptTerms,
       }
     }
@@ -120,6 +122,12 @@ export async function initiateOrder(
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
       validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
+      // Frozen with the terms, so a later edit or re-translation never changes what was bought.
+      translations: offer.translations ?? null,
+      // The business's localized name and address, frozen the same way.
+      businessTranslations: offer.businessTranslations ?? null,
+      businessAddress: offer.address ?? null,
+      businessGeo: offer.geo ?? null,
       status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
     }
@@ -135,7 +143,8 @@ export async function initiateOrder(
     return {
       orderId: orderRef.id, amount, currency: 'ILS' as const, originalPrice,
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',
-      validityDays, redemptionTerms, termsAccepted: acceptTerms,
+      validityDays, redemptionTerms, translations: offer.translations ?? null,
+      businessTranslations: offer.businessTranslations ?? null, termsAccepted: acceptTerms,
     }
   })
 }

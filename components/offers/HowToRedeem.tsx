@@ -8,8 +8,11 @@ import { REDEMPTION_METHOD_ICONS } from '@/components/discover/RedemptionBadge'
 interface HowToRedeemProps {
   method: RedemptionMethod
   instructions: string
+  /** The language `instructions` is written in (translated or not), for lang on the merchant's steps. */
+  instructionsLang?: string | null
   /** The merchant's conditions (redemptionTerms), shown under the steps. */
   terms?: string
+  termsLang?: string | null
   /** On the offer page the member hasn't bought yet, so step one is buying it. */
   includePurchaseStep?: boolean
   /**
@@ -23,10 +26,12 @@ interface HowToRedeemProps {
 // merchant's own instructions, or the method's standard steps -- then any
 // conditions. Shared by the offer page and the web wallet; the Expo wallet
 // (landly-mobile VoucherPass) shows the same content.
-export default function HowToRedeem({ method, instructions, terms = '', includePurchaseStep = false, variant = 'card' }: HowToRedeemProps) {
+export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, includePurchaseStep = false, variant = 'card' }: HowToRedeemProps) {
   const { t } = useLang()
   const headingId = useId()
   const steps = [...(includePurchaseStep ? [t('redeem_step_buy')] : []), ...redemptionSteps(method, instructions, t)]
+  // The merchant's own steps are in the content's language; the standard ones in the reader's.
+  const stepLang = instructions.trim() ? instructionsLang ?? undefined : undefined
 
   return (
     <section
@@ -52,7 +57,7 @@ export default function HowToRedeem({ method, instructions, terms = '', includeP
             >
               {i + 1}
             </span>
-            <span className="pt-0.5 text-sm leading-relaxed text-[#475569]" dir="auto">
+            <span className="pt-0.5 text-sm leading-relaxed text-[#475569]" lang={includePurchaseStep && i === 0 ? undefined : stepLang} dir="auto">
               {step}
             </span>
           </li>
@@ -62,7 +67,7 @@ export default function HowToRedeem({ method, instructions, terms = '', includeP
       {terms && (
         <div className="mt-5 border-t border-[#F1F5F9] pt-4">
           <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-[#94A3B8]">{t('voucher_redemption_terms_label')}</h3>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-[#475569]" dir="auto">
+          <p className="whitespace-pre-line text-sm leading-relaxed text-[#475569]" lang={termsLang ?? undefined} dir="auto">
             {terms}
           </p>
         </div>

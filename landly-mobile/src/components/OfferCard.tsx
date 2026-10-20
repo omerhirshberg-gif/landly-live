@@ -6,7 +6,11 @@ import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/of
 import { REDEMPTION_METHOD_LABEL_KEYS, type RedemptionMethod } from '@shared/offers/redemption'
 import { formatPrice } from '@shared/format'
 import { useWishlist } from '@shared/firebase/useWishlist'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
+import { formatDistance, offerPlaceLabel } from '@shared/geo'
 import AppText from './AppText'
+import ContentText from './ContentText'
 import LineIcon, { type LineIconName } from './LineIcon'
 import PerkImage from './PerkImage'
 import { useLang } from '../i18n/LangProvider'
@@ -45,13 +49,20 @@ export default function OfferCard({
   onPress,
   showCategoryBadge = true,
   variant = 'standard',
+  distanceKm,
 }: {
   offer: OfferDocument
   onPress: () => void
   showCategoryBadge?: boolean
   variant?: OfferCardVariant
+  /** Kilometres from the member's location (Near me); shown before the place. */
+  distanceKm?: number | null
 }) {
-  const { t, isRtl } = useLang()
+  const { t, isRtl, lang } = useLang()
+  const title = localizeText(offer.title, offer.translations, lang, 'title')
+  const name = localizedBusinessName(offer, lang)
+  const place = offerPlaceLabel(offer, lang)
+  const distance = typeof distanceKm === 'number' ? formatDistance(distanceKm, lang) : null
   const compact = variant !== 'standard'
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
@@ -82,7 +93,7 @@ export default function OfferCard({
     >
       <Animated.View style={[styles.card, variant === 'carousel' && styles.cardCarousel, pressStyle]}>
         <View style={[styles.media, compact ? styles.mediaCompact : styles.mediaStandard]}>
-          <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />
+          <PerkImage uri={offer.imageUrl} category={offer.category} businessName={name.text} />
           {showCategoryBadge && tile && (
             <View style={[styles.overlay, styles.overlayStart, styles.category]}>
               <AppText style={[styles.categoryText, compact && styles.categoryTextCompact]} numberOfLines={1}>
@@ -115,10 +126,10 @@ export default function OfferCard({
         </View>
 
         <View style={[styles.body, compact && styles.bodyCompact]}>
-          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>{offer.businessName}</AppText>
-          <AppText style={[styles.title, compact && styles.titleCompact, variant === 'carousel' && styles.titleReserved]} numberOfLines={2}>
-            {offer.title}
-          </AppText>
+          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>{name.text}</AppText>
+          <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact, variant === 'carousel' && styles.titleReserved]} numberOfLines={2}>
+            {title.text}
+          </ContentText>
 
           {/* Compact: one line, the location giving way to the method. */}
           <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
@@ -126,10 +137,16 @@ export default function OfferCard({
               <LineIcon name={REDEMPTION_METHOD_ICONS[offer.redemptionMethod]} size={compact ? 12 : 13} color={colors.brand} strokeWidth={2.2} />
               <AppText style={[styles.methodText, compact && styles.metaTextCompact]}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
             </View>
-            {!!offer.location && (
+            {(!!place || !!distance) && (
               <View style={styles.location}>
-                <LineIcon name="pin" size={13} color={colors.textFaint} strokeWidth={2} />
-                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>{offer.location}</AppText>
+                <LineIcon name="pin" size={13} color={distance ? colors.brand : colors.textFaint} strokeWidth={2} />
+                {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
+                {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
+                {!!place && (
+                  <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
+                    {distance ? `· ${place}` : place}
+                  </AppText>
+                )}
               </View>
             )}
           </View>
@@ -235,6 +252,7 @@ const styles = StyleSheet.create({
   methodText: { fontSize: 12, fontWeight: '600', color: colors.body },
   location: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 1 },
+  distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // Price at the start, "View deal" at the end, on one row.
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10 },
   footerCompact: { gap: 8, marginTop: 8 },

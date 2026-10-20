@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { marqueeRepeats, pickMarqueeItems, type MarqueeItem, type ShowcaseOffer } from '@/lib/home/showcase'
 import { useLang } from '@/lib/i18n/useLang'
+import { localizedBusinessName } from '@/lib/business/businessText'
 import { useInView } from '@/lib/useInView'
 
 // Seconds per item, so a short or long stream drifts at about the same speed.
@@ -84,7 +85,7 @@ function StarOfDavid() {
 // discount follows it in emerald. Hebrew has no capitals, so it drops the
 // wide tracking.
 function TickerItem({ item }: { item: MarqueeItem }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   return (
     <Link
       href={item.href}
@@ -92,7 +93,7 @@ function TickerItem({ item }: { item: MarqueeItem }) {
     >
       {item.kind === 'offer' ? (
         <>
-          <bdi>{item.label}</bdi>
+          <bdi>{localizedBusinessName({ businessName: item.label, businessTranslations: item.businessTranslations }, lang).text}</bdi>
           {item.percent > 0 && <span className="text-[#047857]">{t('offer_percent_off').replace('{n}', String(item.percent))}</span>}
         </>
       ) : (

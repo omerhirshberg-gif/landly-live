@@ -9,6 +9,7 @@ import EmptyState from '@/components/admin/EmptyState'
 import { FilterChips, ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge from '@/components/admin/StatusBadge'
+import TranslateMissingButton from '@/components/admin/TranslateMissingButton'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 
 interface Business {
@@ -65,10 +66,21 @@ export default function BusinessesListPage() {
         title="Businesses"
         subtitle="Every partner business with a Landly login."
         actions={
-          <Link href="/admin/businesses/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
-            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-            Add new business
-          </Link>
+          <>
+            <TranslateMissingButton
+              className="w-full sm:w-auto"
+              endpoint="/api/admin/businesses/refresh"
+              label="Refresh addresses and translate names"
+              runningLabel="Refreshing…"
+              icon="fa-arrows-rotate"
+              noun={['business', 'businesses']}
+              doneVerb="updated"
+            />
+            <Link href="/admin/businesses/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
+              <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+              Add new business
+            </Link>
+          </>
         }
       />
 

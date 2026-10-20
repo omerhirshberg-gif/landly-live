@@ -703,3 +703,8 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
   .pass-anim[data-pass] .pass-card{box-shadow:0 25px 50px -12px rgba(0,56,184,.5);}
   .pass-anim[data-pass] .pass-shine{transform:translate3d(-120%,0,0);}
 }
+/* Dropdown lists that open under a field (the admin address suggestions, the
+   Near me area notice): a 120ms fade with a 4px rise. */
+@keyframes drop-in{from{opacity:0;transform:translate3d(0,-4px,0);}}
+.drop-in{animation:drop-in .12s ease-out;}
+@media (prefers-reduced-motion:reduce){.drop-in{animation:none;}}

@@ -4,11 +4,16 @@ import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/p
 import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/voucherTerms'
 import { normalizeImageUrl } from '../offers/imageUrl'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
+import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
+import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type PlaceSnapshot } from '../geo'
+import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
 
 export interface OfferDocument {
   id: string
   businessId: string
   businessName: string // denormalized
+  // The name in the other languages (lib/business/businessText.ts), copied from the business; null before its first translation.
+  businessTranslations?: BusinessTranslations | null
   location: string // denormalized from businesses/{businessId}.location
   imageUrl: string // externally-hosted image link, admin-pasted; empty = no image
   title: string
@@ -25,6 +30,11 @@ export interface OfferDocument {
   redemptionTerms: string // the merchant's conditions for using the voucher; '' = none stated
   redemptionMethod: RedemptionMethod // in store, online or by phone; 'in_store' for offers from before methods existed
   redemptionInstructions: string // the merchant's own steps, one per line; '' = the method's default steps
+  // The text fields in the other languages (lib/i18n/contentTranslation.ts); null before the first translation.
+  translations?: OfferTranslations | null
+  geo?: Coordinates | null // denormalized from businesses/{businessId}.address; null = not geocoded
+  city?: LocalizedName // denormalized like geo; {} when unknown
+  address?: PlaceSnapshot | null // denormalized like geo: the address lines in each language; null = not geocoded
 }
 
 function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
@@ -32,6 +42,7 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     id,
     businessId: (data.businessId as string) ?? '',
     businessName: (data.businessName as string) ?? '',
+    businessTranslations: parseBusinessTranslations(data.businessTranslations),
     location: (data.location as string) ?? '',
     // Normalized on read too, so links saved before the admin routes did it still render.
     imageUrl: normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : ''),
@@ -49,6 +60,10 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
     redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
     redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
+    translations: parseOfferTranslations(data.translations),
+    geo: parseCoordinates(data.geo),
+    city: parseLocalizedName(data.city),
+    address: parsePlaceSnapshot(data.address),
   }
 }
 

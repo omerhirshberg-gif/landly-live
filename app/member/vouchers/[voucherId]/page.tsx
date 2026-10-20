@@ -15,6 +15,10 @@ import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
 import { subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/vouchers'
+import TranslationNotice from '@/components/ui/TranslationNotice'
+import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
+import { localizedBusinessName } from '@/lib/business/businessText'
+import { offerTextSources } from '@/lib/offers/offerText'
 
 type Voucher = VoucherDocument & { id: string }
 
@@ -26,7 +30,7 @@ type Voucher = VoucherDocument & { id: string }
 // turns into the "already redeemed" notice in place. Back returns to My
 // Pass; the browser's back and edge swipe do the same.
 export default function VoucherPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { user, loading } = useAuth()
   // Onboarding first: a member mid-wizard is sent back to it.
   const held = useOnboardingGuard()
@@ -55,6 +59,11 @@ export default function VoucherPage() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [offerId])
+
+  // The voucher's own frozen translation, not the live offer's.
+  const content = useLocalizedContent(offerTextSources(voucher), voucher?.translations, lang)
+  const title = content.text('title')
+  const instructions = content.text('redemptionInstructions')
 
   if (loading || !user || held || voucher === undefined) {
     return (
@@ -89,8 +98,11 @@ export default function VoucherPage() {
                 {offer && <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} size="hero" />}
               </div>
               <div className="p-5 sm:p-7">
-                <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight text-ink break-words" dir="auto">{voucher.businessName}</h1>
-                <p className="mt-1 text-base font-semibold text-slate-600" dir="auto">{voucher.offerTitle}</p>
+                <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight text-ink break-words" dir="auto">{localizedBusinessName(voucher, lang).text}</h1>
+                <p className="mt-1 text-base font-semibold text-slate-600" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
+                {content.machine && (
+                  <TranslationNotice className="mt-1" showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />
+                )}
                 <RedemptionBadge method={voucher.redemptionMethod} className="mt-3" />
 
                 {voucher.status === 'active' ? (
@@ -110,11 +122,11 @@ export default function VoucherPage() {
 
                 {/* Conditions stay in VoucherTerms below, so they aren't shown twice. */}
                 <div className="mt-6 border-t border-slate-100 pt-6">
-                  <HowToRedeem method={voucher.redemptionMethod} instructions={voucher.redemptionInstructions} variant="inline" />
+                  <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" />
                 </div>
                 {(voucher.expiresAt || voucher.redemptionTerms) && (
                   <div className="mt-6 border-t border-slate-100 pt-6">
-                    <VoucherTerms voucher={voucher} />
+                    <VoucherTerms voucher={voucher} terms={content.text('redemptionTerms')} />
                   </div>
                 )}
                 {/* Vouchers issued before order numbering have none to show. */}

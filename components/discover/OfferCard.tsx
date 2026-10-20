@@ -7,6 +7,9 @@ import { useWishlist } from '@/lib/firebase/useWishlist'
 import { CATEGORY_TILES } from '@/lib/categories'
 import { getOfferDiscountPercent, type OfferDocument } from '@/lib/firebase/offers'
 import { formatPrice } from '@/lib/format'
+import { localizeText } from '@/lib/i18n/contentTranslation'
+import { localizedBusinessName } from '@/lib/business/businessText'
+import { formatDistance, offerPlaceLabel } from '@/lib/geo'
 import DiscountBadge from './DiscountBadge'
 import PerkImage from './PerkImage'
 import RedemptionBadge from './RedemptionBadge'
@@ -27,6 +30,8 @@ interface OfferCardProps {
   layout?: 'rail' | 'grid'
   /** The category pill on the photo. Off in a list already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
+  /** Kilometres from the member's location (Near me), shown before the place; undefined without one. */
+  distanceKm?: number | null
 }
 
 // A perk: photo (or branded fallback) with its category badge, then the
@@ -36,8 +41,12 @@ interface OfferCardProps {
 // phone's card stuck raised. Compact, so a phone's feed shows more than one
 // perk per screen: a 2:1 photo, tight padding, and the price sharing one row
 // with the CTA. Same anatomy as the Expo app's OfferCard.
-export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', showCategoryBadge = true }: OfferCardProps) {
-  const { t } = useLang()
+export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', showCategoryBadge = true, distanceKm }: OfferCardProps) {
+  const { t, lang } = useLang()
+  const title = localizeText(offer.title, offer.translations, lang, 'title')
+  const name = localizedBusinessName(offer, lang)
+  const place = offerPlaceLabel(offer, lang)
+  const hasDistance = typeof distanceKm === 'number'
   const rail = layout === 'rail'
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
@@ -54,7 +63,7 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
     >
       {/* A full-width card on a phone gets a wide photo (2:1, capped at 180px, as in the Expo app) so the image doesn't crowd out the text; a rail card a short fixed one. */}
       <div className={`relative overflow-hidden bg-[#F0F7FF] ${rail ? 'h-[124px]' : 'aspect-[2/1] max-h-[180px] md:aspect-[16/10] md:max-h-none'}`}>
-        <PerkImage src={offer.imageUrl} alt={offer.title} category={offer.category} businessName={offer.businessName} />
+        <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={name.text} />
         {showCategoryBadge && tile && (
           <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0B1B3D] shadow-sm">
             {t(tile.labelKey)}
@@ -86,20 +95,23 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
       </div>
 
       <div className={`flex flex-1 flex-col ${rail ? 'p-3' : 'p-3 sm:p-4'}`}>
-        <div className={`truncate font-bold leading-snug text-[#0B1B3D] ${rail ? 'text-[15px]' : 'text-base'}`} dir="auto">
-          {offer.businessName}
+        <div className={`truncate font-bold leading-snug text-[#0B1B3D] ${rail ? 'text-[15px]' : 'text-base'}`} lang={name.lang ?? undefined} dir="auto">
+          {name.text}
         </div>
         {/* A rail keeps two lines reserved so neighbouring cards line up; a grid row stretches its cards anyway. */}
-        <p className={`mt-0.5 line-clamp-2 leading-snug text-[#475569] ${rail ? 'min-h-[2.5em] text-[13px]' : 'text-sm'}`} dir="auto">
-          {offer.title}
+        <p className={`mt-0.5 line-clamp-2 leading-snug text-[#475569] ${rail ? 'min-h-[2.5em] text-[13px]' : 'text-sm'}`} lang={title.lang ?? undefined} dir="auto">
+          {title.text}
         </p>
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <RedemptionBadge method={offer.redemptionMethod} />
-          {offer.location && (
+          {(place || hasDistance) && (
             <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] text-[#94A3B8]">
               <i className="fa-solid fa-location-dot text-[10px]" aria-hidden="true"></i>
-              <span className="truncate" dir="auto">{offer.location}</span>
+              {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
+              {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 font-semibold text-[#0038B8]">{formatDistance(distanceKm, lang)}</bdi>}
+              {hasDistance && place && <span aria-hidden="true">·</span>}
+              {place && <span className="truncate" dir="auto">{place}</span>}
             </span>
           )}
         </div>

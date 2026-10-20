@@ -8,6 +8,9 @@ import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { offerPlaceFields } from '@/lib/geo'
+import { parseBusinessTranslations } from '@/lib/business/businessText'
+import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 
 interface RequestBody {
   businessUid: string
@@ -25,6 +28,8 @@ interface RequestBody {
     redemptionMethod?: string
     redemptionInstructions?: string
   }
+  /** The admin's own translations, per language and field (lib/translate/offerTranslations.ts). */
+  translationOverrides?: unknown
 }
 
 function badRequest(message: string) {
@@ -94,12 +99,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Business not found.' }, { status: 404 })
   }
   const business = businessSnap.data()!
+  const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), null, body.translationOverrides)
+  if (!translated.ok) return badRequest(translated.error)
 
   const offerRef = adminDb.collection('offers').doc()
   await offerRef.set({
     businessId: businessUid,
     businessName: business.businessName ?? '',
-    location: business.location ?? '',
+    businessTranslations: parseBusinessTranslations(business.translations),
+    ...offerPlaceFields(business),
     imageUrl,
     title: offer.title,
     description: offer.description,
@@ -115,11 +123,13 @@ export async function POST(request: Request) {
     redemptionTerms: voucherTerms.redemptionTerms,
     redemptionMethod: redemption.redemptionMethod,
     redemptionInstructions: redemption.redemptionInstructions,
+    translations: translated.translations,
   })
 
   return NextResponse.json({
     offerId: offerRef.id,
     offerTitle: offer.title,
     businessName: business.businessName ?? '',
+    translationWarning: translated.warning,
   })
 }

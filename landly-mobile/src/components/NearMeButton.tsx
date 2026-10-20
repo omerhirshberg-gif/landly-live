@@ -8,7 +8,13 @@ import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { actionTint, colors, radius } from '../theme'
 
-type GeoState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable'
+type GeoState = 'idle' | 'requesting' | 'denied' | 'unavailable'
+
+// The whole request, permission prompt included, gives up after this.
+const GUARD_MS = 20_000
+
+const withTimeout = <T,>(promise: Promise<T>): Promise<T> =>
+  Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), GUARD_MS))])
 
 const tint = actionTint
 
@@ -21,16 +27,20 @@ const LABEL_MIN_WIDTH = 640
 // the width; on wide native windows (tablets, landscape) it shows the label
 // too. Not on the Expo web build: there every screen sits in a 480px phone
 // column ((tabs)/_layout.web.tsx) however wide the browser is. It asks for
-// the location while
-// the app is in use (never in the background), turns solid brand blue once it
-// has one, and a second tap clears it. Problems go to `onError` so the screen
-// can show them under the row. Once the system won't ask again, a tap opens
-// the app's Settings instead.
+// the location while the app is in use (never in the background), and is
+// solid brand blue while the screen has a location (`active`: the member's,
+// or an area they picked); a tap then clears it. Before asking, it checks
+// the device's location services: off on Android, the system's "turn on
+// location" dialog is offered; off on iOS, the note says so. Problems go to
+// `onError` so the screen can show them, with the area picker, under the
+// row. Once the system won't ask again, a tap opens the app's Settings.
 export default function NearMeButton({
+  active,
   onLocate,
   onClear,
   onError,
 }: {
+  active: boolean
   onLocate: (coords: Coordinates) => void
   onClear: () => void
   onError: (message: string | null) => void
@@ -39,8 +49,13 @@ export default function NearMeButton({
   const [state, setState] = useState<GeoState>('idle')
   const [canAskAgain, setCanAskAgain] = useState(true)
 
+  const fail = (next: GeoState, message: string) => {
+    setState(next)
+    onError(message)
+  }
+
   const locate = async () => {
-    if (state === 'granted') {
+    if (active) {
       setState('idle')
       onError(null)
       onClear()
@@ -53,28 +68,29 @@ export default function NearMeButton({
     setState('requesting')
     onError(null)
     try {
-      const permission = await Location.requestForegroundPermissionsAsync()
+      if (Platform.OS !== 'web' && !(await Location.hasServicesEnabledAsync())) {
+        // Android can switch location on from a system dialog; iOS only from Settings.
+        const enabled = Platform.OS === 'android' && (await Location.enableNetworkProviderAsync().then(() => true, () => false))
+        if (!enabled) return fail('unavailable', t('geo_off'))
+      }
+      const permission = await withTimeout(Location.requestForegroundPermissionsAsync())
       if (!permission.granted) {
         setCanAskAgain(permission.canAskAgain)
-        setState('denied')
-        onError(t('mobile_geo_denied'))
-        return
+        return fail('denied', t('mobile_geo_denied'))
       }
       // A recent fix answers instantly; otherwise wait for a fresh one.
       const position =
         (await Location.getLastKnownPositionAsync({ maxAge: 5 * 60_000 })) ??
-        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
-      setState('granted')
+        (await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })))
+      setState('idle')
       onLocate({ lat: position.coords.latitude, lng: position.coords.longitude })
-    } catch {
-      setState('unavailable')
-      onError(t('mobile_geo_unavailable'))
+    } catch (error) {
+      fail('unavailable', t(error instanceof Error && error.message === 'timeout' ? 'geo_timeout' : 'mobile_geo_unavailable'))
     }
   }
 
   const { width } = useWindowDimensions()
   const showLabel = Platform.OS !== 'web' && width >= LABEL_MIN_WIDTH
-  const active = state === 'granted'
   return (
     <Pressable
       accessibilityRole="button"

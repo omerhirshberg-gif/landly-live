@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@shared/categories'
 import { getAllOffers, isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
-import type { Coordinates } from '@shared/geo'
+import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@shared/geo'
 import {
   filterAndSortPerks,
   hasActivePerkFilters,
@@ -12,11 +12,14 @@ import {
   parseCategoryFilter,
   parsePerkSort,
   DEFAULT_PERK_SORT,
+  offerDistanceKm,
+  sortByNearest,
   type CategoryFilter,
   type PerkSort,
 } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
+import AreaPicker from '../../components/AreaPicker'
 import CategoryGrid from '../../components/CategoryGrid'
 import NearMeButton from '../../components/NearMeButton'
 import Notice from '../../components/Notice'
@@ -28,6 +31,7 @@ import SortSheet from '../../components/SortSheet'
 import WishlistButton from '../../components/WishlistButton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
+import { API_BASE_URL } from '../../lib/env'
 import { colors, type } from '../../theme'
 
 // The searchable catalog: the same offers collection the website reads. With
@@ -53,11 +57,14 @@ export default function PerksScreen() {
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  // Captured but not yet applied to the list, same as the website: offers
-  // only carry a display-string `location`, so there is nothing to sort by
-  // distance until businesses get real coordinates.
-  const [, setUserLocation] = useState<Coordinates | null>(null)
+  // Near me (web: /categories): the member's location, or an area picked
+  // when there is none. It orders the list nearest-first and shows a Nearby
+  // section on the overview; it never leaves the device except rounded to
+  // ~1 km for the city name (lib/geo.ts reverseGeocode).
+  const [origin, setOrigin] = useState<{ coords: Coordinates; area: Area | null } | null>(null)
   const [geoError, setGeoError] = useState<string | null>(null)
+  const [geocodedPlace, setGeocodedPlace] = useState<string | null>(null)
+  const originCoords = origin?.coords ?? null
 
   // Pull-to-refresh reloads; the first load runs in the effect below.
   const load = useCallback(async () => {
@@ -106,15 +113,32 @@ export default function PerksScreen() {
   // A search across All also surfaces the categories it names.
   const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   const visible = useMemo(
-    () => (browsing || !offers ? [] : filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang)),
+    () => (browsing || !offers ? [] : filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang, originCoords)),
     // `t` changes identity every render; `lang` covers what it depends on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [browsing, offers, appliedQuery, category, sort, lang]
+    [browsing, offers, appliedQuery, category, sort, lang, originCoords]
   )
   // The overview's two rails: sold-out offers left out, bestsellers then newest.
   const railOffers = useMemo(() => (offers ? sortFeaturedOffers(offers.filter(isOfferAvailable)) : []), [offers])
   const newOffers = useMemo(() => railOffers.filter((offer) => isOfferNew(offer.createdAt)), [railOffers])
   const bestsellerOffers = useMemo(() => railOffers.filter((offer) => offer.isBestseller), [railOffers])
+  const areas = useMemo(() => deriveAreas(railOffers), [railOffers])
+  const nearby = useMemo(
+    () => (originCoords ? sortByNearest(railOffers.filter((offer) => offer.geo), originCoords).slice(0, 12) : null),
+    [railOffers, originCoords]
+  )
+  useEffect(() => {
+    setGeocodedPlace(null)
+    if (!originCoords || origin?.area) return
+    let cancelled = false
+    reverseGeocode(originCoords, lang, API_BASE_URL).then((city) => {
+      if (!cancelled) setGeocodedPlace(city)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [originCoords, origin?.area, lang])
+  const placeName = origin?.area ? localizedName(origin.area.name, lang) : geocodedPlace
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
   // The screen title names the selected category (web: the /categories h1),
   // so the results heading only names a search, or "All" for a sort over
@@ -131,7 +155,9 @@ export default function PerksScreen() {
       <FlatList
         data={visible}
         keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={category === 'all'} />}
+        renderItem={({ item }) => (
+          <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={category === 'all'} distanceKm={offerDistanceKm(item, originCoords)} />
+        )}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -144,13 +170,29 @@ export default function PerksScreen() {
             </AppText>
             <View style={styles.searchRow}>
               <PerksSearchField value={query} onChangeText={setQuery} />
-              <NearMeButton onLocate={setUserLocation} onClear={() => setUserLocation(null)} onError={setGeoError} />
+              <NearMeButton
+                active={!!origin}
+                onLocate={(coords) => setOrigin({ coords, area: null })}
+                onClear={() => setOrigin(null)}
+                onError={setGeoError}
+              />
               <WishlistButton />
             </View>
-            {geoError && (
-              <AppText accessibilityLiveRegion="polite" style={styles.geoError}>
-                {geoError}
-              </AppText>
+            {geoError && !origin && (
+              <View style={styles.geoNotice}>
+                <AppText accessibilityLiveRegion="polite" style={styles.geoError}>
+                  {geoError}
+                </AppText>
+                {areas.length > 0 && (
+                  <AreaPicker
+                    areas={areas}
+                    onPick={(area) => {
+                      setGeoError(null)
+                      setOrigin({ coords: area.center, area })
+                    }}
+                  />
+                )}
+              </View>
             )}
 
             {/* Listing only. Chips scroll out from under the start edge; Sort stays
@@ -164,6 +206,27 @@ export default function PerksScreen() {
             )}
 
             {failed && <Notice message={t('mobile_load_error')} />}
+
+            {browsing && nearby && (
+              <View style={styles.nearby} accessibilityLiveRegion="polite">
+                <AppText accessibilityRole="header" style={styles.sectionTitle}>
+                  {t('discover_nearby_title')}
+                </AppText>
+                {!!placeName && (
+                  <AppText style={styles.nearbyPlace}>{t('discover_nearby_place').replace('{place}', `\u2068${placeName}\u2069`)}</AppText>
+                )}
+                {nearby.length === 0 ? (
+                  <View style={styles.nearbyEmpty}>
+                    <AppText style={styles.emptyTitle}>{t('geo_nearby_empty_title')}</AppText>
+                    <AppText style={styles.emptySub}>{t('geo_nearby_empty_sub')}</AppText>
+                  </View>
+                ) : (
+                  nearby.map((offer) => (
+                    <OfferCard key={offer.id} offer={offer} onPress={() => openOffer(offer)} distanceKm={offerDistanceKm(offer, originCoords)} />
+                  ))
+                )}
+              </View>
+            )}
 
             {browsing && (
               <>
@@ -227,7 +290,11 @@ const styles = StyleSheet.create({
   // Search, Near Me and the wishlist heart share one 44pt row; the two 44pt
   // icon squares sit at the reading-direction end and the field takes the rest.
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  geoError: { marginTop: -6, fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },
+  geoNotice: { marginTop: -6, gap: 10 },
+  geoError: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },
+  nearby: { gap: 4 },
+  nearbyPlace: { fontSize: 14, lineHeight: 20, color: colors.body, marginBottom: 8 },
+  nearbyEmpty: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
   filterRow: { flexDirection: 'row', alignItems: 'center' },
   // Bleed to the start edge only; the rail's own end padding is the gap before the divider.
   chips: { flex: 1, minWidth: 0, marginHorizontal: 0, marginStart: -16 },

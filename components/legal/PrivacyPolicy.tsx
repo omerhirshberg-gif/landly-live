@@ -11,7 +11,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_DISPLAY } from '@/li
 // analytics, push tokens, in-app deletion -- update the matching section and
 // PRIVACY_POLICY_UPDATED.
 
-export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-18', label: 'October 18, 2026' }
+export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-20', label: 'October 20, 2026' }
 
 const MAIL = `mailto:${SUPPORT_EMAIL}`
 
@@ -340,8 +340,14 @@ export default function PrivacyPolicy() {
         </p>
         <List>
           <li>
-            <strong>Google Firebase and Google Cloud</strong> (Firebase Authentication, Cloud Firestore): account
-            sign-in and secure storage of account, profile, order and voucher data.
+            <strong>Google Firebase and Google Cloud</strong> (Firebase Authentication, Cloud Firestore, Cloud Storage):
+            account sign-in and secure storage of account, profile, order and voucher data and of profile photos. Cloud
+            Translation translates the text of partner offers; no member data is sent to it.
+          </li>
+          <li>
+            <strong>Google Maps Platform</strong>: when you use &quot;Near me&quot;, the city name for your approximate
+            area. Your browser or device rounds your location to about one kilometre before it reaches our servers, and
+            we never store it; sorting perks by distance happens on your device.
           </li>
           <li>
             <strong>Vercel</strong>: hosting of the website and our server functions, including request logs.

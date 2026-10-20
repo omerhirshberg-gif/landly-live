@@ -41,7 +41,7 @@ const PHONE = a(SUPPORT_WHATSAPP_DISPLAY, SUPPORT_PHONE_TEL)
 const GOOGLE_PERMISSIONS = a('myaccount.google.com/permissions', 'https://myaccount.google.com/permissions')
 
 export const PRIVACY_POLICY_TITLE = 'Privacy Policy'
-export const PRIVACY_POLICY_UPDATED_LABEL = 'October 18, 2026'
+export const PRIVACY_POLICY_UPDATED_LABEL = 'October 20, 2026'
 
 export const PRIVACY_POLICY_INTRO: PolicyInline[] = [
   'Landly is a lifestyle and growth perks club for people living in, moving to or visiting Israel. This Privacy Policy explains what personal information we collect when you use Landly, why we collect it, who we share it with, how long we keep it, and the choices and rights you have. We collect only what we need to run the service, we do not sell your personal information, and we do not use advertising or analytics trackers.',
@@ -177,7 +177,8 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
     blocks: [
       p('We use the following trusted providers to run the Service. They process personal information only on our instructions and under contractual confidentiality and security obligations:'),
       ul(
-        [b('Google Firebase and Google Cloud'), ' (Firebase Authentication, Cloud Firestore): account sign-in and secure storage of account, profile, order and voucher data.'],
+        [b('Google Firebase and Google Cloud'), ' (Firebase Authentication, Cloud Firestore, Cloud Storage): account sign-in and secure storage of account, profile, order and voucher data and of profile photos. Cloud Translation translates the text of partner offers; no member data is sent to it.'],
+        [b('Google Maps Platform'), ': when you use "Near me", the city name for your approximate area. Your browser or device rounds your location to about one kilometre before it reaches our servers, and we never store it; sorting perks by distance happens on your device.'],
         [b('Vercel'), ': hosting of the website and our server functions, including request logs.'],
         [b('Resend'), ': delivery of transactional emails such as email verification, password resets and order confirmations, and of the messages you send through our support, business and mentor request forms to our team.'],
         [b('Tranzila'), ': secure payment processing for paid offers.'],

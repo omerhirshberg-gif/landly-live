@@ -1,4 +1,7 @@
 import { normalizeImageUrl } from './imageUrl'
+import { parseOfferTranslations, type OfferTranslations } from './offerText'
+import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { localizeText } from '../i18n/contentTranslation'
 
 // The public face of an offer for search engines and share cards (sitemap,
 // JSON-LD, the perk page's metadata): only what the perk page itself shows
@@ -9,12 +12,14 @@ export interface PublicOffer {
   title: string
   description: string
   businessName: string
+  businessTranslations?: BusinessTranslations | null
   category: string
   imageUrl: string
   offerPrice: number
   originalPrice: number
   createdAt: Date | null
   expiryDate: Date | null
+  translations?: OfferTranslations | null
 }
 
 const SEO_DESCRIPTION_MAX = 160
@@ -38,12 +43,14 @@ export function toPublicOffer(id: string, data: Record<string, unknown> | undefi
     title,
     description: str(data.description),
     businessName: str(data.businessName),
+    businessTranslations: parseBusinessTranslations(data.businessTranslations),
     category: str(data.category),
     imageUrl: normalizeImageUrl(str(data.imageUrl)),
     offerPrice: Number(data.offerPrice) || 0,
     originalPrice: Number(data.originalPrice) || 0,
     createdAt: toDate(data.createdAt),
     expiryDate: toDate(data.expiryDate),
+    translations: parseOfferTranslations(data.translations),
   }
 }
 
@@ -60,4 +67,18 @@ export function offerSeoDescription(offer: PublicOffer): string {
   const cut = text.slice(0, SEO_DESCRIPTION_MAX - 1)
   const lastSpace = cut.lastIndexOf(' ')
   return `${(lastSpace > 100 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`
+}
+
+/**
+ * The offer with its title and description in English when it has an
+ * English translation: search results and share cards are rendered on the
+ * server, which doesn't know the reader's language, and the site's default
+ * language is English. An offer written in English is unchanged.
+ */
+export function offerInEnglish(offer: PublicOffer): PublicOffer {
+  return {
+    ...offer,
+    title: localizeText(offer.title, offer.translations, 'en', 'title').text,
+    description: localizeText(offer.description, offer.translations, 'en', 'description').text,
+  }
 }

@@ -100,6 +100,11 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       status: 'active', takenAt: now, redeemedAt: null,
       expiresAt: Timestamp.fromMillis(voucherExpiresAtMs(now.toMillis(), validityDays)),
       redemptionTerms, redemptionMethod, redemptionInstructions,
+      // The order's frozen copy; orders from before translations existed have none.
+      translations: order.translations ?? null,
+      businessTranslations: order.businessTranslations ?? null,
+      businessAddress: order.businessAddress ?? null,
+      businessGeo: order.businessGeo ?? null,
       paymentTransactionKey: receiptRef.id,
       orderNumber, displayOrderNumber,
     })

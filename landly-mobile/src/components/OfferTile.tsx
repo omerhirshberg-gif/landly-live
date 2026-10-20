@@ -2,7 +2,10 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
 import { formatPrice } from '@shared/format'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
+import ContentText from './ContentText'
 import PerkImage from './PerkImage'
 import { useLang } from '../i18n/LangProvider'
 import { TILE_RAIL_TILE_HEIGHT } from '../lib/carousel'
@@ -18,7 +21,9 @@ const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 // its rail slot gives it; rows follow the root view's direction, so Hebrew puts
 // the photo on the right. Same anatomy as the website's components/discover/OfferTile.tsx.
 export default function OfferTile({ offer, onPress }: { offer: OfferDocument; onPress: () => void }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const title = localizeText(offer.title, offer.translations, lang, 'title')
+  const name = localizedBusinessName(offer, lang)
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
 
   // Press feedback: a slight spring scale, skipped under Reduce Motion.
@@ -32,7 +37,7 @@ export default function OfferTile({ offer, onPress }: { offer: OfferDocument; on
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[offer.businessName, offer.title, formatPrice(offer.offerPrice)].filter(Boolean).join(', ')}
+      accessibilityLabel={[name.text, title.text, formatPrice(offer.offerPrice)].filter(Boolean).join(', ')}
       onPress={onPress}
       onPressIn={() => pressTo(0.98)}
       onPressOut={() => pressTo(1)}
@@ -40,7 +45,7 @@ export default function OfferTile({ offer, onPress }: { offer: OfferDocument; on
     >
       <Animated.View style={[styles.card, pressStyle]}>
         <View style={styles.media}>
-          <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />
+          <PerkImage uri={offer.imageUrl} category={offer.category} businessName={name.text} />
           {discount > 0 && (
             <View style={styles.discount}>
               <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
@@ -49,11 +54,11 @@ export default function OfferTile({ offer, onPress }: { offer: OfferDocument; on
         </View>
         <View style={styles.body}>
           <AppText style={styles.business} numberOfLines={1}>
-            {offer.businessName}
+            {name.text}
           </AppText>
-          <AppText style={styles.title} numberOfLines={2}>
-            {offer.title}
-          </AppText>
+          <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>
+            {title.text}
+          </ContentText>
           <View style={styles.priceRow}>
             <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
             {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}

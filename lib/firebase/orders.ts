@@ -1,6 +1,9 @@
 import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from './config'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
+import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
+import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
 
 // refunded: a paid order cancelled through support (admin-set, Admin SDK only).
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
@@ -25,6 +28,12 @@ export interface OrderDocument {
   // null while pending, and for orders settled before numbering existed.
   orderNumber: number | null
   displayOrderNumber: string | null // "#1001"
+  // The offer's translated text as it was at purchase (lib/offers/offerText.ts); null for older ones.
+  translations?: OfferTranslations | null
+  // The business's name in other languages and its address, as they were at purchase; null for older ones.
+  businessTranslations?: BusinessTranslations | null
+  businessAddress?: PlaceSnapshot | null
+  businessGeo?: Coordinates | null
 }
 
 function toDoc(data: Record<string, unknown>): OrderDocument {
@@ -42,6 +51,10 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     voucherId: typeof data.voucherId === 'string' ? data.voucherId : null,
     orderNumber: isOrderNumber(data.orderNumber) ? data.orderNumber : null,
     displayOrderNumber: normalizeDisplayOrderNumber(data.displayOrderNumber),
+    translations: parseOfferTranslations(data.translations),
+    businessTranslations: parseBusinessTranslations(data.businessTranslations),
+    businessAddress: parsePlaceSnapshot(data.businessAddress),
+    businessGeo: parseCoordinates(data.businessGeo),
   }
 }
 

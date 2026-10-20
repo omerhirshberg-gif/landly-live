@@ -3,6 +3,9 @@ import { db } from './config'
 import { normalizeRedemptionTerms } from '../payments/voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
+import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
+import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
 
 // refunded: cancelled through support after purchase (set by an admin, never
 // by a client); it leaves the wallet like a redeemed one, but was never used.
@@ -27,6 +30,12 @@ export interface VoucherDocument {
   // Its order's sequential number ("#1001"); null for vouchers issued before numbering existed.
   orderNumber: number | null
   displayOrderNumber: string | null
+  // The offer's translated text as it was at purchase (lib/offers/offerText.ts); null for older ones.
+  translations?: OfferTranslations | null
+  // The business's name in other languages and its address, as they were at purchase; null for older ones.
+  businessTranslations?: BusinessTranslations | null
+  businessAddress?: PlaceSnapshot | null
+  businessGeo?: Coordinates | null
 }
 
 // What a voucher's QR code encodes -- shared so the web member area and the
@@ -62,6 +71,10 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
     orderNumber: isOrderNumber(data.orderNumber) ? data.orderNumber : null,
     displayOrderNumber: normalizeDisplayOrderNumber(data.displayOrderNumber),
+    translations: parseOfferTranslations(data.translations),
+    businessTranslations: parseBusinessTranslations(data.businessTranslations),
+    businessAddress: parsePlaceSnapshot(data.businessAddress),
+    businessGeo: parseCoordinates(data.businessGeo),
   }
 }
 

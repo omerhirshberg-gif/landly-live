@@ -7,6 +7,8 @@ import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { deleteBannerByUrl } from '@/lib/storage/banners'
+import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 
 interface PatchBody {
   offer: {
@@ -23,6 +25,8 @@ interface PatchBody {
     redemptionMethod?: string
     redemptionInstructions?: string
   }
+  /** The admin's own translations; a field left out goes back to Cloud Translation. */
+  translationOverrides?: unknown
 }
 
 function badRequest(message: string) {
@@ -40,10 +44,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ error: 'Offer not found.' }, { status: 404 })
   }
   await ref.delete()
+  // Vouchers keep only the title and terms, never the image, so the banner can go.
+  await deleteBannerByUrl(snap.data()?.imageUrl)
   return NextResponse.json({ deleted: true })
 }
 
-// Never touches claimedCount, businessId, businessName, location, category, or
+// Never touches claimedCount, businessId, businessName, location, geo, city, category, or
 // createdAt — those are either denormalized from the business, immutable, or
 // (for category/business reassignment) a separate, more sensitive operation
 // not supported by this form.
@@ -80,6 +86,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   if (offer.totalQuantity !== null && offer.totalQuantity < claimedCount) {
     return badRequest(`offer.totalQuantity can't be less than the ${claimedCount} claim(s) this offer already has.`)
   }
+  const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), snap.data()?.translations, body.translationOverrides)
+  if (!translated.ok) return badRequest(translated.error)
 
   await ref.update({
     title: offer.title,
@@ -95,7 +103,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     redemptionTerms: voucherTerms.redemptionTerms,
     redemptionMethod: redemption.redemptionMethod,
     redemptionInstructions: redemption.redemptionInstructions,
+    translations: translated.translations,
   })
+  // A replaced upload is never shown again (orders and vouchers don't copy images).
+  const previousImageUrl = snap.data()?.imageUrl
+  if (typeof previousImageUrl === 'string' && previousImageUrl !== imageUrl) await deleteBannerByUrl(previousImageUrl)
 
-  return NextResponse.json({ updated: true })
+  return NextResponse.json({ updated: true, translationWarning: translated.warning })
 }

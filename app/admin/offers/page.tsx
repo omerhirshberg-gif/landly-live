@@ -12,6 +12,7 @@ import PageHeader from '@/components/admin/PageHeader'
 import OfferPrice from '@/components/admin/OfferPrice'
 import { OfferStatusBadge } from '@/components/admin/StatusBadge'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import TranslateMissingButton from '@/components/admin/TranslateMissingButton'
 
 interface Offer {
   id: string
@@ -69,10 +70,13 @@ export default function OffersListPage() {
         title="Offers"
         subtitle="All perks across every business."
         actions={
-          <Link href="/admin/offers/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
-            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-            Add new offer
-          </Link>
+          <>
+            <TranslateMissingButton className="w-full sm:w-auto" />
+            <Link href="/admin/offers/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
+              <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+              Add new offer
+            </Link>
+          </>
         }
       />
 

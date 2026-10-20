@@ -11,6 +11,9 @@ import ConsentText from '@/components/auth/entrance/ConsentText'
 import PerkImage from '@/components/discover/PerkImage'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import { useLang } from '@/lib/i18n/useLang'
+import { localizeText } from '@/lib/i18n/contentTranslation'
+import { localizedBusinessName } from '@/lib/business/businessText'
+import type { OfferTranslations } from '@/lib/offers/offerText'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
@@ -28,6 +31,7 @@ interface OrderSummary {
   businessName: string
   validityDays: number
   redemptionTerms: string
+  translations?: OfferTranslations | null
   termsAccepted: boolean
   /** A local development sandbox order (lib/payments/devSandbox.ts). */
   sandbox: boolean
@@ -56,7 +60,7 @@ async function initiate(idToken: string, offerId: string, acceptTerms: boolean, 
 // method come from the live offer, for show only. On phones the Pay bar
 // sticks to the bottom of the screen, clear of the home indicator.
 function CheckoutContent() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { user, loading } = useAuth()
   // Onboarding first: a member mid-wizard is sent back to it.
   const held = useOnboardingGuard()
@@ -238,8 +242,8 @@ function CheckoutContent() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{order.businessName}</div>
-                      <h2 className="mt-1 text-lg font-bold leading-snug text-ink" dir="auto">{order.offerTitle}</h2>
+                      <div className="text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                      <h2 className="mt-1 text-lg font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</h2>
                       {offer && <RedemptionBadge method={offer.redemptionMethod} className="mt-2" />}
                     </div>
                   </div>
@@ -286,7 +290,7 @@ function CheckoutContent() {
                     {order.redemptionTerms && (
                       <div className="mt-3 rounded-xl bg-slate-50 p-3">
                         <h3 className="text-xs font-bold text-slate-700 mb-1">{t('voucher_redemption_terms_label')}</h3>
-                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line" dir="auto">{order.redemptionTerms}</p>
+                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line" dir="auto">{localizeText(order.redemptionTerms, order.translations, lang, 'redemptionTerms').text}</p>
                       </div>
                     )}
                   </section>

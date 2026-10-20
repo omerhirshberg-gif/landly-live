@@ -8,6 +8,8 @@ import { getOffer, type OfferDocument } from '@shared/firebase/offers'
 import { subscribeToOrder, type OrderDocument } from '@shared/firebase/orders'
 import { formatPrice, priceDifference } from '@shared/format'
 import { orderReference } from '@shared/payments/orderNumber'
+import { localizeText } from '@shared/i18n/contentTranslation'
+import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Confetti from '../../components/Confetti'
@@ -33,7 +35,7 @@ const CHECK_IN = ZoomIn.springify().damping(12).stiffness(140)
 // home indicator: the voucher (its id is the order's), My Pass, or back to
 // exploring.
 export default function OrderSuccessScreen() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
   const { orderId } = useLocalSearchParams<{ orderId: string }>()
   // undefined while loading; null when missing or someone else's (rules deny both alike).
@@ -105,8 +107,8 @@ export default function OrderSuccessScreen() {
                   {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
                 </View>
                 <View style={styles.perkText}>
-                  <AppText style={styles.business} numberOfLines={1}>{order.businessName}</AppText>
-                  <AppText style={styles.perkTitle}>{order.offerTitle}</AppText>
+                  <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                  <AppText style={styles.perkTitle}>{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
                 </View>
               </View>
               <View style={styles.paidRow}>

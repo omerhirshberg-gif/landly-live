@@ -6,7 +6,11 @@ import RevealableText, { CopyButton } from '@/components/admin/RevealableText'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Link from 'next/link'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
-import OfferFormFields, { EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import AddressAutocomplete from '@/components/admin/AddressAutocomplete'
+import type { GeoAddress } from '@/lib/geo'
+import type { BusinessNameOverrides } from '@/lib/business/businessText'
+import BusinessNameTranslations from '@/components/admin/BusinessNameTranslations'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
@@ -22,6 +26,7 @@ interface SuccessResult {
   businessName: string
   loginEmail: string
   loginPassword: string
+  translationWarning?: string | null
 }
 
 const emptyForm = {
@@ -29,6 +34,8 @@ const emptyForm = {
   businessId: '',
   category: BUSINESS_CATEGORIES[0] as string,
   location: '',
+  address: null as GeoAddress | null,
+  businessNameOverrides: {} as BusinessNameOverrides,
   loginEmail: '',
   loginPassword: '',
   title: '',
@@ -41,6 +48,7 @@ const emptyForm = {
   unlimited: false,
   isBestseller: false,
   ...EMPTY_VOUCHER_TERMS,
+  ...EMPTY_OFFER_TRANSLATIONS,
 }
 
 export default function NewBusinessPage() {
@@ -51,7 +59,7 @@ export default function NewBusinessPage() {
 
   const update = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
-  const updateOffer = (key: keyof OfferFormValue, value: string | boolean) => update(key, value as never)
+  const updateOffer = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) => update(key, value as never)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +82,7 @@ export default function NewBusinessPage() {
             businessId: form.businessId,
             category: form.category,
             location: form.location,
+            address: form.address,
             loginEmail: form.loginEmail,
             loginPassword: form.loginPassword,
           },
@@ -88,6 +97,8 @@ export default function NewBusinessPage() {
             isBestseller: form.isBestseller,
             ...voucherTermsPayload(form),
           },
+          translationOverrides: form.translationOverrides,
+          businessNameOverrides: form.businessNameOverrides,
         }),
       })
       const data = await res.json()
@@ -139,6 +150,12 @@ export default function NewBusinessPage() {
           </dl>
         </Card>
 
+        {result.translationWarning && (
+          <Alert tone="warning" className="mt-6">
+            {result.translationWarning}
+          </Alert>
+        )}
+
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link href={`/admin/offers/new?businessUid=${result.uid}`} className={PRIMARY_BUTTON}>
             <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
@@ -173,6 +190,14 @@ export default function NewBusinessPage() {
               <label htmlFor="biz-name" className={ADMIN_LABEL}>Business name</label>
               <input id="biz-name" required dir="auto" className={ADMIN_INPUT} value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
             </div>
+            <div className="sm:col-span-2">
+              <BusinessNameTranslations
+                name={form.businessName}
+                stored={null}
+                overrides={form.businessNameOverrides}
+                onChange={(next) => update('businessNameOverrides', next)}
+              />
+            </div>
             <div>
               <label htmlFor="biz-id" className={ADMIN_LABEL}>Business ID (ח.פ)</label>
               <input id="biz-id" required inputMode="numeric" dir="ltr" className={ADMIN_INPUT} value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
@@ -186,8 +211,12 @@ export default function NewBusinessPage() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label htmlFor="biz-location" className={ADMIN_LABEL}>Location</label>
-              <input id="biz-location" required dir="auto" className={ADMIN_INPUT} placeholder="City / address" value={form.location} onChange={(e) => update('location', e.target.value)} />
+              <AddressAutocomplete
+                id="biz-location"
+                required
+                value={{ text: form.location, address: form.address }}
+                onChange={({ text, address }) => setForm((prev) => ({ ...prev, location: text, address }))}
+              />
             </div>
           </div>
         </FormSection>
