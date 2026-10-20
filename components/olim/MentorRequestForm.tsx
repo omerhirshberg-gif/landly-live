@@ -50,7 +50,7 @@ export default function MentorRequestForm({ user }: { user: User }) {
     }
 
   // POSTs to /api/mentor/inquiry with the member's ID token; the route emails
-  // team.landly@gmail.com with Reply-To set to the account email. Inputs are
+  // contact@golandly.com with Reply-To set to the account email. Inputs are
   // only cleared once the send succeeds.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

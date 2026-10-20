@@ -26,7 +26,7 @@ describe('footer', () => {
   it.each(LANGS)('links About Us, then what the navbar does not — FAQ, legal and the business portal (%s)', (lang) => {
     const html = render(lang)
     const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]).filter((h) => !h.startsWith('http'))
-    expect(hrefs).toEqual(['/about', '/support#faq', '/terms', '/privacy', '/business/login', 'mailto:team.landly@gmail.com'])
+    expect(hrefs).toEqual(['/about', '/support#faq', '/terms', '/privacy', '/business/login', 'mailto:contact@golandly.com'])
     expect(html).toContain(`>${translations[lang].footer_about}</a>`)
     expect(html).toContain(translations[lang].footer_biz_login)
   })
@@ -45,7 +45,7 @@ describe('footer', () => {
 
   it('shows the contact email and location exactly once', () => {
     const html = render('en')
-    expect(html.split('team.landly@gmail.com').length - 1).toBe(2) // href + label
+    expect(html.split('contact@golandly.com').length - 1).toBe(2) // href + label
     expect(html.split(translations.en.footer_location).length - 1).toBe(1)
   })
 

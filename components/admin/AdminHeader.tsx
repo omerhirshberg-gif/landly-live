@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import AdminEnvironmentBadge from './AdminEnvironmentBadge'
 import Breadcrumbs from './Breadcrumbs'
 import LiveClock from './LiveClock'
 import { getAdminPageTitle } from '@/lib/admin/pageTitle'
@@ -37,7 +38,8 @@ export default function AdminHeader({ menuOpen, onOpenMenu, menuButtonRef }: Adm
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <AdminEnvironmentBadge />
           <div className="md:hidden">
             <LiveClock compact />
           </div>

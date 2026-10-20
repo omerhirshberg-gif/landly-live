@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { offerPlaceFields, parseGeoAddress } from '@/lib/geo'
 import { deleteBannerByUrl } from '@/lib/storage/banners'
@@ -66,6 +67,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
     batch.update(doc.ref, { businessName: fields.businessName, businessTranslations: translated.translations, category: fields.category, ...place })
   }
   await batch.commit()
+  revalidateGuestHome()
 
   return NextResponse.json({
     updated: true,
@@ -116,6 +118,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ u
       error: 'The login account was removed, but deleting the business and offer records failed. They need manual cleanup in Firestore -- the email is already freed for reuse.',
     }, { status: 500 })
   }
+  revalidateGuestHome()
   await Promise.all(offersSnap.docs.map((doc) => deleteBannerByUrl(doc.data().imageUrl)))
 
   return NextResponse.json({ deletedOfferCount: offersSnap.size })

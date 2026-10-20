@@ -36,12 +36,15 @@ const PATH = '/api/auth/send-verification'
 //
 // `names` is sent only with the first request after sign-up: the route
 // stores them on the new profile (the unverified client can't write it),
-// along with the Terms/Privacy consent given on the sign-up form.
+// along with the Terms/Privacy consent and the marketing choice given on
+// the sign-up form.
 export interface SignUpNames {
   firstName: string
   lastName: string
   /** The sign-up form's Terms of Service / Privacy Policy checkbox. */
   agreedToTerms?: boolean
+  /** The sign-up form's optional marketing email checkbox (unticked by default). */
+  marketingOptIn?: boolean
 }
 
 export async function requestVerificationEmail(
@@ -52,7 +55,15 @@ export async function requestVerificationEmail(
 ): Promise<VerificationSendResult> {
   const base = normalizeApiBaseUrl(apiBaseUrl)
   const body = JSON.stringify(
-    names ? { lang, firstName: names.firstName, lastName: names.lastName, agreedToTerms: names.agreedToTerms === true } : { lang }
+    names
+      ? {
+          lang,
+          firstName: names.firstName,
+          lastName: names.lastName,
+          agreedToTerms: names.agreedToTerms === true,
+          marketingOptIn: names.marketingOptIn === true,
+        }
+      : { lang }
   )
   const first = await post(`${base}${PATH}`, idToken, body, !!base)
   if (first !== 'redirected') return first

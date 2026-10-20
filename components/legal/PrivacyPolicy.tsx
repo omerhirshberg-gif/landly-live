@@ -175,6 +175,10 @@ export default function PrivacyPolicy() {
             Your notification preference: whether you agreed to receive notifications. The app records only this
             yes/no choice; we do not currently store device push-notification tokens.
           </li>
+          <li>
+            Your marketing email preference: whether you agreed to receive updates about perks, partners and community
+            news, and when you made that choice.
+          </li>
         </List>
 
         <H3>Orders, vouchers and redemptions</H3>
@@ -303,6 +307,10 @@ export default function PrivacyPolicy() {
             (consent).
           </li>
           <li>
+            <strong>Marketing emails</strong>: updates on exclusive perks, new partners and community news, only if
+            you opted in (consent).
+          </li>
+          <li>
             <strong>Security and fraud prevention</strong>: verifying accounts, rate-limiting abuse and protecting
             members and partner businesses (legitimate interests).
           </li>
@@ -322,6 +330,11 @@ export default function PrivacyPolicy() {
         <p>
           We do not use your information for automated decision-making that has legal or similarly significant
           effects on you, and we do not sell it or use it for third-party advertising.
+        </p>
+        <p>
+          You can stop marketing emails at any time by clicking the &quot;Unsubscribe&quot; link at the bottom of any
+          marketing email, or by emailing <Email />. Unsubscribing does not affect transactional emails we must send to
+          run your account, such as email verification, password resets and voucher or order confirmations.
         </p>
       </Section>
 
@@ -356,6 +369,11 @@ export default function PrivacyPolicy() {
             <strong>Resend</strong>: delivery of transactional emails such as email verification, password resets and
             order confirmations, and of the messages you send through our support, business and mentor request forms
             to our team.
+          </li>
+          <li>
+            <strong>Responder (Rav-Masar)</strong>: delivery of our marketing emails and newsletters to members who
+            opted in. Responder receives only your email address, name and preferred language, and uses them solely to
+            send the updates you asked for.
           </li>
           <li><strong>Tranzila</strong>: secure payment processing for paid offers.</li>
           <li>
@@ -417,7 +435,7 @@ export default function PrivacyPolicy() {
         <List>
           <li>
             <strong>Account and profile data</strong> (including Google user data, member type, country of origin,
-            region, phone number, preferences and wishlist) is kept for as long as your account exists and is deleted when you ask us to
+            region, phone number, preferences (including your marketing email choice) and wishlist) is kept for as long as your account exists and is deleted when you ask us to
             delete your account.
           </li>
           <li>
@@ -432,6 +450,10 @@ export default function PrivacyPolicy() {
           <li>
             <strong>Mentor requests</strong> are kept as long as needed to match you with a mentor and handle any
             follow-up.
+          </li>
+          <li>
+            <strong>Marketing mailing list</strong>: if you unsubscribe or delete your account, we remove you from our
+            marketing mailing list.
           </li>
           <li><strong>Server logs</strong> are kept for a short period by our hosting provider for security and troubleshooting.</li>
         </List>
@@ -481,7 +503,7 @@ export default function PrivacyPolicy() {
           <li><strong>Deletion</strong>: ask us to delete your information, as described above;</li>
           <li><strong>Restriction and objection</strong>: ask us to limit or stop certain processing;</li>
           <li><strong>Portability</strong>: receive the information you gave us in a common, machine-readable format;</li>
-          <li><strong>Withdraw consent</strong>: for example, turn off notifications, at any time and without affecting earlier processing; and</li>
+          <li><strong>Withdraw consent</strong>: for example, turn off notifications or unsubscribe from marketing emails, at any time and without affecting earlier processing; and</li>
           <li>
             <strong>Complain</strong>: lodge a complaint with the Israeli Privacy Protection Authority or, in the
             EU/UK, with your local data protection authority.

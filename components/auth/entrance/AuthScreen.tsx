@@ -106,6 +106,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [lastName, setLastName] = useState('')
   const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  // Optional and unticked by default (Israeli Spam Law / GDPR consent).
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const { user, loading: authLoading, onboardingComplete, setOnboardingComplete } = useAuth()
   // Signed in, but onboarding isn't finished: the card becomes the wizard,
@@ -289,7 +291,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     if (invalid) return
     setSubmitting(true)
     try {
-      const result = await signUpCustomer({ firstName, lastName, agreedToTerms }, email.trim(), password, lang)
+      const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -510,6 +512,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                         {t('signup_termsRequired')}
                       </p>
                     )}
+                    {/* 24px apart, so the two boxes' padded hit areas never overlap. */}
+                    <div className="mt-6">
+                      <Checkbox
+                        label={<span className="leading-5">{t('signup_marketing_optin')}</span>}
+                        checked={marketingOptIn}
+                        onChange={setMarketingOptIn}
+                      />
+                    </div>
                   </div>
 
                   <div>

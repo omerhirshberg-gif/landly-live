@@ -51,7 +51,7 @@ describe('terms page', () => {
     expect(text).toContain('Terms and Conditions')
     expect(text).toContain('Last updated: October 2026')
     expect(text).toContain('Landly operates from Tel Aviv-Yafo, Israel')
-    expect(text).toContain('team.landly@gmail.com')
+    expect(text).toContain('contact@golandly.com')
   })
 
   it('states the pay-per-offer payment model', () => {
@@ -63,7 +63,7 @@ describe('terms page', () => {
   it('states the 14-day cancellation policy, its fee and how to cancel', () => {
     expect(text).toContain('Within 14 days: You may cancel a purchase within 14 days of the purchase date, as long as the voucher has not been redeemed')
     expect(text).toContain('5% of the price or ₪100, whichever is lower')
-    expect(text).toContain('How to cancel: Email team.landly@gmail.com with your order number')
+    expect(text).toContain('How to cancel: Email contact@golandly.com with your order number')
     expect(text).toContain('After redemption: Once a voucher has been redeemed')
     expect(text).toContain('final and non-refundable')
   })
@@ -104,7 +104,7 @@ describe('terms page', () => {
     expect(out).not.toMatch(/terms_[a-z0-9_]+/)
     expect(out).not.toMatch(/<(h1|h2|p|span|strong)[^>]*>\s*<\/\1>/)
     expect(outText).toContain(translations[lang].terms_title)
-    expect(outText).toContain('team.landly@gmail.com')
+    expect(outText).toContain('contact@golandly.com')
     if (lang !== 'en') expect(outText).not.toContain(translations.en.terms_p1)
     if (lang === 'he') expect(outText).toMatch(/[֐-׿]/)
   })

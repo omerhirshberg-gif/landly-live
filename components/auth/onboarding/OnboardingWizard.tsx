@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode 
 import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { completeOnboardingProfile } from '@/lib/firebase/users'
+import { requestWelcomeEmail } from '@/lib/auth/requestWelcomeEmail'
 import { useAuth } from '@/lib/firebase/useAuth'
 import {
   DEFAULT_COUNTRY,
@@ -247,6 +248,8 @@ export default function OnboardingWizard({
         notificationsOptIn,
       })
       saveDraft(uid, null)
+      // Not awaited: the welcome email never holds up the celebration card.
+      void requestWelcomeEmail(() => user.getIdToken())
       setOnboardingComplete(true)
       setBusy(null)
       goTo('done', 1)

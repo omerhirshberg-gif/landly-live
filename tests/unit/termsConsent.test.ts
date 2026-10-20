@@ -46,7 +46,7 @@ describe('consent text templates', () => {
       const links = consentParts(translations[lang][key]).filter((p) => 'link' in p)
       expect(links, `${lang}.${key}`).toEqual([{ link: 'terms' }, { link: 'privacy' }])
     }
-    for (const key of ['legal_terms_link', 'legal_privacy_link', 'signup_termsRequired'] as const) {
+    for (const key of ['legal_terms_link', 'legal_privacy_link', 'signup_termsRequired', 'signup_marketing_optin'] as const) {
       expect(translations[lang][key], `${lang}.${key}`).toBeTruthy()
     }
   })
@@ -101,6 +101,14 @@ describe('recording consent on the user document', () => {
     expect(data).toMatchObject({ email: 'g@example.com', preferredLanguage: 'he', agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: 'SERVER_TS' })
   })
 
+  it('never opts a Google account into marketing emails', async () => {
+    const { finishCustomerGoogleSignIn } = await import('@/lib/auth/signInCustomer')
+    await finishCustomerGoogleSignIn({ user } as never, 'en')
+    const data = mocks.setDoc.mock.calls[0][1]
+    expect(data.marketingOptIn).toBe(false)
+    expect(data).not.toHaveProperty('marketingOptInAt')
+  })
+
   it('leaves an existing account\'s document untouched', async () => {
     mocks.getDoc.mockResolvedValue({ exists: () => true })
     const { finishCustomerGoogleSignIn } = await import('@/lib/auth/signInCustomer')
@@ -115,5 +123,35 @@ describe('recording consent on the user document', () => {
     expect(data).not.toHaveProperty('agreedToTerms')
     expect(data).not.toHaveProperty('termsAgreedAt')
     expect(data).not.toHaveProperty('isAgeConfirmed')
+  })
+})
+
+describe('marketing opt-in on the sign-up form', () => {
+  const read = async (path: string) => (await import('node:fs/promises')).readFile(path, 'utf8')
+
+  it.each([
+    ['web', 'components/auth/entrance/AuthScreen.tsx'],
+    ['app', 'landly-mobile/src/app/(auth)/login.tsx'],
+  ])('%s: an optional checkbox, unticked by default, sent with the sign-up', async (_, path) => {
+    const src = await read(path)
+    expect(src).toContain('const [marketingOptIn, setMarketingOptIn] = useState(false)')
+    expect(src).toContain("t('signup_marketing_optin')")
+    expect(src).toMatch(/signUpCustomer\(\{ firstName, lastName, agreedToTerms, marketingOptIn \}/)
+    // It never gates submission: only the Terms box is validated.
+    expect(src).not.toMatch(/signUpFormError\([^)]*marketingOptIn/)
+    // Placed after the Terms box and before the submit button.
+    const terms = src.indexOf("t('signup_terms_agree')")
+    const marketing = src.indexOf("t('signup_marketing_optin')")
+    const cta = src.indexOf("t('onb_createAccount')")
+    expect(terms).toBeLessThan(marketing)
+    expect(marketing).toBeLessThan(cta)
+  })
+
+  it('renders the web checkbox unticked with its label', async () => {
+    const { default: Checkbox } = await import('@/components/auth/entrance/Checkbox')
+    const html = renderToStaticMarkup(createElement(Checkbox, { label: translations.he.signup_marketing_optin, checked: false, onChange: () => {} }))
+    expect(html).toContain('type="checkbox"')
+    expect(html).not.toContain('checked=""')
+    expect(html).toContain('אשמח לקבל עדכונים')
   })
 })

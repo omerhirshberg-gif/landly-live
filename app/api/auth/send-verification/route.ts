@@ -24,7 +24,8 @@ async function ensureCustomerProfile(
   email: string,
   lang: Lang,
   names: { firstName: string; lastName: string },
-  agreedToTerms: boolean
+  agreedToTerms: boolean,
+  marketingOptIn: boolean
 ) {
   try {
     await getAdminDb().collection('users').doc(uid).create({
@@ -41,6 +42,11 @@ async function ensureCustomerProfile(
       // The sign-up form's Terms/Privacy checkbox (required there to submit),
       // which also confirms the member is 16 or older.
       ...(agreedToTerms ? { agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: FieldValue.serverTimestamp() } : {}),
+      // The optional marketing checkbox, unticked unless the member ticked it.
+      // An opt-in keeps when and where it was given: the Israeli Spam Law
+      // (Communications Law §30A) puts proving consent on the sender.
+      marketingOptIn,
+      ...(marketingOptIn ? { marketingOptInAt: FieldValue.serverTimestamp(), marketingOptInSource: 'signup' } : {}),
     })
   } catch (err) {
     if ((err as { code?: unknown })?.code !== ALREADY_EXISTS) logFailure('profile', uid, err)
@@ -142,7 +148,7 @@ export async function POST(request: Request) {
   const names = { firstName: normalizePersonName(body?.firstName), lastName: normalizePersonName(body?.lastName) }
   // Runs alongside the email; it never throws.
   const profile = Promise.all([
-    ensureCustomerProfile(decoded.uid, userRecord.email, lang, names, body?.agreedToTerms === true),
+    ensureCustomerProfile(decoded.uid, userRecord.email, lang, names, body?.agreedToTerms === true, body?.marketingOptIn === true),
     ensureAuthDisplayName(decoded.uid, userRecord.displayName, names),
   ])
   const fail = async (step: Step, err: unknown, reason: 'config' | 'link' | 'provider') => {

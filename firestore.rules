@@ -30,8 +30,13 @@ service cloud.firestore {
     // change. The member still reads them (the profile's amber notice), and
     // still writes `phone` directly from onboarding and settings; changes
     // from the profile screens go through the WhatsApp code when it's on.
+    // The welcome-email flag is server-only too (/api/account/welcome-email):
+    // clearing it would let a member have the email sent again. So is the
+    // record of when and where a marketing opt-in was given (proof of
+    // consent); `marketingOptIn` itself stays the member's to change.
     function serverOnlyUserKeys() {
-      return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt'];
+      return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt',
+        'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource'];
     }
 
     match /users/{userId} {

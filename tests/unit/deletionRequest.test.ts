@@ -89,7 +89,7 @@ describe('/api/account/delete-request', () => {
     expect(await res.json()).toEqual({ ok: true })
     expect(mocks.send).toHaveBeenCalledTimes(1)
     const mail = mocks.send.mock.calls[0][0]
-    expect(mail.to).toBe('team.landly@gmail.com')
+    expect(mail.to).toBe('contact@golandly.com')
     expect(mail.replyTo).toBe('dana@example.com')
     expect(mail.subject).toBe('[Landly Account Deletion Request] Dana Levi (dana@example.com)')
     for (const part of ['user-1', 'Dana Levi', 'dana@example.com', 'Privacy concerns', 'google.com', 'he', 'Please remove']) expect(mail.html).toContain(part)

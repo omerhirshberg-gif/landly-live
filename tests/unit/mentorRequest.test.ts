@@ -53,7 +53,7 @@ describe('/api/mentor/inquiry', () => {
   it('emails the team inbox with Reply-To set to the member', async () => {
     expect((await post(valid)).status).toBe(200)
     const email = mocks.send.mock.calls[0][0]
-    expect(email.to).toBe('team.landly@gmail.com')
+    expect(email.to).toBe('contact@golandly.com')
     expect(email.replyTo).toBe('olga@example.com')
     expect(email.subject).toBe('[Landly Mentor Request] Olga Petrova — Russian-speaking mentor')
     for (const v of ['Olga Petrova', 'olga@example.com', 'Russian', 'March 2027', 'user-1']) {

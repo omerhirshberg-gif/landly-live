@@ -29,7 +29,7 @@ describe('/api/support', () => {
     expect(res.status).toBe(200)
     expect(mocks.send).toHaveBeenCalledTimes(1)
     const email = mocks.send.mock.calls[0][0]
-    expect(email.to).toBe('team.landly@gmail.com')
+    expect(email.to).toBe('contact@golandly.com')
     expect(email.replyTo).toBe('dana@example.com')
     expect(email.from).toBe('test@landly.test')
     expect(email.subject).toBe('[Landly Support] Billing and payments — Dana Levi')

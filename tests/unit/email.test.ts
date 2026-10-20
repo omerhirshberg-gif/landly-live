@@ -142,7 +142,8 @@ describe('branded email layout', () => {
     expect(html.match(/href="https:\/\/landly\.test\/verify-email\?oobCode=x"/g)!.length).toBeGreaterThanOrEqual(3)
     expect(html).toContain('Security note')
     expect(html).toContain('Ignore me')
-    expect(html).toContain('mailto:team.landly@gmail.com')
+    expect(html).toContain('mailto:contact@golandly.com')
+    expect(html).not.toContain('gmail.com')
     expect(html).toContain('href="https://landly.test/support"')
     expect(html).not.toMatch(/<script|<link|<style/i)
   })
@@ -167,6 +168,13 @@ describe('branded email layout', () => {
     expect(html).toContain('border-right:3px solid #2563EB')
     expect(html).toContain('הערת אבטחה')
     expect(html).toContain('<p dir="ltr"')
+    // The support address stays left-to-right inside the RTL footer.
+    expect(html).toContain('href="mailto:contact@golandly.com" dir="ltr"')
+  })
+
+  it('routes customer replies to the support inbox', async () => {
+    await render('en')
+    expect(mocks.send.mock.calls.at(-1)![0]).toMatchObject({ from: 'test@landly.test', to: 'person@landly.test', replyTo: 'contact@golandly.com' })
   })
 })
 
@@ -194,6 +202,28 @@ describe('verification email: customer profile', () => {
     const data = mocks.createDoc.mock.calls[0][0]
     expect(data).not.toHaveProperty('agreedToTerms')
     expect(data).not.toHaveProperty('termsAgreedAt')
+    expect(data.marketingOptIn).toBe(false)
+    expect(data).not.toHaveProperty('marketingOptInAt')
+    expect(data).not.toHaveProperty('marketingOptInSource')
+  })
+
+  it('records a marketing opt-in with when and where it was given', async () => {
+    const req = new Request('https://landly.test/api/auth/send-verification', {
+      method: 'POST', body: JSON.stringify({ lang: 'en', firstName: 'Dana', lastName: 'Levi', agreedToTerms: true, marketingOptIn: true }),
+    })
+    expect((await verify(req)).status).toBe(200)
+    const data = mocks.createDoc.mock.calls[0][0]
+    expect(data.marketingOptIn).toBe(true)
+    expect(data.marketingOptInAt).toBeDefined()
+    expect(data.marketingOptInSource).toBe('signup')
+  })
+
+  it('only counts a literal true as a marketing opt-in', async () => {
+    const req = new Request('https://landly.test/api/auth/send-verification', {
+      method: 'POST', body: JSON.stringify({ lang: 'en', marketingOptIn: 'yes' }),
+    })
+    expect((await verify(req)).status).toBe(200)
+    expect(mocks.createDoc.mock.calls[0][0].marketingOptIn).toBe(false)
   })
 
   it('leaves an existing doc alone and still sends the email', async () => {
