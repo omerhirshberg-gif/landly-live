@@ -75,6 +75,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The WhatsApp support bot's state (seen message ids, each number's menu
+    // and escalation times): written by /api/webhooks/whatsapp only.
+    match /whatsappInbound/{messageId} {
+      allow read, write: if false;
+    }
+    match /whatsappConversations/{waId} {
+      allow read, write: if false;
+    }
+
     // Business accounts are created manually (Firebase Console) or via the
     // admin API route, both using the Admin SDK, which bypasses these rules
     // entirely. There is no field a business owner legitimately writes

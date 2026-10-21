@@ -118,10 +118,11 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // read live, so a save shows at once.
 //
 // Email and phone changes are verified before they apply, both with a
-// 6-digit code in OtpSheet (web: the same flow). The email row's "Change"
-// (email+password members; a Google account's address is its Google
-// identity) opens ChangeEmailForm, which emails the code to the new address;
-// a new phone number gets a WhatsApp code when verification is on
+// 6-digit code in OtpSheet (web: the same flow). In Edit profile the email
+// shows in a field box: its "Change" (email+password members) opens
+// ChangeEmailForm, which emails the code to the new address; a Google
+// account's address is its Google identity, so its box is locked with a
+// note. A new phone number gets a WhatsApp code when verification is on
 // (/api/account/change-phone decides, otherwise it saves as before).
 // Meanwhile the amber PendingChangeNotice sits under the row until the
 // change is verified, on any device.
@@ -143,6 +144,7 @@ function ProfileDetails({
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
   const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
+  const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
   const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(current)
@@ -212,6 +214,7 @@ function ProfileDetails({
       await updateUserProfileDetails(user.uid, next)
       invalidateMemberProfile(user.uid)
       setEditing(false)
+      setEmailFormOpen(false)
       if (verify) {
         setPhoneStatus(null)
         setOtp(verify)
@@ -276,27 +279,35 @@ function ProfileDetails({
 
       <Row label={t('profile_name_label')} value={name || t('profile_no_phone')} muted={editing} />
       <View style={[styles.row, styles.rowBorder]}>
-        <View style={styles.emailLine}>
-          <View style={styles.emailValue}>
-            <AppText style={styles.rowLabel}>{t('profile_email_label')}</AppText>
-            <AppText ltr style={[styles.rowValue, editing && styles.rowValueMuted]}>{email}</AppText>
+        <AppText style={editing ? styles.fieldLabel : styles.rowLabel}>{t('profile_email_label')}</AppText>
+        {editing ? (
+          // A field box: "Change" at its trailing edge for a password account, a lock for a Google one.
+          <View style={[styles.emailBox, canChangeEmail && styles.emailBoxAction]}>
+            <AppText ltr style={styles.emailBoxValue}>{email}</AppText>
+            {canChangeEmail ? (
+              !emailFormOpen && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
+                  onPress={() => {
+                    setEmailStatus(null)
+                    setEmailFormOpen(true)
+                  }}
+                  hitSlop={4}
+                  style={({ pressed }) => [styles.changeButton, pressed && styles.editPressed]}
+                >
+                  <AppText style={styles.changeText}>{t('profile_change_email_btn')}</AppText>
+                </Pressable>
+              )
+            ) : (
+              <LineIcon name="lock" size={16} color={colors.textFaint} />
+            )}
           </View>
-          {canChangeEmail && !editing && !emailFormOpen && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
-              onPress={() => {
-                setEmailStatus(null)
-                setEmailFormOpen(true)
-              }}
-              hitSlop={8}
-              style={({ pressed }) => [styles.changeButton, pressed && styles.editPressed]}
-            >
-              <AppText style={styles.changeText}>{t('profile_change_email_btn')}</AppText>
-            </Pressable>
-          )}
-        </View>
-        {canChangeEmail && emailFormOpen && !editing && (
+        ) : (
+          <AppText ltr style={styles.rowValue}>{email}</AppText>
+        )}
+        {editing && !canChangeEmail && googleAccount && <AppText style={styles.lockedHint}>{t('profile_email_google_locked')}</AppText>}
+        {canChangeEmail && emailFormOpen && editing && (
           <ChangeEmailForm
             user={user}
             pendingEmail={pendingEmail}
@@ -384,7 +395,15 @@ function ProfileDetails({
           )}
           <View style={styles.editActions}>
             <View style={styles.editAction}>
-              <Button label={t('profile_cancel_btn')} onPress={() => setEditing(false)} disabled={busy} variant="secondary" />
+              <Button
+                label={t('profile_cancel_btn')}
+                onPress={() => {
+                  setEditing(false)
+                  setEmailFormOpen(false)
+                }}
+                disabled={busy}
+                variant="secondary"
+              />
             </View>
             <View style={styles.editAction}>
               <Button label={t('profile_save_changes_btn')} onPress={save} busy={busy} />
@@ -497,9 +516,23 @@ const styles = StyleSheet.create({
   },
   editPressed: { backgroundColor: colors.brandTint },
   editText: { fontSize: 15, fontWeight: '600', color: colors.brand },
-  // The address takes the row's free width (wrapping if long); "Change" sits at its trailing edge.
-  emailLine: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emailValue: { flex: 1, minWidth: 0 },
+  // Edit profile's email box: the address takes the free width (wrapping if
+  // long); "Change" or the lock sits at its trailing edge.
+  emailBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    paddingStart: 14,
+    paddingEnd: 14,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  emailBoxAction: { paddingEnd: 2 },
+  emailBoxValue: { flex: 1, minWidth: 0, paddingVertical: 10, fontSize: 16, color: colors.body },
+  lockedHint: { marginTop: 6, fontSize: 12, color: colors.textFaint },
   changeButton: {
     minHeight: 44,
     paddingHorizontal: 12,

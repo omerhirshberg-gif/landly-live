@@ -146,12 +146,38 @@ WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
 
 | Variable | Purpose |
 | --- | --- |
-| `FIREBASE_PHONE_AUTH_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`, and codes are only logged to the `next dev` terminal. |
-| `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API token. |
+| `PHONE_VERIFICATION_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`. The older name `FIREBASE_PHONE_AUTH_ENABLED` is still read when this one is unset. |
+| `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API token. Use a permanent System User token; temporary tokens expire after 24 hours. |
 | `WHATSAPP_PHONE_NUMBER_ID` | The sending number's ID in WhatsApp Manager. |
-| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button), created in en, he, ru, fr and es. |
+| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button), created in en, he, ru, fr and es. Defaults to `landly_otp_code`. |
+| `WHATSAPP_OTP_FALLBACK_LANGUAGE` | Optional, defaults to `en`. When the member's language has no usable copy of the template (Meta template errors 1320xx, e.g. 132001), the code is sent once more in this language; set `en_US` if the template was created under that code. |
+| `WHATSAPP_OTP_LIVE` | Optional. `true` sends real WhatsApp messages outside production (codes and bot replies); otherwise they are only logged to the `next dev` terminal. |
 | `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0`. |
 
-If the flag is on but any WhatsApp setting is missing, phone edits save directly
-and the server logs the missing setting, so members are never left with a banner
-that cannot clear. Onboarding and sign-up still save the phone directly.
+If the flag is on but the token or number ID is missing, phone edits save
+directly and the server logs the missing setting, so members are never left
+with a banner that cannot clear. Onboarding and sign-up still save the phone
+directly.
+
+## WhatsApp support bot
+
+`app/api/webhooks/whatsapp/route.ts` receives messages sent to the WhatsApp
+Cloud API number. Any message is answered with three reply buttons (Member
+Perks, Landly Pass, Talk to Team), at most once every 10 minutes per number.
+Perks and Pass reply with a link button to `{APP_URL}/categories` and
+`{APP_URL}/member`. Talk to Team emails the team inbox (`SUPPORT_EMAIL`) with
+the sender's name, member UID, email, language and a `wa.me` link to answer
+them, then keeps the bot silent for that number for 24 hours. The bot answers
+in the member's profile language, else Hebrew for `+972` numbers and English
+for the rest.
+
+| Variable | Purpose |
+| --- | --- |
+| `WHATSAPP_VERIFY_TOKEN` | Any random string; enter the same value as the webhook's *Verify token* in the Meta developer dashboard. |
+| `WHATSAPP_APP_SECRET` | The Meta app's *App secret* (App settings → Basic). Every POST's `x-hub-signature-256` is checked against it; without it the webhook refuses all deliveries. |
+
+Setup in the Meta developer dashboard: WhatsApp → Configuration → Webhook,
+callback URL `{APP_URL}/api/webhooks/whatsapp`, then subscribe to the
+`messages` field. Bot state lives in the server-only `whatsappConversations`
+and `whatsappInbound` collections; add a Firestore TTL policy on
+`whatsappInbound.expiresAt` so seen message ids are deleted after 7 days.

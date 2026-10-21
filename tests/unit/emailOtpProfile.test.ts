@@ -11,11 +11,22 @@ const SCREENS = [
 ]
 
 describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, otpTag }) => {
-  it('offers "Change" on the email row to password accounts only, outside Edit profile', () => {
+  it('offers "Change" only inside Edit profile, to password accounts, and locks a Google address', () => {
     const src = read(profile)
     expect(src).toContain("const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')")
-    expect(src).toMatch(/canChangeEmail && !editing && !emailFormOpen &&/)
+    expect(src).toContain("const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')")
+    // No entry point outside Edit profile any more.
+    expect(src).not.toMatch(/canChangeEmail && !editing/)
+    expect(src).toMatch(/\{editing \? \(?\s*(\/\/[^\n]*\n\s*)?(emailBox|<View style=\{\[styles\.emailBox)/)
+    expect(src).toMatch(/canChangeEmail \? \(\s*!emailFormOpen &&/)
+    expect(src).toMatch(/canChangeEmail && emailFormOpen && editing &&/)
+    expect(src).toMatch(/editing && !canChangeEmail && googleAccount &&[\s\S]{0,80}t\('profile_email_google_locked'\)/)
     expect(src).toMatch(/<ChangeEmailForm[\s\S]*?pendingEmail=\{pendingEmail\}/)
+  })
+
+  it('closes the email form when Edit profile is cancelled or saved', () => {
+    const src = read(profile)
+    expect(src.match(/setEditing\(false\)\s*\n\s*setEmailFormOpen\(false\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
   })
 
   it('opens the code UI for the address the form sent to, and from the pending notice', () => {
@@ -46,6 +57,23 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
     expect(src).toContain("contactChangeErrorKey(result.reason, target.kind)")
     expect(src).toContain("isEmail ? 'otp_email_title' : 'otp_title'")
     expect(src).toContain("isEmail ? 'otp_email_subtitle' : 'otp_subtitle'")
+  })
+})
+
+describe('web profile form structure', () => {
+  // ChangeEmailForm is its own <form>; it must never render inside the edit form.
+  it('keeps the name and email rows above the Edit profile form', () => {
+    const src = read('components/profile/ProfileSection.tsx')
+    const identity = src.slice(src.indexOf('const identity = ('), src.indexOf('const details = ('))
+    expect(identity).toContain('{emailRow}')
+    expect(src.slice(src.indexOf('const details = ('))).not.toContain('{emailRow}')
+    expect(src).toMatch(/\{identity\}\s*\{editing \? \(\s*<form onSubmit=\{handleSave\}/)
+  })
+
+  it('isolates the address as LTR in the Edit profile box', () => {
+    const src = read('components/profile/ProfileSection.tsx')
+    expect(src).toMatch(/const emailBox = \([\s\S]*?<bdi dir="ltr">\{email\}<\/bdi>/)
+    expect(read('landly-mobile/src/app/(tabs)/profile.tsx')).toContain('<AppText ltr style={styles.emailBoxValue}>{email}</AppText>')
   })
 })
 

@@ -1,7 +1,10 @@
 import 'server-only'
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import type { Lang } from '@/lib/i18n/translations'
+import { sendWhatsAppMessage, whatsappConfigProblem, whatsappLive, WhatsAppApiError } from '@/lib/whatsapp/graph'
 import { OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel } from './otp'
+
+export { whatsappConfigProblem }
 
 // Phone-change verification for the profile screens (web /profile, the app's
 // Profile tab). A changed number waits in users/{uid}.pendingPhone until the
@@ -11,13 +14,13 @@ import { OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel } from './otp'
 // Whether a change is verified at all is one server-side switch, so the
 // website and the app never disagree (/api/account/change-phone tells them):
 //
-// - production: FIREBASE_PHONE_AUTH_ENABLED=true verifies through
-//   productionProvider (Meta WhatsApp Cloud API); anything else saves the
-//   number directly, as before -- nobody is blocked or left with a pending
-//   banner that can never clear (pre-Blaze / before the WhatsApp sender is live).
+// - production: PHONE_VERIFICATION_ENABLED=true (or the older
+//   FIREBASE_PHONE_AUTH_ENABLED) verifies through productionProvider (Meta
+//   WhatsApp Cloud API); anything else saves the number directly, as before --
+//   nobody is blocked or left with a pending banner that can never clear.
 // - development and tests: verified through devProvider, which only logs the
-//   code to the terminal (no SMS or WhatsApp credits); set the flag to
-//   "false" to save directly instead.
+//   code to the terminal (no WhatsApp credits), unless WHATSAPP_OTP_LIVE=true
+//   and the credentials are set; set the flag to "false" to save directly.
 //
 // Onboarding and sign-up still write the phone directly; this covers edits
 // from the profile screens only.
@@ -55,29 +58,22 @@ export class OtpDeliveryError extends Error {
 
 const isProduction = () => process.env.NODE_ENV === 'production'
 
-/** Names the first missing WhatsApp Cloud API setting, or null when sending is configured. */
-export function whatsappConfigProblem(): string | null {
-  if (!process.env.WHATSAPP_ACCESS_TOKEN) return 'WHATSAPP_ACCESS_TOKEN is not configured'
-  if (!process.env.WHATSAPP_PHONE_NUMBER_ID) return 'WHATSAPP_PHONE_NUMBER_ID is not configured'
-  if (!process.env.WHATSAPP_OTP_TEMPLATE) return 'WHATSAPP_OTP_TEMPLATE is not configured'
-  return null
-}
-
 export function phoneVerificationMode(): PhoneVerificationMode {
-  const flag = process.env.FIREBASE_PHONE_AUTH_ENABLED
+  // FIREBASE_PHONE_AUTH_ENABLED is the flag's earlier name, still honoured.
+  const flag = process.env.PHONE_VERIFICATION_ENABLED || process.env.FIREBASE_PHONE_AUTH_ENABLED
   if (!isProduction()) return flag === 'false' ? 'direct' : 'otp'
   if (flag !== 'true') return 'direct'
   // Switched on but unable to send: saving directly beats a banner nobody can clear.
   const problem = whatsappConfigProblem()
   if (problem) {
-    console.error(`[phone-otp] FIREBASE_PHONE_AUTH_ENABLED is on but ${problem}; saving phone changes directly.`)
+    console.error(`[phone-otp] PHONE_VERIFICATION_ENABLED is on but ${problem}; saving phone changes directly.`)
     return 'direct'
   }
   return 'otp'
 }
 
 export function otpProvider(): OtpProvider {
-  return isProduction() ? productionProvider : devProvider
+  return whatsappLive() ? productionProvider : devProvider
 }
 
 export function generateOtp(): string {
@@ -117,49 +113,45 @@ export const productionProvider: OtpProvider = {
   },
 }
 
-const WHATSAPP_TIMEOUT_MS = 10_000
-
 // Meta's approved "authentication" templates exist per language; the
 // template is created in WhatsApp Manager under WHATSAPP_OTP_TEMPLATE in
-// each of these.
+// each of these. A language without an approved copy falls back to English
+// (WHATSAPP_OTP_FALLBACK_LANGUAGE, for a template created as en_US).
 const WHATSAPP_LANGUAGE: Record<Lang, string> = { en: 'en', he: 'he', ru: 'ru', fr: 'fr', es: 'es' }
+const DEFAULT_OTP_TEMPLATE = 'landly_otp_code'
+
+// Meta's template errors (132000 parameter count, 132001 no such template in
+// that language, 132007 policy, 132012 parameter format, 132015/132016
+// paused or disabled): another language's copy may still be fine.
+const isTemplateError = (code: string) => /^1320\d\d$/.test(code)
 
 // WhatsApp Cloud API: an authentication template whose body and copy-code
 // button both carry the code (Meta requires the code in both parameters).
 async function sendWhatsAppOtp({ phone, code, lang }: OtpDispatch): Promise<void> {
-  const problem = whatsappConfigProblem()
-  if (problem) throw new OtpDeliveryError('whatsapp', 'not_configured', problem)
-  const version = process.env.WHATSAPP_GRAPH_VERSION || 'v21.0'
-  const url = `https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), WHATSAPP_TIMEOUT_MS)
-  let res: Response
+  const fallback = process.env.WHATSAPP_OTP_FALLBACK_LANGUAGE || 'en'
+  const preferred = WHATSAPP_LANGUAGE[lang] ?? fallback
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: phone.replace(/^\+/, ''),
-        type: 'template',
-        template: {
-          name: process.env.WHATSAPP_OTP_TEMPLATE,
-          language: { code: WHATSAPP_LANGUAGE[lang] ?? 'en' },
-          components: [
-            { type: 'body', parameters: [{ type: 'text', text: code }] },
-            { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
-          ],
-        },
-      }),
-      signal: controller.signal,
-    })
+    await sendOtpTemplate(phone, code, preferred)
   } catch (err) {
-    throw new OtpDeliveryError('whatsapp', 'network', err instanceof Error ? err.message : String(err))
-  } finally {
-    clearTimeout(timer)
+    if (!(err instanceof WhatsAppApiError)) throw err
+    if (preferred === fallback || !isTemplateError(err.code)) throw new OtpDeliveryError('whatsapp', err.code, err.message)
+    console.warn(`[phone-otp] template unavailable in ${preferred} (${err.code}); retrying in ${fallback}`)
+    await sendOtpTemplate(phone, code, fallback).catch((retry) => {
+      throw retry instanceof WhatsAppApiError ? new OtpDeliveryError('whatsapp', retry.code, retry.message) : retry
+    })
   }
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: { code?: number; message?: string } } | null
-    throw new OtpDeliveryError('whatsapp', String(body?.error?.code ?? res.status), body?.error?.message ?? `HTTP ${res.status}`)
-  }
+}
+
+function sendOtpTemplate(phone: string, code: string, language: string) {
+  return sendWhatsAppMessage(phone, {
+    type: 'template',
+    template: {
+      name: process.env.WHATSAPP_OTP_TEMPLATE || DEFAULT_OTP_TEMPLATE,
+      language: { code: language },
+      components: [
+        { type: 'body', parameters: [{ type: 'text', text: code }] },
+        { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+      ],
+    },
+  })
 }

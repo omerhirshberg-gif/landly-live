@@ -1,0 +1,103 @@
+import 'server-only'
+
+// What addSubscriber and updateSubscriberEmail share: the settings, the
+// token exchange and one 10-second deadline per sync, and the masked log
+// line. Responder Live publishes no API docs; every call here is one its
+// graph API was seen answering (see each caller).
+
+const DEFAULT_API_BASE = 'https://graph.responder.live/v2'
+const TIMEOUT_MS = 10_000
+
+export type ResponderOutcome = 'created' | 'existing' | 'skipped' | 'failed'
+
+const EMAIL_PATTERN = /[^\s"'<>@,;:]+@[^\s"'<>@,;:]+/g
+
+// Responder's error payloads look like {message, data, code}; `data` is a
+// string or a list of strings.
+export function responderError(body: unknown): Record<string, unknown> {
+  if (typeof body === 'string') return { message: sanitize(body) }
+  if (!body || typeof body !== 'object') return {}
+  const { message, data, code, error } = body as Record<string, unknown>
+  const text = (v: unknown) => (v == null || v === '' ? undefined : sanitize(typeof v === 'string' ? v : JSON.stringify(v)))
+  return { message: text(message) ?? text(error), data: text(data), code: typeof code === 'number' || typeof code === 'string' ? code : undefined }
+}
+
+function sanitize(text: string) {
+  return text.replace(EMAIL_PATTERN, '<email>').slice(0, 300)
+}
+
+export function logFailure(step: string, uid: string, detail: Record<string, unknown> = {}) {
+  console.error(`[responder] step=${step}`, JSON.stringify({ step, uid, ...detail }))
+}
+
+export async function readBody(res: Response): Promise<unknown> {
+  const text = await res.text().catch(() => '')
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+export interface ResponderSession {
+  listId: number
+  /** A JSON request to the API with the session's token and deadline. */
+  call: (method: 'GET' | 'POST', path: string, body?: unknown) => Promise<Response>
+}
+
+// Runs `task` with a token, under one deadline for all its calls. Never
+// throws: missing settings skip silently, a refused token or a network
+// error or timeout is logged and fails.
+export async function withResponder<T extends string>(uid: string, task: (session: ResponderSession) => Promise<T>): Promise<T | 'skipped' | 'failed'> {
+  const env = (name: string) => process.env[name]?.trim() ?? ''
+  const listId = env('RESPONDER_LIST_ID')
+  const clientId = env('RESPONDER_CLIENT_ID') || env('RESPONDER_CLIENT_KEY')
+  const clientSecret = env('RESPONDER_CLIENT_SECRET')
+  const userToken = env('RESPONDER_USER_TOKEN')
+  if (!/^\d+$/.test(listId) || !clientId || !clientSecret || !userToken) return 'skipped'
+
+  const base = (env('RESPONDER_API_BASE') || DEFAULT_API_BASE).replace(/\/+$/, '')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const request = (method: 'GET' | 'POST', path: string, body: unknown, token?: string) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: controller.signal,
+    })
+
+  try {
+    const auth = await request('POST', '/oauth/token', { client_id: clientId, client_secret: clientSecret, user_token: userToken, grant_type: 'client_credentials' })
+    const authBody = await readBody(auth)
+    const token = (authBody as { token?: unknown } | null)?.token
+    if (!auth.ok || typeof token !== 'string' || !token) {
+      logFailure('token', uid, { status: auth.status, ...responderError(authBody) })
+      return 'failed'
+    }
+    return await task({ listId: Number(listId), call: (method, path, body) => request(method, path, body, token) })
+  } catch (err) {
+    const e = err as { name?: unknown; code?: unknown } | null
+    logFailure('request', uid, { code: controller.signal.aborted ? 'timeout' : e?.code ?? e?.name })
+    return 'failed'
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// POST /subscribers places the address in the list. It answers 200 either
+// way: {status: true, duplicate, createdId} on success -- duplicate true for
+// an address already there -- and {status: false} when it refuses (an
+// unknown field, for one).
+export async function createSubscriber(session: ResponderSession, uid: string, email: string, firstName: string): Promise<ResponderOutcome> {
+  const res = await session.call('POST', '/subscribers', { email, first: firstName.trim(), list_ids: [session.listId] })
+  const body = await readBody(res)
+  const result = body as { status?: unknown; duplicate?: unknown } | null
+  if (res.ok && result?.status === true) return result.duplicate === true ? 'existing' : 'created'
+  logFailure('http', uid, { status: res.status, accepted: result?.status ?? null, ...responderError(body) })
+  return 'failed'
+}

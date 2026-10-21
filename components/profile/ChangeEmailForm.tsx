@@ -6,9 +6,9 @@ import { CONTACT_CHANGE_FAILED, contactChangeErrorKey, requestEmailChange } from
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { useLang } from '@/lib/i18n/useLang'
 
-// The email row's "Change" panel on /profile (email+password members only;
-// app: components/ChangeEmailForm.tsx). The current password is checked
-// first (re-authentication, as the password change does), then
+// The panel behind "Change" in Edit profile's email box on /profile
+// (email+password members only; app: components/ChangeEmailForm.tsx).
+// The current password is checked first (re-authentication, as the password change does), then
 // /api/account/change-email emails a 6-digit code to the new address and
 // onSent opens the code dialog (OtpDialog); the account keeps its current
 // email until the code is entered, and the amber notice takes over meanwhile.

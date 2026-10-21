@@ -43,9 +43,11 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // typed for it; members from before the origin card see "Not set".
 //
 // Email and phone changes are verified before they apply, both with a
-// 6-digit code in OtpDialog. The email row's "Change" (email+password
-// members; a Google account's address is its Google identity) opens
-// ChangeEmailForm, which emails the code to the new address; a new phone
+// 6-digit code in OtpDialog. In Edit profile the email shows in a field box:
+// its "Change" (email+password members) opens ChangeEmailForm, which emails
+// the code to the new address; a Google account's address is its Google
+// identity, so its box is locked with a note. The name and email sit above
+// the edit form, so ChangeEmailForm's own form never nests in it. A new phone
 // number gets a WhatsApp code when verification is on
 // (/api/account/change-phone decides, otherwise it saves as before).
 // Meanwhile the amber PendingChangeNotice sits under the row, and users/{uid}
@@ -61,6 +63,7 @@ export default function ProfileSection({ user }: { user: User }) {
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
   const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
+  const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(stored)
@@ -88,6 +91,7 @@ export default function ProfileSection({ user }: { user: User }) {
 
   const cancelEdit = () => {
     setEditing(false)
+    setEmailFormOpen(false)
     setPhoneError(null)
   }
 
@@ -124,6 +128,7 @@ export default function ProfileSection({ user }: { user: User }) {
       await updateUserProfileDetails(user.uid, next)
       invalidateMemberProfile(user.uid)
       setEditing(false)
+      setEmailFormOpen(false)
       if (verify) {
         setPhoneStatus(null)
         setOtp(verify)
@@ -164,27 +169,42 @@ export default function ProfileSection({ user }: { user: User }) {
     </div>
   )
 
+  // Edit profile shows the address in a field box: "Change" at its end for a
+  // password account, a lock and a note for a Google one.
+  const emailBox = (
+    <div
+      className={`flex items-center gap-3 min-h-12 ps-4 ${canChangeEmail ? 'pe-1' : 'pe-4'} rounded-[12px] border-[1.5px] border-slate-200 bg-slate-50`}
+    >
+      <span className="min-w-0 flex-1 py-2 text-base text-slate-700 break-words"><bdi dir="ltr">{email}</bdi></span>
+      {canChangeEmail ? (
+        !emailFormOpen && (
+          <button
+            type="button"
+            onClick={() => {
+              setEmailStatus(null)
+              setEmailFormOpen(true)
+            }}
+            aria-label={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
+            className="tap-target flex-shrink-0 inline-flex items-center justify-center px-3 rounded-[10px] text-sm font-semibold text-brand hover:bg-brandLight transition-colors"
+          >
+            {t('profile_change_email_btn')}
+          </button>
+        )
+      ) : (
+        <i className="fa-solid fa-lock flex-shrink-0 text-xs text-slate-400" aria-hidden="true"></i>
+      )}
+    </div>
+  )
+
   const emailRow = (
     <div>
-      <dt className={dt}>{t('profile_email_label')}</dt>
+      <dt className={editing ? label : dt}>{t('profile_email_label')}</dt>
       <dd>
-        <div className="flex items-center justify-between gap-3">
-          <div className={`${dd} min-w-0 ${editing ? 'text-slate-500' : ''}`}><bdi dir="ltr">{email}</bdi></div>
-          {canChangeEmail && !editing && !emailFormOpen && (
-            <button
-              type="button"
-              onClick={() => {
-                setEmailStatus(null)
-                setEmailFormOpen(true)
-              }}
-              aria-label={`${t('profile_change_email_btn')}: ${t('profile_email_label')}`}
-              className="tap-target flex-shrink-0 inline-flex items-center justify-center px-3 rounded-[12px] text-sm font-semibold text-brand hover:bg-brandLight transition-colors"
-            >
-              {t('profile_change_email_btn')}
-            </button>
-          )}
-        </div>
-        {canChangeEmail && emailFormOpen && !editing && (
+        {editing ? emailBox : <div className={dd}><bdi dir="ltr">{email}</bdi></div>}
+        {editing && !canChangeEmail && googleAccount && (
+          <p className="mt-1.5 text-xs text-slate-500">{t('profile_email_google_locked')}</p>
+        )}
+        {canChangeEmail && emailFormOpen && editing && (
           <ChangeEmailForm
             user={user}
             pendingEmail={pendingEmail}
@@ -233,10 +253,16 @@ export default function ProfileSection({ user }: { user: User }) {
     />
   )
 
-  const details = (
+  // Name and email stay outside the edit form (see the header comment).
+  const identity = (
     <dl className="space-y-4">
       {plainRow(t('profile_name_label'), displayName || '—')}
       {emailRow}
+    </dl>
+  )
+
+  const details = (
+    <dl className="space-y-4 mt-4">
       {editing ? (
         <>
           <div>
@@ -359,6 +385,7 @@ export default function ProfileSection({ user }: { user: User }) {
           </button>
         )}
       </div>
+      {identity}
       {editing ? (
         <form onSubmit={handleSave} noValidate>
           {details}
