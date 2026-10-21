@@ -11,9 +11,9 @@ import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
 import { colors, radius } from '../theme'
 
-// The email row's "Change" panel in the Profile tab (email+password members
-// only; web: components/profile/ChangeEmailForm.tsx). The current password
-// is checked first (re-authentication, as ChangePassword does), then
+// The panel behind "Change" in Edit profile's email box in the Profile tab
+// (email+password members only; web: components/profile/ChangeEmailForm.tsx).
+// The current password is checked first (re-authentication, as ChangePassword does), then
 // /api/account/change-email emails a 6-digit code to the new address and
 // onSent opens the code sheet (OtpSheet); the account keeps its current
 // email until the code is entered, and the amber notice takes over meanwhile.

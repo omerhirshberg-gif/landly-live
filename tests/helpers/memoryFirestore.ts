@@ -9,10 +9,11 @@ function clone(value: unknown): any {
   return value
 }
 
-// Just enough of the Admin Firestore API for the /api/account change routes:
-// doc get/set/update/delete, batches, transactions (reads first, writes
-// applied together), a single-field equality query, and the FieldValue
-// sentinels they use (delete, increment, serverTimestamp).
+// Just enough of the Admin Firestore API for the /api/account change routes
+// and the WhatsApp bot: doc get/create/set (with merge)/update/delete,
+// batches, transactions (reads first, writes applied together), a
+// single-field equality query, and the FieldValue sentinels they use
+// (delete, increment, serverTimestamp).
 export class MemoryFirestore {
   private records = new Map<string, DocumentData>()
 
@@ -53,7 +54,14 @@ export class MemoryFirestore {
       path,
       id: path.split('/').at(-1)!,
       get: async () => this.snap(path),
-      set: async (value: DocumentData) => this.apply([{ kind: 'set', path, value }]),
+      create: async (value: DocumentData) => {
+        if (this.records.has(path)) throw Object.assign(new Error('Document already exists'), { code: 6 })
+        this.apply([{ kind: 'set', path, value }])
+      },
+      set: async (value: DocumentData, options?: { merge?: boolean }) =>
+        options?.merge && this.records.has(path)
+          ? this.apply([{ kind: 'update', path, value }])
+          : this.apply([{ kind: 'set', path, value }]),
       update: async (value: DocumentData) => this.apply([{ kind: 'update', path, value }]),
       delete: async () => this.apply([{ kind: 'delete', path }]),
     }

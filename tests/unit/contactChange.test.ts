@@ -9,7 +9,15 @@ const mocks = vi.hoisted(() => ({
   getUserByEmail: vi.fn(),
   updateUser: vi.fn(),
   send: vi.fn(),
+  after: vi.fn(),
+  updateSubscriberEmail: vi.fn(),
 }))
+// after() needs a request scope; here it records the callback and runs it at once.
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (task: () => unknown) => { mocks.after(task); void task() },
+}))
+vi.mock('@/lib/responder/updateSubscriberEmail', () => ({ updateSubscriberEmail: mocks.updateSubscriberEmail }))
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
 vi.mock('@/lib/firebase/admin', () => ({
   getAdminDb: () => mocks.store.db,
@@ -71,6 +79,7 @@ beforeEach(() => {
   mocks.getUserByEmail.mockRejectedValue(Object.assign(new Error('none'), { code: 'auth/user-not-found' }))
   mocks.updateUser.mockResolvedValue({})
   mocks.send.mockResolvedValue({ error: null })
+  mocks.updateSubscriberEmail.mockResolvedValue('created')
   vi.stubEnv('APP_URL', 'https://landly.test/')
   vi.stubEnv('EMAIL_FROM', 'test@landly.test')
   vi.stubEnv('RESEND_API_KEY', 'fake-test-key')
@@ -349,6 +358,39 @@ describe('/api/account/verify-email-otp', () => {
     expect(again.status).toBe(409)
     expect((await again.json()).reason).toBe('noPending')
     expect(mocks.updateUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries the new address to Responder in the background for a member who opted in', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', firstName: 'Dana', marketingOptIn: true })
+    const code = await startChange()
+    expect(await (await verify(code)).json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(mocks.after).toHaveBeenCalledTimes(1)
+    expect(mocks.updateSubscriberEmail).toHaveBeenCalledWith({ uid: UID, oldEmail: 'old@landly.test', newEmail: 'new@landly.test', firstName: 'Dana' })
+  })
+
+  it('never syncs a member who did not opt in', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', firstName: 'Dana', marketingOptIn: 'yes' })
+    expect((await verify(await startChange())).status).toBe(200)
+    expect(mocks.after).not.toHaveBeenCalled()
+    expect(mocks.updateSubscriberEmail).not.toHaveBeenCalled()
+  })
+
+  it('does not wait on Responder: a hung sync still verifies', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', marketingOptIn: true })
+    mocks.updateSubscriberEmail.mockReturnValueOnce(new Promise(() => {}))
+    expect(await (await verify(await startChange())).json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(mocks.updateSubscriberEmail).toHaveBeenCalledWith(expect.objectContaining({ firstName: '' }))
+  })
+
+  it('does not sync when the change does not apply', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', marketingOptIn: true })
+    const code = await startChange()
+    expect((await verify(wrong(code))).status).toBe(400)
+    mocks.updateUser.mockRejectedValueOnce(new Error('down'))
+    expect((await verify(code)).status).toBe(503)
+    mocks.updateUser.mockRejectedValueOnce(Object.assign(new Error('taken'), { code: 'auth/email-already-exists' }))
+    expect((await verify(code)).status).toBe(409)
+    expect(mocks.updateSubscriberEmail).not.toHaveBeenCalled()
   })
 
   it('counts wrong codes and gives up after five', async () => {
