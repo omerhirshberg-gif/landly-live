@@ -33,6 +33,8 @@ const PATHS = {
   chat: 'M7.9 20A9 9 0 1 0 4 16.1L2 22z',
   mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
   chevronEnd: 'm9 6 6 6-6 6',
+  // The lock screen's "Last sign-in" row.
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
   // The app lock: Face ID / face unlock, and Touch ID / fingerprint.
   faceId: 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
   fingerprint:

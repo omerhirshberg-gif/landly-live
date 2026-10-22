@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps, type TextStyle } from 'react-native'
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
@@ -27,6 +27,9 @@ const EYE_OFF =
 // On focus the field box (never the text itself, which would blur) grows to
 // FOCUS_SCALE along with the brand border and halo: a spring on native, a
 // CSS transition on web. Reduced motion keeps the colour change only.
+// `shake` plays a short side-to-side shake each time it goes up while there's
+// an error (a submit that failed validation; web: lib/useShake.ts), skipped
+// under reduced motion.
 const FOCUS_SCALE = 1.025
 const FOCUS_SPRING = { damping: 15, stiffness: 120 }
 
@@ -40,6 +43,7 @@ export default function TextField({
   onBlur,
   secureTextEntry,
   prefix,
+  shake = 0,
   ...props
 }: TextInputProps & {
   label: string
@@ -48,6 +52,7 @@ export default function TextField({
   hint?: string
   error?: string | null
   prefix?: ReactNode
+  shake?: number
   /** Reaches the TextInput through ...props (React 19 passes ref as a prop). */
   ref?: Ref<TextInput>
 }) {
@@ -58,17 +63,26 @@ export default function TextField({
   const reduced = useReducedMotion()
   const zoom = focused && !reduced
   const scale = useSharedValue(1)
+  const shift = useSharedValue(0)
 
   useEffect(() => {
     if (!isWeb) scale.set(withSpring(zoom ? FOCUS_SCALE : 1, FOCUS_SPRING))
   }, [zoom, scale])
 
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }))
+  useEffect(() => {
+    if (!shake || !error || reduced) return
+    const step = (x: number) => withTiming(x, { duration: 55 })
+    shift.set(withSequence(step(-6), step(6), step(-4), step(4), step(0)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- plays once per shake
+  }, [shake])
+
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shift.get() }, { scale: scale.get() }] }))
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shift.get() }] }))
   return (
     <View style={styles.wrap}>
       <AppText style={styles.label}>{label}</AppText>
       <Animated.View
-        style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError, isWeb ? zoom && styles.fieldZoomWeb : scaleStyle]}
+        style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError, isWeb ? [shakeStyle, zoom && styles.fieldZoomWeb] : scaleStyle]}
       >
         {prefix}
         {icon && (
@@ -89,6 +103,8 @@ export default function TextField({
         <TextInput
           placeholderTextColor={colors.textFaint}
           {...props}
+          aria-invalid={!!error || undefined}
+          accessibilityHint={error ?? props.accessibilityHint}
           secureTextEntry={secureTextEntry && !revealed}
           onFocus={(e) => {
             setFocused(true)

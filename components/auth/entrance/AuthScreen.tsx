@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
 import { completeGoogleRedirect, hasPendingGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
+import { markPasskeyOfferDue } from '@/lib/auth/passkeyPrompt'
 import {
   cancelPasskeyRequest,
   hasPasskeyHint,
@@ -21,10 +22,12 @@ import {
   greetingName,
   isOnboardingComplete,
   parseOnboardingDraft,
-  signUpFormError,
+  firstInvalidSignUpField,
+  signUpFieldErrors,
   type OnboardingDraft,
   type OnboardingStep,
-  type SignUpFormError,
+  type SignUpField,
+  type SignUpFieldErrors,
 } from '@/lib/auth/onboarding'
 import { ONB } from '@/lib/brand/onboardingMotion'
 import { signUpCustomer } from '@/lib/auth/signUpCustomer'
@@ -127,7 +130,20 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [confirm, setConfirm] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  // One error per field, all shown at once after a submit; typing in a field clears its own.
+  const [signUpErrors, setSignUpErrors] = useState<SignUpFieldErrors>({})
+  // Goes up on each submit that fails validation: the invalid fields shake.
+  const [signUpShake, setSignUpShake] = useState(0)
+  const signUpRefs = useRef<Partial<Record<SignUpField, HTMLInputElement | null>>>({})
+  const termsRef = useRef<HTMLDivElement>(null)
+  const clearSignUpError = (field: SignUpField) =>
+    setSignUpErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  const signUpErrorText = (field: SignUpField) => (signUpErrors[field] ? t(signUpErrors[field]) : undefined)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   // Optional and unticked by default (Israeli Spam Law / GDPR consent).
   const [marketingOptIn, setMarketingOptIn] = useState(false)
@@ -264,7 +280,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setMode(next)
     setError(null)
     setBusinessAccount(false)
-    setSignUpError(null)
+    setSignUpErrors({})
     // The query (?redirect=) carries over to the other tab.
     window.history.replaceState(null, '', PATHS[next] + window.location.search)
   }
@@ -298,6 +314,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     if (result.status === 'businessAccount') setBusinessAccount(true)
     else if (result.status === 'signedIn') {
       setVia('google')
+      // The landing page offers a passkey (components/auth/PasskeyPrompt.tsx).
+      markPasskeyOfferDue(result.user.uid)
       await afterSignIn(result.user.uid, result.preferredLanguage, options)
     }
   }
@@ -321,6 +339,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         setSubmitting(false)
         return
       }
+      markPasskeyOfferDue(result.user.uid)
       await afterSignIn(result.user.uid, result.preferredLanguage)
       setSubmitting(false)
     } catch (err) {
@@ -337,9 +356,15 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const invalid = signUpFormError({ firstName, lastName, email, password, confirm, agreedToTerms })
-    setSignUpError(invalid)
-    if (invalid) return
+    const errors = signUpFieldErrors({ firstName, lastName, email, password, confirm, agreedToTerms })
+    setSignUpErrors(errors)
+    const first = firstInvalidSignUpField(errors)
+    if (first) {
+      setSignUpShake((n) => n + 1)
+      if (first === 'terms') termsRef.current?.querySelector('input')?.focus()
+      else signUpRefs.current[first]?.focus()
+      return
+    }
     setSubmitting(true)
     try {
       const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang)
@@ -564,11 +589,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       label={t('onb_firstNameLabel')}
                       icon="user"
                       value={firstName}
+                      ref={(el) => {
+                        signUpRefs.current.firstName = el
+                      }}
                       onChange={(e) => {
                         setFirstName(e.target.value)
-                        setSignUpError(null)
+                        clearSignUpError('firstName')
                       }}
-                      error={signUpError === 'onb_firstNameRequired' ? t(signUpError) : undefined}
+                      error={signUpErrorText('firstName')}
+                      shake={signUpShake}
+                      required
                       autoComplete="given-name"
                       autoCapitalize="words"
                       enterKeyHint="next"
@@ -577,11 +607,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     <TextField
                       label={t('onb_lastNameLabel')}
                       value={lastName}
+                      ref={(el) => {
+                        signUpRefs.current.lastName = el
+                      }}
                       onChange={(e) => {
                         setLastName(e.target.value)
-                        setSignUpError(null)
+                        clearSignUpError('lastName')
                       }}
-                      error={signUpError === 'onb_lastNameRequired' ? t(signUpError) : undefined}
+                      error={signUpErrorText('lastName')}
+                      shake={signUpShake}
+                      required
                       autoComplete="family-name"
                       autoCapitalize="words"
                       enterKeyHint="next"
@@ -593,11 +628,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     icon="mail"
                     type="email"
                     value={email}
+                    ref={(el) => {
+                      signUpRefs.current.email = el
+                    }}
                     onChange={(e) => {
                       setEmail(e.target.value)
-                      setSignUpError(null)
+                      clearSignUpError('email')
                     }}
-                    error={signUpError === 'onb_emailInvalid' ? t(signUpError) : undefined}
+                    error={signUpErrorText('email')}
+                    shake={signUpShake}
+                    required
                     autoCapitalize="none"
                     autoComplete="email"
                     enterKeyHint="next"
@@ -607,21 +647,26 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     icon="lock"
                     type="password"
                     value={password}
+                    ref={(el) => {
+                      signUpRefs.current.password = el
+                    }}
                     onChange={(e) => {
                       setPassword(e.target.value)
-                      setSignUpError(null)
+                      clearSignUpError('password')
                     }}
                     // The checklist replaces the one-line error while focused, and
                     // the error comes back on blur if the password is still weak.
                     onFocus={() => {
                       setPasswordFocused(true)
-                      if (signUpError === 'onb_passwordWeak') setSignUpError(null)
+                      if (signUpErrors.password === 'onb_passwordWeak') clearSignUpError('password')
                     }}
                     onBlur={() => {
                       setPasswordFocused(false)
-                      if (password && !isStrongPassword(password) && !signUpError) setSignUpError('onb_passwordWeak')
+                      if (password && !isStrongPassword(password)) setSignUpErrors((prev) => ({ ...prev, password: 'onb_passwordWeak' }))
                     }}
-                    error={signUpError === 'onb_passwordWeak' ? t(signUpError) : undefined}
+                    error={signUpErrorText('password')}
+                    shake={signUpShake}
+                    required
                     autoComplete="new-password"
                     enterKeyHint="next"
                   />
@@ -631,27 +676,32 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     icon="lock"
                     type="password"
                     value={confirm}
+                    ref={(el) => {
+                      signUpRefs.current.confirm = el
+                    }}
                     onChange={(e) => {
                       setConfirm(e.target.value)
-                      setSignUpError(null)
+                      clearSignUpError('confirm')
                     }}
-                    error={signUpError === 'onb_passwordMismatch' ? t(signUpError) : undefined}
+                    error={signUpErrorText('confirm')}
+                    shake={signUpShake}
+                    required
                     autoComplete="new-password"
                     enterKeyHint="go"
                   />
 
-                  <div className="mt-1 mb-5">
+                  <div ref={termsRef} className="mt-1 mb-5">
                     <Checkbox
                       label={<span className="leading-5"><ConsentText template={t('signup_terms_agree')} t={t} /></span>}
                       checked={agreedToTerms}
                       onChange={(checked) => {
                         setAgreedToTerms(checked)
-                        if (signUpError === 'signup_termsRequired') setSignUpError(null)
+                        if (checked) clearSignUpError('terms')
                       }}
-                      invalid={signUpError === 'signup_termsRequired'}
-                      describedBy={signUpError === 'signup_termsRequired' ? 'signup-terms-error' : undefined}
+                      invalid={!!signUpErrors.terms}
+                      describedBy={signUpErrors.terms ? 'signup-terms-error' : undefined}
                     />
-                    {signUpError === 'signup_termsRequired' && (
+                    {signUpErrors.terms && (
                       <p id="signup-terms-error" role="alert" className="mt-2 text-[13px] font-semibold text-red-600">
                         {t('signup_termsRequired')}
                       </p>
@@ -671,7 +721,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       type="submit"
                       label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
                       busy={submitting}
-                      disabled={!firstName.trim() || !lastName.trim() || !email || !password || !confirm || googleBusy}
+                      // Always pressable: an incomplete form says what's missing instead of greying out.
+                      disabled={googleBusy || passkeyBusy}
                       large
                       arrow
                     />

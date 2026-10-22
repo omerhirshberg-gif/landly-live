@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type TextInput } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as WebBrowser from 'expo-web-browser'
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { inMemoryPersistence, setPersistence } from 'firebase/auth'
-import { greetingName, isOnboardingComplete, signUpFormError, type OnboardingDraft, type SignUpFormError } from '@shared/auth/onboarding'
+import {
+  firstInvalidSignUpField,
+  greetingName,
+  isOnboardingComplete,
+  signUpFieldErrors,
+  type OnboardingDraft,
+  type SignUpField,
+  type SignUpFieldErrors,
+} from '@shared/auth/onboarding'
 import { EASE_FADE, EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
@@ -25,6 +33,7 @@ import Notice from '../../components/Notice'
 import BrandHero from '../../components/BrandHero'
 import SegmentedControl from '../../components/SegmentedControl'
 import TextField from '../../components/TextField'
+import { useAppLock } from '../../auth/AppLock'
 import { useSignInGate } from '../../auth/SignInGate'
 import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSignIn'
 import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
@@ -33,6 +42,7 @@ import PasswordRequirements from '../../auth/onboarding/PasswordRequirements'
 import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmailCard'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
+import { warning as warningHaptic } from '../../lib/haptics'
 import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
 import { VIEWPORT_HEIGHT, webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
@@ -89,7 +99,10 @@ export default function LoginScreen() {
   const heroOpacity = useSharedValue(1)
   const [mode, setMode] = useState<Mode>('signIn')
   const [rememberMe, setRememberMe] = useState(true)
-  const [email, setEmail] = useState('')
+  // Back from the lock screen's "Sign in with password instead": the member's
+  // email is already filled in, so only the password is left to type.
+  const { prefillEmail, clearPrefillEmail } = useAppLock()
+  const [email, setEmail] = useState(() => prefillEmail ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -99,7 +112,19 @@ export default function LoginScreen() {
   const [confirm, setConfirm] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [signUpError, setSignUpError] = useState<SignUpFormError | null>(null)
+  // One error per field, all shown at once after a submit; typing in a field
+  // clears its own (web: AuthScreen.tsx). Each failed submit shakes them.
+  const [signUpErrors, setSignUpErrors] = useState<SignUpFieldErrors>({})
+  const [signUpShake, setSignUpShake] = useState(0)
+  const signUpRefs = useRef<Partial<Record<Exclude<SignUpField, 'terms'>, TextInput | null>>>({})
+  const clearSignUpError = (field: SignUpField) =>
+    setSignUpErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  const signUpErrorText = (field: SignUpField) => (signUpErrors[field] ? t(signUpErrors[field]) : undefined)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   // Optional and unticked by default (Israeli Spam Law / GDPR consent).
   const [marketingOptIn, setMarketingOptIn] = useState(false)
@@ -119,6 +144,12 @@ export default function LoginScreen() {
 
   useEffect(() => () => clearTimeout(fadeTimer.current), [])
 
+  // Used once: a later visit to this screen starts empty again.
+  useEffect(() => {
+    if (prefillEmail) clearPrefillEmail()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on mount only
+  }, [])
+
   // Fade the card (and footer) out, rising slightly, then switch what it shows.
   const fadeOutThen = (next: () => void) => {
     const duration = reduced ? ONB.reducedMs : ONB.screenOutMs
@@ -133,7 +164,7 @@ export default function LoginScreen() {
     setMode(next)
     setError(null)
     setBusinessAccount(false)
-    setSignUpError(null)
+    setSignUpErrors({})
   }
 
   // A signed-in member who hasn't finished onboarding stays behind the gate
@@ -212,9 +243,15 @@ export default function LoginScreen() {
   // the profile doc). The wizard runs on the first verified sign-in.
   const handleSignUp = async () => {
     setError(null)
-    const invalid = signUpFormError({ firstName, lastName, email, password, confirm, agreedToTerms })
-    setSignUpError(invalid)
-    if (invalid) return
+    const errors = signUpFieldErrors({ firstName, lastName, email, password, confirm, agreedToTerms })
+    setSignUpErrors(errors)
+    const first = firstInvalidSignUpField(errors)
+    if (first) {
+      setSignUpShake((n) => n + 1)
+      warningHaptic()
+      if (first !== 'terms') signUpRefs.current[first]?.focus()
+      return
+    }
     setSubmitting(true)
     // Keeps the root layout from reacting to the brief unverified session.
     setChecking(true)
@@ -369,9 +406,13 @@ export default function LoginScreen() {
                               value={firstName}
                               onChangeText={(v) => {
                                 setFirstName(v)
-                                setSignUpError(null)
+                                clearSignUpError('firstName')
                               }}
-                              error={signUpError === 'onb_firstNameRequired' ? t(signUpError) : undefined}
+                              ref={(el) => {
+                                signUpRefs.current.firstName = el
+                              }}
+                              error={signUpErrorText('firstName')}
+                              shake={signUpShake}
                               autoCapitalize="words"
                               autoComplete="given-name"
                               textContentType="givenName"
@@ -386,9 +427,13 @@ export default function LoginScreen() {
                               value={lastName}
                               onChangeText={(v) => {
                                 setLastName(v)
-                                setSignUpError(null)
+                                clearSignUpError('lastName')
                               }}
-                              error={signUpError === 'onb_lastNameRequired' ? t(signUpError) : undefined}
+                              ref={(el) => {
+                                signUpRefs.current.lastName = el
+                              }}
+                              error={signUpErrorText('lastName')}
+                              shake={signUpShake}
                               autoCapitalize="words"
                               autoComplete="family-name"
                               textContentType="familyName"
@@ -403,9 +448,13 @@ export default function LoginScreen() {
                           value={email}
                           onChangeText={(v) => {
                             setEmail(v)
-                            setSignUpError(null)
+                            clearSignUpError('email')
                           }}
-                          error={signUpError === 'onb_emailInvalid' ? t(signUpError) : undefined}
+                          ref={(el) => {
+                            signUpRefs.current.email = el
+                          }}
+                          error={signUpErrorText('email')}
+                          shake={signUpShake}
                           autoCapitalize="none"
                           autoComplete="email"
                           keyboardType="email-address"
@@ -418,19 +467,23 @@ export default function LoginScreen() {
                           value={password}
                           onChangeText={(v) => {
                             setPassword(v)
-                            setSignUpError(null)
+                            clearSignUpError('password')
+                          }}
+                          ref={(el) => {
+                            signUpRefs.current.password = el
                           }}
                           // The checklist replaces the one-line error while focused, and
                           // the error comes back on blur if the password is still weak.
                           onFocus={() => {
                             setPasswordFocused(true)
-                            if (signUpError === 'onb_passwordWeak') setSignUpError(null)
+                            if (signUpErrors.password === 'onb_passwordWeak') clearSignUpError('password')
                           }}
                           onBlur={() => {
                             setPasswordFocused(false)
-                            if (password && !isStrongPassword(password) && !signUpError) setSignUpError('onb_passwordWeak')
+                            if (password && !isStrongPassword(password)) setSignUpErrors((prev) => ({ ...prev, password: 'onb_passwordWeak' }))
                           }}
-                          error={signUpError === 'onb_passwordWeak' ? t(signUpError) : undefined}
+                          error={signUpErrorText('password')}
+                          shake={signUpShake}
                           secureTextEntry
                           autoComplete="new-password"
                           textContentType="newPassword"
@@ -443,9 +496,13 @@ export default function LoginScreen() {
                           value={confirm}
                           onChangeText={(v) => {
                             setConfirm(v)
-                            setSignUpError(null)
+                            clearSignUpError('confirm')
                           }}
-                          error={signUpError === 'onb_passwordMismatch' ? t(signUpError) : undefined}
+                          ref={(el) => {
+                            signUpRefs.current.confirm = el
+                          }}
+                          error={signUpErrorText('confirm')}
+                          shake={signUpShake}
                           secureTextEntry
                           autoComplete="new-password"
                           textContentType="newPassword"
@@ -458,11 +515,11 @@ export default function LoginScreen() {
                             checked={agreedToTerms}
                             onChange={(checked) => {
                               setAgreedToTerms(checked)
-                              if (signUpError === 'signup_termsRequired') setSignUpError(null)
+                              if (checked) clearSignUpError('terms')
                             }}
-                            invalid={signUpError === 'signup_termsRequired'}
+                            invalid={!!signUpErrors.terms}
                           />
-                          {signUpError === 'signup_termsRequired' && (
+                          {signUpErrors.terms && (
                             <AppText accessibilityRole="alert" style={styles.consentError}>{t('signup_termsRequired')}</AppText>
                           )}
                           <View style={styles.marketing}>
@@ -474,7 +531,8 @@ export default function LoginScreen() {
                             label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
                             onPress={handleSignUp}
                             busy={submitting}
-                            disabled={!firstName.trim() || !lastName.trim() || !email || !password || !confirm || googleBusy}
+                            // Always pressable: an incomplete form says what's missing instead of greying out.
+                            disabled={googleBusy}
                             large
                             arrow
                           />

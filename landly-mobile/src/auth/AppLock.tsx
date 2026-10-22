@@ -1,11 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Alert, AppState, Pressable, StyleSheet, View, type AppStateStatus } from 'react-native'
+import Animated, { FadeOut } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { getCalendars } from 'expo-localization'
 import { signOut } from 'firebase/auth'
+import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '@shared/auth/greeting'
+import { greetingName } from '@shared/auth/names'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
+import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import type { TranslationKey } from '@shared/i18n/translations'
 import AppText from '../components/AppText'
+import BiometricGlyph from '../components/BiometricGlyph'
 import Button from '../components/Button'
 import { StaticEmblem } from '../components/Emblem'
 import LineIcon from '../components/LineIcon'
@@ -17,8 +23,10 @@ import {
   APP_LOCK_SUPPORTED,
   authenticate,
   biometricStatus,
+  getLastEntry,
   isAppLockEnabled,
   markAppLockOffered,
+  recordLastEntry,
   setAppLockEnabled,
   wasAppLockOffered,
   type BiometricKind,
@@ -31,10 +39,13 @@ import {
 // (or the device passcode) confirms the member. The tabs stay mounted under
 // it, so unlocking is instant. Whenever the app isn't active the privacy
 // cover hides the screen, so the app switcher's snapshot never shows a pass.
-// The system prompt opens by itself once per lock; after three cancelled or
-// failed tries it stops and "Sign in with password instead" leads, which
-// signs out to the login screen. A sign-in made on the login screen is never
-// locked: the member just proved who they are.
+// The lock screen greets the member by first name for the time of day, shows
+// when they last came in on this device, and opens the system prompt by
+// itself once per lock; "Sign In" (or the glyph) tries again, and after three
+// cancelled or failed tries a notice points to "Sign in with password
+// instead", which signs out to the login screen with the email filled in. A
+// sign-in made on the login screen is never locked: the member just proved
+// who they are. Every unlock and sign-in here is recorded as the last entry.
 
 /** Background time after which coming back asks again. */
 export const APP_LOCK_GRACE_MS = 60_000
@@ -58,8 +69,17 @@ interface AppLockContextValue {
   locked: boolean
   covered: boolean
   tries: number
+  /** When the screen locked: the greeting is for that time of day. */
+  lockedAt: Date | null
+  /** The member's previous entry on this device, for "Last sign-in"; null hides the row. */
+  lastEntry: Date | null
+  /** The system prompt is open (the glyph's ring pulses). */
+  promptOpen: boolean
   unlock: () => Promise<void>
   signInWithPasswordInstead: () => Promise<void>
+  /** The email of the member who chose "Sign in with password instead", for the login form. */
+  prefillEmail: string | null
+  clearPrefillEmail: () => void
 }
 
 const AppLockContext = createContext<AppLockContextValue | null>(null)
@@ -77,6 +97,10 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   const [locked, setLocked] = useState(false)
   const [covered, setCovered] = useState(false)
   const [tries, setTries] = useState(0)
+  const [lockedAt, setLockedAt] = useState<Date | null>(null)
+  const [lastEntry, setLastEntry] = useState<Date | null>(null)
+  const [promptOpen, setPromptOpen] = useState(false)
+  const [prefillEmail, setPrefillEmail] = useState<string | null>(null)
   // The uid restored at launch (null: nobody); undefined until auth has loaded.
   const launchUid = useRef<string | null | undefined>(undefined)
   const backgroundedAt = useRef<number | null>(null)
@@ -92,6 +116,11 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading && launchUid.current === undefined) launchUid.current = uid
   }, [loading, uid])
+
+  const engageLock = useCallback(() => {
+    setLocked(true)
+    setLockedAt(new Date())
+  }, [])
 
   const refreshStatus = useCallback(async () => {
     if (!APP_LOCK_SUPPORTED) return
@@ -118,14 +147,32 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     isAppLockEnabled(uid).then((on) => {
       if (cancelled) return
       setEnabledFor({ uid, on })
-      setLocked(on && launchUid.current === uid)
+      const launchSession = launchUid.current === uid
+      if (on && launchSession) engageLock()
+      else setLocked(false)
+      // A sign-in made here is an entry; the launch session's comes with its unlock.
+      if (!launchSession) recordLastEntry(uid)
       // Only the first read can be the launch session's.
       launchUid.current = null
     })
     return () => {
       cancelled = true
     }
-  }, [uid])
+  }, [uid, engageLock])
+
+  // What "Last sign-in" shows, read each time the screen locks (before this unlock is recorded).
+  useEffect(() => {
+    if (!locked || !uid) return
+    let cancelled = false
+    getLastEntry(uid).then((stored) => {
+      if (cancelled) return
+      const member = auth.currentUser
+      setLastEntry(resolveLastEntry(stored, member?.uid === uid ? member.metadata.lastSignInTime : null))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [locked, uid])
 
   useEffect(() => {
     if (!APP_LOCK_SUPPORTED) return
@@ -136,7 +183,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         backgroundedAt.current = null
         if (enabledRef.current && away !== null && Date.now() - away > APP_LOCK_GRACE_MS) {
           setTries(0)
-          setLocked(true)
+          engageLock()
         }
         refreshStatus()
         return
@@ -147,15 +194,17 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     }
     const sub = AppState.addEventListener('change', onChange)
     return () => sub.remove()
-  }, [refreshStatus])
+  }, [refreshStatus, engageLock])
 
   const prompt = useCallback(
     async (promptMessage: string) => {
       prompting.current = true
+      setPromptOpen(true)
       try {
         return await authenticate({ promptMessage, cancelLabel: t('applock_cancel'), fallbackLabel: t('applock_usePasscode') })
       } finally {
         prompting.current = false
+        setPromptOpen(false)
       }
     },
     [t]
@@ -168,6 +217,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
       setLocked(false)
       setTries(0)
       successHaptic()
+      if (uid) recordLastEntry(uid)
       return
     }
     // The system took the prompt away (another app, a call): not the member's try.
@@ -175,13 +225,17 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     // Locked out, or nothing left to check with: only the password route is left.
     const deadEnd = ['lockout', 'passcode_not_set', 'not_enrolled', 'not_available'].includes(result.error)
     setTries((n) => (deadEnd ? APP_LOCK_MAX_TRIES : n + 1))
-  }, [prompt, t])
+  }, [prompt, t, uid])
 
+  // The lock stays on for this account; the login form opens with its email filled in.
   const signInWithPasswordInstead = useCallback(async () => {
+    setPrefillEmail(auth.currentUser?.email ?? null)
     setLocked(false)
     setTries(0)
     await signOut(auth).catch(() => {})
   }, [])
+
+  const clearPrefillEmail = useCallback(() => setPrefillEmail(null), [])
 
   const setEnabled = useCallback(
     async (on: boolean) => {
@@ -243,8 +297,13 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         locked: locked && enabled,
         covered: covered && enabled,
         tries,
+        lockedAt,
+        lastEntry,
+        promptOpen,
         unlock,
         signInWithPasswordInstead,
+        prefillEmail,
+        clearPrefillEmail,
       }}
     >
       {children}
@@ -264,8 +323,10 @@ export function useAppLock() {
  * prompt open by itself once per lock.
  */
 export function AppLockOverlay({ promptReady }: { promptReady: boolean }) {
-  const { t } = useLang()
-  const { status, locked, covered, tries, unlock, signInWithPasswordInstead } = useAppLock()
+  const { t, lang } = useLang()
+  const { user } = useAuth()
+  const { profile } = useMemberProfile(user)
+  const { status, locked, covered, tries, lockedAt, lastEntry, promptOpen, unlock, signInWithPasswordInstead } = useAppLock()
   const autoPrompted = useRef(false)
 
   useEffect(() => {
@@ -294,49 +355,46 @@ export function AppLockOverlay({ promptReady }: { promptReady: boolean }) {
   const kind = status?.kind ?? 'biometrics'
   const method = t(methodKey(kind))
   const exhausted = tries >= APP_LOCK_MAX_TRIES
-  const icon = kind === 'faceId' || kind === 'face' ? 'faceId' : 'fingerprint'
+  // Profile first, then the account's own name (on the device, so it works offline at launch).
+  const name = greetingName(profile, user?.displayName)
+  const greeting = t(greetingKey(greetingPeriod((lockedAt ?? new Date()).getHours()), !!name)).replace('{name}', name ?? '')
+  // The device's 12/24-hour setting (unknown: the language's own convention).
+  const clock24 = getCalendars()[0]?.uses24hourClock
+  const hour12 = clock24 == null ? undefined : !clock24
+  const lastEntryText = lastEntry ? t('applock_lastEntry').replace('{time}', formatLastEntry(lastEntry, new Date(), lang, t, hour12)) : null
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.lock]} accessibilityViewIsModal>
+    // Fades out on unlock (reduced motion: gone at once, Reanimated's default).
+    <Animated.View exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, styles.lock]} accessibilityViewIsModal>
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
+        <View style={styles.top}>
           <View style={styles.mark}>
             <StaticEmblem />
           </View>
-          <AppText accessibilityRole="header" style={styles.title}>{t('applock_lockedTitle')}</AppText>
-          <AppText style={styles.sub}>{t('applock_lockedSub').replace('{method}', method)}</AppText>
+          <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
+            {greeting}
+          </AppText>
+          {lastEntryText && (
+            <View style={styles.lastEntry}>
+              <LineIcon name="clock" size={14} color={colors.textMuted} />
+              <AppText style={styles.lastEntryText}>{lastEntryText}</AppText>
+            </View>
+          )}
+        </View>
 
-          <Pressable
-            onPress={unlock}
-            accessibilityRole="button"
-            accessibilityLabel={t('applock_unlockBtn').replace('{method}', method)}
-            style={({ pressed }) => [styles.glyph, pressed && styles.glyphPressed]}
-            hitSlop={8}
-          >
-            <LineIcon name={icon} size={36} color={colors.brand} strokeWidth={1.75} />
-          </Pressable>
+        <View style={styles.hero}>
+          <BiometricGlyph kind={kind} pulsing={promptOpen} onPress={unlock} label={t('applock_glyphLabel').replace('{method}', method)} />
         </View>
 
         <View style={styles.actions}>
           {exhausted && <Notice message={t('applock_tooMany')} />}
-          <Button
-            label={exhausted ? t('applock_passwordInstead') : t('applock_unlockBtn').replace('{method}', method)}
-            onPress={exhausted ? signInWithPasswordInstead : unlock}
-            large
-          />
-          <Pressable
-            onPress={exhausted ? unlock : signInWithPasswordInstead}
-            accessibilityRole="button"
-            style={styles.link}
-            hitSlop={8}
-          >
-            <AppText style={styles.linkText}>
-              {exhausted ? t('applock_unlockBtn').replace('{method}', method) : t('applock_passwordInstead')}
-            </AppText>
+          <Button label={t('applock_signInBtn')} onPress={unlock} busy={promptOpen} large />
+          <Pressable onPress={signInWithPasswordInstead} accessibilityRole="button" style={styles.link} hitSlop={8}>
+            <AppText style={styles.linkText}>{t('applock_passwordInstead')}</AppText>
           </Pressable>
         </View>
       </SafeAreaView>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -345,22 +403,12 @@ const styles = StyleSheet.create({
   coverMark: { width: 72, height: 69 },
   lock: { backgroundColor: colors.background, zIndex: 1000 },
   safe: { flex: 1, paddingHorizontal: 24 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  mark: { width: 64, height: 61, marginBottom: 24 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.heading, textAlign: 'center' },
-  sub: { marginTop: 8, fontSize: 15, lineHeight: 22, color: colors.body, textAlign: 'center', maxWidth: 300 },
-  glyph: {
-    marginTop: 32,
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: colors.brandTint,
-    borderWidth: 1,
-    borderColor: colors.brandLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glyphPressed: { backgroundColor: colors.brandLight, transform: [{ scale: 0.96 }] },
+  top: { alignItems: 'center', paddingTop: 48 },
+  mark: { width: 40, height: 38, marginBottom: 28 },
+  greeting: { fontSize: 28, lineHeight: 36, fontWeight: '800', color: colors.heading, textAlign: 'center' },
+  lastEntry: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  lastEntryText: { fontSize: 13, color: colors.textMuted },
+  hero: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { paddingBottom: 16 },
   link: { alignSelf: 'center', marginTop: 14, paddingVertical: 10, paddingHorizontal: 12 },
   linkText: { fontSize: 15, fontWeight: '700', color: colors.brand, textAlign: 'center' },

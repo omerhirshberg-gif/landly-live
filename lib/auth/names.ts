@@ -21,6 +21,20 @@ export function normalizePersonName(value: unknown): string {
     .trim()
 }
 
+/**
+ * First and last name are both required wherever a member types them (the
+ * Sign Up form, the profile editors on the website and in the app): a blank
+ * one, or one that's only spaces, gets "This field is required".
+ */
+export type NameFieldErrors = Partial<Record<'firstName' | 'lastName', 'form_fieldRequired'>>
+
+export function nameFieldErrors(fields: { firstName: string; lastName: string }): NameFieldErrors {
+  const errors: NameFieldErrors = {}
+  if (!normalizePersonName(fields.firstName)) errors.firstName = 'form_fieldRequired'
+  if (!normalizePersonName(fields.lastName)) errors.lastName = 'form_fieldRequired'
+  return errors
+}
+
 /** "First Last", as written to users/{uid}.displayName and the Auth record. */
 export function fullName(firstName: string, lastName: string): string {
   return `${normalizePersonName(firstName)} ${normalizePersonName(lastName)}`.trim()
