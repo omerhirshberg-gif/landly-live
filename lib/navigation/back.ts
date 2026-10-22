@@ -15,3 +15,17 @@ export function backAction(fallback: string, previous: string | null, force = fa
   if (!force && previous !== null) return { kind: 'back' }
   return { kind: 'replace', href: fallback }
 }
+
+/**
+ * The back button's text for the page it returns to, so an offer opened from
+ * Home says "Back to Home" rather than naming a page the member never saw.
+ * Opened directly (no in-app page behind it), just "Back".
+ */
+export function backLabelKey(previous: string | null): 'nav_back_home' | 'offer_detail_back' | 'nav_back_wishlist' | 'nav_back' {
+  if (previous === null) return 'nav_back'
+  const path = previous.split(/[?#]/)[0]
+  if (path === '/') return 'nav_back_home'
+  if (path === '/categories' || path.startsWith('/categories/')) return 'offer_detail_back'
+  if (path === '/wishlist') return 'nav_back_wishlist'
+  return 'nav_back'
+}

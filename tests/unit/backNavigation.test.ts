@@ -5,7 +5,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
-import { backAction } from '@/lib/navigation/back'
+import { backAction, backLabelKey } from '@/lib/navigation/back'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ back: vi.fn(), replace: vi.fn(), push: vi.fn() }) }))
 import BackButton from '@/components/navigation/BackButton'
@@ -55,5 +55,26 @@ describe('native edge swipes stay with the browser', () => {
     expect(css).not.toMatch(/(html|body)[^{]*\{[^}]*touch-action\s*:\s*none/)
     expect(css).not.toMatch(/(html|body)[^{]*\{[^}]*overscroll-behavior(-x)?\s*:\s*(none|contain)/)
     expect(css).toContain('html,body{overscroll-behavior-x:auto;}')
+  })
+})
+
+describe('backLabelKey', () => {
+  it('names the page back returns to', () => {
+    expect(backLabelKey('/')).toBe('nav_back_home')
+    expect(backLabelKey('/?ref=x')).toBe('nav_back_home')
+    expect(backLabelKey('/categories')).toBe('offer_detail_back')
+    expect(backLabelKey('/categories/Spa%20and%20Wellness')).toBe('offer_detail_back')
+    expect(backLabelKey('/wishlist')).toBe('nav_back_wishlist')
+  })
+
+  it('says plain "Back" anywhere else, and when opened directly', () => {
+    expect(backLabelKey('/member')).toBe('nav_back')
+    expect(backLabelKey(null)).toBe('nav_back')
+  })
+
+  it('is used by the offer page, whose fallback is Home or Discover rather than a fixed folder', () => {
+    const page = readFileSync('app/offers/[offerId]/page.tsx', 'utf8')
+    expect(page).toContain("<BackButton fallback={user ? '/' : '/categories'} contextLabel className=\"mb-4\" />")
+    expect(page).not.toContain("label={t('offer_detail_back')}")
   })
 })

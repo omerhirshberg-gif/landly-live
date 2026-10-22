@@ -59,8 +59,9 @@ describe('home page composition', () => {
     expect(marquee).toBeLessThan(html.indexOf('GUEST_VALUE_PROPS'))
     const savings = html.indexOf('id="home-savings-title"')
     expect(savings).toBeGreaterThan(html.indexOf('GUEST_VALUE_PROPS'))
-    expect(savings).toBeLessThan(html.indexOf('id="home-pass-title"'))
-    expect(html.indexOf('id="home-pass-title"')).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
+    // How it works, then the member pass it leads to.
+    expect(savings).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
+    expect(html.indexOf('HOW_IT_WORKS')).toBeLessThan(html.indexOf('id="home-pass-title"'))
   })
 
   it('guests without enough discounted offers get no savings section, no doubled hairline and the category marquee', () => {
@@ -85,7 +86,9 @@ describe('home page composition', () => {
     expect(html).not.toContain('FOOTER')
     expect(html).not.toContain('FAQ_PROMPT')
     expect(html).toContain('href="/support"')
-    expect(html).toContain('pb-[calc(4rem+env(safe-area-inset-bottom))]')
+    expect(html).toContain('pb-[env(safe-area-inset-bottom)]')
+    // Support is pinned to the foot of the screen, not floating under short content.
+    expect(html).toContain('<div class="mt-auto pt-10 pb-6"><p class="text-center text-sm text-body">')
     expect(html.indexOf('href="/support"')).toBeGreaterThan(html.indexOf(translations.en.home_curated_title))
   })
 })
@@ -119,35 +122,37 @@ describe('member dashboard', () => {
     expect(html).toContain('max-w-member')
   })
 
-  it('titles the sections and uses design-system buttons', () => {
+  it('titles the sections and makes the whole pass card the way into My Pass', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(new RegExp(`<h2 id="home-deals-title" class="text-xl font-bold text-ink[^"]*">${translations.en.home_deals_title}</h2>`))
-    expect(html).toMatch(/class="ds-btn ds-btn-primary ds-btn-md [^"]*" href="\/member"><span>Open My Pass<\/span><i class="fa-solid fa-arrow-right text-xs rtl:-scale-x-100"/)
+    expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
+    expect(html).toMatch(/<span>Open My Pass<\/span><i class="fa-solid fa-arrow-right text-xs rtl:-scale-x-100"/)
   })
 
-  it('unifies greeting, persona and pass count in one white banner, with no blue Explore card', () => {
+  it('leads with the greeting, then the blue pass card, the curated perks and the categories', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    const banner = html.match(/<section aria-labelledby="home-welcome" class="([^"]*)">(.*?)<\/section>/)!
-    for (const c of ['bg-white', 'border-slate-100', 'rounded-2xl', 'shadow-sm', 'p-5', 'sm:p-6', 'lg:p-7', 'flex-col', 'md:flex-row', 'md:items-center', 'md:justify-between']) expect(banner[1].split(' ')).toContain(c)
-    const inner = banner[2]
-    // Leading: avatar → greeting → persona badge ("Member" until one is chosen), no subtitle; trailing: count pill → My Pass.
-    const order = ['href="/profile"', '<h1 id="home-welcome"', 'class="segment-badge"', 'aria-live="polite"', translations.en.home_pass_label, 'href="/member"'].map((s) => inner.indexOf(s))
+    const order = ['<h1 id="home-welcome"', 'class="segment-badge"', 'href="/member"', 'id="home-curated-title"', 'id="home-deals-title"', 'href="/support"'].map((s) => html.indexOf(s))
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(inner).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
-    // The blue card and the count sentence are gone; the rail follows the banner directly.
-    expect(html).not.toContain('bg-brand rounded-2xl')
+    expect(html).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
+    const card = html.match(/<a aria-labelledby="home-pass-count home-pass-cta" class="([^"]*)"/)!
+    for (const c of ['bg-[#0038B8]', 'rounded-2xl', 'overflow-hidden', 'text-white']) expect(card[1].split(' ')).toContain(c)
+    // The Expo card's two background layers, 1:1: the 200px 8% glow disc off the top end corner, then the 88x86 emblem at 15%.
+    expect(html).toContain('<span aria-hidden="true" class="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]"></span>')
+    expect(html).toMatch(/<svg viewBox="0 0 526 512" aria-hidden="true" focusable="false" class="pointer-events-none absolute top-3 end-3\.5 z-0 h-\[86px\] w-\[88px\] text-white\/15"/)
+    expect(html).not.toContain('bg-[radial-gradient(')
+    expect(html).not.toContain('rounded-full border border-white/20')
+    // The count line stays clear of the emblem, as on native (paddingEnd 72).
+    expect(html).toContain('id="home-pass-count" class="relative z-10 mt-4 md:mb-5 flex items-center gap-3 sm:gap-4 pe-[72px]"')
+    for (const id of ['home-pass-count', 'home-pass-cta']) expect(html).toMatch(new RegExp(`id="${id}" class="relative z-10 `))
+    expect(html).toContain(translations.en.home_vouchers_message.replace('{count}', '0'))
     expect(html).not.toContain(translations.en.home_discover_title)
-    expect(html).not.toContain(translations.en.home_vouchers_message.split('{count}')[0])
-    expect(html).toMatch(/<\/section><section class="mt-8 lg:mt-10" aria-labelledby="home-deals-title">/)
   })
 
-  it('stacks on phones with the My Pass button free to wrap under the count, never overflowing', () => {
+  it('fits phones: dynamic viewport height, no sideways drift, a full-width My Pass button and a tap-target avatar', () => {
     const html = withLang('he', createElement(LoggedInHome, { user: member as never }))
-    expect(html).toContain('class="flex flex-wrap items-center gap-3 md:flex-col md:flex-nowrap md:items-end md:gap-2.5 flex-shrink-0"')
-    expect(html).toMatch(/class="ds-btn ds-btn-primary ds-btn-md flex-1 basis-40 md:flex-none md:basis-auto" href="\/member"/)
-    // Tap targets: the pill is 44px tall on phones, the avatar link a tap-target.
-    expect(html).toContain('h-11 md:h-9')
+    expect(html).toContain('min-h-[100dvh] overflow-x-clip')
+    expect(html).toMatch(/<span id="home-pass-cta" class="[^"]*\bh-12 w-full sm:w-auto\b/)
     expect(html).toMatch(/<a aria-label="[^"]*" class="tap-target flex-shrink-0 rounded-full" href="\/profile">/)
   })
 
@@ -237,9 +242,9 @@ describe('guest home section dividers', () => {
     }
     expect(between('class="marquee ', 'GUEST_VALUE_PROPS')).toBe(true)
     expect(between('GUEST_VALUE_PROPS', 'id="home-savings-title"')).toBe(true)
-    expect(between('id="home-savings-title"', 'id="home-pass-title"')).toBe(true)
-    expect(between('id="home-pass-title"', 'HOW_IT_WORKS')).toBe(true)
-    expect(between('HOW_IT_WORKS', 'FOOTER')).toBe(true)
+    expect(between('id="home-savings-title"', 'HOW_IT_WORKS')).toBe(true)
+    expect(between('HOW_IT_WORKS', 'id="home-pass-title"')).toBe(true)
+    expect(between('id="home-pass-title"', 'FOOTER')).toBe(true)
   })
 
   it('drops the savings section with its hairline, so two never meet', () => {

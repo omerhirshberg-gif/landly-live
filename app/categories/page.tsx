@@ -8,6 +8,7 @@ import OfferTileRail from '@/components/discover/OfferTileRail'
 import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import SectionDivider from '@/components/ui/SectionDivider'
+import MemberPageShell, { PAGE_TITLE_GAP, PageTitle } from '@/components/layout/MemberPageShell'
 import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
 import { useLang } from '@/lib/i18n/useLang'
 import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@/lib/geo'
@@ -222,9 +223,9 @@ function PerksBrowser() {
 // nothing shifts when the real heading arrives.
 function PageHeading({ title }: { title?: string }) {
   return title ? (
-    <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink mb-5 break-words">{title}</h1>
+    <PageTitle>{title}</PageTitle>
   ) : (
-    <div aria-hidden="true" className="h-[33px] sm:h-[35px] lg:h-[38px] mb-5" />
+    <div aria-hidden="true" className={`h-[33px] sm:h-[35px] lg:h-[38px] ${PAGE_TITLE_GAP}`} />
   )
 }
 
@@ -233,7 +234,7 @@ export default function CategoriesPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <div className="max-w-member mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <MemberPageShell>
           <Suspense
             fallback={
               <>
@@ -244,7 +245,7 @@ export default function CategoriesPage() {
           >
             <PerksBrowser />
           </Suspense>
-        </div>
+        </MemberPageShell>
       </div>
     </>
   )

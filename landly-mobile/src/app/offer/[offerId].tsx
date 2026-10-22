@@ -17,6 +17,7 @@ import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
 import Button from '../../components/Button'
 import LineIcon from '../../components/LineIcon'
+import GlassHeartButton from '../../components/GlassHeartButton'
 import NavigationButtons from '../../components/NavigationButtons'
 import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
@@ -124,21 +125,15 @@ export default function OfferScreen() {
           <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
             <View style={styles.card}>
               <View style={styles.hero}>
+                {/* The framed picture: a photo fills it, a logo sits whole inside with a little room. */}
                 <PerkImage uri={offer.imageUrl} category={offer.category} businessName={businessName.text} />
-                {discount > 0 && (
-                  <View style={styles.discount}>
-                    <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
-                  </View>
-                )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-                  accessibilityState={{ selected: saved }}
-                  onPress={() => toggleWishlist(offer.id)}
-                  style={({ pressed }) => [styles.heart, saved && styles.heartSaved, pressed && styles.heartPressed]}
-                >
-                  <LineIcon name="heart" size={20} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2.2} />
-                </Pressable>
+                {/* Floats over the picture's top end corner; glass on iOS. */}
+                <GlassHeartButton
+                  saved={saved}
+                  onToggle={() => toggleWishlist(offer.id)}
+                  label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
+                  style={styles.heart}
+                />
               </View>
 
               <View style={styles.body}>
@@ -167,6 +162,12 @@ export default function OfferScreen() {
                 <View style={styles.priceRow}>
                   <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
                   {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}
+                  {/* In the price row, never over the picture. */}
+                  {discount > 0 && (
+                    <View style={styles.discount}>
+                      <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
+                    </View>
+                  )}
                 </View>
 
                 {!!description.text && <ContentText contentLang={description.lang} style={styles.description}>{description.text}</ContentText>}
@@ -251,24 +252,21 @@ const styles = StyleSheet.create({
   notFoundSub: { fontSize: 14, color: colors.body, textAlign: 'center' },
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  hero: { aspectRatio: 16 / 10, backgroundColor: colors.brandTint },
-  // Web: components/discover/DiscountBadge.tsx (solid emerald-700, white text).
-  discount: { position: 'absolute', bottom: 12, start: 12, backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
-  discountText: { fontSize: 13, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
-  heart: {
-    position: 'absolute',
-    top: 12,
-    end: 12,
-    width: 48,
-    height: 48,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    ...webOnly({ cursor: 'pointer' }),
+  // Inset from the card's edges in its own snug frame: light canvas, hairline border, 14pt corners.
+  hero: {
+    height: 180,
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: radius.frame,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    backgroundColor: colors.background,
   },
-  heartSaved: { backgroundColor: colors.heart },
-  heartPressed: { transform: [{ scale: 0.92 }] },
+  // Web: components/discover/DiscountBadge.tsx (solid emerald-700, white text).
+  discount: { alignSelf: 'center', backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  discountText: { fontSize: 13, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
+  heart: { position: 'absolute', top: 6, end: 6 },
   body: { padding: 20 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: { backgroundColor: colors.brandTint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, maxWidth: '100%' },

@@ -134,7 +134,7 @@ describe('mobile drawer', () => {
 
   it('spaces the language switcher and the close button apart', () => {
     const html = render('en')
-    expect(html).toMatch(/<div class="flex items-center gap-3 flex-shrink-0 justify-self-end">/)
+    expect(html).toMatch(/<div class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">/)
   })
 })
 
@@ -155,7 +155,7 @@ describe('header account actions', () => {
     const html = render(lang, { loggedIn: true })
     const nav = html.slice(0, html.indexOf('</nav>'))
     const t = translations[lang]
-    const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-3 flex-shrink-0 justify-self-end"'))
+    const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"'))
     const hrefs = [...centre.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
     expect(hrefs).toEqual(['/', '/categories', '/wishlist', '/member', '/olim', '/support'])
     for (const label of [t.nav_home, t.nav_cta, t.nav_wishlist, t.nav_my_pass, t.nav_olim, t.nav_support]) expect(centre).toContain(`>${label}<`)
@@ -285,7 +285,7 @@ describe('header account actions', () => {
     const nav = render('en', { loggedIn: true }).split('</nav>')[0]
     expect(nav).toMatch(/<div dir="ltr" class="[^"]*lg:grid lg:grid-cols-\[1fr_minmax\(0,max-content\)_1fr\][^"]*">/)
     expect(nav).toMatch(/<a href="\/" class="[^"]*justify-self-start[^"]*">/)
-    expect(nav).toContain('class="flex items-center gap-3 flex-shrink-0 justify-self-end"')
+    expect(nav).toContain('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"')
   })
 
   it('signed in: no dialogs are mounted (Privacy & Security is its own page, /settings/privacy-security)', () => {
@@ -450,11 +450,11 @@ describe('account capsules, divider and language picker', () => {
 })
 
 describe('language picker placement', () => {
-  it.each([false, true])('below lg the bar is only the logo and the hamburger (loggedIn=%s)', (loggedIn) => {
+  it.each([false, true])('below lg a member\'s bar is only the logo and the hamburger; a guest keeps the language switcher (loggedIn=%s)', (loggedIn) => {
     const html = render('en', { loggedIn })
     const nav = html.slice(0, html.indexOf('</nav>'))
-    // Everything between the logo and the hamburger is desktop-only.
-    expect(nav).toContain('<div class="lang-dropdown hidden lg:block">')
+    // The account controls are desktop-only; the language switcher is too, for members.
+    expect(nav).toContain(loggedIn ? '<div class="lang-dropdown hidden lg:block">' : '<div class="lang-dropdown">')
     expect(nav).toContain('class="hidden lg:block h-4 w-[1px] bg-slate-200 mx-1"')
     expect(nav).toContain('<div class="hidden lg:flex items-center gap-4">')
     expect(nav).not.toMatch(/class="[^"]*\bsm:(flex|block)\b/)
@@ -462,15 +462,23 @@ describe('language picker placement', () => {
     expect(nav).not.toContain('fa-heart')
     expect(nav).toMatch(/<button type="button" class="lg:hidden [^"]*" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">/)
     expect(nav.indexOf('fa-globe')).toBeLessThan(nav.indexOf('aria-label="Menu"'))
-    expect(nav).toContain('<div class="flex items-center gap-3 flex-shrink-0 justify-self-end">')
+    expect(nav).toContain('<div class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">')
   })
 
-  it.each(['en', 'he'] as const)('the drawer has no language controls: they are on /settings (%s)', (lang) => {
-    for (const loggedIn of [false, true]) {
-      const html = render(lang, { loggedIn })
-      const drawer = html.slice(html.indexOf('</nav>'))
-      expect(drawer).not.toMatch(/<button[^>]*lang="[a-z]{2}"/)
-      expect(drawer).toContain('href="/settings"')
-    }
+  it.each(['en', 'he'] as const)('only the guest drawer has language controls; a member\'s are on /settings (%s)', (lang) => {
+    const member = render(lang, { loggedIn: true }).split('</nav>')[1]
+    expect(member).not.toMatch(/<button[^>]*lang="[a-z]{2}"/)
+    expect(member).toContain('href="/settings"')
+
+    const guest = render(lang).split('</nav>')[1]
+    expect(guest).toContain(`<div role="group" aria-labelledby="drawer-language-label" class="mt-6"><p id="drawer-language-label" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">${translations[lang].settings_language_title}</p>`)
+    const buttons = [...guest.matchAll(/<button type="button" lang="([a-z]{2})" aria-label="([^"]+)" aria-pressed="(true|false)" class="tap-target [^"]*">([A-Z]{2})<\/button>/g)]
+    expect(buttons.map((m) => m[1])).toEqual(['en', 'ru', 'es', 'fr', 'he'])
+    expect(buttons.map((m) => m[4])).toEqual(['EN', 'RU', 'ES', 'FR', 'HE'])
+    expect(buttons.map((m) => m[2])).toEqual(['English', 'Русский', 'Español', 'Français', 'עברית'])
+    expect(buttons.filter((m) => m[3] === 'true').map((m) => m[1])).toEqual([lang])
+    // Between the page links and Settings.
+    expect(guest.indexOf('drawer-language-label')).toBeGreaterThan(guest.indexOf('href="/support"'))
+    expect(guest.indexOf('drawer-language-label')).toBeLessThan(guest.indexOf('href="/settings"'))
   })
 })

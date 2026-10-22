@@ -116,7 +116,7 @@ export default function NearMeButton({
 }
 
 const styles = StyleSheet.create({
-  // The same 44pt tinted square as WishlistButton beside it.
+  // A 44pt tinted square at the end of the search row.
   button: {
     width: 44,
     height: 44,

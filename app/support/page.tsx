@@ -2,6 +2,7 @@
 
 import { Suspense, useState, type ChangeEvent, type FormEvent } from 'react'
 import Navbar from '@/components/layout/Navbar'
+import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
 import BackToSettings from '@/components/settings/BackToSettings'
 import Faq from '@/components/home/Faq'
 import Notice from '@/components/auth/entrance/Notice'
@@ -72,71 +73,74 @@ export default function SupportPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <Suspense fallback={null}>
-            <BackToSettings className="mb-3 sm:mb-6" />
-          </Suspense>
-          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink mb-8">{t('support_title')}</h1>
+        <MemberPageShell>
+          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
+          <div className="max-w-3xl">
+            <Suspense fallback={null}>
+              <BackToSettings className="mb-3 sm:mb-6" />
+            </Suspense>
+            <PageTitle>{t('support_title')}</PageTitle>
 
-          {/* The two ways to reach us, each one whole tappable card: icon,
-              channel, address (in <bdi>, so it stays whole in Hebrew), the
-              reply note from the copy (no live "online" claim; nothing tracks
-              that), and an arrow that nudges toward the reading direction. */}
-          <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">
-            {CHANNELS.map((c, i) => (
-              <Reveal key={c.titleKey} delay={i * 60} className="h-full">
-                <a
-                  href={c.href}
-                  {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className="group flex h-full min-h-[64px] items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 text-start shadow-sm [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-brand/25 [@media(hover:hover)]:hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
-                >
-                  <span aria-hidden="true" className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-xl ${c.iconClass}`}>
-                    <i className={c.icon}></i>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-bold text-ink">{t(c.titleKey)}</span>
-                    <bdi dir={c.dir} className="block break-all text-sm font-semibold text-brand">{c.display}</bdi>
-                    <span className="mt-1.5 flex items-start gap-1.5 text-xs leading-snug text-body">
-                      <i className={`fa-regular ${c.noteIcon} mt-px flex-shrink-0`} aria-hidden="true"></i>
-                      <span>{t(c.noteKey)}</span>
+            {/* The two ways to reach us, each one whole tappable card: icon,
+                channel, address (in <bdi>, so it stays whole in Hebrew), the
+                reply note from the copy (no live "online" claim; nothing tracks
+                that), and an arrow that nudges toward the reading direction. */}
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">
+              {CHANNELS.map((c, i) => (
+                <Reveal key={c.titleKey} delay={i * 60} className="h-full">
+                  <a
+                    href={c.href}
+                    {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    className="group flex h-full min-h-[64px] items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 text-start shadow-sm [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-brand/25 [@media(hover:hover)]:hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
+                  >
+                    <span aria-hidden="true" className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-xl ${c.iconClass}`}>
+                      <i className={c.icon}></i>
                     </span>
-                  </span>
-                  <span aria-hidden="true" className="cat-card-nudge flex-shrink-0 text-sm text-slate-300 transition-colors [@media(hover:hover)]:group-hover:text-brand">
-                    <i className={`fa-solid ${c.external ? 'fa-arrow-up-right-from-square' : 'fa-arrow-right'} rtl:-scale-x-100`}></i>
-                  </span>
-                </a>
-              </Reveal>
-            ))}
-          </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-bold text-ink">{t(c.titleKey)}</span>
+                      <bdi dir={c.dir} className="block break-all text-sm font-semibold text-brand">{c.display}</bdi>
+                      <span className="mt-1.5 flex items-start gap-1.5 text-xs leading-snug text-body">
+                        <i className={`fa-regular ${c.noteIcon} mt-px flex-shrink-0`} aria-hidden="true"></i>
+                        <span>{t(c.noteKey)}</span>
+                      </span>
+                    </span>
+                    <span aria-hidden="true" className="cat-card-nudge flex-shrink-0 text-sm text-slate-300 transition-colors [@media(hover:hover)]:group-hover:text-brand">
+                      <i className={`fa-solid ${c.external ? 'fa-arrow-up-right-from-square' : 'fa-arrow-right'} rtl:-scale-x-100`}></i>
+                    </span>
+                  </a>
+                </Reveal>
+              ))}
+            </div>
 
-          {/* Soft hairlines between the channels, the form and the FAQ, as on the home page. */}
-          <SectionDivider className="mb-8 sm:mb-10" />
+            {/* Soft hairlines between the channels, the form and the FAQ, as on the home page. */}
+            <SectionDivider className="mb-8 sm:mb-10" />
 
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-bold text-ink mb-6">{t('support_form_title')}</h2>
-            {status === 'sent' && <Notice tone="success">{t('support_form_success')}</Notice>}
-            {error && <Notice>{error}</Notice>}
-            <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting || undefined}>
-              {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
-              <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div><label htmlFor="support-name" className="block text-sm font-semibold text-ink mb-1.5">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp" value={fields.name} onChange={update('name')} /></div>
-                <div><label htmlFor="support-email" className="block text-sm font-semibold text-ink mb-1.5">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="your@email.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
-              </div>
-              <div>
-                <label htmlFor="support-subject" className="block text-sm font-semibold text-ink mb-1.5">{t('form_subject')}</label>
-                <select id="support-subject" name="subject" className="inp" value={fields.subject} onChange={update('subject')}>
-                  {SUBJECT_OPTIONS.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
-                </select>
-              </div>
-              <div><label htmlFor="support-message" className="block text-sm font-semibold text-ink mb-1.5">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} dir="auto" placeholder={t('form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
-              <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
-                {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
-                {t(isSubmitting ? 'support_form_sending' : 'btn_send_message')}
-              </button>
-            </form>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
+              <h2 className="text-lg sm:text-xl font-bold text-ink mb-6">{t('support_form_title')}</h2>
+              {status === 'sent' && <Notice tone="success">{t('support_form_success')}</Notice>}
+              {error && <Notice>{error}</Notice>}
+              <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSubmitting || undefined}>
+                {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
+                <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div><label htmlFor="support-name" className="block text-sm font-semibold text-ink mb-1.5">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp" value={fields.name} onChange={update('name')} /></div>
+                  <div><label htmlFor="support-email" className="block text-sm font-semibold text-ink mb-1.5">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="your@email.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
+                </div>
+                <div>
+                  <label htmlFor="support-subject" className="block text-sm font-semibold text-ink mb-1.5">{t('form_subject')}</label>
+                  <select id="support-subject" name="subject" className="inp" value={fields.subject} onChange={update('subject')}>
+                    {SUBJECT_OPTIONS.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
+                  </select>
+                </div>
+                <div><label htmlFor="support-message" className="block text-sm font-semibold text-ink mb-1.5">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} dir="auto" placeholder={t('form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
+                <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
+                  {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
+                  {t(isSubmitting ? 'support_form_sending' : 'btn_send_message')}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </MemberPageShell>
         <SectionDivider />
         <Faq />
       </div>

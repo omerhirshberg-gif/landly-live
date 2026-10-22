@@ -27,8 +27,8 @@ import OfferCard from '../../components/OfferCard'
 import OfferTileRail from '../../components/OfferTileRail'
 import PerksCategoryChips from '../../components/PerksCategoryChips'
 import PerksSearchField from '../../components/PerksSearchField'
+import SectionDivider from '../../components/SectionDivider'
 import SortSheet from '../../components/SortSheet'
-import WishlistButton from '../../components/WishlistButton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
 import { API_BASE_URL } from '../../lib/env'
@@ -176,7 +176,6 @@ export default function PerksScreen() {
                 onClear={() => setOrigin(null)}
                 onError={setGeoError}
               />
-              <WishlistButton />
             </View>
             {geoError && !origin && (
               <View style={styles.geoNotice}>
@@ -228,16 +227,23 @@ export default function PerksScreen() {
               </View>
             )}
 
+            {/* Soft hairlines between the overview's sections, as on the website's
+                /categories: before the rails, between them, and before the grid. */}
             {browsing && (
               <>
                 {(newOffers.length > 0 || bestsellerOffers.length > 0) && (
-                  <View style={styles.rails}>
-                    {newOffers.length > 0 && <OfferTileRail emoji="✨" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
-                    {bestsellerOffers.length > 0 && (
-                      <OfferTileRail emoji="🔥" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
-                    )}
-                  </View>
+                  <>
+                    <SectionDivider />
+                    <View style={styles.rails}>
+                      {newOffers.length > 0 && <OfferTileRail emoji="✨" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
+                      {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
+                      {bestsellerOffers.length > 0 && (
+                        <OfferTileRail emoji="🔥" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
+                      )}
+                    </View>
+                  </>
                 )}
+                <SectionDivider />
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_all_categories_title')}
                 </AppText>
@@ -287,8 +293,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 16, gap: 14 },
-  // Search, Near Me and the wishlist heart share one 44pt row; the two 44pt
-  // icon squares sit at the reading-direction end and the field takes the rest.
+  // Search and Near Me share one 44pt row; the 44pt Near Me square sits at the
+  // reading-direction end and the field takes the rest.
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   geoNotice: { marginTop: -6, gap: 10 },
   geoError: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },

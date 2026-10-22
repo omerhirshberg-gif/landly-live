@@ -39,8 +39,11 @@ const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 // card is the button; the CTA line only says what tapping does. The heart at
 // the photo's bottom end corner saves or un-saves the perk in the member's
 // wishlist, shared live with the website. Compact, so a feed shows two or
-// more perks per screen: a 2:1 photo capped at 180pt, and the price sharing
-// one row with the CTA. A list already scoped to one category passes
+// more perks per screen: a 130pt picture in its own framed box (light canvas,
+// hairline border, 14pt corners) inset from the card's edges, so a white logo
+// never melts into the white card, and the price,
+// the struck-through original and the discount badge sharing one row with
+// the CTA. A list already scoped to one category passes
 // `showCategoryBadge={false}`, since every card would repeat the same pill.
 // Same anatomy as the website's components/discover/OfferCard.tsx, whose
 // 'rail' layout is the carousel variant here.
@@ -101,11 +104,6 @@ export default function OfferCard({
               </AppText>
             </View>
           )}
-          {discount > 0 && (
-            <View style={[styles.overlayBottomStart, styles.discount, compact && styles.discountCompact]}>
-              <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
-            </View>
-          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={wishlistLabel}
@@ -155,6 +153,11 @@ export default function OfferCard({
             <View style={styles.priceRow}>
               <AppText ltr style={[styles.price, compact && styles.priceCompact]}>{formatPrice(offer.offerPrice)}</AppText>
               {discount > 0 && <AppText ltr style={[styles.original, compact && styles.originalCompact]}>{formatPrice(offer.originalPrice)}</AppText>}
+              {discount > 0 && (
+                <View style={styles.discount}>
+                  <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
+                </View>
+              )}
             </View>
             <View style={styles.cta}>
               <AppText style={[styles.ctaText, compact && styles.ctaTextCompact]}>{t('offer_view_cta')}</AppText>
@@ -195,20 +198,21 @@ const styles = StyleSheet.create({
   },
   // The rail spaces its cards itself.
   cardCarousel: { marginBottom: 0 },
-  // Clips the photo to the card's top corners (the card itself can't clip, or iOS would drop its shadow).
+  // The framed picture, inset from the card's edges and clipped to its own corners.
   media: {
-    width: '100%',
-    borderTopLeftRadius: radius.lg - 1,
-    borderTopRightRadius: radius.lg - 1,
+    marginHorizontal: 8,
+    marginTop: 8,
+    borderRadius: radius.frame,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
-    backgroundColor: colors.brandTint,
+    backgroundColor: colors.background,
   },
-  mediaStandard: { aspectRatio: 2, maxHeight: 180 },
-  mediaCompact: { height: 124 },
+  mediaStandard: { height: 130 },
+  mediaCompact: { height: 130 },
   overlay: { position: 'absolute', top: 10 },
   overlayStart: { start: 10 },
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
-  overlayBottomStart: { position: 'absolute', bottom: 10, start: 10 },
   heart: {
     width: 36,
     height: 36,
@@ -230,14 +234,14 @@ const styles = StyleSheet.create({
   },
   categoryText: { fontSize: 11, fontWeight: '600', color: colors.heading },
   categoryTextCompact: { fontSize: 10 },
-  body: { padding: 12 },
+  body: { paddingHorizontal: 12, paddingTop: 9, paddingBottom: 12 },
   bodyCompact: { paddingHorizontal: 10, paddingTop: 9, paddingBottom: 10 },
   business: { fontSize: 16, fontWeight: '700', color: colors.heading, lineHeight: 22 },
   businessCompact: { fontSize: 14, lineHeight: 19 },
   title: { fontSize: 14, lineHeight: 20, color: colors.body, marginTop: 2 },
   titleCompact: { fontSize: 13, lineHeight: 18, marginTop: 1 },
   titleReserved: { minHeight: 36 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   metaRowCompact: { flexWrap: 'nowrap', gap: 6, marginTop: 6 },
   metaTextCompact: { fontSize: 11 },
   methodChip: {
@@ -254,28 +258,17 @@ const styles = StyleSheet.create({
   locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 1 },
   distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // Price at the start, "View deal" at the end, on one row.
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 8 },
   footerCompact: { gap: 8, marginTop: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, flexShrink: 1 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 6, rowGap: 2, flexShrink: 1 },
   price: { fontSize: 18, fontWeight: '800', color: colors.brand },
   priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },
   originalCompact: { fontSize: 12 },
-  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1).
-  discount: {
-    backgroundColor: colors.discount,
-    borderRadius: radius.pill,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    shadowColor: colors.textStrong,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  discountCompact: { paddingHorizontal: 7, paddingVertical: 3 },
-  discountText: { fontSize: 12, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
-  discountTextCompact: { fontSize: 11, letterSpacing: 0.3 },
+  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1), sized down to sit in the price row.
+  discount: { backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 2 },
+  discountText: { fontSize: 11, fontWeight: '800', color: colors.white, letterSpacing: 0.3, textTransform: 'uppercase' },
+  discountTextCompact: { fontSize: 10 },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
   ctaText: { fontSize: 14, fontWeight: '700', color: colors.brand },
   ctaTextCompact: { fontSize: 13 },

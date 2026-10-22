@@ -15,9 +15,10 @@ import { colors, radius } from '../theme'
 const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 
 // The Perks tab's highlight rails (OfferTileRail): a short, sideways perk
-// card, 140pt tall. A 104pt photo strip on the leading side carries the discount
-// pill; the trailing side has the business, the offer (two lines at most) and
-// the price at the bottom. The whole card is the button. It fills the width
+// card, 140pt tall. A framed picture on the leading side (light canvas,
+// hairline border, 14pt corners, inset from the card's edges); the trailing
+// side has the business, the offer (two lines at most) and the price, the
+// struck-through original and the discount pill at the bottom. The whole card is the button. It fills the width
 // its rail slot gives it; rows follow the root view's direction, so Hebrew puts
 // the photo on the right. Same anatomy as the website's components/discover/OfferTile.tsx.
 export default function OfferTile({ offer, onPress }: { offer: OfferDocument; onPress: () => void }) {
@@ -46,11 +47,6 @@ export default function OfferTile({ offer, onPress }: { offer: OfferDocument; on
       <Animated.View style={[styles.card, pressStyle]}>
         <View style={styles.media}>
           <PerkImage uri={offer.imageUrl} category={offer.category} businessName={name.text} />
-          {discount > 0 && (
-            <View style={styles.discount}>
-              <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
-            </View>
-          )}
         </View>
         <View style={styles.body}>
           <AppText style={styles.business} numberOfLines={1}>
@@ -62,6 +58,12 @@ export default function OfferTile({ offer, onPress }: { offer: OfferDocument; on
           <View style={styles.priceRow}>
             <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
             {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}
+            {/* In the price row, never over the picture. */}
+            {discount > 0 && (
+              <View style={styles.discount}>
+                <AppText style={styles.discountText}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
+              </View>
+            )}
           </View>
         </View>
       </Animated.View>
@@ -84,20 +86,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  // Clips the photo to the card's leading corners (the card itself can't clip, or iOS would drop its shadow).
+  // The framed picture, inset from the card's edges and clipped to its own corners.
   media: {
-    width: 104,
-    height: '100%',
-    borderTopStartRadius: radius.lg - 1,
-    borderBottomStartRadius: radius.lg - 1,
+    width: 96,
+    margin: 8,
+    marginEnd: 0,
+    borderRadius: radius.frame,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
-    backgroundColor: colors.brandTint,
+    backgroundColor: colors.background,
   },
   // Web: components/discover/DiscountBadge.tsx, size 'sm'.
   discount: {
-    position: 'absolute',
-    bottom: 8,
-    start: 8,
+    alignSelf: 'center',
     backgroundColor: colors.discount,
     borderRadius: radius.pill,
     paddingHorizontal: 7,
@@ -107,7 +109,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, minWidth: 0, padding: 12 },
   business: { fontSize: 14, lineHeight: 19, fontWeight: '700', color: colors.heading },
   title: { fontSize: 13, lineHeight: 18, color: colors.body, marginTop: 2 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 8, marginTop: 'auto' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 6, rowGap: 2, marginTop: 'auto' },
   price: { fontSize: 16, fontWeight: '800', color: colors.brand },
   original: { fontSize: 12, color: colors.textFaint, textDecorationLine: 'line-through' },
 })

@@ -52,7 +52,7 @@ export default function Navbar() {
   }, [mobileMenuOpen])
 
   useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
+    function handleOutsideClick(e: PointerEvent) {
       if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
         setLangMenuOpen(false)
       }
@@ -60,10 +60,12 @@ export default function Navbar() {
     function handleEscape(e: KeyboardEvent) {
       if (e.key === 'Escape') setLangMenuOpen(false)
     }
-    document.addEventListener('click', handleOutsideClick)
+    // pointerdown, not click: iOS Safari fires no click on a tap on plain
+    // content, so a guest's tap elsewhere on the page wouldn't close the menu.
+    document.addEventListener('pointerdown', handleOutsideClick)
     document.addEventListener('keydown', handleEscape)
     return () => {
-      document.removeEventListener('click', handleOutsideClick)
+      document.removeEventListener('pointerdown', handleOutsideClick)
       document.removeEventListener('keydown', handleEscape)
     }
   }, [])
@@ -100,8 +102,10 @@ export default function Navbar() {
     <>
       <nav className="navbar-safe-top fixed top-0 left-0 right-0 z-[1000] bg-white/70 backdrop-blur-md border-b border-line/60 shadow-sm">
         {/* The bar's physical order is locked in every language: logo on the
-            left, language switcher and hamburger on the right (below lg it's
-            just the logo and the hamburger; the drawer holds the rest). dir="ltr" stops
+            left, language switcher and hamburger on the right (below lg a
+            member's bar is just the logo and the hamburger, language living
+            in Settings; a guest keeps the language switcher beside the
+            hamburger, so they can switch before signing up). dir="ltr" stops
             Hebrew's html[dir=rtl] from mirroring it; the centre links get the
             page direction back so they still read in the language's order.
             From lg it's three columns, the outer two equal, so the links sit
@@ -141,7 +145,7 @@ export default function Navbar() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0 justify-self-end">
+          <div className="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">
             {/* Account actions (desktop only): the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
             <div className="hidden lg:flex items-center gap-4">
               {user ? (
@@ -159,9 +163,10 @@ export default function Navbar() {
 
             {/* Language dropdown — the menu is pinned under the trigger's right
                 edge inline, overriding globals.css's html[dir=rtl] left:0 rule
-                (written for when the switcher sat on the left in Hebrew). Desktop only:
-                below lg the drawer's Language & Region row replaces it */}
-            <div className="lang-dropdown hidden lg:block" ref={langDropdownRef}>
+                (written for when the switcher sat on the left in Hebrew). Guests
+                get it at every width; members only from lg, as below that
+                their drawer's Settings link holds Language & Region */}
+            <div className={`lang-dropdown${user ? ' hidden lg:block' : ''}`} ref={langDropdownRef}>
               {/* A plain trigger (no capsule) so it doesn't compete with the account buttons */}
               <button
                 type="button"
@@ -192,14 +197,14 @@ export default function Navbar() {
             </div>
 
             {/* Hamburger (mobile/tablet only) */}
-            <button type="button" className="lg:hidden tap-target flex items-center justify-center" onClick={() => setMobileMenuOpen((v) => !v)} aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
+            <button type="button" className="lg:hidden tap-target flex items-center justify-center" onClick={() => { setLangMenuOpen(false); setMobileMenuOpen((v) => !v) }} aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
               <div className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}><span></span><span></span><span></span></div>
             </button>
           </div>
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} lang={lang} onChooseLang={chooseLang} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
     </>
   )
 }

@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/i18n/useLang'
-import { backAction } from '@/lib/navigation/back'
+import { backAction, backLabelKey } from '@/lib/navigation/back'
 import { previousPath, willReplace } from '@/lib/navigation/previousPath'
 
 interface BackButtonProps {
@@ -10,6 +11,8 @@ interface BackButtonProps {
   fallback: string
   /** The visible text (pill) or accessible name (icon); defaults to "Back". */
   label?: string
+  /** Name the page back returns to ("Back to Home", "Back to Discover"...) instead of `label`. */
+  contextLabel?: boolean
   /** 'pill': arrow and text. 'icon': a round arrow-only button, named by aria-label. */
   variant?: 'pill' | 'icon'
   /** Always go to `fallback`, never through history (lib/navigation/back.ts). */
@@ -23,10 +26,16 @@ interface BackButtonProps {
 // through the browser's history when there's an in-app page to return to,
 // so it agrees with the browser's back and the iOS/Android edge swipe, which
 // globals.css deliberately leaves free.
-export default function BackButton({ fallback, label, variant = 'pill', force = false, className = '' }: BackButtonProps) {
+export default function BackButton({ fallback, label, contextLabel = false, variant = 'pill', force = false, className = '' }: BackButtonProps) {
   const { t } = useLang()
   const router = useRouter()
-  const text = label ?? t('nav_back')
+  // The in-app history only exists in the browser, so the contextual text is
+  // read after mount; the server and the first render say plain "Back".
+  const [contextKey, setContextKey] = useState<ReturnType<typeof backLabelKey>>('nav_back')
+  useEffect(() => {
+    if (contextLabel) setContextKey(backLabelKey(previousPath()))
+  }, [contextLabel])
+  const text = contextLabel ? t(contextKey) : (label ?? t('nav_back'))
 
   const goBack = () => {
     const action = backAction(fallback, previousPath(), force)

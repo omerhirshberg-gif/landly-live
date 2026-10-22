@@ -63,7 +63,7 @@ describe('terms: guests browse, members buy and redeem', () => {
   it('says it plainly in English, and the app shows the same section', () => {
     expect(translations.en.terms_p3b).toContain('Anyone can browse')
     expect(translations.en.terms_p3b).toContain('available only to registered members who are signed in')
-    expect(TERMS_SECTIONS.find((s) => s.heading === 'terms_h3')?.body).toEqual(['terms_p3', ['terms_p3b_label', 'terms_p3b']])
+    expect(TERMS_SECTIONS.find((s) => s.heading === 'terms_h3')?.body).toEqual(['terms_p3', ['terms_p3b_label', 'terms_p3b'], ['terms_p3c_label', 'terms_p3c'], ['terms_p3d_label', 'terms_p3d']])
   })
 
   it('reads right to left in Hebrew', () => {

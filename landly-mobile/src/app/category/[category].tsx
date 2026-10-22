@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
@@ -7,14 +7,13 @@ import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers
 import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
-import LineIcon from '../../components/LineIcon'
+import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
 import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
-import { webOnly } from '../../lib/webStyles'
 import { colors, radius, type } from '../../theme'
 
 // A category "folder" (web: /categories/[category]), pushed over the tabs
@@ -23,7 +22,7 @@ import { colors, radius, type } from '../../theme'
 // back to where it was opened, the same as the back button. Search and Sort
 // work within the category, through the same pipeline as the Perks tab.
 export default function CategoryScreen() {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const { category: rawCategory } = useLocalSearchParams<{ category: string }>()
   // Canonical name for any spelling of a known category (`Beach+and+Sea`
   // arrives undecoded), so the tile and the Firestore query both match.
@@ -84,18 +83,7 @@ export default function CategoryScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.bar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('cats_detail_back')}
-          onPress={goBack}
-          hitSlop={8}
-          style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
-        >
-          <LineIcon name="chevronStart" size={22} color={colors.brand} strokeWidth={2.2} flip={isRtl} />
-          <AppText style={styles.backLabel} numberOfLines={1}>
-            {t('cats_detail_back')}
-          </AppText>
-        </Pressable>
+        <GlassBackButton label={t('cats_detail_back')} onPress={goBack} />
       </View>
       <FlatList
         data={visible}
@@ -157,18 +145,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   // The back button sits on the leading side; the row flips with the root direction.
   bar: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 8 },
-  back: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minHeight: 44,
-    paddingStart: 4,
-    paddingEnd: 12,
-    borderRadius: radius.pill,
-    ...webOnly({ cursor: 'pointer' }),
-  },
-  backPressed: { backgroundColor: colors.borderLight },
-  backLabel: { fontSize: 16, fontWeight: '600', color: colors.brand },
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 16, gap: 14 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
