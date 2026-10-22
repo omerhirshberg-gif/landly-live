@@ -156,7 +156,9 @@ describe('swipe back from the Perks tab', () => {
 
   it('gives every screen Perks opens the full-screen page-flip swipe', () => {
     const layout = read('app/_layout.tsx')
-    for (const screen of ['category/[category]', 'offer/[offerId]', 'wishlist', 'checkout/[offerId]', 'order-success/[orderId]']) {
+    // The wishlist is a tab of its own now, so it has no page flip.
+    expect(layout).not.toContain('<Stack.Screen name="wishlist"')
+    for (const screen of ['category/[category]', 'offer/[offerId]', 'checkout/[offerId]', 'order-success/[orderId]']) {
       expect(layout).toContain(`<Stack.Screen name="${screen}" options={pageFlipOptions(isRtl)} />`)
     }
     const pageFlip = read('lib/pageFlip.ts')

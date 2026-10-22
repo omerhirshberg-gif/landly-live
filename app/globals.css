@@ -533,6 +533,10 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
 }
 /* Sort popover (≥768px) grows from the trigger's end corner; the sheet (<768px)
    rises from the bottom over a fading scrim. */
+/* The offer page's heart, when a member saves the perk: a short spring past full size. */
+.heart-pop{animation:heart-pop .42s cubic-bezier(.34,1.56,.64,1);}
+@keyframes heart-pop{0%{transform:scale(.6);}60%{transform:scale(1.18);}100%{transform:scale(1);}}
+@media (prefers-reduced-motion: reduce){.heart-pop{animation:none;}}
 @keyframes perks-pop{from{opacity:0;transform:scale(.96);}}
 @keyframes perks-sheet{from{transform:translateY(100%);}}
 @keyframes perks-scrim{from{opacity:0;}}

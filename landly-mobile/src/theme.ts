@@ -54,7 +54,8 @@ export const colors = {
 // (border-line bg-brandTint text-brand, brandLight when pressed).
 export const actionTint = { bg: colors.brandTint, bgPressed: colors.brandLight, border: colors.border, text: colors.brand }
 
-export const radius ={ md: 12, lg: 16, pill: 9999 }
+// `frame`: the inset picture frames on perk cards, tiles and the offer screen.
+export const radius = { md: 12, frame: 14, lg: 16, pill: 9999 }
 
 // The selected filter chip's lift (web: .filter-chip's shadow-sm).
 export const chipShadow = {

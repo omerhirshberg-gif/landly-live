@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Image, StyleSheet, View } from 'react-native'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { CATEGORY_TILES } from '@shared/categories'
+import { perkImageFit } from '@shared/offers/imageFit'
 import AppText from './AppText'
 import { colors, radius } from '../theme'
 
@@ -10,7 +11,8 @@ import { colors, radius } from '../theme'
 // category's emoji on a white tile. Same design as the website's
 // components/discover/PerkImage.tsx. The gradient is drawn with
 // react-native-svg (already a dependency) rather than adding a gradient package.
-// Fills its parent, which sets the size and corner clipping.
+// Fills its parent, which sets the size and corner clipping. A photo covers
+// it; a logo (lib/offers/imageFit.ts) sits whole inside with room around it.
 // `thumb` scales the fallback's watermark and emoji tile down for a list thumbnail.
 export default function PerkImage({
   uri,
@@ -26,14 +28,20 @@ export default function PerkImage({
   const thumb = size === 'thumb'
   // Keyed on the URL, so a changed image gets a fresh attempt.
   const [failedUri, setFailedUri] = useState<string | null>(null)
+  const [measured, setMeasured] = useState<{ uri: string; width: number; height: number } | null>(null)
 
   if (uri && failedUri !== uri) {
+    const fit = perkImageFit(uri, measured?.uri === uri ? measured : null)
     return (
       <Image
         source={{ uri }}
-        style={styles.fill}
-        resizeMode="cover"
+        style={[styles.fill, fit === 'contain' && (thumb ? styles.logoThumb : styles.logo)]}
+        resizeMode={fit}
         onError={() => setFailedUri(uri)}
+        onLoad={(e) => {
+          const { width, height } = e.nativeEvent.source
+          setMeasured({ uri, width, height })
+        }}
         accessibilityIgnoresInvertColors
       />
     )
@@ -68,6 +76,9 @@ export default function PerkImage({
 
 const styles = StyleSheet.create({
   fill: { width: '100%', height: '100%' },
+  // A logo's snug breathing room inside the frame.
+  logo: { margin: 8, width: undefined, height: undefined, flex: 1 },
+  logoThumb: { margin: 4, width: undefined, height: undefined, flex: 1 },
   fallback: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   initial: {
     position: 'absolute',

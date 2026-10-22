@@ -3,18 +3,14 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { getOffersByIds, type OfferDocument } from '@shared/firebase/offers'
 import { useWishlist } from '@shared/firebase/useWishlist'
-import AppText from '../components/AppText'
-import Notice from '../components/Notice'
-import OfferCard from '../components/OfferCard'
-import ScreenHeader from '../components/ScreenHeader'
-import { useLang } from '../i18n/LangProvider'
-import { openOffer } from '../lib/openOffer'
-import { colors } from '../theme'
+import AppText from '../../components/AppText'
+import Notice from '../../components/Notice'
+import OfferCard from '../../components/OfferCard'
+import { useLang } from '../../i18n/LangProvider'
+import { openOffer } from '../../lib/openOffer'
+import { colors, type } from '../../theme'
 
-// The saved perks (web: /wishlist), pushed over the tabs from the heart at
-// the end of the Perks search row as a page flip (lib/pageFlip.ts): back, or
-// a full-screen swipe in the reading direction, turns it back. The list
-// follows the live wishlist in the order it was saved, as on the website:
+// The saved perks (web: /wishlist), the Wishlist tab. The list follows the live wishlist in the order it was saved, as on the website:
 // un-hearting a card drops it at once, and only newly saved ids are fetched.
 // An id whose offer was deleted is skipped.
 export default function WishlistScreen() {
@@ -86,7 +82,6 @@ export default function WishlistScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={t('wishlist_title')} fallback="/perks" />
       <FlatList
         data={offers ?? []}
         keyExtractor={(offer) => offer.id}
@@ -94,7 +89,14 @@ export default function WishlistScreen() {
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
-        ListHeaderComponent={failed ? <View style={styles.notice}><Notice message={t('mobile_load_error')} /></View> : null}
+        ListHeaderComponent={
+          <>
+            <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
+              {t('wishlist_title')}
+            </AppText>
+            {failed && <View style={styles.notice}><Notice message={t('mobile_load_error')} /></View>}
+          </>
+        }
         ListEmptyComponent={
           offers === null || pending ? (
             failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
@@ -113,6 +115,7 @@ export default function WishlistScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
+  title: { marginBottom: 16 },
   notice: { marginBottom: 16 },
   spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },

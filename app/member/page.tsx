@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import MemberPageShell, { PAGE_TITLE, PAGE_TITLE_GAP } from '@/components/layout/MemberPageShell'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
@@ -93,33 +94,34 @@ export default function MemberPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <div className="max-w-3xl lg:max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-
-          <div className="flex items-start justify-between mb-6 gap-3">
-            <div>
-              <div className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">{t('dash_label')}</div>
-              <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink">{welcomeMessage}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                <SegmentBadge customerType={customerType} customerTypeOther={customerTypeOther} />
+        <MemberPageShell>
+          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
+          <div className="max-w-4xl">
+            <div className={`flex items-start justify-between ${PAGE_TITLE_GAP} gap-3`}>
+              <div>
+                <h1 className={PAGE_TITLE}>{welcomeMessage}</h1>
+                <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                  <SegmentBadge customerType={customerType} customerTypeOther={customerTypeOther} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
-          <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
+            {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
+            <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
 
-          {/* A soft hairline between the member's status and their passes, as on the home page. */}
-          <SectionDivider className="mb-6" />
+            {/* A soft hairline between the member's status and their passes, as on the home page. */}
+            <SectionDivider className="mb-6" />
 
-          {/* Tabs: My Perks / Redeemed */}
-          <div className="mb-5">
-            <MemberTabs active={activeTab} onChange={setActiveTab} />
+            {/* Tabs: My Perks / Redeemed */}
+            <div className="mb-5">
+              <MemberTabs active={activeTab} onChange={setActiveTab} />
+            </div>
+            <div className="mb-4">
+              {activeTab === 'perks' && <PerksTab vouchers={active} />}
+              {activeTab === 'redeemed' && <RedeemedTab vouchers={redeemed} />}
+            </div>
           </div>
-          <div className="mb-4">
-            {activeTab === 'perks' && <PerksTab vouchers={active} />}
-            {activeTab === 'redeemed' && <RedeemedTab vouchers={redeemed} />}
-          </div>
-        </div>
+        </MemberPageShell>
       </div>
     </>
   )

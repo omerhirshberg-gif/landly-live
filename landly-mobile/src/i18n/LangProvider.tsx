@@ -1,19 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useState, type ReactNode } from 'react'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@shared/i18n/translations'
+import { LangContext, type LangContextValue } from './LangContext'
 
 // Native counterpart of lib/i18n/LangProvider.tsx: same dictionary, same
 // context shape ({ lang, setLang, t, isRtl }), but AsyncStorage instead of
 // localStorage, and layout direction is applied by the root layout instead
 // of on <html>. English is the default until the user picks something else.
-interface LangContextValue {
-  lang: Lang
-  setLang: (lang: Lang) => void
-  t: (key: TranslationKey) => string
-  isRtl: boolean
-}
-
-const LangContext = createContext<LangContextValue | null>(null)
+// The context itself lives in LangContext.ts, so it survives Fast Refresh.
 
 const STORAGE_KEY = 'landly_lang' // same key name as the web app's localStorage
 const DEFAULT_LANG: Lang = 'en'
@@ -44,8 +38,18 @@ export function LangProvider({ children }: { children: ReactNode }) {
   return <LangContext.Provider value={{ lang, setLang, t, isRtl }}>{children}</LangContext.Provider>
 }
 
-export function useLang() {
+// Outside a provider (only ever a dev-time hiccup), English, left to right,
+// instead of a red screen.
+const FALLBACK: LangContextValue = {
+  lang: DEFAULT_LANG,
+  setLang: () => {},
+  t: (key: TranslationKey) => translations.en[key] || key,
+  isRtl: false,
+}
+
+export function useLang(): LangContextValue {
   const ctx = useContext(LangContext)
-  if (!ctx) throw new Error('useLang must be used within a LangProvider')
-  return ctx
+  if (ctx) return ctx
+  if (__DEV__) console.warn('useLang was called outside a LangProvider; using English')
+  return FALLBACK
 }

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@shared/brand/emblemPaths'
 import { GestureDetector } from 'react-native-gesture-handler'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
@@ -13,7 +14,6 @@ import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
 import AppText from '../../components/AppText'
 import Avatar from '../../components/Avatar'
 import AvatarViewer, { useAvatarPeek } from '../../components/AvatarViewer'
-import Button from '../../components/Button'
 import CategoryRail from '../../components/CategoryRail'
 import Notice from '../../components/Notice'
 import OfferCarousel from '../../components/OfferCarousel'
@@ -31,14 +31,13 @@ const GREETING_IN = FadeInDown.duration(ONB.greetingMs)
   .easing(Easing.bezier(...EASE_SILK))
   .withInitialValues({ opacity: 0, transform: [{ translateY: ONB.screenRisePx }] })
 
-// The signed-in dashboard: greeting, the live active-pass count, the
-// categories, and a few curated offers in a horizontal carousel of compact
-// cards (components/OfferCarousel.tsx). Same sections as the website's
-// member home (components/home/LoggedInHome.tsx).
+// The signed-in dashboard: greeting, the member-pass hero with the live
+// active-pass count, a few curated offers in a horizontal carousel of compact
+// cards (components/OfferCarousel.tsx), then the categories rail.
 const fetchOffers = async () => sortFeaturedOffers(await getAllOffers()).slice(0, CURATED_COUNT)
 
 export default function HomeScreen() {
-  const { t } = useLang()
+  const { t, isRtl } = useLang()
   const { user } = useAuth()
   const router = useRouter()
   const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
@@ -132,31 +131,53 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <View style={styles.passCard}>
-          <View style={styles.passRow}>
+        {/* The hero: a member pass with the live count, the first thing under the greeting. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('home_pass_label')}: ${activeCount ?? '–'}. ${t('home_pass_cta')}`}
+          onPress={openPass}
+          style={({ pressed }) => [styles.passCard, pressed && styles.passCardPressed]}
+        >
+          <View style={styles.passGlow} />
+          {/* The Landly emblem as a watermark in the top end corner (web: components/home/LandlyMark.tsx). */}
+          <Svg viewBox={`0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`} width={88} height={86} style={styles.passMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {[STAR, ARCH, ARROW].flatMap((part) => [part.light, part.dark]).map((d) => (
+              <Path key={d.slice(0, 24)} d={d} fill={colors.white} fillOpacity={0.15} fillRule="evenodd" />
+            ))}
+          </Svg>
+          <View style={styles.passTop}>
             <View style={styles.iconBox}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.brand} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <Path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM14 6v2M14 11v2M14 16v2" />
               </Svg>
             </View>
-            <AppText style={styles.passLabel}>{t('home_pass_label')}</AppText>
-            <View style={styles.countPill} accessibilityLiveRegion="polite">
-              <AppText ltr style={styles.countText}>
-                {activeCount ?? '–'}
-              </AppText>
-            </View>
+            <AppText style={styles.passLabel} numberOfLines={1}>
+              {t('home_pass_label')}
+            </AppText>
           </View>
-          <AppText style={[type.body, styles.passMessage]}>
-            {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
-          </AppText>
-          <Button label={t('home_pass_cta')} onPress={openPass} />
-        </View>
-
-        <SectionHeader title={t('home_deals_title')} />
-        <CategoryRail
-          onSelect={(category) => router.push({ pathname: '/category/[category]', params: { category } })}
-          onViewAll={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })}
-        />
+          <View style={styles.passCount} accessibilityLiveRegion="polite">
+            <AppText ltr style={styles.countText}>
+              {activeCount ?? '–'}
+            </AppText>
+            <AppText style={styles.passMessage} numberOfLines={2}>
+              {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
+            </AppText>
+          </View>
+          {/* A ticket's perforation: notches cut into both edges and a dashed tear line. */}
+          <View style={styles.perforation}>
+            <View style={[styles.notch, styles.notchStart]} />
+            <View style={styles.tearLine} />
+            <View style={[styles.notch, styles.notchEnd]} />
+          </View>
+          <View style={styles.passCta}>
+            <AppText style={styles.passCtaText} numberOfLines={1}>
+              {t('home_pass_cta')}
+            </AppText>
+            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.brand} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={isRtl && styles.flip}>
+              <Path d="M5 12h14M12 5l7 7-7 7" />
+            </Svg>
+          </View>
+        </Pressable>
 
         <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
         {failed && <Notice message={t('mobile_load_error')} />}
@@ -170,6 +191,12 @@ export default function HomeScreen() {
         ) : (
           <OfferCarousel offers={offers} onOpen={openOffer} />
         )}
+
+        <SectionHeader title={t('home_deals_title')} />
+        <CategoryRail
+          onSelect={(category) => router.push({ pathname: '/category/[category]', params: { category } })}
+          onViewAll={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })}
+        />
       </ScrollView>
       {photoURL && <AvatarViewer uri={photoURL} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </SafeAreaView>
@@ -187,27 +214,56 @@ const styles = StyleSheet.create({
   avatarButton: { borderRadius: radius.pill, ...webOnly({ cursor: 'zoom-in' }) },
   avatarPressed: { opacity: 0.85 },
   greetingText: { flex: 1, minWidth: 0 },
+  // The member pass: solid brand blue, rounded-2xl, lifted off the canvas.
   passCard: {
-    backgroundColor: colors.white,
+    overflow: 'hidden',
+    paddingTop: 18,
+    paddingBottom: 16,
+    paddingHorizontal: 18,
+    backgroundColor: colors.brand,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+    shadowColor: colors.brandDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 6,
+    ...webOnly({ cursor: 'pointer' }),
   },
-  passRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center' },
-  passLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.body },
-  countPill: {
-    minWidth: 40,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brandLight,
+  passCardPressed: { backgroundColor: colors.brandHover },
+  // A soft light disc in the top end corner, for depth without a gradient dependency.
+  passGlow: {
+    position: 'absolute',
+    top: -70,
+    end: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  passMark: { position: 'absolute', top: 12, end: 14 },
+  passTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.16)', alignItems: 'center', justifyContent: 'center' },
+  passLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.85)' },
+  // Clear of the watermark on the end side.
+  passCount: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingEnd: 72 },
+  countText: { fontSize: 44, lineHeight: 50, fontWeight: '800', color: colors.white, fontVariant: ['tabular-nums'] },
+  passMessage: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 21, fontWeight: '600', color: colors.white },
+  perforation: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, marginHorizontal: -18 },
+  notch: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.background },
+  notchStart: { marginStart: -9 },
+  notchEnd: { marginEnd: -9 },
+  tearLine: { flex: 1, marginHorizontal: 6, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.35)' },
+  passCta: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    height: 46,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
   },
-  countText: { fontSize: 16, fontWeight: '700', color: colors.brand, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  passMessage: { marginBottom: 16 },
+  passCtaText: { fontSize: 15, fontWeight: '700', color: colors.brand },
+  flip: { transform: [{ scaleX: -1 }] },
   spinner: { marginTop: 32 },
   empty: { alignItems: 'center', marginTop: 24, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },

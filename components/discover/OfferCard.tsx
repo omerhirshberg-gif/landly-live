@@ -25,7 +25,7 @@ interface OfferCardProps {
   showWishlistButton?: boolean
   /**
    * 'rail': a compact, fixed-width card for a horizontal scroller (240-260px,
-   * a 124px photo, smaller type), so the next card peeks in. 'grid': fills its grid cell.
+   * smaller type), so the next card peeks in. 'grid': fills its grid cell.
    */
   layout?: 'rail' | 'grid'
   /** The category pill on the photo. Off in a list already scoped to one category, where every card would repeat it. */
@@ -39,8 +39,10 @@ interface OfferCardProps {
 // card is the link; the footer line only says what tapping does. The lift on
 // hover is limited to devices that really hover, so a tap never leaves a
 // phone's card stuck raised. Compact, so a phone's feed shows more than one
-// perk per screen: a 2:1 photo, tight padding, and the price sharing one row
-// with the CTA. Same anatomy as the Expo app's OfferCard.
+// perk per screen: a 130px picture in its own framed box (light canvas,
+// hairline border, 14px corners) inset from the card's edges, so a white logo
+// never melts into the white card; tight padding; and the price, the
+// struck-through original and the discount badge sharing one row with the CTA. Same anatomy as the Expo app's OfferCard.
 export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', showCategoryBadge = true, distanceKm }: OfferCardProps) {
   const { t, lang } = useLang()
   const title = localizeText(offer.title, offer.translations, lang, 'title')
@@ -61,15 +63,14 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0' : 'w-full'
       }`}
     >
-      {/* A full-width card on a phone gets a wide photo (2:1, capped at 180px, as in the Expo app) so the image doesn't crowd out the text; a rail card a short fixed one. */}
-      <div className={`relative overflow-hidden bg-[#F0F7FF] ${rail ? 'h-[124px]' : 'aspect-[2/1] max-h-[180px] md:aspect-[16/10] md:max-h-none'}`}>
+      {/* The framed picture: 130px tall in every layout, as in the Expo app, so it never crowds out the text. */}
+      <div className="relative mx-2 mt-2 h-[130px] overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC]">
         <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={name.text} />
         {showCategoryBadge && tile && (
           <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#0B1B3D] shadow-sm">
             {t(tile.labelKey)}
           </span>
         )}
-        <DiscountBadge percent={discount} size={rail ? 'sm' : 'md'} className="absolute bottom-2.5 start-2.5" />
         {showWishlistButton && user && (
           <button
             type="button"
@@ -94,7 +95,7 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         )}
       </div>
 
-      <div className={`flex flex-1 flex-col ${rail ? 'p-3' : 'p-3 sm:p-4'}`}>
+      <div className={`flex flex-1 flex-col ${rail ? 'px-3 pb-3 pt-2.5' : 'px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4'}`}>
         <div className={`truncate font-bold leading-snug text-[#0B1B3D] ${rail ? 'text-[15px]' : 'text-base'}`} lang={name.lang ?? undefined} dir="auto">
           {name.text}
         </div>
@@ -118,11 +119,16 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
 
         {/* Price at the start, "View deal" at the end, on one row. */}
         <div className={`mt-auto flex items-center justify-between pt-2.5 ${rail ? 'gap-2' : 'gap-3'}`}>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2" dir="ltr">
-            <span className={`font-extrabold tracking-tight text-[#0038B8] ${rail ? 'text-base' : 'text-lg'}`}>{formatPrice(offer.offerPrice)}</span>
-            {discount > 0 && (
-              <span className={`text-[#94A3B8] line-through decoration-[#94A3B8]/70 ${rail ? 'text-xs' : 'text-sm'}`}>{formatPrice(offer.originalPrice)}</span>
-            )}
+          {/* The badge sits in the price row, never over the picture, outside the
+              prices' left-to-right run so "15% הנחה" still reads in Hebrew order. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2" dir="ltr">
+              <span className={`font-extrabold tracking-tight text-[#0038B8] ${rail ? 'text-base' : 'text-lg'}`}>{formatPrice(offer.offerPrice)}</span>
+              {discount > 0 && (
+                <span className={`text-[#94A3B8] line-through decoration-[#94A3B8]/70 ${rail ? 'text-xs' : 'text-sm'}`}>{formatPrice(offer.originalPrice)}</span>
+              )}
+            </div>
+            <DiscountBadge percent={discount} size="sm" />
           </div>
           <span className={`flex flex-shrink-0 items-center gap-1.5 font-semibold text-[#0038B8] ${rail ? 'text-[13px]' : 'text-sm'}`}>
             <span>{t('offer_view_cta')}</span>

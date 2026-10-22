@@ -11,7 +11,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_DISPLAY } from '@/li
 // analytics, push tokens, in-app deletion -- update the matching section and
 // PRIVACY_POLICY_UPDATED.
 
-export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-20', label: 'October 20, 2026' }
+export const PRIVACY_POLICY_UPDATED = { iso: '2026-10-22', label: 'October 22, 2026' }
 
 const MAIL = `mailto:${SUPPORT_EMAIL}`
 
@@ -195,7 +195,12 @@ export default function PrivacyPolicy() {
 
         <H3>Payment information</H3>
         <p>
-          Paid offers are processed by our payment provider, Tranzila. You enter your card details on
+          Joining Landly is free. We do not ask for or collect any payment card or billing details when you sign up
+          or while you use your free membership, and there are no membership or subscription charges.
+        </p>
+        <p>
+          You enter card details only when you choose to buy an individual paid offer. Those payments are processed
+          by our payment provider, Tranzila, a PCI-DSS-compliant payment gateway: you enter your card details on
           Tranzila&apos;s secure payment page. Landly never receives or stores your full card number or security
           code; we receive only the outcome of the payment and a transaction reference.
         </p>

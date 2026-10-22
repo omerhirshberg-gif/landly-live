@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
@@ -46,30 +47,33 @@ export default function WishlistPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <div className="max-w-3xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink mb-6">{t('wishlist_title')}</h1>
+        <MemberPageShell>
+          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
+          <div className="max-w-3xl">
+            <PageTitle>{t('wishlist_title')}</PageTitle>
 
-          {offers === undefined ? (
-            <div className="dash-empty-state">
-              <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-            </div>
-          ) : offers.length === 0 ? (
-            <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-              <i className="fa-solid fa-heart" aria-hidden="true"></i>
-              <div className="font-bold text-ink text-base mb-1">{t('wishlist_empty_title')}</div>
-              <p className="text-sm text-body max-w-xs mb-5">{t('wishlist_empty_sub')}</p>
-              <Link href="/categories" className="ds-btn ds-btn-primary">
-                <span>{t('nav_cta')}</span>
-              </Link>
-            </div>
-          ) : (
-            <div className={OFFER_FEED_GRID}>
-              {offers.map((offer) => (
-                <OfferCard key={offer.id} offer={offer} showWishlistButton layout="grid" />
-              ))}
-            </div>
-          )}
-        </div>
+            {offers === undefined ? (
+              <div className="dash-empty-state">
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+              </div>
+            ) : offers.length === 0 ? (
+              <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
+                <i className="fa-solid fa-heart" aria-hidden="true"></i>
+                <div className="font-bold text-ink text-base mb-1">{t('wishlist_empty_title')}</div>
+                <p className="text-sm text-body max-w-xs mb-5">{t('wishlist_empty_sub')}</p>
+                <Link href="/categories" className="ds-btn ds-btn-primary">
+                  <span>{t('nav_cta')}</span>
+                </Link>
+              </div>
+            ) : (
+              <div className={OFFER_FEED_GRID}>
+                {offers.map((offer) => (
+                  <OfferCard key={offer.id} offer={offer} showWishlistButton layout="grid" />
+                ))}
+              </div>
+            )}
+          </div>
+        </MemberPageShell>
       </div>
     </>
   )

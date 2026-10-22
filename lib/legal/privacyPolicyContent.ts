@@ -41,7 +41,7 @@ const PHONE = a(SUPPORT_WHATSAPP_DISPLAY, SUPPORT_PHONE_TEL)
 const GOOGLE_PERMISSIONS = a('myaccount.google.com/permissions', 'https://myaccount.google.com/permissions')
 
 export const PRIVACY_POLICY_TITLE = 'Privacy Policy'
-export const PRIVACY_POLICY_UPDATED_LABEL = 'October 20, 2026'
+export const PRIVACY_POLICY_UPDATED_LABEL = 'October 22, 2026'
 
 export const PRIVACY_POLICY_INTRO: PolicyInline[] = [
   'Landly is a lifestyle and growth perks club for people living in, moving to or visiting Israel. This Privacy Policy explains what personal information we collect when you use Landly, why we collect it, who we share it with, how long we keep it, and the choices and rights you have. We collect only what we need to run the service, we do not sell your personal information, and we do not use advertising or analytics trackers.',
@@ -97,7 +97,8 @@ export const PRIVACY_POLICY_SECTIONS: PolicySection[] = [
         ['Your vouchers: the unique redemption code (displayed as a QR code in your digital pass), whether the voucher is active or redeemed, and when it was claimed and redeemed.'],
       ),
       h3('Payment information'),
-      p("Paid offers are processed by our payment provider, Tranzila. You enter your card details on Tranzila's secure payment page. Landly never receives or stores your full card number or security code; we receive only the outcome of the payment and a transaction reference."),
+      p("Joining Landly is free. We do not ask for or collect any payment card or billing details when you sign up or while you use your free membership, and there are no membership or subscription charges."),
+      p("You enter card details only when you choose to buy an individual paid offer. Those payments are processed by our payment provider, Tranzila, a PCI-DSS-compliant payment gateway: you enter your card details on Tranzila's secure payment page. Landly never receives or stores your full card number or security code; we receive only the outcome of the payment and a transaction reference."),
       h3('Messages you send us'),
       p('When you contact us through the support form, by email or on WhatsApp, we receive your name, contact details and the content of your message.'),
       h3('Aliyah mentor requests'),

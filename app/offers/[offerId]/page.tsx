@@ -39,6 +39,8 @@ export default function OfferDetailPage() {
   const { offerId } = useParams<{ offerId: string }>()
   const { user, loading: authLoading } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
+  // The heart pops only when the member saves it here, not on load.
+  const [heartPop, setHeartPop] = useState(false)
 
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(undefined)
   const [alreadyClaimed, setAlreadyClaimed] = useState<boolean | null>(null)
@@ -130,23 +132,38 @@ export default function OfferDetailPage() {
       <div className="member-canvas below-header">
         <div className="mx-auto max-w-2xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8 sm:pb-12">
           <OpenInAppHint className="mb-3" />
-          <BackButton fallback={`/categories/${encodeURIComponent(offer.category)}`} label={t('offer_detail_back')} className="mb-4" />
+          {/* Back names where it returns (Home, Discover, Wishlist); opened directly it says "Back" and goes Home (members) or to Discover (guests). */}
+          <BackButton fallback={user ? '/' : '/categories'} contextLabel className="mb-4" />
 
           {/* One surface: photo, details, how to redeem and the purchase button,
               split only by hairlines. No overflow-hidden here -- it would stop the
-              purchase bar from sticking -- so the photo rounds its own top corners. */}
+              purchase bar from sticking -- so the picture sits in its own snug
+              framed box (light canvas, hairline border, 14px corners): a photo
+              fills it, a logo sits whole inside with a little room. */}
           <article className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-t-3xl bg-brandTint">
+            <div className="relative mx-3 mt-3 sm:mx-4 sm:mt-4 h-[180px] sm:h-[220px] overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC]">
               <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={businessName.text} size="hero" />
               {user && (
+                // A 42px frosted-glass circle in a 48px tap target: the picture
+                // blurs through it, a white rim and a soft shadow lift it. An ink
+                // outline heart until saved, then a solid red one that pops.
                 <button
                   type="button"
-                  onClick={() => toggleWishlist(offer.id)}
+                  onClick={() => {
+                    setHeartPop(!saved)
+                    toggleWishlist(offer.id)
+                  }}
                   aria-pressed={saved}
                   aria-label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-                  className={`absolute top-3 end-3 flex h-12 w-12 items-center justify-center rounded-full shadow-sm transition-colors ${saved ? 'bg-red-500 text-white' : 'bg-white/95 text-[#475569] [@media(hover:hover)]:hover:text-red-500'}`}
+                  className="group/heart absolute top-1.5 end-1.5 flex h-12 w-12 items-center justify-center rounded-full [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand"
                 >
-                  <i className={`${saved ? 'fa-solid' : 'fa-regular'} fa-heart text-base`} aria-hidden="true"></i>
+                  <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/60 bg-white/80 shadow-[0_3px_10px_rgba(15,23,42,0.16)] backdrop-blur-md backdrop-saturate-150 transition-transform duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] group-active/heart:scale-90 motion-reduce:transition-none motion-reduce:group-active/heart:scale-100">
+                    <i
+                      key={saved ? 'saved' : 'unsaved'}
+                      className={`${saved ? `fa-solid text-[#EF4444] ${heartPop ? 'heart-pop' : ''}` : 'fa-regular text-[#0B1B3D]'} fa-heart text-[18px]`}
+                      aria-hidden="true"
+                    ></i>
+                  </span>
                 </button>
               )}
             </div>

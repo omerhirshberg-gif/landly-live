@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { CATEGORY_TILES } from '@/lib/categories'
+import { perkImageFit } from '@/lib/offers/imageFit'
 
 interface PerkImageProps {
   src: string
@@ -18,11 +19,17 @@ interface PerkImageProps {
 // and the category's emoji on a white tile. Never the old broken-image icon.
 // Plain <img>: offer photos are admin-pasted links on any host, outside
 // next/image's remote patterns. no-referrer keeps hotlink-protected hosts
-// (which refuse requests from other sites) serving the file.
+// (which refuse requests from other sites) serving the file. A photo covers
+// the frame; a logo (lib/offers/imageFit.ts) sits whole inside it with room
+// around it, on the frame's light background.
 export default function PerkImage({ src, alt, category, businessName, size = 'card', className = '' }: PerkImageProps) {
   // Keyed on the URL, so a changed image gets a fresh attempt.
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const [measured, setMeasured] = useState<{ src: string; width: number; height: number } | null>(null)
   const showImage = !!src && failedSrc !== src
+  const fit = perkImageFit(src, measured?.src === src ? measured : null)
+  // A logo's snug breathing room inside its frame (8-10px).
+  const logoPadding = { thumb: 'p-1', card: 'p-2', hero: 'p-2.5' }[size]
 
   if (showImage) {
     return (
@@ -34,7 +41,8 @@ export default function PerkImage({ src, alt, category, businessName, size = 'ca
         decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailedSrc(src)}
-        className={`h-full w-full object-cover ${className}`}
+        onLoad={(e) => setMeasured({ src, width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+        className={`h-full w-full ${fit === 'contain' ? `object-contain ${logoPadding}` : 'object-cover'} ${className}`}
       />
     )
   }

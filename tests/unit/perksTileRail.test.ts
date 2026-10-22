@@ -69,11 +69,14 @@ describe('web OfferTileRail', () => {
     expect(hrefs).toEqual(['1', '2', '3', '4', '5'])
   })
 
-  it('renders compact 140px tiles with a 104px photo strip, the discount pill and both prices', () => {
+  it('renders compact 140px tiles with a framed picture, both prices and the discount pill after them', () => {
     const html = render('en', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'x', offers: [offer('1')] }))
     expect(html).toContain('h-[140px]')
-    expect(html).toContain('w-[104px]')
-    expect(html).toContain(translations.en.offer_percent_off.replace('{n}', '20'))
+    expect(html).toContain('w-24 flex-shrink-0 overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC]')
+    const pill = html.indexOf(translations.en.offer_percent_off.replace('{n}', '20'))
+    // In the price row after the prices, never over the picture.
+    expect(pill).toBeGreaterThan(html.indexOf('line-through'))
+    expect(html).not.toContain('absolute bottom-2 start-2')
     expect(html).toContain('₪80')
     expect(html).toContain('line-through')
   })
@@ -112,5 +115,24 @@ describe('/categories overview order', () => {
     const n = (s: string) => native.indexOf(s)
     expect(n("title={t('row_new')}")).toBeLessThan(n("title={t('row_bestsellers')}"))
     expect(n("title={t('row_bestsellers')}")).toBeLessThan(n('<CategoryGrid tiles={CATEGORY_TILES}'))
+  })
+
+  it('separates the native overview with the website\'s hairlines: before the rails, between them, before the grid', async () => {
+    const { readFileSync } = await import('node:fs')
+    const native = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
+    expect(native).toContain("import SectionDivider from '../../components/SectionDivider'")
+    const overview = native.slice(native.indexOf('{browsing && (\n'), native.indexOf('<CategoryGrid tiles={CATEGORY_TILES}'))
+    const at = (s: string, from = 0) => overview.indexOf(s, from)
+    const beforeRails = at('<SectionDivider />')
+    const newRail = at("title={t('row_new')}")
+    const between = at('{newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}')
+    const bestRail = at("title={t('row_bestsellers')}")
+    const beforeGrid = at('<SectionDivider />', bestRail)
+    expect(beforeRails).toBeGreaterThan(-1)
+    expect(newRail).toBeGreaterThan(beforeRails)
+    expect(between).toBeGreaterThan(newRail)
+    expect(bestRail).toBeGreaterThan(between)
+    expect(beforeGrid).toBeGreaterThan(bestRail)
+    expect(overview.indexOf("t('cats_all_categories_title')")).toBeGreaterThan(beforeGrid)
   })
 })

@@ -29,8 +29,8 @@ const POINTS = [
 // The guest home's look at the member pass: a phone drawn in CSS with the
 // pass on screen, beside what using one is like. The pass is a royal-blue
 // card laid out like a membership card: the white Landly mark and wordmark
-// with the member number opposite (its one appearance), the member's name,
-// the QR in a white frame, and a footer row (valid until, status: active);
+// with the member number opposite (its one appearance), the member's name
+// with a "Free member" chip under it, the QR in a white frame, and a footer row (valid until, status: active);
 // under the card, a quiet "Show to redeem" pill. The name and number are a sample (the
 // home page is for guests); the QR is real and opens /signup, so scanning it
 // leads somewhere. Nothing floats outside the phone. The card's header and
@@ -115,6 +115,11 @@ export default function PassShowcase() {
                   </span>
                 </div>
                 <div className="mt-1.5 truncate font-display text-xl sm:text-2xl font-bold tracking-tight text-white" dir="auto">{t('landing_pass_demo_name')}</div>
+                {/* The pass itself costs nothing to hold: a quiet chip under the name. */}
+                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider rtl:tracking-normal text-white/90">
+                  <i className="fa-solid fa-circle-check text-[8px] text-emerald-300"></i>
+                  {t('landing_pass_free_member')}
+                </span>
                 <div className="mt-4 flex justify-center">
                   <div className="pass-qr relative overflow-hidden rounded-2xl bg-white p-2 shadow-[0_6px_16px_-6px_rgba(0,0,0,.35)]">
                     <span aria-hidden="true" className="pass-shine" />

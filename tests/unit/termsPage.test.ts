@@ -44,7 +44,7 @@ describe('terms page', () => {
 
   it('has the six legal sections in order', () => {
     const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1])
-    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers and Deals', '4. Closing Your Account', '5. Governing Law', '6. Seller and Contact'])
+    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers, Deals and Membership', '4. Closing Your Account', '5. Governing Law', '6. Seller and Contact'])
   })
 
   it('identifies the title, date, seller and contact', () => {

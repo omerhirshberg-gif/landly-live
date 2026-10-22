@@ -52,8 +52,9 @@ export default function HomePage({ showcase = EMPTY_SHOWCASE }: { showcase?: Sho
   // hero and navbar; the sections below inform rather than repeat it. Right
   // under the hero, the partner marquee: real businesses on Landly drifting
   // by. Under What's inside, the biggest real savings (guests open any offer
-  // freely, and its purchase bar is where they're asked to sign in), then the
-  // member pass. Without three discounted offers the savings section and its
+  // freely, and its purchase bar is where they're asked to sign in), then
+  // How it works (joining is step one), then the member pass the steps lead
+  // to. Without three discounted offers the savings section and its
   // hairline are left out, so two hairlines never meet. The site's one canvas
   // (.home-ambient, the same as .member-canvas in globals.css) runs behind
   // all the sections (none sets its own background), under the translucent
@@ -75,9 +76,9 @@ export default function HomePage({ showcase = EMPTY_SHOWCASE }: { showcase?: Sho
           </>
         )}
         <SectionDivider />
-        <PassShowcase />
-        <SectionDivider />
         <Reveal><HowItWorks /></Reveal>
+        <SectionDivider />
+        <PassShowcase />
         <SectionDivider />
         <Reveal><HomeFaqPrompt /></Reveal>
       </main>

@@ -1,12 +1,11 @@
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { nativeNavigationUrls, navigationLinks, type NavigationDestination } from '@shared/maps/navigation'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
-import { colors, radius } from '../theme'
+import { colors } from '../theme'
 
-// "Navigate with Waze" / "Google Maps" under the address on the offer screen
+// Waze and Google Maps, side by side under the address on the offer screen
 // (web: components/offers/NavigationLinks.tsx). On a phone it opens the app
 // straight into navigation through its own URL scheme; without the app (the
 // scheme fails to open) the https link opens instead, which the store app or
@@ -21,47 +20,67 @@ async function open(appUrl: string | undefined, webUrl: string) {
   }
 }
 
+// The official app marks (assets/icons, the same files as the website's
+// public/icons), drawn at 20pt. Waze's mark is a square tile, so it's rounded
+// like an app icon; Google Maps' pin is transparent.
+const WAZE_ICON = require('../../assets/icons/waze.webp')
+const GOOGLE_MAPS_ICON = require('../../assets/icons/google-maps.webp')
+
 export default function NavigationButtons({ destination }: { destination: NavigationDestination }) {
   const { t } = useLang()
   const links = navigationLinks(destination)
   if (!links) return null
   const apps = nativeNavigationUrls(destination.geo, Platform.OS)
+  // Equal halves of one row; the row mirrors on its own in Hebrew.
   return (
     <View style={styles.row} accessibilityLabel={t('offer_nav_heading')}>
       <Pressable
         accessibilityRole="link"
+        accessibilityLabel={t('offer_nav_waze')}
         onPress={() => open(apps?.waze, links.waze)}
-        style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       >
-        <LineIcon name="navigation" size={15} color={colors.brand} strokeWidth={2.2} />
-        <AppText style={styles.label}>{t('offer_nav_waze')}</AppText>
+        <Image source={WAZE_ICON} style={[styles.icon, styles.iconTile]} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <AppText style={styles.label} numberOfLines={1}>Waze</AppText>
       </Pressable>
       <Pressable
         accessibilityRole="link"
+        accessibilityLabel={t('offer_nav_google')}
         onPress={() => open(apps?.googleMaps, links.googleMaps)}
-        style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       >
-        <LineIcon name="map" size={15} color={colors.brand} strokeWidth={2.2} />
-        <AppText style={styles.label}>{t('offer_nav_google')}</AppText>
+        <Image source={GOOGLE_MAPS_ICON} style={styles.icon} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <AppText style={styles.label} numberOfLines={1}>Google Maps</AppText>
       </Pressable>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  chip: {
+  row: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  // White, hairline-bordered, rounded-xl, with a shadow-sm lift.
+  button: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    borderRadius: radius.pill,
+    height: 46,
+    paddingHorizontal: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
     ...webOnly({ cursor: 'pointer' }),
   },
   pressed: { backgroundColor: colors.brandTint },
-  label: { fontSize: 14, fontWeight: '600', color: colors.heading },
+  icon: { width: 20, height: 20 },
+  iconTile: { borderRadius: 5 },
+  label: { flexShrink: 1, fontSize: 13.5, fontWeight: '600', color: colors.heading },
 })

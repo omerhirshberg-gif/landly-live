@@ -109,8 +109,6 @@ function RootNavigator() {
             <Stack.Screen name="settings" options={pageFlipOptions(isRtl)} />
             {/* A category tile (Perks grid, Home rail) opens its folder the same way. */}
             <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
-            {/* So does the heart at the end of the Perks search row. */}
-            <Stack.Screen name="wishlist" options={pageFlipOptions(isRtl)} />
             {/* A My Pass card's "View Voucher" opens the voucher on its own screen. */}
             <Stack.Screen name="voucher/[voucherId]" options={pageFlipOptions(isRtl)} />
             {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
