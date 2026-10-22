@@ -1,4 +1,4 @@
-import { signInWithEmailAndPassword, signOut, type User, type UserCredential } from 'firebase/auth'
+import { signInWithCustomToken, signInWithEmailAndPassword, signOut, type User, type UserCredential } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { signOutIfBusinessAccount } from '@/lib/firebase/businesses'
 import { ensureUserDocument } from '@/lib/firebase/users'
@@ -31,6 +31,22 @@ export async function signInCustomerWithEmail(
   }
   // Sign-up doesn't wait on Firestore (see signUpCustomer), so the first
   // verified sign-in is where the profile doc is created.
+  await ensureUserDocument(cred.user, { preferredLanguage: currentLang })
+  return {
+    status: 'signedIn',
+    user: cred.user,
+    preferredLanguage: await resolvePreferredLanguage(cred.user.uid, currentLang),
+  }
+}
+
+/**
+ * A passkey sign-in on the website: /api/auth/passkey/login-verify already
+ * refused business, disabled and unverified accounts before minting the
+ * custom token; the business check runs again here like every other path.
+ */
+export async function signInCustomerWithCustomToken(customToken: string, currentLang: Lang): Promise<CustomerSignInResult> {
+  const cred = await signInWithCustomToken(auth, customToken)
+  if (await signOutIfBusinessAccount(cred.user.uid)) return { status: 'businessAccount' }
   await ensureUserDocument(cred.user, { preferredLanguage: currentLang })
   return {
     status: 'signedIn',

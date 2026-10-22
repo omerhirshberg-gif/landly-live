@@ -4,13 +4,14 @@ import SettingsPageShell from '@/components/settings/SettingsPageShell'
 import SettingsRow, { SettingsGroup } from '@/components/settings/SettingsRow'
 import SecuritySection from '@/components/settings/SecuritySection'
 import SessionsCard from '@/components/settings/SessionsCard'
+import PasskeysCard from '@/components/settings/PasskeysCard'
 import { useSettingsMember } from '@/components/settings/useSettingsMember'
 import { useLang } from '@/lib/i18n/useLang'
 
 // Privacy & Security, its own page under /settings (the avatar menu links
-// here too): how the member signs in, Change Password for email/password
-// accounts (a Google-only account has no Landly password, so it gets a note
-// instead), the Sessions card, then the data controls.
+// here too): how the member signs in, Passkeys, Change Password for
+// email/password accounts (a Google-only account has no Landly password, so
+// it gets a note instead), the Sessions card, then the data controls.
 export default function PrivacySecurityPage() {
   const { t } = useLang()
   const user = useSettingsMember()
@@ -28,6 +29,8 @@ export default function PrivacySecurityPage() {
               {!hasPassword && <p className="mt-3 text-sm text-body">{t('security_google_note')}</p>}
             </div>
           </section>
+
+          <PasskeysCard user={user} />
 
           {hasPassword && (
             <div className="mb-6">

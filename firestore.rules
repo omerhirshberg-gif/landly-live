@@ -34,9 +34,12 @@ service cloud.firestore {
     // clearing it would let a member have the email sent again. So is the
     // record of when and where a marketing opt-in was given (proof of
     // consent); `marketingOptIn` itself stays the member's to change.
+    // So is the WebAuthn user handle the passkey routes create: a member who
+    // could change it would orphan every passkey they've saved.
     function serverOnlyUserKeys() {
       return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt',
-        'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource'];
+        'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource',
+        'webauthnUserId'];
     }
 
     match /users/{userId} {
@@ -72,6 +75,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /phoneVerifications/{userId} {
+      allow read, write: if false;
+    }
+
+    // Passkeys (public keys, counters, names) and the one-time WebAuthn
+    // challenges: read and written by the /api/auth/passkey and
+    // /api/account/passkeys routes only (Admin SDK). Settings lists a
+    // member's passkeys through that API, never directly.
+    match /passkeys/{credentialId} {
+      allow read, write: if false;
+    }
+    match /webauthnChallenges/{challengeId} {
       allow read, write: if false;
     }
 

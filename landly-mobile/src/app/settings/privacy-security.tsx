@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { signOut, type User } from 'firebase/auth'
 import { revokeAllSessions, type RevokeSessionsResult } from '@shared/account/revokeSessions'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
+import { methodKey, useAppLock } from '../../auth/AppLock'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import ChangePassword from '../../components/ChangePassword'
@@ -18,9 +19,10 @@ import { API_BASE_URL } from '../../lib/env'
 import { colors, radius } from '../../theme'
 
 // Privacy & Security (web: app/settings/privacy-security/page.tsx): how the
-// member signs in, Change Password for email/password accounts (a
-// Google-only account has no Landly password, so it gets a note instead),
-// Sessions, then the data controls. The account-deletion request itself
+// member signs in, the app lock (where the device has biometrics; the
+// website has Passkeys in this spot), Change Password for email/password
+// accounts (a Google-only account has no Landly password, so it gets a note
+// instead), Sessions, then the data controls. The account-deletion request itself
 // stays in Settings' Danger zone.
 export default function PrivacySecurityScreen() {
   const { t } = useLang()
@@ -40,6 +42,8 @@ export default function PrivacySecurityScreen() {
               {!hasPassword && <AppText style={styles.note}>{t('security_google_note')}</AppText>}
             </View>
 
+            <AppLockSection />
+
             {hasPassword && <ChangePassword user={user} />}
 
             <Sessions user={user} />
@@ -54,6 +58,61 @@ export default function PrivacySecurityScreen() {
   )
 }
 
+// "Unlock with Face ID" (or Touch ID / fingerprint, whatever the device has):
+// a switch that turns on only after a successful biometric check, and asks
+// again to turn off, so someone holding an unlocked phone can't quietly
+// remove it. Hidden without biometric hardware; with hardware but nothing
+// enrolled, the switch is disabled and the note links to the device settings
+// (the status is read again when the app comes back to the foreground).
+function AppLockSection() {
+  const { t } = useLang()
+  const { status, enabled, setEnabled } = useAppLock()
+  const [busy, setBusy] = useState(false)
+  if (!status?.hardware) return null
+
+  const method = t(methodKey(status.kind))
+  const icon = status.kind === 'faceId' || status.kind === 'face' ? 'faceId' : 'fingerprint'
+  const toggle = async (on: boolean) => {
+    setBusy(true)
+    await setEnabled(on)
+    setBusy(false)
+  }
+
+  return (
+    <View>
+      <AppText accessibilityRole="header" style={styles.groupTitle}>{t('applock_title')}</AppText>
+      <View style={styles.card}>
+        <View style={styles.device}>
+          <View style={styles.lockIcon}>
+            <LineIcon name={icon} color={colors.brand} />
+          </View>
+          <View style={styles.deviceText}>
+            <AppText style={styles.value}>{t('applock_toggle').replace('{method}', method)}</AppText>
+            <AppText style={styles.sub}>{t('applock_sub').replace('{method}', method)}</AppText>
+          </View>
+          <Switch
+            value={enabled}
+            onValueChange={toggle}
+            disabled={busy || (!status.enrolled && !enabled)}
+            accessibilityLabel={t('applock_toggle').replace('{method}', method)}
+            trackColor={{ false: colors.border, true: colors.brand }}
+            thumbColor={colors.white}
+            ios_backgroundColor={colors.border}
+          />
+        </View>
+        {!status.enrolled && (
+          <View style={styles.enrol}>
+            <AppText style={styles.note}>{t('applock_notEnrolled').replace('{method}', method)}</AppText>
+            <Pressable onPress={() => Linking.openSettings()} accessibilityRole="link" hitSlop={8} style={styles.settingsLink}>
+              <AppText style={styles.settingsLinkText}>{t('applock_openSettings')}</AppText>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    </View>
+  )
+}
+
 // This device, then "Sign out of all devices" (app/api/account/revoke-sessions).
 // Firebase can't list a member's other sessions from the client, so this
 // offers the one control that matters. The confirmation opens in place, as
@@ -61,6 +120,7 @@ export default function PrivacySecurityScreen() {
 // to the sign-in screen.
 function Sessions({ user }: { user: User }) {
   const { t } = useLang()
+  const { clearForSignOutEverywhere } = useAppLock()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<RevokeSessionsResult | null>(null)
@@ -76,6 +136,7 @@ function Sessions({ user }: { user: User }) {
     }
     // An already-revoked session has nothing left to end here either.
     if (outcome === 'done' || outcome === 'unauthorized') {
+      await clearForSignOutEverywhere()
       await signOut(auth).catch(() => {})
       return
     }
@@ -155,6 +216,10 @@ const styles = StyleSheet.create({
   deviceIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.successBg, alignItems: 'center', justifyContent: 'center' },
   deviceText: { flex: 1, minWidth: 0 },
   sub: { marginTop: 1, fontSize: 13, color: colors.textMuted },
+  lockIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },
+  enrol: { marginTop: 4 },
+  settingsLink: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
+  settingsLinkText: { fontSize: 14, fontWeight: '700', color: colors.brand },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
   divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 14 },
   confirm: { fontSize: 15, fontWeight: '600', color: colors.heading, marginBottom: 12 },

@@ -86,6 +86,7 @@ export default function SessionsCard({ user }: { user: User }) {
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">{t('security_signout_all')}</span>
                 <span className="block text-[13px] text-red-500/80">{t('security_signout_all_sub')}</span>
+                <span className="block text-[13px] text-slate-500">{t('security_signout_all_passkeys')}</span>
               </span>
             </button>
           )}
