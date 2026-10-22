@@ -465,20 +465,16 @@ describe('language picker placement', () => {
     expect(nav).toContain('<div class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">')
   })
 
-  it.each(['en', 'he'] as const)('only the guest drawer has language controls; a member\'s are on /settings (%s)', (lang) => {
-    const member = render(lang, { loggedIn: true }).split('</nav>')[1]
-    expect(member).not.toMatch(/<button[^>]*lang="[a-z]{2}"/)
-    expect(member).toContain('href="/settings"')
-
-    const guest = render(lang).split('</nav>')[1]
-    expect(guest).toContain(`<div role="group" aria-labelledby="drawer-language-label" class="mt-6"><p id="drawer-language-label" class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">${translations[lang].settings_language_title}</p>`)
-    const buttons = [...guest.matchAll(/<button type="button" lang="([a-z]{2})" aria-label="([^"]+)" aria-pressed="(true|false)" class="tap-target [^"]*">([A-Z]{2})<\/button>/g)]
-    expect(buttons.map((m) => m[1])).toEqual(['en', 'ru', 'es', 'fr', 'he'])
-    expect(buttons.map((m) => m[4])).toEqual(['EN', 'RU', 'ES', 'FR', 'HE'])
-    expect(buttons.map((m) => m[2])).toEqual(['English', 'Русский', 'Español', 'Français', 'עברית'])
-    expect(buttons.filter((m) => m[3] === 'true').map((m) => m[1])).toEqual([lang])
-    // Between the page links and Settings.
-    expect(guest.indexOf('drawer-language-label')).toBeGreaterThan(guest.indexOf('href="/support"'))
-    expect(guest.indexOf('drawer-language-label')).toBeLessThan(guest.indexOf('href="/settings"'))
+  it.each(['en', 'he'] as const)('the drawer has no language controls; the bar\'s globe and /settings carry them (%s)', (lang) => {
+    for (const loggedIn of [true, false]) {
+      const drawer = render(lang, { loggedIn }).split('</nav>')[1]
+      expect(drawer).not.toMatch(/<button[^>]*lang="[a-z]{2}"/)
+      expect(drawer).not.toContain('drawer-language-label')
+      expect(drawer).toContain('href="/settings"')
+    }
+    // A guest still switches from the globe in the bar, at every width.
+    const guestBar = render(lang).split('</nav>')[0]
+    expect(guestBar).toContain('class="lang-dropdown"')
+    expect(guestBar).toContain('fa-globe')
   })
 })

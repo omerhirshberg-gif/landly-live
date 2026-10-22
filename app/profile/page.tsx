@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
 import ProfileSection from '@/components/profile/ProfileSection'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
@@ -35,14 +36,13 @@ export default function ProfilePage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <div className="max-w-3xl lg:max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-10">
-          <div className="mb-6">
-            <div className="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-1">{t('dash_label')}</div>
-            <h1 className="text-[26px] sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink">{t('nav_profile')}</h1>
+        <MemberPageShell>
+          {/* A form reads better narrow; no auto margins, so it keeps the column's start edge */}
+          <div className="max-w-3xl lg:max-w-4xl">
+            <PageTitle>{t('nav_profile')}</PageTitle>
+            <ProfileSection user={user} />
           </div>
-
-          <ProfileSection user={user} />
-        </div>
+        </MemberPageShell>
       </div>
     </>
   )

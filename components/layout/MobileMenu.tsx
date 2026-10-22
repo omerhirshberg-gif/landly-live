@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import type { Lang, TranslationKey } from '@/lib/i18n/translations'
-import { LANGUAGES } from '@/lib/i18n/languages'
+import type { TranslationKey } from '@/lib/i18n/translations'
 import { isNavLinkActive } from '@/lib/navActive'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import Avatar from '@/components/ui/Avatar'
@@ -17,17 +16,15 @@ import { useWishlist } from '@/lib/firebase/useWishlist'
 // Making Aliyah?), a Settings link to /settings (language, Privacy &
 // Security, support, legal and account deletion live there), then Sign Out
 // in a footer that sticks above the safe area. Guests get the same icon rows
-// for the public pages (Partner with Us among them, after Making Aliyah?), a
-// language switcher (five buttons, one per language), the same Settings
-// link, then Sign In.
+// for the public pages (Partner with Us among them, after Making Aliyah?), the
+// same Settings link, then Sign In. Language is switched from the globe in the
+// bar (guests) or on /settings, so the drawer carries no switcher of its own.
 // The drawer's height is set in globals.css (.mobile-menu, 100dvh minus the bar).
 export default function MobileMenu({
   isOpen,
   onClose,
   onGoHome,
   t,
-  lang,
-  onChooseLang,
   isLoggedIn,
   onSignOut,
   activeAnchorId,
@@ -37,9 +34,6 @@ export default function MobileMenu({
   /** Closes the drawer, then scrolls to the top on / or navigates there. */
   onGoHome: () => void
   t: (key: TranslationKey) => string
-  lang: Lang
-  /** Switches the site's language (and direction) and remembers it. */
-  onChooseLang: (code: Lang) => void
   isLoggedIn: boolean
   onSignOut: () => void
   activeAnchorId: string | null
@@ -124,9 +118,6 @@ export default function MobileMenu({
             <IconLink href="/support" icon="fa-headset" label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
           </div>
 
-          {/* Guests switch language right here; it's also on /settings, with Terms and Privacy */}
-          <LanguageSwitcher lang={lang} onChoose={onChooseLang} label={t('settings_language_title')} />
-
           {settingsLink}
 
           {/* mt-auto pins the sign-in block to the bottom of the drawer */}
@@ -151,33 +142,6 @@ export default function MobileMenu({
 // The 48px row shared by the drawer's icon links and the Settings link.
 const rowBase =
   'tap-target flex items-center gap-3 min-h-[48px] px-3 py-2 rounded-xl text-start transition-colors [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100'
-
-// The guest drawer's language row: the five languages as one segmented
-// control, each a 44px button showing its code (EN, RU, ES, FR, HE) and named
-// in its own language for screen readers. Choosing one switches the site
-// (direction included) at once and is remembered (LangProvider).
-function LanguageSwitcher({ lang, onChoose, label }: { lang: Lang; onChoose: (code: Lang) => void; label: string }) {
-  return (
-    <div role="group" aria-labelledby="drawer-language-label" className="mt-6">
-      <p id="drawer-language-label" className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <div className="grid grid-cols-5 gap-1 rounded-xl bg-slate-100 p-1">
-        {LANGUAGES.map((l) => (
-          <button
-            key={l.code}
-            type="button"
-            lang={l.code}
-            aria-label={l.label}
-            aria-pressed={lang === l.code}
-            onClick={() => onChoose(l.code)}
-            className={`tap-target rounded-lg text-[13px] font-bold transition-colors ${lang === l.code ? 'bg-white text-brand shadow-sm' : 'text-slate-600 [@media(hover:hover)]:hover:text-ink active:bg-white/60'}`}
-          >
-            {l.code.toUpperCase()}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // A 36px brand-tinted tile holding a link's Font Awesome glyph.
 function ItemIcon({ icon }: { icon: string }) {

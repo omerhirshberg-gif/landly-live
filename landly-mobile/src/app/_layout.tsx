@@ -8,6 +8,7 @@ import { ONB } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
+import { AppLockOverlay, AppLockProvider, useAppLock } from '../auth/AppLock'
 import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
 import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
@@ -35,12 +36,15 @@ export default function RootLayout() {
                 perk saved on either side shows up on the other */}
             <WishlistProvider>
               <SignInGateProvider>
-                <EntranceProvider>
-                  {/* Draws an avatar's long-press peek above every screen. */}
-                  <AvatarPeekProvider>
-                    <RootNavigator />
-                  </AvatarPeekProvider>
-                </EntranceProvider>
+                {/* The opt-in Face ID / fingerprint lock over a saved session (Privacy & Security). */}
+                <AppLockProvider>
+                  <EntranceProvider>
+                    {/* Draws an avatar's long-press peek above every screen. */}
+                    <AvatarPeekProvider>
+                      <RootNavigator />
+                    </AvatarPeekProvider>
+                  </EntranceProvider>
+                </AppLockProvider>
               </SignInGateProvider>
             </WishlistProvider>
           </AuthProvider>
@@ -53,6 +57,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const { user, loading, onboardingComplete } = useAuth()
   const { checking, onboarding } = useSignInGate()
+  const { known: lockKnown, offerAfterSignIn } = useAppLock()
   const { isRtl } = useLang()
 
   // signInCustomer already signs unverified accounts back out; checking
@@ -65,8 +70,10 @@ function RootNavigator() {
 
   // At launch the navigator waits for that answer too, so neither the tabs
   // nor the sign-in form flashes first. Later sign-ins hold the gate with
-  // `checking` instead, so the navigator never unmounts once it's up.
-  const known = !loading && (!verified || onboardingComplete !== null)
+  // `checking` instead, so the navigator never unmounts once it's up. With
+  // the app lock on, it also waits to know the lock, so the tabs never show
+  // before the lock screen covers them.
+  const known = !loading && (!verified || (onboardingComplete !== null && lockKnown))
   // A latch: once known, the navigator stays up (set during render, not in an effect).
   const [booted, setBooted] = useState(false)
   if (known && !booted) setBooted(true)
@@ -89,7 +96,13 @@ function RootNavigator() {
     const target = pendingDeepLink()
     clearPendingDeepLink()
     if (target && sawSignedOut.current) router.push(target as Href)
+    // A sign-in made here (not a restored session): offer the app lock once
+    // the tabs have faded in.
+    let offerTimer: ReturnType<typeof setTimeout> | undefined
+    if (sawSignedOut.current) offerTimer = setTimeout(offerAfterSignIn, ONB.screenInMs + 600)
     sawSignedOut.current = false
+    return () => clearTimeout(offerTimer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per sign-in; offerAfterSignIn reads the current member
   }, [ready, signedIn])
 
   // The splash plays its intro, waits for auth, hands over, then removes itself.
@@ -122,6 +135,8 @@ function RootNavigator() {
           </Stack.Protected>
         </Stack>
       )}
+      {/* Above the screens, under the splash: the prompt opens once the splash has handed over. */}
+      <AppLockOverlay promptReady={splashDone} />
       {!splashDone && <SplashScreen ready={ready} onDone={handleSplashDone} />}
       {__DEV__ && <DevEnvironmentBadge />}
     </View>

@@ -6,7 +6,7 @@ import MemberPageShell, { PAGE_TITLE, PageTitle } from '@/components/layout/Memb
 
 const read = (path: string) => readFileSync(path, 'utf8')
 
-const PAGES = ['components/home/LoggedInHome.tsx', 'app/categories/page.tsx', 'app/wishlist/page.tsx', 'app/member/page.tsx', 'app/support/page.tsx']
+const PAGES = ['components/home/LoggedInHome.tsx', 'app/categories/page.tsx', 'app/wishlist/page.tsx', 'app/member/page.tsx', 'app/support/page.tsx', 'app/profile/page.tsx']
 
 describe('MemberPageShell', () => {
   it('gives every signed-in tab the same column, gutters and top padding', () => {
@@ -39,7 +39,11 @@ describe('MemberPageShell', () => {
     expect(read('app/support/page.tsx')).toContain('<div className="max-w-3xl">')
   })
 
-  it('drops the My Pass eyebrow, so its title sits on the shared baseline', () => {
-    expect(read('app/member/page.tsx')).not.toContain('dash_label')
+  it.each(['app/member/page.tsx', 'app/profile/page.tsx', 'app/settings/page.tsx'])('%s has no Member Dashboard eyebrow, so its title sits on the shared baseline', (path) => {
+    expect(read(path)).not.toContain('dash_label')
+  })
+
+  it('drops the Member Dashboard string from every language', () => {
+    expect(read('lib/i18n/translations.ts')).not.toMatch(/\bdash_label\b/)
   })
 })

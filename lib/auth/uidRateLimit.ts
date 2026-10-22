@@ -5,13 +5,15 @@ import { NextResponse } from 'next/server'
 // starts and is not shared between instances. Both business routes share a budget.
 // "Sign out of all devices" gets a small one: a member needs it once.
 // Email/phone changes from the profile share one budget across their routes.
+// The passkey Settings routes (add, list, remove) share one too.
 const WINDOW_MS = 60 * 1000
-const limits = { payment: 10, business: 60, sessions: 5, contact: 10 } as const
+const limits = { payment: 10, business: 60, sessions: 5, contact: 10, passkeys: 20 } as const
 const counts = {
   payment: new Map<string, { count: number; resetAt: number }>(),
   business: new Map<string, { count: number; resetAt: number }>(),
   sessions: new Map<string, { count: number; resetAt: number }>(),
   contact: new Map<string, { count: number; resetAt: number }>(),
+  passkeys: new Map<string, { count: number; resetAt: number }>(),
 }
 
 export function checkUidRateLimit(scope: keyof typeof limits, uid: string): NextResponse | null {

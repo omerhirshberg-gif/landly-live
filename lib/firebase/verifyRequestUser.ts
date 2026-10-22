@@ -48,8 +48,13 @@ export async function requireBusinessUid(request: Request): Promise<string> {
 }
 
 export async function requireVerifiedCustomerUid(request: Request): Promise<string> {
+  return (await requireVerifiedCustomer(request)).uid
+}
+
+// The whole verified token, for routes that also read its claims (auth_time).
+export async function requireVerifiedCustomer(request: Request): Promise<DecodedIdToken> {
   const decoded = await requireCustomer(request)
-  if (decoded.email_verified === true) return decoded.uid
+  if (decoded.email_verified === true) return decoded
   // A false token claim can be stale immediately after email verification.
   let user
   try {
@@ -60,5 +65,5 @@ export async function requireVerifiedCustomerUid(request: Request): Promise<stri
   }
   if (user.disabled) throw new RequestAuthError('Unauthorized', 401)
   if (!user.emailVerified) throw new RequestAuthError('Verify your email before continuing.', 403)
-  return decoded.uid
+  return decoded
 }

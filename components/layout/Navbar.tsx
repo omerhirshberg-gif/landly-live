@@ -204,7 +204,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} lang={lang} onChooseLang={chooseLang} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
+      <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
     </>
   )
 }

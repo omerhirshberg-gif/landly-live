@@ -9,6 +9,15 @@ import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
 import { completeGoogleRedirect, hasPendingGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
 import {
+  cancelPasskeyRequest,
+  hasPasskeyHint,
+  passkeySupport,
+  signInWithPasskey,
+  type PasskeyErrorCode,
+  type PasskeySignInOutcome,
+  type PasskeySupport,
+} from '@/lib/auth/passkeyClient'
+import {
   greetingName,
   isOnboardingComplete,
   parseOnboardingDraft,
@@ -24,11 +33,12 @@ import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import type { SignInMethod } from '@/lib/auth/brandPanelSteps'
 import { getUserDocument } from '@/lib/firebase/users'
 import { useAuth } from '@/lib/firebase/useAuth'
-import type { Lang } from '@/lib/i18n/translations'
+import type { Lang, TranslationKey } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
 import BackToHomeLink from '../BackToHomeLink'
 import BusinessAccountNotice from '../BusinessAccountNotice'
 import GoogleButton from '../GoogleButton'
+import PasskeyButton from '../PasskeyButton'
 import VerifyEmailNotice, { type PendingVerification } from '../VerifyEmailNotice'
 import OnboardingWizard, { readOnboardingDraft } from '../onboarding/OnboardingWizard'
 import PasswordRequirements from '../onboarding/PasswordRequirements'
@@ -53,6 +63,19 @@ const PATHS: Record<Mode, string> = { signIn: '/login', signUp: '/signup' }
 // the browser is on.
 const redirectParam = () => new URLSearchParams(window.location.search).get('redirect')
 const destination = () => safeRedirectPath(redirectParam())
+
+const PASSKEY_ERRORS: Record<PasskeyErrorCode, TranslationKey> = {
+  unknown_credential: 'passkey_err_unknown',
+  unverified: 'passkey_err_unverified',
+  account_disabled: 'passkey_err_disabled',
+  already_registered: 'passkey_err_failed',
+  rate_limited: 'passkey_err_rateLimited',
+  unavailable: 'passkey_err_unavailable',
+  failed: 'passkey_err_failed',
+}
+// After this many cancelled or failed passkey attempts in a row, the button
+// gets a nudge towards email and password and stops leading the card.
+const PASSKEY_TROUBLE_AFTER = 3
 
 // Web counterpart of the Expo login screen (landly-mobile/src/app/(auth)/
 // login.tsx): brand hero, a floating card with Sign In / Sign Up tabs, and a
@@ -125,6 +148,19 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // The screen is fading out ahead of a switch (into the wizard, or to home).
   const [leaving, setLeaving] = useState(false)
   const leaveTimer = useRef<number | undefined>(undefined)
+  // Passkeys (Sign In tab only): the button, shown when the browser supports
+  // WebAuthn, and the email field's autofill, armed in the background where
+  // the browser offers passkeys among its suggestions. A browser that made or
+  // used a Landly passkey before puts the button above the form.
+  const [passkey, setPasskey] = useState<PasskeySupport>({ webauthn: false, autofill: false })
+  const [passkeyFirst, setPasskeyFirst] = useState(false)
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
+  const [passkeyFailures, setPasskeyFailures] = useState(0)
+  // Bumped to arm the autofill request again (after the button, or an expired challenge).
+  const [autofillRound, setAutofillRound] = useState(0)
+  // Read when a passkey sign-in completes, which can be long after it was armed.
+  const rememberRef = useRef(rememberMe)
+  rememberRef.current = rememberMe
 
   useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
 
@@ -199,6 +235,21 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // stay hidden, and the intro's first frame is blank anyway.
   useEffect(() => {
     setEntrance('intro')
+  }, [])
+
+  // In-app browsers (Instagram, Facebook, ...) can't reach the member's
+  // password manager, so they get no passkey controls.
+  useEffect(() => {
+    if (isEmbeddedBrowser(navigator.userAgent)) return
+    let cancelled = false
+    passkeySupport().then((support) => {
+      if (cancelled) return
+      setPasskey(support)
+      setPasskeyFirst(support.webauthn && hasPasskeyHint())
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Back from a ?redirect= page should return to where the guest was, not to
@@ -324,6 +375,83 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     }
   }
 
+  const passkeyPersistence = () => (rememberRef.current ? browserLocalPersistence : browserSessionPersistence)
+
+  const noteFailedPasskey = () =>
+    setPasskeyFailures((n) => {
+      if (n + 1 >= PASSKEY_TROUBLE_AFTER) setPasskeyFirst(false)
+      return n + 1
+    })
+
+  // The button and the autofill end the same way.
+  const handlePasskeyOutcome = async (outcome: PasskeySignInOutcome) => {
+    if (outcome.kind === 'error') {
+      setError(t(PASSKEY_ERRORS[outcome.code]))
+      noteFailedPasskey()
+      return
+    }
+    if (outcome.kind !== 'signedIn') return
+    if (outcome.result.status === 'businessAccount') {
+      setBusinessAccount(true)
+      return
+    }
+    if (outcome.result.status === 'signedIn') {
+      setPasskeyFailures(0)
+      await afterSignIn(outcome.result.user.uid, outcome.result.preferredLanguage)
+    }
+  }
+
+  const handlePasskey = async () => {
+    setError(null)
+    setBusinessAccount(false)
+    // The email field's pending autofill request gives way to the button's.
+    cancelPasskeyRequest()
+    setPasskeyBusy(true)
+    try {
+      const outcome = await signInWithPasskey({ autofill: false, lang, persistence: passkeyPersistence })
+      if (outcome.kind === 'cancelled') noteFailedPasskey()
+      else await handlePasskeyOutcome(outcome)
+    } catch (err) {
+      setError(getAuthErrorMessage(err))
+      noteFailedPasskey()
+    } finally {
+      setPasskeyBusy(false)
+      // Still signed out: offer passkeys in the email field again.
+      if (!auth.currentUser) setAutofillRound((r) => r + 1)
+    }
+  }
+
+  // Armed while the sign-in form is on screen and idle. The request waits
+  // until the member picks a passkey from the email field's suggestions; it
+  // is cancelled when the form goes away or another sign-in starts. The
+  // button cancels it itself (above) and re-arms it when it's done.
+  const autofillArmed =
+    passkey.autofill && !restoring && !finishingGoogle && mode === 'signIn' && !pending && !wizard && !submitting && !googleBusy
+  useEffect(() => {
+    if (!autofillArmed) return
+    let active = true
+    signInWithPasskey({ autofill: true, lang, persistence: passkeyPersistence })
+      .then(async (outcome) => {
+        if (!active || outcome.kind === 'cancelled') return
+        if (outcome.kind === 'expired') {
+          setAutofillRound((r) => r + 1)
+          return
+        }
+        setError(null)
+        setBusinessAccount(false)
+        await handlePasskeyOutcome(outcome)
+        if (outcome.kind === 'error') setAutofillRound((r) => r + 1)
+      })
+      .catch((err) => {
+        if (active) setError(getAuthErrorMessage(err))
+      })
+    return () => {
+      active = false
+      cancelPasskeyRequest()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-armed by autofillRound; the handlers read refs and current state
+  }, [autofillArmed, autofillRound])
+
   const copyPageLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
@@ -347,7 +475,23 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   }
 
   const signUp = mode === 'signUp'
-  const busy = submitting || googleBusy
+  const busy = submitting || googleBusy || passkeyBusy
+  const passkeyButton = passkey.webauthn && !signUp && (
+    <>
+      <PasskeyButton
+        label={t('login_passkeyBtn')}
+        busyLabel={t('login_passkeyBusy')}
+        busy={passkeyBusy}
+        onClick={handlePasskey}
+        disabled={submitting || googleBusy}
+      />
+      {passkeyFailures >= PASSKEY_TROUBLE_AFTER && (
+        <p role="status" className="mt-2 text-center text-[13px] font-semibold text-slate-500">
+          {t('login_passkeyTrouble')}
+        </p>
+      )}
+    </>
+  )
   const divider = (
     <div className="flex items-center gap-3 mt-[18px] mb-3.5">
       <div className="h-px flex-1 bg-slate-200" />
@@ -535,6 +679,13 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 </form>
               ) : (
                 <form noValidate onSubmit={handleSubmit}>
+                  {passkeyFirst && passkeyButton && (
+                    <>
+                      {passkeyButton}
+                      {divider}
+                    </>
+                  )}
+                  {/* "webauthn" last, so the browser offers saved passkeys in this field's suggestions. */}
                   <TextField
                     label={t('login_emailLabel')}
                     icon="mail"
@@ -542,7 +693,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoCapitalize="none"
-                    autoComplete="email"
+                    autoComplete="username webauthn"
                     enterKeyHint="next"
                   />
                   <TextField
@@ -566,7 +717,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     type="submit"
                     label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
                     busy={submitting}
-                    disabled={!email || !password || googleBusy}
+                    disabled={!email || !password || googleBusy || passkeyBusy}
                     large
                     arrow
                   />
@@ -583,6 +734,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 </Notice>
               )}
               <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onClick={handleGoogle} disabled={busy} />
+              {!passkeyFirst && passkeyButton && <div className="mt-3">{passkeyButton}</div>}
               {/* On both tabs: Google from either one can create an account. */}
               <p className="mt-3 text-center text-xs leading-5 text-slate-500">
                 <ConsentText template={t('auth_google_disclosure')} t={t} />

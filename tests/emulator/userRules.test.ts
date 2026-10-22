@@ -69,3 +69,18 @@ it('tokens and codes are unreadable and unwritable by their own member', async (
     await expect(setDoc(doc(owner, path), { tokenHash: 'mine' })).rejects.toMatchObject({ code: 'permission-denied' })
   }
 })
+
+it('passkeys, WebAuthn challenges and the WebAuthn user handle are server-only', async () => {
+  await admin.doc('passkeys/owner-credential').set({ uid: 'contact-owner', counter: 1 })
+  await admin.doc('webauthnChallenges/owner-challenge').set({ challenge: 'abc', purpose: 'login', uid: null })
+  try {
+    for (const path of ['passkeys/owner-credential', 'webauthnChallenges/owner-challenge']) {
+      await expect(getDoc(doc(owner, path)), path).rejects.toMatchObject({ code: 'permission-denied' })
+      await expect(setDoc(doc(owner, path), { uid: 'contact-owner' }), path).rejects.toMatchObject({ code: 'permission-denied' })
+    }
+    await expect(setDoc(doc(owner, 'passkeys/planted'), { uid: 'contact-owner', publicKey: 'x' })).rejects.toMatchObject({ code: 'permission-denied' })
+    await expect(updateDoc(doc(owner, OWNER), { webauthnUserId: 'swapped' })).rejects.toMatchObject({ code: 'permission-denied' })
+  } finally {
+    await Promise.all(['passkeys/owner-credential', 'webauthnChallenges/owner-challenge'].map((p) => admin.doc(p).delete()))
+  }
+})

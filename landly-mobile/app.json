@@ -32,6 +32,19 @@
       "expo-notifications",
       "expo-web-browser",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Landly uses Face ID so you can unlock the app quickly and keep your passes private."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Landly uses Face ID so you can unlock the app quickly and keep your passes private.",
+          "configureAndroidBackup": true
+        }
+      ],
+      [
         "expo-localization",
         {
           "supportsRTL": false,
