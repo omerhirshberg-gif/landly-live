@@ -1,7 +1,8 @@
 'use client'
 
-import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useId, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
+import { useShake } from '@/lib/useShake'
 
 // Web counterpart of landly-mobile/src/components/TextField.tsx: label, a
 // 52px field with a leading outline icon, a focus ring, and an eye toggle on
@@ -9,6 +10,9 @@ import { useLang } from '@/lib/i18n/useLang'
 // Email, password and phone values are typed left-to-right even in Hebrew;
 // free text (type="text", e.g. a name) follows the page direction.
 // `prefix` sits inside the field before the value (the phone country code).
+// `shake` plays the invalid-field shake each time it goes up while there's an
+// error (a submit that failed validation); the message is tied to the input
+// with aria-describedby, so a screen reader reads it with the field.
 // On focus the field box (never the text itself, which would blur) grows to
 // 1.025 with the brand border and halo — a transform, so nothing around it
 // moves. No permanent will-change: with it the browser keeps the box as a
@@ -32,6 +36,7 @@ export default function TextField({
   hint,
   error,
   prefix,
+  shake = 0,
   type = 'text',
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & {
@@ -40,10 +45,16 @@ export default function TextField({
   hint?: string
   error?: string | null
   prefix?: ReactNode
+  shake?: number
+  /** Reaches the input through ...props (React 19 passes ref as a prop). */
+  ref?: Ref<HTMLInputElement>
 }) {
   const { t } = useLang()
   const id = useId()
   const [revealed, setRevealed] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+  useShake(boxRef, shake, !!error)
+  const messageId = error || hint ? `${id}-message` : undefined
   const password = type === 'password'
   const iconColor = error ? 'stroke-red-600' : 'stroke-slate-400 group-focus-within:stroke-brand'
   return (
@@ -52,6 +63,7 @@ export default function TextField({
         {label}
       </label>
       <div
+        ref={boxRef}
         className={`group flex items-center h-[52px] px-3.5 sm:px-4 rounded-[14px] border bg-slate-50 cursor-text [transition:transform_200ms_cubic-bezier(0.16,1,0.3,1),box-shadow_200ms_ease,border-color_200ms_ease,background-color_200ms_ease] focus-within:scale-[1.025] motion-reduce:focus-within:scale-100 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(0,56,184,0.12),0_8px_20px_-8px_rgba(0,56,184,0.28)] ${
           error ? 'border-red-600' : 'border-slate-200 focus-within:border-brand'
         }`}
@@ -76,6 +88,7 @@ export default function TextField({
           id={id}
           type={password && revealed ? 'text' : type}
           aria-invalid={!!error || undefined}
+          aria-describedby={messageId}
           dir={type === 'text' ? undefined : 'ltr'}
           className="flex-1 min-w-0 h-full bg-transparent border-0 p-0 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:ring-0"
           {...props}
@@ -95,11 +108,11 @@ export default function TextField({
         )}
       </div>
       {error ? (
-        <p role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
+        <p id={messageId} role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs leading-[17px] text-slate-500">{hint}</p>
+        <p id={messageId} className="mt-1.5 text-xs leading-[17px] text-slate-500">{hint}</p>
       ) : null}
     </div>
   )

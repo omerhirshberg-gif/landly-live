@@ -15,3 +15,8 @@ export function tick() {
 export function success() {
   if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
 }
+
+/** The error pattern: a form that can't be submitted yet. */
+export function warning() {
+  if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})
+}

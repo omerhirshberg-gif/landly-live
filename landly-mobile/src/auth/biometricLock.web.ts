@@ -30,3 +30,9 @@ export async function wasAppLockOffered(): Promise<boolean> {
 }
 
 export async function markAppLockOffered(): Promise<void> {}
+
+export async function getLastEntry(): Promise<string | null> {
+  return null
+}
+
+export async function recordLastEntry(): Promise<void> {}

@@ -17,7 +17,9 @@ import {
   nextStep,
   phoneToE164,
   prevStep,
-  signUpFormError,
+  firstInvalidSignUpField,
+  nameFieldErrors,
+  signUpFieldErrors,
   splitDisplayName,
   onboardingProgress,
 } from '@/lib/auth/onboarding'
@@ -102,18 +104,35 @@ describe('identity and password', () => {
     expect(isPlausibleEmail('dana example.com')).toBe(false)
   })
 
-  it('checks the Sign Up form in field order: names, email, password strength, the confirmation, then the Terms checkbox', () => {
+  it('checks every Sign Up field at once: blank fields are required, filled ones get their own rule', () => {
     const ok = { firstName: 'Dana', lastName: 'Levi', email: 'dana@example.com', password: 'Secret1', confirm: 'Secret1', agreedToTerms: true }
-    expect(signUpFormError({ ...ok, firstName: '  ' })).toBe('onb_firstNameRequired')
-    expect(signUpFormError({ ...ok, lastName: '' })).toBe('onb_lastNameRequired')
-    expect(signUpFormError({ ...ok, email: 'dana@example' })).toBe('onb_emailInvalid')
-    expect(signUpFormError({ ...ok, password: 'Ab1', confirm: 'Ab1' })).toBe('onb_passwordWeak')
-    expect(signUpFormError({ ...ok, password: 'secret1', confirm: 'secret1' })).toBe('onb_passwordWeak')
-    expect(signUpFormError({ ...ok, confirm: 'Secret2' })).toBe('onb_passwordMismatch')
-    expect(signUpFormError({ ...ok, agreedToTerms: false })).toBe('signup_termsRequired')
-    // Field errors come first; the checkbox error only once the fields are valid.
-    expect(signUpFormError({ ...ok, email: '', agreedToTerms: false })).toBe('onb_emailInvalid')
-    expect(signUpFormError(ok)).toBeNull()
+    expect(signUpFieldErrors(ok)).toEqual({})
+    expect(signUpFieldErrors({ ...ok, firstName: '  ', lastName: '' })).toEqual({ firstName: 'form_fieldRequired', lastName: 'form_fieldRequired' })
+    expect(signUpFieldErrors({ ...ok, email: 'dana@example' })).toEqual({ email: 'onb_emailInvalid' })
+    expect(signUpFieldErrors({ ...ok, password: 'Ab1', confirm: 'Ab1' })).toEqual({ password: 'onb_passwordWeak' })
+    expect(signUpFieldErrors({ ...ok, password: 'secret1', confirm: 'secret1' })).toEqual({ password: 'onb_passwordWeak' })
+    expect(signUpFieldErrors({ ...ok, confirm: 'Secret2' })).toEqual({ confirm: 'onb_passwordMismatch' })
+    expect(signUpFieldErrors({ ...ok, agreedToTerms: false })).toEqual({ terms: 'signup_termsRequired' })
+    expect(signUpFieldErrors({ firstName: '', lastName: '', email: '', password: '', confirm: '', agreedToTerms: false })).toEqual({
+      firstName: 'form_fieldRequired',
+      lastName: 'form_fieldRequired',
+      email: 'form_fieldRequired',
+      password: 'form_fieldRequired',
+      confirm: 'form_fieldRequired',
+      terms: 'signup_termsRequired',
+    })
+  })
+
+  it('focuses the first invalid field in screen order', () => {
+    expect(firstInvalidSignUpField({ terms: 'signup_termsRequired', lastName: 'form_fieldRequired', email: 'onb_emailInvalid' })).toBe('lastName')
+    expect(firstInvalidSignUpField({ terms: 'signup_termsRequired' })).toBe('terms')
+    expect(firstInvalidSignUpField({})).toBeNull()
+  })
+
+  it('requires both names in the profile editors too', () => {
+    expect(nameFieldErrors({ firstName: 'Dana', lastName: 'Levi' })).toEqual({})
+    expect(nameFieldErrors({ firstName: ' \t ', lastName: 'Levi' })).toEqual({ firstName: 'form_fieldRequired' })
+    expect(nameFieldErrors({ firstName: '', lastName: '' })).toEqual({ firstName: 'form_fieldRequired', lastName: 'form_fieldRequired' })
   })
 })
 

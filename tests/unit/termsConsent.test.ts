@@ -138,7 +138,7 @@ describe('marketing opt-in on the sign-up form', () => {
     expect(src).toContain("t('signup_marketing_optin')")
     expect(src).toMatch(/signUpCustomer\(\{ firstName, lastName, agreedToTerms, marketingOptIn \}/)
     // It never gates submission: only the Terms box is validated.
-    expect(src).not.toMatch(/signUpFormError\([^)]*marketingOptIn/)
+    expect(src).not.toMatch(/signUpFieldErrors\([^)]*marketingOptIn/)
     // Placed after the Terms box and before the submit button.
     const terms = src.indexOf("t('signup_terms_agree')")
     const marketing = src.indexOf("t('signup_marketing_optin')")

@@ -2,7 +2,7 @@ import { getCountries, getCountryCallingCode, isSupportedCountry, parsePhoneNumb
 import type { Lang } from '@/lib/i18n/translations'
 import { COUNTRY_NAMES } from '@/lib/profile/countryNames'
 import { MAX_PERSONA_NOTE_LENGTH } from '@/lib/customerTypes'
-import { normalizePersonName } from './names'
+import { nameFieldErrors, normalizePersonName } from './names'
 import { isStrongPassword } from './passwordValidation'
 
 // The post-sign-in onboarding rules, shared by the web AuthScreen and the
@@ -45,7 +45,7 @@ export function onboardingProgress(step: OnboardingStep): number {
 
 // ── Name ────────────────────────────────────────────────────────────────
 // Kept in ./names (no libphonenumber), so pages that only greet stay light.
-export { MAX_NAME_LENGTH, fullName, greetingName, normalizePersonName, splitDisplayName } from './names'
+export { MAX_NAME_LENGTH, fullName, greetingName, nameFieldErrors, normalizePersonName, splitDisplayName, type NameFieldErrors } from './names'
 
 // ── Identity ────────────────────────────────────────────────────────────
 // A shape check only; Firebase has the final word (auth/invalid-email).
@@ -56,16 +56,26 @@ export function isPlausibleEmail(email: string): boolean {
 // ── Password ────────────────────────────────────────────────────────────
 // The rule itself lives in passwordValidation.ts (also used by /reset-password).
 
+export type SignUpField = 'firstName' | 'lastName' | 'email' | 'password' | 'confirm' | 'terms'
+
 export type SignUpFormError =
-  | 'onb_firstNameRequired'
-  | 'onb_lastNameRequired'
+  | 'form_fieldRequired'
   | 'onb_emailInvalid'
   | 'onb_passwordWeak'
   | 'onb_passwordMismatch'
   | 'signup_termsRequired'
 
-/** The Sign Up form's first error key, in field order, or null when it can be submitted. */
-export function signUpFormError(fields: {
+export type SignUpFieldErrors = Partial<Record<SignUpField, SignUpFormError>>
+
+/** The Sign Up form's fields in screen order, for focusing the first one with an error. */
+export const SIGN_UP_FIELDS: readonly SignUpField[] = ['firstName', 'lastName', 'email', 'password', 'confirm', 'terms']
+
+/**
+ * Every Sign Up error at once, keyed by field (empty: the form can be
+ * submitted). A field left blank is "required"; a filled one gets its own
+ * rule: email shape, password strength, the confirmation matching.
+ */
+export function signUpFieldErrors(fields: {
   firstName: string
   lastName: string
   email: string
@@ -73,15 +83,22 @@ export function signUpFormError(fields: {
   confirm: string
   /** The Terms of Service / Privacy Policy checkbox above "Create Account". */
   agreedToTerms: boolean
-}): SignUpFormError | null {
-  const { firstName, lastName, email, password, confirm, agreedToTerms } = fields
-  if (!normalizePersonName(firstName)) return 'onb_firstNameRequired'
-  if (!normalizePersonName(lastName)) return 'onb_lastNameRequired'
-  if (!isPlausibleEmail(email)) return 'onb_emailInvalid'
-  if (!isStrongPassword(password)) return 'onb_passwordWeak'
-  if (password !== confirm) return 'onb_passwordMismatch'
-  if (!agreedToTerms) return 'signup_termsRequired'
-  return null
+}): SignUpFieldErrors {
+  const { email, password, confirm, agreedToTerms } = fields
+  const errors: SignUpFieldErrors = { ...nameFieldErrors(fields) }
+  if (!email.trim()) errors.email = 'form_fieldRequired'
+  else if (!isPlausibleEmail(email)) errors.email = 'onb_emailInvalid'
+  if (!password) errors.password = 'form_fieldRequired'
+  else if (!isStrongPassword(password)) errors.password = 'onb_passwordWeak'
+  if (!confirm) errors.confirm = 'form_fieldRequired'
+  else if (password !== confirm) errors.confirm = 'onb_passwordMismatch'
+  if (!agreedToTerms) errors.terms = 'signup_termsRequired'
+  return errors
+}
+
+/** The first field with an error, in screen order, or null when there's none. */
+export function firstInvalidSignUpField(errors: SignUpFieldErrors): SignUpField | null {
+  return SIGN_UP_FIELDS.find((field) => errors[field]) ?? null
 }
 
 // ── Phone ───────────────────────────────────────────────────────────────

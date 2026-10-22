@@ -15,7 +15,8 @@
           "en",
           "he"
         ]
-      }
+      },
+      "bundleIdentifier": "com.amitbd1.landly-live"
     },
     "android": {
       "adaptiveIcon": {

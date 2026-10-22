@@ -7,6 +7,7 @@ import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
+import PasskeyPrompt from '@/components/auth/PasskeyPrompt'
 import WhatsAppWidget from '@/components/layout/WhatsAppWidget'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
 import RouteTracker from '@/components/layout/RouteTracker'
@@ -77,6 +78,8 @@ export default function RootLayout({
               {children}
               <WhatsAppWidget />
               <CookieNotice />
+              {/* "Save a passkey" once after a password or Google sign-in (components/auth/PasskeyPrompt.tsx). */}
+              <PasskeyPrompt />
             </LangProvider>
           </WishlistProvider>
         </AuthProvider>

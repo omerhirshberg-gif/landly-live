@@ -24,6 +24,7 @@ export type UnlockError = LocalAuthentication.LocalAuthenticationError
 const { AuthenticationType } = LocalAuthentication
 const flagKey = (uid: string) => `landly.applock.${uid}`
 const offeredKey = (uid: string) => `landly.applock.offered.${uid}`
+const lastEntryKey = (uid: string) => `landly.applock.lastEntry.${uid}`
 const STORE_OPTIONS: SecureStore.SecureStoreOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
 
 // iOS has one kind per device; Android may have several, named generically then.
@@ -94,4 +95,22 @@ export async function wasAppLockOffered(uid: string): Promise<boolean> {
 
 export async function markAppLockOffered(uid: string): Promise<void> {
   await SecureStore.setItemAsync(offeredKey(uid), '1', STORE_OPTIONS).catch(() => {})
+}
+
+/**
+ * The member's last entry on this device (an unlock, or a sign-in here), as
+ * an ISO timestamp: the lock screen's "Last sign-in". In the Keychain /
+ * Keystore like the flag, device-only, so a phone restored from a backup
+ * never shows another device's time.
+ */
+export async function getLastEntry(uid: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(lastEntryKey(uid), STORE_OPTIONS)
+  } catch {
+    return null
+  }
+}
+
+export async function recordLastEntry(uid: string, at = new Date()): Promise<void> {
+  await SecureStore.setItemAsync(lastEntryKey(uid), at.toISOString(), STORE_OPTIONS).catch(() => {})
 }
