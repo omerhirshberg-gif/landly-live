@@ -11,17 +11,19 @@ import Animated, {
 } from 'react-native-reanimated'
 import type { BiometricKind } from '../auth/biometricLock'
 import LineIcon from './LineIcon'
+import { impact } from '../lib/haptics'
+import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
-const TILE = 104
-const GLYPH = 56
+const TILE = 84
+const GLYPH = 44
 const PULSE_MS = 1400
 
 // The lock screen's hero: the device's biometric glyph (Face ID / face
-// unlock, or Touch ID / fingerprint) at 56pt on a round brand-tint tile.
+// unlock, or Touch ID / fingerprint) at 44pt on an 84pt brand-tint circle.
 // While the system prompt is open a soft ring breathes out from the tile, so
 // the screen shows it's waiting on the member; reduced motion keeps it
-// still. Tapping it tries again, like the Sign In button.
+// still. Tapping it (a light haptic) tries again, like the Unlock button.
 export default function BiometricGlyph({
   kind,
   pulsing,
@@ -57,7 +59,10 @@ export default function BiometricGlyph({
     <View style={styles.wrap}>
       <Animated.View pointerEvents="none" style={[styles.ring, ringStyle]} />
       <Pressable
-        onPress={onPress}
+        onPress={() => {
+          impact()
+          onPress()
+        }}
         accessibilityRole="button"
         accessibilityLabel={label}
         hitSlop={8}
@@ -83,11 +88,10 @@ const styles = StyleSheet.create({
     width: TILE,
     height: TILE,
     borderRadius: TILE / 2,
-    backgroundColor: colors.brandTint,
-    borderWidth: 1,
-    borderColor: colors.brandLight,
+    backgroundColor: colors.brandLight,
     alignItems: 'center',
     justifyContent: 'center',
+    ...webOnly({ cursor: 'pointer' }),
   },
-  tilePressed: { backgroundColor: colors.brandLight, transform: [{ scale: 0.96 }] },
+  tilePressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
 })

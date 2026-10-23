@@ -20,3 +20,8 @@ export function success() {
 export function warning() {
   if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})
 }
+
+/** A light impact: a deliberate tap, like asking for Face ID again. */
+export function impact() {
+  if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+}

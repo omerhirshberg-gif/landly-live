@@ -6,6 +6,8 @@ export interface LangContextValue {
   setLang: (lang: Lang) => void
   t: (key: TranslationKey) => string
   isRtl: boolean
+  /** The saved choice has been read from storage (or there was none to read). */
+  ready: boolean
 }
 
 // Its own module, importing nothing at runtime (the import above is

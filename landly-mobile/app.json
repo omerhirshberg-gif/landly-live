@@ -16,14 +16,19 @@
           "he"
         ]
       },
-      "bundleIdentifier": "com.amitbd1.landly-live"
+      "bundleIdentifier": "com.amitbd.landlyapp"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.amitbd.landlyapp",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

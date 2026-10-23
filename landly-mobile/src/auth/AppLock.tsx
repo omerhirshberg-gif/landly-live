@@ -1,10 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Alert, AppState, Pressable, StyleSheet, View, type AppStateStatus } from 'react-native'
+import { Alert, AppState, Platform, Pressable, StyleSheet, View, type AppStateStatus } from 'react-native'
 import Animated, { FadeOut } from 'react-native-reanimated'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { getCalendars } from 'expo-localization'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { signOut } from 'firebase/auth'
-import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '@shared/auth/greeting'
+import { greetingKey, greetingPeriod } from '@shared/auth/greeting'
 import { greetingName } from '@shared/auth/names'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -14,16 +13,15 @@ import AppText from '../components/AppText'
 import BiometricGlyph from '../components/BiometricGlyph'
 import Button from '../components/Button'
 import { StaticEmblem } from '../components/Emblem'
-import LineIcon from '../components/LineIcon'
 import Notice from '../components/Notice'
 import { useLang } from '../i18n/LangProvider'
-import { success as successHaptic } from '../lib/haptics'
+import { impact, success as successHaptic } from '../lib/haptics'
+import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 import {
   APP_LOCK_SUPPORTED,
   authenticate,
   biometricStatus,
-  getLastEntry,
   isAppLockEnabled,
   markAppLockOffered,
   recordLastEntry,
@@ -39,13 +37,15 @@ import {
 // (or the device passcode) confirms the member. The tabs stay mounted under
 // it, so unlocking is instant. Whenever the app isn't active the privacy
 // cover hides the screen, so the app switcher's snapshot never shows a pass.
-// The lock screen greets the member by first name for the time of day, shows
-// when they last came in on this device, and opens the system prompt by
-// itself once per lock; "Sign In" (or the glyph) tries again, and after three
-// cancelled or failed tries a notice points to "Sign in with password
-// instead", which signs out to the login screen with the email filled in. A
-// sign-in made on the login screen is never locked: the member just proved
-// who they are. Every unlock and sign-in here is recorded as the last entry.
+// The lock screen greets the member by first name for the time of day above
+// one card (the biometric glyph, "Unlock with Face ID" and the password
+// link) and waits: the system prompt opens only when the member taps the
+// button or the glyph (a light haptic either way), a cancelled prompt leaves
+// the screen up to try again, and after three cancelled or failed tries a notice
+// points to "Sign in with password instead", which signs out to the login
+// screen with the email filled in. A sign-in made on the login screen is
+// never locked: the member just proved who they are. Every unlock and
+// sign-in here is still recorded on the device as the last entry.
 
 /** Background time after which coming back asks again. */
 export const APP_LOCK_GRACE_MS = 60_000
@@ -71,8 +71,6 @@ interface AppLockContextValue {
   tries: number
   /** When the screen locked: the greeting is for that time of day. */
   lockedAt: Date | null
-  /** The member's previous entry on this device, for "Last sign-in"; null hides the row. */
-  lastEntry: Date | null
   /** The system prompt is open (the glyph's ring pulses). */
   promptOpen: boolean
   unlock: () => Promise<void>
@@ -98,7 +96,6 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   const [covered, setCovered] = useState(false)
   const [tries, setTries] = useState(0)
   const [lockedAt, setLockedAt] = useState<Date | null>(null)
-  const [lastEntry, setLastEntry] = useState<Date | null>(null)
   const [promptOpen, setPromptOpen] = useState(false)
   const [prefillEmail, setPrefillEmail] = useState<string | null>(null)
   // The uid restored at launch (null: nobody); undefined until auth has loaded.
@@ -159,20 +156,6 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [uid, engageLock])
-
-  // What "Last sign-in" shows, read each time the screen locks (before this unlock is recorded).
-  useEffect(() => {
-    if (!locked || !uid) return
-    let cancelled = false
-    getLastEntry(uid).then((stored) => {
-      if (cancelled) return
-      const member = auth.currentUser
-      setLastEntry(resolveLastEntry(stored, member?.uid === uid ? member.metadata.lastSignInTime : null))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [locked, uid])
 
   useEffect(() => {
     if (!APP_LOCK_SUPPORTED) return
@@ -298,7 +281,6 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         covered: covered && enabled,
         tries,
         lockedAt,
-        lastEntry,
         promptOpen,
         unlock,
         signInWithPasswordInstead,
@@ -319,30 +301,20 @@ export function useAppLock() {
 
 /**
  * The lock screen and the privacy cover, drawn above every screen by the
- * root navigator. `promptReady` (the splash has handed over) lets the system
- * prompt open by itself once per lock.
+ * root navigator. The system prompt opens only when the member taps the
+ * glyph or the unlock button.
  */
-export function AppLockOverlay({ promptReady }: { promptReady: boolean }) {
-  const { t, lang } = useLang()
+export function AppLockOverlay() {
+  const { t, ready: langReady } = useLang()
   const { user } = useAuth()
   const { profile } = useMemberProfile(user)
-  const { status, locked, covered, tries, lockedAt, lastEntry, promptOpen, unlock, signInWithPasswordInstead } = useAppLock()
-  const autoPrompted = useRef(false)
-
-  useEffect(() => {
-    // Leaving the app (or unlocking) lets the prompt open by itself again next time.
-    if (!locked || covered) {
-      autoPrompted.current = false
-      return
-    }
-    if (!promptReady || autoPrompted.current || tries >= APP_LOCK_MAX_TRIES) return
-    autoPrompted.current = true
-    unlock()
-  }, [locked, promptReady, covered, tries, unlock])
+  const { status, locked, covered, tries, lockedAt, promptOpen, unlock, signInWithPasswordInstead } = useAppLock()
+  const insets = useSafeAreaInsets()
 
   if (!locked && !covered) return null
 
-  if (!locked) {
+  // Until the saved language is read, a lock shows the wordless cover, never English text.
+  if (!locked || !langReady) {
     return (
       <View style={[StyleSheet.absoluteFill, styles.cover]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.coverMark}>
@@ -354,46 +326,49 @@ export function AppLockOverlay({ promptReady }: { promptReady: boolean }) {
 
   const kind = status?.kind ?? 'biometrics'
   const method = t(methodKey(kind))
+  const face = kind === 'faceId' || kind === 'face'
   const exhausted = tries >= APP_LOCK_MAX_TRIES
   // Profile first, then the account's own name (on the device, so it works offline at launch).
   const name = greetingName(profile, user?.displayName)
   const greeting = t(greetingKey(greetingPeriod((lockedAt ?? new Date()).getHours()), !!name)).replace('{name}', name ?? '')
-  // The device's 12/24-hour setting (unknown: the language's own convention).
-  const clock24 = getCalendars()[0]?.uses24hourClock
-  const hour12 = clock24 == null ? undefined : !clock24
-  const lastEntryText = lastEntry ? t('applock_lastEntry').replace('{time}', formatLastEntry(lastEntry, new Date(), lang, t, hour12)) : null
+  const unlockTapped = () => {
+    impact()
+    unlock()
+  }
 
   return (
     // Fades out on unlock (reduced motion: gone at once, Reanimated's default).
     <Animated.View exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, styles.lock]} accessibilityViewIsModal>
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.top}>
-          <View style={styles.mark}>
-            <StaticEmblem />
-          </View>
-          <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
-            {greeting}
-          </AppText>
-          {lastEntryText && (
-            <View style={styles.lastEntry}>
-              <LineIcon name="clock" size={14} color={colors.textMuted} />
-              <AppText style={styles.lastEntryText}>{lastEntryText}</AppText>
+      <View style={[styles.screen, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.column}>
+          <View style={styles.header}>
+            <View style={styles.mark}>
+              <StaticEmblem />
             </View>
-          )}
-        </View>
+            <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
+              {greeting}
+            </AppText>
+            <AppText style={styles.subtitle}>{t('applock_lockedSub').replace('{method}', method)}</AppText>
+          </View>
 
-        <View style={styles.hero}>
-          <BiometricGlyph kind={kind} pulsing={promptOpen} onPress={unlock} label={t('applock_glyphLabel').replace('{method}', method)} />
+          <View style={styles.card}>
+            <View style={styles.glyph}>
+              <BiometricGlyph kind={kind} pulsing={promptOpen} onPress={unlock} label={t('applock_glyphLabel').replace('{method}', method)} />
+            </View>
+            {exhausted && <Notice message={t('applock_tooMany')} />}
+            <Button
+              label={t('applock_unlockBtn').replace('{method}', method)}
+              icon={face ? 'faceId' : 'fingerprint'}
+              onPress={unlockTapped}
+              busy={promptOpen}
+              height={50}
+            />
+            <Pressable onPress={signInWithPasswordInstead} accessibilityRole="button" style={styles.link} hitSlop={8}>
+              <AppText style={styles.linkText}>{t('applock_passwordInstead')}</AppText>
+            </Pressable>
+          </View>
         </View>
-
-        <View style={styles.actions}>
-          {exhausted && <Notice message={t('applock_tooMany')} />}
-          <Button label={t('applock_signInBtn')} onPress={unlock} busy={promptOpen} large />
-          <Pressable onPress={signInWithPasswordInstead} accessibilityRole="button" style={styles.link} hitSlop={8}>
-            <AppText style={styles.linkText}>{t('applock_passwordInstead')}</AppText>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      </View>
     </Animated.View>
   )
 }
@@ -402,14 +377,34 @@ const styles = StyleSheet.create({
   cover: { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   coverMark: { width: 72, height: 69 },
   lock: { backgroundColor: colors.background, zIndex: 1000 },
-  safe: { flex: 1, paddingHorizontal: 24 },
-  top: { alignItems: 'center', paddingTop: 48 },
-  mark: { width: 40, height: 38, marginBottom: 28 },
-  greeting: { fontSize: 28, lineHeight: 36, fontWeight: '800', color: colors.heading, textAlign: 'center' },
-  lastEntry: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  lastEntryText: { fontSize: 13, color: colors.textMuted },
-  hero: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  actions: { paddingBottom: 16 },
-  link: { alignSelf: 'center', marginTop: 14, paddingVertical: 10, paddingHorizontal: 12 },
-  linkText: { fontSize: 15, fontWeight: '700', color: colors.brand, textAlign: 'center' },
+  // The header and card sit together in the middle (a 420px column on wide web windows).
+  screen: { flex: 1, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' },
+  column: { width: '100%', maxWidth: 420 },
+  header: { alignItems: 'center', marginBottom: 28 },
+  mark: { width: 52, height: 50, marginBottom: 20 },
+  greeting: { fontSize: 24, lineHeight: 32, fontWeight: '700', color: colors.heading, textAlign: 'center' },
+  subtitle: { fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: 'center', marginTop: 6 },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 12,
+    gap: 16,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -12px rgba(15, 23, 42, 0.14)' },
+      default: {
+        shadowColor: colors.heading,
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 3,
+      },
+    }),
+  },
+  glyph: { alignItems: 'center', marginBottom: 8 },
+  link: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 12, ...webOnly({ cursor: 'pointer' }) },
+  linkText: { fontSize: 15, fontWeight: '600', color: colors.brand, textAlign: 'center' },
 })

@@ -58,7 +58,7 @@ function RootNavigator() {
   const { user, loading, onboardingComplete } = useAuth()
   const { checking, onboarding } = useSignInGate()
   const { known: lockKnown, offerAfterSignIn } = useAppLock()
-  const { isRtl } = useLang()
+  const { isRtl, ready: langReady } = useLang()
 
   // signInCustomer already signs unverified accounts back out; checking
   // emailVerified here too keeps the tabs (whose Firestore reads require a
@@ -72,8 +72,9 @@ function RootNavigator() {
   // nor the sign-in form flashes first. Later sign-ins hold the gate with
   // `checking` instead, so the navigator never unmounts once it's up. With
   // the app lock on, it also waits to know the lock, so the tabs never show
-  // before the lock screen covers them.
-  const known = !loading && (!verified || (onboardingComplete !== null && lockKnown))
+  // before the lock screen covers them. Every screen also waits for the saved
+  // language, so the login form and the tabs open in it, never in English first.
+  const known = langReady && !loading && (!verified || (onboardingComplete !== null && lockKnown))
   // A latch: once known, the navigator stays up (set during render, not in an effect).
   const [booted, setBooted] = useState(false)
   if (known && !booted) setBooted(true)
@@ -135,8 +136,8 @@ function RootNavigator() {
           </Stack.Protected>
         </Stack>
       )}
-      {/* Above the screens, under the splash: the prompt opens once the splash has handed over. */}
-      <AppLockOverlay promptReady={splashDone} />
+      {/* Above the screens, under the splash. */}
+      <AppLockOverlay />
       {!splashDone && <SplashScreen ready={ready} onDone={handleSplashDone} />}
       {__DEV__ && <DevEnvironmentBadge />}
     </View>
