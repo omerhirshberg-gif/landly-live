@@ -1,3 +1,4 @@
+import { signInWithCustomToken, type Auth, type User } from 'firebase/auth'
 import { normalizeApiBaseUrl } from '@/lib/apiOrigin'
 import type { Lang } from '@/lib/i18n/translations'
 import type { OtpChannel } from '@/lib/auth/otp'
@@ -96,9 +97,23 @@ export function resendEmailChange(idToken: string, lang: Lang, apiBaseUrl = '') 
   return post<EmailChangeStart>('/api/account/change-email', idToken, { resend: true, lang }, apiBaseUrl)
 }
 
-/** Applies the pending email change once its code matches. */
+/**
+ * Applies the pending email change once its code matches. The server then
+ * ends every session; `customToken` is this device's way back in.
+ */
 export function verifyEmailCode(idToken: string, code: string, apiBaseUrl = '') {
-  return post<{ email: string }>('/api/account/verify-email-otp', idToken, { code }, apiBaseUrl)
+  return post<{ email: string; customToken?: string }>('/api/account/verify-email-otp', idToken, { code }, apiBaseUrl)
+}
+
+/**
+ * Run by the verification dialog/sheet after a verified email change: signs
+ * this device back in with the custom token (its old session was just
+ * revoked), or without one only reloads the Auth record so it shows the new
+ * address. Same uid either way, so the screens stay as they are.
+ */
+export async function finishEmailChange(auth: Auth, user: User, customToken: string | undefined): Promise<void> {
+  if (customToken) await signInWithCustomToken(auth, customToken)
+  else await user.reload()
 }
 
 export type PhoneChangeStart = { mode: 'direct' } | { mode: 'otp'; channel: OtpChannel; resendIn: number }

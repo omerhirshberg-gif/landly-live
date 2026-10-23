@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { getOffer, type OfferDocument } from '@shared/firebase/offers'
-import { subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
+import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
 import { formatLongDate } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
 import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
@@ -89,7 +89,7 @@ export default function VoucherScreen() {
               {voucher.status === 'active' ? (
                 <>
                   <View style={styles.divider} />
-                  <QrReveal voucherId={voucher.id} />
+                  <QrReveal redeemKey={redeemVoucherKey(voucher)} />
                   <View style={styles.divider} />
                   <CodeReveal code={voucher.redemptionCode} />
                 </>

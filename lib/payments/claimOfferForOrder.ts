@@ -1,5 +1,5 @@
 import 'server-only'
-import { createHash, randomInt } from 'node:crypto'
+import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 import type { TranzilaNotification } from './parseTranzilaNotification'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
@@ -97,6 +97,9 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       userId: order.userId, offerId: order.offerId, businessId: order.businessId,
       businessName: order.businessName, offerTitle: order.offerTitle,
       redemptionCode: String(randomInt(0, 100_000_000)).padStart(8, '0'),
+      // What the QR code carries (lib/firebase/vouchers.ts redeemVoucherKey):
+      // 128 random bits, unlike the voucher id, which anyone can derive.
+      redeemToken: randomBytes(16).toString('hex'),
       status: 'active', takenAt: now, redeemedAt: null,
       expiresAt: Timestamp.fromMillis(voucherExpiresAtMs(now.toMillis(), validityDays)),
       redemptionTerms, redemptionMethod, redemptionInstructions,

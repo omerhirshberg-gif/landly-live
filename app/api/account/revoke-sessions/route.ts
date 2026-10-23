@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAdminAuth } from '@/lib/firebase/admin'
+import { revokeMemberSessions } from '@/lib/auth/sessionRevocation'
 import { requireCustomer, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
 import { corsHeaders } from '@/lib/auth/cors'
 import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
@@ -7,8 +7,9 @@ import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
 // "Sign out of all devices" from Privacy & Security (website
 // /settings/privacy-security, app settings stack): revokes every refresh
 // token of the signed-in customer, so each other device is signed out the
-// next time its ID token is refreshed (within the hour) and every API route
-// that verifies tokens with checkRevoked refuses it at once. The calling
+// next time its ID token is refreshed (within the hour), while every API
+// route that verifies tokens with checkRevoked, and Firestore's rules
+// (authFresh, lib/auth/sessionRevocation.ts), refuse it at once. The calling
 // device signs itself out after a success. Who is signed out comes from the
 // verified ID token only. CORS for the app's Expo web build (lib/auth/cors.ts).
 export function OPTIONS(request: Request) {
@@ -29,7 +30,9 @@ export async function POST(request: Request) {
   if (checkUidRateLimit('sessions', decoded.uid)) return json({ error: 'rate_limited' }, 429)
 
   try {
-    await getAdminAuth().revokeRefreshTokens(decoded.uid)
+    // Also stamps users/{uid}.sessionsValidAfter, so Firestore refuses the
+    // other devices' tokens at once instead of when they expire.
+    await revokeMemberSessions(decoded.uid)
   } catch (err) {
     console.error('revoke sessions failed', err)
     return json({ error: 'revoke_failed' }, 503)

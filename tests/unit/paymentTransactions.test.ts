@@ -70,6 +70,16 @@ describe('atomic payment settlement', () => {
     expect(db.read('vouchers/other_offer')).toMatchObject({ orderNumber: 1002, displayOrderNumber: '#1002' })
     expect(db.read('metadata/counters')).toEqual({ orderSequence: 1002 })
   })
+  it('gives every voucher its own random redeem token, never derived from its id', async () => {
+    const db = store()
+    db.seed('orders/other_offer', { ...pending, userId: 'other' })
+    await claimOfferForOrder(db.db, event)
+    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456' })
+    const first = db.read('vouchers/user_offer')?.redeemToken
+    const second = db.read('vouchers/other_offer')?.redeemToken
+    for (const token of [first, second]) expect(token).toMatch(/^[0-9a-f]{32}$/)
+    expect(first).not.toBe(second)
+  })
   it('gives concurrent settlements of different orders distinct numbers', async () => {
     const db = store(), gate = pauseNextCommit(db)
     db.seed('orders/other_offer', { ...pending, userId: 'other' })

@@ -14,7 +14,7 @@ import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
-import { subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/vouchers'
+import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/vouchers'
 import TranslationNotice from '@/components/ui/TranslationNotice'
 import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { localizedBusinessName } from '@/lib/business/businessText'
@@ -108,7 +108,7 @@ export default function VoucherPage() {
                 {voucher.status === 'active' ? (
                   <>
                     <div className="mt-6 border-t border-slate-100 pt-6">
-                      <QrReveal voucherId={voucher.id} />
+                      <QrReveal redeemKey={redeemVoucherKey(voucher)} />
                     </div>
                     <div className="mt-6 border-t border-slate-100 pt-6">
                       <CodeReveal code={voucher.redemptionCode} />

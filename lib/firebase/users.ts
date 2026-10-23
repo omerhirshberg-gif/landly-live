@@ -3,6 +3,7 @@ import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, serverTimestamp, setD
 import { splitDisplayName } from '@/lib/auth/names'
 import { personaNote, type CustomerType } from '@/lib/customerTypes'
 import { db } from './config'
+import { recheckSessionIfDenied } from './sessionCheck'
 
 export interface UserDocument {
   email: string
@@ -90,7 +91,10 @@ export function subscribeUserDocument(
   return onSnapshot(
     doc(db, 'users', uid),
     (snap) => onNext(snap.exists() ? toUserDocument(snap.data()) : null),
-    onError
+    (error) => {
+      recheckSessionIfDenied(error)
+      onError(error)
+    }
   )
 }
 

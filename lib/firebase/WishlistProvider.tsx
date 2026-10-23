@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from './config'
+import { recheckSessionIfDenied } from './sessionCheck'
 import { useAuth } from './useAuth'
 import { getOffer } from './offers'
 import { setOfferWishlisted } from './users'
@@ -34,10 +35,16 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setWishlistIds([])
       return
     }
-    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
-      const data = snap.data()
-      setWishlistIds(Array.isArray(data?.wishlistOfferIds) ? data.wishlistOfferIds : [])
-    })
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid),
+      (snap) => {
+        const data = snap.data()
+        setWishlistIds(Array.isArray(data?.wishlistOfferIds) ? data.wishlistOfferIds : [])
+      },
+      // Refused (a business or unverified session, or one revoked elsewhere):
+      // the list stays as it was, and a revoked session is signed out.
+      recheckSessionIfDenied
+    )
     return unsubscribe
   }, [user])
 

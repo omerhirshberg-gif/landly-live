@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
 import { db } from './config'
+import { recheckSessionIfDenied } from './sessionCheck'
 import { normalizeRedemptionTerms } from '../payments/voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
@@ -18,6 +19,10 @@ export interface VoucherDocument {
   businessName: string // denormalized
   offerTitle: string // denormalized
   redemptionCode: string
+  // What the QR code carries (redeemVoucherKey): 128 random bits, set by the
+  // payment webhook. null for vouchers issued before it existed, until
+  // scripts/backfill-redeem-tokens.mjs gives them one.
+  redeemToken: string | null
   status: VoucherStatus
   takenAt: Date | null
   redeemedAt: Date | null
@@ -39,10 +44,20 @@ export interface VoucherDocument {
 }
 
 // What a voucher's QR code encodes -- shared so the web member area and the
-// mobile wallet show businesses the exact same code.
-export function voucherRedeemUrl(voucherId: string): string {
-  return `https://golandly.com/redeem/${voucherId}`
+// mobile wallet show businesses the exact same code. The key is the
+// voucher's random redeemToken: its id (`${uid}_${offerId}`) is predictable
+// from public offer ids, so it must never be what a scan redeems. Only a
+// voucher from before tokens existed (and not yet backfilled) still shows
+// its id.
+export function redeemVoucherKey(voucher: { id: string; redeemToken: string | null }): string {
+  return voucher.redeemToken ?? voucher.id
 }
+
+export function voucherRedeemUrl(redeemKey: string): string {
+  return `https://golandly.com/redeem/${redeemKey}`
+}
+
+const REDEEM_TOKEN_PATTERN = /^[0-9a-f]{32}$/
 
 // Owner-scoped queries can safely return empty results without allowing
 // arbitrary missing-document reads in the security rules.
@@ -62,6 +77,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessName: (data.businessName as string) ?? '',
     offerTitle: (data.offerTitle as string) ?? '',
     redemptionCode: (data.redemptionCode as string) ?? '',
+    redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
     status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
     takenAt: data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null,
     redeemedAt: data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null,
@@ -90,7 +106,10 @@ export function subscribeToVoucher(voucherId: string, onChange: (voucher: (Vouch
   return onSnapshot(
     doc(db, 'vouchers', voucherId),
     (snap) => onChange(snap.exists() ? { id: snap.id, ...toDoc(snap.data()) } : null),
-    () => onChange(null)
+    (error) => {
+      recheckSessionIfDenied(error)
+      onChange(null)
+    }
   )
 }
 
@@ -118,12 +137,16 @@ export async function getUserVouchers(
 // Live version of getUserVouchers, for the mobile wallet: a voucher written
 // by the payment webhook (from a web purchase) or flipped to redeemed by the
 // business shows up without a refresh. `onError` gets permission-denied for
-// an unverified/business session, same as the one-shot read would.
+// an unverified/business session, same as the one-shot read would, and for
+// one revoked on another device (which recheckSessionIfDenied then signs out).
 export function subscribeToUserVouchers(
   uid: string,
   status: VoucherDocument['status'],
   onChange: (vouchers: (VoucherDocument & { id: string })[]) => void,
   onError: (error: Error) => void
 ): () => void {
-  return onSnapshot(userVouchersQuery(uid, status), (snap) => onChange(toSortedVouchers(snap.docs)), onError)
+  return onSnapshot(userVouchersQuery(uid, status), (snap) => onChange(toSortedVouchers(snap.docs)), (error) => {
+    recheckSessionIfDenied(error)
+    onError(error)
+  })
 }

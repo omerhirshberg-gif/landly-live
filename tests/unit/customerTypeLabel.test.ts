@@ -5,7 +5,8 @@ import { customerTypeLabel } from '@/lib/customerTypes'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { translations, type TranslationKey } from '@/lib/i18n/translations'
 
-vi.mock('@/lib/firebase/users', () => ({ getUserDocument: () => new Promise(() => {}), updateUserPhone: vi.fn() }))
+vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {} }))
+vi.mock('@/lib/firebase/users',() => ({ getUserDocument: () => new Promise(() => {}), updateUserPhone: vi.fn() }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ invalidateMemberProfile: vi.fn() }))
 // Still loading: the profile reads users/{uid} live (useLiveUserDocument).
 vi.mock('@/lib/firebase/useLiveUserDocument', () => ({ useLiveUserDocument: () => ({ profile: null, loaded: false }) }))

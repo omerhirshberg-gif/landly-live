@@ -6,6 +6,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 import { useLang } from '@/lib/i18n/useLang'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { isStrongPassword } from '@/lib/auth/passwordValidation'
+import { syncSessionsAfterPasswordChange } from '@/lib/account/sessionSync'
 import PasswordRequirements from '@/components/auth/onboarding/PasswordRequirements'
 
 // The new password follows the sign-up rule (lib/auth/passwordValidation.ts):
@@ -34,6 +35,8 @@ export default function SecuritySection({ user }: { user: User }) {
       const credential = EmailAuthProvider.credential(user.email, currentPassword)
       await reauthenticateWithCredential(user, credential)
       await updatePassword(user, newPassword)
+      // Firebase just ended every other session; Firestore hears of it too.
+      void user.getIdToken().then((idToken) => syncSessionsAfterPasswordChange(idToken)).catch(() => {})
       setCurrentPassword('')
       setNewPassword('')
       setPwMsg({ type: 'success', text: t('profile_password_success') })

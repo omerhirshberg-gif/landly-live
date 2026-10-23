@@ -1,9 +1,11 @@
 import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
+import { createHash } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { Timestamp } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { requireBusinessUid, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
-import { parsePageParams, pageResponse } from '@/lib/business/pagination'
+import { encodeTimeCursor, parseTimePageParams } from '@/lib/business/pagination'
+import { normalizeDisplayOrderNumber } from '@/lib/payments/orderNumber'
 
 type VoucherStatus = 'active' | 'redeemed'
 
@@ -14,6 +16,17 @@ function parseStatus(request: Request): VoucherStatus | null {
   // outright rather than passed through.
   return raw === 'active' || raw === 'redeemed' ? raw : null
 }
+
+// A voucher's id is `${customerUid}_${offerId}`, so it never leaves this
+// route: rows carry an opaque reference instead (a one-way hash, stable for
+// React keys) and the order number the member also sees ("#1001"; null for
+// vouchers from before numbering). The page cursor carries no id either
+// (lib/business/pagination.ts TimeCursor).
+function opaqueReference(voucherId: string): string {
+  return createHash('sha256').update(`landly-voucher-ref:${voucherId}`).digest('hex').slice(0, 20)
+}
+
+const sameTime = (a: Timestamp | null, b: Timestamp | null) => (a === null || b === null ? a === b : a.isEqual(b))
 
 // Backs both "Active Vouchers" and "Redemption History" on the business
 // dashboard. Like /api/business/offers, uid comes only from the verified ID
@@ -33,7 +46,7 @@ export async function GET(request: Request) {
   if (!status) return NextResponse.json({ error: 'status must be "active" or "redeemed".' }, { status: 400 })
   let page
   const scope = `${uid}:vouchers:${status}`
-  try { page = parsePageParams(request, scope) }
+  try { page = parseTimePageParams(request, scope) }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid pagination.' }, { status: 400 }) }
 
   // Two equality (==) filters need no composite index in Firestore -- only
@@ -43,33 +56,39 @@ export async function GET(request: Request) {
     .collection('vouchers')
     .where('businessId', '==', uid)
     .where('status', '==', status)
-    .orderBy(sortField, 'desc').orderBy('__name__', 'desc').limit(page.limit + 1)
-  if (page.cursor) {
-    try {
-      const cursorValue = page.cursor.value === null ? null : Timestamp.fromDate(new Date(page.cursor.value))
-      if (cursorValue !== null && Number.isNaN(cursorValue.toMillis())) return NextResponse.json({ error: 'cursor is invalid.' }, { status: 400 })
-      query = query.startAfter(cursorValue, page.cursor.id)
-    } catch { return NextResponse.json({ error: 'cursor is invalid.' }, { status: 400 }) }
-  }
-  const snap = await query.get()
+    .orderBy(sortField, 'desc').orderBy('__name__', 'desc')
+  const cursorAt = page.cursor ? (page.cursor.at === null ? null : new Timestamp(page.cursor.at.s, page.cursor.at.n)) : undefined
+  if (page.cursor) query = query.startAt(cursorAt).offset(page.cursor.skip)
+  const snap = await query.limit(page.limit + 1).get()
 
   const hasMore = snap.docs.length > page.limit
-  const vouchers = snap.docs
-    .map((doc) => {
-      const data = doc.data()
-      const takenAt = data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null
-      const redeemedAt = data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null
-      return {
-        id: doc.id,
-        offerTitle: data.offerTitle ?? '',
-        takenAt: takenAt ? takenAt.toISOString() : null,
-        redeemedAt: redeemedAt ? redeemedAt.toISOString() : null,
-      }
-    })
-    .slice(0, page.limit)
-
-  return pageResponse({ vouchers }, hasMore, snap.docs[Math.min(page.limit, snap.docs.length) - 1], scope, (doc) => {
-    const value = doc.data()[sortField]
-    return [value instanceof Timestamp ? value.toDate().toISOString() : null, doc.id]
+  const docs = snap.docs.slice(0, page.limit)
+  const sortValue = (doc: (typeof docs)[number]) => {
+    const value = doc.get(sortField)
+    return value instanceof Timestamp ? value : null
+  }
+  const vouchers = docs.map((doc) => {
+    const data = doc.data()
+    const takenAt = data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null
+    const redeemedAt = data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null
+    return {
+      id: opaqueReference(doc.id),
+      orderNumber: normalizeDisplayOrderNumber(data.displayOrderNumber),
+      offerTitle: data.offerTitle ?? '',
+      takenAt: takenAt ? takenAt.toISOString() : null,
+      redeemedAt: redeemedAt ? redeemedAt.toISOString() : null,
+    }
   })
+
+  let nextCursor: string | null = null
+  const last = docs.at(-1)
+  if (hasMore && last) {
+    const lastAt = sortValue(last)
+    // Rows on this page sharing the last row's value, plus those skipped
+    // before it when this page started inside the same run of equal values.
+    let skip = docs.filter((doc) => sameTime(sortValue(doc), lastAt)).length
+    if (page.cursor && cursorAt !== undefined && sameTime(cursorAt, lastAt)) skip += page.cursor.skip
+    nextCursor = encodeTimeCursor({ at: lastAt === null ? null : { s: lastAt.seconds, n: lastAt.nanoseconds }, skip, scope })
+  }
+  return NextResponse.json({ vouchers, nextCursor })
 }

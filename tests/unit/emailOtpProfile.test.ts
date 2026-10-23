@@ -38,10 +38,14 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
     expect(src).not.toContain('resendEmailChange')
   })
 
-  it('refreshes the local Auth record and confirms after an email is verified', () => {
+  it('signs this device back in (every session ended) before confirming a verified email', () => {
+    const code = read(otp)
+    expect(code).toContain("if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})")
+    // The sign-in finishes before the screen hears about it.
+    expect(code.indexOf('await finishEmailChange(')).toBeLessThan(code.indexOf('onVerified', code.indexOf('await finishEmailChange(')))
     const src = read(profile)
-    expect(src).toContain("if (kind === 'email') user.reload().catch(() => {})")
-    expect(src).toContain('otp_email_success')
+    expect(src).not.toContain('user.reload()')
+    expect(src).toContain(otpTag === 'OtpDialog' ? 'otp_email_success' : "'emailVerified'")
   })
 
   it('hands the form result (or the pending address still cooling down) to the code UI', () => {
