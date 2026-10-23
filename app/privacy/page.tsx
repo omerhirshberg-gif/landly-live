@@ -2,14 +2,15 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import BackToSettings from '@/components/settings/BackToSettings'
-import PrivacyPolicy from '@/components/legal/PrivacyPolicy'
+import LocalizedPrivacyPolicy from '@/components/legal/LocalizedPrivacyPolicy'
 
-// A server component: the whole policy is in the first HTML response, so it
-// reads without JavaScript (in-app browsers, Google's OAuth reviewers).
+// The whole English policy is in the first HTML response, so it reads without
+// JavaScript (in-app browsers, Google's OAuth reviewers); on the client it
+// switches to the member's language.
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How Landly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google.',
+    'How Landly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google, passkeys and the biometric app lock.',
   alternates: { canonical: 'https://www.golandly.com/privacy' },
   robots: { index: true, follow: true },
 }
@@ -30,7 +31,7 @@ export default function PrivacyPage() {
             <BackToSettings className="mb-3 sm:mb-6" />
           </Suspense>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-12 shadow-sm">
-            <PrivacyPolicy />
+            <LocalizedPrivacyPolicy />
           </div>
         </div>
       </main>

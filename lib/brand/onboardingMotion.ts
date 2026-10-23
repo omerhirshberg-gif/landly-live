@@ -57,6 +57,16 @@ export const ONB = {
 export const CELEBRATE_SPRING = { damping: 20, stiffness: 90 } as const satisfies Spring
 export const CELEBRATE_FROM_SCALE = 0.6
 
+/**
+ * Unlocking into the app, 1.5s on one long ease-out curve: the lock screen
+ * dissolves and drifts up in scale over the whole of it; the screens under
+ * it start rising and fading in revealDelayMs later and land with it, so it
+ * reads as a calm hand-over rather than a cut.
+ */
+export const UNLOCK = { ms: 1500, revealDelayMs: 300, curve: [0.16, 1, 0.3, 1] as const, risePx: 16, scaleTo: 1.02 } as const
+/** The lock screen's greeting, hub and actions rising in under the splash logo's glide. */
+export const LOCK_RISE = { ms: 520, risePx: 15 } as const
+
 /** Delay before the n-th element (0-based) of an incoming card starts. */
 export function staggerDelay(index: number): number {
   return ONB.stepInDelayMs + index * ONB.staggerMs

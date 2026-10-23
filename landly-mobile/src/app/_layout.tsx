@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { ONB } from '@shared/brand/onboardingMotion'
+import { ONB, UNLOCK } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -13,7 +14,7 @@ import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
 import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
-import SplashScreen from '../components/SplashScreen'
+import SplashScreen, { type Handoff } from '../components/SplashScreen'
 import { LangProvider, useLang } from '../i18n/LangProvider'
 import { clearPendingDeepLink, pendingDeepLink } from '../lib/deepLinks'
 import { pageFlipOptions } from '../lib/pageFlip'
@@ -24,6 +25,8 @@ import { colors } from '../theme'
 // language: the root view below sets `direction`, which Yoga applies to the
 // whole tree — rows, start/end margins and the tab bar flip together.
 I18nManager.allowRTL(false)
+
+const UNLOCK_EASE = Easing.bezier(...UNLOCK.curve)
 
 export default function RootLayout() {
   return (
@@ -57,7 +60,7 @@ export default function RootLayout() {
 function RootNavigator() {
   const { user, loading, onboardingComplete } = useAuth()
   const { checking, onboarding } = useSignInGate()
-  const { known: lockKnown } = useAppLock()
+  const { known: lockKnown, locked } = useAppLock()
   const { isRtl, ready: langReady } = useLang()
 
   // signInCustomer already signs unverified accounts back out; checking
@@ -81,6 +84,35 @@ function RootNavigator() {
   if (known && !booted) setBooted(true)
   const ready = booted || known
 
+  // The splash intro (0–2950ms) gets the UI thread to itself: the screens,
+  // and the lock over them, mount only once it has played, so creating the
+  // tab bar, Home's cards and their images never drops its frames.
+  const [introDone, setIntroDone] = useState(false)
+  const handleIntroDone = useCallback(() => setIntroDone(true), [])
+  const screensUp = ready && introDone
+  // Where the splash logo lands: the login hero, the lock's header, or (signed
+  // in and unlocked) nowhere.
+  const handoff: Handoff = !signedIn ? 'login' : locked ? 'lock' : 'none'
+
+  // Unlocking: from UNLOCK.revealDelayMs the screens rise UNLOCK.risePx and
+  // fade in, landing as the lock screen finishes dissolving (AppLock.tsx).
+  // They're reset the moment the lock engages, under it, so nothing remounts.
+  // The fade is a veil in the canvas colour lifting off the screens, never
+  // their own opacity: UIKit's materials (the iOS tab bar's Liquid Glass)
+  // render wrong or not at all under an ancestor with alpha below 1.
+  const reveal = useSharedValue(1)
+  const wasLocked = useRef(false)
+  useEffect(() => {
+    if (locked) reveal.set(0)
+    else if (wasLocked.current) {
+      const ms = UNLOCK.ms - UNLOCK.revealDelayMs
+      reveal.set(withDelay(UNLOCK.revealDelayMs, withTiming(1, { duration: ms, easing: UNLOCK_EASE })))
+    }
+    wasLocked.current = locked
+  }, [locked, reveal])
+  const riseStyle = useAnimatedStyle(() => ({ transform: [{ translateY: UNLOCK.risePx * (1 - reveal.get()) }] }))
+  const veilStyle = useAnimatedStyle(() => ({ opacity: 1 - reveal.get() }))
+
   // An offer or voucher link (app/+native-intent.tsx) that arrived signed out
   // was bounced to sign-in by Stack.Protected; open it once the member is in.
   // One that reached its screen directly is simply forgotten.
@@ -90,7 +122,7 @@ function RootNavigator() {
   }, [pathname])
   const sawSignedOut = useRef(false)
   useEffect(() => {
-    if (!ready) return
+    if (!screensUp) return
     if (!signedIn) {
       sawSignedOut.current = true
       return
@@ -99,7 +131,7 @@ function RootNavigator() {
     clearPendingDeepLink()
     if (target && sawSignedOut.current) router.push(target as Href)
     sawSignedOut.current = false
-  }, [ready, signedIn])
+  }, [screensUp, signedIn])
 
   // The splash plays its intro, waits for auth, hands over, then removes itself.
   const [splashDone, setSplashDone] = useState(false)
@@ -109,31 +141,34 @@ function RootNavigator() {
     <View style={[styles.root, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       <StatusBar style="dark" />
       {/* Every pushed screen can be swiped back; the page-flip screens below add the full-screen drag. */}
-      {ready && (
-        <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: colors.background } }}>
-          <Stack.Protected guard={signedIn}>
-            {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
-            <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
-            {/* The Profile tab's gear pushes Settings over the tabs; a swipe turns it back. */}
-            <Stack.Screen name="settings" options={pageFlipOptions(isRtl)} />
-            {/* A category tile (Perks grid, Home rail) opens its folder the same way. */}
-            <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
-            {/* A My Pass card's "View Voucher" opens the voucher on its own screen. */}
-            <Stack.Screen name="voucher/[voucherId]" options={pageFlipOptions(isRtl)} />
-            {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
-            <Stack.Screen name="offer/[offerId]" options={pageFlipOptions(isRtl)} />
-            {/* The offer's Buy opens checkout in the app too; a purchase replaces it with the confirmation. */}
-            <Stack.Screen name="checkout/[offerId]" options={pageFlipOptions(isRtl)} />
-            <Stack.Screen name="order-success/[orderId]" options={pageFlipOptions(isRtl)} />
-          </Stack.Protected>
-          <Stack.Protected guard={!signedIn}>
-            <Stack.Screen name="(auth)" />
-          </Stack.Protected>
-        </Stack>
-      )}
+      <Animated.View style={[styles.root, riseStyle]}>
+        {screensUp && (
+          <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: colors.background } }}>
+            <Stack.Protected guard={signedIn}>
+              {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
+              <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
+              {/* The Profile tab's gear pushes Settings over the tabs; a swipe turns it back. */}
+              <Stack.Screen name="settings" options={pageFlipOptions(isRtl)} />
+              {/* A category tile (Perks grid, Home rail) opens its folder the same way. */}
+              <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
+              {/* A My Pass card's "View Voucher" opens the voucher on its own screen. */}
+              <Stack.Screen name="voucher/[voucherId]" options={pageFlipOptions(isRtl)} />
+              {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
+              <Stack.Screen name="offer/[offerId]" options={pageFlipOptions(isRtl)} />
+              {/* The offer's Buy opens checkout in the app too; a purchase replaces it with the confirmation. */}
+              <Stack.Screen name="checkout/[offerId]" options={pageFlipOptions(isRtl)} />
+              <Stack.Screen name="order-success/[orderId]" options={pageFlipOptions(isRtl)} />
+            </Stack.Protected>
+            <Stack.Protected guard={!signedIn}>
+              <Stack.Screen name="(auth)" />
+            </Stack.Protected>
+          </Stack>
+        )}
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.veil, veilStyle]} />
       {/* Above the screens, under the splash (its zIndex outranks the lock's). */}
-      <AppLockOverlay />
-      {!splashDone && <SplashScreen ready={ready} onDone={handleSplashDone} />}
+      {screensUp && <AppLockOverlay />}
+      {!splashDone && <SplashScreen ready={screensUp} handoff={handoff} onIntroDone={handleIntroDone} onDone={handleSplashDone} />}
       {__DEV__ && <DevEnvironmentBadge />}
     </View>
   )
@@ -141,4 +176,5 @@ function RootNavigator() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
+  veil: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.background },
 })

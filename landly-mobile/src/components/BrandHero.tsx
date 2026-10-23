@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { memo, useEffect } from 'react'
 import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated'
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
@@ -35,7 +36,11 @@ const WORDMARK_GAP = 10
 const GAP = 8
 const SLOGAN_HEIGHT = 14
 const SLOGAN_TRACKING = 3.2
-export const HERO = { width: 240, height: EMBLEM.height + WORDMARK_GAP + WORDMARK.height + GAP + SLOGAN_HEIGHT }
+/** The emblem and wordmark without the slogan: what the app lock's header shows, scaled. */
+export const LOCKUP_HEIGHT = EMBLEM.height + WORDMARK_GAP + WORDMARK.height
+/** The app lock's header lockup: the hero at this scale (a 120pt emblem, a little larger than the splash's 112). */
+export const LOCKUP_SCALE = 120 / EMBLEM.width
+export const HERO = { width: 240, height: LOCKUP_HEIGHT + GAP + SLOGAN_HEIGHT }
 
 const EASE_OUT = Easing.bezier(...CURVES.easeOut)
 const EASE_OUT_SOFT = Easing.bezier(...CURVES.easeOutSoft)
@@ -62,7 +67,52 @@ export function Wordmark({ width, height, style }: { width: number; height: numb
 // shared with the web login page (components/auth/BrandHero.tsx) so both
 // platforms play the same sequence.
 
-export default function BrandHero({ intro = false, onIntroDone }: { intro?: boolean; onIntroDone?: () => void }) {
+/**
+ * The finished hero without the slogan, at `scale` (the app lock's header):
+ * every size is the hero's times `scale`, glow included, so the splash logo
+ * gliding in at that scale lands on it exactly.
+ */
+export function BrandLockup({ scale }: { scale: number }) {
+  const glow = GLOW * scale
+  return (
+    <View style={{ width: HERO.width * scale, height: LOCKUP_HEIGHT * scale, alignItems: 'center' }}>
+      <View style={{ width: EMBLEM.width * scale, height: EMBLEM.height * scale, left: EMBLEM_SHIFT * scale }}>
+        <View
+          pointerEvents="none"
+          style={[
+            styles.glowAt,
+            { width: glow, height: glow, left: ((EMBLEM.width - GLOW) / 2) * scale, top: ((EMBLEM.height - GLOW) / 2) * scale, opacity: GLOW_REST },
+          ]}
+        >
+          <Svg width={glow} height={glow}>
+            <Defs>
+              <RadialGradient id="landlyLockupGlow" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor="#0038B8" stopOpacity={0.1} />
+                <Stop offset="1" stopColor="#0038B8" stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Rect width={glow} height={glow} fill="url(#landlyLockupGlow)" />
+          </Svg>
+        </View>
+        <StaticEmblem />
+      </View>
+      <Wordmark width={WORDMARK.width * scale} height={WORDMARK.height * scale} style={{ marginTop: WORDMARK_GAP * scale }} />
+    </View>
+  )
+}
+
+// Memoised: the splash's own state changes never re-render the emblem's
+// layers mid-intro. `sloganFade` (1 -> 0) lets the splash drop the slogan as
+// the logo glides into the app lock's header, which has none.
+export default memo(function BrandHero({
+  intro = false,
+  onIntroDone,
+  sloganFade,
+}: {
+  intro?: boolean
+  onIntroDone?: () => void
+  sloganFade?: SharedValue<number>
+}) {
   const reduced = useReducedMotion()
   const staged = intro && !reduced
   const start = (from: number) => (staged ? from : 1)
@@ -126,7 +176,7 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
     opacity: reveal.get(),
     transform: [{ translateY: FROM.wordmarkY * (1 - reveal.get()) }],
   }))
-  const sloganStyle = useAnimatedStyle(() => ({ opacity: slogan.get() }))
+  const sloganStyle = useAnimatedStyle(() => ({ opacity: slogan.get() * (sloganFade ? sloganFade.get() : 1) }))
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.get(), transform: [{ scale: glowScale.get() }] }))
 
   return (
@@ -179,13 +229,14 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       </Animated.View>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   hero: { ...HERO, alignItems: 'center' },
   emblem: { ...EMBLEM, left: EMBLEM_SHIFT },
   arrowOrigin: { transformOrigin: '12% 96%' },
   glow: { position: 'absolute', width: GLOW, height: GLOW, left: (EMBLEM.width - GLOW) / 2, top: (EMBLEM.height - GLOW) / 2 },
+  glowAt: { position: 'absolute' },
   wordmark: { ...WORDMARK, marginTop: WORDMARK_GAP },
   // Same ink as the wordmark. iOS and browsers add the letter-spacing after the
   // last letter too (Android splits it either side of each letter); the

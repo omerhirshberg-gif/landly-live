@@ -8,7 +8,7 @@ import TermsContent from '@/components/legal/TermsContent'
 // content itself is a client component; this server page owns the metadata.
 export const metadata: Metadata = {
   title: 'Terms and Conditions',
-  description: 'Landly payments, refund policy, voucher rules, governing law and contact details.',
+  description: 'Landly payments, refund policy, voucher rules, account security, governing law and contact details.',
   alternates: { canonical: 'https://www.golandly.com/terms' },
   robots: { index: true, follow: true },
 }
