@@ -14,7 +14,8 @@ describe('shared terms sections', () => {
   it.each(LANGS)('match the website terms, in order (%s)', (lang: Lang) => {
     const t = (key: TranslationKey) => translations[lang][key]
     const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
-    const html = renderToStaticMarkup(createElement(LangContext.Provider, { value: { lang, setLang: () => {}, t, isRtl } }, createElement(TermsContent)))
+    // Email addresses are wrapped in <bdi>; the text around them is unchanged.
+    const html = renderToStaticMarkup(createElement(LangContext.Provider, { value: { lang, setLang: () => {}, t, isRtl } }, createElement(TermsContent))).replace(/<\/?bdi>/g, '')
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
     const keys = TERMS_SECTIONS.flatMap((s) => [s.heading, ...s.body.flat()])
     const positions = keys.map((k) => html.indexOf(esc(t(k))))
@@ -50,7 +51,28 @@ describe('native Help & legal screens', () => {
     expect(support).toContain('mailto:${SUPPORT_EMAIL}?subject=')
   })
 
+  it('renders the shared Terms list, with every section the website shows', () => {
+    const website = read('../../components/legal/TermsContent.tsx')
+    expect(website).toContain("import { TERMS_SECTIONS } from '@/lib/legal/termsSections'")
+    expect(website).toContain('TERMS_SECTIONS.map(')
+    expect(TERMS_SECTIONS.map((s) => s.heading)).toEqual(['terms_h1', 'terms_h2', 'terms_h3', 'terms_h4', 'terms_h5', 'terms_h6', 'terms_h7'])
+    expect(TERMS_SECTIONS.find((s) => s.heading === 'terms_h2')?.body).toContainEqual(['terms_p2c_label', 'terms_p2c'])
+    const terms = read('app/settings/terms.tsx')
+    expect(terms).toContain('TERMS_SECTIONS.map(')
+    expect(terms).toContain('isolateEmails(t(key))')
+  })
+
+  it('renders the privacy policy in the member\'s language and direction', () => {
+    const privacy = read('app/settings/privacy.tsx')
+    expect(privacy).toContain('privacyPolicy(lang)')
+    expect(privacy).toContain("writingDirection: isRtl ? 'rtl' : 'ltr'")
+    expect(privacy).toContain("t('legal_translation_notice')")
+    expect(privacy).toContain('isolate(token)')
+    expect(privacy).not.toContain("direction: 'ltr'")
+    expect(privacy).not.toContain('PRIVACY_POLICY_SECTIONS')
+  })
+
   it('has the new strings in all five languages', () => {
-    for (const lang of LANGS) for (const key of ['support_whatsapp_message', 'legal_english_only'] as const) expect(translations[lang][key], `${lang}.${key}`).toBeTruthy()
+    for (const lang of LANGS) for (const key of ['support_whatsapp_message', 'legal_translation_notice'] as const) expect(translations[lang][key], `${lang}.${key}`).toBeTruthy()
   })
 })

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { AppState, Pressable, StyleSheet, View, type AppStateStatus } from 'react-native'
-import Animated, { FadeOut } from 'react-native-reanimated'
+import { AppState, Pressable, StyleSheet, View, type AppStateStatus, type ViewStyle } from 'react-native'
+import Animated, { cubicBezier, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
+import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { getCalendars } from 'expo-localization'
@@ -8,16 +9,17 @@ import { signOut } from 'firebase/auth'
 import { appLockOn, entryExpired } from '@shared/auth/appLockPolicy'
 import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '@shared/auth/greeting'
 import { greetingName } from '@shared/auth/names'
-import { EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
+import { LOCK_RISE, UNLOCK } from '@shared/brand/onboardingMotion'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import type { TranslationKey } from '@shared/i18n/translations'
 import AppText from '../components/AppText'
 import BiometricGlyph from '../components/BiometricGlyph'
-import { emblemShift, Wordmark } from '../components/BrandHero'
+import { BrandLockup, LOCKUP_SCALE } from '../components/BrandHero'
 import Button from '../components/Button'
 import { StaticEmblem } from '../components/Emblem'
+import { useEntrance } from '../components/Entrance'
 import Notice from '../components/Notice'
 import { useLang } from '../i18n/LangProvider'
 import { impact, success as successHaptic } from '../lib/haptics'
@@ -325,10 +327,19 @@ export function useAppLock() {
   return ctx
 }
 
+const RISE_EASE = cubicBezier(...UNLOCK.curve)
+const UNLOCK_EASE = Easing.bezier(...UNLOCK.curve)
+// However the exit animation ends, the lock screen is unmounted by then.
+const EXIT_MAX_MS = UNLOCK.ms + 400
+
 /**
  * The lock screen and the privacy cover, drawn above every screen by the
  * root navigator. The system prompt opens only when the member taps the
  * glyph or the unlock button.
+ *
+ * At launch it mounts under the splash, reports where its header lockup sits
+ * (the splash logo glides onto it) and keeps the lockup hidden until the
+ * splash is gone; the hub, greeting and actions rise in under the glide.
  */
 export function AppLockOverlay() {
   const { t, lang, ready: langReady } = useLang()
@@ -336,11 +347,40 @@ export function AppLockOverlay() {
   const { profile } = useMemberProfile(user)
   const { status, locked, covered, tries, lockedAt, lastEntry, promptOpen, unlock, signInWithPasswordInstead } = useAppLock()
   const insets = useSafeAreaInsets()
+  const reduced = useReducedMotion()
+  const { phase, setLockRect } = useEntrance()
+  const lockupRef = useRef<View>(null)
 
-  if (!locked && !covered) return null
+  // The lock screen stays mounted through its exit: `shown` turns on with the
+  // lock and off only once the exit has played (or the privacy cover takes
+  // over), so it leaves as one piece, logo and all, and nothing of it stays
+  // over the app. Leaving, it ignores touches.
+  const [shown, setShown] = useState(false)
+  if (locked && langReady && !shown) setShown(true)
+  if (covered && !locked && shown) setShown(false)
+  const leaving = shown && !locked
+  const exit = useSharedValue(0)
+  useEffect(() => {
+    if (!leaving) {
+      exit.set(0)
+      return
+    }
+    // The dissolve and the drift: UNLOCK.ms on UNLOCK's curve, while the
+    // screens under it rise in (_layout.tsx). Reduced motion: gone at once.
+    const done = () => setShown(false)
+    exit.set(withTiming(1, { duration: reduced ? 0 : UNLOCK.ms, easing: UNLOCK_EASE }, (fin) => fin && scheduleOnRN(done)))
+    const timer = setTimeout(done, EXIT_MAX_MS)
+    return () => clearTimeout(timer)
+  }, [leaving, reduced, exit])
+  const exitStyle = useAnimatedStyle(() => ({
+    opacity: 1 - exit.get(),
+    transform: [{ scale: 1 + (UNLOCK.scaleTo - 1) * exit.get() }],
+  }))
 
-  // Until the saved language is read, a lock shows the wordless cover, never English text.
-  if (!locked || !langReady) {
+  if (!shown) {
+    if (!locked && !covered) return null
+    // The privacy cover; until the saved language is read, a lock shows it too
+    // (wordless, never English text first).
     return (
       <View style={[StyleSheet.absoluteFill, styles.cover]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.coverMark}>
@@ -364,70 +404,89 @@ export function AppLockOverlay() {
     impact()
     unlock()
   }
+  // Under the splash, tell it where the lockup sits.
+  const reportLockup = () => {
+    if (phase === 'done') return
+    lockupRef.current?.measureInWindow((x, y, width, height) => setLockRect({ x, y, width, height }))
+  }
+  const under = phase === 'splash'
 
   return (
-    // Fades out on unlock (reduced motion: gone at once, Reanimated's default).
-    <Animated.View exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, styles.lock]} accessibilityViewIsModal>
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.lock, exitStyle]}
+      pointerEvents={leaving ? 'none' : 'auto'}
+      accessibilityViewIsModal={!leaving}
+      accessibilityElementsHidden={leaving}
+      importantForAccessibility={leaving ? 'no-hide-descendants' : 'auto'}
+    >
       <AmbientGlow />
-      <View style={[styles.screen, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.screen, { paddingTop: insets.top + 36, paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.column}>
-          {/* Top: the brand, large. */}
-          <View style={styles.brand} accessible accessibilityRole="image" accessibilityLabel="Landly">
-            <View style={styles.mark}>
-              <StaticEmblem />
-            </View>
-            <Wordmark width={WORDMARK_W} height={WORDMARK_H} style={styles.wordmark} />
+          {/* Top: the brand, where the splash logo lands (shown once the splash is gone). */}
+          <View
+            ref={lockupRef}
+            collapsable={false}
+            onLayout={reportLockup}
+            style={[styles.brand, phase !== 'done' && styles.hidden]}
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="Landly"
+          >
+            <BrandLockup scale={LOCKUP_SCALE} />
           </View>
 
-          {/* Centre: the glyph, the greeting and when the member last came in. */}
-          <View style={styles.middle}>
+          {/* Centre: the hub, the greeting and when the member last came in. */}
+          <Rise under={under} reduced={reduced} style={styles.middle}>
             <BiometricGlyph kind={kind} pulsing={promptOpen} onPress={unlock} label={t('applock_glyphLabel').replace('{method}', method)} />
             <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
               {greeting}
             </AppText>
             {lastLine && <AppText style={styles.lastEntry}>{lastLine}</AppText>}
-          </View>
+          </Rise>
 
           {/* Bottom: unlock, then the password route. */}
-          <View style={styles.actions}>
+          <Rise under={under} reduced={reduced} style={styles.actions}>
             {exhausted && <Notice message={t('applock_tooMany')} />}
             <Button label={t('applock_unlock')} onPress={unlockTapped} busy={promptOpen} height={50} />
             <Pressable onPress={signInWithPasswordInstead} accessibilityRole="button" style={styles.link} hitSlop={8}>
               <AppText style={styles.linkText}>{t('applock_passwordInstead')}</AppText>
             </Pressable>
-          </View>
+          </Rise>
         </View>
       </View>
     </Animated.View>
   )
 }
 
-// The top emblem, about 1.6x the old 52pt mark, with the wordmark under it in
-// the splash hero's proportions; the emblem shifts so the star's axis, not its
-// box, sits over the wordmark's centre.
-const MARK_W = 82
-const MARK_H = Math.round((MARK_W * EMBLEM_VIEWBOX.height) / EMBLEM_VIEWBOX.width)
-const WORDMARK_W = 72
-const WORDMARK_H = 20
+// Hidden under the splash, rising in as its logo glides up (a CSS transition,
+// on the UI thread); already in place when the lock engages later.
+function Rise({ under, reduced, style, children }: { under: boolean; reduced: boolean; style: ViewStyle; children: ReactNode }) {
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: under ? 0 : 1,
+          transform: [{ translateY: under && !reduced ? LOCK_RISE.risePx : 0 }],
+          transitionProperty: ['opacity', 'transform'],
+          transitionDuration: LOCK_RISE.ms,
+          transitionTimingFunction: RISE_EASE,
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  )
+}
 
-// Soft brand light on the open canvas, as radial gradients (React Native has
-// no blur filter): a wide one around the glyph, a smaller one behind the
-// emblem. Static and symmetric, so RTL needs nothing.
-const GLOW_WIDE = 480
+// A soft brand light behind the lockup at the top; the hub carries its own
+// (BiometricGlyph.tsx). A radial gradient, as React Native has no blur
+// filter; static and symmetric, so RTL needs nothing.
 const GLOW_HIGH = 360
 
 function AmbientGlow() {
   return (
     <View pointerEvents="none" style={styles.glowLayer}>
-      <Svg width={GLOW_WIDE} height={GLOW_WIDE} style={styles.glowWide}>
-        <Defs>
-          <RadialGradient id="landlyLockGlowWide" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#0038b8" stopOpacity={0.1} />
-            <Stop offset="1" stopColor="#0038b8" stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect width={GLOW_WIDE} height={GLOW_WIDE} fill="url(#landlyLockGlowWide)" />
-      </Svg>
       <Svg width={GLOW_HIGH} height={GLOW_HIGH} style={styles.glowHigh}>
         <Defs>
           <RadialGradient id="landlyLockGlowHigh" cx="50%" cy="50%" r="50%">
@@ -445,20 +504,19 @@ const styles = StyleSheet.create({
   cover: { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   coverMark: { width: 72, height: 69 },
   lock: { backgroundColor: colors.background, zIndex: 1000 },
-  // Full-bleed: brand at the top, the glyph and greeting in the middle, the
+  // Full-bleed: brand at the top, the hub and greeting in the middle, the
   // actions at the bottom (a 420px column on wide web windows).
   screen: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
   column: { flex: 1, width: '100%', maxWidth: 420 },
-  brand: { alignItems: 'center' },
-  mark: { width: MARK_W, height: MARK_H, left: emblemShift(MARK_W) },
-  wordmark: { marginTop: 8 },
+  // Room below the larger lockup before the hub's glow begins.
+  brand: { alignItems: 'center', marginBottom: 16 },
+  hidden: { opacity: 0 },
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
-  greeting: { fontSize: 26, lineHeight: 34, fontWeight: '700', color: colors.heading, textAlign: 'center', marginTop: 20 },
+  greeting: { fontSize: 28, lineHeight: 36, fontWeight: '700', letterSpacing: -0.3, color: colors.heading, textAlign: 'center', marginTop: 24 },
   lastEntry: { fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: 'center', marginTop: 6, fontVariant: ['tabular-nums'] },
   actions: { gap: 8 },
-  glowLayer: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-  glowWide: { position: 'absolute', transform: [{ translateY: -60 }] },
-  glowHigh: { position: 'absolute', top: -120 },
+  glowLayer: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center' },
+  glowHigh: { position: 'absolute', top: -140 },
   link: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 12, ...webOnly({ cursor: 'pointer' }) },
   linkText: { fontSize: 15, fontWeight: '600', color: colors.brand, textAlign: 'center' },
 })

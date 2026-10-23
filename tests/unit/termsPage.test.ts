@@ -42,9 +42,17 @@ describe('terms page', () => {
     expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 
-  it('has the six legal sections in order', () => {
+  it('has the seven legal sections in order', () => {
     const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1])
-    expect(headings).toEqual(['1. Payments', '2. Cancellation and Refunds', '3. Vouchers, Deals and Membership', '4. Closing Your Account', '5. Governing Law', '6. Seller and Contact'])
+    expect(headings).toEqual([
+      '1. Payments',
+      '2. Cancellation and Refunds',
+      '3. Vouchers, Deals and Membership',
+      '4. Closing Your Account',
+      '5. Account Security and Device Lock',
+      '6. Governing Law',
+      '7. Seller and Contact',
+    ])
   })
 
   it('identifies the title, date, seller and contact', () => {
@@ -58,10 +66,14 @@ describe('terms page', () => {
     expect(text).toContain('pay-per-offer')
     expect(text).toMatch(/no subscription or recurring billing/)
     expect(text).toContain('include VAT')
+    expect(text).toContain("PCI-DSS-compliant hosted payment page of our payment provider, Tranzila")
+    expect(text).toContain('Landly never receives or stores your full card number or security code (CVV)')
   })
 
   it('states the 14-day cancellation policy, its fee and how to cancel', () => {
-    expect(text).toContain('Within 14 days: You may cancel a purchase within 14 days of the purchase date, as long as the voucher has not been redeemed')
+    expect(text).toContain(
+      'Within 14 days: In accordance with the Israeli Consumer Protection Law, 5741-1981, you may cancel a purchase within 14 days of the purchase date, as long as the voucher has not been redeemed'
+    )
     expect(text).toContain('5% of the price or ₪100, whichever is lower')
     expect(text).toContain('How to cancel: Email contact@golandly.com with your order number')
     expect(text).toContain('After redemption: Once a voucher has been redeemed')
@@ -73,7 +85,7 @@ describe('terms page', () => {
     expect(text).toMatch(/redemption terms shown on the offer/)
     expect(text).toMatch(/non-transferable/)
     expect(text).toContain('laws of the State of Israel')
-    expect(text).toContain('Tel Aviv-Yafo')
+    expect(text).toContain('The competent courts of Tel Aviv-Yafo have exclusive jurisdiction')
   })
 
   it('explains account closure: where to ask, the 30-day turnaround and unredeemed vouchers', () => {
@@ -84,10 +96,17 @@ describe('terms page', () => {
     expect(text).toMatch(/14-day cancellation period, cancel it as described in section 2/)
   })
 
-  it('has one h1 and a heading for each of its six sections', () => {
+  it('places responsibility for who can unlock the device with the member', () => {
+    expect(text).toContain('Your device: If you turn on the app lock, or leave it on, anyone whose fingerprint or face is enrolled on that device, or who knows its passcode, can unlock the app')
+    expect(text).toContain('You alone decide who is enrolled on and has access to your device, and you are responsible for activity carried out through it.')
+    expect(text).toContain('The app locks after 60 seconds in the background')
+    expect(text).toContain('more than 30 days')
+  })
+
+  it('has one h1 and a heading for each of its seven sections', () => {
     expect(html.match(/<h1[ >]/g)).toHaveLength(1)
-    expect(html.match(/<section[ >]/g)).toHaveLength(6)
-    expect(html.match(/<h2[ >]/g)).toHaveLength(6)
+    expect(html.match(/<section[ >]/g)).toHaveLength(7)
+    expect(html.match(/<h2[ >]/g)).toHaveLength(7)
   })
 
   it('carries no sign-up CTA, and its only link goes to account deletion', () => {

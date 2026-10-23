@@ -10,17 +10,25 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
-import BrandHero from './BrandHero'
+import { glideToLockup, LOCK_GLIDE_SPRING } from '@shared/brand/entranceTimeline'
+import BrandHero, { LOCKUP_HEIGHT, LOCKUP_SCALE } from './BrandHero'
 import { ENTRANCE_SPRING, useEntrance, type Rect } from './Entrance'
 import { colors } from '../theme'
 
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1)
 // CSS-animation easing must be a Reanimated cubicBezier(), never a CSS string.
 const PULSE_EASE = cubicBezier(0.42, 0, 0.58, 1)
-// After auth resolves, how long to wait for the login screen to report its
-// hero. Signed-in users go to the tabs instead, so none arrives: fade out.
-const HERO_GRACE_MS = 300
+// How long to wait for the screen underneath to report where its logo sits
+// before giving up on the glide and crossfading instead.
+const HANDOFF_TIMEOUT_MS = 1200
+// A glide normally ends on its spring's callback; whatever happens to that,
+// the splash (and its logo) is gone by this long after the glide starts, so
+// it can never be left over the screen underneath.
+const GLIDE_MAX_MS = 1600
 export const SPLASH_Z = 1100
+
+/** Where the splash logo goes: the login hero, the app lock's header, or nowhere (the tabs). */
+export type Handoff = 'login' | 'lock' | 'none'
 
 // Three dots breathing in sequence; reduced motion keeps them still.
 const PULSE = {
@@ -29,26 +37,53 @@ const PULSE = {
 }
 
 // Branded launch overlay. BrandHero plays its staged intro (star, arrow,
-// slogan, shine); once that has finished and `ready` is true, the
-// hero glides to the login screen's hero position while the backdrop fades,
-// so splash and sign-in read as one continuous scene.
-export default function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+// slogan, shine) with the UI thread to itself: the screens only mount once
+// it reports done (`onIntroDone`, see _layout.tsx). Then, once `ready` (the
+// screens are up), the hero glides to where the screen underneath shows its
+// logo while the backdrop fades, so the splash and that screen read as one
+// continuous scene: the login hero at the same size, or the app lock's
+// header lockup, settling to LOCKUP_SCALE as the slogan fades. Signed in
+// and unlocked, there's no logo to land on: it crossfades into the tabs.
+export default function SplashScreen({
+  ready,
+  handoff,
+  onIntroDone,
+  onDone,
+}: {
+  ready: boolean
+  handoff: Handoff
+  onIntroDone: () => void
+  onDone: () => void
+}) {
   const reduced = useReducedMotion()
-  const { phase, heroRect, setPhase } = useEntrance()
+  const { phase, heroRect, lockRect, setPhase } = useEntrance()
   const anchorRef = useRef<View>(null)
   const splashRect = useRef<Rect | null>(null)
   const started = useRef(false)
+  const finished = useRef(false)
+  const glideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (glideTimer.current) clearTimeout(glideTimer.current)
+  }, [])
 
   const [introDone, setIntroDone] = useState(false)
-  const handleIntroDone = useCallback(() => setIntroDone(true), [])
+  const handleIntroDone = useCallback(() => {
+    setIntroDone(true)
+    onIntroDone()
+  }, [onIntroDone])
   const tx = useSharedValue(0)
   const ty = useSharedValue(0)
+  const scale = useSharedValue(1)
+  const sloganFade = useSharedValue(1)
   const backdrop = useSharedValue(1)
   const overlay = useSharedValue(1)
 
   useEffect(() => {
     if (!ready || !introDone || started.current) return
+    // Once only, whichever ends it first: the animation's callback or the timer.
     const finish = () => {
+      if (finished.current) return
+      finished.current = true
       setPhase('done')
       onDone()
     }
@@ -58,24 +93,36 @@ export default function SplashScreen({ ready, onDone }: { ready: boolean; onDone
       overlay.set(withTiming(0, { duration: 320, easing: EASE_OUT }, (fin) => fin && scheduleOnRN(finish)))
     }
     const from = splashRect.current
-    if (heroRect && from && !reduced) {
+    const target = handoff === 'login' ? heroRect : handoff === 'lock' ? lockRect : null
+    if (target && from && !reduced) {
       started.current = true
       setPhase('settling')
+      // Not cleared when this effect re-runs (the lock may open mid-glide): only on unmount.
+      glideTimer.current = setTimeout(finish, GLIDE_MAX_MS)
       backdrop.set(withTiming(0, { duration: 380, easing: EASE_OUT }))
-      tx.set(withSpring(heroRect.x - from.x, ENTRANCE_SPRING))
-      ty.set(withSpring(heroRect.y - from.y, ENTRANCE_SPRING, (fin) => fin && scheduleOnRN(finish)))
+      if (handoff === 'login') {
+        tx.set(withSpring(target.x - from.x, ENTRANCE_SPRING))
+        ty.set(withSpring(target.y - from.y, ENTRANCE_SPRING, (fin) => fin && scheduleOnRN(finish)))
+        return
+      }
+      // Scaling about the hero's centre moves the lockup (its top part) too.
+      const to = glideToLockup(from, target, LOCKUP_HEIGHT, LOCKUP_SCALE)
+      sloganFade.set(withTiming(0, { duration: 200, easing: EASE_OUT }))
+      scale.set(withSpring(LOCKUP_SCALE, LOCK_GLIDE_SPRING))
+      tx.set(withSpring(to.x, LOCK_GLIDE_SPRING))
+      ty.set(withSpring(to.y, LOCK_GLIDE_SPRING, (fin) => fin && scheduleOnRN(finish)))
       return
     }
     // Reduced motion lands here too: no glide, just a crossfade into the screen.
-    if (heroRect || reduced) return fadeOut()
-    const timer = setTimeout(fadeOut, HERO_GRACE_MS)
+    if (target || handoff === 'none' || reduced) return fadeOut()
+    const timer = setTimeout(fadeOut, HANDOFF_TIMEOUT_MS)
     return () => clearTimeout(timer)
-  }, [ready, introDone, heroRect, reduced, setPhase, onDone, overlay, backdrop, tx, ty])
+  }, [ready, introDone, handoff, heroRect, lockRect, reduced, setPhase, onDone, overlay, backdrop, tx, ty, scale, sloganFade])
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: overlay.get() }))
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.get() }))
   const heroStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.get() }, { translateY: ty.get() }],
+    transform: [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: scale.get() }],
   }))
 
   return (
@@ -100,7 +147,7 @@ export default function SplashScreen({ ready, onDone }: { ready: boolean; onDone
         }
       >
         <Animated.View style={heroStyle}>
-          <BrandHero intro onIntroDone={handleIntroDone} />
+          <BrandHero intro onIntroDone={handleIntroDone} sloganFade={sloganFade} />
         </Animated.View>
       </View>
 

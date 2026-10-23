@@ -16,20 +16,27 @@ import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
-const TILE = 84
-const GLYPH = 44
-const INNER_RING = 112
-const OUTER_RING = 140
+const TILE = 96
+const GLYPH = 48
+const INNER_RING = 132
+const OUTER_RING = 172
+const GLOW = 340
+const GLOW_HIGH = 240
 const PULSE_MS = 1400
-/** One breath: out and back over 2.4s. */
+/** One breath: out to BREATH_SCALE and back over 2.4s. */
 const BREATH_MS = 1200
+const BREATH_SCALE = 1.05
+/** The glow while the prompt is open: 12% -> 14% (opacity 12/14 -> 1), swelling slightly. */
+const GLOW_REST = 12 / 14
+const LIT_MS = 300
 
 // The lock screen's hero: the device's biometric glyph (Face ID / face
-// unlock, or Touch ID / fingerprint) at 44pt on an 84pt tile lit from the
-// centre, inside two faint concentric rings. At rest the outer ring breathes
-// gently; while the system prompt is open a soft ring pulses out from the
-// tile instead, so the screen shows it's waiting on the member. Reduced
-// motion keeps both still. Tapping the tile (a light haptic) asks, like the
+// unlock, or Touch ID / fingerprint) at 48pt on a 96pt tile lit from the
+// centre, inside two faint concentric rings, over its own soft brand light.
+// At rest the outer ring breathes gently; while the system prompt is open
+// the light brightens and swells and a ring pulses out from the tile, so the
+// screen shows it's waiting on the member. All on the UI thread; reduced
+// motion keeps it still. Tapping the tile (a light haptic) asks, like the
 // Unlock button; nothing here asks on its own.
 export default function BiometricGlyph({
   kind,
@@ -45,6 +52,7 @@ export default function BiometricGlyph({
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
   const breath = useSharedValue(0)
+  const lit = useSharedValue(0)
 
   useEffect(() => {
     if (pulsing && !reduced) {
@@ -65,19 +73,44 @@ export default function BiometricGlyph({
     }
   }, [pulsing, reduced, breath])
 
+  useEffect(() => {
+    lit.set(withTiming(pulsing ? 1 : 0, { duration: reduced ? 0 : LIT_MS, easing: Easing.out(Easing.quad) }))
+  }, [pulsing, reduced, lit])
+
   const ringStyle = useAnimatedStyle(() => ({
     opacity: 0.45 * (1 - progress.get()),
     transform: [{ scale: 1 + 0.35 * progress.get() }],
   }))
   const breathStyle = useAnimatedStyle(() => ({
     opacity: 1 - 0.35 * breath.get(),
-    transform: [{ scale: 1 + 0.04 * breath.get() }],
+    transform: [{ scale: 1 + (BREATH_SCALE - 1) * breath.get() }],
+  }))
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: GLOW_REST + (1 - GLOW_REST) * lit.get(),
+    transform: [{ scale: 1 + 0.08 * lit.get() }],
   }))
 
   const face = kind === 'faceId' || kind === 'face'
 
   return (
     <View style={styles.wrap}>
+      <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]}>
+        <Svg width={GLOW} height={GLOW} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <RadialGradient id="landlyHubGlow" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#0038b8" stopOpacity={0.14} />
+              <Stop offset="1" stopColor="#0038b8" stopOpacity={0} />
+            </RadialGradient>
+            {/* 8% at rest, a little above centre. */}
+            <RadialGradient id="landlyHubGlowHigh" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#0066ff" stopOpacity={0.093} />
+              <Stop offset="1" stopColor="#0066ff" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Rect width={GLOW} height={GLOW} fill="url(#landlyHubGlow)" />
+          <Rect x={(GLOW - GLOW_HIGH) / 2} y={(GLOW - GLOW_HIGH) / 2 - 16} width={GLOW_HIGH} height={GLOW_HIGH} fill="url(#landlyHubGlowHigh)" />
+        </Svg>
+      </Animated.View>
       <Animated.View pointerEvents="none" style={[styles.outerRing, breathStyle]} />
       <View pointerEvents="none" style={styles.innerRing} />
       <Animated.View pointerEvents="none" style={[styles.ring, ringStyle]} />
@@ -110,6 +143,8 @@ const ring = (size: number) => ({ position: 'absolute' as const, width: size, he
 
 const styles = StyleSheet.create({
   wrap: { width: OUTER_RING, height: OUTER_RING, alignItems: 'center', justifyContent: 'center' },
+  // Centred on the hub, spilling past it (layout stays the rings' size).
+  glow: { position: 'absolute', width: GLOW, height: GLOW, left: (OUTER_RING - GLOW) / 2, top: (OUTER_RING - GLOW) / 2 },
   outerRing: { ...ring(OUTER_RING), borderWidth: 1, borderColor: 'rgba(0, 56, 184, 0.06)', backgroundColor: 'rgba(0, 56, 184, 0.02)' },
   innerRing: { ...ring(INNER_RING), borderWidth: 1, borderColor: 'rgba(0, 56, 184, 0.12)', backgroundColor: 'rgba(0, 56, 184, 0.03)' },
   ring: { ...ring(TILE), borderWidth: 2, borderColor: colors.brand },

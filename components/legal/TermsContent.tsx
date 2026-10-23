@@ -3,28 +3,22 @@
 import Link from 'next/link'
 import { useLang } from '@/lib/i18n/useLang'
 import { TranslationKey } from '@/lib/i18n/translations'
+import { splitEmails } from '@/lib/legal/bidi'
+import { TERMS_SECTIONS } from '@/lib/legal/termsSections'
 
-// The sections formerly shown in the home-page TermsModal, now on /terms.
-// Client-rendered through useLang so it follows the member's language (and
-// RTL for Hebrew); the server HTML is the English default. A section's `link`
-// is website-only: the app's Terms screen (lib/legal/termsSections.ts) names
-// the same Settings path in the text instead.
-const SECTIONS: {
-  heading: TranslationKey
-  body: (TranslationKey | [TranslationKey, TranslationKey])[]
-  link?: { href: string; label: TranslationKey }
-}[] = [
-  { heading: 'terms_h1', body: ['terms_p1'] },
-  { heading: 'terms_h2', body: [['terms_p2a_label', 'terms_p2a'], ['terms_p2b_label', 'terms_p2b'], ['terms_p2c_label', 'terms_p2c']] },
-  { heading: 'terms_h3', body: ['terms_p3', ['terms_p3b_label', 'terms_p3b'], ['terms_p3c_label', 'terms_p3c'], ['terms_p3d_label', 'terms_p3d']] },
-  {
-    heading: 'terms_h4',
-    body: [['terms_p4a_label', 'terms_p4a'], ['terms_p4b_label', 'terms_p4b'], ['terms_p4c_label', 'terms_p4c']],
-    link: { href: '/settings/delete-account', label: 'terms_p4_link' },
-  },
-  { heading: 'terms_h6', body: ['terms_p6'] },
-  { heading: 'terms_h7', body: ['terms_p7'] },
-]
+// The Terms of Service on /terms, from the sections the app's Terms screen
+// also renders (lib/legal/termsSections.ts). Client-rendered through useLang
+// so it follows the member's language (and RTL for Hebrew); the server HTML
+// is the English default. A section's link is website-only: the app's text
+// names the same Settings path instead.
+const LINKS: Partial<Record<TranslationKey, { href: string; label: TranslationKey }>> = {
+  terms_h4: { href: '/settings/delete-account', label: 'terms_p4_link' },
+}
+
+// Email addresses keep their left-to-right order inside Hebrew sentences.
+function Text({ value }: { value: string }) {
+  return <>{splitEmails(value).map((piece, i) => (piece.ltr ? <bdi key={i}>{piece.text}</bdi> : piece.text))}</>
+}
 
 export default function TermsContent() {
   const { t, isRtl } = useLang()
@@ -36,26 +30,29 @@ export default function TermsContent() {
         <strong className="font-semibold">{t('terms_updated_label')}</strong> <span>{t('terms_updated_date')}</span>
       </p>
       <div className="space-y-7">
-        {SECTIONS.map((s) => (
-          <section key={s.heading}>
-            <h2 className="font-bold text-[#0B1B3D] text-lg mb-2">{t(s.heading)}</h2>
-            {s.body.map((p) =>
-              Array.isArray(p) ? (
-                <p key={p[1]} className="mt-2 first:mt-0"><strong className="text-[#0B1B3D]">{t(p[0])}</strong> <span>{t(p[1])}</span></p>
-              ) : (
-                <p key={p}>{t(p)}</p>
-              )
-            )}
-            {s.link && (
-              <p className="mt-3">
-                <Link href={s.link.href} className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-[#0038B8] underline-offset-4 hover:underline">
-                  {t(s.link.label)}
-                  <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
-                </Link>
-              </p>
-            )}
-          </section>
-        ))}
+        {TERMS_SECTIONS.map((s) => {
+          const link = LINKS[s.heading]
+          return (
+            <section key={s.heading}>
+              <h2 className="font-bold text-[#0B1B3D] text-lg mb-2">{t(s.heading)}</h2>
+              {s.body.map((p) =>
+                Array.isArray(p) ? (
+                  <p key={p[1]} className="mt-2 first:mt-0"><strong className="text-[#0B1B3D]">{t(p[0])}</strong> <span><Text value={t(p[1])} /></span></p>
+                ) : (
+                  <p key={p}><Text value={t(p)} /></p>
+                )
+              )}
+              {link && (
+                <p className="mt-3">
+                  <Link href={link.href} className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-[#0038B8] underline-offset-4 hover:underline">
+                    {t(link.label)}
+                    <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                  </Link>
+                </p>
+              )}
+            </section>
+          )
+        })}
       </div>
     </article>
   )

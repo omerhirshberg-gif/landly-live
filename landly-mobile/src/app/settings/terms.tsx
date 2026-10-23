@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { isolateEmails } from '@shared/legal/bidi'
 import { TERMS_SECTIONS } from '@shared/legal/termsSections'
 import AppText from '../../components/AppText'
 import ScreenHeader from '../../components/ScreenHeader'
@@ -8,9 +9,11 @@ import { colors, radius } from '../../theme'
 
 // Terms of Service (web: /terms), in the settings stack: the same sections
 // as the website (lib/legal/termsSections.ts), in the member's language and
-// reading direction. Back (the button or the swipe) returns to Settings.
+// reading direction; email addresses keep their own order in Hebrew. Back
+// (the button or the swipe) returns to Settings.
 export default function TermsScreen() {
-  const { t } = useLang()
+  const { t, isRtl } = useLang()
+  const text = (key: Parameters<typeof t>[0]) => (isRtl ? isolateEmails(t(key)) : t(key))
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -28,10 +31,10 @@ export default function TermsScreen() {
               {section.body.map((part) =>
                 Array.isArray(part) ? (
                   <AppText key={part[1]} style={styles.paragraph}>
-                    <AppText style={styles.label}>{t(part[0])}</AppText> {t(part[1])}
+                    <AppText style={styles.label}>{t(part[0])}</AppText> {text(part[1])}
                   </AppText>
                 ) : (
-                  <AppText key={part} style={styles.paragraph}>{t(part)}</AppText>
+                  <AppText key={part} style={styles.paragraph}>{text(part)}</AppText>
                 )
               )}
             </View>

@@ -78,6 +78,6 @@ describe('privacy policy: phone number', () => {
   it('gives the support line, as a call link, in Who we are and in Contact us', () => {
     expect(policy).toContain('contact us at contact@golandly.com or by phone or WhatsApp at +972 55-720-6711.')
     expect(policy).toContain('Phone / WhatsApp: +972 55-720-6711')
-    expect(html.match(/<span dir="ltr"><a href="tel:\+972557206711"[^>]*>\+972 55-720-6711<\/a><\/span>/g)).toHaveLength(2)
+    expect(html.match(/<bdi dir="ltr"><a href="tel:\+972557206711"[^>]*>\+972 55-720-6711<\/a><\/bdi>/g)).toHaveLength(2)
   })
 })

@@ -44,6 +44,28 @@ export interface Spring {
 export const ARROW_SPRING = { damping: 12, stiffness: 220, mass: 1 } as const satisfies Spring
 // One spring for everything else that moves in the entrance (card rise, splash hand-over).
 export const ENTRANCE_SPRING = { damping: 15, stiffness: 90 } as const satisfies Spring
+// The splash logo gliding up into the app lock's header (native only): a touch
+// firmer than ENTRANCE_SPRING (ζ ≈ 0.73), since it travels further and shrinks.
+export const LOCK_GLIDE_SPRING = { damping: 16, stiffness: 120 } as const satisfies Spring
+
+export interface Box {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * The translation that lands the splash hero's lockup (its top
+ * `lockupHeight`, above the slogan) on `target` while the hero scales by
+ * `scale` about its own centre, as React Native transforms do.
+ */
+export function glideToLockup(from: Box, target: Box, lockupHeight: number, scale: number): { x: number; y: number } {
+  const cx = from.x + from.width / 2
+  const cy = from.y + from.height / 2
+  const lockupCy = cy + (from.y + lockupHeight / 2 - cy) * scale
+  return { x: target.x + target.width / 2 - cx, y: target.y + target.height / 2 - lockupCy }
+}
 
 // Start poses (px at the 112px emblem size both platforms render).
 export const FROM = {

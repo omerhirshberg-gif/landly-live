@@ -103,7 +103,7 @@ describe('lock screen wiring', () => {
     expect(src).toMatch(/if \(!locked \|\| !uid \|\| !APP_LOCK_SUPPORTED\) return\s*let cancelled = false\s*getLastEntry\(uid\)/)
     expect(src).toContain('const lastAt = resolveLastEntry(lastEntry, user?.metadata.lastSignInTime)')
     expect(src).toContain("t('applock_lastEntry')")
-    expect(src).toContain('exiting={FadeOut.duration(200)}')
+    expect(src).toContain("pointerEvents={leaving ? 'none' : 'auto'}")
   })
 
   it('keeps the entry device-only in the Keychain / Keystore', async () => {
@@ -118,14 +118,18 @@ describe('lock screen wiring', () => {
     const layout = await readFile('landly-mobile/src/app/_layout.tsx', 'utf8')
     expect(lang).toContain('.finally(() => setReady(true))')
     expect(lang).toContain('AsyncStorage.setItem(STORAGE_KEY, next)')
-    expect(lock).toContain('if (!locked || !langReady) {')
+    expect(lock).toContain('if (locked && langReady && !shown) setShown(true)')
     expect(layout).toContain('const known = langReady && !loading')
   })
 
   it('opens the system prompt only on a tap of the glyph or the unlock button', async () => {
     const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
     const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'))
-    expect(overlay).not.toContain('useEffect')
+    // Its one effect plays the exit; nothing in it asks for biometrics.
+    const effects = [...overlay.matchAll(/useEffect\(\(\) => \{[^]*?\n  \}, \[[^\]]*\]\)/g)].map((m) => m[0])
+    expect(effects).toHaveLength(1)
+    expect(effects[0]).not.toMatch(/unlock|authenticate|prompt/)
+    expect(overlay.match(/unlock\(\)/g)).toHaveLength(1)
     expect(overlay).toContain('onPress={unlock}')
     expect(overlay).toContain('onPress={unlockTapped}')
   })
@@ -147,19 +151,26 @@ describe('lock screen wiring', () => {
   it('breathes the glyph only while waiting, and keeps it still with reduced motion', async () => {
     const glyph = await readFile('landly-mobile/src/components/BiometricGlyph.tsx', 'utf8')
     expect(glyph).toContain('if (!pulsing && !reduced) {')
-    expect(glyph).toContain('const TILE = 84')
+    expect(glyph).toContain('const TILE = 96')
+    expect(glyph).toContain('const BREATH_SCALE = 1.05')
+    expect(glyph).toContain('const BREATH_MS = 1200')
+    // The prompt's glow follows reduced motion too.
+    expect(glyph).toContain('duration: reduced ? 0 : LIT_MS')
   })
 
   it('lays the lock screen out open, top to bottom: brand, glyph, greeting, last sign-in, actions', async () => {
     const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
     const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'))
-    const order = ['<StaticEmblem />', '<Wordmark', '<BiometricGlyph', '{greeting}', '{lastLine', "t('applock_unlock')", "t('applock_passwordInstead')"]
+    const order = ['<BrandLockup scale={LOCKUP_SCALE} />', '<BiometricGlyph', '{greeting}', '{lastLine', "t('applock_unlock')", "t('applock_passwordInstead')"]
     const at = order.map((part) => overlay.indexOf(part))
     expect(at.every((i) => i > -1)).toBe(true)
     expect([...at].sort((a, b) => a - b)).toEqual(at)
     // No card, no reassurance row; the emblem is about 1.6x the old 52pt mark.
     expect(overlay).not.toMatch(/styles\.card|protectedWith|name="shield"/)
-    expect(overlay).toContain('const MARK_W = 82')
+    const hero = await readFile('landly-mobile/src/components/BrandHero.tsx', 'utf8')
+    // A 120pt emblem: about 1.46x the earlier 82pt header.
+    expect(hero).toContain('export const LOCKUP_SCALE = 120 / EMBLEM.width')
+    expect(lock).toContain('paddingTop: insets.top + 36')
   })
 
   it('gives the unlock button an exact 50px height', async () => {
