@@ -15,6 +15,7 @@ import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
 import styles from '@/components/auth/entrance/entrance.module.css'
 import PasswordRequirements from '@/components/auth/onboarding/PasswordRequirements'
 import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
+import { reportPasswordReset } from '@/lib/account/sessionSync'
 import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import { auth } from '@/lib/firebase/config'
 import { useLang } from '@/lib/i18n/useLang'
@@ -78,6 +79,9 @@ function ResetPasswordContent() {
     setStatus('submitting')
     try {
       await confirmPasswordReset(auth, oobCode, password)
+      // The reset ended every session; Firestore hears of it too, so a
+      // stolen one can't keep reading the member's passes.
+      await reportPasswordReset(email)
       router.replace('/reset-password/success')
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : ''

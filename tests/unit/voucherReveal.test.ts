@@ -22,7 +22,7 @@ const VOUCHER_KEYS: TranslationKey[] = [
 
 const voucher = {
   id: 'user_offer', userId: 'user', offerId: 'offer', businessId: 'business',
-  businessName: 'Café Noir', offerTitle: '1+1 on coffee', redemptionCode: '48213907',
+  businessName: 'Café Noir', offerTitle: '1+1 on coffee', redemptionCode: '48213907', redeemToken: null,
   status: 'active', takenAt: new Date(Date.UTC(2099, 0, 1)), redeemedAt: null,
   expiresAt: new Date(Date.UTC(2099, 3, 16, 12)), redemptionTerms: 'Dine-in only.',
   redemptionMethod: 'in_store', redemptionInstructions: 'Ask for the barista.',
@@ -56,7 +56,7 @@ describe('My Pass card', () => {
 
 describe('voucher page reveals', () => {
   it('hides the QR code behind "Show QR Code"', () => {
-    const html = render('en', createElement(QrReveal, { voucherId: 'user_offer' }))
+    const html = render('en', createElement(QrReveal, { redeemKey: 'user_offer' }))
     expect(html).not.toContain('<img')
     expect(html).toContain('Show QR Code')
     expect(html).toContain('aria-expanded="false"')
@@ -72,7 +72,7 @@ describe('voucher page reveals', () => {
   })
 
   it('reads in Hebrew', () => {
-    expect(render('he', createElement(QrReveal, { voucherId: 'v' }))).toContain('הצג קוד QR לסריקה')
+    expect(render('he', createElement(QrReveal, { redeemKey: 'v' }))).toContain('הצג קוד QR לסריקה')
     expect(render('he', createElement(CodeReveal, { code: '1' }))).toContain('הצג קוד')
   })
 

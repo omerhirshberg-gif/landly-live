@@ -411,10 +411,9 @@ export default function ProfileSection({ user }: { user: User }) {
           onVerified={() => {
             const kind = otp.target.kind
             setOtp(null)
+            // The Auth record already shows the new address: the dialog
+            // signed back in (finishEmailChange) after the server changed it.
             invalidateMemberProfile(user.uid)
-            // The local Auth record still holds the old address (the next
-            // change re-authenticates with it); the server already changed it.
-            if (kind === 'email') user.reload().catch(() => {})
             setSaveMsg({ type: 'success', text: t(kind === 'email' ? 'otp_email_success' : 'otp_success') })
           }}
         />

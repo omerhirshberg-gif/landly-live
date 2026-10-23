@@ -35,21 +35,40 @@ service cloud.firestore {
     // record of when and where a marketing opt-in was given (proof of
     // consent); `marketingOptIn` itself stays the member's to change.
     // So is the WebAuthn user handle the passkey routes create: a member who
-    // could change it would orphan every passkey they've saved.
+    // could change it would orphan every passkey they've saved. And so is
+    // the session cutoff below: a stolen session could otherwise clear it.
     function serverOnlyUserKeys() {
       return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt',
         'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource',
-        'webauthnUserId'];
+        'webauthnUserId', 'sessionsValidAfter'];
+    }
+
+    // "Sign out of all devices" and a verified email change revoke every
+    // refresh token, but an ID token already issued stays valid here until
+    // it expires (up to an hour): rules never see a revocation. Those routes
+    // also stamp users/{uid}.sessionsValidAfter (lib/auth/sessionRevocation.ts),
+    // and a token whose sign-in (auth_time, in seconds) came before it is
+    // refused. No profile, or no stamp yet, means nothing was ever revoked.
+    function sessionFreshFor(profile) {
+      return !('sessionsValidAfter' in profile)
+        || request.auth.token.auth_time * 1000 >= profile.sessionsValidAfter.toMillis();
+    }
+
+    function authFresh() {
+      let profilePath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return !exists(profilePath) || sessionFreshFor(get(profilePath).data);
     }
 
     match /users/{userId} {
       allow create: if isCustomer() && request.auth.uid == userId
         && !request.resource.data.keys().hasAny(serverOnlyUserKeys());
       allow read: if isCustomer() && request.auth.uid == userId
-        && (resource == null || isVerified());
+        && (resource == null || (isVerified() && sessionFreshFor(resource.data)));
       allow update: if isCustomer() && request.auth.uid == userId && isVerified()
+        && sessionFreshFor(resource.data)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(serverOnlyUserKeys().concat(['email']));
-      allow delete: if isCustomer() && request.auth.uid == userId && isVerified();
+      allow delete: if isCustomer() && request.auth.uid == userId && isVerified()
+        && sessionFreshFor(resource.data);
     }
 
     // Push notification tokens, one document per device (lib/push/pushTokens.ts).
@@ -58,8 +77,8 @@ service cloud.firestore {
     // hash so re-registering a device overwrites rather than duplicates.
     // Sending happens server side (Admin SDK), never from a client.
     match /users/{userId}/pushTokens/{tokenId} {
-      allow read, delete: if isCustomer() && request.auth.uid == userId && isVerified();
-      allow create, update: if isCustomer() && request.auth.uid == userId && isVerified()
+      allow read, delete: if isCustomer() && request.auth.uid == userId && isVerified() && authFresh();
+      allow create, update: if isCustomer() && request.auth.uid == userId && isVerified() && authFresh()
         && request.resource.data.keys().hasOnly(['token', 'platform', 'provider', 'lang', 'createdAt', 'updatedAt'])
         && request.resource.data.token is string && request.resource.data.token.size() <= 4096
         && request.resource.data.platform in ['ios', 'android', 'web']
@@ -128,7 +147,7 @@ service cloud.firestore {
       // Missing and foreign documents both deny direct reads. Owner-scoped
       // queries return an empty result when the customer has no voucher.
       allow read: if isCustomer() && isVerified()
-        && request.auth.uid == resource.data.userId;
+        && request.auth.uid == resource.data.userId && authFresh();
       allow write: if false;
     }
 
@@ -138,8 +157,14 @@ service cloud.firestore {
     // ever reads its own order, to reflect live payment status on the
     // checkout success page (lib/firebase/orders.ts) — it never writes one.
     match /orders/{orderId} {
-      allow read: if isCustomer() && request.auth.uid == resource.data.userId && isVerified();
+      allow read: if isCustomer() && request.auth.uid == resource.data.userId && isVerified() && authFresh();
       allow write: if false;
+    }
+
+    // The admin password-guessing throttle (lib/auth/adminLoginThrottle.ts):
+    // read and written by /api/admin/verify-password only (Admin SDK).
+    match /adminLoginThrottle/{key} {
+      allow read, write: if false;
     }
 
     // Reverse-geocode answers (city per ~1 km cell and language), written and

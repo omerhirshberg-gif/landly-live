@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, View, type TextInput } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, type User } from 'firebase/auth'
+import { syncSessionsAfterPasswordChange } from '@shared/account/sessionSync'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
 import AppText from './AppText'
@@ -10,6 +11,7 @@ import Notice from './Notice'
 import TextField from './TextField'
 import PasswordRequirements from '../auth/onboarding/PasswordRequirements'
 import { useLang } from '../i18n/LangProvider'
+import { API_BASE_URL } from '../lib/env'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -66,6 +68,8 @@ export default function ChangePassword({ user }: { user: User }) {
     try {
       await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current))
       await updatePassword(user, next)
+      // Firebase just ended every other session; Firestore hears of it too.
+      void user.getIdToken().then((idToken) => syncSessionsAfterPasswordChange(idToken, API_BASE_URL)).catch(() => {})
       reset()
       setOpen(false)
       setDone(true)

@@ -7,6 +7,7 @@ import type { User } from 'firebase/auth'
 import {
   CONTACT_CHANGE_FAILED,
   contactChangeErrorKey,
+  finishEmailChange,
   requestPhoneChange,
   resendEmailChange,
   verifyEmailCode,
@@ -16,6 +17,7 @@ import {
   type EmailChangeStart,
   type PhoneChangeStart,
 } from '@shared/account/contactChange'
+import { auth } from '@shared/firebase/config'
 import { formatPhone } from '@shared/auth/onboarding'
 import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@shared/auth/otp'
 import { useResendCountdown } from '@shared/auth/useResendCountdown'
@@ -109,14 +111,17 @@ export default function OtpSheet({
     setNotice(null)
     const result = await user
       .getIdToken()
-      .then<ContactChangeResult>((idToken) => (isEmail ? verifyEmailCode(idToken, value, API_BASE_URL) : verifyPhoneCode(idToken, value, API_BASE_URL)))
+      .then<ContactChangeResult<{ customToken?: string }>>((idToken) => (isEmail ? verifyEmailCode(idToken, value, API_BASE_URL) : verifyPhoneCode(idToken, value, API_BASE_URL)))
       .catch(() => CONTACT_CHANGE_FAILED)
-    setBusy(false)
     if (result.ok) {
+      // Every session just ended with the email change; this one signs back in.
+      if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})
+      setBusy(false)
       successHaptic()
       dismiss(onVerified)
       return
     }
+    setBusy(false)
     setError(failure(result))
     setCode('')
     inputRef.current?.focus()

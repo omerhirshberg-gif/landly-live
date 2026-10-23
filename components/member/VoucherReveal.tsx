@@ -49,7 +49,7 @@ function FlipCard({ id, flipped, front, back, className = '' }: { id?: string; f
 }
 
 /** A watermarked card until "Show QR Code"; it turns over to the scannable code, black on white. */
-export function QrReveal({ voucherId }: { voucherId: string }) {
+export function QrReveal({ redeemKey }: { redeemKey: string }) {
   const { t } = useLang()
   const regionId = useId()
   const frontButton = useRef<HTMLButtonElement>(null)
@@ -82,7 +82,7 @@ export function QrReveal({ voucherId }: { voucherId: string }) {
         }
         back={
           <div className={`${FACE} h-full min-h-[360px] bg-white`}>
-            {revealed && <VoucherQRCode voucherId={voucherId} size={224} />}
+            {revealed && <VoucherQRCode redeemKey={redeemKey} size={224} />}
             <p className="mt-3 text-xs text-slate-500">{t('voucher_qr_label')}</p>
             <button
               ref={backButton}

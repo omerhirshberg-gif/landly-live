@@ -66,7 +66,7 @@ describe('order confirmation (web)', () => {
 
 describe('voucher flip cards (web)', () => {
   it('starts on the front: the back is inert and holds neither the QR nor the code', () => {
-    const qr = render('en', createElement(QrReveal, { voucherId: 'user_offer' }))
+    const qr = render('en', createElement(QrReveal, { redeemKey: 'user_offer' }))
     expect(qr).toContain('class="flip-card ')
     expect(qr).toContain('Tap to reveal at the counter')
     expect(qr).toMatch(/flip-face flip-face-back" inert=""/)
@@ -85,7 +85,7 @@ describe('voucher flip cards (web)', () => {
     expect(css).toContain('-webkit-backface-visibility:hidden')
     expect(css).toContain('[dir="rtl"] .flip-card.is-flipped .flip-card-inner{ transform:rotateY(-180deg); }')
     expect(css).toMatch(/prefers-reduced-motion: reduce\)\{\s*\.flip-card-inner/)
-    expect(render('he', createElement(QrReveal, { voucherId: 'v' }))).toContain('לחצו לחשיפת קוד ה-QR בקופה')
+    expect(render('he', createElement(QrReveal, { redeemKey: 'v' }))).toContain('לחצו לחשיפת קוד ה-QR בקופה')
   })
 })
 

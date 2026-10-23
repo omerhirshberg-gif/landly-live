@@ -1,5 +1,6 @@
 import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from './config'
+import { recheckSessionIfDenied } from './sessionCheck'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
@@ -69,7 +70,10 @@ export function subscribeToOrder(orderId: string, onChange: (order: OrderDocumen
     // A nonexistent orderId and someone else's order both deny-by-rule the
     // same way (permission-denied) — either way there's nothing to show but
     // "not found," so treat this identically to the doc not existing.
-    () => onChange(null)
+    (error) => {
+      recheckSessionIfDenied(error)
+      onChange(null)
+    }
   )
 }
 

@@ -5,8 +5,12 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 import type { TranslationKey } from '@/lib/i18n/translations'
 
+// `id` is an opaque reference (never the voucher id, which names the
+// customer); `orderNumber` is the "#1001" the member sees too, null for
+// vouchers from before numbering.
 interface BusinessVoucher {
   id: string
+  orderNumber: string | null
   offerTitle: string
   takenAt: string | null
   redeemedAt: string | null
@@ -87,7 +91,7 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
               {vouchers.map((voucher) => (
                 <tr key={voucher.id} className="border-b border-white/5 last:border-0">
                   <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
-                    {shortId(voucher.id)}
+                    {voucher.orderNumber ?? shortId(voucher.id)}
                   </td>
                   <td className="px-4 py-3 text-white font-semibold">{voucher.offerTitle}</td>
                   <td className="px-4 py-3 text-slate-400" dir="ltr">

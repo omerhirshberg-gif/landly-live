@@ -80,7 +80,7 @@ function useFlip() {
 }
 
 /** A watermarked card until "Show QR Code"; it turns over to the scannable code, black on white. */
-export function QrReveal({ voucherId }: { voucherId: string }) {
+export function QrReveal({ redeemKey }: { redeemKey: string }) {
   const { t } = useLang()
   const { shown, revealed, toggle } = useFlip()
   return (
@@ -99,7 +99,7 @@ export function QrReveal({ voucherId }: { voucherId: string }) {
         }
         back={
           <View style={styles.faceBody}>
-            {revealed && <VoucherQRCode voucherId={voucherId} size={208} />}
+            {revealed && <VoucherQRCode redeemKey={redeemKey} size={208} />}
             <AppText style={styles.hint}>{t('voucher_qr_label')}</AppText>
             <RevealButton icon="close" label={t('voucher_hide_qr')} expanded onPress={toggle} />
           </View>

@@ -29,6 +29,7 @@ const voucher = (id: string, offerId: string, redeemedAt: Date | null = new Date
   businessName: 'Cafe Nadi',
   offerTitle: 'Two coffees',
   redemptionCode: 'ABC123',
+  redeemToken: null,
   status: 'redeemed' as const,
   takenAt: null,
   redeemedAt,

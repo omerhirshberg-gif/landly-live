@@ -8,9 +8,9 @@ import { voucherRedeemUrl } from '@shared/firebase/vouchers'
 // pure JS, so the code is computed on-device and nothing is stored.
 const MARGIN = 1
 
-export default function VoucherQRCode({ voucherId, size = 180 }: { voucherId: string; size?: number }) {
+export default function VoucherQRCode({ redeemKey, size = 180 }: { redeemKey: string; size?: number }) {
   const { path, dimension } = useMemo(() => {
-    const { modules } = QRCode.create(voucherRedeemUrl(voucherId), {})
+    const { modules } = QRCode.create(voucherRedeemUrl(redeemKey), {})
     let d = ''
     for (let row = 0; row < modules.size; row++) {
       for (let col = 0; col < modules.size; col++) {
@@ -18,7 +18,7 @@ export default function VoucherQRCode({ voucherId, size = 180 }: { voucherId: st
       }
     }
     return { path: d, dimension: modules.size + MARGIN * 2 }
-  }, [voucherId])
+  }, [redeemKey])
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${dimension} ${dimension}`} accessibilityLabel="QR code">

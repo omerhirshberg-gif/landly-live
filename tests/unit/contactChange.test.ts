@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   getUserByEmail: vi.fn(),
   updateUser: vi.fn(),
+  revokeRefreshTokens: vi.fn(),
+  createCustomToken: vi.fn(),
   send: vi.fn(),
   after: vi.fn(),
   updateSubscriberEmail: vi.fn(),
@@ -21,7 +23,10 @@ vi.mock('@/lib/responder/updateSubscriberEmail', () => ({ updateSubscriberEmail:
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
 vi.mock('@/lib/firebase/admin', () => ({
   getAdminDb: () => mocks.store.db,
-  getAdminAuth: () => ({ getUser: mocks.getUser, getUserByEmail: mocks.getUserByEmail, updateUser: mocks.updateUser }),
+  getAdminAuth: () => ({
+    getUser: mocks.getUser, getUserByEmail: mocks.getUserByEmail, updateUser: mocks.updateUser,
+    revokeRefreshTokens: mocks.revokeRefreshTokens, createCustomToken: mocks.createCustomToken,
+  }),
 }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({
   requireCustomer: mocks.token,
@@ -54,6 +59,7 @@ import {
 import { translations } from '@/lib/i18n/translations'
 
 const UID = 'member-1'
+const REVOKED_AT = 'Fri, 23 Oct 2026 10:00:05 GMT'
 const nowSeconds = () => Math.floor(Date.now() / 1000)
 
 function post(body: unknown) {
@@ -75,7 +81,9 @@ beforeEach(() => {
   mocks.store = new MemoryFirestore()
   mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', phone: '+972501234567' })
   mocks.token.mockResolvedValue({ uid: UID, auth_time: nowSeconds(), firebase: { sign_in_provider: 'password' } })
-  mocks.getUser.mockResolvedValue({ email: 'old@landly.test', providerData: [{ providerId: 'password' }] })
+  mocks.getUser.mockResolvedValue({ email: 'old@landly.test', providerData: [{ providerId: 'password' }], tokensValidAfterTime: REVOKED_AT })
+  mocks.revokeRefreshTokens.mockResolvedValue(undefined)
+  mocks.createCustomToken.mockResolvedValue('fresh-custom-token')
   mocks.getUserByEmail.mockRejectedValue(Object.assign(new Error('none'), { code: 'auth/user-not-found' }))
   mocks.updateUser.mockResolvedValue({})
   mocks.send.mockResolvedValue({ error: null })
@@ -341,7 +349,7 @@ describe('/api/account/verify-email-otp', () => {
   it('applies the change in Auth and Firestore once, then alerts the previous address', async () => {
     const code = await startChange()
     const res = await verify(code)
-    expect(await res.json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(await res.json()).toEqual({ ok: true, email: 'new@landly.test', customToken: 'fresh-custom-token' })
     expect(mocks.updateUser).toHaveBeenCalledWith(UID, { email: 'new@landly.test', emailVerified: true })
     const user = mocks.store.read(`users/${UID}`)!
     expect(user.email).toBe('new@landly.test')
@@ -360,10 +368,37 @@ describe('/api/account/verify-email-otp', () => {
     expect(mocks.updateUser).toHaveBeenCalledTimes(1)
   })
 
+  it('ends every session, Firestore included, and hands this device a token to sign back in', async () => {
+    const res = await verify(await startChange())
+    expect((await res.json()).customToken).toBe('fresh-custom-token')
+    expect(mocks.revokeRefreshTokens).toHaveBeenCalledWith(UID)
+    expect(mocks.createCustomToken).toHaveBeenCalledWith(UID)
+    // The cutoff the rules compare auth_time with is Auth's own, to the second.
+    const stamp = mocks.store.read(`users/${UID}`)!.sessionsValidAfter as Timestamp
+    expect(stamp.toMillis()).toBe(Date.parse(REVOKED_AT))
+    expect(mocks.revokeRefreshTokens.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.updateUser.mock.invocationCallOrder[0])
+  })
+
+  it('still applies the change when the sessions cannot be ended, without a token', async () => {
+    mocks.revokeRefreshTokens.mockRejectedValueOnce(new Error('auth down'))
+    const res = await verify(await startChange())
+    expect(await res.json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(mocks.store.read(`users/${UID}`)!.email).toBe('new@landly.test')
+    expect(mocks.createCustomToken).not.toHaveBeenCalled()
+  })
+
+  it('never ends sessions when the code does not apply', async () => {
+    await startChange()
+    await verify('000000').catch(() => {})
+    await verify('111111').catch(() => {})
+    expect(mocks.revokeRefreshTokens).not.toHaveBeenCalled()
+    expect(mocks.createCustomToken).not.toHaveBeenCalled()
+  })
+
   it('carries the new address to Responder in the background for a member who opted in', async () => {
     mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', firstName: 'Dana', marketingOptIn: true })
     const code = await startChange()
-    expect(await (await verify(code)).json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(await (await verify(code)).json()).toEqual({ ok: true, email: 'new@landly.test', customToken: 'fresh-custom-token' })
     expect(mocks.after).toHaveBeenCalledTimes(1)
     expect(mocks.updateSubscriberEmail).toHaveBeenCalledWith({ uid: UID, oldEmail: 'old@landly.test', newEmail: 'new@landly.test', firstName: 'Dana' })
   })
@@ -378,7 +413,7 @@ describe('/api/account/verify-email-otp', () => {
   it('does not wait on Responder: a hung sync still verifies', async () => {
     mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', marketingOptIn: true })
     mocks.updateSubscriberEmail.mockReturnValueOnce(new Promise(() => {}))
-    expect(await (await verify(await startChange())).json()).toEqual({ ok: true, email: 'new@landly.test' })
+    expect(await (await verify(await startChange())).json()).toEqual({ ok: true, email: 'new@landly.test', customToken: 'fresh-custom-token' })
     expect(mocks.updateSubscriberEmail).toHaveBeenCalledWith(expect.objectContaining({ firstName: '' }))
   })
 

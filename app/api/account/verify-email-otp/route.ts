@@ -5,6 +5,7 @@ import { CLEAR_PENDING_EMAIL, customerOrReply, logContactFailure, preflight, rep
 import { isOtpCode } from '@/lib/auth/otp'
 import { OTP_MAX_ATTEMPTS, otpMatches } from '@/lib/auth/phoneVerification'
 import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
+import { revokeMemberSessions } from '@/lib/auth/sessionRevocation'
 import { sendEmailChangedAlert } from '@/lib/email/sendEmailChangeEmail'
 import type { Lang } from '@/lib/i18n/translations'
 import { updateSubscriberEmail } from '@/lib/responder/updateSubscriberEmail'
@@ -18,7 +19,8 @@ import { updateSubscriberEmail } from '@/lib/responder/updateSubscriberEmail'
 // Firebase Auth (marked verified: the code proved the inbox) and in
 // users/{uid}, the pending fields are cleared -- the profile's amber notice
 // disappears on every device through its live listener -- and the previous
-// address gets a security notice. A member who opted into marketing has the
+// address gets a security notice. Every session then ends, and this device
+// gets a custom token to sign straight back in. A member who opted into marketing has the
 // new address carried over to the Responder list in the background
 // (lib/responder/updateSubscriberEmail).
 export function OPTIONS(request: Request) {
@@ -133,5 +135,18 @@ export async function POST(request: Request) {
       logContactFailure('verify-email-otp', 'alert', uid, err)
     }
   }
-  return reply({ ok: true, email: newEmail })
+
+  // The account's email moved, so every other session ends (Auth and
+  // Firestore alike, lib/auth/sessionRevocation.ts). This device keeps going
+  // with a fresh one: it signs in with the custom token (finishEmailChange in
+  // lib/account/contactChange.ts). Neither step undoes the change; without a
+  // token the device is simply signed out at its next token refresh.
+  let customToken: string | undefined
+  try {
+    await revokeMemberSessions(uid)
+    customToken = await adminAuth.createCustomToken(uid)
+  } catch (err) {
+    logContactFailure('verify-email-otp', 'revoke', uid, err)
+  }
+  return reply({ ok: true, email: newEmail, ...(customToken ? { customToken } : {}) })
 }

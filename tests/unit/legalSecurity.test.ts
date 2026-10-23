@@ -104,7 +104,7 @@ describe('legal text matches the code', () => {
   it('gives partner businesses only the voucher reference, offer and dates', () => {
     const route = read('app/api/business/vouchers/route.ts')
     const shape = route.match(/return \{\n([\s\S]*?)\n\s*\}\n\s*\}\)/)![1]
-    expect([...shape.matchAll(/^\s*(\w+):/gm)].map((m) => m[1])).toEqual(['id', 'offerTitle', 'takenAt', 'redeemedAt'])
+    expect([...shape.matchAll(/^\s*(\w+):/gm)].map((m) => m[1])).toEqual(['id', 'orderNumber', 'offerTitle', 'takenAt', 'redeemedAt'])
     expect(tr('en', 'pp_partners_p1')).toContain("the voucher's reference, the offer and the dates it was claimed and redeemed")
   })
 

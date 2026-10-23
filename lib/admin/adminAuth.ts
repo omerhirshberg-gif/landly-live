@@ -2,52 +2,29 @@ import 'server-only'
 import { clientIp } from '@/lib/auth/clientIp'
 import { NextResponse } from 'next/server'
 import { isAdminPassword } from './checkAdminPassword'
+import { releaseAdminLoginAttempt, reserveAdminLoginAttempt } from '@/lib/auth/adminLoginThrottle'
 import { verifyAdminSessionToken } from './sessionToken'
 
-// Two independent, in-memory-per-process throttles (both reset on cold
-// start/restart and aren't shared across instances -- a floor, not a
-// ceiling; a durable store or platform-level rate limiting would be the
-// real fix if this ever needs to hold up against a distributed attempt):
+// Two independent throttles:
 //
 //  - the login-attempt limiter guards password guessing on
 //    /api/admin/verify-password specifically -- ADMIN_PASSWORD is a
-//    human-typed, guessable secret.
+//    human-typed, guessable secret. It lives in Firestore
+//    (lib/auth/adminLoginThrottle.ts), per IP and across all IPs, so neither a cold
+//    start nor another serverless instance resets it.
 //  - the generic request limiter guards every /api/admin/* call, including
-//    verify-password, against flooding/log-spam. It does NOT gate session-
-//    token verification on the other 6 routes: a token is a 256-bit
-//    HMAC-signed value, not guessable by repeated submission, and every
-//    legitimate session naturally produces expired-token 401s in normal
-//    use (the next click after the token's 12h expiry, a stale background
-//    tab) -- counting those against a brute-force budget would risk
-//    locking out a real admin for ordinary use while adding no real
-//    protection against guessing.
-const LOGIN_WINDOW_MS = 15 * 60 * 1000
-const LOGIN_MAX_ATTEMPTS = 10
-const loginAttempts = new Map<string, { count: number; resetAt: number }>()
-
+//    verify-password, against flooding/log-spam. It's in memory per process
+//    (reset on cold start, not shared between instances -- a floor, not a
+//    ceiling). It does NOT gate session-token verification on the other
+//    routes: a token is a 256-bit HMAC-signed value, not guessable by
+//    repeated submission, and every legitimate session naturally produces
+//    expired-token 401s in normal use (the next click after the token's 12h
+//    expiry, a stale background tab) -- counting those against a
+//    brute-force budget would risk locking out a real admin for ordinary
+//    use while adding no real protection against guessing.
 const REQUEST_WINDOW_MS = 60 * 1000
 const REQUEST_MAX = 60
 const requestCounts = new Map<string, { count: number; resetAt: number }>()
-
-function isLoginRateLimited(ip: string): boolean {
-  const entry = loginAttempts.get(ip)
-  if (!entry || Date.now() > entry.resetAt) return false
-  return entry.count >= LOGIN_MAX_ATTEMPTS
-}
-
-function recordLoginAttempt(ip: string, success: boolean): void {
-  if (success) {
-    loginAttempts.delete(ip)
-    return
-  }
-  const now = Date.now()
-  const entry = loginAttempts.get(ip)
-  if (!entry || now > entry.resetAt) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS })
-  } else {
-    entry.count += 1
-  }
-}
 
 function isOverRequestLimit(ip: string): boolean {
   const now = Date.now()
@@ -82,13 +59,23 @@ export function requireAdminAuth(request: Request): NextResponse | null {
 }
 
 // For /api/admin/verify-password: the actual login attempt, gated by both
-// the generic flood guard and the password-guessing throttle.
-export function checkAdminPasswordWithRateLimit(request: Request, password: string | null): NextResponse | null {
+// the generic flood guard and the password-guessing throttle. The attempt is
+// counted before the password is compared; an unreachable throttle refuses
+// the login rather than letting guesses through uncounted.
+export async function checkAdminPasswordWithRateLimit(request: Request, password: string | null): Promise<NextResponse | null> {
   const ip = clientIp(request)
   if (isOverRequestLimit(ip)) return tooManyRequests()
-  if (isLoginRateLimited(ip)) return tooManyAttempts()
 
-  const ok = isAdminPassword(password)
-  recordLoginAttempt(ip, ok)
-  return ok ? null : NextResponse.json({ ok: false }, { status: 401 })
+  let allowed: boolean
+  try {
+    allowed = await reserveAdminLoginAttempt(ip)
+  } catch (err) {
+    console.error('admin login throttle unavailable', (err as { code?: unknown })?.code ?? 'unknown')
+    return NextResponse.json({ error: 'Service unavailable. Try again later.' }, { status: 503 })
+  }
+  if (!allowed) return tooManyAttempts()
+
+  if (!isAdminPassword(password)) return NextResponse.json({ ok: false }, { status: 401 })
+  await releaseAdminLoginAttempt(ip).catch((err) => console.error('admin login throttle release failed', (err as { code?: unknown })?.code ?? 'unknown'))
+  return null
 }

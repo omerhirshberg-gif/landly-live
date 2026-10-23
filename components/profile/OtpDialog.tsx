@@ -6,12 +6,14 @@ import type { User } from 'firebase/auth'
 import {
   CONTACT_CHANGE_FAILED,
   contactChangeErrorKey,
+  finishEmailChange,
   requestPhoneChange,
   resendEmailChange,
   verifyEmailCode,
   verifyPhoneCode,
   type ContactChangeFailure,
 } from '@/lib/account/contactChange'
+import { auth } from '@/lib/firebase/config'
 import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@/lib/auth/otp'
 import { useResendCountdown } from '@/lib/auth/useResendCountdown'
 import { useLang } from '@/lib/i18n/useLang'
@@ -87,11 +89,14 @@ export default function OtpDialog({
     const result = !idToken
       ? CONTACT_CHANGE_FAILED
       : await (isEmail ? verifyEmailCode(idToken, value) : verifyPhoneCode(idToken, value)).catch(() => CONTACT_CHANGE_FAILED)
-    setBusy(false)
     if (result.ok) {
+      // Every session just ended with the email change; this one signs back in.
+      if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})
+      setBusy(false)
       onVerified()
       return
     }
+    setBusy(false)
     setError(failure(result))
     setCode('')
     inputRef.current?.focus()

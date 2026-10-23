@@ -2,9 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FirebaseError } from 'firebase/app'
 import { clientIp } from '@/lib/auth/clientIp'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import { MemoryFirestore } from '../helpers/memoryFirestore'
+
+// The admin login throttle lives in Firestore (lib/auth/adminLoginThrottle.ts).
+const store = vi.hoisted(() => ({ current: null as unknown as MemoryFirestore }))
+vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => store.current.db }))
 
 const request = (headers: Record<string, string> = {}) => new Request('https://test.invalid', { headers })
-beforeEach(() => { vi.resetModules(); vi.stubEnv('VERCEL', '1'); vi.useFakeTimers() })
+beforeEach(() => { vi.resetModules(); vi.stubEnv('VERCEL', '1'); vi.useFakeTimers(); store.current = new MemoryFirestore() })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
 
 describe('trusted ingress IP', () => {
@@ -32,7 +37,7 @@ it('rotating spoofed headers cannot bypass any IP limiter', async () => {
     const req = request({ 'x-forwarded-for': `192.0.2.${i}` })
     expect(isPasswordResetRateLimited(req)).toBe(i >= 5)
     expect(isVerificationIpRateLimited(req)).toBe(i >= 10)
-    expect(checkAdminPasswordWithRateLimit(req, null)?.status).toBe(i >= 10 ? 429 : 401)
+    expect((await checkAdminPasswordWithRateLimit(req, null))?.status).toBe(i >= 10 ? 429 : 401)
   }
 })
 
