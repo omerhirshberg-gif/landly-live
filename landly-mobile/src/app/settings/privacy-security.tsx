@@ -59,7 +59,8 @@ export default function PrivacySecurityScreen() {
 }
 
 // "Unlock with Face ID" (or Touch ID / fingerprint, whatever the device has):
-// a switch that turns on only after a successful biometric check, and asks
+// on by default once biometrics are set up; the switch turns it on only
+// after a successful biometric check, and asks
 // again to turn off, so someone holding an unlocked phone can't quietly
 // remove it. Hidden without biometric hardware; with hardware but nothing
 // enrolled, the switch is disabled and the note links to the device settings

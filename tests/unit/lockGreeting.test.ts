@@ -10,8 +10,6 @@ vi.mock('../../landly-mobile/node_modules/expo-secure-store', () => ({ WHEN_UNLO
 vi.mock('../../landly-mobile/node_modules/expo-local-authentication', () => ({ AuthenticationType: { FINGERPRINT: 1, FACIAL_RECOGNITION: 2, IRIS: 3 } }))
 
 const LANGS = Object.keys(translations) as (keyof typeof translations)[]
-const t = (key: 'applock_today' | 'applock_yesterday') => translations.en[key]
-
 describe('time-of-day greeting', () => {
   it.each([
     [4, 'night'],
@@ -47,9 +45,10 @@ describe('time-of-day greeting', () => {
     // "Good night" / "Bonne nuit" read as goodbyes, so English and French say good evening at night.
     expect(translations.en.greet_night).toBe('Good evening, {name}')
     expect(translations.fr.greet_night).toBe('Bonsoir, {name}')
-    expect(translations.he.applock_unlockBtn).toBe('כניסה עם {method}')
-    expect(translations.he.applock_lockedSub).toBe('התחברו באמצעות {method} כדי להמשיך')
-    expect(translations.he.applock_passwordInstead).toBe('התחברות באמצעות סיסמה')
+    expect(translations.he.applock_unlock).toBe('כניסה')
+    expect(translations.en.applock_unlock).toBe('Unlock')
+    expect(translations.he.applock_passwordInstead).toBe('כניסה באמצעות סיסמה')
+    expect(translations.en.applock_passwordInstead).toBe('Sign in with password instead')
     expect(translations.he.applock_lastEntry).toBe('כניסה אחרונה: {time}')
   })
 
@@ -57,10 +56,8 @@ describe('time-of-day greeting', () => {
     const keys = [
       ...(['morning', 'afternoon', 'evening', 'night'] as const).flatMap((p) => [`greet_${p}`, `greet_${p}_noName`] as const),
       'applock_lastEntry',
-      'applock_today',
-      'applock_yesterday',
-      'applock_unlockBtn',
-      'applock_lockedSub',
+      'applock_unlock',
+      'applock_passwordInstead',
       'applock_glyphLabel',
     ] as const
     for (const lang of LANGS) {
@@ -74,33 +71,19 @@ describe('time-of-day greeting', () => {
 })
 
 describe('"Last sign-in"', () => {
-  const now = new Date(2026, 9, 22, 15, 30)
+  const at = new Date(2026, 9, 23, 17, 36)
 
-  it('says Today or Yesterday with the time, in the device clock style', () => {
-    expect(formatLastEntry(new Date(2026, 9, 22, 9, 41), now, 'en', t, false)).toBe('Today, 09:41')
-    expect(formatLastEntry(new Date(2026, 9, 21, 21, 10), now, 'en', t, false)).toBe('Yesterday, 21:10')
-    expect(formatLastEntry(new Date(2026, 9, 22, 9, 41), now, 'en', t, true)).toMatch(/^Today, 9:41\sAM$/)
+  it('shows the numeric date and the time in the member language', () => {
+    expect(formatLastEntry(at, 'he', false)).toBe('23.10.2026 17:36')
+    expect(formatLastEntry(at, 'en', false)).toBe('10/23/2026 17:36')
+    expect(formatLastEntry(at, 'fr', false)).toBe('23/10/2026 17:36')
+    expect(translations.he.applock_lastEntry.replace('{time}', formatLastEntry(at, 'he', false))).toBe('כניסה אחרונה: 23.10.2026 17:36')
   })
 
-  it('counts calendar days, not 24-hour spans', () => {
-    // 23:59 the day before is "Yesterday", even though it's only 15h ago.
-    expect(formatLastEntry(new Date(2026, 9, 21, 23, 59), now, 'en', t, false)).toBe('Yesterday, 23:59')
-    // 00:01 today is "Today".
-    expect(formatLastEntry(new Date(2026, 9, 22, 0, 1), now, 'en', t, false)).toBe('Today, 00:01')
-  })
-
-  it('shows a short date for older entries, with the year only when it differs', () => {
-    const older = formatLastEntry(new Date(2026, 9, 18, 14, 5), now, 'en', t, false)
-    expect(older).toMatch(/Oct/)
-    expect(older).toMatch(/18/)
-    expect(older).toMatch(/14:05/)
-    expect(older).not.toMatch(/2026/)
-    expect(formatLastEntry(new Date(2025, 11, 31, 8, 0), now, 'en', t, false)).toMatch(/2025/)
-  })
-
-  it('formats in the member language', () => {
-    const he = (key: 'applock_today' | 'applock_yesterday') => translations.he[key]
-    expect(formatLastEntry(new Date(2026, 9, 22, 9, 41), now, 'he', he, false)).toBe('היום, 09:41')
+  it('follows the device clock: a leading zero in 24-hour time, AM/PM in 12-hour time', () => {
+    expect(formatLastEntry(new Date(2026, 9, 23, 9, 5), 'en', false)).toBe('10/23/2026 09:05')
+    expect(formatLastEntry(new Date(2026, 9, 23, 0, 1), 'en')).toBe('10/23/2026 00:01')
+    expect(formatLastEntry(at, 'en', true)).toMatch(/^10\/23\/2026 5:36\sPM$/)
   })
 
   it('prefers the entry stored on this device, then Firebase, then nothing', () => {
@@ -112,11 +95,14 @@ describe('"Last sign-in"', () => {
 })
 
 describe('lock screen wiring', () => {
-  it('records each unlock and each sign-in here as the last entry, without showing it on the lock screen', async () => {
+  it('records each unlock and each sign-in here as the last entry, and shows the one before the lock', async () => {
     const src = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
     expect(src).toContain('if (uid) recordLastEntry(uid)')
-    expect(src).toContain('if (!launchSession) recordLastEntry(uid)')
-    expect(src).not.toContain('applock_lastEntry')
+    expect(src).toContain('if (!launchSession || !on || !lastEntry) recordLastEntry(uid)')
+    // Read when the lock engages, before the unlock records a new one.
+    expect(src).toMatch(/if \(!locked \|\| !uid \|\| !APP_LOCK_SUPPORTED\) return\s*let cancelled = false\s*getLastEntry\(uid\)/)
+    expect(src).toContain('const lastAt = resolveLastEntry(lastEntry, user?.metadata.lastSignInTime)')
+    expect(src).toContain("t('applock_lastEntry')")
     expect(src).toContain('exiting={FadeOut.duration(200)}')
   })
 
@@ -142,6 +128,38 @@ describe('lock screen wiring', () => {
     expect(overlay).not.toContain('useEffect')
     expect(overlay).toContain('onPress={unlock}')
     expect(overlay).toContain('onPress={unlockTapped}')
+  })
+
+  it('plays the whole splash intro above the lock screen and the privacy cover', async () => {
+    const splash = await readFile('landly-mobile/src/components/SplashScreen.tsx', 'utf8')
+    const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
+    const splashZ = Number(splash.match(/export const SPLASH_Z = (\d+)/)?.[1])
+    const lockZ = [...lock.matchAll(/zIndex: (\d+)/g)].map((m) => Number(m[1]))
+    expect(lockZ.length).toBeGreaterThanOrEqual(2)
+    for (const z of lockZ) expect(splashZ).toBeGreaterThan(z)
+    expect(splash).toContain('zIndex: SPLASH_Z,\n    elevation: SPLASH_Z,')
+    // The hand-over waits for both the app and the full intro (star, arrow, wordmark, shine).
+    expect(splash).toContain('if (!ready || !introDone || started.current) return')
+    const { T } = await import('@/lib/brand/entranceTimeline')
+    expect(T.shine + T.shineMs).toBeGreaterThanOrEqual(1800)
+  })
+
+  it('breathes the glyph only while waiting, and keeps it still with reduced motion', async () => {
+    const glyph = await readFile('landly-mobile/src/components/BiometricGlyph.tsx', 'utf8')
+    expect(glyph).toContain('if (!pulsing && !reduced) {')
+    expect(glyph).toContain('const TILE = 84')
+  })
+
+  it('lays the lock screen out open, top to bottom: brand, glyph, greeting, last sign-in, actions', async () => {
+    const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
+    const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'))
+    const order = ['<StaticEmblem />', '<Wordmark', '<BiometricGlyph', '{greeting}', '{lastLine', "t('applock_unlock')", "t('applock_passwordInstead')"]
+    const at = order.map((part) => overlay.indexOf(part))
+    expect(at.every((i) => i > -1)).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
+    // No card, no reassurance row; the emblem is about 1.6x the old 52pt mark.
+    expect(overlay).not.toMatch(/styles\.card|protectedWith|name="shield"/)
+    expect(overlay).toContain('const MARK_W = 82')
   })
 
   it('gives the unlock button an exact 50px height', async () => {
@@ -180,22 +198,18 @@ describe('biometric kind', () => {
   it('shows the Face ID glyph only for a face, the fingerprint glyph otherwise', async () => {
     const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
     const glyph = await readFile('landly-mobile/src/components/BiometricGlyph.tsx', 'utf8')
-    for (const src of [lock, glyph]) {
-      expect(src).toContain("const face = kind === 'faceId' || kind === 'face'")
-      expect(src).toContain("face ? 'faceId' : 'fingerprint'")
-    }
+    expect(glyph).toContain("const face = kind === 'faceId' || kind === 'face'")
+    expect(glyph).toContain("face ? 'faceId' : 'fingerprint'")
+    expect(lock).toContain('<BiometricGlyph kind={kind}')
+    // The button says only "Unlock", so it never names the wrong method.
+    expect(lock).not.toContain("icon={face ? 'faceId' : 'fingerprint'}")
   })
 
-  it('words the lock screen for the detected method in every language', () => {
-    const lockScreen = (lang: (typeof LANGS)[number], kind: 'touchId' | 'fingerprint') => {
-      const method = translations[lang][`applock_method_${kind}`]
-      return [translations[lang].applock_lockedSub, translations[lang].applock_unlockBtn].map((s) => s.replace('{method}', method))
-    }
-    expect(lockScreen('he', 'fingerprint')).toEqual(['התחברו באמצעות טביעת אצבע כדי להמשיך', 'כניסה עם טביעת אצבע'])
-    expect(lockScreen('en', 'fingerprint')).toEqual(['Unlock with fingerprint to continue', 'Unlock with fingerprint'])
-    expect(lockScreen('en', 'touchId')).toEqual(['Unlock with Touch ID to continue', 'Unlock with Touch ID'])
-    for (const lang of LANGS) {
-      for (const line of lockScreen(lang, 'fingerprint')) expect(line, lang).not.toMatch(/Face ID|\{method\}/)
-    }
+  it('names the detected method for screen readers in every language, never Face ID on a fingerprint device', () => {
+    const glyphLabel = (lang: (typeof LANGS)[number], kind: 'touchId' | 'fingerprint') =>
+      translations[lang].applock_glyphLabel.replace('{method}', translations[lang][`applock_method_${kind}`])
+    expect(glyphLabel('he', 'fingerprint')).toBe('כניסה עם טביעת אצבע')
+    expect(glyphLabel('en', 'touchId')).toBe('Sign in with Touch ID')
+    for (const lang of LANGS) expect(glyphLabel(lang, 'fingerprint'), lang).not.toMatch(/Face ID|\{method\}/)
   })
 })

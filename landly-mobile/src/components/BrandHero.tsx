@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Platform, StyleSheet, Text, View } from 'react-native'
+import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,7 +26,8 @@ export const EMBLEM = { width: EMBLEM_W, height: Math.round((EMBLEM_W * EMBLEM_V
 // The emblem box is offset so the star's axis, not the box (whose right side
 // holds the arrow's reach), sits over the centre of the text, as in the master
 // logo. Rounded to a whole pixel.
-const EMBLEM_SHIFT = Math.round(((EMBLEM_VIEWBOX.width / 2 - EMBLEM_AXIS_X) * EMBLEM_W) / EMBLEM_VIEWBOX.width)
+export const emblemShift = (width: number) => Math.round(((EMBLEM_VIEWBOX.width / 2 - EMBLEM_AXIS_X) * width) / EMBLEM_VIEWBOX.width)
+const EMBLEM_SHIFT = emblemShift(EMBLEM_W)
 // Whole pixels throughout, so nothing lands on a half-pixel row.
 const WORDMARK = { width: 100, height: 28 }
 const WORDMARK_VB = `${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`
@@ -47,6 +48,15 @@ const EASE_IN_OUT = Easing.bezier(...CURVES.easeInOut)
 const GLOW = 200
 const GLOW_REST = 0.4
 const GLOW_TOTAL = T.shine + T.shineMs
+
+/** The vector "Landly" wordmark (also the lock screen's, under its emblem). */
+export function Wordmark({ width, height, style }: { width: number; height: number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <Svg viewBox={WORDMARK_VB} width={width} height={height} style={style}>
+      <Path d={WORDMARK_PATH} fill={WORDMARK_COLOR} />
+    </Svg>
+  )
+}
 
 // The staged intro's timings and curves live in lib/brand/entranceTimeline.ts,
 // shared with the web login page (components/auth/BrandHero.tsx) so both
@@ -160,9 +170,7 @@ export default function BrandHero({ intro = false, onIntroDone }: { intro?: bool
       </View>
 
       <Animated.View style={wordmarkStyle}>
-        <Svg viewBox={WORDMARK_VB} width={WORDMARK.width} height={WORDMARK.height} style={styles.wordmark}>
-          <Path d={WORDMARK_PATH} fill={WORDMARK_COLOR} />
-        </Svg>
+        <Wordmark width={WORDMARK.width} height={WORDMARK.height} style={styles.wordmark} />
       </Animated.View>
       <Animated.View style={sloganStyle}>
         <Text style={styles.slogan} allowFontScaling={false} numberOfLines={1}>

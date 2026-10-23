@@ -28,7 +28,7 @@ export default function DevEnvironmentBadge() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', end: 8, zIndex: 1000, elevation: 1000 },
+  wrap: { position: 'absolute', end: 8, zIndex: 1200, elevation: 1200 },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
