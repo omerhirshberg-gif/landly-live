@@ -20,6 +20,7 @@ const PULSE_EASE = cubicBezier(0.42, 0, 0.58, 1)
 // After auth resolves, how long to wait for the login screen to report its
 // hero. Signed-in users go to the tabs instead, so none arrives: fade out.
 const HERO_GRACE_MS = 300
+export const SPLASH_Z = 1100
 
 // Three dots breathing in sequence; reduced motion keeps them still.
 const PULSE = {
@@ -140,7 +141,10 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    // Above the lock screen and the privacy cover (zIndex 1000, AppLock.tsx),
+    // which can engage within the intro: the full sequence always plays.
+    zIndex: SPLASH_Z,
+    elevation: SPLASH_Z,
   },
   backdrop: {
     position: 'absolute',

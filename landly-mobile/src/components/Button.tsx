@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, type ViewStyle } fr
 import Animated, { cubicBezier } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
+import LineIcon, { type LineIconName } from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
 import { isWeb, webOnly } from '../lib/webStyles'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
@@ -21,6 +22,8 @@ export default function Button({
   variant = 'primary',
   large,
   arrow,
+  icon,
+  height,
 }: {
   label: string
   onPress: () => void
@@ -32,6 +35,10 @@ export default function Button({
   large?: boolean
   /** Trailing forward arrow; points the reading direction (flips in RTL). */
   arrow?: boolean
+  /** Leading glyph before the label (the lock screen's Face ID / fingerprint). */
+  icon?: LineIconName
+  /** An exact height instead of the 48/52 sizes (the lock screen's 50px unlock CTA). */
+  height?: number
 }) {
   const { isRtl } = useLang()
   const primary = variant === 'primary'
@@ -59,6 +66,7 @@ export default function Button({
         style={[
           styles.base,
           large && styles.large,
+          height != null && { minHeight: 0, height },
           primary ? styles.primary : danger ? styles.danger : styles.secondary,
           primary && large && !inactive && styles.primaryShadow,
           hovered && !inactive && (primary ? styles.primaryHovered : danger ? styles.dangerPressed : styles.secondaryHovered),
@@ -73,6 +81,7 @@ export default function Button({
         ]}
       >
         {busy && <ActivityIndicator color={filled ? colors.white : colors.brand} style={styles.spinner} />}
+        {icon && !busy && <LineIcon name={icon} size={20} color={filled ? colors.white : colors.brand} style={styles.icon} />}
         <AppText style={[styles.label, large && styles.largeLabel, { color: filled ? colors.white : colors.heading }]}>
           {label}
         </AppText>
@@ -130,6 +139,7 @@ const styles = StyleSheet.create({
   dangerPressed: { backgroundColor: colors.dangerPressed },
   disabled: { opacity: 0.7 },
   spinner: { marginEnd: 8 },
+  icon: { marginEnd: 10 },
   label: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
   largeLabel: { letterSpacing: 0.2 },
   arrow: { marginStart: 10 },

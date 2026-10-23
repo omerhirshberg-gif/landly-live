@@ -2,7 +2,7 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 
 // The app lock's welcome-back line (landly-mobile/src/auth/AppLock.tsx):
 // a time-of-day greeting by first name, and when the member last came in on
-// this device ("Today, 09:41"). Pure and dependency-free, so the website
+// this device ("23.10.2026 17:36"). Pure and dependency-free, so the website
 // can use it too and tests can pin the boundaries.
 
 export type GreetingPeriod = 'morning' | 'afternoon' | 'evening' | 'night'
@@ -34,36 +34,21 @@ export function resolveLastEntry(stored: string | null | undefined, firebaseLast
   return null
 }
 
-// Local midnights; rounding absorbs the hour a daylight-saving change adds or removes.
-const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-
 /**
- * "Today, 09:41", "Yesterday, 21:10", or a short date with the time
- * ("18 Oct, 14:05"; the year only when it isn't this year), in the
- * member's language. `hour12` follows the device's clock setting when known.
+ * The lock screen's "Last sign-in" stamp: the numeric date and the time in the
+ * member's language ("23.10.2026 17:36" in Hebrew, "10/23/2026 17:36" in
+ * English). `hour12` follows the device's clock setting when known.
  */
-export function formatLastEntry(
-  at: Date,
-  now: Date,
-  lang: string,
-  t: (key: 'applock_today' | 'applock_yesterday') => string,
-  hour12?: boolean
-): string {
-  // 24-hour times keep the leading zero (09:41); 12-hour ones don't (9:41 AM).
-  const timeOptions: Intl.DateTimeFormatOptions = {
-    hour: hour12 ? 'numeric' : '2-digit',
-    minute: '2-digit',
-    ...(hour12 === undefined ? {} : { hour12 }),
-  }
+export function formatLastEntry(at: Date, lang: string, hour12?: boolean): string {
   const format = (options: Intl.DateTimeFormatOptions) => {
     try {
       return new Intl.DateTimeFormat(lang, options).format(at)
     } catch {
-      return at.toISOString().slice(0, 16).replace('T', ' ')
+      return new Intl.DateTimeFormat('en', options).format(at)
     }
   }
-  const days = Math.round((midnight(now) - midnight(at)) / 86_400_000)
-  if (days === 0) return t('applock_today').replace('{time}', format(timeOptions))
-  if (days === 1) return t('applock_yesterday').replace('{time}', format(timeOptions))
-  return format({ day: 'numeric', month: 'short', ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }), ...timeOptions })
+  const date = format({ day: '2-digit', month: '2-digit', year: 'numeric' })
+  // 24-hour times keep the leading zero (09:41); 12-hour ones don't (9:41 AM).
+  const time = format(hour12 ? { hour: 'numeric', minute: '2-digit', hour12: true } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return `${date} ${time}`
 }
