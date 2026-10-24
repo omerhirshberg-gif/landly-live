@@ -1,4 +1,4 @@
-import { SUPPORT_EMAIL, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_DISPLAY } from '@/lib/config'
+import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL } from '@/lib/config'
 import { translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 
 // The privacy policy as plain data, in all five languages: the structure
@@ -49,7 +49,7 @@ export const PRIVACY_POLICY_UPDATED_ISO = '2026-10-23'
 
 const PLACEHOLDERS: Record<string, PolicyInline> = {
   email: { email: true },
-  phone: { link: SUPPORT_WHATSAPP_DISPLAY, href: SUPPORT_PHONE_TEL },
+  phone: { link: SUPPORT_PHONE_DISPLAY, href: SUPPORT_PHONE_TEL },
   site: { link: 'www.golandly.com', href: 'https://www.golandly.com' },
   googlePermissions: { link: 'myaccount.google.com/permissions', href: 'https://myaccount.google.com/permissions' },
 }

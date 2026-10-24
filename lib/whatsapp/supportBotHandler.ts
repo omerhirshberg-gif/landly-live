@@ -18,8 +18,10 @@ import type { InboundEvent } from './webhookPayload'
 // - whatsappConversations/{waId}: the matched member, language, when the menu
 //   was last sent, when the member asked for the team, and the last text.
 //
-// Outside production (and without WHATSAPP_OTP_LIVE=true) replies are only
-// logged, like the phone-change code.
+// Replies leave from the number the member wrote to (the event's
+// phoneNumberId), else WHATSAPP_PHONE_NUMBER_ID. Outside production (and
+// without WHATSAPP_OTP_LIVE=true) they are only logged, like the phone-change
+// code.
 
 const INBOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000
 /** Meta allows free-form replies for 24 hours after the member's message; older retries get none. */
@@ -82,14 +84,14 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   try {
     switch (decision.kind) {
       case 'menu':
-        await reply(event.waId, menuMessage(ctx))
+        await reply(event, menuMessage(ctx))
         update.lastMenuAt = Timestamp.fromMillis(now)
         break
       case 'link':
-        await reply(event.waId, linkMessage(decision.action, ctx))
+        await reply(event, linkMessage(decision.action, ctx))
         break
       case 'alreadyEscalated':
-        await reply(event.waId, textMessage(ctx.lang, 'wa_bot_team_already'))
+        await reply(event, textMessage(ctx.lang, 'wa_bot_team_already'))
         break
       case 'escalate': {
         const displayName = typeof member?.get('displayName') === 'string' && member.get('displayName') ? (member.get('displayName') as string) : event.name
@@ -99,11 +101,11 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         } catch (err) {
           // The team never heard: say so, and don't silence the bot.
           console.error(`[whatsapp-bot] team notification for ${maskPhone(`+${event.waId}`)} failed:`, err instanceof Error ? err.message : err)
-          await reply(event.waId, textMessage(ctx.lang, 'wa_bot_team_failed', SUPPORT_EMAIL))
+          await reply(event, textMessage(ctx.lang, 'wa_bot_team_failed', SUPPORT_EMAIL))
           break
         }
         update.escalatedAt = Timestamp.fromMillis(now)
-        await reply(event.waId, textMessage(ctx.lang, 'wa_bot_team_confirm'))
+        await reply(event, textMessage(ctx.lang, 'wa_bot_team_confirm'))
         break
       }
       case 'silent':
@@ -114,10 +116,12 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   }
 }
 
-async function reply(waId: string, message: WhatsAppMessage): Promise<void> {
-  if (!whatsappLive()) {
-    console.info(`[whatsapp-bot] simulated reply to ${maskPhone(`+${waId}`)}: ${JSON.stringify(message)}`)
+async function reply({ waId, phoneNumberId }: InboundEvent, message: WhatsAppMessage): Promise<void> {
+  const to = maskPhone(`+${waId}`)
+  if (!whatsappLive(phoneNumberId)) {
+    console.info(`[whatsapp-bot] simulated reply to ${to}: ${JSON.stringify(message)}`)
     return
   }
-  await sendWhatsAppMessage(waId, message)
+  await sendWhatsAppMessage(waId, message, phoneNumberId)
+  console.info(`[whatsapp-bot] sent ${message.type} reply to ${to} from ${phoneNumberId ?? 'WHATSAPP_PHONE_NUMBER_ID'}`)
 }

@@ -41,12 +41,12 @@ function view(lang: Lang, bubbleOpen: boolean, lift = 0) {
 describe('WhatsApp chat link', () => {
   it('opens the support line with the greeting pre-filled and URL-encoded', () => {
     expect(whatsappChatHref(translations.en.whatsapp_prefill)).toBe(
-      'https://wa.me/972557206711?text=Hi%20Landly%20team%2C%20I%20would%20like%20some%20assistance%20regarding%20perks%20and%20services%20on%20the%20website%20%3A)'
+      'https://wa.me/972552889033?text=Hi%20Landly%20team%2C%20I%20would%20like%20some%20assistance%20regarding%20perks%20and%20services%20on%20the%20website%20%3A)'
     )
     const he = new URL(whatsappChatHref(translations.he.whatsapp_prefill))
-    expect(he.origin + he.pathname).toBe('https://wa.me/972557206711')
+    expect(he.origin + he.pathname).toBe('https://wa.me/972552889033')
     expect(he.searchParams.get('text')).toBe('שלום צוות Landly, אשמח לעזרה בנוגע להטבות ולשירות באתר :)')
-    expect(whatsappChatHref('   ')).toBe('https://wa.me/972557206711')
+    expect(whatsappChatHref('   ')).toBe('https://wa.me/972552889033')
   })
 
   it('has the greeting and labels in every language', () => {

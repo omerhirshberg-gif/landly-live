@@ -1,7 +1,10 @@
 // What the support bot needs from Meta's webhook POST
 // (object: whatsapp_business_account → entry[] → changes[] → value), as a
-// flat list: one event per incoming message. Delivery statuses, other
-// fields and other numbers on the same business account are skipped.
+// flat list: one event per incoming message. Delivery statuses and other
+// fields are skipped. Messages to any number on the business account are
+// kept, each event naming the number it was sent to (the bot answers from
+// it), so a WHATSAPP_PHONE_NUMBER_ID that lags behind the registered line
+// costs nothing; the delivery is signed by our app, so the number is ours.
 
 export type BotAction = 'perks' | 'pass' | 'team'
 
@@ -16,6 +19,8 @@ interface InboundBase {
   name?: string
   /** When the member sent it, in ms. */
   at: number
+  /** The receiving number's ID (metadata.phone_number_id); replies leave from it. */
+  phoneNumberId?: string
 }
 
 export type InboundEvent =
@@ -30,8 +35,31 @@ const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 
 const MAX_TEXT = 2000
+const PHONE_NUMBER_ID = /^\d{1,32}$/
 
-export function parseWebhookPayload(body: unknown, phoneNumberId?: string): InboundEvent[] {
+/** metadata.phone_number_id of a change's value, when it's a well-formed ID (it goes into the Graph URL). */
+function receivingId(value: Raw): string | undefined {
+  const id = str(obj(value.metadata)?.phone_number_id)
+  return id && PHONE_NUMBER_ID.test(id) ? id : undefined
+}
+
+/** Every receiving number ID in a delivery, messages or not -- for the webhook's request log. */
+export function payloadPhoneNumberIds(body: unknown): string[] {
+  const root = obj(body)
+  if (root?.object !== 'whatsapp_business_account') return []
+  const ids = new Set<string>()
+  for (const entry of arr(root.entry)) {
+    for (const change of arr(obj(entry)?.changes)) {
+      const value = obj(obj(change)?.value)
+      const id = value && str(obj(value.metadata)?.phone_number_id)
+      if (id) ids.add(id.slice(0, 32))
+    }
+  }
+  return [...ids]
+}
+
+/** `configuredId` is WHATSAPP_PHONE_NUMBER_ID: a message to another number is still ingested, with a log line. */
+export function parseWebhookPayload(body: unknown, configuredId?: string): InboundEvent[] {
   const root = obj(body)
   if (root?.object !== 'whatsapp_business_account') return []
   const events: InboundEvent[] = []
@@ -40,7 +68,11 @@ export function parseWebhookPayload(body: unknown, phoneNumberId?: string): Inbo
       if (obj(change)?.field !== 'messages') continue
       const value = obj(obj(change)?.value)
       if (!value) continue
-      if (phoneNumberId && obj(value.metadata)?.phone_number_id !== phoneNumberId) continue
+      const incomingId = receivingId(value)
+      // Statuses for other numbers are routine; only messages are worth a line.
+      if (configuredId && incomingId !== configuredId && arr(value.messages).length) {
+        console.info(`[whatsapp-webhook] Ingesting message for phone ID: ${incomingId ?? 'missing'} (configured env: ${configuredId})`)
+      }
       const names = new Map<string, string>()
       for (const contact of arr(value.contacts)) {
         const waId = str(obj(contact)?.wa_id)
@@ -49,7 +81,7 @@ export function parseWebhookPayload(body: unknown, phoneNumberId?: string): Inbo
       }
       for (const raw of arr(value.messages)) {
         const event = parseMessage(obj(raw), names)
-        if (event) events.push(event)
+        if (event) events.push(incomingId ? { ...event, phoneNumberId: incomingId } : event)
       }
     }
   }
