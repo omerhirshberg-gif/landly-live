@@ -18,7 +18,8 @@ vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db }))
 
 import { GET, POST } from '@/app/api/webhooks/whatsapp/route'
 import { verifyMetaSignature, verifyTokenMatches } from '@/lib/whatsapp/signature'
-import { parseWebhookPayload, type InboundEvent } from '@/lib/whatsapp/webhookPayload'
+import { parseWebhookPayload, payloadPhoneNumberIds, type InboundEvent } from '@/lib/whatsapp/webhookPayload'
+import { graphVersion } from '@/lib/whatsapp/graph'
 import { botLanguage, BUTTON_TITLE_MAX, decide, ESCALATION_SILENCE_MS, linkMessage, MENU_THROTTLE_MS, menuMessage, type BotContext } from '@/lib/whatsapp/supportBot'
 import { handleInboundEvent } from '@/lib/whatsapp/supportBotHandler'
 import { escalationEmail } from '@/lib/whatsapp/escalation'
@@ -64,6 +65,10 @@ const verifyGet = (query: string) => new Request(`https://landly.test/api/webhoo
 
 /** Bodies the bot "sent", read back from the simulated-reply log. */
 let info: ReturnType<typeof vi.spyOn>
+let log: ReturnType<typeof vi.spyOn>
+let warn: ReturnType<typeof vi.spyOn>
+let error: ReturnType<typeof vi.spyOn>
+const lines = (spy: ReturnType<typeof vi.spyOn>) => (spy.mock.calls as unknown[][]).map(([line]) => String(line))
 const replies = () =>
   (info.mock.calls as unknown[][])
     .map(([line]) => String(line))
@@ -85,7 +90,9 @@ beforeEach(() => {
   vi.stubEnv('EMAIL_FROM', 'test@landly.test')
   vi.stubEnv('RESEND_API_KEY', 'fake-test-key')
   info = vi.spyOn(console, 'info').mockImplementation(() => {})
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  log = vi.spyOn(console, 'log').mockImplementation(() => {})
+  warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  error = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -148,6 +155,33 @@ describe('POST /api/webhooks/whatsapp', () => {
     const res = await POST(signedPost(payload([textMsg('wamid.1', 'hi')]), 'sha256=' + '0'.repeat(64)))
     expect(res.status).toBe(401)
     expect(mocks.tasks).toHaveLength(0)
+    expect(lines(error)).toEqual([expect.stringContaining('[whatsapp-webhook] Invalid signature')])
+  })
+
+  it('logs a delivery without a signature header before refusing it', async () => {
+    const res = await POST(new Request('https://landly.test/api/webhooks/whatsapp', { method: 'POST', body: '{}' }))
+    expect(res.status).toBe(401)
+    expect(lines(error)).toEqual(['[whatsapp-webhook] Delivery without an x-hub-signature-256 header'])
+  })
+
+  it('logs each delivery with its event count, receiving number and masked senders', async () => {
+    await POST(signedPost(payload([textMsg('wamid.1', 'היי')])))
+    expect(lines(log)).toEqual([`[whatsapp-webhook] Received 1 message event(s) for phone_number_id ${PHONE_ID} from +97 •••• 4567`])
+    expect(lines(log)[0]).not.toContain(WA_ID)
+  })
+
+  it('answers a message to another number on the account from that number, with a notice', async () => {
+    vi.stubEnv('WHATSAPP_OTP_LIVE', 'true')
+    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'token')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await POST(signedPost(payload([textMsg('wamid.1', 'menu')], { phoneNumberId: '1367683866451764' })))
+    expect(res.status).toBe(200)
+    await Promise.all(mocks.tasks)
+    expect(lines(info)).toContain(`[whatsapp-webhook] Ingesting message for phone ID: 1367683866451764 (configured env: ${PHONE_ID})`)
+    expect(lines(log)).toEqual(['[whatsapp-webhook] Received 1 message event(s) for phone_number_id 1367683866451764 from +97 •••• 4567'])
+    expect(fetchMock.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/1367683866451764/messages')
+    expect(warn).not.toHaveBeenCalled()
   })
 
   it('answers 200 and replies with the menu in after()', async () => {
@@ -186,10 +220,26 @@ describe('parseWebhookPayload', () => {
     expect(events.map((e) => e.kind)).toEqual(['text', 'button', 'other'])
     expect(events[0]).toMatchObject({ messageId: 'a', waId: WA_ID, name: 'Dana', text: 'hi' })
     expect(events[1]).toMatchObject({ action: 'pass' })
+    expect(events.every((e) => e.phoneNumberId === PHONE_ID)).toBe(true)
   })
 
-  it('skips other numbers, other objects, reactions and malformed senders', () => {
-    expect(parseWebhookPayload(payload([textMsg('a', 'hi')], { phoneNumberId: '999' }), PHONE_ID)).toEqual([])
+  it('keeps messages to every number on the account, each with its receiving number', () => {
+    expect(parseWebhookPayload(payload([textMsg('a', 'hi')], { phoneNumberId: '999' }), PHONE_ID)[0]).toMatchObject({ messageId: 'a', phoneNumberId: '999' })
+    expect(parseWebhookPayload(payload([textMsg('a', 'hi')], { phoneNumberId: '1367683866451764' }))[0].phoneNumberId).toBe('1367683866451764')
+    // A malformed id never reaches the Graph URL.
+    expect(parseWebhookPayload(payload([textMsg('a', 'hi')], { phoneNumberId: '../me' }))[0].phoneNumberId).toBeUndefined()
+    expect(payloadPhoneNumberIds(payload([], { phoneNumberId: '42' }))).toEqual(['42'])
+    expect(payloadPhoneNumberIds({ object: 'page' })).toEqual([])
+  })
+
+  it('stays quiet about statuses for the business account\'s other numbers', () => {
+    const body = payload([], { phoneNumberId: '999' })
+    ;(body.entry[0].changes[0].value as Record<string, unknown>).statuses = [{ id: 'wamid.1', status: 'read' }]
+    expect(parseWebhookPayload(body, PHONE_ID)).toEqual([])
+    expect(info).not.toHaveBeenCalled()
+  })
+
+  it('skips other objects, reactions and malformed senders', () => {
     expect(parseWebhookPayload({ object: 'page', entry: [] }, PHONE_ID)).toEqual([])
     expect(parseWebhookPayload(payload([{ from: WA_ID, id: 'r', type: 'reaction' }]), PHONE_ID)).toEqual([])
     expect(parseWebhookPayload(payload([{ from: '+97250', id: 'x', type: 'text', text: { body: 'hi' } }]), PHONE_ID)).toEqual([])
@@ -303,6 +353,27 @@ describe('support bot handler', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe(`https://graph.facebook.com/v21.0/${PHONE_ID}/messages`)
     expect(JSON.parse(init.body)).toMatchObject({ messaging_product: 'whatsapp', to: WA_ID, type: 'interactive', interactive: { type: 'cta_url' } })
+    expect(lines(info)).toContain(`[whatsapp-bot] sent interactive reply to +97 •••• 4567 from WHATSAPP_PHONE_NUMBER_ID`)
+  })
+
+  it('answers from the number the member wrote to, even without WHATSAPP_PHONE_NUMBER_ID', async () => {
+    vi.stubEnv('WHATSAPP_OTP_LIVE', 'true')
+    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'token')
+    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await handleInboundEvent(event({ kind: 'text', text: 'היי', phoneNumberId: '1367683866451764' }))
+    expect(fetchMock.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/1367683866451764/messages')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ to: WA_ID, type: 'interactive', interactive: { type: 'button' } })
+  })
+
+  it('uses a configured Graph version only when it is well formed', () => {
+    vi.stubEnv('WHATSAPP_GRAPH_VERSION', 'v25.0')
+    expect(graphVersion()).toBe('v25.0')
+    for (const bad of ['25.0', 'v25', 'v25.0/../x', ' ']) {
+      vi.stubEnv('WHATSAPP_GRAPH_VERSION', bad)
+      expect(graphVersion()).toBe('v21.0')
+    }
   })
 })
 

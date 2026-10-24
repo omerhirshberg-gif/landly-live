@@ -1,5 +1,6 @@
 // Firebase Admin setup shared by the maintenance scripts
-// (backfill-redeem-tokens.mjs, disable-account.mjs). lib/firebase/admin.ts
+// (backfill-redeem-tokens.mjs, disable-account.mjs,
+// whatsapp-reset-conversation.mjs). lib/firebase/admin.ts
 // can't be reused here: it's server-only TypeScript behind the env guard.
 //
 // Credentials: the service-account key from FIREBASE_ADMIN_* when

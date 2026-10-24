@@ -152,7 +152,7 @@ WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
 | `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button), created in en, he, ru, fr and es. Defaults to `landly_otp_code`. |
 | `WHATSAPP_OTP_FALLBACK_LANGUAGE` | Optional, defaults to `en`. When the member's language has no usable copy of the template (Meta template errors 1320xx, e.g. 132001), the code is sent once more in this language; set `en_US` if the template was created under that code. |
 | `WHATSAPP_OTP_LIVE` | Optional. `true` sends real WhatsApp messages outside production (codes and bot replies); otherwise they are only logged to the `next dev` terminal. |
-| `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0`. |
+| `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0` (supported until about January 2027). A value not shaped like `v25.0` is ignored. |
 
 If the flag is on but the token or number ID is missing, phone edits save
 directly and the server logs the missing setting, so members are never left
@@ -181,3 +181,26 @@ callback URL `{APP_URL}/api/webhooks/whatsapp`, then subscribe to the
 `messages` field. Bot state lives in the server-only `whatsappConversations`
 and `whatsappInbound` collections; add a Firestore TTL policy on
 `whatsappInbound.expiresAt` so seen message ids are deleted after 7 days.
+
+The bot answers from the number the member wrote to (the delivery's
+`metadata.phone_number_id`), whichever number on the business account it is,
+so a stale `WHATSAPP_PHONE_NUMBER_ID` doesn't stop it: a message to another
+number is answered and logged as `[whatsapp-webhook] Ingesting message for
+phone ID: … (configured env: …)`. That includes the OTP number if it is a
+different line, so a member replying to a code gets the menu. Every delivery logs one
+`[whatsapp-webhook] Received …` line (event count, receiving number ID, masked
+senders); a bad signature logs an error before its 401, and each live reply
+logs `[whatsapp-bot] sent …`. No `Received` line for a real message means Meta
+never delivered it: check that the WhatsApp Business Account is subscribed to
+the app (`GET /{WABA_ID}/subscribed_apps`), that the `messages` webhook field
+is subscribed, and that the app is in Live mode. The dashboard's *Test*
+button proves none of these: it only shows that the callback URL and app
+secret work.
+
+To let the bot answer a test number again at once (clears the 10-minute menu
+throttle and the 24-hour silence after Talk to Team):
+
+```
+node scripts/whatsapp-reset-conversation.mjs --project <projectId> --number=+9725XXXXXXXX          # dry run
+node scripts/whatsapp-reset-conversation.mjs --project <projectId> --number=+9725XXXXXXXX --apply
+```
