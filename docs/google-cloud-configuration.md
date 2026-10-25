@@ -95,8 +95,9 @@ firebase deploy --only firestore:rules,storage -P default
 
 - `storage.rules`: `banners/{file}` is public-read and has no client writes
   (uploads go through `/api/admin/uploads` with the Admin SDK).
-- `firestore.rules`: `geoCache/{cell}` is server-only; `users/{uid}/pushTokens/{id}`
-  is owner-managed (schema for the push branch).
+- `firestore.rules`: `geoCache/{cell}` and `apiUsageStats/{month}` are
+  server-only; `users/{uid}/pushTokens/{id}` is owner-managed (schema for the
+  push branch).
 - **TTL policy** for the reverse-geocode cache: Firestore → TTL → collection
   group `geoCache`, field `expiresAt`. Without it, expired entries are simply
   refreshed on their next read.
@@ -121,6 +122,55 @@ firebase deploy --only firestore:rules,storage -P default
   edit, refresh), for cards, the offer page's address and navigation buttons,
   and "Near me". Orders and vouchers keep `businessAddress`/`businessGeo` as at purchase.
 - `offers/{id}.imageUrl`: may now be a `banners/…` Storage download URL.
+- `apiUsageStats/{YYYY-MM}` (UTC month): API usage counters for Admin → **Usage
+  & Costs** (`/admin/system/costs`), added with `FieldValue.increment` after each
+  successful metered call (`lib/usage/recordUsage.ts`): Cloud Translation
+  characters (detection included), Places Autocomplete and Details requests,
+  Geocoding requests, WhatsApp inbound messages, service replies, accepted OTP
+  templates and simulated sends, each also under `daily.{DD}`. Units only: the
+  dashboard prices them with `lib/usage/pricing.ts` (free tiers, Essentials
+  bands, USD → ILS rate), so update the prices there when Google or Meta change
+  them. A failed counter write is logged and never fails the call it measures.
+  Firestore and Storage are not metered; compare against the Firebase console.
+
+## 9. Usage & Costs across both projects
+
+`/admin/system/costs` shows PROD, DEV or both combined (`?view=combined|prod|dev`).
+The projects share one billing account, so **Combined** adds their units and
+prices them once against one free allowance (the actual bill). No PROD
+credential ever leaves Vercel Production (`lib/usage/peerGuard.ts`):
+
+| Dashboard on | Its own counters | The other environment's |
+|---|---|---|
+| Vercel Production | its Admin SDK | landly-dev, read with a read-only reader service account |
+| Local / Vercel Preview | its Admin SDK | PROD's `/api/usage/export`, with `USAGE_EXPORT_TOKEN` |
+
+Until both are set up, the missing side shows as *not configured* and the
+Combined total is marked partial.
+
+**Read-only reader for landly-dev** (Vercel Production only):
+
+```sh
+gcloud iam roles create usageReader --project=landly-dev --title="Usage Reader" \
+  --permissions=datastore.entities.get,datastore.entities.list,datastore.databases.getMetadata
+gcloud iam service-accounts create usage-reader --project=landly-dev --display-name="Usage dashboard reader"
+gcloud projects add-iam-policy-binding landly-dev \
+  --member=serviceAccount:usage-reader@landly-dev.iam.gserviceaccount.com --role=projects/landly-dev/roles/usageReader
+gcloud iam service-accounts keys create usage-reader.json --iam-account=usage-reader@landly-dev.iam.gserviceaccount.com
+```
+
+Then in Vercel → Settings → Environment Variables, **Production only**:
+`USAGE_DEV_READER_CLIENT_EMAIL` (the key's `client_email`) and
+`USAGE_DEV_READER_PRIVATE_KEY` (its `private_key`, `\n` escapes kept). Delete
+`usage-reader.json` afterwards. The role can't write, and IAM can't narrow it
+to one collection, which is why this key never goes to DEV deployments.
+
+**Export token** (the same value everywhere): generate one with
+`openssl rand -hex 32` and set `USAGE_EXPORT_TOKEN` in Vercel Production,
+Vercel Preview and `.env.local`. Production answers `/api/usage/export` only
+when it's set (and only on Vercel Production); elsewhere the token is just
+what's sent. It reads the month's counters and nothing else.
+`USAGE_PROD_EXPORT_URL` (https) overrides `https://www.golandly.com` if needed.
 
 ## 8. Backfill after deploying
 

@@ -14,14 +14,16 @@ import { attachmentLabel, isAttachmentKind, type AttachmentKind, type MediaStatu
 
 export const MESSAGE_TTL_MS = 180 * 24 * 60 * 60 * 1000
 
-export type MessageAuthor = 'member' | 'bot' | 'admin'
+/** 'system' writes notes for the team only (kind 'note'); nothing it logs is sent. */
+export type MessageAuthor = 'member' | 'bot' | 'admin' | 'system'
 /**
  * 'media' is an attachment that isn't kept (a sticker, location or contact
  * card), its text naming the type; image/video/audio/document are member
  * attachments stored under whatsapp_media/ (lib/whatsapp/mediaStore.ts),
- * their text the caption.
+ * their text the caption. 'note' is the system's record of something that
+ * happened to the conversation (an idle auto-resolve), shown only in the inbox.
  */
-export type MessageKind = 'text' | 'button' | 'language' | 'interactive' | 'media' | AttachmentKind
+export type MessageKind = 'text' | 'button' | 'language' | 'interactive' | 'media' | 'note' | AttachmentKind
 export { isAttachmentKind, type AttachmentKind, type MediaStatus } from './attachments'
 
 export interface LoggedMedia {
@@ -29,6 +31,8 @@ export interface LoggedMedia {
   status: MediaStatus
   /** The Storage object; server-only, the inbox gets signed URLs (lib/whatsapp/mediaUrls.ts). */
   path?: string
+  /** Meta's media id, kept so a failed download can be told apart (Meta keeps the file about 30 days). */
+  mediaId?: string
   mimeType?: string
   /** A document's name, as the member's phone gave it. */
   filename?: string

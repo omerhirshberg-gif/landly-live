@@ -21,6 +21,15 @@ const lanAddresses = Object.values(os.networkInterfaces())
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: lanAddresses,
+  // ogg-opus-decoder (the support inbox's voice notes on iPhone,
+  // components/admin/support/media/decodeOggOpus.ts) pulls in a Worker shim
+  // whose Node build Turbopack can't bundle. It only ever runs in the browser,
+  // after a tap, so the server bundle gets the browser build too.
+  turbopack: {
+    resolveAlias: {
+      '@eshaz/web-worker': '@eshaz/web-worker/cjs/browser.js',
+    },
+  },
   // Where this build runs, for lib/firebase/envGuard.ts -- inlined so the
   // browser bundle picks the same Firebase project check as the server.
   // Unset (a local build) becomes '', which the guard treats as local.

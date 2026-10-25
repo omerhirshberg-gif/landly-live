@@ -8,10 +8,11 @@ vi.mock('resend', () => ({ Resend: class { emails = { send: vi.fn().mockResolved
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db }))
 
 import { GET } from '@/app/api/cron/whatsapp-idle/route'
-import { idleAction, PURGE_SLACK_MS, sweepIdleConversations } from '@/lib/whatsapp/idleSweep'
+import { AUTO_RESOLVED_NOTE, idleAction, nextIdleDue, PURGE_SLACK_MS, sweepIdleConversations } from '@/lib/whatsapp/idleSweep'
 import { IDLE_GRACE_MS, idleMs } from '@/lib/whatsapp/supportBot'
 import { MESSAGE_TTL_MS } from '@/lib/whatsapp/conversationLog'
 import { handleInboundEvent } from '@/lib/whatsapp/supportBotHandler'
+import { replyAsTeam, setConversationStatus } from '@/lib/whatsapp/adminInbox'
 import { translations } from '@/lib/i18n/translations'
 
 const WA_ID = '972501234567'
@@ -30,7 +31,11 @@ const botReplies = () =>
   (info.mock.calls as unknown[][]).map(([line]) => String(line)).filter((line) => line.startsWith('[whatsapp-bot] simulated reply'))
 const transcript = (waId = WA_ID) => Object.values(mocks.store.list(`${path(waId)}/messages`)).sort((a, b) => a.at.toMillis() - b.at.toMillis())
 
-/** A Hebrew conversation where the member wrote `inboundAgo` and the bot answered `outboundAgo` before `now`. */
+/**
+ * A Hebrew conversation where the member wrote `inboundAgo` and the bot
+ * answered `outboundAgo` before `now`, its check-in due IDLE after that answer
+ * (as supportBotHandler.ts sets it).
+ */
 function seed(now: number, { inboundAgo = IDLE + 2 * MINUTE, outboundAgo = IDLE + MINUTE, ...rest }: { inboundAgo?: number; outboundAgo?: number } & DocumentData = {}, waId = WA_ID) {
   mocks.store.seed(path(waId), {
     lang: 'he',
@@ -38,6 +43,7 @@ function seed(now: number, { inboundAgo = IDLE + 2 * MINUTE, outboundAgo = IDLE 
     status: 'active',
     lastInboundAt: ts(now - inboundAgo),
     lastOutboundAt: ts(now - outboundAgo),
+    idleDueAt: ts(now - outboundAgo + IDLE),
     expiresAt: ts(now + MESSAGE_TTL_MS),
     ...rest,
   })
@@ -49,6 +55,7 @@ beforeEach(() => {
   info = vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.spyOn(console, 'log').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -110,6 +117,8 @@ describe('sweepIdleConversations', () => {
     ])
     const stored = mocks.store.read(path())!
     expect(stored.idleCheckInAt.toMillis()).toBe(now)
+    // Next due: the resolve, once the grace period is over.
+    expect(stored.idleDueAt.toMillis()).toBe(now + IDLE_GRACE_MS)
     expect(stored.lastOutboundAt.toMillis()).toBe(now)
     expect(stored.expiresAt.toMillis()).toBe(now + MESSAGE_TTL_MS)
     expect(stored).not.toHaveProperty('idleResume')
@@ -132,7 +141,7 @@ describe('sweepIdleConversations', () => {
     expect(checkIns()).toHaveLength(0)
   })
 
-  it('resolves silently once the grace period passes without an answer', async () => {
+  it('resolves without a word to the member once the grace period passes, leaving the team a note', async () => {
     const now = Date.now()
     seed(now, { lastMenuAt: ts(now - IDLE - MINUTE) })
     await sweepIdleConversations(now)
@@ -141,10 +150,16 @@ describe('sweepIdleConversations', () => {
     const stored = mocks.store.read(path())!
     expect(stored).toMatchObject({ status: 'resolved', resolvedBy: 'idle' })
     expect(stored.resolvedAt.toMillis()).toBe(later)
-    for (const field of ['idleCheckInAt', 'idleResume', 'lastMenuAt', 'escalatedAt']) expect(stored).not.toHaveProperty(field)
-    // Silent: the check-in is the only message sent.
-    expect(transcript()).toHaveLength(1)
+    for (const field of ['idleCheckInAt', 'idleResume', 'lastMenuAt', 'escalatedAt', 'idleDueAt']) expect(stored).not.toHaveProperty(field)
+    // Silent: the check-in is the only message sent; the note is the team's alone.
     expect(checkIns()).toHaveLength(1)
+    expect(transcript()).toHaveLength(2)
+    const note = transcript()[1]
+    expect(note).toMatchObject({ direction: 'out', author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE })
+    expect(note.at.toMillis()).toBe(later)
+    expect(note).not.toHaveProperty('simulated')
+    // The inbox list still shows the last message sent: the check-in.
+    expect(stored.lastSnippet.text).toContain(translations.he.wa_bot_idle_checkin)
     expect(await sweepIdleConversations(later + MINUTE)).toEqual({ checkedIn: 0, resolved: 0, purged: 0 })
   })
 
@@ -233,5 +248,80 @@ describe('schedule and retention config', () => {
     // The purge's range query on expiresAt needs the field indexed.
     const conversations = fieldOverrides.find((o: { collectionGroup: string }) => o.collectionGroup === 'whatsappConversations')
     expect(conversations.indexes).toEqual([{ order: 'ASCENDING', queryScope: 'COLLECTION' }])
+  })
+})
+
+describe('idleDueAt', () => {
+  it('is when the check-in, then the resolve, falls due, and never for chats with the team, over, or past the window', () => {
+    const now = Date.now()
+    const data = (over: DocumentData) => ({ status: 'active', lastInboundAt: ts(now - 10 * MINUTE), lastOutboundAt: ts(now - 5 * MINUTE), ...over })
+    expect(nextIdleDue(data({}), now, IDLE)).toBe(now - 5 * MINUTE + IDLE)
+    expect(nextIdleDue(data({ idleCheckInAt: ts(now - MINUTE) }), now, IDLE)).toBe(now - MINUTE + IDLE_GRACE_MS)
+    expect(nextIdleDue(data({ idleCheckInAt: ts(now - 20 * MINUTE) }), now, IDLE)).toBeUndefined()
+    expect(nextIdleDue(data({ lastInboundAt: ts(now - MINUTE) }), now, IDLE)).toBeUndefined()
+    expect(nextIdleDue(data({ status: 'escalated', escalatedAt: ts(now - MINUTE) }), now, IDLE)).toBeUndefined()
+    expect(nextIdleDue(data({ status: 'resolved' }), now, IDLE)).toBeUndefined()
+    // Due after Meta's window closes: no check-in could be sent.
+    expect(nextIdleDue(data({ lastInboundAt: ts(now - 24 * 60 * MINUTE + 10 * MINUTE) }), now, IDLE)).toBeUndefined()
+  })
+
+  it('is set when the bot answers, and cleared when the team takes over or the member is done', async () => {
+    const now = Date.now()
+    seed(now, { inboundAgo: 3 * MINUTE, outboundAgo: 2 * MINUTE })
+    await handleInboundEvent({ messageId: 'wamid.menu', waId: WA_ID, at: now, kind: 'text', text: 'תפריט' }, now)
+    const stored = mocks.store.read(path())!
+    expect(stored.idleDueAt.toMillis()).toBe(stored.lastOutboundAt.toMillis() + IDLE)
+
+    await handleInboundEvent({ messageId: 'wamid.done', waId: WA_ID, at: now + MINUTE, kind: 'button', action: 'btn_ticket_resolved' }, now + MINUTE)
+    expect(mocks.store.read(path())).toMatchObject({ status: 'resolved' })
+    expect(mocks.store.read(path())).not.toHaveProperty('idleDueAt')
+
+    seed(now, { inboundAgo: 3 * MINUTE, outboundAgo: 2 * MINUTE }, '972500000020')
+    await replyAsTeam('972500000020', 'Hi, this is Landly', now)
+    expect(mocks.store.read(path('972500000020'))).not.toHaveProperty('idleDueAt')
+
+    seed(now, { inboundAgo: 3 * MINUTE, outboundAgo: 2 * MINUTE }, '972500000021')
+    await setConversationStatus('972500000021', 'active', false, now)
+    expect(mocks.store.read(path('972500000021'))).not.toHaveProperty('idleDueAt')
+  })
+
+  it('reaches a waiting chat however many chats with the team or already over came before it', async () => {
+    const now = Date.now()
+    for (let i = 0; i < 250; i++) {
+      const waId = `97250${String(i).padStart(7, '0')}`
+      // As the handler leaves them: no idleDueAt.
+      seed(now, i % 2 ? { status: 'resolved', outboundAgo: 2 * IDLE } : { status: 'escalated', escalatedAt: ts(now - 2 * IDLE), outboundAgo: 2 * IDLE }, waId)
+      const { idleDueAt: _, ...rest } = mocks.store.read(path(waId))!
+      mocks.store.seed(path(waId), rest)
+    }
+    seed(now, {}, '972599999999')
+    expect(await sweepIdleConversations(now)).toEqual({ checkedIn: 1, resolved: 0, purged: 0 })
+    expect(mocks.store.read(path('972599999999'))).toHaveProperty('idleCheckInAt')
+  })
+
+  it('clears a stale idleDueAt with nothing to do, so the chat isn’t read again', async () => {
+    const now = Date.now()
+    seed(now, { status: 'escalated', escalatedAt: ts(now - MINUTE) }, '972500000030')
+    seed(now, { inboundAgo: MINUTE }, '972500000031')
+    expect(await sweepIdleConversations(now)).toEqual({ checkedIn: 0, resolved: 0, purged: 0 })
+    expect(mocks.store.read(path('972500000030'))).not.toHaveProperty('idleDueAt')
+    expect(mocks.store.read(path('972500000031'))).not.toHaveProperty('idleDueAt')
+    expect(checkIns()).toHaveLength(0)
+  })
+
+  it('moves an idleDueAt that came too early to when the work really falls due', async () => {
+    const now = Date.now()
+    seed(now, { outboundAgo: 5 * MINUTE, idleDueAt: ts(now - MINUTE) })
+    expect((await sweepIdleConversations(now)).checkedIn).toBe(0)
+    expect(mocks.store.read(path())!.idleDueAt.toMillis()).toBe(now - 5 * MINUTE + IDLE)
+  })
+
+  it('works through due chats in batches, and leaves the rest for the next run when out of time', async () => {
+    const now = Date.now()
+    for (let i = 0; i < 25; i++) seed(now, {}, `97251${String(i).padStart(7, '0')}`)
+    expect((await sweepIdleConversations(now, Date.now() - 1)).checkedIn).toBe(0)
+    expect(vi.mocked(console.warn).mock.calls.some(([line]) => String(line).includes('25 due conversation(s) left'))).toBe(true)
+    expect((await sweepIdleConversations(now)).checkedIn).toBe(25)
+    expect(checkIns()).toHaveLength(25)
   })
 })

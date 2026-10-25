@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/admin/businesses', label: 'Businesses', icon: 'fa-store', exact: false },
   { href: '/admin/offers', label: 'Offers', icon: 'fa-tags', exact: false },
   { href: '/admin/orphans', label: 'Orphans', icon: 'fa-triangle-exclamation', exact: false },
+  { href: '/admin/system/costs', label: 'Usage & Costs', icon: 'fa-coins', exact: false },
 ] as const
 
 // Tailwind's md breakpoint, where the inline sidebar takes over.

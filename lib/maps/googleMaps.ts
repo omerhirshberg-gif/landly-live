@@ -2,6 +2,7 @@ import 'server-only'
 import type { Coordinates, GeoAddress, LocalizedName } from '@/lib/geo'
 import { CONTENT_LANGS } from '@/lib/i18n/contentTranslation'
 import type { Lang } from '@/lib/i18n/translations'
+import { recordUsage, recordUsageBatch } from '@/lib/usage/recordUsage'
 
 // Google Maps Platform over REST, server side only: the key
 // (GOOGLE_MAPS_SERVER_API_KEY, restricted to Places API (New) and Geocoding
@@ -16,6 +17,9 @@ import type { Lang } from '@/lib/i18n/translations'
 // per language we show (the address as Google itself writes it there, so a
 // Hebrew street name is never machine-translated); only the first of those
 // calls carries the session token.
+//
+// Each successful call adds to the month's usage counters
+// (lib/usage/recordUsage.ts) for /admin/system/costs.
 
 const PLACES_API = 'https://places.googleapis.com/v1'
 const GEOCODE_API = 'https://maps.googleapis.com/maps/api/geocode/json'
@@ -57,6 +61,7 @@ export async function autocompleteAddress(input: string, sessionToken: string, l
     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': apiKey() },
     body: JSON.stringify({ input, sessionToken, languageCode: lang, includedRegionCodes: ['il'] }),
   })
+  recordUsage('google.places.autocompleteRequests')
   return (data.suggestions ?? []).flatMap(({ placePrediction: p }) => {
     if (!p?.placeId) return []
     const main = p.structuredFormat?.mainText?.text ?? p.text?.text ?? ''
@@ -89,11 +94,14 @@ function cityOf(components: { longText?: string; types?: string[] }[] | undefine
  * is billed on its own.
  */
 export async function placeAddress(placeId: string, sessionToken?: string): Promise<GeoAddress | null> {
-  const details = (lang: Lang, token?: string) =>
-    getJson<PlaceDetails>(
+  const details = async (lang: Lang, token?: string) => {
+    const place = await getJson<PlaceDetails>(
       `${PLACES_API}/places/${encodeURIComponent(placeId)}?languageCode=${lang}${token ? `&sessionToken=${encodeURIComponent(token)}` : ''}`,
       { headers: { 'X-Goog-Api-Key': apiKey(), 'X-Goog-FieldMask': DETAILS_FIELDS } }
     )
+    recordUsageBatch({ 'google.places.detailsRequests': 1, 'google.places.sessionsCompleted': token ? 1 : 0 })
+    return place
+  }
   const langs: Lang[] = ['he', ...CONTENT_LANGS.filter((lang) => lang !== 'he')]
   const results = await Promise.all(langs.map((lang, i) => details(lang, i === 0 ? sessionToken : undefined)))
   const byLang = langs.map((lang, i) => [lang, results[i]!] as const)
@@ -125,6 +133,8 @@ export async function reverseGeocodeCity({ lat, lng }: Coordinates, lang: string
     `${GEOCODE_API}?latlng=${lat},${lng}&language=${encodeURIComponent(lang)}&result_type=locality|administrative_area_level_2&key=${apiKey()}`,
     {}
   )
+  // Billed when Google answers, with a city or without.
+  if (data.status === 'OK' || data.status === 'ZERO_RESULTS') recordUsage('google.geocoding.requests')
   if (data.status === 'ZERO_RESULTS') return null
   if (data.status !== 'OK') throw new Error(`Geocoding status ${data.status}`)
   for (const result of data.results ?? []) {

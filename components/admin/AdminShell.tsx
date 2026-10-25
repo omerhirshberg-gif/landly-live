@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import AdminGate from './AdminGate'
 import AdminHeader from './AdminHeader'
 import { DesktopSidebar, MobileDrawer } from './Sidebar'
-import { clearStoredToken } from '@/lib/admin/adminSession'
+import { logoutAdmin } from '@/lib/admin/adminSession'
 import { useNeedsReplyCount } from '@/lib/admin/needsReply'
 
 // The admin UI is English, so the portal is LTR even inside the Hebrew site.
@@ -53,8 +53,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     setIsMobileOpen(false)
   }, [pathname])
 
-  const logout = () => {
-    clearStoredToken()
+  // The cookie is cleared before the login page asks whether a session is still good.
+  const logout = async () => {
+    await logoutAdmin()
     router.push('/admin/login')
   }
 

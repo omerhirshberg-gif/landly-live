@@ -179,6 +179,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // API usage counters per UTC month (lib/usage/recordUsage.ts): written by
+    // the servers and read by /api/admin/usage (behind the admin session),
+    // both through the Admin SDK. No client may read or write them.
+    match /apiUsageStats/{month} {
+      allow read, write: if false;
+    }
+
     // Deny everything else by default (production mode default, made explicit).
     match /{document=**} {
       allow read, write: if false;

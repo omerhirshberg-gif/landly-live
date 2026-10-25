@@ -3,6 +3,7 @@ import { FieldValue, Timestamp, type DocumentData } from 'firebase-admin/firesto
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
+import { recordUsage } from '@/lib/usage/recordUsage'
 import { isAttachmentKind, logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMedia, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
 import { mediaUrls } from './mediaUrls'
 import { sendWhatsAppMessage, WhatsAppApiError, whatsappLive, type WhatsAppMessage } from './graph'
@@ -82,6 +83,8 @@ export interface InboxMedia {
   url?: string
   /** Saves it under its name. */
   downloadUrl?: string
+  /** Audio only: its bytes from our own origin (admin session), for decoding where the browser can't play the format. */
+  fileUrl?: string
 }
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
@@ -121,7 +124,7 @@ function toInboxMessage(id: string, data: DocumentData): InboxMessage {
   return {
     id,
     direction: data.direction === 'out' ? 'out' : 'in',
-    author: data.author === 'bot' || data.author === 'admin' ? data.author : 'member',
+    author: data.author === 'bot' || data.author === 'admin' || data.author === 'system' ? data.author : 'member',
     kind: data.kind ?? 'text',
     text: typeof data.text === 'string' ? data.text : '',
     at: iso(data.at) ?? '',
@@ -145,12 +148,17 @@ function toInboxMedia(raw: unknown): InboxMedia {
   }
 }
 
+/** The same-origin address of a stored attachment's bytes (app/api/admin/whatsapp/media/route.ts). */
+export const mediaFileUrl = (waId: string, messageId: string) => `/api/admin/whatsapp/media?waId=${encodeURIComponent(waId)}&id=${encodeURIComponent(messageId)}`
+
 /** The transcript entry with its attachment's URLs signed, when it has a stored one. */
-async function withMediaUrls(message: InboxMessage, data: DocumentData, now: number): Promise<InboxMessage> {
+async function withMediaUrls(waId: string, message: InboxMessage, data: DocumentData, now: number): Promise<InboxMessage> {
   if (!message.media || !isAttachmentKind(message.kind) || message.media.status !== 'stored' || typeof data.media?.path !== 'string') return message
   const at = data.at instanceof Timestamp ? data.at.toMillis() : now
   const urls = await mediaUrls(message.kind, { status: 'stored', path: data.media.path, filename: message.media.filename }, at, now)
-  return { ...message, media: { ...message.media, ...urls } }
+  // Audio the browser can't play is decoded in the page, which needs its bytes from our own origin.
+  const fileUrl = message.kind === 'audio' && urls.url ? { fileUrl: mediaFileUrl(waId, message.id) } : {}
+  return { ...message, media: { ...message.media, ...urls, ...fileUrl } }
 }
 
 const conversations = () => getAdminDb().collection('whatsappConversations')
@@ -168,7 +176,7 @@ export async function getConversation(waId: string, now = Date.now()) {
   if (!snapshot.exists) return null
   return {
     conversation: toInboxConversation(waId, snapshot.data()!, now),
-    messages: (await Promise.all(messages.docs.map((doc) => withMediaUrls(toInboxMessage(doc.id, doc.data()), doc.data(), now)))).reverse(),
+    messages: (await Promise.all(messages.docs.map((doc) => withMediaUrls(waId, toInboxMessage(doc.id, doc.data()), doc.data(), now)))).reverse(),
   }
 }
 
@@ -200,6 +208,7 @@ export async function replyAsTeam(waId: string, text: string, now = Date.now()):
       inquiryPromptedAt: FieldValue.delete(),
       idleCheckInAt: FieldValue.delete(),
       idleResume: FieldValue.delete(),
+      idleDueAt: FieldValue.delete(),
     },
     { merge: true }
   )
@@ -221,7 +230,7 @@ export async function setConversationStatus(waId: string, status: AdminStatus, n
   const data = snapshot.data()!
   const at = Timestamp.fromMillis(now)
   const clear = FieldValue.delete()
-  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear, idleCheckInAt: clear, idleResume: clear }
+  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear, idleCheckInAt: clear, idleResume: clear, idleDueAt: clear }
   if (status === 'escalated') update.escalatedAt = at
   if (status === 'active') update.escalatedAt = clear
   if (status === 'resolved') Object.assign(update, { resolvedAt: at, escalatedAt: clear, lastMenuAt: clear, lastNudgeAt: clear })
@@ -246,6 +255,7 @@ async function sendAndLog(waId: string, data: DocumentData, message: WhatsAppMes
   const to = maskPhone(`+${waId}`)
   if (!whatsappLive(phoneNumberId)) {
     console.info(`[whatsapp-inbox] simulated team reply to ${to}: ${JSON.stringify(message)}`)
+    recordUsage('whatsapp.simulated')
     entry.simulated = true
   } else {
     try {

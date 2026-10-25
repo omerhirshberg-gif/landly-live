@@ -1,6 +1,7 @@
 import 'server-only'
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import type { Lang } from '@/lib/i18n/translations'
+import { recordUsage } from '@/lib/usage/recordUsage'
 import { sendWhatsAppMessage, whatsappConfigProblem, whatsappLive, WhatsAppApiError } from '@/lib/whatsapp/graph'
 import { OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel } from './otp'
 
@@ -101,6 +102,7 @@ export const devProvider: OtpProvider = {
   name: 'dev',
   async send({ phone, code, channel }) {
     console.info(`[phone-otp] simulated ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} to ${maskPhone(phone)}: code ${code}`)
+    recordUsage('whatsapp.simulated')
   },
 }
 
@@ -144,7 +146,8 @@ async function sendWhatsAppOtp({ phone, code, lang }: OtpDispatch): Promise<void
   const languages = otpLanguages(lang)
   for (const [i, language] of languages.entries()) {
     try {
-      await sendOtpTemplate(phone, code, language)
+      // Meta bills an authentication template once it's accepted: HTTP 200 with a wamid.
+      if (await sendOtpTemplate(phone, code, language)) recordUsage('whatsapp.authSent')
       return
     } catch (err) {
       if (!(err instanceof WhatsAppApiError)) throw err

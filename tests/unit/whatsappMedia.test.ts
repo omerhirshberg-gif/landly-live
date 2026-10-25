@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { Writable } from 'node:stream'
+import { Readable, Writable } from 'node:stream'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   uploads: [] as Upload[],
   deleted: [] as string[],
   signed: [] as { path: string; options: Record<string, unknown> }[],
+  objects: new Map<string, Buffer>(),
 }))
 const fakeBucket = {
   file: (path: string) => ({
@@ -30,6 +31,8 @@ const fakeBucket = {
     delete: async () => {
       mocks.deleted.push(path)
     },
+    exists: async () => [mocks.objects.has(path)],
+    createReadStream: () => Readable.from([mocks.objects.get(path) ?? Buffer.alloc(0)]),
     getSignedUrl: async (options: Record<string, unknown>) => {
       mocks.signed.push({ path, options })
       return [`https://storage.googleapis.com/landly-dev/${path}?d=${options.accessibleAt}&x=${options.expires}&rd=${encodeURIComponent(String(options.responseDisposition ?? ''))}`]
@@ -42,8 +45,12 @@ import MessageBubble from '@/components/admin/support/MessageBubble'
 import type { TranscriptMessage } from '@/components/admin/support/transcript'
 import { snippetOf, type LoggedMessage } from '@/lib/whatsapp/conversationLog'
 import { getConversation } from '@/lib/whatsapp/adminInbox'
+import { MEDIA_USER_AGENT } from '@/lib/whatsapp/graph'
+import { GET as getMediaFile } from '@/app/api/admin/whatsapp/media/route'
+import { ADMIN_SESSION_COOKIE, issueAdminSessionToken } from '@/lib/admin/sessionToken'
 import {
   imageSignatureMatches,
+  signatureProblem,
   MEDIA_CACHE_CONTROL,
   MEDIA_MAX_BYTES,
   safeObjectId,
@@ -98,6 +105,7 @@ beforeEach(() => {
   mocks.uploads = []
   mocks.deleted = []
   mocks.signed = []
+  mocks.objects = new Map()
   vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'token')
   vi.stubEnv('APP_URL', 'https://landly.test/')
   vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -127,16 +135,18 @@ describe('webhook attachments', () => {
     expect(events[3]).toMatchObject({ media: { type: 'video', mediaId: 'VID' } })
   })
 
-  it('leaves stickers, locations and attachments without a usable id as other', () => {
+  it('leaves stickers and locations as other, and keeps an attachment without a usable id as its own kind', () => {
     const events = parseWebhookPayload(
-      payload([message('a', 'sticker', { id: 'STK' }), message('b', 'location', { latitude: 1 }), message('c', 'image', {}), message('d', 'image', { id: '../../me' })])
+      payload([message('a', 'sticker', { id: 'STK' }), message('b', 'location', { latitude: 1 }), message('c', 'image', {}), message('d', 'video', { id: '../../me' })])
     )
-    expect(events.map((e) => [e.kind, e.kind === 'other' ? e.media : null])).toEqual([
+    expect(events.map((e) => [e.kind, e.kind === 'other' ? e.media : e.kind === 'media' ? e.media.type : null])).toEqual([
       ['other', 'sticker'],
       ['other', 'location'],
-      ['other', 'image'],
-      ['other', 'image'],
+      ['media', 'image'],
+      ['media', 'video'],
     ])
+    for (const event of events.slice(2)) expect(event.kind === 'media' && event.media.mediaId).toBe(undefined)
+    expect(vi.mocked(console.warn)).toHaveBeenCalledTimes(2)
   })
 
   it('answers an attachment exactly as it answered any other message', () => {
@@ -201,7 +211,7 @@ describe('storeInboundMedia', () => {
     const fetch = stubMeta(PNG, { sha256: createHash('sha256').update(PNG).digest('hex') })
     const now = Date.UTC(2026, 9, 25, 10)
     const media = await storeInboundMedia(WA_ID, 'wamid.HB/1=', image, now)
-    expect(media).toEqual({ status: 'stored', path: `whatsapp_media/${WA_ID}/wamid.HB_1_.png`, mimeType: 'image/png', size: PNG.length })
+    expect(media).toEqual({ status: 'stored', path: `whatsapp_media/${WA_ID}/wamid.HB_1_.png`, mediaId: 'MEDIA1', mimeType: 'image/png', size: PNG.length })
     expect(fetch.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/MEDIA1')
     const [upload] = mocks.uploads
     expect(upload.bytes.equals(PNG)).toBe(true)
@@ -264,6 +274,111 @@ describe('storeInboundMedia', () => {
     expect((await storeInboundMedia(WA_ID, 'w8', image)).status).toBe('failed')
     vi.stubEnv('WHATSAPP_ACCESS_TOKEN', '')
     expect((await storeInboundMedia(WA_ID, 'w9', image)).status).toBe('unavailable')
+  })
+})
+
+describe('fetching from Meta', () => {
+  const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(64, 2)])
+  const HTML = Buffer.from('<!DOCTYPE html><html><body>Sorry, this content isn’t available</body></html>')
+  const CDN = 'https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1'
+
+  /** Meta's details call, then each download hop answered by `hops` in turn. */
+  function stubHops(hops: ((url: string) => Response)[], info: Record<string, unknown> = {}) {
+    const calls: { url: string; headers: Record<string, string> }[] = []
+    let hop = 0
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, headers: { ...(init?.headers as Record<string, string>) } })
+      if (url.startsWith('https://graph.facebook.com/')) return Response.json({ url: CDN, mime_type: 'image/png', ...info })
+      return hops[hop++](url)
+    })
+    vi.stubGlobal('fetch', fetch)
+    return calls
+  }
+  const redirect = (location: string, status = 302) => () => new Response(null, { status, headers: { location } })
+  const file = (bytes: Buffer, type = 'application/octet-stream') => () => new Response(new Uint8Array(bytes), { headers: { 'content-type': type } })
+
+  it('downloads with a browser-like User-Agent and the token, from Meta’s own host', async () => {
+    const calls = stubHops([file(PNG, 'image/png')])
+    expect((await storeInboundMedia(WA_ID, 'f1', image)).status).toBe('stored')
+    expect(calls[1]).toMatchObject({ url: CDN, headers: { 'User-Agent': MEDIA_USER_AGENT, Authorization: 'Bearer token' } })
+    expect(MEDIA_USER_AGENT).toMatch(/^Mozilla\/5\.0 /)
+  })
+
+  it('follows a redirect to a signed CDN URL without the token', async () => {
+    const calls = stubHops([redirect('https://scontent.example-cdn.net/v/file.png?sig=abc'), file(PNG, 'image/png')])
+    expect((await storeInboundMedia(WA_ID, 'f2', image)).status).toBe('stored')
+    expect(calls[2].url).toBe('https://scontent.example-cdn.net/v/file.png?sig=abc')
+    expect(calls[2].headers).not.toHaveProperty('Authorization')
+    expect(calls[2].headers['User-Agent']).toBe(MEDIA_USER_AGENT)
+    expect(mocks.uploads[0].bytes.equals(PNG)).toBe(true)
+  })
+
+  it('keeps the token across a redirect that stays on Meta’s hosts, relative ones included', async () => {
+    const calls = stubHops([redirect('/whatsapp_business/attachments/?mid=2', 307), file(PNG, 'image/png')])
+    expect((await storeInboundMedia(WA_ID, 'f3', image)).status).toBe('stored')
+    expect(calls[2]).toMatchObject({ url: 'https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=2', headers: { Authorization: 'Bearer token' } })
+  })
+
+  it('refuses a redirect off https, and more than three hops', async () => {
+    stubHops([redirect('http://lookaside.fbsbx.com/x')])
+    expect((await storeInboundMedia(WA_ID, 'f4', image)).status).toBe('failed')
+    expect(String(vi.mocked(console.error).mock.calls.at(-1)?.[0])).toContain('bad_redirect')
+    const loop = redirect(CDN)
+    stubHops([loop, loop, loop, loop, loop])
+    expect((await storeInboundMedia(WA_ID, 'f5', image)).status).toBe('failed')
+    expect(String(vi.mocked(console.error).mock.calls.at(-1)?.[0])).toContain('too_many_redirects')
+    expect(mocks.uploads).toHaveLength(0)
+  })
+
+  it('refuses a web page sent in place of the file, saying so in the log', async () => {
+    stubHops([file(HTML, 'text/html; charset=utf-8')])
+    expect((await storeInboundMedia(WA_ID, 'f6', image)).status).toBe('failed')
+    expect(String(vi.mocked(console.error).mock.calls.at(-1)?.[0])).toContain('html_response')
+    // Labelled as binary, it is still caught by its bytes, for audio and video too.
+    stubHops([file(HTML)], { mime_type: 'video/mp4' })
+    expect((await storeInboundMedia(WA_ID, 'f7', { type: 'video', mediaId: 'V' })).status).toBe('failed')
+    expect(String(vi.mocked(console.info).mock.calls.at(-1)?.[0])).toContain('look like markup')
+    expect(mocks.uploads).toHaveLength(0)
+  })
+
+  it('stores real MP4 video and Ogg voice notes, and refuses either when the bytes say otherwise', async () => {
+    stubHops([file(MP4, 'video/mp4')], { mime_type: 'video/mp4' })
+    expect(await storeInboundMedia(WA_ID, 'f8', { type: 'video', mediaId: 'V' })).toMatchObject({ status: 'stored', mimeType: 'video/mp4', path: `whatsapp_media/${WA_ID}/f8.mp4` })
+    expect(mocks.uploads[0].bytes.equals(MP4)).toBe(true)
+    stubHops([file(PNG)], { mime_type: 'audio/ogg' })
+    expect((await storeInboundMedia(WA_ID, 'f9', { type: 'audio', mediaId: 'A', voice: true })).status).toBe('failed')
+    expect(String(vi.mocked(console.info).mock.calls.at(-1)?.[0])).toContain('bytes are not Ogg')
+  })
+
+  it('checks the first bytes however the download splits them', async () => {
+    const tiny = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const byte of OGG) controller.enqueue(new Uint8Array([byte]))
+        controller.close()
+      },
+    })
+    stubHops([() => new Response(tiny)], { mime_type: 'audio/ogg' })
+    expect((await storeInboundMedia(WA_ID, 'f10', { type: 'audio', mediaId: 'A', voice: true })).status).toBe('stored')
+    expect(mocks.uploads[0].bytes.equals(OGG)).toBe(true)
+  })
+
+  it('records an attachment the webhook gave no usable id for as not saved, without calling Meta', async () => {
+    const fetch = stubHops([])
+    expect(await storeInboundMedia(WA_ID, 'f11', { type: 'video' })).toEqual({ status: 'failed' })
+    expect(fetch).toHaveLength(0)
+  })
+
+  it('knows each container’s signature', () => {
+    expect(signatureProblem('video', 'video/mp4', MP4)).toBeNull()
+    expect(signatureProblem('video', 'video/quicktime', Buffer.concat([Buffer.alloc(4), Buffer.from('moov'), Buffer.alloc(8)]))).toBeNull()
+    expect(signatureProblem('video', 'video/webm', Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]))).toBeNull()
+    expect(signatureProblem('audio', VOICE_NOTE_TYPE, OGG)).toBeNull()
+    expect(signatureProblem('audio', 'audio/mpeg', Buffer.from('ID3\u0004\u0000'))).toBeNull()
+    expect(signatureProblem('audio', 'audio/mpeg', Buffer.from('  <html>'))).toContain('markup')
+    expect(signatureProblem('video', 'video/mp4', PNG)).toContain('ISO media')
+    expect(signatureProblem('image', 'image/png', SVG)).toContain('markup')
+    // Documents are screened by type and name instead: a .txt may well start with "<".
+    expect(signatureProblem('document', 'text/plain', Buffer.from('<notes>'))).toBeNull()
   })
 })
 
@@ -372,5 +487,53 @@ describe('attachment bubbles', () => {
     expect(bubble({ kind: 'audio', media: { status: 'unavailable', voice: true } })).toContain('voice note wasn&#x27;t downloaded')
     expect(bubble({ kind: 'document', media: { status: 'failed', filename: 'setup.exe' } })).toContain('unsupported or unsafe file')
     expect(bubble({ media: { status: 'stored' } })).toContain('didn&#x27;t load')
+  })
+})
+
+describe('the attachment route for in-page decoding', () => {
+  const MESSAGES = `whatsappConversations/${WA_ID}/messages`
+  let session: string
+
+  beforeEach(async () => {
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'test-session-secret')
+    session = issueAdminSessionToken()
+    const at = (await import('firebase-admin/firestore')).Timestamp.fromMillis(Date.now())
+    mocks.store.seed(`whatsappConversations/${WA_ID}`, { lastInboundAt: at })
+    mocks.store.seed(`${MESSAGES}/wamid.v1=`, { direction: 'in', author: 'member', kind: 'audio', text: '', at, media: { status: 'stored', path: `whatsapp_media/${WA_ID}/wamid.v1_.ogg`, mimeType: VOICE_NOTE_TYPE, voice: true, size: OGG.length } })
+    mocks.store.seed(`${MESSAGES}/elsewhere`, { direction: 'in', author: 'member', kind: 'audio', text: '', at, media: { status: 'stored', path: 'whatsapp_media/972500000000/x.ogg' } })
+    mocks.store.seed(`${MESSAGES}/failed`, { direction: 'in', author: 'member', kind: 'audio', text: '', at, media: { status: 'failed' } })
+    mocks.objects.set(`whatsapp_media/${WA_ID}/wamid.v1_.ogg`, OGG)
+    mocks.objects.set('whatsapp_media/972500000000/x.ogg', OGG)
+  })
+
+  const call = (query: string, cookie: string | null = `${ADMIN_SESSION_COOKIE}=${session}`) =>
+    getMediaFile(new Request(`https://landly.test/api/admin/whatsapp/media?${query}`, { headers: cookie ? { cookie } : {} }))
+
+  it('streams a stored voice note to a signed-in admin, as Opus in Ogg, never sniffed', async () => {
+    const res = await call(`waId=${WA_ID}&id=${encodeURIComponent('wamid.v1=')}`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe(VOICE_NOTE_TYPE)
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('cache-control')).toBe(MEDIA_CACHE_CONTROL)
+    expect(Buffer.from(await res.arrayBuffer()).equals(OGG)).toBe(true)
+  })
+
+  it('needs the admin session', async () => {
+    expect((await call(`waId=${WA_ID}&id=wamid.v1%3D`, null)).status).toBe(401)
+    expect((await call(`waId=${WA_ID}&id=wamid.v1%3D`, `${ADMIN_SESSION_COOKIE}=forged.token`)).status).toBe(401)
+  })
+
+  it('serves only stored files under that member’s own folder', async () => {
+    expect((await call(`waId=${WA_ID}&id=elsewhere`)).status).toBe(404)
+    expect((await call(`waId=${WA_ID}&id=failed`)).status).toBe(404)
+    expect((await call(`waId=${WA_ID}&id=missing`)).status).toBe(404)
+    expect((await call(`waId=../x&id=wamid.v1%3D`)).status).toBe(400)
+    expect((await call(`waId=${WA_ID}&id=..%2F..%2Fx`)).status).toBe(400)
+  })
+
+  it('is what the inbox hands audio, alongside its signed URLs', async () => {
+    const chat = await getConversation(WA_ID)
+    const voice = chat!.messages.find((m) => m.id === 'wamid.v1=')!
+    expect(voice.media?.fileUrl).toBe(`/api/admin/whatsapp/media?waId=${WA_ID}&id=${encodeURIComponent('wamid.v1=')}`)
   })
 })

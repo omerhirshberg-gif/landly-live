@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { setStoredToken } from '@/lib/admin/adminSession'
+import { markSignedIn } from '@/lib/admin/adminSession'
 import Alert from '@/components/admin/Alert'
 import PasswordField from '@/components/admin/PasswordField'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { ADMIN_LABEL, PRIMARY_BUTTON } from '@/components/admin/formStyles'
 
 const ERROR_ID = 'admin-login-error'
+const REMEMBER_HINT_ID = 'admin-remember-hint'
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -24,15 +26,16 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/verify-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, remember }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok || !data?.token) {
-        setError(res.status === 429 ? 'Too many attempts. Try again later.' : 'Incorrect password.')
+      if (!res.ok || !data?.ok) {
+        setError(res.status === 429 ? 'Too many attempts. Try again later.' : res.status === 503 ? 'Sign-in is unavailable right now. Try again later.' : 'Incorrect password.')
         setSubmitting(false)
         return
       }
-      setStoredToken(data.token)
+      // The session is the httpOnly cookie the response just set.
+      markSignedIn()
       router.push('/admin')
     } catch {
       setError('Something went wrong. Try again.')
@@ -85,6 +88,29 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={setPassword}
               />
+            </div>
+
+            <div>
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D] select-none [-webkit-tap-highlight-color:transparent]">
+                <input
+                  type="checkbox"
+                  name="remember"
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-[#0038B8]"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  aria-describedby={REMEMBER_HINT_ID}
+                />
+                <span>
+                  Stay logged in
+                  <span className="text-[#94A3B8]"> · </span>
+                  <bdi lang="he" dir="rtl">
+                    זכור אותי
+                  </bdi>
+                </span>
+              </label>
+              <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-[#94A3B8]">
+                Keeps you signed in on this device for 30 days. Otherwise you&apos;re signed out after 12 hours.
+              </p>
             </div>
 
             <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>

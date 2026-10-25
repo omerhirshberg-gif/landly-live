@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useLayoutEffect, useMemo, useRef } from 'react'
-import MessageBubble, { AutomationRun } from './MessageBubble'
+import MessageBubble, { AutomationRun, SystemNote } from './MessageBubble'
 import { dayLabel, sameDay } from './time'
 import { groupTranscript, itemAt, type TranscriptMessage } from './transcript'
 
@@ -74,7 +74,11 @@ export default function ChatTranscript({ waId, messages, now }: ChatTranscriptPr
                   <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#64748B] ring-1 ring-[#E2E8F0]">{dayLabel(at, now)}</span>
                 </li>
               )}
-              {item.type === 'message' ? (
+              {item.type === 'message' && item.message.author === 'system' ? (
+                <li className="flex justify-center">
+                  <SystemNote message={item.message} />
+                </li>
+              ) : item.type === 'message' ? (
                 <li className={`flex ${item.message.direction === 'out' ? 'justify-end' : 'justify-start'}`}>
                   <MessageBubble message={item.message} />
                 </li>

@@ -3,7 +3,7 @@ import { clientIp } from '@/lib/auth/clientIp'
 import { NextResponse } from 'next/server'
 import { isAdminPassword } from './checkAdminPassword'
 import { releaseAdminLoginAttempt, reserveAdminLoginAttempt } from '@/lib/auth/adminLoginThrottle'
-import { verifyAdminSessionToken } from './sessionToken'
+import { adminSessionFromCookies, verifyAdminSessionToken } from './sessionToken'
 
 // Two independent throttles:
 //
@@ -45,17 +45,40 @@ function tooManyRequests(): NextResponse {
   return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
 }
 
-// Shared by every /api/admin/* route that takes a session token as a
-// Bearer header (every admin route except verify-password itself). Returns
-// the response to send back verbatim, or null if the request is authorized
-// and the route should proceed.
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+// A cookie rides along on any request the browser makes, so a change sent
+// with one must come from our own pages: its Origin has to be this host.
+// SameSite=Lax already keeps the cookie off cross-site POSTs; this also
+// covers a sibling subdomain, which counts as same-site. A Bearer header is
+// never sent by the browser on its own, so it needs no such check.
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get('origin')
+  if (!origin) return false
+  try {
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host
+    return new URL(origin).host === host
+  } catch {
+    return false
+  }
+}
+
+// Shared by every /api/admin/* route except verify-password itself: the
+// session token from the httpOnly cookie (lib/admin/sessionToken.ts), or
+// as a Bearer header. Returns the response to send back verbatim, or null
+// if the request is authorized and the route should proceed.
 export function requireAdminAuth(request: Request): NextResponse | null {
   const ip = clientIp(request)
   if (isOverRequestLimit(ip)) return tooManyRequests()
 
   const authHeader = request.headers.get('authorization') ?? ''
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  return verifyAdminSessionToken(token) ? null : NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
+  if (bearer && verifyAdminSessionToken(bearer)) return null
+
+  const cookie = adminSessionFromCookies(request.headers.get('cookie'))
+  if (!verifyAdminSessionToken(cookie)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!SAFE_METHODS.has(request.method.toUpperCase()) && !isSameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  return null
 }
 
 // For /api/admin/verify-password: the actual login attempt, gated by both

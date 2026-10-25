@@ -20,8 +20,10 @@ import type { InboundMedia, MediaType } from './webhookPayload'
 //
 // The bytes stream straight through: never more than one chunk in memory,
 // stopped at MEDIA_MAX_BYTES, hashed on the way against Meta's SHA-256.
-// Images must really be JPEG, PNG or WebP (no SVG: it can carry script), and
-// files that run (executables, scripts, HTML) are refused.
+// Images must really be JPEG, PNG or WebP (no SVG: it can carry script), video
+// and Ogg audio must open with their container's signature, nothing but a
+// document may open like markup (signatureProblem), and files that run
+// (executables, scripts, HTML) are refused.
 
 export const MEDIA_PREFIX = 'whatsapp_media/'
 export const MEDIA_MAX_BYTES = 25 * 1024 * 1024
@@ -82,6 +84,34 @@ export function imageSignatureMatches(contentType: string, head: Uint8Array): bo
   return false
 }
 
+/** How many leading bytes signatureProblem needs to see. */
+export const SIGNATURE_BYTES = 16
+// ISO media (MP4, MOV, 3GP, M4A) opens with a box; older QuickTime files may lead with one of these instead of ftyp.
+const ISO_BOXES = new Set(['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'])
+
+/**
+ * Why a photo, video or audio file's first bytes aren't what its type says,
+ * or null when they are. Images must match exactly; video and Ogg audio are
+ * checked where their containers have a fixed signature; anything that opens
+ * like markup (Meta's HTML error page, an SVG) is refused for every media type.
+ * Documents are not checked here (storedType screens them by type and name).
+ */
+export function signatureProblem(type: MediaType, contentType: string, head: Uint8Array): string | null {
+  if (type === 'document') return null
+  const ascii = (from: number, to: number) => String.fromCharCode(...head.subarray(from, to))
+  if (/^\s*</.test(ascii(0, SIGNATURE_BYTES))) return `bytes look like markup (HTML or XML), not ${contentType}`
+  if (type === 'image') return imageSignatureMatches(contentType, head) ? null : `bytes are not ${contentType}`
+  const base = baseType(contentType)
+  if (base === 'video/mp4' || base === 'video/quicktime' || base === 'video/3gpp' || base === 'audio/mp4') {
+    return ISO_BOXES.has(ascii(4, 8)) ? null : `bytes are not an ISO media file (${base})`
+  }
+  if (base === 'video/webm' || base === 'audio/webm') {
+    return head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3 ? null : `bytes are not WebM (${base})`
+  }
+  if (base === 'audio/ogg' || base === 'audio/opus') return ascii(0, 4) === 'OggS' ? null : `bytes are not Ogg (${base})`
+  return null
+}
+
 /** Meta sends SHA-256 as hex from the Graph API and as base64 in webhooks. */
 export function sha256Matches(expected: string, digest: Buffer): boolean {
   const value = expected.trim()
@@ -103,6 +133,7 @@ export async function storeInboundMedia(waId: string, messageId: string, media: 
   const who = maskPhone(`+${waId}`)
   const base: LoggedMedia = {
     status: 'failed',
+    ...(media.mediaId ? { mediaId: media.mediaId } : {}),
     ...(media.mimeType ? { mimeType: baseType(media.mimeType) } : {}),
     ...(media.filename ? { filename: media.filename } : {}),
     ...(media.voice ? { voice: true } : {}),
@@ -111,6 +142,11 @@ export async function storeInboundMedia(waId: string, messageId: string, media: 
     console.info(`[whatsapp-media] ${media.type} from ${who} not fetched: WHATSAPP_ACCESS_TOKEN is not configured`)
     return { ...base, status: 'unavailable' }
   }
+  if (!media.mediaId) {
+    console.info(`[whatsapp-media] ${media.type} from ${who} not stored: the webhook gave no usable media id`)
+    return base
+  }
+  const mediaId = media.mediaId
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), MEDIA_TIMEOUT_MS)
@@ -118,7 +154,7 @@ export async function storeInboundMedia(waId: string, messageId: string, media: 
   let objectPath: string | undefined
   let described = base
   try {
-    const info = await fetchWhatsAppMediaInfo(media.mediaId, controller.signal)
+    const info = await fetchWhatsAppMediaInfo(mediaId, controller.signal)
     const type = storedType(media.type, info.mimeType ?? media.mimeType, media)
     if (!type) throw new MediaRefused('failed', `type ${baseType(info.mimeType ?? media.mimeType) || 'unknown'} is not kept`)
     described = { ...base, mimeType: type.contentType }
@@ -136,17 +172,29 @@ export async function storeInboundMedia(waId: string, messageId: string, media: 
 
     const hash = createHash('sha256')
     let size = 0
-    let checkedHead = media.type !== 'image'
+    // The first SIGNATURE_BYTES are held back until they can be checked, however the stream splits them.
+    let head: Buffer | null = Buffer.alloc(0)
+    const release = (guard: Transform, bytes: Buffer): Error | null => {
+      const problem = signatureProblem(media.type, type.contentType, bytes)
+      if (problem) return new MediaRefused('failed', `${problem} (first bytes ${bytes.subarray(0, 8).toString('hex') || 'none'})`)
+      head = null
+      hash.update(bytes)
+      guard.push(bytes)
+      return null
+    }
     const guard = new Transform({
       transform(chunk: Buffer, _encoding, done) {
         size += chunk.length
         if (size > MEDIA_MAX_BYTES) return done(new MediaRefused('too_large', `over ${MEDIA_MAX_BYTES} bytes`))
-        if (!checkedHead) {
-          checkedHead = true
-          if (!imageSignatureMatches(type.contentType, chunk)) return done(new MediaRefused('failed', `bytes are not ${type.contentType}`))
+        if (head) {
+          head = Buffer.concat([head, chunk])
+          return done(head.length >= SIGNATURE_BYTES ? release(this, head) : null)
         }
         hash.update(chunk)
         done(null, chunk)
+      },
+      flush(done) {
+        done(head ? release(this, head) : null)
       },
     })
 

@@ -1,4 +1,5 @@
 import 'server-only'
+import { recordUsage } from '@/lib/usage/recordUsage'
 
 // The one place that talks to Meta's WhatsApp Cloud API: the phone-change
 // code (lib/auth/phoneVerification.ts) and the support bot's replies
@@ -100,6 +101,9 @@ export async function sendWhatsAppMessage(to: string, message: WhatsAppMessage, 
     const body = (await res.json().catch(() => null)) as { error?: { code?: number; message?: string } } | null
     throw new WhatsAppApiError(String(body?.error?.code ?? res.status), body?.error?.message ?? `HTTP ${res.status}`)
   }
+  // Replies inside the service window (free) are counted here; the OTP
+  // template, billed, where it's sent (lib/auth/phoneVerification.ts).
+  if (message.type !== 'template') recordUsage('whatsapp.serviceSent')
   const sent = (await res.json().catch(() => null)) as { messages?: { id?: unknown }[] } | null
   const id = sent?.messages?.[0]?.id
   return typeof id === 'string' && id ? id : undefined
@@ -144,17 +148,50 @@ export async function fetchWhatsAppMediaInfo(mediaId: string, signal: AbortSigna
   }
 }
 
-/** Opens the attachment's bytes (a URL from fetchWhatsAppMediaInfo) as a stream; `signal` bounds the whole download. */
+const isMediaHost = (url: URL) => url.protocol === 'https:' && MEDIA_HOST.test(url.hostname)
+
+/** Meta's CDN answers some non-browser clients with an HTML page (HTTP 200) instead of the file. */
+export const MEDIA_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+const MAX_MEDIA_REDIRECTS = 3
+
+/**
+ * Opens the attachment's bytes (a URL from fetchWhatsAppMediaInfo) as a
+ * stream; `signal` bounds the whole download. Redirects are followed by hand,
+ * up to MAX_MEDIA_REDIRECTS, over https only: the token goes along to Meta's
+ * own hosts and is dropped for any other (a signed CDN URL needs none).
+ */
 export async function downloadWhatsAppMedia(url: string, signal: AbortSignal): Promise<Response> {
-  let res: Response
-  try {
-    res = await fetch(url, { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` }, signal, redirect: 'error' })
-  } catch (err) {
-    throw new WhatsAppApiError('network', err instanceof Error ? err.message : String(err))
+  let target = new URL(url)
+  for (let hop = 0; ; hop++) {
+    const headers: Record<string, string> = { 'User-Agent': MEDIA_USER_AGENT }
+    if (isMediaHost(target)) headers.Authorization = `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`
+    let res: Response
+    try {
+      res = await fetch(target.href, { headers, signal, redirect: 'manual' })
+    } catch (err) {
+      throw new WhatsAppApiError('network', err instanceof Error ? err.message : String(err))
+    }
+    const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null
+    if (location) {
+      await res.body?.cancel().catch(() => {})
+      let next: URL | null = null
+      try {
+        next = new URL(location, target)
+      } catch {}
+      if (!next || next.protocol !== 'https:') throw new WhatsAppApiError('bad_redirect', `Media download redirected to a non-https URL (HTTP ${res.status})`)
+      if (hop >= MAX_MEDIA_REDIRECTS) throw new WhatsAppApiError('too_many_redirects', `Media download redirected more than ${MAX_MEDIA_REDIRECTS} times`)
+      target = next
+      continue
+    }
+    if (!res.ok || !res.body) {
+      await res.body?.cancel().catch(() => {})
+      throw new WhatsAppApiError(String(res.status), `Media download failed: HTTP ${res.status} from ${target.hostname}`)
+    }
+    const type = res.headers.get('content-type') ?? ''
+    if (/^text\/html\b/i.test(type)) {
+      await res.body.cancel().catch(() => {})
+      throw new WhatsAppApiError('html_response', `Media download got a web page (${type}) from ${target.hostname} instead of the file`)
+    }
+    return res
   }
-  if (!res.ok || !res.body) {
-    await res.body?.cancel().catch(() => {})
-    throw new WhatsAppApiError(String(res.status), `Media download failed: HTTP ${res.status}`)
-  }
-  return res
 }

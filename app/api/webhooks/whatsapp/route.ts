@@ -1,6 +1,7 @@
 import { after, NextResponse } from 'next/server'
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { verifyMetaSignature, verifyTokenMatches } from '@/lib/whatsapp/signature'
+import { recordUsage } from '@/lib/usage/recordUsage'
 import { handleInboundEvents } from '@/lib/whatsapp/supportBotHandler'
 import { parseWebhookPayload, payloadPhoneNumberIds } from '@/lib/whatsapp/webhookPayload'
 
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       ` for phone_number_id ${payloadPhoneNumberIds(body).join(', ') || '(none)'}` +
       (senders.length ? ` from ${senders.join(', ')}` : '')
   )
+  recordUsage('whatsapp.inboundMessages', events.length)
   if (events.length) after(() => handleInboundEvents(events))
   return NextResponse.json({ ok: true })
 }
