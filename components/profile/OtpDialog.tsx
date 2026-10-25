@@ -9,6 +9,7 @@ import {
   finishEmailChange,
   requestPhoneChange,
   resendEmailChange,
+  resendEndsChange,
   verifyEmailCode,
   verifyPhoneCode,
   type ContactChangeFailure,
@@ -34,6 +35,7 @@ export default function OtpDialog({
   resendIn,
   onClose,
   onVerified,
+  onEnded,
 }: {
   user: User
   /** The pending E.164 number or email address. */
@@ -42,6 +44,8 @@ export default function OtpDialog({
   resendIn: number
   onClose: () => void
   onVerified: () => void
+  /** A resend ended the change (resendEndsChange): closes here, and the profile screen shows `message`. */
+  onEnded: (message: string) => void
 }) {
   const { t, lang } = useLang()
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -125,6 +129,10 @@ export default function OtpDialog({
       // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
       setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t('pending_phone_body').replace('{phone}', `⁦${display}⁩`))
       inputRef.current?.focus()
+      return
+    }
+    if (resendEndsChange(result.reason)) {
+      onEnded(failure(result))
       return
     }
     if (result.retryAfter) restart(result.retryAfter)

@@ -53,19 +53,17 @@ export class WhatsAppApiError extends Error {
 }
 
 type ReplyButton = { type: 'reply'; reply: { id: string; title: string } }
-type ListSection = { title: string; rows: { id: string; title: string; description?: string }[] }
 
-/** The message types Landly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages). */
+/**
+ * The message types Landly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages).
+ * No list messages: they open a bottom sheet on phones, so every choice is a reply button in the bubble.
+ */
 export type WhatsAppMessage =
   | { type: 'text'; text: { body: string; preview_url?: boolean } }
   | { type: 'template'; template: { name: string; language: { code: string }; components: unknown[] } }
   | {
       type: 'interactive'
       interactive: { type: 'button'; body: { text: string }; footer?: { text: string }; action: { buttons: ReplyButton[] } }
-    }
-  | {
-      type: 'interactive'
-      interactive: { type: 'list'; body: { text: string }; footer?: { text: string }; action: { button: string; sections: ListSection[] } }
     }
   | {
       type: 'interactive'

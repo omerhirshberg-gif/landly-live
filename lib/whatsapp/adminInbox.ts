@@ -3,7 +3,7 @@ import { FieldValue, Timestamp, type DocumentData } from 'firebase-admin/firesto
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
-import { logMessages, snippetOf, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
+import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
 import { sendWhatsAppMessage, WhatsAppApiError, whatsappLive, type WhatsAppMessage } from './graph'
 import {
   currentStatus,
@@ -22,7 +22,9 @@ import { isBotLanguage } from './webhookPayload'
 // status change. Replies are plain text from the number the member last
 // wrote to, as Landly, and only inside Meta's 24-hour customer-service
 // window. A reply keeps the conversation escalated (and refreshes
-// escalatedAt) so the bot stays quiet while a person is answering.
+// escalatedAt) so the bot stays quiet while a person is answering. Anything
+// the team does answers the bot's idle check-in, and a message sent moves
+// the conversation's expiresAt to 180 days after it.
 //
 // A conversation needs a reply while it is escalated and the member wrote
 // after the team's last reply; that drives the "Awaiting reply" tab without
@@ -155,7 +157,10 @@ export async function replyAsTeam(waId: string, text: string, now = Date.now()):
       lastAdminReplyAt: at,
       lastOutboundAt: at,
       lastSnippet: snippetOf(logged.entry),
+      expiresAt: Timestamp.fromMillis(now + MESSAGE_TTL_MS),
       inquiryPromptedAt: FieldValue.delete(),
+      idleCheckInAt: FieldValue.delete(),
+      idleResume: FieldValue.delete(),
     },
     { merge: true }
   )
@@ -177,7 +182,7 @@ export async function setConversationStatus(waId: string, status: AdminStatus, n
   const data = snapshot.data()!
   const at = Timestamp.fromMillis(now)
   const clear = FieldValue.delete()
-  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear }
+  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear, idleCheckInAt: clear, idleResume: clear }
   if (status === 'escalated') update.escalatedAt = at
   if (status === 'active') update.escalatedAt = clear
   if (status === 'resolved') Object.assign(update, { resolvedAt: at, escalatedAt: clear, lastMenuAt: clear, lastNudgeAt: clear })
@@ -187,7 +192,7 @@ export async function setConversationStatus(waId: string, status: AdminStatus, n
     const lang = isBotLanguage(data.lang) ? data.lang : 'en'
     const logged = await sendAndLog(waId, data, resolvedMessage(lang), now)
     notified = !logged.error
-    if (notified) Object.assign(update, { lastOutboundAt: at, lastSnippet: snippetOf(logged.entry) })
+    if (notified) Object.assign(update, { lastOutboundAt: at, lastSnippet: snippetOf(logged.entry), expiresAt: Timestamp.fromMillis(now + MESSAGE_TTL_MS) })
   }
   await ref.set(update, { merge: true })
   const updated = await ref.get()

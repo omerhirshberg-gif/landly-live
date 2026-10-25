@@ -348,10 +348,11 @@ function SupportInbox() {
       <h1 className="sr-only">WhatsApp Support</h1>
 
       <div
-        className="grid h-[var(--panes-h)] min-h-[20rem] overflow-hidden bg-white md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[22rem_1fr] md:rounded-2xl md:border md:border-[#E2E8F0] md:shadow-sm"
+        className="grid h-[var(--panes-h)] min-h-[20rem] grid-cols-[minmax(0,1fr)] overflow-hidden bg-white md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[22rem_minmax(0,1fr)] md:rounded-2xl md:border md:border-[#E2E8F0] md:shadow-sm"
         style={PANES_VARS}
       >
-        <section aria-label="Conversations" className={`min-h-0 flex-col border-[#E2E8F0] md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
+        {/* minmax(0,1fr) and min-w-0: a long name or snippet truncates instead of widening the column on a phone. */}
+        <section aria-label="Conversations" className={`min-h-0 min-w-0 flex-col border-[#E2E8F0] md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
           <ConversationList
             conversations={conversations}
             error={listError}

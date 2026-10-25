@@ -41,7 +41,7 @@ import { POST as verifyEmailOtp } from '@/app/api/account/verify-email-otp/route
 import { POST as changePhone } from '@/app/api/account/change-phone/route'
 import { POST as verifyPhoneOtp } from '@/app/api/account/verify-phone-otp/route'
 import { POST as cancelPending } from '@/app/api/account/cancel-pending/route'
-import { contactChangeErrorKey, requestEmailChange, requestPhoneChange, verifyEmailCode, verifyPhoneCode } from '@/lib/account/contactChange'
+import { contactChangeErrorKey, requestEmailChange, requestPhoneChange, resendEndsChange, verifyEmailCode, verifyPhoneCode } from '@/lib/account/contactChange'
 import { isOtpCode, normalizeOtpInput } from '@/lib/auth/otp'
 import { normalizeEmail } from '@/lib/auth/emailChange'
 import { buildEmailChangeCodeEmail } from '@/lib/email/sendEmailChangeEmail'
@@ -230,6 +230,44 @@ describe('/api/account/change-phone', () => {
     expect((await res.json()).reason).toBe('delivery')
     expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
     expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
+  })
+
+  it('answers delivery, not a server error, when Meta has the template in no language (132001)', async () => {
+    vi.stubEnv('WHATSAPP_OTP_LIVE', 'true')
+    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'secret')
+    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '555')
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const meta = () => new Response(JSON.stringify({ error: { code: 132001, message: 'Template name does not exist in the translation' } }), { status: 400 })
+    const fetchMock = vi.fn().mockImplementation(async () => meta())
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await changePhone(post({ phone: '+12025550123', lang: 'he' }))
+    expect(res.status).toBe(502)
+    expect(await res.json()).toMatchObject({ reason: 'delivery', channel: 'whatsapp' })
+    expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).template.language.code)).toEqual(['he', 'en_US', 'en'])
+    expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
+    vi.unstubAllGlobals()
+  })
+
+  it('a resend that could not be delivered drops the code sent before, so the dialog closes', async () => {
+    await changePhone(post({ phone: '+12025550123' }))
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeDefined()
+    mocks.store.seed(`phoneVerifications/${UID}`, { ...mocks.store.read(`phoneVerifications/${UID}`), lastSentAt: Timestamp.fromMillis(Date.now() - 61_000) })
+    vi.spyOn(devProvider, 'send').mockRejectedValueOnce(new OtpDeliveryError('whatsapp', '132001', 'no translation'))
+    const res = await changePhone(post({ phone: '+12025550123' }))
+    const body = await res.json()
+    expect(body.reason).toBe('delivery')
+    expect(resendEndsChange(body.reason)).toBe(true)
+    expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
+  })
+})
+
+describe('resendEndsChange', () => {
+  it('closes the verification dialog only when nothing is left to verify', () => {
+    expect(resendEndsChange('delivery')).toBe(true)
+    expect(resendEndsChange('noPending')).toBe(true)
+    for (const reason of ['rateLimited', 'offline', 'failed', 'unauthorized', 'invalidCode'] as const) expect(resendEndsChange(reason), reason).toBe(false)
   })
 })
 

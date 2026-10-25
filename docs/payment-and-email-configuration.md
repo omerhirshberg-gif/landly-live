@@ -149,8 +149,9 @@ WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
 | `PHONE_VERIFICATION_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`. The older name `FIREBASE_PHONE_AUTH_ENABLED` is still read when this one is unset. |
 | `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API token. Use a permanent System User token; temporary tokens expire after 24 hours. |
 | `WHATSAPP_PHONE_NUMBER_ID` | The sending number's ID in WhatsApp Manager. |
-| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button), created in en, he, ru, fr and es. Defaults to `landly_otp_code`. |
-| `WHATSAPP_OTP_FALLBACK_LANGUAGE` | Optional, defaults to `en`. When the member's language has no usable copy of the template (Meta template errors 1320xx, e.g. 132001), the code is sent once more in this language; set `en_US` if the template was created under that code. |
+| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button). Defaults to `landly_otp_code`. See the template checklist below. |
+| `WHATSAPP_OTP_FALLBACK_LANGUAGE` | Optional. A language code tried right after the member's own when their copy is missing (for example `en_GB`); `en_US` and then `en` follow anyway. |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Optional, read only by `scripts/whatsapp-diagnose-templates.mjs`: the WhatsApp Business Account (WABA) that owns the number. Without it the script finds the WABA through the token. |
 | `WHATSAPP_OTP_LIVE` | Optional. `true` sends real WhatsApp messages outside production (codes and bot replies); otherwise they are only logged to the `next dev` terminal. |
 | `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0` (supported until about January 2027). A value not shaped like `v25.0` is ignored. |
 
@@ -158,6 +159,40 @@ If the flag is on but the token or number ID is missing, phone edits save
 directly and the server logs the missing setting, so members are never left
 with a banner that cannot clear. Onboarding and sign-up still save the phone
 directly.
+
+Meta matches a template's language code exactly: a copy created as `en_US`
+(WhatsApp Manager's default English) is not found when `en` is asked for, and
+the send fails with **132001** ("Template name does not exist in the
+translation"). The code is therefore tried in up to three languages, in this
+order, without repeats: the member's (`en_US` for English, `he`, `ru`, `fr`,
+`es`), `WHATSAPP_OTP_FALLBACK_LANGUAGE` if set, `en_US`, `en`. Only 132001
+moves on to the next language; any other refusal (132000 parameter count,
+132012 parameter format, 132015/132016 paused or disabled, 131xxx) is the
+template or the number itself, so it fails at once. When every language
+answers 132001 the server logs a hint naming the template and number ID: the
+template is then missing from the WABA that owns `WHATSAPP_PHONE_NUMBER_ID`
+(often a production number in another WABA than dev's, or a different
+`WHATSAPP_OTP_TEMPLATE` in Vercel). A failed send leaves nothing pending: the
+member sees "We couldn't send the code by WhatsApp…" on the profile screen,
+and a failed *Resend* closes the code dialog or sheet too, since the code sent
+before is no longer valid.
+
+Template checklist, in **each** WABA (`landly-dev`'s and `landly-be752`'s
+sending numbers):
+
+- Name: exactly `WHATSAPP_OTP_TEMPLATE` for that environment (default `landly_otp_code`).
+- Category **Authentication**, with a **Copy code** button (the code fills both the body and the button).
+- Languages: `en_US` (required, the fallback every member ends on), plus `he`, `ru`, `fr`, `es`; each **Approved**, none paused.
+- In the same WABA as that environment's `WHATSAPP_PHONE_NUMBER_ID`.
+
+Check one environment at a time; the script only reads from the Graph API and
+exits 1 when a member language would get no code:
+
+```
+node --env-file=.env.local scripts/whatsapp-diagnose-templates.mjs                # landly-dev
+vercel env pull .env.production.local --environment=production
+node --env-file=.env.production.local scripts/whatsapp-diagnose-templates.mjs     # landly-be752
+```
 
 ## WhatsApp support bot
 
@@ -179,8 +214,40 @@ for the rest.
 Setup in the Meta developer dashboard: WhatsApp → Configuration → Webhook,
 callback URL `{APP_URL}/api/webhooks/whatsapp`, then subscribe to the
 `messages` field. Bot state lives in the server-only `whatsappConversations`
-and `whatsappInbound` collections; add a Firestore TTL policy on
-`whatsappInbound.expiresAt` so seen message ids are deleted after 7 days.
+and `whatsappInbound` collections. `firebase.indexes.json` declares the
+Firestore TTL policies: `whatsappInbound.expiresAt` (seen message ids, 7 days),
+and `whatsappConversations.expiresAt` and the `messages` collection group's
+`expiresAt` (chats and transcripts, 180 days after the latest message). TTL
+policies are per project, so deploy them to both, then backfill conversations
+written before `expiresAt` existed:
+
+```
+firebase deploy --only firestore:indexes --project landly-dev
+firebase deploy --only firestore:indexes --project landly-be752
+node scripts/whatsapp-backfill-expiry.mjs --project <projectId>            # dry run
+node scripts/whatsapp-backfill-expiry.mjs --project <projectId> --apply
+```
+
+Idle check-ins: when the bot spoke last and the member has been quiet for
+`WHATSAPP_IDLE_MINUTES` (20–30, default 25), the bot asks once whether they
+still need help; with no answer 30 minutes later the conversation is resolved
+silently. Vercel Cron (`vercel.json`, every 5 minutes, Production only) calls
+`/api/cron/whatsapp-idle`, which also deletes chats more than 3 days past
+their `expiresAt` in case a TTL policy is missing.
+
+| Variable | Value |
+| --- | --- |
+| `CRON_SECRET` | A random string of at least 16 characters, set on Production (Vercel sends it as `Authorization: Bearer …`) and on any Preview you sweep by hand. Without it the route answers 503. |
+| `WHATSAPP_IDLE_MINUTES` | Optional, 20–30 (default 25). |
+
+Vercel Cron never runs on Preview or locally, so sweep landly-dev by hand
+against a local `next dev` or a Preview deployment (`--url`; a protected
+Preview also needs `VERCEL_AUTOMATION_BYPASS_SECRET`):
+
+```
+CRON_SECRET=… node scripts/whatsapp-idle-sweep.mjs
+CRON_SECRET=… node scripts/whatsapp-idle-sweep.mjs --url https://<preview>.vercel.app
+```
 
 The bot answers from the number the member wrote to (the delivery's
 `metadata.phone_number_id`), whichever number on the business account it is,

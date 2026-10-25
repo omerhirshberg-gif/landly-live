@@ -8,7 +8,7 @@
 
 import type { Lang } from '@/lib/i18n/translations'
 
-/** The reply-button and list-row ids the bot sends (lib/whatsapp/supportBot.ts). */
+/** The reply-button ids the bot sends (lib/whatsapp/supportBot.ts); menus sent as lists before still answer with the same ids. */
 export const BOT_ACTIONS = [
   'btn_perks',
   'btn_pass',
@@ -19,12 +19,16 @@ export const BOT_ACTIONS = [
   'btn_cancel_inquiry',
   'btn_ticket_resolved',
   'btn_back_to_menu',
-  // The main menu's rows.
+  // The idle check-in's buttons.
+  'btn_idle_yes',
+  'btn_idle_done',
+  // The main menu's buttons.
   'menu_order',
   'menu_new_order',
   'menu_pass',
   'menu_agent',
-  // The "Existing order" and "My Pass & perks" rows.
+  'menu_lang',
+  // The "Existing order" and "My Pass & perks" buttons.
   'opt_vouchers',
   'opt_venue',
   'opt_refund',
@@ -38,12 +42,12 @@ export type BotAction = (typeof BOT_ACTIONS)[number]
 // Menus sent before the btn_* ids still sit in members' chats, and still work.
 const LEGACY_ACTIONS: Record<string, BotAction> = { perks: 'btn_perks', pass: 'btn_pass', team: 'btn_talk_to_team' }
 
-/** The languages the bot offers, in the picker's order; each list row's id is `lang_<code>`. */
+/** The languages the bot offers, in the picker's order; each button's id is `lang_<code>`. */
 export const BOT_LANGUAGES = ['en', 'he', 'ru', 'fr', 'es'] as const satisfies readonly Lang[]
 
 export const isBotLanguage = (value: unknown): value is Lang => (BOT_LANGUAGES as readonly unknown[]).includes(value)
 
-/** The language a picker row id stands for, or undefined for any other id. */
+/** The language a picker button id stands for, or undefined for any other id. */
 export function toBotLanguage(value: unknown): Lang | undefined {
   if (typeof value !== 'string' || !value.startsWith('lang_')) return undefined
   const code = value.slice('lang_'.length)
@@ -72,9 +76,9 @@ interface InboundBase {
 
 export type InboundEvent =
   | (InboundBase & { kind: 'text'; text: string })
-  /** A reply button tapped, or a row picked from one of the bot's menus. */
+  /** A reply button tapped, or a row picked from one of the bot's older list menus. */
   | (InboundBase & { kind: 'button'; action: BotAction })
-  /** A row picked from the language list. */
+  /** A language button tapped (or a row picked from the older language list). */
   | (InboundBase & { kind: 'language'; lang: Lang })
   /** An image, voice note, sticker, location, or a button we don't know: answered with the menu. `media` is Meta's message type. */
   | (InboundBase & { kind: 'other'; media?: string })
@@ -151,10 +155,11 @@ function parseMessage(message: Raw | undefined, names: Map<string, string>): Inb
   }
   if (message.type === 'interactive') {
     const interactive = obj(message.interactive)
-    const row = obj(interactive?.list_reply)?.id
-    const lang = toBotLanguage(row)
+    // Lists are no longer sent, but older ones still sit in members' chats.
+    const id = obj(interactive?.button_reply)?.id ?? obj(interactive?.list_reply)?.id
+    const lang = toBotLanguage(id)
     if (lang) return { ...base, kind: 'language', lang }
-    const action = toBotAction(row ?? obj(interactive?.button_reply)?.id)
+    const action = toBotAction(id)
     return action ? { ...base, kind: 'button', action } : { ...base, kind: 'other', media: 'interactive' }
   }
   // A template's quick-reply button.

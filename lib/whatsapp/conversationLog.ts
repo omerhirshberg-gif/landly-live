@@ -7,8 +7,9 @@ import { getAdminDb } from '@/lib/firebase/admin'
 // direction, written by the bot (lib/whatsapp/supportBotHandler.ts) and the
 // admin reply routes (lib/whatsapp/adminInbox.ts). The id is Meta's message
 // id when there is one, so a retried delivery is stored once. Each doc
-// expires MESSAGE_TTL_MS after it was written (a Firestore TTL policy on
-// expiresAt deletes it).
+// expires MESSAGE_TTL_MS (180 days) after it was written (a Firestore TTL
+// policy on expiresAt deletes it); the conversation doc's own expiresAt
+// follows its latest message, so it goes with the last of them.
 
 export const MESSAGE_TTL_MS = 180 * 24 * 60 * 60 * 1000
 

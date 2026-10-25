@@ -134,6 +134,16 @@ export function cancelPendingChange(idToken: string, kind: 'email' | 'phone', ap
 }
 
 /**
+ * A resend that leaves nothing to verify: the code could not be delivered
+ * (the server dropped the pending change, and with it the code sent before),
+ * or nothing is pending any more. The verification dialog/sheet closes and
+ * the profile screen shows why, instead of counting down to a dead code.
+ */
+export function resendEndsChange(reason: ContactChangeReason): boolean {
+  return reason === 'delivery' || reason === 'noPending'
+}
+
+/**
  * The translation key for a failed step (both platforms use the same copy).
  * An expired or used-up code tells the member to change the same thing again,
  * so those two name the email for an email change.

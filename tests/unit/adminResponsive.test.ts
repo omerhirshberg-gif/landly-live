@@ -134,6 +134,22 @@ describe('admin portal on phones', () => {
     expect(read('components/admin/support/ReplyComposer.tsx')).toContain('env(safe-area-inset-bottom)')
   })
 
+  it('keeps the inbox filter tabs in three equal columns that never shift or overflow', () => {
+    const list = read('components/admin/support/ConversationList.tsx')
+    expect(list).toContain('role="tablist" aria-label="Filter conversations" className="grid grid-cols-3 gap-1')
+    // Each tab may shrink below its label (which truncates); the count badge keeps one width from the first paint.
+    expect(list).toMatch(/className=\{`flex min-h-11 min-w-0 items-center justify-center/)
+    expect(list).toContain('<span className="min-w-0 truncate">{label}</span>')
+    expect(list).toContain('min-w-[1.5rem] shrink-0 rounded-full px-1.5 text-center text-[11px] tabular-nums')
+    expect(list).toContain("conversations ? conversations.filter((c) => matchesFilter(c, id)).length : '–'")
+    expect(list).not.toMatch(/role="tablist"[^>]*\bflex\b/)
+    // The panes never grow past the viewport on a phone: the column is minmax(0,1fr), the list min-w-0.
+    const page = read('app/admin/support/page.tsx')
+    expect(page).toContain('grid-cols-[minmax(0,1fr)]')
+    expect(page).toContain('md:grid-cols-[22rem_minmax(0,1fr)]')
+    expect(page).toMatch(/aria-label="Conversations" className=\{`min-h-0 min-w-0 flex-col/)
+  })
+
   it('only shows hover styles on devices that can hover', () => {
     expect(read('tailwind.config.js')).toMatch(/future:\s*{\s*hoverOnlyWhenSupported: true,?\s*}/)
   })
