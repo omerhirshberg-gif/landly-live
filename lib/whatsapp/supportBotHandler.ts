@@ -24,8 +24,8 @@ import {
   isConversationStatus,
   isInquiryCategory,
   LANGUAGE_NAMES,
-  languagePickerMessages,
-  menuMessages,
+  languagePickerMessage,
+  menuMessage,
   resolvedMessage,
   submenuMessage,
   textMessage,
@@ -48,7 +48,8 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   state (lib/whatsapp/supportBot.ts): status (active |
 //   awaiting_user_inquiry | escalated | resolved), lastMenuAt, lastNudgeAt,
 //   inquiryPromptedAt, escalatedAt, resolvedAt, inquiryCategory (what
-//   the latest request to the team is about), and the idle check-in's
+//   the latest request to the team is about, or login_help once the member
+//   opens Login & Account help), and the idle check-in's
 //   idleCheckInAt / idleResume (lib/whatsapp/idleSweep.ts, cleared by any
 //   message from the member) and idleDueAt, when the sweep next has work
 //   for the conversation (set when the bot answers, cleared otherwise). expiresAt is MESSAGE_TTL_MS (180 days) after
@@ -115,7 +116,8 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     origin: applicationOrigin(),
     memberFirstName: firstName,
     isMember: !!member,
-    needsLanguage: !isBotLanguage(picked) && !isBotLanguage(profileLang),
+    // Every chat picks its own language once, whatever the member's profile says.
+    needsLanguage: !isBotLanguage(picked),
     status: isConversationStatus(storedStatus) ? storedStatus : undefined,
     lastMenuAt: millis(conversation.get('lastMenuAt')),
     lastNudgeAt: millis(conversation.get('lastNudgeAt')),
@@ -166,14 +168,14 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   try {
     switch (decision.kind) {
       case 'menu':
-        await reply(...menuMessages(ctx))
+        await reply(menuMessage(ctx))
         update.lastMenuAt = at
         break
       case 'submenu':
         await reply(submenuMessage(decision.menu, ctx.lang))
         break
       case 'languagePicker':
-        await reply(...languagePickerMessages())
+        await reply(languagePickerMessage(ctx.needsLanguage ? 'welcome' : ctx.lang))
         update.lastMenuAt = at
         break
       case 'languageChosen': {
@@ -181,7 +183,7 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         Object.assign(update, { lang, langSelectedAt: at, lastMenuAt: at })
         // The member's profile follows the choice, so the site and emails match.
         if (member) await member.ref.set({ preferredLanguage: lang }, { merge: true })
-        await reply(textMessage(lang, 'wa_bot_lang_changed'), ...menuMessages({ ...ctx, lang }))
+        await reply(menuMessage({ ...ctx, lang }, { languageChanged: true }))
         break
       }
       case 'nudge':
@@ -189,6 +191,8 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         update.lastNudgeAt = at
         break
       case 'topic':
+        // Tagged in the inbox as soon as the member asks, before any request to the team.
+        if (decision.topic === 'login_help') update.inquiryCategory = 'login_help'
         await reply(...topicMessages(decision.topic, ctx))
         break
       case 'promptInquiry':
@@ -239,7 +243,10 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     if (outbound.length) update.lastOutboundAt = Timestamp.fromMillis(outbound.at(-1)!.at)
     // The bot spoke last and nobody else has the conversation: the idle sweep's check-in falls due, if Meta's window is still open by then.
     const lastSent = outbound.at(-1)?.at
-    const idleDue = lastSent !== undefined && update.status !== 'escalated' && update.status !== 'resolved' ? lastSent + idleMs() : undefined
+    // A chat still awaiting its language gets no check-in: the list stays its only prompt.
+    const awaitingLanguage = ctx.needsLanguage && decision.kind !== 'languageChosen'
+    const idleDue =
+      lastSent !== undefined && !awaitingLanguage && update.status !== 'escalated' && update.status !== 'resolved' ? lastSent + idleMs() : undefined
     if (idleDue !== undefined && idleDue < event.at + CUSTOMER_SERVICE_WINDOW_MS) update.idleDueAt = Timestamp.fromMillis(idleDue)
     else if (clear && conversation.get('idleDueAt') !== undefined) update.idleDueAt = clear
     update.expiresAt = Timestamp.fromMillis((outbound.at(-1)?.at ?? inbound.at) + MESSAGE_TTL_MS)

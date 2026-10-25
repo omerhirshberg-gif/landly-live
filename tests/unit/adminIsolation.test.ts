@@ -36,8 +36,7 @@ describe('admin upload isolation', () => {
   })
 
   it('initializes Firebase only in the guarded config modules', () => {
-    // lib/usage/peerUsageDb.ts: the named, read-only DEV usage reader, guarded by lib/usage/peerGuard.ts.
-    const allowed = ['lib/firebase/admin.ts', 'lib/firebase/config.ts', 'lib/firebase/config.web.ts', 'lib/firebase/config.native.ts', 'lib/usage/peerUsageDb.ts']
+    const allowed = ['lib/firebase/admin.ts', 'lib/firebase/config.ts', 'lib/firebase/config.web.ts', 'lib/firebase/config.native.ts']
     const initializers = [...sourceFiles('app'), ...sourceFiles('lib'), ...sourceFiles('components')].filter((path) =>
       /\binitializeApp\(/.test(read(path)),
     )

@@ -27,6 +27,7 @@ import {
   botLanguage,
   BUTTON_TITLE_MAX,
   BUTTONS_MAX,
+  choiceMessage,
   currentStatus,
   decide,
   ESCALATION_SILENCE_MS,
@@ -39,12 +40,19 @@ import {
   inquiryPromptMessage,
   isLanguageKeyword,
   isMenuKeyword,
-  languagePickerMessages,
-  menuMessages,
+  languagePickerMessage,
+  LIST_BUTTON_MAX,
+  LIST_ROWS_MAX,
+  menuMessage,
   resolvedMessage,
+  ROW_DESCRIPTION_MAX,
+  ROW_TITLE_MAX,
   submenuMessage,
   topicMessages,
   transcriptText,
+  typedLanguage,
+  WELCOME_BODY,
+  WELCOME_LIST_BUTTON,
   type Topic,
   type BotContext,
 } from '@/lib/whatsapp/supportBot'
@@ -107,14 +115,19 @@ const replies = () =>
     .filter((line) => line.startsWith('[whatsapp-bot] simulated reply'))
     .map((line) => JSON.parse(line.slice(line.indexOf('{'))))
 
-const buttonIds = (message: { interactive: { action: { buttons: { reply: { id: string } }[] } } }) =>
-  message.interactive.action.buttons.map((b) => b.reply.id)
-/** Every button id across a run of bubbles, in order. */
-const allButtonIds = (messages: unknown[]) => messages.flatMap((message) => buttonIds(message as never))
-/** The two bubbles of the language buttons, and of the menu. */
+type SentChoices = { interactive: { action: { buttons?: { reply: { id: string } }[]; sections?: { rows: { id: string }[] }[] } } }
+/** The ids a message offers: its reply buttons, or its list rows. */
+const choiceIds = (message: unknown) => {
+  const { action } = (message as SentChoices).interactive
+  return action.buttons ? action.buttons.map((b) => b.reply.id) : (action.sections ?? []).flatMap((s) => s.rows.map((r) => r.id))
+}
+/** Every choice id across a run of messages, in order. */
+const allChoiceIds = (messages: unknown[]) => messages.flatMap(choiceIds)
+/** The rows of the language list, and of the menu. */
 const LANGUAGE_IDS = ['lang_en', 'lang_he', 'lang_ru', 'lang_fr', 'lang_es']
-const MENU_IDS = ['menu_order', 'menu_new_order', 'menu_pass', 'menu_agent', 'menu_lang']
-const TOPICS: Topic[] = ['vouchers', 'venue', 'refund', 'new_order', 'pass', 'perks']
+const MENU_IDS = ['menu_order', 'menu_new_order', 'menu_pass', 'menu_agent', 'menu_login_help', 'menu_lang']
+const TOPICS: Topic[] = ['vouchers', 'venue', 'refund', 'new_order', 'pass', 'perks', 'login_help']
+const LANGUAGE_NAMES_IN_ORDER = ['English', 'עברית', 'Русский', 'Français', 'Español']
 
 const event = (overrides: Partial<InboundEvent> & Pick<InboundEvent, 'kind'>): InboundEvent =>
   ({ messageId: `wamid.${Math.random()}`, waId: WA_ID, at: Date.now(), ...(overrides.kind === 'text' ? { text: 'hi' } : {}), ...overrides }) as InboundEvent
@@ -225,31 +238,55 @@ describe('POST /api/webhooks/whatsapp', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
-  it('answers 200 and greets a new number with English language buttons in two bubbles in after()', async () => {
+  it('answers 200 and greets a new number with one English language list in after()', async () => {
     const res = await POST(signedPost(payload([textMsg('wamid.1', 'Hello')])))
     expect(res.status).toBe(200)
     await Promise.all(mocks.tasks)
     const picker = replies()
     // Even a +972 number: English until they pick.
-    expect(picker.map((m) => m.interactive.type)).toEqual(['button', 'button'])
-    expect(picker[0].interactive.body.text).toBe('Hi! Welcome to Landly. Please choose your language to continue.')
-    expect(allButtonIds(picker)).toEqual(LANGUAGE_IDS)
+    expect(picker).toHaveLength(1)
+    expect(picker[0].interactive).toMatchObject({ type: 'list', body: { text: WELCOME_BODY }, action: { button: WELCOME_LIST_BUTTON } })
+    expect(picker[0].interactive).not.toHaveProperty('footer')
+    expect(allChoiceIds(picker)).toEqual(LANGUAGE_IDS)
   })
 
-  it('answers a tapped language button with the menu in that language', async () => {
-    await POST(signedPost(payload([buttonMsg('wamid.1', 'lang_es')])))
+  it('answers a picked language row with the menu in that language, in one message', async () => {
+    await POST(signedPost(payload([listMsg('wamid.1', 'lang_es')])))
     await Promise.all(mocks.tasks)
-    const [changed, menu, more] = replies()
-    expect(changed.text.body).toBe(translations.es.wa_bot_lang_changed)
-    expect(menu.interactive.body.text).toBe(translations.es.wa_bot_menu_body)
-    expect(more.interactive.body.text).toBe(translations.es.wa_bot_menu_more_body)
+    expect(replies()).toHaveLength(1)
+    const [menu] = replies()
+    expect(menu.interactive.type).toBe('list')
+    expect(menu.interactive.body.text).toBe(`${translations.es.wa_bot_lang_changed}\n\n${translations.es.wa_bot_menu_body}`)
+    expect(choiceIds(menu)).toEqual(MENU_IDS)
     expect(mocks.store.read(`whatsappConversations/${WA_ID}`)).toMatchObject({ lang: 'es' })
   })
 
-  it('still answers a row picked from a language list sent before the buttons', async () => {
-    await POST(signedPost(payload([listMsg('wamid.1', 'lang_ru')])))
+  it('still answers a language button sent before the list', async () => {
+    await POST(signedPost(payload([buttonMsg('wamid.1', 'lang_ru')])))
     await Promise.all(mocks.tasks)
-    expect(replies()[0].text.body).toBe(translations.ru.wa_bot_lang_changed)
+    expect(replies()[0].interactive.body.text.startsWith(translations.ru.wa_bot_lang_changed)).toBe(true)
+  })
+
+  it('never splits a reply: the welcome, the menu after a pick, and the menu on request are one list each', async () => {
+    const deliver = async (message: unknown) => {
+      const before = replies().length
+      await POST(signedPost(payload([message])))
+      await Promise.all(mocks.tasks)
+      return replies().slice(before)
+    }
+    const welcome = await deliver(textMsg('wamid.1', 'hi'))
+    expect(welcome.map((m) => m.interactive.type)).toEqual(['list'])
+    expect(allChoiceIds(welcome)).toEqual(LANGUAGE_IDS)
+    const afterPick = await deliver(listMsg('wamid.2', 'lang_he'))
+    expect(afterPick.map((m) => m.interactive.type)).toEqual(['list'])
+    expect(allChoiceIds(afterPick)).toEqual(MENU_IDS)
+    const onRequest = await deliver(textMsg('wamid.3', 'תפריט'))
+    expect(onRequest.map((m) => m.interactive.type)).toEqual(['list'])
+    expect(onRequest[0].interactive.body.text).toBe(translations.he.wa_bot_menu_body)
+    // A row picked from the menu list works like a tapped button.
+    const agent = await deliver(listMsg('wamid.4', 'menu_agent'))
+    expect(agent).toHaveLength(1)
+    expect(agent[0].interactive.body.text).toBe(translations.he.wa_bot_inquiry_prompt)
   })
 
   it('acknowledges delivery statuses without any bot work', async () => {
@@ -264,8 +301,8 @@ describe('POST /api/webhooks/whatsapp', () => {
     await POST(signedPost(payload([textMsg('wamid.same', 'hi')])))
     await POST(signedPost(payload([textMsg('wamid.same', 'hi')])))
     await Promise.all(mocks.tasks)
-    // One language picker: its two bubbles.
-    expect(replies()).toHaveLength(2)
+    // One language list.
+    expect(replies()).toHaveLength(1)
   })
 })
 
@@ -308,14 +345,14 @@ describe('parseWebhookPayload', () => {
   })
 
   it('maps every btn_* id and the legacy ids to their actions', () => {
-    const ids = ['btn_ticket_resolved', 'btn_escalate_prompt', 'btn_back_to_menu', 'btn_cancel_inquiry', 'btn_idle_yes', 'btn_idle_done', 'menu_lang', 'perks', 'team']
+    const ids = ['btn_ticket_resolved', 'btn_escalate_prompt', 'btn_escalate_login', 'btn_back_to_menu', 'btn_cancel_inquiry', 'btn_idle_yes', 'btn_idle_done', 'menu_lang', 'menu_login_help', 'perks', 'team']
     const events = parseWebhookPayload(payload(ids.map((id, i) => buttonMsg(`m${i}`, id))), PHONE_ID)
     expect(events.map((e) => e.kind === 'button' && e.action)).toEqual([
-      'btn_ticket_resolved', 'btn_escalate_prompt', 'btn_back_to_menu', 'btn_cancel_inquiry', 'btn_idle_yes', 'btn_idle_done', 'menu_lang', 'btn_perks', 'btn_talk_to_team',
+      'btn_ticket_resolved', 'btn_escalate_prompt', 'btn_escalate_login', 'btn_back_to_menu', 'btn_cancel_inquiry', 'btn_idle_yes', 'btn_idle_done', 'menu_lang', 'menu_login_help', 'btn_perks', 'btn_talk_to_team',
     ])
   })
 
-  it('reads a tapped language button or an older list row, and keeps the type of other messages and attachments', () => {
+  it('reads a picked language row or an older button, and keeps the type of other messages and attachments', () => {
     const events = parseWebhookPayload(
       payload([
         buttonMsg('a', 'lang_he'),
@@ -333,10 +370,14 @@ describe('parseWebhookPayload', () => {
     expect(events[4]).toMatchObject({ kind: 'media', media: { type: 'audio' } })
   })
 
-  it('reads a row picked from an older list menu as the action it stands for', () => {
-    const events = parseWebhookPayload(payload([listMsg('wamid.1', 'menu_order'), listMsg('wamid.2', 'opt_refund'), listMsg('wamid.3', 'nope')]))
+  it('reads a row picked from the menu list as the action it stands for', () => {
+    const events = parseWebhookPayload(
+      payload([listMsg('wamid.1', 'menu_order'), listMsg('wamid.2', 'menu_agent'), listMsg('wamid.3', 'menu_login_help'), listMsg('wamid.4', 'opt_refund'), listMsg('wamid.5', 'nope')])
+    )
     expect(events.map((e) => [e.kind, e.kind === 'button' ? e.action : e.kind === 'other' ? e.media : null])).toEqual([
       ['button', 'menu_order'],
+      ['button', 'menu_agent'],
+      ['button', 'menu_login_help'],
       ['button', 'opt_refund'],
       ['other', 'interactive'],
     ])
@@ -387,36 +428,84 @@ describe('support bot decisions', () => {
     expect(tap('opt_account')).toEqual({ kind: 'promptInquiry', category: 'general' })
     expect(tap('btn_escalate_order')).toEqual({ kind: 'promptInquiry', category: 'order_issue' })
     expect(tap('btn_escalate_purchase')).toEqual({ kind: 'promptInquiry', category: 'purchase_help' })
+    expect(tap('menu_login_help')).toEqual({ kind: 'topic', topic: 'login_help' })
+    expect(tap('btn_escalate_login')).toEqual({ kind: 'promptInquiry', category: 'login_help' })
   })
 
   it('ends each order answer with Talk to Team for the order, and a new-order answer with Talk to Team for a purchase', () => {
-    const escalateId = (topic: Topic) => buttonIds(topicMessages(topic, ctx()).at(-1) as never)[1]
+    const escalateId = (topic: Topic) => choiceIds(topicMessages(topic, ctx()).at(-1) as never)[1]
     expect(escalateId('vouchers')).toBe('btn_escalate_order')
     expect(escalateId('venue')).toBe('btn_escalate_order')
     expect(escalateId('refund')).toBe('btn_escalate_order')
     expect(escalateId('new_order')).toBe('btn_escalate_purchase')
     expect(escalateId('pass')).toBe('btn_escalate_prompt')
     expect(escalateId('perks')).toBe('btn_escalate_prompt')
+    expect(escalateId('login_help')).toBe('btn_escalate_login')
     // Answers without a link are a single message: the answer is the follow-up's body.
     expect(topicMessages('refund', ctx())).toHaveLength(1)
     expect(transcriptText(topicMessages('refund', ctx())[0])).toContain('14\u00A0days')
     expect(topicMessages('vouchers', ctx())).toHaveLength(2)
   })
 
-  it('shows all four topics in two bubbles, and each submenu as three buttons with the way back in the footer', () => {
-    const menu = menuMessages(ctx())
-    expect(menu.map((m) => buttonIds(m as never))).toEqual([['menu_order', 'menu_new_order', 'menu_pass'], ['menu_agent', 'menu_lang']])
+  it('answers Login & Account help with the OTP tips and a Resend link card to /forgot-password', () => {
+    const [card, followUp] = topicMessages('login_help', ctx({ lang: 'he' }))
+    if (card.type !== 'interactive' || card.interactive.type !== 'cta_url') throw new Error('expected a link card')
+    expect(card.interactive.body.text).toBe(bidiSafe('he', translations.he.wa_bot_login_help_body))
+    expect(card.interactive.action.parameters).toEqual({ display_text: translations.he.wa_bot_login_help_cta, url: 'https://landly.test/forgot-password' })
+    expect(translations.en.wa_bot_login_help_cta).toBe('Resend link')
+    expect(choiceIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_login', 'btn_back_to_menu'])
+  })
+
+  it('titles the Login & Account row as asked, moving wording past 24 characters into the row description', () => {
+    const row = (lang: Lang) => {
+      const menu = menuMessage(ctx({ lang }))
+      if (menu.type !== 'interactive' || menu.interactive.type !== 'list') throw new Error('expected a list message')
+      return menu.interactive.action.sections[0].rows.find((r) => r.id === 'menu_login_help')
+    }
+    expect(row('en')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Login & Account help' })
+    expect(row('he')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 \u05E2\u05D6\u05E8\u05D4 \u05D1\u05D4\u05EA\u05D7\u05D1\u05E8\u05D5\u05EA \u05D5\u05D7\u05E9\u05D1\u05D5\u05DF' })
+    expect(row('ru')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 \u0412\u0445\u043E\u0434 \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442', description: '\u041F\u0440\u043E\u0431\u043B\u0435\u043C\u044B \u0441\u043E \u0432\u0445\u043E\u0434\u043E\u043C \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u043C' })
+    expect(row('fr')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Connexion et compte', description: 'Aide \u00E0 la connexion et compte' })
+    expect(row('es')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Sesi\u00F3n y cuenta', description: 'Ayuda para iniciar sesi\u00F3n y cuenta' })
+  })
+
+  it('dispatches choices by count: up to three as buttons, four to ten as one list, never more', () => {
+    const choices = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `c${i}`, title: `Choice ${i}`, description: 'More' }))
+    for (const n of [1, 2, 3]) {
+      const message = choiceMessage('en', 'Body', choices(n), { listButton: 'Pick' })
+      if (message.type !== 'interactive' || message.interactive.type !== 'button') throw new Error('expected a button message')
+      expect(message.interactive.action.buttons).toHaveLength(n)
+      expect(JSON.stringify(message)).not.toContain('description')
+    }
+    for (const n of [4, 7, 10]) {
+      const message = choiceMessage('en', 'Body', choices(n), { listButton: 'Pick' })
+      if (message.type !== 'interactive' || message.interactive.type !== 'list') throw new Error('expected a list message')
+      expect(message.interactive.action.button).toBe('Pick')
+      expect(message.interactive.action.sections).toHaveLength(1)
+      expect(message.interactive.action.sections[0].rows).toHaveLength(n)
+      expect(message.interactive.action.sections[0].rows[0]).toEqual({ id: 'c0', title: 'Choice 0', description: 'More' })
+    }
+    expect(() => choiceMessage('en', 'Body', choices(11), { listButton: 'Pick' })).toThrow()
+    expect(() => choiceMessage('en', 'Body', choices(4))).toThrow()
+  })
+
+  it('shows all six topics in one list, and each submenu as three buttons with the way back in the footer', () => {
+    const menu = menuMessage(ctx())
+    if (menu.type !== 'interactive' || menu.interactive.type !== 'list') throw new Error('expected a list message')
+    expect(choiceIds(menu)).toEqual(MENU_IDS)
+    expect(menu.interactive.action.button).toBe(translations.en.wa_bot_menu_button)
+    expect(menu.interactive.body.text).toBe(translations.en.wa_bot_menu_body)
     const order = submenuMessage('order', 'en')
     const pass = submenuMessage('pass', 'en')
-    expect(buttonIds(order as never)).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund'])
-    expect(buttonIds(pass as never)).toEqual(['opt_pass', 'opt_perks', 'opt_account'])
+    expect(choiceIds(order as never)).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund'])
+    expect(choiceIds(pass as never)).toEqual(['opt_pass', 'opt_perks', 'opt_account'])
     for (const message of [order, pass]) {
       if (message.type !== 'interactive' || message.interactive.type !== 'button') throw new Error('expected a button message')
       expect(message.interactive.footer).toEqual({ text: translations.en.wa_bot_submenu_footer })
     }
   })
 
-  it('opens the language buttons from the menu, and takes 1-4 typed as the menu topics', () => {
+  it('opens the language list from the menu, and takes 1-6 typed as the menu rows', () => {
     const now = Date.now()
     const busy = ctx({ lastMenuAt: now - 1000, lastNudgeAt: now - 500, now })
     expect(decide(event({ kind: 'button', action: 'menu_lang' }), busy)).toEqual({ kind: 'languagePicker' })
@@ -424,7 +513,9 @@ describe('support bot decisions', () => {
     expect(decide(text(' 2 '), ctx())).toEqual({ kind: 'topic', topic: 'new_order' })
     expect(decide(text('3.'), ctx())).toEqual({ kind: 'submenu', menu: 'pass' })
     expect(decide(text('4'), ctx())).toEqual({ kind: 'promptInquiry', category: 'general' })
-    expect(decide(text('5'), ctx())).toEqual({ kind: 'menu' })
+    expect(decide(text('5'), ctx())).toEqual({ kind: 'topic', topic: 'login_help' })
+    expect(decide(text('6'), ctx())).toEqual({ kind: 'languagePicker' })
+    expect(decide(text('7'), ctx())).toEqual({ kind: 'menu' })
     expect(decide(text('1'), ctx({ status: 'resolved', now }))).toEqual({ kind: 'submenu', menu: 'order' })
     // A number is the member's own words while the bot waits for a request or the team has the chat.
     expect(decide(text('1'), ctx({ status: 'awaiting_user_inquiry', inquiryPromptedAt: now - 1000, now }))).toEqual({ kind: 'escalate' })
@@ -509,7 +600,7 @@ describe('support bot decisions', () => {
     expect(botLanguage('toString')).toBe('en')
   })
 
-  it('greets a number without a language with the picker, and keeps buttons working', () => {
+  it('answers anything from a number without a language with the picker, even a button from an older menu', () => {
     const now = Date.now()
     const fresh = ctx({ needsLanguage: true, now })
     expect(decide(text('hi'), fresh)).toEqual({ kind: 'languagePicker' })
@@ -517,8 +608,24 @@ describe('support bot decisions', () => {
     expect(decide(event({ kind: 'other' }), fresh)).toEqual({ kind: 'languagePicker' })
     // The list obeys the menu's cooldown.
     expect(decide(text('hi'), ctx({ needsLanguage: true, lastMenuAt: now - 1000, now }))).toEqual({ kind: 'nudge' })
-    expect(decide(event({ kind: 'button', action: 'btn_perks' }), fresh)).toEqual({ kind: 'topic', topic: 'perks' })
+    for (const action of ['btn_perks', 'menu_agent', 'menu_login_help', 'btn_talk_to_team'] as BotAction[]) {
+      expect(decide(event({ kind: 'button', action }), fresh), action).toEqual({ kind: 'languagePicker' })
+    }
     expect(decide(event({ kind: 'language', lang: 'fr' }), fresh)).toEqual({ kind: 'languageChosen', lang: 'fr' })
+    // Escalated before a language was picked: the team has the chat, the bot stays quiet.
+    expect(decide(text('hi'), ctx({ needsLanguage: true, status: 'escalated', escalatedAt: now - 1000, now }))).toEqual({ kind: 'silent' })
+  })
+
+  it('takes a typed language name as the pick while the bot leads the chat', () => {
+    const now = Date.now()
+    expect(['English', ' עברית ', 'Русский', 'francais!', 'Español', 'hebrew', 'ספרדית'].map(typedLanguage)).toEqual(['en', 'he', 'ru', 'fr', 'es', 'he', 'es'])
+    for (const word of ['english please', 'hi', 'עברית בבקשה']) expect(typedLanguage(word), word).toBeUndefined()
+    expect(decide(text('עברית'), ctx({ needsLanguage: true, now }))).toEqual({ kind: 'languageChosen', lang: 'he' })
+    expect(decide(text('Русский'), ctx({ now }))).toEqual({ kind: 'languageChosen', lang: 'ru' })
+    expect(decide(text('english'), ctx({ status: 'resolved', now }))).toEqual({ kind: 'languageChosen', lang: 'en' })
+    // A request to the team, or a chat the team has, is the member's own words.
+    expect(decide(text('english'), ctx({ status: 'awaiting_user_inquiry', inquiryPromptedAt: now - 1000, now }))).toEqual({ kind: 'escalate' })
+    expect(decide(text('english'), ctx({ status: 'escalated', escalatedAt: now - 1000, now }))).toEqual({ kind: 'silent' })
   })
 
   it('brings the language list back for a language keyword in any state', () => {
@@ -534,33 +641,47 @@ describe('support bot decisions', () => {
     })
   })
 
-  it('offers the five languages as buttons in two bubbles, under an English-only greeting', () => {
-    const picker = languagePickerMessages()
-    expect(picker).toHaveLength(2)
-    const [first, second] = picker.map((message) => {
-      if (message.type !== 'interactive' || message.interactive.type !== 'button') throw new Error('expected a button message')
-      return message.interactive
-    })
-    expect(first.body.text).toBe('Hi! Welcome to Landly. Please choose your language to continue.')
-    expect(first.footer).toEqual({ text: 'בחר שפה · Выберите язык · Langue · Idioma' })
-    expect(first.footer!.text.length).toBeLessThanOrEqual(FOOTER_MAX)
-    expect(second.body.text).toBe('More languages')
-    expect([...first.action.buttons, ...second.action.buttons].map((b) => b.reply.title)).toEqual(['English', 'עברית', 'Русский', 'Français', 'Español'])
-    expect(allButtonIds(picker)).toEqual(LANGUAGE_IDS)
+  it('offers the five languages in one list under the English welcome, with no footer', () => {
+    const picker = languagePickerMessage('welcome')
+    if (picker.type !== 'interactive' || picker.interactive.type !== 'list') throw new Error('expected a list message')
+    expect(WELCOME_BODY).toBe('Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:')
+    expect(picker.interactive.body.text).toBe(WELCOME_BODY)
+    expect(picker.interactive.action.button).toBe('Choose language')
+    expect(picker.interactive).not.toHaveProperty('footer')
+    expect(picker.interactive.action.sections[0].rows.map((r) => r.title)).toEqual(LANGUAGE_NAMES_IN_ORDER)
+    expect(choiceIds(picker)).toEqual(LANGUAGE_IDS)
+  })
+
+  it('words a reopened language list in the chat\'s language', () => {
+    const he = languagePickerMessage('he')
+    if (he.type !== 'interactive' || he.interactive.type !== 'list') throw new Error('expected a list message')
+    expect(he.interactive.body.text).toBe('בחירת שפה:')
+    expect(he.interactive.action.button).toBe('בחר שפה')
+    expect(choiceIds(he)).toEqual(LANGUAGE_IDS)
+    // A language keeps its own name whatever the list's language.
+    expect(transcriptText(he)).toBe(`בחירת שפה:\n${LANGUAGE_NAMES_IN_ORDER.map((name) => `[${name}]`).join(' ')}`)
+  })
+
+  it('puts the language confirmation at the top of the menu it comes with', () => {
+    const menu = menuMessage(ctx({ lang: 'fr', memberFirstName: 'Dana' }), { languageChanged: true })
+    if (menu.type !== 'interactive' || menu.interactive.type !== 'list') throw new Error('expected a list message')
+    expect(menu.interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${translations.fr.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
   })
 
   it('writes every kind of reply as plain text for the inbox', () => {
     expect(transcriptText({ type: 'text', text: { body: 'Hello' } })).toBe('Hello')
     expect(transcriptText(followUpMessage('en'))).toBe(`${translations.en.wa_bot_followup_body}\n[All set, thanks] [Talk to Team] [Main Menu]`)
     expect(transcriptText(topicMessages('perks', ctx())[0])).toBe(`${translations.en.wa_bot_perks_body}\n[${translations.en.wa_bot_perks_cta}] https://landly.test/categories`)
-    expect(transcriptText(languagePickerMessages()[0])).toContain('[עברית]')
+    // A list: its (two-line) body, then its rows.
+    expect(transcriptText(languagePickerMessage('welcome'))).toBe(`${WELCOME_BODY}\n[English] [עברית] [Русский] [Français] [Español]`)
   })
 
-  it('never sends a list message, which opens a bottom sheet on phones', () => {
+  it('sends every reply as one message: buttons for up to three choices, one list for more', () => {
     for (const lang of Object.keys(translations) as Lang[]) {
       const all = [
-        ...languagePickerMessages(),
-        ...menuMessages(ctx({ lang, memberFirstName: 'Dana' })),
+        languagePickerMessage('welcome'),
+        languagePickerMessage(lang),
+        menuMessage(ctx({ lang, memberFirstName: 'Dana' })),
         submenuMessage('order', lang),
         submenuMessage('pass', lang),
         ...TOPICS.flatMap((topic) => topicMessages(topic, ctx({ lang }))),
@@ -572,28 +693,58 @@ describe('support bot decisions', () => {
         idleCheckInMessage(lang),
       ]
       for (const message of all) {
-        expect(message.type === 'interactive' ? message.interactive.type : message.type).not.toBe('list')
-        expect(JSON.stringify(message)).not.toContain('"sections"')
+        if (message.type !== 'interactive') continue
+        const count = choiceIds(message).length
+        expect(message.interactive.type === 'cta_url' || count > 0).toBe(true)
+        if (message.interactive.type === 'cta_url') continue
+        expect(message.interactive.type, transcriptText(message)).toBe(count > BUTTONS_MAX ? 'list' : 'button')
       }
+      // The menu and the language list are lists; everything else fits in buttons.
+      expect(all.filter((m) => m.type === 'interactive' && m.interactive.type === 'list')).toHaveLength(3)
     }
   })
 
   it.each(Object.keys(translations) as Lang[])('keeps the %s copy free of emoji and nested quotes', (lang) => {
     const strings = translations[lang] as Record<string, string>
     for (const [key, value] of Object.entries(strings)) {
-      if (key.startsWith('wa_bot_')) expect(value, key).not.toMatch(/[\p{Extended_Pictographic}“”«»״"]/u)
+      // The one exception: the Login & Account row's lock, as asked for.
+      const copy = key === 'wa_bot_row_login_help' ? value.replace(/^🔐 /u, '') : value
+      if (key.startsWith('wa_bot_')) expect(copy, key).not.toMatch(/[\p{Extended_Pictographic}“”«»״"]/u)
+    }
+  })
+
+  it.each(Object.keys(translations) as Lang[])('keeps every %s list within Meta limits, with unique row ids and titles', (lang) => {
+    const lists = [
+      languagePickerMessage('welcome'),
+      languagePickerMessage(lang),
+      menuMessage(ctx({ lang })),
+      menuMessage(ctx({ lang, memberFirstName: 'Dana' })),
+      menuMessage(ctx({ lang, memberFirstName: 'Dana' }), { languageChanged: true }),
+    ]
+    for (const message of lists) {
+      if (message.type !== 'interactive' || message.interactive.type !== 'list') throw new Error('expected a list message')
+      const { body, action } = message.interactive
+      expect(body.text.length).toBeLessThanOrEqual(BODY_MAX)
+      expect(action.button.length, action.button).toBeLessThanOrEqual(LIST_BUTTON_MAX)
+      const rows = action.sections.flatMap((section) => section.rows)
+      expect(rows.length).toBeLessThanOrEqual(LIST_ROWS_MAX)
+      expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length)
+      expect(new Set(rows.map((r) => r.title)).size).toBe(rows.length)
+      for (const row of rows) {
+        expect(row.title.length, row.title).toBeLessThanOrEqual(ROW_TITLE_MAX)
+        expect(row.description?.length ?? 0, row.description).toBeLessThanOrEqual(ROW_DESCRIPTION_MAX)
+      }
     }
   })
 
   it.each(Object.keys(translations) as Lang[])('keeps every %s button and link label within Meta limits', (lang) => {
     const buttonMessages = [
-      ...languagePickerMessages(),
-      ...menuMessages(ctx({ lang, memberFirstName: 'Dana' })),
       submenuMessage('order', lang),
       submenuMessage('pass', lang),
       idleCheckInMessage(lang),
       followUpMessage(lang),
       followUpMessage(lang, 'order_issue', 'wa_bot_refund_body'),
+      followUpMessage(lang, 'login_help'),
       inquiryPromptMessage(lang),
       escalatedMessage(lang),
       alreadyEscalatedMessage(lang),
@@ -654,20 +805,45 @@ describe('support bot handler', () => {
   const conversation = () => mocks.store.read(`whatsappConversations/${WA_ID}`)
   const transcript = () => Object.values(mocks.store.list(`whatsappConversations/${WA_ID}/messages`)).sort((a, b) => a.at.toMillis() - b.at.toMillis())
   /** A number that already picked Hebrew in the chat. */
-  const hebrew = () => ({ lang: 'he', langSelectedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000) })
-  const pickHebrew = () => mocks.store.seed(`whatsappConversations/${WA_ID}`, hebrew())
-  /** The button ids of the last `n` replies (the menu and the language picker are two bubbles). */
-  const lastIds = (n = 2) => allButtonIds(replies().slice(-n))
+  /** A number that already picked `lang` in the chat. */
+  const picked = (lang: Lang) => ({ lang, langSelectedAt: Timestamp.fromMillis(Date.now() - 60 * 60 * 1000) })
+  const hebrew = () => picked('he')
+  const pick = (lang: Lang) => mocks.store.seed(`whatsappConversations/${WA_ID}`, picked(lang))
+  const pickHebrew = () => pick('he')
+  /** The choice ids of the last `n` replies. */
+  const lastIds = (n = 1) => allChoiceIds(replies().slice(-n))
 
-  it('greets a member by name in their profile language, skipping the language list, and records the conversation', async () => {
+  it('asks a member with a profile language but no pick in the chat for their language, and records the conversation', async () => {
     seedMember()
     await handleInboundEvent(event({ kind: 'text', text: 'Bonjour', name: 'Dana WA' }))
-    expect(replies()).toHaveLength(2)
-    expect(replies()[0].interactive.body.text).toBe(translations.fr.wa_bot_menu_body_named.replace('{name}', 'Dana'))
-    expect(replies()[1].interactive.body.text).toBe(translations.fr.wa_bot_menu_more_body)
-    expect(lastIds()).toEqual(MENU_IDS)
-    expect(conversation()).toMatchObject({ uid: 'member-1', memberName: 'Dana Levi', profileName: 'Dana WA', lang: 'fr', lastText: 'Bonjour', status: 'active' })
+    expect(replies()).toHaveLength(1)
+    expect(replies()[0].interactive).toMatchObject({ type: 'list', body: { text: WELCOME_BODY } })
+    expect(lastIds()).toEqual(LANGUAGE_IDS)
+    expect(conversation()).toMatchObject({ uid: 'member-1', memberName: 'Dana Levi', profileName: 'Dana WA', lastText: 'Bonjour', status: 'active' })
     expect(conversation()).not.toHaveProperty('langSelectedAt')
+
+    await handleInboundEvent(event({ kind: 'language', lang: 'fr' }))
+    expect(replies()).toHaveLength(2)
+    expect(replies()[1].interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${translations.fr.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
+    expect(lastIds()).toEqual(MENU_IDS)
+  })
+
+  it('answers a button from an older menu with the language list while the chat has no language', async () => {
+    await handleInboundEvent(event({ kind: 'button', action: 'btn_perks' }))
+    expect(replies()).toHaveLength(1)
+    expect(lastIds()).toEqual(LANGUAGE_IDS)
+    expect(conversation()?.langSelectedAt).toBeUndefined()
+  })
+
+  it('takes a typed language name as the pick and answers with the menu in it', async () => {
+    seedMember()
+    await handleInboundEvent(event({ kind: 'text', text: 'עברית' }))
+    expect(replies()).toHaveLength(1)
+    expect(replies()[0].interactive.body.text.startsWith(translations.he.wa_bot_lang_changed)).toBe(true)
+    expect(lastIds()).toEqual(MENU_IDS)
+    expect(conversation()).toMatchObject({ lang: 'he' })
+    expect(conversation()?.langSelectedAt).toBeInstanceOf(Timestamp)
+    expect(mocks.store.read('users/member-1')).toMatchObject({ preferredLanguage: 'he' })
   })
 
   it('greets a new number in English with the language list, then continues in the picked language', async () => {
@@ -678,9 +854,9 @@ describe('support bot handler', () => {
     expect(conversation()?.lastMenuAt).toBeInstanceOf(Timestamp)
 
     await handleInboundEvent(event({ kind: 'language', lang: 'ru' }), now + 5000)
-    const [changed, menu] = replies().slice(2)
-    expect(changed).toEqual({ type: 'text', text: { body: translations.ru.wa_bot_lang_changed } })
-    expect(menu.interactive.body.text).toBe(translations.ru.wa_bot_menu_body)
+    const after = replies().slice(1)
+    expect(after).toHaveLength(1)
+    expect(after[0].interactive.body.text).toBe(`${translations.ru.wa_bot_lang_changed}\n\n${translations.ru.wa_bot_menu_body}`)
     expect(lastIds()).toEqual(MENU_IDS)
     expect(conversation()).toMatchObject({ lang: 'ru' })
     expect(conversation()?.langSelectedAt).toBeInstanceOf(Timestamp)
@@ -701,11 +877,11 @@ describe('support bot handler', () => {
     expect(lastIds()).toEqual(LANGUAGE_IDS)
     await handleInboundEvent(event({ kind: 'language', lang: 'he' }), now + 1000)
     expect(mocks.store.read('users/member-1')).toMatchObject({ preferredLanguage: 'he', firstName: 'Dana' })
-    expect(replies().at(-2).interactive.body.text).toBe(translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana'))
+    expect(replies().at(-1).interactive.body.text).toBe(`${translations.he.wa_bot_lang_changed}\n\n${translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
     // Even if the profile changes back on the site, the chat keeps the pick.
     mocks.store.seed('users/member-1', { phone: `+${WA_ID}`, firstName: 'Dana', preferredLanguage: 'fr' })
     await handleInboundEvent(event({ kind: 'text', text: 'menu' }), now + 2000)
-    expect(replies().at(-2).interactive.body.text).toBe(translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana'))
+    expect(replies().at(-1).interactive.body.text).toBe(translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana'))
   })
 
   it('shows the language list during an inquiry prompt without emailing it as the request', async () => {
@@ -717,9 +893,11 @@ describe('support bot handler', () => {
     expect(lastIds()).toEqual(LANGUAGE_IDS)
   })
 
-  it('opens the language buttons from the menu\'s Language button', async () => {
+  it('opens the language list, worded in the chat\'s language, from the menu\'s Language row', async () => {
     pickHebrew()
     await handleInboundEvent(event({ kind: 'button', action: 'menu_lang' }))
+    expect(replies()).toHaveLength(1)
+    expect(replies()[0].interactive).toMatchObject({ type: 'list', body: { text: 'בחירת שפה:' }, action: { button: 'בחר שפה' } })
     expect(lastIds()).toEqual(LANGUAGE_IDS)
     expect(transcript().find((m) => m.kind === 'button')?.text).toBe(translations.he.wa_bot_btn_language)
   })
@@ -728,6 +906,23 @@ describe('support bot handler', () => {
     pickHebrew()
     await handleInboundEvent(event({ kind: 'text', text: '2' }))
     expect(replies()[0].interactive).toMatchObject({ type: 'cta_url', action: { parameters: { url: 'https://landly.test/categories' } } })
+  })
+
+  it('answers Login & Account help (or 5 typed), tags it login_help, and escalates it with that topic', async () => {
+    pickHebrew()
+    const now = Date.now()
+    await handleInboundEvent(event({ kind: 'text', text: '5' }), now)
+    const [card, followUp] = replies()
+    expect(card.interactive).toMatchObject({ type: 'cta_url', action: { parameters: { url: 'https://landly.test/forgot-password' } } })
+    expect(choiceIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_login', 'btn_back_to_menu'])
+    expect(conversation()).toMatchObject({ inquiryCategory: 'login_help', status: 'active' })
+
+    await handleInboundEvent(event({ kind: 'button', action: 'btn_escalate_login' }), now + 1000)
+    expect(conversation()).toMatchObject({ status: 'awaiting_user_inquiry', inquiryCategory: 'login_help' })
+    await handleInboundEvent(event({ kind: 'text', text: 'The code never arrives' }), now + 2000)
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+    expect(mocks.send.mock.calls[0][0].text).toContain('Topic: Login & account')
+    expect(conversation()).toMatchObject({ status: 'escalated', inquiryCategory: 'login_help' })
   })
 
   it('keeps the transcript: the message and each reply, in order, expiring after 180 days', async () => {
@@ -740,21 +935,20 @@ describe('support bot handler', () => {
     expect(entries.map((m) => [m.direction, m.author, m.kind])).toEqual([
       ['in', 'member', 'text'],
       ['out', 'bot', 'interactive'],
-      ['out', 'bot', 'interactive'],
       ['in', 'member', 'button'],
       ['out', 'bot', 'interactive'],
       ['out', 'bot', 'interactive'],
       ['in', 'member', 'media'],
       ['out', 'bot', 'interactive'],
-      ['out', 'bot', 'interactive'],
     ])
     expect(entries[0]).toMatchObject({ text: 'היי' })
+    // The menu list: its body, then every row.
     expect(entries[1].text).toContain(translations.he.wa_bot_menu_body)
+    expect(entries[1].text).toContain(`[${translations.he.wa_bot_row_login_help}]`)
     expect(entries[1]).toMatchObject({ simulated: true })
-    expect(entries[2].text).toContain(translations.he.wa_bot_menu_more_body)
-    expect(entries[3].text).toBe(translations.he.wa_bot_btn_perks)
-    expect(entries[4].text).toContain('https://landly.test/categories')
-    expect(entries[6].text).toBe('(image)')
+    expect(entries[2].text).toBe(translations.he.wa_bot_btn_perks)
+    expect(entries[3].text).toContain('https://landly.test/categories')
+    expect(entries[5].text).toBe('(image)')
     for (const entry of entries) expect(entry.expiresAt.toMillis() - entry.at.toMillis()).toBe(MESSAGE_TTL_MS)
     expect(mocks.store.list(`whatsappConversations/${WA_ID}/messages`)['wamid.in1']).toBeDefined()
     expect(conversation()?.lastSnippet).toMatchObject({ text: '(image)', direction: 'in' })
@@ -770,18 +964,19 @@ describe('support bot handler', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify({ messages: [{ id: `wamid.out${++sent}` }] }), { status: 200 })))
     pickHebrew()
     await handleInboundEvent(event({ messageId: 'wamid.in1', kind: 'text', text: 'היי', phoneNumberId: PHONE_ID }))
-    expect(Object.keys(mocks.store.list(`whatsappConversations/${WA_ID}/messages`)).sort()).toEqual(['wamid.in1', 'wamid.out1', 'wamid.out2'])
+    expect(Object.keys(mocks.store.list(`whatsappConversations/${WA_ID}/messages`)).sort()).toEqual(['wamid.in1', 'wamid.out1'])
     expect(conversation()).toMatchObject({ phoneNumberId: PHONE_ID })
   })
 
   it('escalates in two steps: prompts with Cancel, emails the inquiry, confirms with the hours, then stays silent', async () => {
     seedMember()
+    pick('fr')
     const now = Date.now()
     await handleInboundEvent(event({ kind: 'button', action: 'btn_talk_to_team' }), now)
     expect(mocks.send).not.toHaveBeenCalled()
     const prompt = replies().at(-1)
     expect(prompt.interactive.body.text).toBe(translations.fr.wa_bot_inquiry_prompt)
-    expect(buttonIds(prompt)).toEqual(['btn_cancel_inquiry'])
+    expect(choiceIds(prompt)).toEqual(['btn_cancel_inquiry'])
     expect(conversation()).toMatchObject({ status: 'awaiting_user_inquiry' })
     expect(conversation()?.inquiryPromptedAt).toBeInstanceOf(Timestamp)
 
@@ -798,7 +993,7 @@ describe('support bot handler', () => {
     expect(mail.text).toContain('My voucher does not work')
     const confirm = replies().at(-1)
     expect(confirm.interactive.body.text).toBe(bidiSafe('fr', translations.fr.wa_bot_team_confirm))
-    expect(buttonIds(confirm)).toEqual(['btn_back_to_menu'])
+    expect(choiceIds(confirm)).toEqual(['btn_back_to_menu'])
     expect(conversation()).toMatchObject({ status: 'escalated' })
     expect(conversation()?.escalatedAt).toBeInstanceOf(Timestamp)
     expect(conversation()?.inquiryPromptedAt).toBeUndefined()
@@ -832,7 +1027,7 @@ describe('support bot handler', () => {
     expect(lastIds()).toEqual(MENU_IDS)
     expect(conversation()).toMatchObject({ status: 'escalated' })
     await handleInboundEvent(event({ kind: 'text', text: 'still there?' }), now + GREETING_COOLDOWN_MS + 1)
-    expect(replies()).toHaveLength(2)
+    expect(replies()).toHaveLength(1)
   })
 
   it('sends a link card followed by the Resolved / Talk to Team / Main Menu prompt', async () => {
@@ -841,7 +1036,7 @@ describe('support bot handler', () => {
     const [card, followUp] = replies()
     expect(card.interactive).toMatchObject({ type: 'cta_url', action: { parameters: { url: 'https://landly.test/categories' } } })
     expect(followUp.interactive.body.text).toBe(translations.he.wa_bot_followup_body)
-    expect(buttonIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_prompt', 'btn_back_to_menu'])
+    expect(choiceIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_prompt', 'btn_back_to_menu'])
   })
 
   it('marks the conversation resolved, clears the escalation and timers, and signs off', async () => {
@@ -875,12 +1070,12 @@ describe('support bot handler', () => {
     await handleInboundEvent(event({ kind: 'text', text: 'היי' }), now)
     await handleInboundEvent(event({ kind: 'text', text: 'שלום' }), now + 10_000)
     await handleInboundEvent(event({ kind: 'text', text: 'hi' }), now + 20_000)
-    expect(replies()).toHaveLength(3)
-    expect(replies()[2]).toEqual({ type: 'text', text: { body: translations.he.wa_bot_nudge } })
+    expect(replies()).toHaveLength(2)
+    expect(replies()[1]).toEqual({ type: 'text', text: { body: translations.he.wa_bot_nudge } })
 
     await handleInboundEvent(event({ kind: 'button', action: 'btn_back_to_menu' }), now + 30_000)
     await handleInboundEvent(event({ kind: 'text', text: 'menu' }), now + 31_000)
-    expect(allButtonIds(replies().slice(3))).toEqual([...MENU_IDS, ...MENU_IDS])
+    expect(allChoiceIds(replies().slice(2))).toEqual([...MENU_IDS, ...MENU_IDS])
 
     await handleInboundEvent(event({ kind: 'text', text: 'היי' }), now + 31_000 + GREETING_COOLDOWN_MS)
     expect(lastIds()).toEqual(MENU_IDS)
@@ -888,16 +1083,17 @@ describe('support bot handler', () => {
 
   it('opens the order submenu, answers an issue at the business, and escalates it tagged as an order', async () => {
     seedMember()
+    pick('fr')
     const now = Date.now()
     await handleInboundEvent(event({ kind: 'button', action: 'menu_order' }), now)
-    expect(lastIds(1)).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund'])
+    expect(lastIds()).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund'])
     expect(replies().at(-1).interactive.body.text).toBe(bidiSafe('fr', translations.fr.wa_bot_order_body))
     expect(replies().at(-1).interactive.footer).toEqual({ text: translations.fr.wa_bot_submenu_footer })
 
     await handleInboundEvent(event({ kind: 'button', action: 'opt_venue' }), now + 1000)
     const answer = replies().at(-1)
     expect(answer.interactive.body.text).toBe(translations.fr.wa_bot_venue_body)
-    expect(buttonIds(answer)).toEqual(['btn_ticket_resolved', 'btn_escalate_order', 'btn_back_to_menu'])
+    expect(choiceIds(answer)).toEqual(['btn_ticket_resolved', 'btn_escalate_order', 'btn_back_to_menu'])
 
     await handleInboundEvent(event({ kind: 'button', action: 'btn_escalate_order' }), now + 2000)
     expect(conversation()).toMatchObject({ status: 'awaiting_user_inquiry', inquiryCategory: 'order_issue' })
@@ -919,7 +1115,7 @@ describe('support bot handler', () => {
     await handleInboundEvent(event({ kind: 'button', action: 'menu_new_order' }), now)
     const [card, followUp] = replies()
     expect(card.interactive).toMatchObject({ type: 'cta_url', action: { parameters: { url: 'https://landly.test/categories' } } })
-    expect(buttonIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_purchase', 'btn_back_to_menu'])
+    expect(choiceIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_purchase', 'btn_back_to_menu'])
     await handleInboundEvent(event({ kind: 'button', action: 'btn_escalate_purchase' }), now + 1000)
     expect(conversation()).toMatchObject({ inquiryCategory: 'purchase_help' })
     await handleInboundEvent(event({ kind: 'button', action: 'btn_cancel_inquiry' }), now + 2000)
@@ -940,6 +1136,7 @@ describe('support bot handler', () => {
   })
 
   it('emails a media answer to the prompt with a note to open the chat', async () => {
+    pickHebrew()
     const now = Date.now()
     await handleInboundEvent(event({ kind: 'button', action: 'btn_talk_to_team' }), now)
     await handleInboundEvent(event({ kind: 'other' }), now + 1000)
@@ -957,6 +1154,7 @@ describe('support bot handler', () => {
     vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'token')
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
+    pickHebrew()
     await handleInboundEvent(event({ kind: 'button', action: 'btn_perks' }))
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ type: 'interactive', interactive: { type: 'button' } })
@@ -975,7 +1173,7 @@ describe('support bot handler', () => {
     pickHebrew()
     await handleInboundEvent(event({ kind: 'text', text: 'היי', phoneNumberId: '1367683866451764' }))
     expect(fetchMock.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/1367683866451764/messages')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ to: WA_ID, type: 'interactive', interactive: { type: 'button' } })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ to: WA_ID, type: 'interactive', interactive: { type: 'list' } })
   })
 
   it('uses a configured Graph version only when it is well formed', () => {

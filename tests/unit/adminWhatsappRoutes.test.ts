@@ -142,8 +142,8 @@ describe('GET /api/admin/whatsapp/conversations/[waId]', () => {
     expect(res.status).toBe(200)
     const { conversation, messages } = await res.json()
     expect(conversation).toMatchObject({ waId: WA_ID, lang: 'fr', status: 'active' })
-    // The menu is two bubbles.
-    expect(messages.map((m: { author: string }) => m.author)).toEqual(['member', 'bot', 'bot'])
+    // The menu is one list.
+    expect(messages.map((m: { author: string }) => m.author)).toEqual(['member', 'bot'])
     expect(messages[0]).toMatchObject({ id: 'wamid.a', direction: 'in', text: 'Bonjour' })
     expect(messages[1].text).toContain(translations.fr.wa_bot_menu_body)
     expect(messages[1]).toMatchObject({ direction: 'out', simulated: true })
@@ -228,7 +228,7 @@ describe('POST /api/admin/whatsapp/status', () => {
 
     // The member's next message gets a fresh Hebrew menu from the bot.
     await handleInboundEvent({ messageId: 'wamid.c', waId: WA_ID, at: Date.now() + 1000, kind: 'text', text: 'היי' }, Date.now() + 1000)
-    expect(transcript().at(-2)!.text).toContain(translations.he.wa_bot_menu_body)
+    expect(transcript().at(-1)!.text).toContain(translations.he.wa_bot_menu_body)
   })
 
   it('resolves quietly with notify: false, or once the window has closed', async () => {

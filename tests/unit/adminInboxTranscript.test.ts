@@ -68,6 +68,19 @@ describe('parseInteractive', () => {
     })
   })
 
+  it('splits a list with a multi-line body into the whole body and its rows', () => {
+    expect(parseInteractive('Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:\n[English] [עברית] [Русский] [Français] [Español]')).toEqual({
+      body: 'Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:',
+      choices: ['English', 'עברית', 'Русский', 'Français', 'Español'],
+      link: null,
+    })
+    expect(parseInteractive('Great!\n\nHow can we help?\n[Existing order] [🔐 Login & Account help] [Language]')).toEqual({
+      body: 'Great!\n\nHow can we help?',
+      choices: ['Existing order', '🔐 Login & Account help', 'Language'],
+      link: null,
+    })
+  })
+
   it('leaves what a person typed alone, brackets and all', () => {
     expect(parseInteractive('Line one\nLine two')).toEqual({ body: 'Line one\nLine two', choices: [], link: null })
     expect(parseInteractive('my code is [1234] ok')).toEqual({ body: 'my code is [1234] ok', choices: [], link: null })

@@ -6,22 +6,19 @@
 // never touch it (firestore.rules). Only units are stored, never money:
 // lib/usage/pricing.ts prices them when the dashboard reads, so a price
 // change recalculates past months too. Shared by the server, the page and
-// the tests, so nothing here may be server-only. The other environment's
-// month arrives through lib/usage/usageSources.ts, as a UsageExport.
+// the tests, so nothing here may be server-only.
 
 import { PRODUCTION_FIREBASE_PROJECT_ID, STAGING_FIREBASE_PROJECT_ID } from '@/lib/firebase/envGuard'
 
 export const USAGE_COLLECTION = 'apiUsageStats'
 
-/** The two projects the dashboard reports on; they share one Google Cloud billing account and one Meta account. */
-export type UsageEnv = 'prod' | 'dev'
+/** Which environment a project's counters are: the dashboard shows the deployment's own. */
+export type UsageEnv = 'prod' | 'dev' | 'other'
 
-export const USAGE_PROJECTS: Record<UsageEnv, string> = { prod: PRODUCTION_FIREBASE_PROJECT_ID, dev: STAGING_FIREBASE_PROJECT_ID }
-
-export function usageEnvOf(projectId: string | undefined): UsageEnv | null {
+export function usageEnvOf(projectId: string | undefined): UsageEnv {
   if (projectId === PRODUCTION_FIREBASE_PROJECT_ID) return 'prod'
   if (projectId === STAGING_FIREBASE_PROJECT_ID) return 'dev'
-  return null
+  return 'other'
 }
 
 export interface UsageCounters {
@@ -64,14 +61,6 @@ export interface UsageMonthDoc {
   projectId: string
   counters: UsageCounters
   daily: Record<string, UsageCounters>
-}
-
-/** What PROD's /api/usage/export answers: its counters only, never prices or the daily maps. */
-export interface UsageExport {
-  projectId: string
-  month: string
-  months: string[]
-  counters: UsageCounters
 }
 
 const MONTH_KEY = /^\d{4}-(?:0[1-9]|1[0-2])$/
@@ -118,15 +107,6 @@ export function countersOf(raw: unknown): UsageCounters {
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) setCounter(counters, metric, value)
   }
   return counters
-}
-
-/** Unit-by-unit total of several environments' counters (one bill, so they're priced together). */
-export function sumCounters(...all: UsageCounters[]): UsageCounters {
-  const total = emptyCounters()
-  for (const metric of USAGE_METRICS) {
-    setCounter(total, metric, all.reduce((sum, counters) => sum + counterValue(counters, metric), 0))
-  }
-  return total
 }
 
 export function counterValue(counters: UsageCounters, metric: UsageMetric): number {

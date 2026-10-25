@@ -1,39 +1,12 @@
 import { grossCostIls, netCostIls, PRICES_VERIFIED_AT, SKUS, THRESHOLDS, USD_TO_ILS, type MeteredSku, type SkuId } from './pricing'
-import { emptyCounters, sumCounters, type UsageCounters, type UsageEnv } from './usageTypes'
+import { usageEnvOf, type UsageCounters, type UsageEnv } from './usageTypes'
 
-// One month's counters priced for /admin/system/costs, for one of three
-// views: PROD, DEV, or both combined. The two projects share one Google
-// Cloud billing account and one Meta account, so Combined adds their units
-// first and prices the total once, against one free allowance: that's the
-// actual bill. PROD and DEV alone are priced as if each had the free tiers
-// to itself (`sharedFreeTier`). Pure (no I/O), so the route stays thin and
+// One month of this deployment's own counters, priced for
+// /admin/system/costs: Vercel Production shows the PROD project, local and
+// Preview their own DEV project. Pure (no I/O), so the route stays thin and
 // the arithmetic is unit-tested.
 
 export type MeterStatus = 'ok' | 'warn' | 'over'
-
-export const USAGE_VIEWS = ['combined', 'prod', 'dev'] as const
-export type UsageView = (typeof USAGE_VIEWS)[number]
-
-export function isUsageView(value: unknown): value is UsageView {
-  return (USAGE_VIEWS as readonly unknown[]).includes(value)
-}
-
-/** Where one environment's counters came from, and whether they could be read. */
-export interface UsageSource {
-  env: UsageEnv
-  projectId: string
-  status: 'ok' | 'unconfigured' | 'unavailable' | 'mismatch'
-  /** local: this deployment's own project; peer-reader / peer-export: lib/usage/peerGuard.ts. */
-  via: 'local' | 'peer-reader' | 'peer-export'
-  message?: string
-}
-
-export interface SourceData {
-  source: UsageSource
-  /** null unless source.status is 'ok'. */
-  counters: UsageCounters | null
-  months: string[]
-}
 
 export interface UsageLine {
   skuId: SkuId
@@ -51,29 +24,34 @@ export interface UsageLine {
   status: MeterStatus
   isUpperBound: boolean
   note: string | null
-  /** Combined view: each environment's units (null where it couldn't be read). */
-  byEnv?: Record<UsageEnv, number | null>
+}
+
+/** The lines of one vendor, with their subtotals. */
+export interface UsageGroup {
+  vendor: MeteredSku['vendor']
+  label: string
+  lines: UsageLine[]
+  grossIls: number
+  netIls: number
 }
 
 export interface UsageReport {
   month: string
-  /** Months either environment has counters for, newest first, always including `month` and the current one. */
+  /** Months with counters, newest first, always including `month` and the current one. */
   months: string[]
-  view: UsageView
-  /** PROD first. */
-  sources: UsageSource[]
-  /** The view has figures: false when its only environment couldn't be read. */
-  available: boolean
-  /** Combined with one environment missing: the totals cover the other only. */
-  partial: boolean
-  /** A single environment priced on its own, though the free tiers are shared. */
-  sharedFreeTier: boolean
-  lines: UsageLine[]
+  projectId: string
+  environment: UsageEnv
+  groups: UsageGroup[]
   totals: { grossIls: number; netIls: number; freeCoveragePct: number; otpSent: number }
   fx: { usdToIls: number; verifiedAt: string }
   pricesVerifiedAt: string
   generatedAt: string
 }
+
+const VENDORS: { vendor: MeteredSku['vendor']; label: string }[] = [
+  { vendor: 'google', label: 'Google Cloud' },
+  { vendor: 'meta', label: 'Meta WhatsApp' },
+]
 
 export function meterStatus(coverage: number | null, billable: number): MeterStatus {
   if (coverage === null) return 'ok'
@@ -104,44 +82,38 @@ export function usageLine(sku: MeteredSku, counters: UsageCounters): UsageLine {
   }
 }
 
-/** The counters a view shows: Combined sums whichever environments could be read. */
-export function viewCounters(view: UsageView, prod: SourceData, dev: SourceData): UsageCounters | null {
-  if (view === 'prod') return prod.counters
-  if (view === 'dev') return dev.counters
-  const readable = [prod.counters, dev.counters].filter((counters): counters is UsageCounters => counters !== null)
-  return readable.length ? sumCounters(...readable) : null
-}
+const sum = (lines: UsageLine[], key: 'grossIls' | 'netIls') => lines.reduce((total, line) => total + line[key], 0)
 
-export function buildUsageReport(input: { month: string; view: UsageView; prod: SourceData; dev: SourceData; now?: Date }): UsageReport {
-  const { month, view, prod, dev } = input
+export function buildUsageReport(input: { month: string; months: string[]; projectId: string; counters: UsageCounters; now?: Date }): UsageReport {
   const now = input.now ?? new Date()
-  const counters = viewCounters(view, prod, dev)
-  const lines = SKUS.map((sku) => {
-    const line = usageLine(sku, counters ?? emptyCounters())
-    if (view !== 'combined') return line
-    const unitsOf = (data: SourceData) => (data.counters ? sku.usage(data.counters) : null)
-    return { ...line, byEnv: { prod: unitsOf(prod), dev: unitsOf(dev) } }
+  // Simulated sends happen only where WhatsApp isn't live: shown when there are any (DEV, or a misconfigured PROD).
+  const lines = SKUS.map((sku) => usageLine(sku, input.counters)).filter((line) => line.skuId !== 'waSimulated' || line.used > 0)
+  const groups = VENDORS.map(({ vendor, label }) => {
+    const own = lines.filter((line) => line.vendor === vendor)
+    return { vendor, label, lines: own, grossIls: sum(own, 'grossIls'), netIls: sum(own, 'netIls') }
   })
-  const grossIls = lines.reduce((sum, line) => sum + line.grossIls, 0)
-  const netIls = lines.reduce((sum, line) => sum + line.netIls, 0)
-  const months = [...new Set([...prod.months, ...dev.months, month, now.toISOString().slice(0, 7)])].sort().reverse()
+  const grossIls = sum(lines, 'grossIls')
+  const netIls = sum(lines, 'netIls')
+  const months = [...new Set([...input.months, input.month, now.toISOString().slice(0, 7)])].sort().reverse()
   return {
-    month,
+    month: input.month,
     months,
-    view,
-    sources: [prod.source, dev.source],
-    available: counters !== null,
-    partial: view === 'combined' && counters !== null && (prod.counters === null || dev.counters === null),
-    sharedFreeTier: view !== 'combined',
-    lines: counters ? lines : [],
+    projectId: input.projectId,
+    environment: usageEnvOf(input.projectId),
+    groups,
     totals: {
       grossIls,
       netIls,
       freeCoveragePct: grossIls > 0 ? Math.round((1 - netIls / grossIls) * 100) : 100,
-      otpSent: counters?.whatsapp.authSent ?? 0,
+      otpSent: input.counters.whatsapp.authSent,
     },
     fx: { usdToIls: USD_TO_ILS.rate, verifiedAt: USD_TO_ILS.verifiedAt },
     pricesVerifiedAt: PRICES_VERIFIED_AT,
     generatedAt: now.toISOString(),
   }
+}
+
+/** Every line of the report, in group order. */
+export function reportLines(report: Pick<UsageReport, 'groups'>): UsageLine[] {
+  return report.groups.flatMap((group) => group.lines)
 }
