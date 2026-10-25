@@ -53,12 +53,20 @@ export class WhatsAppApiError extends Error {
 }
 
 type ReplyButton = { type: 'reply'; reply: { id: string; title: string } }
+type ListSection = { title: string; rows: { id: string; title: string; description?: string }[] }
 
 /** The message types Landly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages). */
 export type WhatsAppMessage =
   | { type: 'text'; text: { body: string; preview_url?: boolean } }
   | { type: 'template'; template: { name: string; language: { code: string }; components: unknown[] } }
-  | { type: 'interactive'; interactive: { type: 'button'; body: { text: string }; action: { buttons: ReplyButton[] } } }
+  | {
+      type: 'interactive'
+      interactive: { type: 'button'; body: { text: string }; footer?: { text: string }; action: { buttons: ReplyButton[] } }
+    }
+  | {
+      type: 'interactive'
+      interactive: { type: 'list'; body: { text: string }; footer?: { text: string }; action: { button: string; sections: ListSection[] } }
+    }
   | {
       type: 'interactive'
       interactive: { type: 'cta_url'; body: { text: string }; action: { name: 'cta_url'; parameters: { display_text: string; url: string } } }
@@ -66,9 +74,10 @@ export type WhatsAppMessage =
 
 /**
  * Sends one message to an E.164 number or a WhatsApp ID (digits, no "+"),
- * from `phoneNumberId` when given, else WHATSAPP_PHONE_NUMBER_ID.
+ * from `phoneNumberId` when given, else WHATSAPP_PHONE_NUMBER_ID. Resolves
+ * to Meta's id for the sent message (wamid…), when the response has one.
  */
-export async function sendWhatsAppMessage(to: string, message: WhatsAppMessage, phoneNumberId?: string): Promise<void> {
+export async function sendWhatsAppMessage(to: string, message: WhatsAppMessage, phoneNumberId?: string): Promise<string | undefined> {
   const problem = whatsappConfigProblem(phoneNumberId)
   if (problem) throw new WhatsAppApiError('not_configured', problem)
   const from = phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID
@@ -92,4 +101,7 @@ export async function sendWhatsAppMessage(to: string, message: WhatsAppMessage, 
     const body = (await res.json().catch(() => null)) as { error?: { code?: number; message?: string } } | null
     throw new WhatsAppApiError(String(body?.error?.code ?? res.status), body?.error?.message ?? `HTTP ${res.status}`)
   }
+  const sent = (await res.json().catch(() => null)) as { messages?: { id?: unknown }[] } | null
+  const id = sent?.messages?.[0]?.id
+  return typeof id === 'string' && id ? id : undefined
 }

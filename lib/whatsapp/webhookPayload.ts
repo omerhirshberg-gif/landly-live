@@ -6,9 +6,42 @@
 // it), so a WHATSAPP_PHONE_NUMBER_ID that lags behind the registered line
 // costs nothing; the delivery is signed by our app, so the number is ours.
 
-export type BotAction = 'perks' | 'pass' | 'team'
+import type { Lang } from '@/lib/i18n/translations'
 
-export const isBotAction = (value: unknown): value is BotAction => value === 'perks' || value === 'pass' || value === 'team'
+/** The reply-button ids the bot sends (lib/whatsapp/supportBot.ts). */
+export const BOT_ACTIONS = [
+  'btn_perks',
+  'btn_pass',
+  'btn_talk_to_team',
+  'btn_escalate_prompt',
+  'btn_cancel_inquiry',
+  'btn_ticket_resolved',
+  'btn_back_to_menu',
+] as const
+
+export type BotAction = (typeof BOT_ACTIONS)[number]
+
+// Menus sent before the btn_* ids still sit in members' chats, and still work.
+const LEGACY_ACTIONS: Record<string, BotAction> = { perks: 'btn_perks', pass: 'btn_pass', team: 'btn_talk_to_team' }
+
+/** The languages the bot offers, in the picker's order; each list row's id is `lang_<code>`. */
+export const BOT_LANGUAGES = ['en', 'he', 'ru', 'fr', 'es'] as const satisfies readonly Lang[]
+
+export const isBotLanguage = (value: unknown): value is Lang => (BOT_LANGUAGES as readonly unknown[]).includes(value)
+
+/** The language a picker row id stands for, or undefined for any other id. */
+export function toBotLanguage(value: unknown): Lang | undefined {
+  if (typeof value !== 'string' || !value.startsWith('lang_')) return undefined
+  const code = value.slice('lang_'.length)
+  return isBotLanguage(code) ? code : undefined
+}
+
+/** The action a button id stands for, or undefined for an id the bot never sent. */
+export function toBotAction(value: unknown): BotAction | undefined {
+  if (typeof value !== 'string') return undefined
+  if ((BOT_ACTIONS as readonly string[]).includes(value)) return value as BotAction
+  return Object.hasOwn(LEGACY_ACTIONS, value) ? LEGACY_ACTIONS[value] : undefined
+}
 
 interface InboundBase {
   /** Meta's message id (wamid…), unique per message; retries repeat it. */
@@ -26,8 +59,10 @@ interface InboundBase {
 export type InboundEvent =
   | (InboundBase & { kind: 'text'; text: string })
   | (InboundBase & { kind: 'button'; action: BotAction })
-  /** An image, voice note, sticker, location, or a button we don't know: answered with the menu. */
-  | (InboundBase & { kind: 'other' })
+  /** A row picked from the language list. */
+  | (InboundBase & { kind: 'language'; lang: Lang })
+  /** An image, voice note, sticker, location, or a button we don't know: answered with the menu. `media` is Meta's message type. */
+  | (InboundBase & { kind: 'other'; media?: string })
 
 type Raw = Record<string, unknown>
 const obj = (v: unknown): Raw | undefined => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : undefined)
@@ -100,15 +135,19 @@ function parseMessage(message: Raw | undefined, names: Map<string, string>): Inb
     return text ? { ...base, kind: 'text', text: text.slice(0, MAX_TEXT) } : { ...base, kind: 'other' }
   }
   if (message.type === 'interactive') {
-    const id = obj(obj(message.interactive)?.button_reply)?.id
-    return isBotAction(id) ? { ...base, kind: 'button', action: id } : { ...base, kind: 'other' }
+    const interactive = obj(message.interactive)
+    const lang = toBotLanguage(obj(interactive?.list_reply)?.id)
+    if (lang) return { ...base, kind: 'language', lang }
+    const action = toBotAction(obj(interactive?.button_reply)?.id)
+    return action ? { ...base, kind: 'button', action } : { ...base, kind: 'other', media: 'interactive' }
   }
   // A template's quick-reply button.
   if (message.type === 'button') {
-    const payload = obj(message.button)?.payload
-    return isBotAction(payload) ? { ...base, kind: 'button', action: payload } : { ...base, kind: 'other' }
+    const action = toBotAction(obj(message.button)?.payload)
+    return action ? { ...base, kind: 'button', action } : { ...base, kind: 'other', media: 'button' }
   }
   // Meta's own notices (e.g. "system" number changes) and reactions get no menu.
   if (message.type === 'system' || message.type === 'reaction' || message.type === 'unsupported') return null
-  return { ...base, kind: 'other' }
+  const media = str(message.type)
+  return media ? { ...base, kind: 'other', media: media.slice(0, 32) } : { ...base, kind: 'other' }
 }

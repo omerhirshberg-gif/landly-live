@@ -109,12 +109,17 @@ service cloud.firestore {
     }
 
     // The WhatsApp support bot's state (seen message ids, each number's menu
-    // and escalation times): written by /api/webhooks/whatsapp only.
+    // and escalation times) and transcripts: written by /api/webhooks/whatsapp
+    // and read/written by the admin support inbox (/api/admin/whatsapp/*),
+    // both through the Admin SDK only.
     match /whatsappInbound/{messageId} {
       allow read, write: if false;
     }
     match /whatsappConversations/{waId} {
       allow read, write: if false;
+      match /messages/{messageId} {
+        allow read, write: if false;
+      }
     }
 
     // Business accounts are created manually (Firebase Console) or via the

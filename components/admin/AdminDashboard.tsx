@@ -45,7 +45,7 @@ export default function AdminDashboard() {
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
-      <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mb-10 grid grid-cols-2 gap-3 sm:gap-4">
         <StatCard
           label="Total Businesses"
           value={businessCount}
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
         {recentBusinesses && recentBusinesses.length > 0 && (
           <Link href="/admin/businesses" className="inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#0038B8] hover:text-[#002A8A]">
             View all
-            <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true" />
+            <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true" />
           </Link>
         )}
       </div>
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
             <Link
               key={business.uid}
               href={`/admin/businesses/${business.uid}`}
-              className="flex min-h-16 items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-[#F8FAFC] focus-visible:bg-[#F0F7FF] focus-visible:outline-none"
+              className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-[#F8FAFC] active:bg-[#F1F5F9] focus-visible:bg-[#F0F7FF] focus-visible:outline-none sm:px-5"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0F7FF] text-sm text-[#0038B8]">
@@ -171,7 +171,7 @@ function ActionCard({
       </div>
       <Link href={href} className={`${primary ? PRIMARY_BUTTON : SECONDARY_BUTTON} mt-auto w-full sm:w-fit`}>
         {buttonLabel}
-        <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true" />
+        <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true" />
       </Link>
     </Card>
   )

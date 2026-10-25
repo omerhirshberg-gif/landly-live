@@ -9,16 +9,26 @@ function clone(value: unknown): any {
   return value
 }
 
-// Just enough of the Admin Firestore API for the /api/account change routes
-// and the WhatsApp bot: doc get/create/set (with merge)/update/delete,
-// batches, transactions (reads first, writes applied together), a
-// single-field equality query, and the FieldValue sentinels they use
-// (delete, increment, serverTimestamp).
+// Just enough of the Admin Firestore API for the /api/account change routes,
+// the WhatsApp bot and its support inbox: doc get/create/set (with
+// merge)/update/delete, subcollections and auto-ids, batches, transactions
+// (reads first, writes applied together), a single-field equality query, an
+// orderBy + limit query, and the FieldValue sentinels they use (delete,
+// increment, serverTimestamp).
 export class MemoryFirestore {
   private records = new Map<string, DocumentData>()
 
   seed(path: string, value: DocumentData) { this.records.set(path, clone(value)) }
   read(path: string): DocumentData | undefined { return clone(this.records.get(path)) }
+  /** The docs directly in a collection, by id. */
+  list(collectionPath: string): Record<string, DocumentData> {
+    return Object.fromEntries(this.childPaths(collectionPath).map((path) => [path.split('/').at(-1)!, this.read(path)!]))
+  }
+
+  private autoId = 0
+  private childPaths(collectionPath: string) {
+    return [...this.records.keys()].filter((path) => path.startsWith(`${collectionPath}/`) && !path.slice(collectionPath.length + 1).includes('/'))
+  }
 
   private snap(path: string) {
     const value = this.read(path)
@@ -53,6 +63,7 @@ export class MemoryFirestore {
     return {
       path,
       id: path.split('/').at(-1)!,
+      collection: (name: string) => this.collection(`${path}/${name}`),
       get: async () => this.snap(path),
       create: async (value: DocumentData) => {
         if (this.records.has(path)) throw Object.assign(new Error('Document already exists'), { code: 6 })
@@ -69,27 +80,44 @@ export class MemoryFirestore {
 
   private writer(writes: Write[]) {
     return {
-      set: (ref: { path: string }, value: DocumentData) => { writes.push({ kind: 'set', path: ref.path, value }) },
+      set: (ref: { path: string }, value: DocumentData, options?: { merge?: boolean }) => {
+        writes.push({ kind: options?.merge && this.records.has(ref.path) ? 'update' : 'set', path: ref.path, value })
+      },
       update: (ref: { path: string }, value: DocumentData) => { writes.push({ kind: 'update', path: ref.path, value }) },
       delete: (ref: { path: string }) => { writes.push({ kind: 'delete', path: ref.path }) },
     }
   }
 
-  readonly db = {
-    collection: (name: string) => ({
-      doc: (id: string) => this.ref(`${name}/${id}`),
+  private query(paths: string[]) {
+    const docs = paths.map((path) => ({ ...this.snap(path), ref: this.ref(path) }))
+    return { empty: docs.length === 0, docs }
+  }
+
+  private collection(name: string): any {
+    const sortKey = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : (value as number))
+    return {
+      doc: (id?: string) => this.ref(`${name}/${id ?? `auto-${++this.autoId}`}`),
       where: (field: string, _op: '==', expected: unknown) => ({
         limit: (n: number) => ({
+          get: async () => this.query(this.childPaths(name).filter((path) => this.records.get(path)![field] === expected).slice(0, n)),
+        }),
+      }),
+      // Like Firestore, docs without the field are left out.
+      orderBy: (field: string, direction: 'asc' | 'desc' = 'asc') => ({
+        limit: (n: number) => ({
           get: async () => {
-            const docs = [...this.records.entries()]
-              .filter(([path, value]) => path.startsWith(`${name}/`) && value[field] === expected)
-              .slice(0, n)
-              .map(([path]) => ({ ...this.snap(path), ref: this.ref(path) }))
-            return { empty: docs.length === 0, docs }
+            const paths = this.childPaths(name)
+              .filter((path) => this.records.get(path)![field] !== undefined)
+              .sort((a, b) => (sortKey(this.records.get(a)![field]) - sortKey(this.records.get(b)![field])) * (direction === 'desc' ? -1 : 1))
+            return this.query(paths.slice(0, n))
           },
         }),
       }),
-    }),
+    }
+  }
+
+  readonly db = {
+    collection: (name: string) => this.collection(name),
     batch: () => {
       const writes: Write[] = []
       return { ...this.writer(writes), commit: async () => this.apply(writes) }

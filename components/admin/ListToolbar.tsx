@@ -39,10 +39,10 @@ interface FilterChipsProps<T extends string> {
   onChange: (value: T) => void
 }
 
-/** Single-choice filter row; scrolls sideways on a narrow screen instead of wrapping. */
+/** Single-choice filter row; wraps onto more lines on a narrow screen, so no chip is ever cut off. */
 export function FilterChips<T extends string>({ label, options, value, onChange }: FilterChipsProps<T>) {
   return (
-    <div role="group" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
       {options.map((option) => {
         const selected = option.value === value
         return (
@@ -54,7 +54,7 @@ export function FilterChips<T extends string>({ label, options, value, onChange 
             className={`inline-flex min-h-12 shrink-0 items-center rounded-full border px-4 text-sm font-semibold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] ${
               selected
                 ? 'border-[#0038B8] bg-[#0038B8] text-white shadow-sm shadow-[#0038B8]/20'
-                : 'border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1] hover:text-[#0038B8]'
+                : 'border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1] hover:text-[#0038B8] active:bg-[#F1F5F9]'
             }`}
           >
             <span dir="auto">{option.label}</span>

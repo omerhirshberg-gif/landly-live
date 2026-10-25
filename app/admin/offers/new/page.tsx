@@ -196,7 +196,7 @@ function NewOfferForm() {
           ) : (
             <div className="space-y-3">
               <SearchInput label="Search businesses" placeholder="Search by business name or ID…" value={search} onChange={setSearch} />
-              <div className="max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-[#E2E8F0]" role="group" aria-label="Businesses">
+              <div className="max-h-80 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0]" role="group" aria-label="Businesses">
                 {businesses === null ? (
                   <p className="px-4 py-3 text-sm text-[#94A3B8]">Loading businesses…</p>
                 ) : filtered.length === 0 ? (
@@ -214,7 +214,7 @@ function NewOfferForm() {
                             <span className="block truncate font-semibold text-[#0B1B3D]" dir="auto">{b.businessName}</span>
                             <span className="block text-xs text-[#94A3B8]" dir="ltr">{b.businessId}</span>
                           </span>
-                          <i className="fa-solid fa-chevron-right text-xs text-[#CBD5E1] rtl:-scale-x-100" aria-hidden="true" />
+                          <i className="fa-solid fa-chevron-right text-xs text-[#CBD5E1]" aria-hidden="true" />
                         </button>
                       </li>
                     ))}

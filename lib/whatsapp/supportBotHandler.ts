@@ -1,13 +1,34 @@
 import 'server-only'
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { applicationOrigin } from '@/lib/auth/requestContext'
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
+import type { Lang } from '@/lib/i18n/translations'
+import { logMessages, snippetOf, type LoggedMessage } from './conversationLog'
 import { notifyTeam } from './escalation'
 import { sendWhatsAppMessage, whatsappLive, type WhatsAppMessage } from './graph'
-import { botLanguage, decide, linkMessage, menuMessage, textMessage, type BotContext } from './supportBot'
-import type { InboundEvent } from './webhookPayload'
+import {
+  alreadyEscalatedMessage,
+  botLanguage,
+  buttonTitle,
+  currentStatus,
+  CUSTOMER_SERVICE_WINDOW_MS,
+  decide,
+  escalatedMessage,
+  followUpMessage,
+  inquiryPromptMessage,
+  isConversationStatus,
+  LANGUAGE_NAMES,
+  languagePickerMessage,
+  linkMessage,
+  menuMessage,
+  resolvedMessage,
+  textMessage,
+  transcriptText,
+  type BotContext,
+} from './supportBot'
+import { isBotLanguage, type InboundEvent } from './webhookPayload'
 
 // The support bot's side effects, run by after() once the webhook has
 // answered Meta (app/api/webhooks/whatsapp/route.ts). Server-only state:
@@ -15,8 +36,18 @@ import type { InboundEvent } from './webhookPayload'
 // - whatsappInbound/{messageId}: one per message, created first, so a retried
 //   delivery is answered once. Expires after INBOUND_TTL_MS (a Firestore TTL
 //   policy on expiresAt deletes it).
-// - whatsappConversations/{waId}: the matched member, language, when the menu
-//   was last sent, when the member asked for the team, and the last text.
+// - whatsappConversations/{waId}: the matched member (uid, memberName), the
+//   WhatsApp profile name, the language (picked when langSelectedAt is set),
+//   the number they wrote to (phoneNumberId, where admin replies leave from),
+//   the last text and lastSnippet for the inbox list, and the conversation's
+//   state (lib/whatsapp/supportBot.ts): status (active |
+//   awaiting_user_inquiry | escalated | resolved), lastMenuAt, lastNudgeAt,
+//   inquiryPromptedAt, escalatedAt, resolvedAt.
+// - whatsappConversations/{waId}/messages: the message and the bot's replies
+//   (lib/whatsapp/conversationLog.ts).
+//
+// Firestore is getAdminDb()'s project, which lib/firebase/envGuard.ts pins:
+// the dev project locally and on Vercel Preview, production on Production.
 //
 // Replies leave from the number the member wrote to (the event's
 // phoneNumberId), else WHATSAPP_PHONE_NUMBER_ID. Outside production (and
@@ -24,11 +55,10 @@ import type { InboundEvent } from './webhookPayload'
 // code.
 
 const INBOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000
-/** Meta allows free-form replies for 24 hours after the member's message; older retries get none. */
-const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000
 const ALREADY_EXISTS = 6
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
+const nonEmpty = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 
 /** Handles each event in turn; never throws (its failures are logged). */
 export async function handleInboundEvents(events: InboundEvent[]): Promise<void> {
@@ -52,7 +82,7 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     if ((err as { code?: unknown })?.code === ALREADY_EXISTS) return
     throw err
   }
-  if (now - event.at > REPLY_WINDOW_MS) return
+  if (now - event.at > CUSTOMER_SERVICE_WINDOW_MS) return
 
   const conversationRef = db.collection('whatsappConversations').doc(event.waId)
   const [conversation, members] = await Promise.all([
@@ -60,22 +90,53 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     db.collection('users').where('phone', '==', `+${event.waId}`).limit(1).get(),
   ])
   const member = members.empty ? undefined : members.docs[0]
-  const firstName = typeof member?.get('firstName') === 'string' && member.get('firstName') ? (member.get('firstName') as string) : undefined
+  const firstName = nonEmpty(member?.get('firstName'))
+  const memberName = nonEmpty(member?.get('displayName')) ?? firstName
+  const storedStatus = conversation.get('status')
+  // The stored lang counts as picked only once langSelectedAt is set; before
+  // the picker existed it was the bot's guess.
+  const picked = conversation.get('langSelectedAt') !== undefined ? conversation.get('lang') : undefined
+  const profileLang = member?.get('preferredLanguage')
   const ctx: BotContext = {
-    lang: botLanguage(event.waId, member?.get('preferredLanguage')),
+    lang: botLanguage(picked, profileLang),
     origin: applicationOrigin(),
     memberFirstName: firstName,
     isMember: !!member,
+    needsLanguage: !isBotLanguage(picked) && !isBotLanguage(profileLang),
+    status: isConversationStatus(storedStatus) ? storedStatus : undefined,
     lastMenuAt: millis(conversation.get('lastMenuAt')),
+    lastNudgeAt: millis(conversation.get('lastNudgeAt')),
+    inquiryPromptedAt: millis(conversation.get('inquiryPromptedAt')),
     escalatedAt: millis(conversation.get('escalatedAt')),
     now,
   }
 
-  const lastText = event.kind === 'text' ? event.text : (conversation.get('lastText') as string | undefined)
+  const inbound = inboundEntry(event, ctx.lang)
+  const outbound: LoggedMessage[] = []
+  // Replies sort after the message they answer, in the order sent.
+  const sentAt = Math.max(now, event.at)
+  const reply = async (...messages: WhatsAppMessage[]) => {
+    for (const message of messages) {
+      const result = await send(event, message)
+      outbound.push({ ...result, direction: 'out', author: 'bot', kind: message.type === 'text' ? 'text' : 'interactive', text: transcriptText(message), at: sentAt + outbound.length + 1 })
+    }
+  }
+
+  // Whatever comes next moves the conversation on: an inquiry prompt or a
+  // resolution lasts one message, an escalation until it lapses.
+  const status = currentStatus(ctx)
+  const at = Timestamp.fromMillis(now)
+  const clear = conversation.exists ? FieldValue.delete() : undefined
   const update: Record<string, unknown> = {
     lang: ctx.lang,
     lastInboundAt: Timestamp.fromMillis(event.at),
+    lastSnippet: snippetOf(inbound),
+    status: status === 'escalated' ? 'escalated' : 'active',
+    ...(clear && ctx.inquiryPromptedAt !== undefined ? { inquiryPromptedAt: clear } : {}),
     ...(member ? { uid: member.id } : {}),
+    ...(memberName ? { memberName } : {}),
+    ...(event.name ? { profileName: event.name } : {}),
+    ...(event.phoneNumberId ? { phoneNumberId: event.phoneNumberId } : {}),
     ...(event.kind === 'text' ? { lastText: event.text.slice(0, 1000) } : {}),
   }
 
@@ -84,44 +145,95 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   try {
     switch (decision.kind) {
       case 'menu':
-        await reply(event, menuMessage(ctx))
-        update.lastMenuAt = Timestamp.fromMillis(now)
+        await reply(menuMessage(ctx))
+        update.lastMenuAt = at
+        break
+      case 'languagePicker':
+        await reply(languagePickerMessage())
+        update.lastMenuAt = at
+        break
+      case 'languageChosen': {
+        const lang = decision.lang
+        Object.assign(update, { lang, langSelectedAt: at, lastMenuAt: at })
+        // The member's profile follows the choice, so the site and emails match.
+        if (member) await member.ref.set({ preferredLanguage: lang }, { merge: true })
+        await reply(textMessage(lang, 'wa_bot_lang_changed'), menuMessage({ ...ctx, lang }))
+        break
+      }
+      case 'nudge':
+        await reply(textMessage(ctx.lang, 'wa_bot_nudge'))
+        update.lastNudgeAt = at
         break
       case 'link':
-        await reply(event, linkMessage(decision.action, ctx))
+        // A cta_url message holds only its link, so the follow-up buttons come next.
+        await reply(linkMessage(decision.action, ctx), followUpMessage(ctx.lang))
+        break
+      case 'promptInquiry':
+        update.status = 'awaiting_user_inquiry'
+        update.inquiryPromptedAt = at
+        await reply(inquiryPromptMessage(ctx.lang))
         break
       case 'alreadyEscalated':
-        await reply(event, textMessage(ctx.lang, 'wa_bot_team_already'))
+        await reply(alreadyEscalatedMessage(ctx.lang))
         break
       case 'escalate': {
-        const displayName = typeof member?.get('displayName') === 'string' && member.get('displayName') ? (member.get('displayName') as string) : event.name
-        const email = typeof member?.get('email') === 'string' ? (member.get('email') as string) || undefined : undefined
+        const email = nonEmpty(member?.get('email'))
+        const inquiry = event.kind === 'text' ? event.text : undefined
         try {
-          await notifyTeam({ waId: event.waId, lang: ctx.lang, name: displayName, uid: member?.id, email, lastText })
+          await notifyTeam({ waId: event.waId, lang: ctx.lang, name: memberName ?? event.name, uid: member?.id, email, inquiry, origin: ctx.origin })
         } catch (err) {
           // The team never heard: say so, and don't silence the bot.
           console.error(`[whatsapp-bot] team notification for ${maskPhone(`+${event.waId}`)} failed:`, err instanceof Error ? err.message : err)
-          await reply(event, textMessage(ctx.lang, 'wa_bot_team_failed', SUPPORT_EMAIL))
+          await reply(textMessage(ctx.lang, 'wa_bot_team_failed', SUPPORT_EMAIL))
           break
         }
-        update.escalatedAt = Timestamp.fromMillis(now)
-        await reply(event, textMessage(ctx.lang, 'wa_bot_team_confirm'))
+        update.status = 'escalated'
+        update.escalatedAt = at
+        await reply(escalatedMessage(ctx.lang))
         break
       }
+      case 'resolve':
+        update.status = 'resolved'
+        update.resolvedAt = at
+        // The next message starts over with a fresh menu.
+        if (clear) Object.assign(update, { escalatedAt: clear, lastMenuAt: clear, lastNudgeAt: clear, inquiryPromptedAt: clear })
+        await reply(resolvedMessage(ctx.lang))
+        break
       case 'silent':
         break
     }
   } finally {
+    if (outbound.length) update.lastOutboundAt = Timestamp.fromMillis(outbound.at(-1)!.at)
     await conversationRef.set(update, { merge: true })
+    await logMessages(event.waId, [inbound, ...outbound]).catch((err) =>
+      console.error(`[whatsapp-bot] transcript for ${maskPhone(`+${event.waId}`)} not saved:`, err instanceof Error ? err.message : err)
+    )
   }
 }
 
-async function reply({ waId, phoneNumberId }: InboundEvent, message: WhatsAppMessage): Promise<void> {
+/** The member's message as the inbox shows it: their text, the button they tapped, or what kind of attachment it was. */
+function inboundEntry(event: InboundEvent, lang: Lang): LoggedMessage {
+  const base = { id: event.messageId, direction: 'in', author: 'member', at: event.at } as const
+  switch (event.kind) {
+    case 'text':
+      return { ...base, kind: 'text', text: event.text }
+    case 'button':
+      return { ...base, kind: 'button', text: buttonTitle(lang, event.action) }
+    case 'language':
+      return { ...base, kind: 'language', text: LANGUAGE_NAMES[event.lang] }
+    case 'other':
+      return { ...base, kind: 'media', text: `(${event.media ?? 'attachment'})` }
+  }
+}
+
+/** Sends one message (or logs it, when not live); a failed send throws. */
+async function send({ waId, phoneNumberId }: InboundEvent, message: WhatsAppMessage): Promise<Pick<LoggedMessage, 'id' | 'simulated'>> {
   const to = maskPhone(`+${waId}`)
   if (!whatsappLive(phoneNumberId)) {
     console.info(`[whatsapp-bot] simulated reply to ${to}: ${JSON.stringify(message)}`)
-    return
+    return { simulated: true }
   }
-  await sendWhatsAppMessage(waId, message, phoneNumberId)
+  const id = await sendWhatsAppMessage(waId, message, phoneNumberId)
   console.info(`[whatsapp-bot] sent ${message.type} reply to ${to} from ${phoneNumberId ?? 'WHATSAPP_PHONE_NUMBER_ID'}`)
+  return { id }
 }

@@ -1,5 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // hover: styles apply only on devices that can hover, so a tapped card or
+  // row doesn't stay highlighted on a phone; touch feedback comes from active:.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',

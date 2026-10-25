@@ -4,6 +4,7 @@
 export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin') return 'Dashboard'
   if (pathname === '/admin/search') return 'Search'
+  if (pathname.startsWith('/admin/support')) return 'WhatsApp Support'
   if (pathname === '/admin/businesses/new') return 'Add Business'
   if (pathname === '/admin/businesses') return 'Businesses'
   if (pathname.startsWith('/admin/businesses/')) return 'Business Details'

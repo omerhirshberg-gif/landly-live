@@ -112,6 +112,7 @@ const EXPECTED: [string, string][] = [
   ['/admin/offers/[offerId]/edit', 'Edit Offer | Landly Admin'],
   ['/admin/orphans', 'Orphaned Accounts | Landly Admin'],
   ['/admin/search', 'Search | Landly Admin'],
+  ['/admin/support', 'Support Inbox | Landly Admin'],
 ]
 
 describe('browser tab titles', () => {
