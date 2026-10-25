@@ -5,7 +5,7 @@ import type { AdminStatus, InboxConversation } from '@/lib/whatsapp/adminInbox'
 import BackButton from '@/components/admin/BackButton'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { SECONDARY_BUTTON } from '@/components/admin/formStyles'
-import { ConversationStatusBadge, LanguageBadge } from './ConversationBadges'
+import { CategoryBadge, ConversationStatusBadge, LanguageBadge } from './ConversationBadges'
 import { phoneOf } from './time'
 
 const RESOLVE_BUTTON =
@@ -22,7 +22,7 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({ conversation, onBack, onStatus, pendingStatus }: ChatHeaderProps) {
-  const { waId, name, uid, lang, langSelected, status } = conversation
+  const { waId, name, uid, lang, langSelected, status, category } = conversation
   const [copied, setCopied] = useState(false)
 
   const copyUid = () => {
@@ -53,6 +53,7 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
           </h2>
           <LanguageBadge lang={lang} selected={langSelected} />
           <ConversationStatusBadge status={status} />
+          {category && status !== 'active' && <CategoryBadge category={category} />}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#64748B]">
           <a

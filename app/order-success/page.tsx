@@ -158,8 +158,9 @@ function OrderSuccessContent() {
                   <span>{t('success_receipt_note')}</span>
                 </p>
 
-                {/* Sticky above the home indicator on phones, in the flow from 640px. */}
-                <div className="sticky bottom-0 -mx-6 mt-6 flex flex-col gap-2 bg-white px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:px-0 sm:pb-0">
+                {/* Sticky above the home indicator on phones, in the flow from 640px.
+                    The WhatsApp widget rises above it there (data-floating-clearance). */}
+                <div data-floating-clearance="" className="sticky bottom-0 -mx-6 mt-6 flex flex-col gap-2 bg-white px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:px-0 sm:pb-0">
                   {voucherId && (
                     <Link
                       href={`/member/vouchers/${encodeURIComponent(voucherId)}`}

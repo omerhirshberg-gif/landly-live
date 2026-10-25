@@ -29,7 +29,8 @@ service cloud.firestore {
     // swap its email without opening the new inbox, or plant a pending
     // change. The member still reads them (the profile's amber notice), and
     // still writes `phone` directly from onboarding and settings; changes
-    // from the profile screens go through the WhatsApp code when it's on.
+    // from the profile screens go through the WhatsApp code when it's on,
+    // and only that code sets `phoneVerified` (/api/account/verify-phone-otp).
     // The welcome-email flag is server-only too (/api/account/welcome-email):
     // clearing it would let a member have the email sent again. So is the
     // record of when and where a marketing opt-in was given (proof of
@@ -38,7 +39,7 @@ service cloud.firestore {
     // could change it would orphan every passkey they've saved. And so is
     // the session cutoff below: a stolen session could otherwise clear it.
     function serverOnlyUserKeys() {
-      return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt',
+      return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt', 'phoneVerified',
         'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource',
         'webauthnUserId', 'sessionsValidAfter'];
     }

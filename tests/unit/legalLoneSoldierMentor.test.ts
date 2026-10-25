@@ -71,13 +71,15 @@ describe('terms: guests browse, members buy and redeem', () => {
   })
 })
 
-describe('privacy policy: phone number', () => {
+describe('privacy policy: WhatsApp support number', () => {
   const html = renderToStaticMarkup(createElement(PrivacyPolicy))
   const policy = text(html)
 
-  it('gives the support line, as a call link, in Who we are and in Contact us', () => {
-    expect(policy).toContain('contact us at contact@golandly.com or by phone or WhatsApp at +972 55-720-6711.')
-    expect(policy).toContain('Phone / WhatsApp: +972 55-720-6711')
-    expect(html.match(/<bdi dir="ltr"><a href="tel:\+972557206711"[^>]*>\+972 55-720-6711<\/a><\/bdi>/g)).toHaveLength(2)
+  it('gives the WhatsApp line, as a wa.me link isolated ltr, in Who we are and in Contact us', () => {
+    expect(policy).toContain('contact us at contact@golandly.com or on WhatsApp at +972 55-288-9033.')
+    expect(policy).toContain('We do not take voice calls: direct support is provided on WhatsApp or by email.')
+    expect(policy).toContain('WhatsApp Support: +972 55-288-9033')
+    expect(html.match(/<bdi dir="ltr"><a href="https:\/\/wa\.me\/972552889033"[^>]*>\+972 55-288-9033<\/a><\/bdi>/g)).toHaveLength(2)
+    expect(html).not.toContain('tel:')
   })
 })

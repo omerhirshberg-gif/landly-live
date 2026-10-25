@@ -54,7 +54,7 @@ export default function ChangeEmailForm({
       setPassword('')
       onSent(pendingEmail, result.retryAfter)
     } else {
-      setError(t(contactChangeErrorKey(result.reason)))
+      setError(t(contactChangeErrorKey(result.reason, 'email')))
     }
   }
 

@@ -1,13 +1,12 @@
 export const SUPPORT_EMAIL = 'contact@golandly.com'
 // The WhatsApp Cloud API line the support bot answers
 // (app/api/webhooks/whatsapp/route.ts): the web widget, /support, the
-// business dashboard's support page and the app's Help screen all open it.
+// business dashboard's support page, the privacy policy's contact details and
+// the app's Help screen all open it. There is no separate voice line: support
+// is on WhatsApp or by email.
+export const SUPPORT_WHATSAPP_NUMBER = '972552889033'
 export const SUPPORT_WHATSAPP_DISPLAY = '+972 55-288-9033'
-export const SUPPORT_WHATSAPP_LINK = 'https://wa.me/972552889033'
-// The phone line for calling (the privacy policy's contact details). A Cloud
-// API number can't be used from the WhatsApp app, so calls stay on this one.
-export const SUPPORT_PHONE_DISPLAY = '+972 55-720-6711'
-export const SUPPORT_PHONE_TEL = 'tel:+972557206711'
+export const SUPPORT_WHATSAPP_LINK = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}`
 
 // Shown in the drawer's About & Legal row; matches landly-mobile/app.json.
 export const APP_VERSION = '1.0.0'

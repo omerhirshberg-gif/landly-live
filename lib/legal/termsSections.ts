@@ -14,4 +14,5 @@ export const TERMS_SECTIONS: { heading: TranslationKey; body: (TranslationKey | 
   { heading: 'terms_h5', body: [['terms_p5a_label', 'terms_p5a'], ['terms_p5b_label', 'terms_p5b']] },
   { heading: 'terms_h6', body: ['terms_p6'] },
   { heading: 'terms_h7', body: ['terms_p7'] },
+  { heading: 'terms_h8', body: ['terms_p8'] },
 ]

@@ -120,8 +120,9 @@ describe('legal text matches the code', () => {
 })
 
 describe('legal entity, contact and governing law', () => {
+  // Third parties keep their own legal names (Meta Platforms, Inc.); only Landly's is checked.
   it.each(LANGS)('names the entity "Landly" with no company suffix (%s)', (lang) => {
-    for (const key of legalKeys) expect(tr(lang, key), `${lang}.${key}`).not.toMatch(/\bLtd\b|בע״מ|בע"מ|Ltée|\bS\.?L\.?\b|\bS\.A\.?\b|\bSARL\b|ООО|\bInc\b/)
+    for (const key of legalKeys) expect(tr(lang, key).replace('Meta Platforms, Inc.', ''), `${lang}.${key}`).not.toMatch(/\bLtd\b|בע״מ|בע"מ|Ltée|\bS\.?L\.?\b|\bS\.A\.?\b|\bSARL\b|ООО|\bInc\b/)
   })
 
   it.each(LANGS)('points every address at the support email (%s)', (lang) => {
@@ -131,8 +132,8 @@ describe('legal entity, contact and governing law', () => {
     expect(tr(lang, 'terms_p7')).toContain(SUPPORT_EMAIL)
   })
 
-  it.each(LANGS)('numbers the seven Terms sections 1 to 7 in order (%s)', (lang) => {
-    expect(TERMS_SECTIONS.map((s) => tr(lang, s.heading).match(/^(\d)\. /)?.[1])).toEqual(['1', '2', '3', '4', '5', '6', '7'])
+  it.each(LANGS)('numbers the eight Terms sections 1 to 8 in order (%s)', (lang) => {
+    expect(TERMS_SECTIONS.map((s) => tr(lang, s.heading).match(/^(\d)\. /)?.[1])).toEqual(['1', '2', '3', '4', '5', '6', '7', '8'])
   })
 
   it.each(LANGS)('gives Tel Aviv-Yafo courts exclusive jurisdiction under Israeli law (%s)', (lang) => {
@@ -178,9 +179,9 @@ describe('Hebrew: right to left, with left-to-right tokens isolated', () => {
     expect(renderToStaticMarkup(createElement(PrivacyPolicy))).toMatch(/^<article lang="en" dir="ltr"/)
   })
 
-  it('wraps the email, phone, URLs and code in <bdi>', () => {
+  it('wraps the email, WhatsApp number, URLs and code in <bdi>', () => {
     expect(policy).toMatch(/<bdi><a href="mailto:contact@golandly.com"/)
-    expect(policy).toMatch(/<bdi dir="ltr"><a href="tel:/)
+    expect(policy).toMatch(/<bdi dir="ltr"><a href="https:\/\/wa.me\/972552889033"/)
     expect(policy).toMatch(/<bdi><a href="https:\/\/www.golandly.com"/)
     expect(policy).toContain('<bdi><code class="rounded bg-slate-100 px-1.5 py-0.5 text-[0.9em]">landly.applock.&lt;uid&gt;</code></bdi>')
     expect(policy).not.toMatch(/<bdi><a href="#/)

@@ -22,7 +22,8 @@ const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
 })
 
-export default function LiveClock({ compact = false }: { compact?: boolean }) {
+/** `compact`: just HH:MM, `muted` for a quiet label beside the header's title. */
+export default function LiveClock({ compact = false, muted = false }: { compact?: boolean; muted?: boolean }) {
   // Starts null so the server-rendered/first-paint markup has nothing
   // time-dependent to mismatch against -- the real value fills in on mount.
   const [now, setNow] = useState<Date | null>(null)
@@ -37,7 +38,7 @@ export default function LiveClock({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <span className="text-sm font-semibold text-[#0B1B3D] tabular-nums" dir="ltr">
+      <span className={`tabular-nums ${muted ? 'text-xs font-medium text-slate-400' : 'text-sm font-semibold text-[#0B1B3D]'}`} dir="ltr">
         {SHORT_TIME_FORMAT.format(now)}
       </span>
     )

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { AdminStatus, InboxConversation, InboxMessage } from '@/lib/whatsapp/adminInbox'
 import { adminFetch } from '@/lib/admin/adminSession'
@@ -12,6 +12,7 @@ import ChatHeader from '@/components/admin/support/ChatHeader'
 import ChatTranscript from '@/components/admin/support/ChatTranscript'
 import ConversationList, { type InboxFilter } from '@/components/admin/support/ConversationList'
 import ReplyComposer from '@/components/admin/support/ReplyComposer'
+import type { TranscriptMessage } from '@/components/admin/support/transcript'
 
 // The WhatsApp support inbox: conversations on the left, the open chat on
 // the right, with ?c=<waId> naming the open chat. Opening a chat from the
@@ -21,13 +22,20 @@ import ReplyComposer from '@/components/admin/support/ReplyComposer'
 // from the browser, so the list refreshes every LIST_POLL_MS and the open
 // chat every CHAT_POLL_MS, paused while the tab is hidden.
 //
+// A reply or a status change shows at once: the draft clears into a pending
+// bubble, and the chat stops counting as waiting (the ☰ and sidebar badges
+// follow the list). Until the server agrees, an override keeps a poll that
+// started earlier from bringing the old state back.
+//
 // Phones get one pane at a time, edge to edge (AdminShell's full-bleed
 // main): the list fills the screen below the header, and an open chat is a
 // fixed panel over the whole visible viewport (lib/admin/useVisualViewport.ts),
 // so the reply box sits right above the keyboard on iOS and Android alike.
 
-const LIST_POLL_MS = 15_000
-const CHAT_POLL_MS = 5_000
+const LIST_POLL_MS = 4_000
+const CHAT_POLL_MS = 4_000
+/** An optimistic change gives way to the server's state after this long, whatever it says. */
+const OVERRIDE_MS = 15_000
 
 // Only the panes scroll. On a phone they fill the visible viewport below the
 // admin header; from md, the viewport below the header, the page's top
@@ -35,7 +43,7 @@ const CHAT_POLL_MS = 5_000
 // header already names the page, so there is no title row.
 const PANES_VARS = {
   '--panes-h': 'calc(var(--vv-height, var(--app-dvh)) - var(--admin-header-h))',
-  '--panes-h-md': 'calc(var(--app-dvh) - var(--admin-header-h) - 2rem - max(2rem, env(safe-area-inset-bottom, 0px)))',
+  '--panes-h-md': 'calc(var(--app-dvh) - var(--admin-header-h-md) - 2rem - max(2rem, env(safe-area-inset-bottom, 0px)))',
 } as React.CSSProperties
 
 const DESKTOP_QUERY = '(min-width: 768px)'
@@ -62,6 +70,16 @@ interface Chat {
   conversation: InboxConversation
   messages: InboxMessage[]
 }
+
+interface Override {
+  patch: Pick<InboxConversation, 'needsReply'> & Partial<Pick<InboxConversation, 'status'>>
+  /** When it was made; a member message after this is real news. */
+  since: number
+}
+
+/** Adds `message` unless a poll already brought it. */
+const withMessage = (messages: InboxMessage[], message: InboxMessage) =>
+  messages.some((m) => m.id === message.id) ? messages : [...messages, message]
 
 /**
  * Runs `task` now and every `ms` while the tab is visible, and again when it
@@ -108,6 +126,8 @@ function SupportInbox() {
   const [chat, setChat] = useState<Chat | null>(null)
   const [chatError, setChatError] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  // Replies on their way, by chat: shown after the transcript until the server has them.
+  const [pending, setPending] = useState<Record<string, TranscriptMessage[]>>({})
   const [sending, setSending] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<AdminStatus | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -123,17 +143,50 @@ function SupportInbox() {
     return () => clearInterval(timer)
   }, [])
 
+  // Optimistic changes by chat (see the top of the file).
+  const overridesRef = useRef(new Map<string, Override>())
+  const withOverride = useCallback((conversation: InboxConversation): InboxConversation => {
+    const override = overridesRef.current.get(conversation.waId)
+    if (!override) return conversation
+    const { patch, since } = override
+    const agrees = conversation.needsReply === patch.needsReply && (patch.status === undefined || conversation.status === patch.status)
+    const wroteSince = conversation.lastInboundAt !== null && Date.parse(conversation.lastInboundAt) > since
+    if (agrees || wroteSince || Date.now() - since > OVERRIDE_MS) {
+      overridesRef.current.delete(conversation.waId)
+      return conversation
+    }
+    return { ...conversation, ...patch }
+  }, [])
+
+  const upsertConversation = useCallback((conversation: InboxConversation) => {
+    setConversations((prev) => prev?.map((c) => (c.waId === conversation.waId ? conversation : c)) ?? prev)
+    setChat((prev) => (prev && prev.conversation.waId === conversation.waId ? { ...prev, conversation } : prev))
+  }, [])
+
+  /** Shows `patch` on the chat at once; the badges follow the list. */
+  const optimistic = (waId: string, patch: Override['patch']) => {
+    overridesRef.current.set(waId, { patch, since: Date.now() })
+    setConversations((prev) => prev?.map((c) => (c.waId === waId ? { ...c, ...patch } : c)) ?? prev)
+    setChat((prev) => (prev && prev.conversation.waId === waId ? { ...prev, conversation: { ...prev.conversation, ...patch } } : prev))
+  }
+
+  // Only the newest list request may set the list, however the responses arrive.
+  const listSeqRef = useRef(0)
   const loadList = useCallback(() => {
+    const seq = ++listSeqRef.current
     adminFetch('/api/admin/whatsapp/conversations')
       .then((res) => res.json())
       .then((data) => {
+        if (seq !== listSeqRef.current) return
         if (data.error) throw new Error(data.error)
-        setConversations(data.conversations ?? [])
+        setConversations(((data.conversations ?? []) as InboxConversation[]).map(withOverride))
         setListError(null)
         setNow(Date.now())
       })
-      .catch(() => setListError('Failed to load conversations.'))
-  }, [])
+      .catch(() => {
+        if (seq === listSeqRef.current) setListError('Failed to load conversations.')
+      })
+  }, [withOverride])
 
   const loadChat = useCallback(() => {
     const waId = selectedRef.current
@@ -143,15 +196,16 @@ function SupportInbox() {
       .then(({ ok, status, data }) => {
         if (selectedRef.current !== waId) return
         if (!ok) throw new Error(status === 404 ? 'This conversation no longer exists.' : (data.error ?? 'Failed to load the conversation.'))
-        setChat(data)
+        const conversation = withOverride(data.conversation)
+        setChat({ conversation, messages: data.messages })
         setChatError(null)
         // Keep the list row in step with what the chat shows.
-        setConversations((prev) => prev?.map((c) => (c.waId === waId ? data.conversation : c)) ?? prev)
+        setConversations((prev) => prev?.map((c) => (c.waId === waId ? conversation : c)) ?? prev)
       })
       .catch((err) => {
         if (selectedRef.current === waId) setChatError(err instanceof Error ? err.message : 'Failed to load the conversation.')
       })
-  }, [])
+  }, [withOverride])
 
   usePolling(loadList, LIST_POLL_MS)
   usePolling(loadChat, CHAT_POLL_MS, selected)
@@ -189,21 +243,30 @@ function SupportInbox() {
     else router.replace(pathname, { scroll: false })
   }
 
-  const upsertConversation = (conversation: InboxConversation) => {
-    setConversations((prev) => prev?.map((c) => (c.waId === conversation.waId ? conversation : c)) ?? prev)
-    setChat((prev) => (prev && prev.conversation.waId === conversation.waId ? { ...prev, conversation } : prev))
-  }
-
   const appendMessage = (waId: string, message: InboxMessage) => {
-    setChat((prev) => (prev && prev.conversation.waId === waId ? { ...prev, messages: [...prev.messages, message] } : prev))
+    setChat((prev) => (prev && prev.conversation.waId === waId ? { ...prev, messages: withMessage(prev.messages, message) } : prev))
   }
 
   const send = async () => {
     const waId = selected
     const text = (waId && drafts[waId]?.trim()) || ''
     if (!waId || !text || sending) return
+    // The draft clears into a pending bubble, and the chat stops waiting, before the request leaves.
+    const placeholder: TranscriptMessage = {
+      id: `pending-${Date.now()}`,
+      direction: 'out',
+      author: 'admin',
+      kind: 'text',
+      text,
+      at: new Date().toISOString(),
+      pending: true,
+    }
+    setDrafts((prev) => ({ ...prev, [waId]: '' }))
+    setPending((prev) => ({ ...prev, [waId]: [...(prev[waId] ?? []), placeholder] }))
+    optimistic(waId, { needsReply: false })
     setSending(true)
     setActionError(null)
+    let sent = false
     try {
       const res = await adminFetch('/api/admin/whatsapp/reply', {
         method: 'POST',
@@ -212,8 +275,8 @@ function SupportInbox() {
       })
       const data = await res.json()
       if (res.ok) {
+        sent = true
         appendMessage(waId, data.message)
-        setDrafts((prev) => ({ ...prev, [waId]: '' }))
       } else if (res.status === 409) {
         setActionError('More than 24 hours have passed since the member last wrote, so WhatsApp no longer accepts free-form replies.')
       } else {
@@ -223,6 +286,12 @@ function SupportInbox() {
     } catch {
       setActionError('Failed to send the reply. Check your connection and try again.')
     } finally {
+      setPending((prev) => ({ ...prev, [waId]: (prev[waId] ?? []).filter((m) => m.id !== placeholder.id) }))
+      if (!sent) {
+        // Nothing went out: the chat is still waiting, and the text comes back unless something new was typed.
+        overridesRef.current.delete(waId)
+        setDrafts((prev) => (prev[waId] ? prev : { ...prev, [waId]: text }))
+      }
       setSending(false)
       loadChat()
       loadList()
@@ -234,6 +303,8 @@ function SupportInbox() {
     if (!waId || pendingStatus) return
     setPendingStatus(status)
     setActionError(null)
+    // Resolved or back to the bot: no longer waiting for the team, from this moment.
+    if (status !== 'escalated') optimistic(waId, { status, needsReply: false })
     try {
       const res = await adminFetch('/api/admin/whatsapp/status', {
         method: 'POST',
@@ -247,10 +318,12 @@ function SupportInbox() {
         setActionError('Marked resolved, but the sign-off message could not be sent.')
       }
     } catch (err) {
+      overridesRef.current.delete(waId)
       setActionError(err instanceof Error ? err.message : 'Failed to update the status.')
     } finally {
       setPendingStatus(null)
       loadChat()
+      loadList()
     }
   }
 
@@ -258,6 +331,11 @@ function SupportInbox() {
   const conversation = chat?.conversation ?? conversations?.find((c) => c.waId === selected) ?? null
   const awaiting = conversations?.filter((c) => c.needsReply).length ?? 0
   const listLoaded = conversations !== null
+  const openPending = selected ? pending[selected] : undefined
+  const transcript = useMemo<TranscriptMessage[] | null>(
+    () => (chat ? (openPending?.length ? [...chat.messages, ...openPending] : chat.messages) : null),
+    [chat, openPending]
+  )
 
   // The shell's badges follow this list instead of waiting for their own poll.
   useEffect(() => {
@@ -318,7 +396,7 @@ function SupportInbox() {
                   {actionError ?? chatError}
                 </Alert>
               )}
-              <ChatTranscript waId={conversation.waId} messages={chat?.messages ?? null} now={now} />
+              <ChatTranscript waId={conversation.waId} messages={transcript} now={now} />
               <ReplyComposer
                 value={drafts[conversation.waId] ?? ''}
                 onChange={(value) => setDrafts((prev) => ({ ...prev, [conversation.waId]: value }))}

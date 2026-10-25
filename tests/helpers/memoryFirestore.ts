@@ -12,7 +12,7 @@ function clone(value: unknown): any {
 // Just enough of the Admin Firestore API for the /api/account change routes,
 // the WhatsApp bot and its support inbox: doc get/create/set (with
 // merge)/update/delete, subcollections and auto-ids, batches, transactions
-// (reads first, writes applied together), a single-field equality query, an
+// (reads first, writes applied together, queries readable inside), a single-field equality query, an
 // orderBy + limit query, and the FieldValue sentinels they use (delete,
 // increment, serverTimestamp).
 export class MemoryFirestore {
@@ -124,7 +124,11 @@ export class MemoryFirestore {
     },
     runTransaction: async (work: (tx: any) => Promise<unknown>) => {
       const writes: Write[] = []
-      const tx = { get: async (ref: { path: string }) => this.snap(ref.path), ...this.writer(writes) }
+      // A doc ref has a path; anything else is a query, read as it stands.
+      const tx = {
+        get: async (target: { path?: string; get: () => Promise<unknown> }) => (target.path ? this.snap(target.path) : target.get()),
+        ...this.writer(writes),
+      }
       const result = await work(tx)
       this.apply(writes)
       return result

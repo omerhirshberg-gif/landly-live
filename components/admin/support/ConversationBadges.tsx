@@ -1,5 +1,5 @@
 import type { Lang } from '@/lib/i18n/translations'
-import type { ConversationStatus } from '@/lib/whatsapp/supportBot'
+import { INQUIRY_CATEGORY_LABELS, type ConversationStatus, type InquiryCategory } from '@/lib/whatsapp/supportBot'
 import StatusBadge, { type StatusTone } from '@/components/admin/StatusBadge'
 
 const LANGUAGE_LABELS: Record<Lang, string> = { en: 'English', he: 'Hebrew', ru: 'Russian', fr: 'French', es: 'Spanish' }
@@ -33,5 +33,21 @@ export function ConversationStatusBadge({ status }: { status: ConversationStatus
     <StatusBadge tone={tone} icon={icon} className="whitespace-nowrap">
       {label}
     </StatusBadge>
+  )
+}
+
+const CATEGORY_ICONS: Record<InquiryCategory, string> = { order_issue: 'fa-bag-shopping', purchase_help: 'fa-tag', general: 'fa-comment' }
+
+/** The bot topic the member asked the team from: "Existing order", "New order" or "General". */
+export function CategoryBadge({ category }: { category: InquiryCategory }) {
+  return (
+    <span
+      title="Topic the member chose in the bot"
+      className="inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md bg-[#F1F5F9] px-1.5 text-[11px] font-semibold text-[#475569]"
+    >
+      <i className={`fa-solid ${CATEGORY_ICONS[category]} text-[10px] text-[#94A3B8]`} aria-hidden="true" />
+      <span className="sr-only">Topic: </span>
+      {INQUIRY_CATEGORY_LABELS[category]}
+    </span>
   )
 }

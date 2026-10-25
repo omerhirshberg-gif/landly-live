@@ -8,6 +8,7 @@ import type { OtpChannel } from '@/lib/auth/otp'
  * map each one to copy (contactChangeErrorKey).
  *
  * reauthRequired -- the email change needs the current password again
+ * phoneInUse     -- the number is already on another member's account
  * delivery       -- the code couldn't be sent (WhatsApp/SMS provider refused)
  * invalid        -- an unknown kind of pending change to cancel
  * unauthorized   -- the session expired or was revoked
@@ -24,6 +25,7 @@ export type ContactChangeReason =
   | 'emailInUse'
   | 'invalidPhone'
   | 'samePhone'
+  | 'phoneInUse'
   | 'delivery'
   | 'noPending'
   | 'invalidCode'
@@ -43,7 +45,7 @@ export const CONTACT_CHANGE_FAILED: ContactChangeFailure = { ok: false, reason: 
 
 const KNOWN_REASONS = new Set<string>([
   'rateLimited', 'unauthorized', 'reauthRequired', 'notPasswordAccount', 'invalidEmail', 'sameEmail', 'emailInUse',
-  'invalidPhone', 'samePhone', 'delivery', 'noPending', 'invalidCode', 'expired', 'tooManyAttempts', 'invalid',
+  'invalidPhone', 'samePhone', 'phoneInUse', 'delivery', 'noPending', 'invalidCode', 'expired', 'tooManyAttempts', 'invalid',
 ])
 
 // Client-side caller for the /api/account email and phone change routes,
@@ -148,6 +150,7 @@ export function contactChangeErrorKey(reason: ContactChangeReason, kind: 'email'
     case 'emailInUse': return 'contact_err_emailInUse'
     case 'invalidPhone': return 'phone_invalid_error'
     case 'samePhone': return 'contact_err_samePhone'
+    case 'phoneInUse': return 'contact_err_phoneInUse'
     case 'delivery': return 'contact_err_delivery'
     case 'invalidCode': return 'contact_err_invalidCode'
     case 'expired': return 'contact_err_expired'

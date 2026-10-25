@@ -122,7 +122,7 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // shows in a field box: its "Change" (email+password members) opens
 // ChangeEmailForm, which emails the code to the new address; a Google
 // account's address is its Google identity, so its box is locked with a
-// note. A new phone number gets a WhatsApp code when verification is on
+// note (also when it has a password). A new phone number gets a WhatsApp code when verification is on
 // (/api/account/change-phone decides, otherwise it saves as before).
 // Meanwhile the amber PendingChangeNotice sits under the row until the
 // change is verified, on any device.
@@ -143,8 +143,9 @@ function ProfileDetails({
   const current = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
-  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
   const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
+  // Google linked locks the address, even beside a password (the server refuses it too).
+  const canChangeEmail = !googleAccount && user.providerData.some((p) => p.providerId === 'password')
   const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(current)

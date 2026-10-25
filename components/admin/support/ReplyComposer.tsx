@@ -1,11 +1,40 @@
 'use client'
 
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { REPLY_MAX } from '@/lib/whatsapp/replyLimits'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { relativeTime } from './time'
 
 const MAX_HEIGHT = 160
+
+// Phones and tablets without a mouse: the on-screen Enter adds a line and the
+// send button sends, as in WhatsApp's mobile app. Everywhere else Enter
+// sends and Shift+Enter adds a line, as in WhatsApp Web.
+const TOUCH_FIRST = '(hover: none) and (pointer: coarse)'
+
+function subscribeTouchFirst(onChange: () => void) {
+  const media = window.matchMedia(TOUCH_FIRST)
+  media.addEventListener('change', onChange)
+  return () => media.removeEventListener('change', onChange)
+}
+
+const useTouchFirst = () =>
+  useSyncExternalStore(
+    subscribeTouchFirst,
+    () => window.matchMedia(TOUCH_FIRST).matches,
+    () => false
+  )
+
+type EnterKey = Pick<KeyboardEvent, 'key' | 'shiftKey' | 'metaKey' | 'ctrlKey' | 'isComposing' | 'keyCode'>
+
+/** Whether this keydown sends the reply rather than adding a line. */
+export function sendsOnEnter(e: EnterKey, touchFirst: boolean): boolean {
+  if (e.key !== 'Enter' || e.shiftKey) return false
+  // Mid-word in an IME (Android keyboards report keyCode 229): Enter confirms the word.
+  if (e.isComposing || e.keyCode === 229) return false
+  // ⌘/Ctrl+Enter still sends from a touch device's hardware keyboard.
+  return !touchFirst || e.metaKey || e.ctrlKey
+}
 
 interface ReplyComposerProps {
   value: string
@@ -20,6 +49,7 @@ interface ReplyComposerProps {
 
 export default function ReplyComposer({ value, onChange, onSend, sending, windowOpen, lastInboundAt, now }: ReplyComposerProps) {
   const fieldRef = useRef<HTMLTextAreaElement>(null)
+  const touchFirst = useTouchFirst()
   const canSend = windowOpen && !sending && value.trim().length > 0 && value.trim().length <= REPLY_MAX
 
   // Grows with its text up to MAX_HEIGHT, then scrolls.
@@ -57,17 +87,17 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              if (canSend) onSend()
-            }
+            if (!sendsOnEnter(e.nativeEvent, touchFirst)) return
+            e.preventDefault()
+            if (canSend) onSend()
           }}
           rows={1}
           dir="auto"
-          // A phone keyboard's Enter adds a line; the send button sends.
-          enterKeyHint="enter"
+          enterKeyHint={touchFirst ? 'enter' : 'send'}
           maxLength={REPLY_MAX}
+          // Read-only rather than disabled while sending, so focus stays for the next reply.
           readOnly={sending}
+          aria-busy={sending}
           placeholder="Reply as Landly…"
           aria-label="Reply to the member"
           aria-describedby="reply-hint"
@@ -83,7 +113,14 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
         </button>
       </div>
       <p id="reply-hint" className="mt-1.5 hidden text-[11px] text-[#94A3B8] sm:block">
-        <kbd className="font-sans">⌘/Ctrl</kbd> + <kbd className="font-sans">Enter</kbd> to send · Sent on WhatsApp as Landly · The bot stays quiet for 24 hours after a reply
+        {touchFirst ? (
+          'Enter for a new line · '
+        ) : (
+          <>
+            <kbd className="font-sans">Enter</kbd> to send · <kbd className="font-sans">Shift</kbd> + <kbd className="font-sans">Enter</kbd> for new line ·{' '}
+          </>
+        )}
+        Sent on WhatsApp as Landly · The bot stays quiet for 24 hours after a reply
       </p>
     </form>
   )

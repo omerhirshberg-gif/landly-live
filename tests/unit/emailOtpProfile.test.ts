@@ -13,8 +13,9 @@ const SCREENS = [
 describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, otpTag }) => {
   it('offers "Change" only inside Edit profile, to password accounts, and locks a Google address', () => {
     const src = read(profile)
-    expect(src).toContain("const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')")
     expect(src).toContain("const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')")
+    // Google linked locks it even beside a password.
+    expect(src).toContain("const canChangeEmail = !googleAccount && user.providerData.some((p) => p.providerId === 'password')")
     // No entry point outside Edit profile any more.
     expect(src).not.toMatch(/canChangeEmail && !editing/)
     expect(src).toMatch(/\{editing \? \(?\s*(\/\/[^\n]*\n\s*)?(emailBox|<View style=\{\[styles\.emailBox)/)
@@ -52,6 +53,8 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
     const src = read(form)
     expect(src).toContain('onSent(result.pendingEmail, result.resendIn)')
     expect(src).toMatch(/result\.reason === 'rateLimited' && result\.retryAfter && newEmail\.toLowerCase\(\) === pendingEmail/)
+    // Its failures read as email failures ("…change your email again"), not phone ones.
+    expect(src).toContain("setError(t(contactChangeErrorKey(result.reason, 'email')))")
   })
 
   it('verifies and resends by target, with the email-specific copy', () => {

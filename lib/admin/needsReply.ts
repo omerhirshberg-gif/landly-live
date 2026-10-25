@@ -5,8 +5,10 @@ import { adminFetch, getStoredToken } from './adminSession'
 // header's ☰ and the "WhatsApp Support" nav item. Polled every POLL_MS
 // (paused while the tab is hidden, refreshed when it shows again) from
 // /api/admin/whatsapp/conversations?summary=1. The support inbox, which
-// already knows the count from its own list, announces it with
-// NEEDS_REPLY_EVENT so the badges follow a reply at once.
+// already knows the count from its own list (and lowers it the moment the
+// team replies or resolves), announces it with NEEDS_REPLY_EVENT. While it
+// is open the badges only follow those announcements: a summary fetched
+// before a reply landed would otherwise put the old count back.
 
 export const POLL_MS = 30_000
 export const NEEDS_REPLY_EVENT = 'landly-admin:needs-reply'
@@ -19,7 +21,8 @@ export function announceNeedsReply(count?: number): void {
   window.dispatchEvent(new CustomEvent(NEEDS_REPLY_EVENT, { detail: count }))
 }
 
-export function useNeedsReplyCount(enabled: boolean): number {
+/** `follow`: the support inbox is open, so take its announcements instead of polling. */
+export function useNeedsReplyCount(enabled: boolean, { follow = false }: { follow?: boolean } = {}): number {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -27,7 +30,7 @@ export function useNeedsReplyCount(enabled: boolean): number {
     let cancelled = false
     const load = () => {
       // Signed out (or the gate hasn't let us in yet): nothing to ask, and no 401 redirect from here.
-      if (document.hidden || !getStoredToken()) return
+      if (follow || document.hidden || !getStoredToken()) return
       adminFetch('/api/admin/whatsapp/conversations?summary=1')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
@@ -41,7 +44,7 @@ export function useNeedsReplyCount(enabled: boolean): number {
       else load()
     }
     load()
-    const timer = setInterval(load, POLL_MS)
+    const timer = follow ? undefined : setInterval(load, POLL_MS)
     document.addEventListener('visibilitychange', load)
     window.addEventListener(NEEDS_REPLY_EVENT, onAnnounce)
     return () => {
@@ -50,7 +53,7 @@ export function useNeedsReplyCount(enabled: boolean): number {
       document.removeEventListener('visibilitychange', load)
       window.removeEventListener(NEEDS_REPLY_EVENT, onAnnounce)
     }
-  }, [enabled])
+  }, [enabled, follow])
 
   return enabled ? count : 0
 }

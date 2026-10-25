@@ -448,6 +448,13 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .ds-avatar-fallback{background:linear-gradient(135deg,#3B6FE0 0%,#0038B8 55%,#002A8A 100%);}
 /* Member pages fill the visible viewport on mobile browsers (toolbar-aware). */
 .member-canvas,.home-ambient{min-height:100vh;min-height:100dvh;background:linear-gradient(180deg,var(--canvas-wash) 0,var(--canvas) 420px) var(--canvas);}
+/* The home page while Firebase Auth hasn't answered (components/home/HomePage.tsx):
+   the server HTML carries both the guest landing and the member shell. The
+   landing shows unless the <head> script marked <html> for a returning
+   member (lib/auth/memberHint.ts), so a guest never waits on JavaScript. */
+.member-shell{display:none;}
+html.member-hint .member-shell{display:block;}
+html.member-hint .guest-while-loading{display:none;}
 /* The floating buttons' shared bottom line: the WhatsApp badge (bottom right)
    and the accessibility button (bottom left) sit on it, clear of the iPhone
    home indicator. --floating-lift is how far bottom bars (cookie notice, an
@@ -626,10 +633,11 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
 @media (prefers-reduced-motion:reduce){.pending-notice{transition:none;}}
 
 /* ── Phone verification dialog (components/profile/OtpDialog.tsx) ── */
-/* A centred card from 640px; on phones it sits near the top, so the keyboard never covers the code or the button. */
-.otp-dialog{width:calc(100% - 32px);max-width:400px;margin:auto;padding:0;border:0;border-radius:20px;background:#fff;color:#0f172a;box-shadow:0 24px 64px rgba(15,23,42,.25);overflow:visible;animation:otp-dialog-in .2s ease-out;}
+/* A centred card from 640px; on phones it sits near the top, so the keyboard never covers the code or the button.
+   Capped at the dynamic viewport (100dvh) and scrolling inside, so a landscape phone with its keyboard up still reaches every button. */
+.otp-dialog{width:calc(100% - 32px);max-width:400px;margin:auto;padding:0;border:0;border-radius:20px;background:#fff;color:#0f172a;box-shadow:0 24px 64px rgba(15,23,42,.25);max-height:calc(100dvh - 32px);overflow-y:auto;animation:otp-dialog-in .2s ease-out;}
 .otp-dialog::backdrop{background:rgba(15,23,42,.45);}
-@media (max-width:639px){.otp-dialog{margin:max(16px,env(safe-area-inset-top, 0px)) auto auto;}}
+@media (max-width:639px){.otp-dialog{margin:max(16px,env(safe-area-inset-top, 0px)) auto auto;max-height:calc(100dvh - 16px - max(16px,env(safe-area-inset-top, 0px)));}}
 @keyframes otp-dialog-in{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.otp-dialog{animation:none;}}
 /* One real input over six drawn boxes: autofill (one-time-code), paste and screen readers all see one field. */

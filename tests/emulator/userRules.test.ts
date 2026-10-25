@@ -23,7 +23,7 @@ const fresh = client('contact-fresh')
 const OWNER = 'users/contact-owner'
 
 beforeAll(async () => {
-  await admin.doc(OWNER).set({ email: 'old@landly.test', phone: '+972501234567', pendingEmail: 'new@landly.test', pendingPhone: '+12025550123', welcomeEmailSent: true })
+  await admin.doc(OWNER).set({ email: 'old@landly.test', phone: '+972501234567', pendingEmail: 'new@landly.test', pendingPhone: '+12025550123', phoneVerified: true, welcomeEmailSent: true })
   await admin.doc('emailChangeRequests/contact-owner').set({ newEmail: 'new@landly.test', tokenHash: 'hash' })
   await admin.doc('phoneVerifications/contact-owner').set({ phone: '+12025550123', codeHash: 'hash', attempts: 0 })
 })
@@ -48,6 +48,8 @@ it('the account email, pending fields and welcome-email flag are server-only', a
     { pendingEmail: deleteField() },
     { pendingPhone: '+447911123456' },
     { pendingPhoneRequestedAt: null },
+    { phoneVerified: false },
+    { phoneVerified: deleteField() },
     { welcomeEmailSent: false },
     { welcomeEmailSent: deleteField() },
     { welcomeEmailSentAt: null },
@@ -60,6 +62,7 @@ it('the account email, pending fields and welcome-email flag are server-only', a
 
 it('a new profile cannot be created with a pending change', async () => {
   await expect(setDoc(doc(fresh, 'users/contact-fresh'), { email: 'a@landly.test', pendingEmail: 'b@landly.test' })).rejects.toMatchObject({ code: 'permission-denied' })
+  await expect(setDoc(doc(fresh, 'users/contact-fresh'), { email: 'a@landly.test', phone: '+12025550123', phoneVerified: true })).rejects.toMatchObject({ code: 'permission-denied' })
   await expect(setDoc(doc(fresh, 'users/contact-fresh'), { email: 'a@landly.test', phone: '' })).resolves.toBeUndefined()
 })
 

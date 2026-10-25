@@ -42,7 +42,7 @@ describe('terms page', () => {
     expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 
-  it('has the seven legal sections in order', () => {
+  it('has the eight legal sections in order', () => {
     const headings = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((m) => m[1])
     expect(headings).toEqual([
       '1. Payments',
@@ -52,6 +52,7 @@ describe('terms page', () => {
       '5. Account Security and Device Lock',
       '6. Governing Law',
       '7. Seller and Contact',
+      '8. WhatsApp Support',
     ])
   })
 
@@ -103,10 +104,10 @@ describe('terms page', () => {
     expect(text).toContain('more than 30 days')
   })
 
-  it('has one h1 and a heading for each of its seven sections', () => {
+  it('has one h1 and a heading for each of its eight sections', () => {
     expect(html.match(/<h1[ >]/g)).toHaveLength(1)
-    expect(html.match(/<section[ >]/g)).toHaveLength(7)
-    expect(html.match(/<h2[ >]/g)).toHaveLength(7)
+    expect(html.match(/<section[ >]/g)).toHaveLength(8)
+    expect(html.match(/<h2[ >]/g)).toHaveLength(8)
   })
 
   it('carries no sign-up CTA, and its only link goes to account deletion', () => {
