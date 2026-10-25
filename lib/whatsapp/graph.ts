@@ -56,9 +56,18 @@ export class WhatsAppApiError extends Error {
 
 type ReplyButton = { type: 'reply'; reply: { id: string; title: string } }
 
+/** One choice in a list message: a title, and an optional line under it. */
+export interface ListRow {
+  id: string
+  title: string
+  description?: string
+}
+
 /**
  * The message types Landly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages).
- * No list messages: they open a bottom sheet on phones, so every choice is a reply button in the bubble.
+ * A choice of up to three is reply buttons in the bubble; more is one list
+ * message, whose button opens the choices (a bottom sheet on phones, a
+ * dialog on WhatsApp Web and Desktop). lib/whatsapp/supportBot.ts picks.
  */
 export type WhatsAppMessage =
   | { type: 'text'; text: { body: string; preview_url?: boolean } }
@@ -70,6 +79,15 @@ export type WhatsAppMessage =
   | {
       type: 'interactive'
       interactive: { type: 'cta_url'; body: { text: string }; action: { name: 'cta_url'; parameters: { display_text: string; url: string } } }
+    }
+  | {
+      type: 'interactive'
+      interactive: {
+        type: 'list'
+        body: { text: string }
+        footer?: { text: string }
+        action: { button: string; sections: { title?: string; rows: ListRow[] }[] }
+      }
     }
 
 /**

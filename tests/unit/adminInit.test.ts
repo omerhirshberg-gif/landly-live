@@ -75,8 +75,8 @@ describe('getAdminDb project selection', () => {
 })
 
 describe('getAdminDb with another app in the process', () => {
-  // lib/usage/peerUsageDb.ts starts a named app on Vercel Production for landly-dev's usage counters.
-  it('never takes the landly-dev usage reader for its own app', async () => {
+  // A named app for another project, created first, must not become getAdminDb()'s.
+  it('never takes another named app for its own', async () => {
     stubFirebaseEnv('landly-be752', PRODUCTION)
     apps.push({ name: 'usage-reader:landly-dev', options: { projectId: 'landly-dev' } })
     const db = (await adminDb()) as unknown as { app: { options: unknown } }

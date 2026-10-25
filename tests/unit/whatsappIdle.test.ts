@@ -285,6 +285,18 @@ describe('idleDueAt', () => {
     expect(mocks.store.read(path('972500000021'))).not.toHaveProperty('idleDueAt')
   })
 
+  it('is not set while the chat still awaits its language, and is once the language is picked', async () => {
+    const now = Date.now()
+    await handleInboundEvent({ messageId: 'wamid.hi', waId: WA_ID, at: now, kind: 'text', text: 'hi' }, now)
+    expect(mocks.store.read(path())).toHaveProperty('lastOutboundAt')
+    expect(mocks.store.read(path())).not.toHaveProperty('idleDueAt')
+    expect(await sweepIdleConversations(now + 2 * IDLE)).toEqual({ checkedIn: 0, resolved: 0, purged: 0 })
+
+    await handleInboundEvent({ messageId: 'wamid.lang', waId: WA_ID, at: now + MINUTE, kind: 'language', lang: 'he' }, now + MINUTE)
+    const stored = mocks.store.read(path())!
+    expect(stored.idleDueAt.toMillis()).toBe(stored.lastOutboundAt.toMillis() + IDLE)
+  })
+
   it('reaches a waiting chat however many chats with the team or already over came before it', async () => {
     const now = Date.now()
     for (let i = 0; i < 250; i++) {

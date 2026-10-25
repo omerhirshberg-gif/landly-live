@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { grossCostIls, netCostIls, SKUS, USD_TO_ILS, type SkuId } from '@/lib/usage/pricing'
-import { buildUsageReport, meterStatus, type SourceData, type UsageReport } from '@/lib/usage/usageReport'
+import { buildUsageReport, meterStatus, reportLines, type UsageReport } from '@/lib/usage/usageReport'
 import { countersOf, dayKeyOf, emptyCounters, isMonthKey, monthKeyOf, usageEnvOf, type UsageCounters } from '@/lib/usage/usageTypes'
 
 // The /admin/system/costs arithmetic: free allowances, Google's volume
@@ -14,26 +14,21 @@ function counters(edit: (c: UsageCounters) => void): UsageCounters {
   return c
 }
 
-const source = (env: 'prod' | 'dev', counters: UsageCounters | null, months: string[] = []): SourceData => ({
-  source: { env, projectId: env === 'prod' ? 'landly-be752' : 'landly-dev', status: counters ? 'ok' : 'unavailable', via: 'local' },
-  counters,
-  months,
-})
-
-/** One environment's month, alone: the pricing of a single view. */
 function report(c: UsageCounters, extra: Partial<Parameters<typeof buildUsageReport>[0]> = {}): UsageReport {
-  return buildUsageReport({ month: '2026-10', view: 'prod', prod: source('prod', c), dev: source('dev', emptyCounters()), now: NOW, ...extra })
+  return buildUsageReport({ month: '2026-10', months: [], projectId: 'landly-be752', counters: c, now: NOW, ...extra })
 }
 
-const line = (r: UsageReport, id: SkuId) => r.lines.find((l) => l.skuId === id)!
+const lines = (r: UsageReport) => reportLines(r)
+const line = (r: UsageReport, id: SkuId) => lines(r).find((l) => l.skuId === id)!
 const sku = (id: SkuId) => SKUS.find((s) => s.id === id)!
 
 describe('usage report', () => {
   it('prices an empty month at zero with full coverage and every meter green', () => {
     const r = report(emptyCounters())
     expect(r.totals).toEqual({ grossIls: 0, netIls: 0, freeCoveragePct: 100, otpSent: 0 })
-    expect(r.lines.map((l) => l.status)).toEqual(r.lines.map(() => 'ok'))
-    expect(r.lines.map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding', 'waAuth', 'waService', 'waSimulated'])
+    expect(lines(r).map((l) => l.status)).toEqual(lines(r).map(() => 'ok'))
+    // No simulated sends, no simulated row.
+    expect(lines(r).map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding', 'waAuth', 'waService'])
   })
 
   it('bills translation past 500k characters at $20 per million, detection included', () => {
@@ -66,7 +61,7 @@ describe('usage report', () => {
     expect(a.isUpperBound).toBe(true)
     expect(a.used).toBe(312)
     expect(a.note).toContain('40 sessions')
-    expect(r.lines.filter((l) => l.isUpperBound).map((l) => l.skuId)).toEqual(['placesAutocomplete'])
+    expect(lines(r).filter((l) => l.isUpperBound).map((l) => l.skuId)).toEqual(['placesAutocomplete'])
   })
 
   it('bills every OTP at 0.12 ₪ with no free allowance and no meter', () => {
@@ -119,17 +114,47 @@ describe('usage report', () => {
   it('names the environment from the project', () => {
     expect(usageEnvOf('landly-be752')).toBe('prod')
     expect(usageEnvOf('landly-dev')).toBe('dev')
-    expect(usageEnvOf('demo-landly')).toBeNull()
-    expect(usageEnvOf(undefined)).toBeNull()
+    expect(usageEnvOf('demo-landly')).toBe('other')
+    expect(usageEnvOf(undefined)).toBe('other')
+    expect(report(emptyCounters()).environment).toBe('prod')
+    expect(report(emptyCounters(), { projectId: 'landly-dev' })).toMatchObject({ environment: 'dev', projectId: 'landly-dev' })
   })
 
-  it('lists both environments’ months newest first, with the shown and the current month', () => {
-    const r = report(emptyCounters(), {
-      month: '2026-07',
-      prod: source('prod', emptyCounters(), ['2026-08', '2026-07']),
-      dev: source('dev', emptyCounters(), ['2026-09', '2026-08']),
-    })
+  it('lists months newest first, with the shown and the current month', () => {
+    const r = report(emptyCounters(), { month: '2026-07', months: ['2026-08', '2026-07', '2026-09'] })
     expect(r.months).toEqual(['2026-10', '2026-09', '2026-08', '2026-07'])
+  })
+})
+
+describe('vendor groups', () => {
+  const busy = counters((c) => {
+    c.google.translation.chars = 600_000
+    c.google.places.detailsRequests = 11_000
+    c.whatsapp.authSent = 32
+    c.whatsapp.serviceSent = 120
+  })
+
+  it('splits the services into Google Cloud and Meta WhatsApp, in that order', () => {
+    const r = report(busy)
+    expect(r.groups.map((g) => [g.vendor, g.label])).toEqual([['google', 'Google Cloud'], ['meta', 'Meta WhatsApp']])
+    expect(r.groups[0]!.lines.map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding'])
+    expect(r.groups[1]!.lines.map((l) => l.skuId)).toEqual(['waAuth', 'waService'])
+  })
+
+  it('subtotals each vendor, and the subtotals add up to the totals', () => {
+    const r = report(busy)
+    const [google, meta] = r.groups
+    expect(meta!.netIls).toBeCloseTo(3.84, 6)
+    expect(google!.netIls).toBeCloseTo(100_000 * (20 / 1e6) * USD_TO_ILS.rate + 1_000 * (5 / 1000) * USD_TO_ILS.rate, 6)
+    expect(google!.netIls + meta!.netIls).toBeCloseTo(r.totals.netIls, 6)
+    expect(google!.grossIls + meta!.grossIls).toBeCloseTo(r.totals.grossIls, 6)
+  })
+
+  it('shows the simulated-sends row only when there are some', () => {
+    expect(lines(report(busy)).some((l) => l.skuId === 'waSimulated')).toBe(false)
+    const dev = report(counters((c) => (c.whatsapp.simulated = 3)), { projectId: 'landly-dev' })
+    expect(dev.groups[1]!.lines.map((l) => l.skuId)).toEqual(['waAuth', 'waService', 'waSimulated'])
+    expect(line(dev, 'waSimulated')).toMatchObject({ used: 3, netIls: 0 })
   })
 })
 

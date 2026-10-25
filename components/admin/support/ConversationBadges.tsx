@@ -36,7 +36,7 @@ export function ConversationStatusBadge({ status }: { status: ConversationStatus
   )
 }
 
-const CATEGORY_ICONS: Record<InquiryCategory, string> = { order_issue: 'fa-bag-shopping', purchase_help: 'fa-tag', general: 'fa-comment' }
+const CATEGORY_ICONS: Record<InquiryCategory, string> = { order_issue: 'fa-bag-shopping', purchase_help: 'fa-tag', login_help: 'fa-lock', general: 'fa-comment' }
 
 /** The bot topic the member asked the team from: "Existing order", "New order" or "General". */
 export function CategoryBadge({ category }: { category: InquiryCategory }) {

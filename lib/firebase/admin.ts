@@ -31,8 +31,8 @@ function getAdminApp(): App {
       clientProjectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       target: currentFirebaseDeployTarget(),
     })
-    // By name: another app in this process (lib/usage/peerUsageDb.ts reads
-    // the other project's usage counters) must never stand in for this one.
+    // By name: any other, named app in this process (a library's, or one
+    // for another project) must never stand in for this one.
     app =
       getApps().find((existing) => existing.name === DEFAULT_APP_NAME) ??
       initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })

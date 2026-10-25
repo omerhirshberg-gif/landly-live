@@ -1,6 +1,6 @@
 import Card from '@/components/admin/Card'
 import { formatCount, formatIls } from '@/lib/usage/pricing'
-import type { UsageReport } from '@/lib/usage/usageReport'
+import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
 
 const ACCENTS = {
   blue: 'bg-[#F0F7FF] text-[#0038B8]',
@@ -32,7 +32,7 @@ function SummaryCard({ label, value, hint, icon, accent }: { label: string; valu
 
 export default function UsageSummary({ report }: { report: UsageReport }) {
   const { netIls, grossIls, freeCoveragePct, otpSent } = report.totals
-  const otpPrice = report.lines.find((line) => line.skuId === 'waAuth')
+  const otpPrice = reportLines(report).find((line) => line.skuId === 'waAuth')
   const coverageAccent = freeCoveragePct >= 90 ? 'emerald' : freeCoveragePct >= 50 ? 'amber' : 'red'
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

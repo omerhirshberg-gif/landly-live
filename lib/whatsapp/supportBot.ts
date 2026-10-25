@@ -5,20 +5,21 @@ import { BOT_LANGUAGES, isBotLanguage, type BotAction, type InboundEvent } from 
 // The support bot's decisions, with no I/O (lib/whatsapp/supportBotHandler.ts
 // does the sending, storing and emailing).
 //
-// Every menu is reply buttons inside the chat bubble, never a list (a list
-// opens a bottom sheet on phones). Meta stops reply buttons at three, so a
-// menu with more choices is two bubbles in a row.
+// Every choice is one message (choiceMessage): up to three choices are
+// reply buttons inside the chat bubble; more is a single list message, whose
+// button opens the choices (a bottom sheet on phones, a dialog on WhatsApp
+// Web and Desktop). A menu is never split across bubbles.
 //
-// A number that has never picked a language, and isn't a member with a
-// profile language, gets the English language buttons where the menu would
-// go (same cooldown): English, עברית, Русский, then Français, Español.
-// Picking one saves it and answers with the menu in that language; the
-// menu's Language button and "lang", "שפה", ... bring the choice back at any
-// time.
+// A chat with no language picked in it (no langSelectedAt) is awaiting its
+// language: whatever the member sends, the answer is the English welcome
+// with the five languages in a list, and nothing else, until one is picked.
+// Typing a language's name picks it too, for clients that can't open lists.
+// Picking one saves it (and the member's profile language) and answers with
+// the menu in that language; the menu's Language row and "lang", "שפה", ...
+// bring the list back at any time, worded in the chat's language.
 //
-// The menu is four topics, in two bubbles: Existing order, New order and
-// My Pass & perks, then Talk to an agent (with Language). Typing 1-4 picks
-// a topic too.
+// The menu is one list of six: Existing order, New order, My Pass & perks,
+// Talk to an agent, Login & Account help, Language. Typing 1-6 picks one too.
 //
 // - Existing order: three buttons. "My voucher & QR" links to the member's
 //   vouchers (/member); "Issue at business" and "Cancel or refund" answer in
@@ -28,10 +29,14 @@ import { BOT_LANGUAGES, isBotLanguage, type BotAction, type InboundEvent } from 
 // - My Pass & perks: three buttons: the pass (/member), the perks
 //   (/categories), or account help (straight to the team).
 // - Talk to an agent: straight to the team.
+// - Login & Account help: what to do about a verification code that didn't
+//   arrive, with a link to a new sign-in link (/forgot-password); the
+//   conversation is tagged login_help in the inbox.
 //
 // Every answer ends with three reply buttons: All set, Talk to Team, Main
 // Menu. Talk to Team carries the topic it came from, so the team's email and
-// the inbox show what the request is about (InquiryCategory).
+// the inbox show what the request is about (InquiryCategory). A link card
+// can't hold reply buttons (Meta), so an answer with a link is two messages.
 //
 // Each conversation has a status:
 //
@@ -49,7 +54,8 @@ import { BOT_LANGUAGES, isBotLanguage, type BotAction, type InboundEvent } from 
 // A conversation the bot spoke last in, and the member left for idleMs()
 // (lib/whatsapp/idleSweep.ts), gets one check-in: Yes, need help (back to
 // the request or the menu) or All set (resolved). Without an answer within
-// IDLE_GRACE_MS it is resolved silently.
+// IDLE_GRACE_MS it is resolved silently. A chat still awaiting its language
+// gets no check-in.
 //
 // Buttons and menu keywords ("menu", "תפריט", ...) are never throttled.
 // Every reply is sent within Meta's 24-hour customer-service window, so no
@@ -77,22 +83,28 @@ export const BUTTON_TITLE_MAX = 20
 export const BODY_MAX = 1024
 export const FOOTER_MAX = 60
 export const BUTTONS_MAX = 3
+/** A list message: 20 characters for its button, 24 for a row title, 72 for a row description, ten rows in all. */
+export const LIST_BUTTON_MAX = 20
+export const ROW_TITLE_MAX = 24
+export const ROW_DESCRIPTION_MAX = 72
+export const LIST_ROWS_MAX = 10
 
 export type ConversationStatus = 'active' | 'awaiting_user_inquiry' | 'escalated' | 'resolved'
 
 /** What a request to the team is about: the topic the member asked from. */
-export type InquiryCategory = 'order_issue' | 'purchase_help' | 'general'
-const CATEGORIES: readonly InquiryCategory[] = ['order_issue', 'purchase_help', 'general']
+export type InquiryCategory = 'order_issue' | 'purchase_help' | 'login_help' | 'general'
+const CATEGORIES: readonly InquiryCategory[] = ['order_issue', 'purchase_help', 'login_help', 'general']
 export const isInquiryCategory = (value: unknown): value is InquiryCategory => CATEGORIES.includes(value as InquiryCategory)
 /** How the team's email and the support inbox name each topic (the admin UI is English). */
 export const INQUIRY_CATEGORY_LABELS: Record<InquiryCategory, string> = {
   order_issue: 'Existing order',
   purchase_help: 'New order',
+  login_help: 'Login & account',
   general: 'General',
 }
 
 /** An answer the bot gives on its own: a link card or a few lines, then the follow-up buttons. */
-export type Topic = 'vouchers' | 'venue' | 'refund' | 'new_order' | 'pass' | 'perks'
+export type Topic = 'vouchers' | 'venue' | 'refund' | 'new_order' | 'pass' | 'perks' | 'login_help'
 export type Submenu = 'order' | 'pass'
 
 const STATUSES: readonly ConversationStatus[] = ['active', 'awaiting_user_inquiry', 'escalated', 'resolved']
@@ -105,7 +117,7 @@ export interface BotContext {
   /** First name of the member whose phone matches the sender, when there is one. */
   memberFirstName?: string
   isMember: boolean
-  /** No language picked in this chat and none on the member's profile: greet with the language list. */
+  /** No language picked in this chat yet (no langSelectedAt): every answer is the language list until one is. */
   needsLanguage?: boolean
   /** As stored; missing on conversations from before statuses. */
   status?: ConversationStatus
@@ -159,6 +171,18 @@ export const isMenuKeyword = (text: string) => MENU_KEYWORDS.has(keyword(text))
 /** "lang", "Language", "שפה" and the like, in any of the bot's languages. */
 export const isLanguageKeyword = (text: string) => LANGUAGE_KEYWORDS.has(keyword(text))
 
+// Each language as its own speakers, English and Hebrew name it.
+const TYPED_LANGUAGES: Record<string, Lang> = {
+  english: 'en', אנגלית: 'en',
+  עברית: 'he', hebrew: 'he', ivrit: 'he',
+  русский: 'ru', russian: 'ru', רוסית: 'ru',
+  français: 'fr', francais: 'fr', french: 'fr', צרפתית: 'fr',
+  español: 'es', espanol: 'es', spanish: 'es', ספרדית: 'es',
+}
+
+/** The language a typed name stands for ("english", "עברית", "Русский", ...), for clients that can't open the list. */
+export const typedLanguage = (text: string): Lang | undefined => TYPED_LANGUAGES[keyword(text)]
+
 /** What each button leads to; the legacy btn_perks / btn_pass are the Pass menu's buttons. */
 const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inquiry: InquiryCategory } | 'menu' | 'resolve' | 'language' | 'stillNeedHelp'> = {
   menu_order: { submenu: 'order' },
@@ -172,11 +196,13 @@ const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inq
   opt_perks: { topic: 'perks' },
   btn_perks: { topic: 'perks' },
   menu_agent: { inquiry: 'general' },
+  menu_login_help: { topic: 'login_help' },
   opt_account: { inquiry: 'general' },
   btn_talk_to_team: { inquiry: 'general' },
   btn_escalate_prompt: { inquiry: 'general' },
   btn_escalate_order: { inquiry: 'order_issue' },
   btn_escalate_purchase: { inquiry: 'purchase_help' },
+  btn_escalate_login: { inquiry: 'login_help' },
   btn_ticket_resolved: 'resolve',
   btn_cancel_inquiry: 'menu',
   btn_back_to_menu: 'menu',
@@ -185,13 +211,20 @@ const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inq
   btn_idle_done: 'resolve',
 }
 
-/** "1" to "4" typed instead of tapping the menu's topics, in its order. */
-const MENU_SHORTCUTS: Record<string, BotAction> = { 1: 'menu_order', 2: 'menu_new_order', 3: 'menu_pass', 4: 'menu_agent' }
+/** The menu's rows, in order; "1" to "6" typed pick them too. */
+const MENU_ROWS = ['menu_order', 'menu_new_order', 'menu_pass', 'menu_agent', 'menu_login_help', 'menu_lang'] as const satisfies readonly BotAction[]
+const MENU_SHORTCUTS: Record<string, BotAction> = Object.fromEntries(MENU_ROWS.map((action, i) => [String(i + 1), action]))
 
 export function decide(event: InboundEvent, ctx: BotContext): BotDecision {
   const status = currentStatus(ctx)
   const greeting: BotDecision = ctx.needsLanguage ? { kind: 'languagePicker' } : { kind: 'menu' }
   if (event.kind === 'language') return { kind: 'languageChosen', lang: event.lang }
+  // Only while the bot leads: an inquiry or a chat with the team may well be a number or a word.
+  const botLeads = status === 'active' || status === 'resolved'
+  const typed = event.kind === 'text' && botLeads ? typedLanguage(event.text) : undefined
+  if (typed) return { kind: 'languageChosen', lang: typed }
+  // Awaiting its language, a chat gets the language list for any button, even one from an older menu.
+  if (event.kind === 'button' && ctx.needsLanguage) return { kind: 'languagePicker' }
   if (event.kind === 'button') {
     const next = ACTIONS[event.action]
     if (next === 'menu') return { kind: 'menu' }
@@ -207,8 +240,7 @@ export function decide(event: InboundEvent, ctx: BotContext): BotDecision {
   }
   if (event.kind === 'text' && isLanguageKeyword(event.text)) return { kind: 'languagePicker' }
   if (event.kind === 'text' && isMenuKeyword(event.text)) return greeting
-  // Only while the bot leads: an inquiry or a chat with the team may well be a number.
-  const shortcut = event.kind === 'text' && !ctx.needsLanguage && (status === 'active' || status === 'resolved') ? MENU_SHORTCUTS[keyword(event.text)] : undefined
+  const shortcut = event.kind === 'text' && !ctx.needsLanguage && botLeads ? MENU_SHORTCUTS[keyword(event.text)] : undefined
   if (shortcut) return decide({ ...event, kind: 'button', action: shortcut }, ctx)
   if (status === 'awaiting_user_inquiry') return { kind: 'escalate' }
   if (status === 'escalated') return { kind: 'silent' }
@@ -244,7 +276,7 @@ export function bidiSafe(lang: Lang, text: string): string {
   return (RTL_LANGS as readonly Lang[]).includes(lang) ? joined.replace(LTR_RUN, isolate) : joined
 }
 
-// How each button is labelled; a member's tap shows in the inbox with this title.
+// How each button or row is labelled; a member's tap shows in the inbox with this title.
 const BUTTON_KEYS = {
   btn_perks: 'wa_bot_btn_perks',
   btn_pass: 'wa_bot_btn_pass',
@@ -252,6 +284,7 @@ const BUTTON_KEYS = {
   btn_escalate_prompt: 'wa_bot_btn_escalate',
   btn_escalate_order: 'wa_bot_btn_escalate',
   btn_escalate_purchase: 'wa_bot_btn_escalate',
+  btn_escalate_login: 'wa_bot_btn_escalate',
   btn_cancel_inquiry: 'wa_bot_btn_cancel',
   btn_ticket_resolved: 'wa_bot_btn_resolved',
   btn_back_to_menu: 'wa_bot_btn_menu',
@@ -259,6 +292,7 @@ const BUTTON_KEYS = {
   menu_new_order: 'wa_bot_row_new_order',
   menu_pass: 'wa_bot_row_pass',
   menu_agent: 'wa_bot_row_agent',
+  menu_login_help: 'wa_bot_row_login_help',
   opt_vouchers: 'wa_bot_row_vouchers',
   opt_venue: 'wa_bot_row_venue',
   opt_refund: 'wa_bot_row_refund',
@@ -274,37 +308,89 @@ const BUTTON_KEYS = {
 const ESCALATE_IDS = {
   order_issue: 'btn_escalate_order',
   purchase_help: 'btn_escalate_purchase',
+  login_help: 'btn_escalate_login',
   general: 'btn_escalate_prompt',
 } as const satisfies Record<InquiryCategory, BotAction>
 
 /** A button's label in `lang`, as the member saw it. */
 export const buttonTitle = (lang: Lang, action: BotAction) => tr(lang, BUTTON_KEYS[action])
 
-/** A body with up to three reply buttons (Meta's limit). */
-function buttonsMessage(lang: Lang, body: string, ids: BotAction[], footer?: string): WhatsAppMessage {
+/** One choice: the id the tap answers with, its title, and (in a list) an optional line under it. */
+export interface Choice {
+  id: string
+  title: string
+  description?: string
+}
+
+/**
+ * Every choice the bot offers goes through here, in one message: up to
+ * three (BUTTONS_MAX) are reply buttons in the bubble; four to ten are a
+ * list behind `listButton`. More than ten, or a list without its button,
+ * is a programming error.
+ */
+export function choiceMessage(lang: Lang, body: string, choices: Choice[], options: { footer?: string; listButton?: string } = {}): WhatsAppMessage {
+  const text = bidiSafe(lang, body)
+  const footer = options.footer ? { footer: { text: options.footer } } : {}
+  if (choices.length <= BUTTONS_MAX) {
+    return {
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text },
+        ...footer,
+        action: { buttons: choices.map(({ id, title }) => ({ type: 'reply' as const, reply: { id, title } })) },
+      },
+    }
+  }
+  if (choices.length > LIST_ROWS_MAX) throw new Error(`A list holds at most ${LIST_ROWS_MAX} choices, not ${choices.length}.`)
+  if (!options.listButton) throw new Error(`${choices.length} choices need a list button.`)
   return {
     type: 'interactive',
     interactive: {
-      type: 'button',
-      body: { text: bidiSafe(lang, body) },
-      ...(footer ? { footer: { text: footer } } : {}),
-      action: { buttons: ids.map((id) => ({ type: 'reply' as const, reply: { id, title: buttonTitle(lang, id) } })) },
+      type: 'list',
+      body: { text },
+      ...footer,
+      action: {
+        button: options.listButton,
+        sections: [{ rows: choices.map(({ id, title, description }) => ({ id, title, ...(description ? { description } : {}) })) }],
+      },
     },
   }
 }
 
+const choicesOf = (lang: Lang, ids: readonly BotAction[]): Choice[] => ids.map((id) => ({ id, title: buttonTitle(lang, id), ...rowDescription(lang, id) }))
+
+/** A body with up to three reply buttons. */
+const buttonsMessage = (lang: Lang, body: string, ids: BotAction[], footer?: string) => choiceMessage(lang, body, choicesOf(lang, ids), { footer })
+
 /** A message closed by a single "Main Menu" button. */
 const withBackButton = (lang: Lang, key: TranslationKey): WhatsAppMessage => buttonsMessage(lang, tr(lang, key), ['btn_back_to_menu'])
 
-/** The four topics in two bubbles: three, then Talk to an agent with Language. */
-export function menuMessages(ctx: BotContext): WhatsAppMessage[] {
-  const body = ctx.memberFirstName
+// Login & Account help's full wording, where it is longer than the 24
+// characters Meta allows a row title: the title is shortened and this is
+// the row's description (a longer title would get the whole menu refused).
+const LOGIN_HELP_DESCRIPTIONS: Partial<Record<Lang, string>> = {
+  ru: 'Проблемы со входом и аккаунтом',
+  fr: 'Aide à la connexion et compte',
+  es: 'Ayuda para iniciar sesión y cuenta',
+}
+
+function rowDescription(lang: Lang, id: BotAction): { description?: string } {
+  const description = id === 'menu_login_help' ? LOGIN_HELP_DESCRIPTIONS[lang] : undefined
+  return description ? { description } : {}
+}
+
+/**
+ * The main menu: its six rows in one list. After a language is picked,
+ * `languageChanged` puts the confirmation ("Great! We'll continue in
+ * English.") at the top of the same message.
+ */
+export function menuMessage(ctx: BotContext, options: { languageChanged?: boolean } = {}): WhatsAppMessage {
+  const greeting = ctx.memberFirstName
     ? tr(ctx.lang, 'wa_bot_menu_body_named').replace('{name}', ctx.memberFirstName)
     : tr(ctx.lang, 'wa_bot_menu_body')
-  return [
-    buttonsMessage(ctx.lang, body, ['menu_order', 'menu_new_order', 'menu_pass']),
-    buttonsMessage(ctx.lang, tr(ctx.lang, 'wa_bot_menu_more_body'), ['menu_agent', 'menu_lang']),
-  ]
+  const body = options.languageChanged ? `${tr(ctx.lang, 'wa_bot_lang_changed')}\n\n${greeting}` : greeting
+  return choiceMessage(ctx.lang, body, choicesOf(ctx.lang, MENU_ROWS), { listButton: tr(ctx.lang, 'wa_bot_menu_button') })
 }
 
 /** "Existing order" and "My Pass & perks": their three options; "menu" (or any answer's Main Menu) goes back. */
@@ -324,28 +410,18 @@ export const LANGUAGE_NAMES: Record<Lang, string> = {
   es: 'Español',
 }
 
-const languageButtons = (langs: readonly Lang[]) => langs.map((lang) => ({ type: 'reply' as const, reply: { id: `lang_${lang}`, title: LANGUAGE_NAMES[lang] } }))
+/** The first answer to a chat with no language picked, always in English. */
+export const WELCOME_BODY = 'Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:'
+export const WELCOME_LIST_BUTTON = 'Choose language'
 
 /**
- * The first answer to a new number, always in English: two bubbles of
- * language buttons (reply buttons stop at three), ids lang_en … lang_es.
+ * The five languages in one list, ids lang_en … lang_es: the English
+ * welcome while the chat awaits its language, else worded in `lang`.
  */
-export function languagePickerMessages(): WhatsAppMessage[] {
-  return [
-    {
-      type: 'interactive',
-      interactive: {
-        type: 'button',
-        body: { text: 'Hi! Welcome to Landly. Please choose your language to continue.' },
-        footer: { text: 'בחר שפה · Выберите язык · Langue · Idioma' },
-        action: { buttons: languageButtons(BOT_LANGUAGES.slice(0, BUTTONS_MAX)) },
-      },
-    },
-    {
-      type: 'interactive',
-      interactive: { type: 'button', body: { text: 'More languages' }, action: { buttons: languageButtons(BOT_LANGUAGES.slice(BUTTONS_MAX)) } },
-    },
-  ]
+export function languagePickerMessage(lang: Lang | 'welcome'): WhatsAppMessage {
+  const choices = BOT_LANGUAGES.map((code) => ({ id: `lang_${code}`, title: LANGUAGE_NAMES[code] }))
+  if (lang === 'welcome') return choiceMessage('en', WELCOME_BODY, choices, { listButton: WELCOME_LIST_BUTTON })
+  return choiceMessage(lang, tr(lang, 'wa_bot_language_body'), choices, { listButton: tr(lang, 'wa_bot_language_button') })
 }
 
 function linkCard(lang: Lang, bodyKey: TranslationKey, labelKey: TranslationKey, url: string): WhatsAppMessage {
@@ -382,6 +458,8 @@ export function topicMessages(topic: Topic, ctx: BotContext): WhatsAppMessage[] 
       ]
     case 'perks':
       return [linkCard(lang, 'wa_bot_perks_body', 'wa_bot_perks_cta', `${origin}/categories`), followUpMessage(lang, 'general')]
+    case 'login_help':
+      return [linkCard(lang, 'wa_bot_login_help_body', 'wa_bot_login_help_cta', `${origin}/forgot-password`), followUpMessage(lang, 'login_help')]
   }
 }
 
@@ -398,11 +476,11 @@ export const escalatedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_tea
 export const alreadyEscalatedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_team_already')
 export const resolvedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_resolved')
 
-export function textMessage(lang: Lang, key: 'wa_bot_nudge' | 'wa_bot_team_failed' | 'wa_bot_lang_changed', email = ''): WhatsAppMessage {
+export function textMessage(lang: Lang, key: 'wa_bot_nudge' | 'wa_bot_team_failed', email = ''): WhatsAppMessage {
   return { type: 'text', text: { body: bidiSafe(lang, tr(lang, key)).replace('{email}', isolate(email)) } }
 }
 
-/** A sent message as plain text for the support inbox: its body, then its buttons or link. */
+/** A sent message as plain text for the support inbox: its body, then its buttons, list rows or link. */
 export function transcriptText(message: WhatsAppMessage): string {
   if (message.type === 'text') return message.text.body
   if (message.type === 'template') return `(template: ${message.template.name})`
@@ -410,6 +488,8 @@ export function transcriptText(message: WhatsAppMessage): string {
   const choices =
     interactive.type === 'button'
       ? interactive.action.buttons.map((b) => `[${b.reply.title}]`)
-      : [`[${interactive.action.parameters.display_text}] ${interactive.action.parameters.url}`]
+      : interactive.type === 'list'
+        ? interactive.action.sections.flatMap((section) => section.rows.map((row) => `[${row.title}]`))
+        : [`[${interactive.action.parameters.display_text}] ${interactive.action.parameters.url}`]
   return `${interactive.body.text}\n${choices.join(' ')}`
 }
