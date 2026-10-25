@@ -1,6 +1,21 @@
 import { FieldValue, Timestamp, type DocumentData, type Firestore } from 'firebase-admin/firestore'
 
 type Write = { kind: 'set' | 'update' | 'delete'; path: string; value?: DocumentData }
+type Op = '==' | 'in' | '<' | '<=' | '>' | '>='
+type Filter = { field: string; op: Op; expected: unknown }
+type Order = { field: string; direction: 'asc' | 'desc' }
+
+const sortKey = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : (value as number))
+
+// Like Firestore, a doc without the field matches no filter.
+function matches(value: unknown, { op, expected }: Filter): boolean {
+  if (value === undefined) return false
+  if (op === '==') return value === expected
+  if (op === 'in') return (expected as unknown[]).includes(value)
+  const a = sortKey(value)
+  const b = sortKey(expected)
+  return op === '<' ? a < b : op === '<=' ? a <= b : op === '>' ? a > b : a >= b
+}
 
 function clone(value: unknown): any {
   if (value instanceof Timestamp || value instanceof FieldValue) return value
@@ -12,9 +27,9 @@ function clone(value: unknown): any {
 // Just enough of the Admin Firestore API for the /api/account change routes,
 // the WhatsApp bot and its support inbox: doc get/create/set (with
 // merge)/update/delete, subcollections and auto-ids, batches, transactions
-// (reads first, writes applied together, queries readable inside), a single-field equality query, an
-// orderBy + limit query, and the FieldValue sentinels they use (delete,
-// increment, serverTimestamp).
+// (reads first, writes applied together, queries readable inside), queries
+// chaining where (==, in, <, <=, >, >=), orderBy and limit, recursiveDelete,
+// and the FieldValue sentinels they use (delete, increment, serverTimestamp).
 export class MemoryFirestore {
   private records = new Map<string, DocumentData>()
 
@@ -93,31 +108,38 @@ export class MemoryFirestore {
     return { empty: docs.length === 0, docs }
   }
 
-  private collection(name: string): any {
-    const sortKey = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : (value as number))
+  private find(name: string, filters: Filter[], order: Order | undefined, max: number): any {
+    const run = () => {
+      let paths = this.childPaths(name).filter((path) => filters.every((filter) => matches(this.records.get(path)![filter.field], filter)))
+      // Like Firestore, docs without the ordered field are left out.
+      if (order) {
+        paths = paths
+          .filter((path) => this.records.get(path)![order.field] !== undefined)
+          .sort((a, b) => (sortKey(this.records.get(a)![order.field]) - sortKey(this.records.get(b)![order.field])) * (order.direction === 'desc' ? -1 : 1))
+      }
+      return this.query(paths.slice(0, max))
+    }
     return {
+      where: (field: string, op: Op, expected: unknown) => this.find(name, [...filters, { field, op, expected }], order, max),
+      orderBy: (field: string, direction: 'asc' | 'desc' = 'asc') => this.find(name, filters, { field, direction }, max),
+      limit: (n: number) => this.find(name, filters, order, n),
+      get: async () => run(),
+    }
+  }
+
+  private collection(name: string): any {
+    return {
+      ...this.find(name, [], undefined, Infinity),
       doc: (id?: string) => this.ref(`${name}/${id ?? `auto-${++this.autoId}`}`),
-      where: (field: string, _op: '==', expected: unknown) => ({
-        limit: (n: number) => ({
-          get: async () => this.query(this.childPaths(name).filter((path) => this.records.get(path)![field] === expected).slice(0, n)),
-        }),
-      }),
-      // Like Firestore, docs without the field are left out.
-      orderBy: (field: string, direction: 'asc' | 'desc' = 'asc') => ({
-        limit: (n: number) => ({
-          get: async () => {
-            const paths = this.childPaths(name)
-              .filter((path) => this.records.get(path)![field] !== undefined)
-              .sort((a, b) => (sortKey(this.records.get(a)![field]) - sortKey(this.records.get(b)![field])) * (direction === 'desc' ? -1 : 1))
-            return this.query(paths.slice(0, n))
-          },
-        }),
-      }),
     }
   }
 
   readonly db = {
     collection: (name: string) => this.collection(name),
+    /** The doc and everything under it. */
+    recursiveDelete: async (ref: { path: string }) => {
+      for (const path of [...this.records.keys()]) if (path === ref.path || path.startsWith(`${ref.path}/`)) this.records.delete(path)
+    },
     batch: () => {
       const writes: Write[] = []
       return { ...this.writer(writes), commit: async () => this.apply(writes) }

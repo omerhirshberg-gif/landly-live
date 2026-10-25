@@ -409,6 +409,10 @@ export default function ProfileSection({ user }: { user: User }) {
           target={otp.target}
           resendIn={otp.resendIn}
           onClose={() => setOtp(null)}
+          onEnded={(message) => {
+            setOtp(null)
+            setSaveMsg({ type: 'error', text: message })
+          }}
           onVerified={() => {
             const kind = otp.target.kind
             setOtp(null)

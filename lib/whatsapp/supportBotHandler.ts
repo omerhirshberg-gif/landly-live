@@ -5,7 +5,7 @@ import { applicationOrigin } from '@/lib/auth/requestContext'
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
-import { logMessages, snippetOf, type LoggedMessage } from './conversationLog'
+import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { notifyTeam } from './escalation'
 import { sendWhatsAppMessage, whatsappLive, type WhatsAppMessage } from './graph'
 import {
@@ -21,8 +21,8 @@ import {
   isConversationStatus,
   isInquiryCategory,
   LANGUAGE_NAMES,
-  languagePickerMessage,
-  menuMessage,
+  languagePickerMessages,
+  menuMessages,
   resolvedMessage,
   submenuMessage,
   textMessage,
@@ -44,8 +44,12 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   the last text and lastSnippet for the inbox list, and the conversation's
 //   state (lib/whatsapp/supportBot.ts): status (active |
 //   awaiting_user_inquiry | escalated | resolved), lastMenuAt, lastNudgeAt,
-//   inquiryPromptedAt, escalatedAt, resolvedAt, and inquiryCategory (what
-//   the latest request to the team is about).
+//   inquiryPromptedAt, escalatedAt, resolvedAt, inquiryCategory (what
+//   the latest request to the team is about), and the idle check-in's
+//   idleCheckInAt / idleResume (lib/whatsapp/idleSweep.ts, cleared by any
+//   message from the member). expiresAt is MESSAGE_TTL_MS (180 days) after
+//   the latest message either way, so a Firestore TTL policy deletes the
+//   conversation with its last message.
 // - whatsappConversations/{waId}/messages: the message and the bot's replies
 //   (lib/whatsapp/conversationLog.ts).
 //
@@ -112,6 +116,8 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     inquiryPromptedAt: millis(conversation.get('inquiryPromptedAt')),
     inquiryCategory: isInquiryCategory(conversation.get('inquiryCategory')) ? conversation.get('inquiryCategory') : undefined,
     escalatedAt: millis(conversation.get('escalatedAt')),
+    idleCheckInAt: millis(conversation.get('idleCheckInAt')),
+    idleResume: conversation.get('idleResume') === 'inquiry' ? 'inquiry' : undefined,
     now,
   }
 
@@ -137,6 +143,9 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     lastSnippet: snippetOf(inbound),
     status: status === 'escalated' ? 'escalated' : 'active',
     ...(clear && ctx.inquiryPromptedAt !== undefined ? { inquiryPromptedAt: clear } : {}),
+    // The member is back: the idle check-in, if any, is answered.
+    ...(clear && conversation.get('idleCheckInAt') !== undefined ? { idleCheckInAt: clear } : {}),
+    ...(clear && conversation.get('idleResume') !== undefined ? { idleResume: clear } : {}),
     ...(member ? { uid: member.id } : {}),
     ...(memberName ? { memberName } : {}),
     ...(event.name ? { profileName: event.name } : {}),
@@ -149,14 +158,14 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   try {
     switch (decision.kind) {
       case 'menu':
-        await reply(menuMessage(ctx))
+        await reply(...menuMessages(ctx))
         update.lastMenuAt = at
         break
       case 'submenu':
         await reply(submenuMessage(decision.menu, ctx.lang))
         break
       case 'languagePicker':
-        await reply(languagePickerMessage())
+        await reply(...languagePickerMessages())
         update.lastMenuAt = at
         break
       case 'languageChosen': {
@@ -164,7 +173,7 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         Object.assign(update, { lang, langSelectedAt: at, lastMenuAt: at })
         // The member's profile follows the choice, so the site and emails match.
         if (member) await member.ref.set({ preferredLanguage: lang }, { merge: true })
-        await reply(textMessage(lang, 'wa_bot_lang_changed'), menuMessage({ ...ctx, lang }))
+        await reply(textMessage(lang, 'wa_bot_lang_changed'), ...menuMessages({ ...ctx, lang }))
         break
       }
       case 'nudge':
@@ -220,6 +229,7 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     }
   } finally {
     if (outbound.length) update.lastOutboundAt = Timestamp.fromMillis(outbound.at(-1)!.at)
+    update.expiresAt = Timestamp.fromMillis((outbound.at(-1)?.at ?? inbound.at) + MESSAGE_TTL_MS)
     await conversationRef.set(update, { merge: true })
     await logMessages(event.waId, [inbound, ...outbound]).catch((err) =>
       console.error(`[whatsapp-bot] transcript for ${maskPhone(`+${event.waId}`)} not saved:`, err instanceof Error ? err.message : err)

@@ -43,7 +43,8 @@ interface ConversationListProps {
 }
 
 export default function ConversationList({ conversations, error, filter, onFilter, query, onQuery, selected, onSelect, awaiting, now }: ConversationListProps) {
-  const counts = Object.fromEntries(FILTERS.map(({ id }) => [id, conversations?.filter((c) => matchesFilter(c, id)).length ?? 0]))
+  // A dash while loading, so the badge (and the tab's width) is there from the first paint.
+  const counts = Object.fromEntries(FILTERS.map(({ id }) => [id, conversations ? conversations.filter((c) => matchesFilter(c, id)).length : '–']))
   const visible = conversations?.filter((c) => matchesFilter(c, filter) && matchesQuery(c, query)) ?? []
 
   return (
@@ -54,7 +55,8 @@ export default function ConversationList({ conversations, error, filter, onFilte
             <bdi dir="ltr">{awaiting}</bdi> awaiting reply
           </p>
         )}
-        <div role="tablist" aria-label="Filter conversations" className="flex gap-1 rounded-xl bg-[#F1F5F9] p-1">
+        {/* Three equal columns whatever the labels and counts, so switching tabs never shifts or overflows the row. */}
+        <div role="tablist" aria-label="Filter conversations" className="grid grid-cols-3 gap-1 rounded-xl bg-[#F1F5F9] p-1">
           {FILTERS.map(({ id, label }) => (
             <button
               key={id}
@@ -62,12 +64,12 @@ export default function ConversationList({ conversations, error, filter, onFilte
               role="tab"
               aria-selected={filter === id}
               onClick={() => onFilter(id)}
-              className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold transition-colors active:bg-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] ${
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold transition-colors active:bg-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] ${
                 filter === id ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#64748B] hover:text-[#0B1B3D]'
               }`}
             >
-              <span className="truncate">{label}</span>
-              <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${filter === id ? 'bg-[#F0F7FF] text-[#0038B8]' : 'bg-white/70'}`}>
+              <span className="min-w-0 truncate">{label}</span>
+              <span className={`min-w-[1.5rem] shrink-0 rounded-full px-1.5 text-center text-[11px] tabular-nums ${filter === id ? 'bg-[#F0F7FF] text-[#0038B8]' : 'bg-white/70'}`}>
                 {counts[id]}
               </span>
             </button>

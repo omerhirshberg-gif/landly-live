@@ -113,32 +113,55 @@ export const productionProvider: OtpProvider = {
   },
 }
 
-// Meta's approved "authentication" templates exist per language; the
-// template is created in WhatsApp Manager under WHATSAPP_OTP_TEMPLATE in
-// each of these. A language without an approved copy falls back to English
-// (WHATSAPP_OTP_FALLBACK_LANGUAGE, for a template created as en_US).
-const WHATSAPP_LANGUAGE: Record<Lang, string> = { en: 'en', he: 'he', ru: 'ru', fr: 'fr', es: 'es' }
+// Meta's approved "authentication" templates exist per language, and Meta
+// matches the code exactly: a copy created as en_US (WhatsApp Manager's
+// default English) is not found as "en". The template is created in
+// WhatsApp Manager under WHATSAPP_OTP_TEMPLATE in each of these; a language
+// without an approved copy falls back along otpLanguages().
+// scripts/whatsapp-diagnose-templates.mjs lists the copies a WABA has.
+const WHATSAPP_LANGUAGE: Record<Lang, string> = { en: 'en_US', he: 'he', ru: 'ru', fr: 'fr', es: 'es' }
 const DEFAULT_OTP_TEMPLATE = 'landly_otp_code'
+const MAX_OTP_LANGUAGES = 3
 
-// Meta's template errors (132000 parameter count, 132001 no such template in
-// that language, 132007 policy, 132012 parameter format, 132015/132016
-// paused or disabled): another language's copy may still be fine.
-const isTemplateError = (code: string) => /^1320\d\d$/.test(code)
+// 132001: no template by that name in that language. Only that one is worth
+// another language; the rest of the 1320xx family (132000 parameter count,
+// 132012 parameter format, 132015/132016 paused or disabled) is the
+// template itself, and every copy would be refused the same way.
+const MISSING_TRANSLATION = '132001'
+
+/** The languages to try, in order: the member's, WHATSAPP_OTP_FALLBACK_LANGUAGE, en_US, en (no repeats, at most 3). */
+export function otpLanguages(lang: Lang): string[] {
+  const configured = process.env.WHATSAPP_OTP_FALLBACK_LANGUAGE?.trim()
+  const chain = [WHATSAPP_LANGUAGE[lang], configured, 'en_US', 'en'].filter((code): code is string => !!code)
+  return [...new Set(chain)].slice(0, MAX_OTP_LANGUAGES)
+}
+
+const otpTemplateName = () => process.env.WHATSAPP_OTP_TEMPLATE || DEFAULT_OTP_TEMPLATE
 
 // WhatsApp Cloud API: an authentication template whose body and copy-code
 // button both carry the code (Meta requires the code in both parameters).
 async function sendWhatsAppOtp({ phone, code, lang }: OtpDispatch): Promise<void> {
-  const fallback = process.env.WHATSAPP_OTP_FALLBACK_LANGUAGE || 'en'
-  const preferred = WHATSAPP_LANGUAGE[lang] ?? fallback
-  try {
-    await sendOtpTemplate(phone, code, preferred)
-  } catch (err) {
-    if (!(err instanceof WhatsAppApiError)) throw err
-    if (preferred === fallback || !isTemplateError(err.code)) throw new OtpDeliveryError('whatsapp', err.code, err.message)
-    console.warn(`[phone-otp] template unavailable in ${preferred} (${err.code}); retrying in ${fallback}`)
-    await sendOtpTemplate(phone, code, fallback).catch((retry) => {
-      throw retry instanceof WhatsAppApiError ? new OtpDeliveryError('whatsapp', retry.code, retry.message) : retry
-    })
+  const languages = otpLanguages(lang)
+  for (const [i, language] of languages.entries()) {
+    try {
+      await sendOtpTemplate(phone, code, language)
+      return
+    } catch (err) {
+      if (!(err instanceof WhatsAppApiError)) throw err
+      const next = languages[i + 1]
+      if (err.code === MISSING_TRANSLATION && next) {
+        console.warn(`[phone-otp] template unavailable in ${language} (${err.code}); retrying in ${next}`)
+        continue
+      }
+      if (err.code === MISSING_TRANSLATION) {
+        console.error(
+          `[phone-otp] template "${otpTemplateName()}" was not found in ${languages.join(', ')} (132001): check the name and its approved ` +
+            `languages in the WhatsApp Business Account that owns number ID ${process.env.WHATSAPP_PHONE_NUMBER_ID} ` +
+            '(node scripts/whatsapp-diagnose-templates.mjs)'
+        )
+      }
+      throw new OtpDeliveryError('whatsapp', err.code, err.message)
+    }
   }
 }
 
@@ -146,7 +169,7 @@ function sendOtpTemplate(phone: string, code: string, language: string) {
   return sendWhatsAppMessage(phone, {
     type: 'template',
     template: {
-      name: process.env.WHATSAPP_OTP_TEMPLATE || DEFAULT_OTP_TEMPLATE,
+      name: otpTemplateName(),
       language: { code: language },
       components: [
         { type: 'body', parameters: [{ type: 'text', text: code }] },

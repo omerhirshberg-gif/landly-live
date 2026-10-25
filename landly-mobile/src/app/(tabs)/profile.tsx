@@ -156,6 +156,8 @@ function ProfileDetails({
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<'saved' | 'verified' | 'emailVerified' | null>(null)
   const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
+  // Why the sheet closed on a resend that ended the change (the pending notice is gone with it).
+  const [endedError, setEndedError] = useState<string | null>(null)
   const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
@@ -179,6 +181,7 @@ function ProfileDetails({
     setPhoneError(null)
     setSaveError(null)
     setNotice(null)
+    setEndedError(null)
     setEmailFormOpen(false)
     setEditing(true)
   }
@@ -422,8 +425,13 @@ function ProfileDetails({
           <Row
             label={t('profile_region_label')}
             value={isIsraelRegion(current.israelRegion) ? t(ISRAEL_REGION_KEYS[current.israelRegion]) : unset}
-            last={!notice}
+            last={!notice && !endedError}
           />
+          {endedError && (
+            <View style={styles.savedNotice}>
+              <Notice message={endedError} />
+            </View>
+          )}
           {notice && (
             <View style={styles.savedNotice}>
               <Notice message={t(notice === 'emailVerified' ? 'otp_email_success' : notice === 'verified' ? 'otp_success' : 'profile_save_success')} tone="success" />
@@ -437,6 +445,11 @@ function ProfileDetails({
           target={otp.target}
           resendIn={otp.resendIn}
           onClose={() => setOtp(null)}
+          onEnded={(message) => {
+            setOtp(null)
+            setNotice(null)
+            setEndedError(message)
+          }}
           onVerified={() => {
             const kind = otp.target.kind
             setOtp(null)
