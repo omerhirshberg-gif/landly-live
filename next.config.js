@@ -29,9 +29,33 @@ const nextConfig = {
     LANDLY_VERCEL_ENV: process.env.VERCEL_ENV ?? '',
   },
   // The member page was /account until it became /profile; old links,
-  // bookmarks and emails keep working.
+  // bookmarks and emails keep working. The bare domain goes to www, the
+  // canonical host (308, path and query kept). Vercel's domain settings
+  // already do this before the app sees the request; this keeps it true on
+  // any other host.
   async redirects() {
-    return [{ source: '/account', destination: '/profile', permanent: true }]
+    return [
+      { source: '/account', destination: '/profile', permanent: true },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'golandly.com' }],
+        destination: 'https://www.golandly.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
+  // HTTPS only, for two years, on every subdomain too (and eligible for the
+  // browsers' preload list); and no MIME sniffing.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+        ],
+      },
+    ]
   },
   async rewrites() {
     const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID

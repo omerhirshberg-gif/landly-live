@@ -16,6 +16,8 @@ import {
   showsWhatsAppWidget,
   whatsappChatHref,
   WHATSAPP_BUBBLE_DISMISSED_KEY,
+  WHATSAPP_HIDDEN_CLASS,
+  WHATSAPP_HIDDEN_SCRIPT,
   WHATSAPP_WIDGET_HIDDEN_KEY,
 } from '@/lib/support/whatsapp'
 import { bottomCoverage, floatingClearance } from '@/lib/layout/floatingClearance'
@@ -70,15 +72,44 @@ describe('where the widget shows', () => {
       expect(showsWhatsAppWidget(path)).toBe(false)
     }
   )
-  it('renders nothing on the server: it waits for the browser to say whether this tab hid it', () => {
-    for (const path of ['/', '/checkout']) {
-      nav.pathname = path
-      expect(withLang('en', createElement(WhatsAppWidget))).toBe('')
-    }
+  it('is in the server HTML as a plain wa.me link, so it opens WhatsApp before (or without) JavaScript', () => {
+    nav.pathname = '/'
+    const html = withLang('en', createElement(WhatsAppWidget))
+    const badge = html.match(/<a [^>]*class="wa-badge[^"]*"[^>]*>/)?.[0] ?? ''
+    expect(badge).toContain(`href="${esc(whatsappChatHref(translations.en.whatsapp_prefill))}"`)
+    expect(badge).toContain('href="https://wa.me/972552889033?text=')
+    expect(badge).toContain('target="_blank"')
+    expect(badge).toContain('rel="noopener noreferrer"')
+    expect(badge).not.toMatch(/onclick/i)
+    nav.pathname = '/checkout'
+    expect(withLang('en', createElement(WhatsAppWidget))).toBe('')
+    nav.pathname = '/'
     const source = read('components/layout/WhatsAppWidget.tsx')
     expect(source).toContain('const [hidden, setHidden] = useState<boolean | null>(null)')
-    expect(source).toContain('const shown = showsWhatsAppWidget(pathname) && hidden === false')
+    expect(source).toContain('const shown = showsWhatsAppWidget(pathname) && hidden !== true')
     expect(source).toContain('setHidden(isWidgetHidden(tabStorage))')
+  })
+})
+
+// Runs before React with nothing but the browser's globals; here, stand-ins for them.
+function runHiddenScript(storage: { getItem: (key: string) => string | null }) {
+  const classes = new Set<string>()
+  const document = { documentElement: { classList: { add: (name: string) => classes.add(name) } } }
+  new Function('sessionStorage', 'document', WHATSAPP_HIDDEN_SCRIPT)(storage, document)
+  return classes
+}
+
+describe('a tab that closed the widget', () => {
+  it('is marked on <html> before the first paint, and globals.css hides the server-rendered widget there', () => {
+    expect(runHiddenScript({ getItem: (key) => (key === WHATSAPP_WIDGET_HIDDEN_KEY ? '1' : null) })).toEqual(new Set([WHATSAPP_HIDDEN_CLASS]))
+    expect(runHiddenScript({ getItem: () => null }).size).toBe(0)
+    expect(read('app/globals.css')).toContain(`html.${WHATSAPP_HIDDEN_CLASS} .wa-widget{display:none;}`)
+    expect(read('app/layout.tsx')).toContain('<script dangerouslySetInnerHTML={{ __html: WHATSAPP_HIDDEN_SCRIPT }} />')
+  })
+
+  it('never throws when storage is blocked, and is plain ES5', () => {
+    expect(() => runHiddenScript({ getItem: () => { throw new Error('SecurityError') } })).not.toThrow()
+    expect(WHATSAPP_HIDDEN_SCRIPT).not.toMatch(/=>|\bimport\b|\bconst\b|\blet\b|\?\./)
   })
 })
 

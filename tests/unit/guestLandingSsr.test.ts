@@ -68,7 +68,7 @@ describe('member hint plumbing', () => {
   })
 
   it('shows the landing by default and only the shell for a returning member', () => {
-    expect(css).toContain('.member-shell{display:none;}')
+    expect(css).toContain('.member-shell{display:none;pointer-events:none;}')
     expect(css).toContain('html.member-hint .member-shell{display:block;}')
     expect(css).toContain('html.member-hint .guest-while-loading{display:none;}')
     // Nothing else may hide the landing (it must show with no JavaScript at all).

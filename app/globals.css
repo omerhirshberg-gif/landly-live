@@ -451,8 +451,9 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* The home page while Firebase Auth hasn't answered (components/home/HomePage.tsx):
    the server HTML carries both the guest landing and the member shell. The
    landing shows unless the <head> script marked <html> for a returning
-   member (lib/auth/memberHint.ts), so a guest never waits on JavaScript. */
-.member-shell{display:none;}
+   member (lib/auth/memberHint.ts), so a guest never waits on JavaScript.
+   The shell is an empty placeholder, so it never takes a tap, shown or not. */
+.member-shell{display:none;pointer-events:none;}
 html.member-hint .member-shell{display:block;}
 html.member-hint .guest-while-loading{display:none;}
 /* The floating buttons' shared bottom line: the WhatsApp badge (bottom right)
@@ -476,6 +477,8 @@ body #enable-toolbar-trigger{top:calc(-1 * (var(--floating-base) + var(--floatin
    up and down as bars cover the bottom of the screen; the glow breathes
    slowly behind the badge; the bubble rises in. All still under reduced motion. */
 .wa-widget{transition:transform .25s ease;}
+/* A tab that closed the widget (lib/support/whatsapp.ts WHATSAPP_HIDDEN_SCRIPT). */
+html.wa-hidden .wa-widget{display:none;}
 .wa-glow{animation:wa-breathe 3.2s ease-in-out infinite;}
 @keyframes wa-breathe{0%,100%{transform:scale(1);opacity:.35;}50%{transform:scale(1.32);opacity:0;}}
 .wa-bubble{animation:wa-bubble-in .32s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom right;}

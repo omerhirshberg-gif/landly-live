@@ -23,8 +23,11 @@ import {
 // loads: "Need help?". Both open a chat with the support line, the greeting
 // pre-filled in the site language, in a new tab. The bubble's X (or Escape)
 // closes it for the rest of the tab session; the small X on the badge hides
-// the whole widget for the session. Rendered only once the browser has said
-// whether this tab hid it, so a hidden widget never flashes in on load. The whole widget rises above
+// the whole widget for the session. It's in the server HTML, so the badge
+// is a working wa.me link before (or without) JavaScript; a tab that hid it
+// is marked on <html> before the first paint (WHATSAPP_HIDDEN_SCRIPT,
+// globals.css .wa-hidden), so a hidden widget never flashes in on load, and
+// drops out of the tree once sessionStorage is read. The whole widget rises above
 // anything covering the bottom of the screen -- the cookie bar, an offer's
 // purchase bar on phones (lib/layout/floatingClearance.ts) -- so it never
 // hides a button. Off on staff, checkout and sign-in pages (lib/support/whatsapp.ts).
@@ -83,9 +86,10 @@ function useFloatingClearance(enabled: boolean): number {
 export default function WhatsAppWidget() {
   const pathname = usePathname()
   const { t, isRtl } = useLang()
-  // null until sessionStorage is read after mount (the server can't know).
+  // null until sessionStorage is read after mount (the server can't know);
+  // until then the head script's class hides a widget this tab closed.
   const [hidden, setHidden] = useState<boolean | null>(null)
-  const shown = showsWhatsAppWidget(pathname) && hidden === false
+  const shown = showsWhatsAppWidget(pathname) && hidden !== true
   const lift = useFloatingClearance(shown)
   // Closed until the delay passes, and only if this tab hasn't dismissed it.
   const [bubbleOpen, setBubbleOpen] = useState(false)
