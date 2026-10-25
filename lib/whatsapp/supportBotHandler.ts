@@ -5,6 +5,7 @@ import { applicationOrigin } from '@/lib/auth/requestContext'
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
+import { recordUsage } from '@/lib/usage/recordUsage'
 import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { notifyTeam } from './escalation'
 import { storeInboundMedia } from './mediaStore'
@@ -18,6 +19,7 @@ import {
   decide,
   escalatedMessage,
   followUpMessage,
+  idleMs,
   inquiryPromptMessage,
   isConversationStatus,
   isInquiryCategory,
@@ -48,7 +50,8 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   inquiryPromptedAt, escalatedAt, resolvedAt, inquiryCategory (what
 //   the latest request to the team is about), and the idle check-in's
 //   idleCheckInAt / idleResume (lib/whatsapp/idleSweep.ts, cleared by any
-//   message from the member). expiresAt is MESSAGE_TTL_MS (180 days) after
+//   message from the member) and idleDueAt, when the sweep next has work
+//   for the conversation (set when the bot answers, cleared otherwise). expiresAt is MESSAGE_TTL_MS (180 days) after
 //   the latest message either way, so a Firestore TTL policy deletes the
 //   conversation with its last message.
 // - whatsappConversations/{waId}/messages: the message and the bot's replies
@@ -234,6 +237,11 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     }
   } finally {
     if (outbound.length) update.lastOutboundAt = Timestamp.fromMillis(outbound.at(-1)!.at)
+    // The bot spoke last and nobody else has the conversation: the idle sweep's check-in falls due, if Meta's window is still open by then.
+    const lastSent = outbound.at(-1)?.at
+    const idleDue = lastSent !== undefined && update.status !== 'escalated' && update.status !== 'resolved' ? lastSent + idleMs() : undefined
+    if (idleDue !== undefined && idleDue < event.at + CUSTOMER_SERVICE_WINDOW_MS) update.idleDueAt = Timestamp.fromMillis(idleDue)
+    else if (clear && conversation.get('idleDueAt') !== undefined) update.idleDueAt = clear
     update.expiresAt = Timestamp.fromMillis((outbound.at(-1)?.at ?? inbound.at) + MESSAGE_TTL_MS)
     await conversationRef.set(update, { merge: true })
     if (stored) inbound.media = await stored
@@ -270,6 +278,7 @@ async function send({ waId, phoneNumberId }: InboundEvent, message: WhatsAppMess
   const to = maskPhone(`+${waId}`)
   if (!whatsappLive(phoneNumberId)) {
     console.info(`[whatsapp-bot] simulated reply to ${to}: ${JSON.stringify(message)}`)
+    recordUsage('whatsapp.simulated')
     return { simulated: true }
   }
   const id = await sendWhatsAppMessage(waId, message, phoneNumberId)

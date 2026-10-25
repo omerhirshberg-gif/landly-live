@@ -1,5 +1,6 @@
 import 'server-only'
 import { getAdminAccessToken, getAdminProjectId } from '@/lib/firebase/admin'
+import { recordUsageBatch } from '@/lib/usage/recordUsage'
 import type { Translator } from './offerTranslations'
 
 // Cloud Translation v3 over REST, authorized by the Firebase Admin service
@@ -11,6 +12,9 @@ import type { Translator } from './offerTranslations'
 //   LANDLY_TRANSLATION_ENABLED=true     anything else: offers save untranslated
 //   GOOGLE_TRANSLATE_LOCATION=global    or the glossary's region
 //   GOOGLE_TRANSLATE_GLOSSARY=projects/…/locations/…/glossaries/…   optional
+//
+// Every successful call adds its characters to the month's usage counters
+// (lib/usage/recordUsage.ts) for /admin/system/costs.
 
 const API = 'https://translation.googleapis.com/v3'
 const TIMEOUT_MS = 8000
@@ -24,7 +28,10 @@ function parent(): string {
   return `projects/${getAdminProjectId()}/locations/${location}`
 }
 
-async function call<T>(method: 'translateText' | 'detectLanguage', body: Record<string, unknown>): Promise<T> {
+// Google bills per character (a code point), whatever its size in bytes.
+const characters = (texts: string[]) => texts.reduce((sum, text) => sum + [...text].length, 0)
+
+async function call<T>(method: 'translateText' | 'detectLanguage', body: Record<string, unknown>, billed: string[]): Promise<T> {
   const res = await fetch(`${API}/${parent()}:${method}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${await getAdminAccessToken()}`, 'Content-Type': 'application/json' },
@@ -35,12 +42,14 @@ async function call<T>(method: 'translateText' | 'detectLanguage', body: Record<
     const detail = await res.text().catch(() => '')
     throw new Error(`Cloud Translation ${method} failed (${res.status}): ${detail.slice(0, 300)}`)
   }
+  const counter = method === 'translateText' ? 'google.translation.chars' : 'google.translation.detectChars'
+  recordUsageBatch({ [counter]: characters(billed), 'google.translation.requests': 1 })
   return (await res.json()) as T
 }
 
 export const cloudTranslator: Translator = {
   async detect(text) {
-    const data = await call<{ languages?: { languageCode?: string }[] }>('detectLanguage', { content: text, mimeType: 'text/plain' })
+    const data = await call<{ languages?: { languageCode?: string }[] }>('detectLanguage', { content: text, mimeType: 'text/plain' }, [text])
     return data.languages?.[0]?.languageCode ?? null
   },
   async translate(texts, targetLang, sourceLang) {
@@ -53,7 +62,8 @@ export const cloudTranslator: Translator = {
         sourceLanguageCode: sourceLang,
         targetLanguageCode: targetLang,
         ...(glossary ? { glossaryConfig: { glossary } } : {}),
-      }
+      },
+      texts
     )
     const results = glossary && data.glossaryTranslations?.length ? data.glossaryTranslations : data.translations
     if (!results || results.length !== texts.length) throw new Error('Cloud Translation returned an unexpected number of results.')

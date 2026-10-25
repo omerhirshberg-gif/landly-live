@@ -399,7 +399,7 @@ describe('needs-reply badge', () => {
   it('polls every 30 seconds only while the tab is visible and someone is signed in', () => {
     const hook = read('lib/admin/needsReply.ts')
     expect(hook).toContain('export const POLL_MS = 30_000')
-    expect(hook).toContain('if (follow || document.hidden || !getStoredToken()) return')
+    expect(hook).toContain('if (follow || document.hidden || !isSignedIn()) return')
     expect(hook).toContain("document.addEventListener('visibilitychange', load)")
     expect(hook).toContain("'/api/admin/whatsapp/conversations?summary=1'")
     expect(read('components/admin/AdminShell.tsx')).toContain("useNeedsReplyCount(pathname !== '/admin/login', { follow: pathname.startsWith('/admin/support') })")

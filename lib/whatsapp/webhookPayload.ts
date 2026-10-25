@@ -91,8 +91,8 @@ export type MediaType = (typeof MEDIA_TYPES)[number]
 /** An attachment as the webhook names it; the file itself is fetched from Meta by `mediaId`. */
 export interface InboundMedia {
   type: MediaType
-  /** Meta's media id: GET /{version}/{mediaId} gives a short-lived download URL. */
-  mediaId: string
+  /** Meta's media id: GET /{version}/{mediaId} gives a short-lived download URL. Missing when the webhook's was unusable: the attachment still shows, as not saved. */
+  mediaId?: string
   /** As the member's phone reported it; mediaStore checks it against what is downloaded. */
   mimeType?: string
   /** Base64 or hex, as Meta sends it. */
@@ -194,18 +194,16 @@ function parseMessage(message: Raw | undefined, names: Map<string, string>): Inb
   }
   // Meta's own notices (e.g. "system" number changes) and reactions get no menu.
   if (message.type === 'system' || message.type === 'reaction' || message.type === 'unsupported') return null
-  if (isMediaType(message.type)) {
-    const media = parseMedia(message.type, obj(message[message.type]))
-    if (media) return { ...base, kind: 'media', media }
-  }
+  if (isMediaType(message.type)) return { ...base, kind: 'media', media: parseMedia(message.type, obj(message[message.type]), messageId) }
   const media = str(message.type)
   return media ? { ...base, kind: 'other', media: media.slice(0, 32) } : { ...base, kind: 'other' }
 }
 
-/** The image/video/audio/document object of a message; null without a usable id (logged as 'other'). */
-function parseMedia(type: MediaType, raw: Raw | undefined): InboundMedia | null {
-  const mediaId = str(raw?.id)
-  if (!raw || !mediaId || !MEDIA_ID.test(mediaId)) return null
+/** The image/video/audio/document object of a message; without a usable id it keeps its type, and mediaStore records it as not saved. */
+function parseMedia(type: MediaType, raw: Raw = {}, messageId: string): InboundMedia {
+  const id = str(raw.id)
+  const mediaId = id && MEDIA_ID.test(id) ? id : undefined
+  if (!mediaId) console.warn(`[whatsapp-webhook] ${type} message ${messageId.slice(0, 64)} has no usable media id; it will show as not saved`)
   const mimeType = str(raw.mime_type)?.slice(0, 128)
   const sha256 = str(raw.sha256)?.slice(0, 128)
   // Audio and stickers carry no caption.
@@ -213,7 +211,7 @@ function parseMedia(type: MediaType, raw: Raw | undefined): InboundMedia | null 
   const filename = type === 'document' ? str(raw.filename)?.slice(0, MAX_FILENAME) : undefined
   return {
     type,
-    mediaId,
+    ...(mediaId ? { mediaId } : {}),
     ...(mimeType ? { mimeType } : {}),
     ...(sha256 ? { sha256 } : {}),
     ...(caption ? { caption } : {}),

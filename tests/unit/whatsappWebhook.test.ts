@@ -14,7 +14,7 @@ vi.mock('next/server', async (importOriginal) => ({
   after: (task: () => unknown) => { mocks.tasks.push(Promise.resolve(task())) },
 }))
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
-vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db }))
+vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db, getAdminProjectId: () => 'demo-landly' }))
 
 import { GET, POST } from '@/app/api/webhooks/whatsapp/route'
 import { verifyMetaSignature, verifyTokenMatches } from '@/lib/whatsapp/signature'
@@ -270,12 +270,14 @@ describe('POST /api/webhooks/whatsapp', () => {
 })
 
 describe('parseWebhookPayload', () => {
-  it('flattens text, reply-button and other messages with the profile name', () => {
+  it('flattens text, reply-button and attachment messages with the profile name', () => {
     const events = parseWebhookPayload(
       payload([textMsg('a', 'hi'), buttonMsg('b', 'pass'), { from: WA_ID, id: 'c', timestamp: nowSeconds(), type: 'image', image: {} }]),
       PHONE_ID
     )
-    expect(events.map((e) => e.kind)).toEqual(['text', 'button', 'other'])
+    // An attachment keeps its kind even without a usable media id (it shows as not saved).
+    expect(events.map((e) => e.kind)).toEqual(['text', 'button', 'media'])
+    expect(events[2]).toMatchObject({ media: { type: 'image' } })
     expect(events[0]).toMatchObject({ messageId: 'a', waId: WA_ID, name: 'Dana', text: 'hi' })
     // A menu sent before the btn_* ids still works.
     expect(events[1]).toMatchObject({ action: 'btn_pass' })
@@ -313,7 +315,7 @@ describe('parseWebhookPayload', () => {
     ])
   })
 
-  it('reads a tapped language button or an older list row, and keeps the type of other messages', () => {
+  it('reads a tapped language button or an older list row, and keeps the type of other messages and attachments', () => {
     const events = parseWebhookPayload(
       payload([
         buttonMsg('a', 'lang_he'),
@@ -328,7 +330,7 @@ describe('parseWebhookPayload', () => {
     expect(events[1]).toMatchObject({ kind: 'language', lang: 'ru' })
     expect(events[2]).toMatchObject({ kind: 'other', media: 'interactive' })
     expect(events[3]).toMatchObject({ kind: 'other', media: 'interactive' })
-    expect(events[4]).toMatchObject({ kind: 'other', media: 'audio' })
+    expect(events[4]).toMatchObject({ kind: 'media', media: { type: 'audio' } })
   })
 
   it('reads a row picked from an older list menu as the action it stands for', () => {

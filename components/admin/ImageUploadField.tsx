@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { clearStoredToken, getStoredToken } from '@/lib/admin/adminSession'
+import { sendToLogin } from '@/lib/admin/adminSession'
 import { BANNER_ASPECT, BANNER_MAX_EDGE, BANNER_QUALITY } from '@/lib/images/crop'
 import { compressImage, UnreadableImageError } from '@/lib/images/compressImage'
 import { ADMIN_HINT, ADMIN_LABEL, SECONDARY_BUTTON } from './formStyles'
@@ -67,7 +67,7 @@ export default function ImageUploadField({
     const xhr = new XMLHttpRequest()
     xhrRef.current = xhr
     xhr.open('POST', '/api/admin/uploads')
-    xhr.setRequestHeader('Authorization', `Bearer ${getStoredToken() ?? ''}`)
+    // The session cookie goes along on its own (same origin).
     xhr.responseType = 'json'
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) setState({ kind: 'working', progress: event.loaded / event.total })
@@ -75,8 +75,7 @@ export default function ImageUploadField({
     xhr.onload = () => {
       xhrRef.current = null
       if (xhr.status === 401) {
-        clearStoredToken()
-        window.location.href = '/admin/login'
+        sendToLogin()
         return
       }
       const body = xhr.response as { url?: string; error?: string } | null

@@ -58,6 +58,19 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
   )
 }
 
+/** A note for the team about the conversation itself ("Auto-resolved: no reply to the check-in"); never sent to the member. */
+export function SystemNote({ message }: { message: TranscriptMessage }) {
+  return (
+    <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F1F5F9] px-3 py-1 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
+      <i className="fa-solid fa-circle-check shrink-0 text-[#94A3B8]" aria-hidden="true" />
+      <span className="min-w-0 truncate">{message.text}</span>
+      <bdi dir="ltr" className="shrink-0 tabular-nums text-[#94A3B8]">
+        {clockTime(message.at)}
+      </bdi>
+    </p>
+  )
+}
+
 type AutomationItem = Extract<TranscriptItem, { type: 'automation' }>
 
 /** "Bot · 4 automated messages · Chose: 🎁 Browse perks · 10:18", opening onto each step. */

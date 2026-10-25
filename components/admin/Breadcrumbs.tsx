@@ -9,11 +9,15 @@ interface Crumb {
   href?: string
 }
 
+// Sections that only group pages and have none of their own: Dashboard › page.
+const SECTIONS_WITHOUT_PAGE = new Set(['system'])
+
 /** Dashboard › section › page, labelled by lib/admin/pageTitle.ts like the rest of the shell. */
 export function adminBreadcrumbs(pathname: string): Crumb[] {
   const crumbs: Crumb[] = [{ label: getAdminPageTitle('/admin'), href: '/admin' }]
   const section = pathname.split('/')[2]
   if (!section) return [{ label: crumbs[0]!.label }]
+  if (SECTIONS_WITHOUT_PAGE.has(section)) return [...crumbs, { label: getAdminPageTitle(pathname) }]
 
   const sectionPath = `/admin/${section}`
   if (pathname === sectionPath) return [...crumbs, { label: getAdminPageTitle(sectionPath) }]

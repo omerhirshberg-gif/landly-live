@@ -12,6 +12,7 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/offers') return 'Offers'
   if (pathname.startsWith('/admin/offers/')) return 'Edit Offer'
   if (pathname === '/admin/orphans') return 'Orphans'
+  if (pathname === '/admin/system/costs') return 'Usage & Costs'
   if (pathname === '/admin/login') return 'Login'
   return 'Admin'
 }

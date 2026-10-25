@@ -2,6 +2,7 @@ import 'server-only'
 import { FieldValue, Timestamp, type DocumentData, type DocumentReference } from 'firebase-admin/firestore'
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { recordUsage } from '@/lib/usage/recordUsage'
 import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { sendWhatsAppMessage, whatsappLive } from './graph'
 import { currentStatus, CUSTOMER_SERVICE_WINDOW_MS, IDLE_GRACE_MS, idleCheckInMessage, idleMs, isConversationStatus, transcriptText } from './supportBot'
@@ -17,27 +18,41 @@ import { isBotLanguage } from './webhookPayload'
 //   when it was waiting for the member's request). Only inside Meta's
 //   24-hour window, so no template is needed.
 // - resolve: a check-in unanswered for IDLE_GRACE_MS resolves the
-//   conversation silently (resolvedBy: idle).
+//   conversation without a word to the member (resolvedBy: idle), and
+//   leaves the team a note in the transcript (AUTO_RESOLVED_NOTE).
 // - purge: a safety net behind the Firestore TTL policy on expiresAt (180
 //   days after the latest message): conversations PURGE_SLACK_MS past it are
 //   deleted with their messages, in case the policy isn't deployed.
 //
+// Conversations are found by idleDueAt, when the next check-in or resolve
+// falls due: set by the bot's replies (supportBotHandler.ts) and the
+// check-in, cleared by the member, the team, an escalation or a resolve. Only
+// conversations with work due are read, so chats with the team or already
+// over never crowd out the ones waiting. A due conversation is checked
+// against idleAction first; one with nothing to do after all gets its
+// idleDueAt moved to when it will, or cleared.
+//
 // Each change is claimed in a transaction first, so overlapping runs never
-// send twice. Firestore is getAdminDb()'s project, which
-// lib/firebase/envGuard.ts pins: the dev project locally and on Vercel
-// Preview, production on Production.
+// send twice. Conversations go SWEEP_BATCH at a time, and no new batch starts
+// after SWEEP_DEADLINE_MS (the route has 60 s): what's left is due next run.
+// Firestore is getAdminDb()'s project, which lib/firebase/envGuard.ts pins:
+// the dev project locally and on Vercel Preview, production on Production.
 
 const SWEEP_LIMIT = 200
+const SWEEP_BATCH = 10
+export const SWEEP_DEADLINE_MS = 50_000
 const PURGE_LIMIT = 500
 export const PURGE_SLACK_MS = 3 * 24 * 60 * 60 * 1000
 const PHONE_NUMBER_ID = /^\d{1,32}$/
+/** What the team sees in the transcript when the sweep resolves a chat; the member gets nothing. */
+export const AUTO_RESOLVED_NOTE = 'Auto-resolved: no reply to the check-in'
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
 
 export type IdleAction = 'checkIn' | 'resolve'
 
-/** What the sweep does to a conversation now, if anything. */
-export function idleAction(data: DocumentData, now: number, idle = idleMs()): IdleAction | null {
+/** When the sweep next has work for this conversation (ms): its check-in, or its resolve; undefined for none until something changes. */
+export function nextIdleDue(data: DocumentData, now: number, idle = idleMs()): number | undefined {
   const status = currentStatus({
     status: isConversationStatus(data.status) ? data.status : undefined,
     escalatedAt: millis(data.escalatedAt),
@@ -45,18 +60,24 @@ export function idleAction(data: DocumentData, now: number, idle = idleMs()): Id
     now,
   })
   // A person has it, or it's over: nothing to chase.
-  if (status === 'escalated' || status === 'resolved') return null
+  if (status === 'escalated' || status === 'resolved') return undefined
   const lastInbound = millis(data.lastInboundAt)
   const checkedIn = millis(data.idleCheckInAt)
-  if (checkedIn !== undefined) {
-    const answered = lastInbound !== undefined && lastInbound >= checkedIn
-    return !answered && now - checkedIn >= IDLE_GRACE_MS ? 'resolve' : null
-  }
+  // Checked in: resolved after the grace period, unless the member has written since.
+  if (checkedIn !== undefined) return lastInbound !== undefined && lastInbound >= checkedIn ? undefined : checkedIn + IDLE_GRACE_MS
   const lastOutbound = millis(data.lastOutboundAt)
-  if (lastInbound === undefined || lastOutbound === undefined) return null
-  const botSpokeLast = lastOutbound > lastInbound
-  const windowOpen = now - lastInbound < CUSTOMER_SERVICE_WINDOW_MS
-  return botSpokeLast && windowOpen && now - lastOutbound >= idle ? 'checkIn' : null
+  if (lastInbound === undefined || lastOutbound === undefined || lastOutbound <= lastInbound) return undefined
+  // A check-in can only be sent while Meta's window is open, now and when it falls due.
+  const windowCloses = lastInbound + CUSTOMER_SERVICE_WINDOW_MS
+  const due = lastOutbound + idle
+  return now < windowCloses && due < windowCloses ? due : undefined
+}
+
+/** What the sweep does to a conversation now, if anything: whatever nextIdleDue says has fallen due. */
+export function idleAction(data: DocumentData, now: number, idle = idleMs()): IdleAction | null {
+  const due = nextIdleDue(data, now, idle)
+  if (due === undefined || now < due) return null
+  return millis(data.idleCheckInAt) !== undefined ? 'resolve' : 'checkIn'
 }
 
 export interface SweepResult {
@@ -65,42 +86,36 @@ export interface SweepResult {
   purged: number
 }
 
-export async function sweepIdleConversations(now = Date.now()): Promise<SweepResult> {
+/** `deadline` is wall-clock time (ms): no new batch starts after it. */
+export async function sweepIdleConversations(now = Date.now(), deadline = Date.now() + SWEEP_DEADLINE_MS): Promise<SweepResult> {
   const db = getAdminDb()
   const conversations = db.collection('whatsappConversations')
   const idle = idleMs()
   const result: SweepResult = { checkedIn: 0, resolved: 0, purged: 0 }
 
-  // The bot's last word was between the window's start and idle ago.
-  const quiet = await conversations
-    .where('lastOutboundAt', '>', Timestamp.fromMillis(now - CUSTOMER_SERVICE_WINDOW_MS))
-    .where('lastOutboundAt', '<=', Timestamp.fromMillis(now - idle))
-    .orderBy('lastOutboundAt')
-    .limit(SWEEP_LIMIT)
-    .get()
-  for (const doc of quiet.docs) {
+  const due = await conversations.where('idleDueAt', '<=', Timestamp.fromMillis(now)).orderBy('idleDueAt').limit(SWEEP_LIMIT).get()
+  const sweepOne = async (doc: (typeof due.docs)[number]) => {
+    const expected = idleAction(doc.data(), now, idle)
     try {
-      const claimed = await claim(doc.ref, now, idle, 'checkIn')
-      if (claimed) {
+      const claimed = await claim(doc.ref, now, idle, expected)
+      if (!claimed) return
+      if (expected === 'checkIn') {
         await checkIn(doc.id, claimed, now)
         result.checkedIn++
+      } else {
+        result.resolved++
+        await logMessages(doc.id, [{ direction: 'out', author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE, at: now }])
       }
     } catch (err) {
-      console.error(`[whatsapp-idle] check-in for ${maskPhone(`+${doc.id}`)} failed:`, err instanceof Error ? err.message : err)
+      console.error(`[whatsapp-idle] ${expected ?? 'rescheduling'} for ${maskPhone(`+${doc.id}`)} failed:`, err instanceof Error ? err.message : err)
     }
   }
-
-  const unanswered = await conversations
-    .where('idleCheckInAt', '<=', Timestamp.fromMillis(now - IDLE_GRACE_MS))
-    .orderBy('idleCheckInAt')
-    .limit(SWEEP_LIMIT)
-    .get()
-  for (const doc of unanswered.docs) {
-    try {
-      if (await claim(doc.ref, now, idle, 'resolve')) result.resolved++
-    } catch (err) {
-      console.error(`[whatsapp-idle] resolving ${maskPhone(`+${doc.id}`)} failed:`, err instanceof Error ? err.message : err)
+  for (let i = 0; i < due.docs.length; i += SWEEP_BATCH) {
+    if (Date.now() >= deadline) {
+      console.warn(`[whatsapp-idle] out of time: ${due.docs.length - i} due conversation(s) left for the next run`)
+      break
     }
+    await Promise.all(due.docs.slice(i, i + SWEEP_BATCH).map(sweepOne))
   }
 
   const expired = await conversations.where('expiresAt', '<', Timestamp.fromMillis(now - PURGE_SLACK_MS)).limit(PURGE_LIMIT).get()
@@ -117,18 +132,29 @@ export async function sweepIdleConversations(now = Date.now()): Promise<SweepRes
   return result
 }
 
-/** Applies `action` if it is still due, in a transaction; resolves to the conversation as it was, or null. */
-async function claim(ref: DocumentReference, now: number, idle: number, action: IdleAction): Promise<DocumentData | null> {
+/**
+ * Applies `action` if it is still what's due, in a transaction; resolves to
+ * the conversation as it was, or null. Otherwise (nothing to do, or the
+ * conversation moved on since it was read) idleDueAt is moved to when the
+ * sweep next has work there, or cleared, so it isn't read again for nothing.
+ */
+async function claim(ref: DocumentReference, now: number, idle: number, action: IdleAction | null): Promise<DocumentData | null> {
   return getAdminDb().runTransaction(async (tx) => {
     const snapshot = await tx.get(ref)
     const data = snapshot.data()
-    if (!data || idleAction(data, now, idle) !== action) return null
+    if (!data) return null
+    const clear = FieldValue.delete()
+    if (!action || idleAction(data, now, idle) !== action) {
+      // Already due again (it changed since it was read): the next run takes it.
+      const next = nextIdleDue(data, now, idle)
+      tx.set(ref, { idleDueAt: next !== undefined ? Timestamp.fromMillis(next) : clear }, { merge: true })
+      return null
+    }
     const at = Timestamp.fromMillis(now)
     if (action === 'checkIn') {
       const awaitingInquiry = currentStatus({ status: isConversationStatus(data.status) ? data.status : undefined, inquiryPromptedAt: millis(data.inquiryPromptedAt), now }) === 'awaiting_user_inquiry'
-      tx.set(ref, { idleCheckInAt: at, ...(awaitingInquiry ? { idleResume: 'inquiry' } : {}) }, { merge: true })
+      tx.set(ref, { idleCheckInAt: at, idleDueAt: Timestamp.fromMillis(now + IDLE_GRACE_MS), ...(awaitingInquiry ? { idleResume: 'inquiry' } : {}) }, { merge: true })
     } else {
-      const clear = FieldValue.delete()
       // Like the member's own All set, without a sign-off: they have gone.
       tx.set(
         ref,
@@ -142,6 +168,7 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
           inquiryPromptedAt: clear,
           idleCheckInAt: clear,
           idleResume: clear,
+          idleDueAt: clear,
         },
         { merge: true }
       )
@@ -159,6 +186,7 @@ async function checkIn(waId: string, data: DocumentData, now: number): Promise<v
   const to = maskPhone(`+${waId}`)
   if (!whatsappLive(phoneNumberId)) {
     console.info(`[whatsapp-idle] simulated check-in to ${to}: ${JSON.stringify(message)}`)
+    recordUsage('whatsapp.simulated')
     entry.simulated = true
   } else {
     try {

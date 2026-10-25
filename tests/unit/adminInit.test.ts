@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // lib/firebase/admin.ts with the Firebase Admin SDK stubbed out: proves which
 // project it would connect to, and that it refuses before connecting at all.
 
-const initializeApp = vi.fn((options: unknown) => ({ options }))
+const initializeApp = vi.fn((options: unknown) => ({ name: '[DEFAULT]', options }))
+const apps: { name: string; options: unknown }[] = []
 vi.mock('firebase-admin/app', () => ({
   cert: (credential: unknown) => credential,
-  getApps: () => [],
+  getApps: () => apps,
   initializeApp: (options: unknown) => initializeApp(options),
 }))
 vi.mock('firebase-admin/firestore', () => ({ getFirestore: (app: unknown) => ({ app }) }))
@@ -37,6 +38,7 @@ async function adminDb() {
 beforeEach(() => {
   vi.resetModules()
   initializeApp.mockClear()
+  apps.length = 0
 })
 afterEach(() => vi.unstubAllEnvs())
 
@@ -69,5 +71,25 @@ describe('getAdminDb project selection', () => {
     vi.stubEnv('FIREBASE_ADMIN_CLIENT_EMAIL', 'firebase-adminsdk-x@landly-be752.iam.gserviceaccount.com')
     await expect(adminDb()).rejects.toThrow(/isn't a landly-dev service account/)
     expect(initializeApp).not.toHaveBeenCalled()
+  })
+})
+
+describe('getAdminDb with another app in the process', () => {
+  // lib/usage/peerUsageDb.ts starts a named app on Vercel Production for landly-dev's usage counters.
+  it('never takes the landly-dev usage reader for its own app', async () => {
+    stubFirebaseEnv('landly-be752', PRODUCTION)
+    apps.push({ name: 'usage-reader:landly-dev', options: { projectId: 'landly-dev' } })
+    const db = (await adminDb()) as unknown as { app: { options: unknown } }
+    expect(initializeApp).toHaveBeenCalledOnce()
+    expect(db.app.options).toMatchObject({ credential: { projectId: 'landly-be752' } })
+  })
+
+  it('reuses its own default app', async () => {
+    stubFirebaseEnv('landly-be752', PRODUCTION)
+    const own = { name: '[DEFAULT]', options: { credential: { projectId: 'landly-be752' } } }
+    apps.push({ name: 'usage-reader:landly-dev', options: { projectId: 'landly-dev' } }, own)
+    const db = (await adminDb()) as unknown as { app: unknown }
+    expect(initializeApp).not.toHaveBeenCalled()
+    expect(db.app).toBe(own)
   })
 })

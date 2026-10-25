@@ -15,6 +15,7 @@ import { assertAdminCredentials, currentFirebaseDeployTarget } from './envGuard'
 // file would throw whenever FIREBASE_ADMIN_* isn't configured yet, turning
 // every request (including ones that should cleanly 401) into a 500.
 let app: App | undefined
+const DEFAULT_APP_NAME = '[DEFAULT]'
 
 function getAdminApp(): App {
   if (!app) {
@@ -30,9 +31,11 @@ function getAdminApp(): App {
       clientProjectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       target: currentFirebaseDeployTarget(),
     })
-    app = getApps().length
-      ? getApps()[0]!
-      : initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
+    // By name: another app in this process (lib/usage/peerUsageDb.ts reads
+    // the other project's usage counters) must never stand in for this one.
+    app =
+      getApps().find((existing) => existing.name === DEFAULT_APP_NAME) ??
+      initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
   }
   return app
 }

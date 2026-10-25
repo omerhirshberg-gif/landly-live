@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminFetch, getStoredToken } from './adminSession'
+import { adminFetch, isSignedIn } from './adminSession'
 
 // How many WhatsApp chats are waiting for the team, for the badges on the
 // header's ☰ and the "WhatsApp Support" nav item. Polled every POLL_MS
@@ -30,7 +30,7 @@ export function useNeedsReplyCount(enabled: boolean, { follow = false }: { follo
     let cancelled = false
     const load = () => {
       // Signed out (or the gate hasn't let us in yet): nothing to ask, and no 401 redirect from here.
-      if (follow || document.hidden || !getStoredToken()) return
+      if (follow || document.hidden || !isSignedIn()) return
       adminFetch('/api/admin/whatsapp/conversations?summary=1')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
