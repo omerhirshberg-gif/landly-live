@@ -36,6 +36,15 @@ export function showsWhatsAppWidget(pathname: string | null): boolean {
 export const WHATSAPP_BUBBLE_DISMISSED_KEY = 'landly_whatsapp_bubble_dismissed'
 export const WHATSAPP_WIDGET_HIDDEN_KEY = 'landly_whatsapp_widget_hidden'
 
+// The widget is in the server HTML, a plain wa.me link that works before (or
+// without) JavaScript. A tab that hid it is marked on <html> before the first
+// paint by this script, inline in the root layout's <head>, and globals.css
+// keeps it out of sight there, so it never flashes back in on load.
+export const WHATSAPP_HIDDEN_CLASS = 'wa-hidden'
+
+/** Inline in <head>; plain ES5, no imports, never throws. */
+export const WHATSAPP_HIDDEN_SCRIPT = `try{if(sessionStorage.getItem('${WHATSAPP_WIDGET_HIDDEN_KEY}')==='1')document.documentElement.classList.add('${WHATSAPP_HIDDEN_CLASS}')}catch(e){}`
+
 type KeyStore = Pick<Storage, 'getItem' | 'setItem'>
 
 // Blocked storage (private mode, previews) reads as "not yet" and forgets

@@ -18,12 +18,31 @@ const COPY = {
 
 type CopyLang = keyof typeof COPY
 
+type ErrorReporter = (type: string, message: unknown, source: unknown) => void
+
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   const [lang, setLang] = useState<CopyLang>('en')
+  // With ?debug=1 the footnote carries the error itself, for a phone with no inspector attached.
+  const [debug, setDebug] = useState(false)
 
   useEffect(() => {
-    console.error(error)
+    console.error('[global-error]', error.name, error.message, error.digest ?? '', error.stack ?? '')
+    // Into the log the root layout's <head> script keeps (lib/debug/clientErrorScript.ts), if it ran.
+    try {
+      const report = (window as Window & { __landlyReportError?: ErrorReporter }).__landlyReportError
+      report?.('global-error', `${error.name}: ${error.message}`, error.digest ?? '')
+    } catch {
+      // Diagnostics never get in the way of the error screen.
+    }
   }, [error])
+
+  useEffect(() => {
+    try {
+      setDebug(new URLSearchParams(window.location.search).get('debug') === '1')
+    } catch {
+      // No URL to read — no details.
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -54,7 +73,9 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
           body={copy.body}
           primary={{ label: copy.retry, icon: 'fa-rotate-right', onClick: () => retry() }}
           secondary={{ label: copy.home, icon: 'fa-house', href: '/', reload: true }}
-          footnote={error.digest ? `Ref: ${error.digest}` : undefined}
+          footnote={
+            [error.digest ? `Ref: ${error.digest}` : '', debug ? `${error.name}: ${error.message}` : ''].filter(Boolean).join(' · ') || undefined
+          }
         />
       </body>
     </html>

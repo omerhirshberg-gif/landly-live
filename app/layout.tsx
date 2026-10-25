@@ -12,10 +12,13 @@ import WhatsAppWidget from '@/components/layout/WhatsAppWidget'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
 import RouteTracker from '@/components/layout/RouteTracker'
 import DevEnvironmentBadge from '@/components/layout/DevEnvironmentBadge'
+import HydrationMarker from '@/components/layout/HydrationMarker'
 import JsonLd from '@/components/seo/JsonLd'
 import SectionBoundary from '@/components/errors/SectionBoundary'
 import { SITE_URL } from '@/lib/config'
 import { MEMBER_HINT_SCRIPT } from '@/lib/auth/memberHint'
+import { CLIENT_ERROR_SCRIPT } from '@/lib/debug/clientErrorScript'
+import { WHATSAPP_HIDDEN_SCRIPT } from '@/lib/support/whatsapp'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/jsonLd'
 import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo/site'
 
@@ -57,13 +60,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // The <head> script may add the member-hint class before React hydrates,
-    // and LangProvider later sets lang/dir/class on <html>, hence suppressHydrationWarning.
+    // The <head> scripts may add classes before React hydrates, HydrationMarker
+    // sets data-hydrated, and LangProvider later sets lang/dir/class on <html>,
+    // hence suppressHydrationWarning.
     <html lang="en" dir="ltr" className={manrope.variable} suppressHydrationWarning>
       <head>
+        {/* First, so it hears every later failure: uncaught errors, scripts
+            that fail to load, rejected promises; ?debug=1 shows them
+            (lib/debug/clientErrorScript.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: CLIENT_ERROR_SCRIPT }} />
         {/* Before the first paint: a returning member's home page shows the
-            member shell instead of the guest landing (lib/auth/memberHint.ts). */}
+            member shell instead of the guest landing (lib/auth/memberHint.ts),
+            and a tab that closed the WhatsApp widget keeps it closed (lib/support/whatsapp.ts). */}
         <script dangerouslySetInnerHTML={{ __html: MEMBER_HINT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: WHATSAPP_HIDDEN_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossOrigin="" />
@@ -84,6 +94,7 @@ export default function RootLayout({
         <SectionBoundary name="accessibility-widget"><AccessibilityWidget /></SectionBoundary>
         <SectionBoundary name="route-tracker"><RouteTracker /></SectionBoundary>
         <DevEnvironmentBadge />
+        <HydrationMarker />
         <AuthProvider readyTimeoutMs={AUTH_READY_TIMEOUT_MS} memberHint>
           <WishlistProvider>
             <LangProvider>
