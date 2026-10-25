@@ -1,5 +1,7 @@
 'use client'
 
+import { isAttachmentKind } from '@/lib/whatsapp/attachments'
+import AttachmentContent from './media/AttachmentContent'
 import { clockTime } from './time'
 import { parseInteractive, type TranscriptItem, type TranscriptMessage } from './transcript'
 
@@ -13,16 +15,19 @@ const CHOICE = 'inline-flex max-w-full items-center rounded-full px-2 py-0.5 tex
 export default function MessageBubble({ message }: { message: TranscriptMessage }) {
   const outgoing = message.direction === 'out'
   const failed = !!message.error
-  const { body, choices } = parseInteractive(message.text)
+  const attachment = isAttachmentKind(message.kind) && message.media ? { kind: message.kind, media: message.media } : null
+  // A caption is the member's own words, never bot buttons to split out.
+  const { body, choices } = attachment ? { body: message.text, choices: [] } : parseInteractive(message.text)
   const tone = !outgoing
     ? 'rounded-es-md border border-[#E2E8F0] bg-white text-[#0F172A]'
     : failed
       ? 'rounded-ee-md bg-[#FEF2F2] text-[#7F1D1D] ring-1 ring-[#FCA5A5]'
       : `rounded-ee-md bg-[#0038B8] text-white ${message.pending ? 'opacity-75' : ''}`
   return (
-    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 shadow-sm transition-opacity sm:max-w-[70%] ${tone}`}>
+    <div className={`max-w-[85%] rounded-2xl shadow-sm transition-opacity sm:max-w-[70%] ${attachment ? 'p-1.5 pb-2' : 'px-3.5 py-2'} ${tone}`}>
+      {attachment && <AttachmentContent kind={attachment.kind} media={attachment.media} caption={message.text} />}
       {body && (
-        <p dir="auto" className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${message.kind === 'media' ? 'italic text-[#64748B]' : ''}`}>
+        <p dir="auto" className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${message.kind === 'media' ? 'italic text-[#64748B]' : ''} ${attachment ? 'mt-1.5 px-2' : ''}`}>
           {body}
         </p>
       )}
@@ -35,7 +40,7 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
           ))}
         </div>
       )}
-      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${outgoing && !failed ? 'text-white/70' : 'text-[#94A3B8]'}`}>
+      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${attachment ? 'px-2' : ''} ${outgoing && !failed ? 'text-white/70' : 'text-[#94A3B8]'}`}>
         <bdi dir="ltr" className="tabular-nums">
           {clockTime(message.at)}
         </bdi>

@@ -28,9 +28,9 @@ export default function SettingsScreen() {
   const origin = profile ? originLabel(profile.countryOfOrigin, lang) : null
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('nav_settings_heading')} fallback="/profile" />
-      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         <SettingsGroup title={t('settings_group_prefs')}>
           <SettingsRow
             icon="globe"
@@ -67,6 +67,8 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   version: { fontSize: 12, color: colors.textFaint, textAlign: 'center' },
 })

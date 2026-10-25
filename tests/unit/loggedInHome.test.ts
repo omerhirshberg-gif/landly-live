@@ -97,7 +97,7 @@ describe('member dashboard', () => {
   it.each(['en', 'he'] as const)('greets by first name at the design-system size (%s)', (lang) => {
     profileState.firstName = 'Dana'
     const html = withLang(lang, createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(new RegExp(`<h1 id="home-welcome" class="text-\\[26px\\] sm:text-\\[28px\\] lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
+    expect(html).toMatch(new RegExp(`<h1 id="home-welcome" class="text-\\[26px\\] max-\\[379px\\]:text-2xl sm:text-\\[28px\\] lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
   })
 
   it('shows the monogram fallback when there is no photo, and the photo when there is', () => {

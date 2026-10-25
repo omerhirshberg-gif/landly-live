@@ -94,6 +94,8 @@ export default function CountryOfOriginList({
       <View accessibilityRole="radiogroup" style={[styles.list, fill ? styles.fill : styles.inline]}>
         {fill ? (
           <FlatList
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             data={items}
             keyExtractor={(item) => item.key}
             renderItem={({ item }) => renderItem(item)}
@@ -103,7 +105,7 @@ export default function CountryOfOriginList({
             ListEmptyComponent={empty}
           />
         ) : (
-          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} nestedScrollEnabled keyboardShouldPersistTaps="handled">
             {items.length ? items.map(renderItem) : empty}
           </ScrollView>
         )}

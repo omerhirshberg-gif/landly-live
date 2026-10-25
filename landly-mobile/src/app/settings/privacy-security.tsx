@@ -30,9 +30,9 @@ export default function PrivacySecurityScreen() {
   const hasPassword = !!user?.providerData.some((p) => p.providerId === 'password')
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('nav_security')} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         {user && (
           <>
             <AppText accessibilityRole="header" style={styles.groupTitle}>{t('security_signin_title')}</AppText>
@@ -199,7 +199,9 @@ function Sessions({ user }: { user: User }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   groupTitle: { fontSize: 14, fontWeight: '600', color: colors.textFaint, marginBottom: 8, paddingHorizontal: 4 },
   card: {
     backgroundColor: colors.white,

@@ -3,6 +3,7 @@ import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DEFAULT_PERK_SORT, PERK_SORTS, PERK_SORT_LABELS, type PerkSort } from '@shared/perks/perksFilter'
 import AppText from './AppText'
+import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
@@ -69,31 +70,34 @@ export default function SortSheet({ value, onChange }: { value: PerkSort; onChan
 function OptionsSheet({ visible, value, onPick, onClose }: { visible: boolean; value: PerkSort; onPick: (sort: PerkSort) => void; onClose: () => void }) {
   const { t, isRtl } = useLang()
   const insets = useSafeAreaInsets()
+  const bounds = useSheetBounds()
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('avatar_cancel')} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 8, direction: isRtl ? 'rtl' : 'ltr' }]} accessibilityViewIsModal>
-        <View style={styles.handle} />
-        <AppText accessibilityRole="header" style={styles.sheetTitle}>
-          {t('cats_sort_label')}
-        </AppText>
-        {PERK_SORTS.map((sort) => {
-          const selected = sort === value
-          return (
-            <Pressable
-              key={sort}
-              accessibilityRole="radio"
-              accessibilityState={{ selected, checked: selected }}
-              android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
-              onPress={() => onPick(sort)}
-              style={({ pressed }) => [styles.sheetRow, pressed && Platform.OS === 'web' && styles.sheetRowPressed]}
-            >
-              <AppText style={[styles.sheetLabel, selected && styles.sheetLabelSelected]}>{t(PERK_SORT_LABELS[sort])}</AppText>
-              {selected && <LineIcon name="check" size={20} color={colors.brand} strokeWidth={2.4} />}
-            </Pressable>
-          )
-        })}
-      </View>
+      <SheetSlot>
+        <View style={[styles.sheet, bounds, { paddingBottom: insets.bottom + 8, direction: isRtl ? 'rtl' : 'ltr' }]} accessibilityViewIsModal>
+          <View style={styles.handle} />
+          <AppText accessibilityRole="header" style={styles.sheetTitle}>
+            {t('cats_sort_label')}
+          </AppText>
+          {PERK_SORTS.map((sort) => {
+            const selected = sort === value
+            return (
+              <Pressable
+                key={sort}
+                accessibilityRole="radio"
+                accessibilityState={{ selected, checked: selected }}
+                android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
+                onPress={() => onPick(sort)}
+                style={({ pressed }) => [styles.sheetRow, pressed && Platform.OS === 'web' && styles.sheetRowPressed]}
+              >
+                <AppText style={[styles.sheetLabel, selected && styles.sheetLabelSelected]}>{t(PERK_SORT_LABELS[sort])}</AppText>
+                {selected && <LineIcon name="check" size={20} color={colors.brand} strokeWidth={2.4} />}
+              </Pressable>
+            )
+          })}
+        </View>
+      </SheetSlot>
     </Modal>
   )
 }
@@ -114,7 +118,7 @@ const styles = StyleSheet.create({
   triggerActive: { backgroundColor: colors.brand, ...chipShadow },
   triggerLabel: { flexShrink: 0, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.text },
   triggerLabelActive: { color: colors.white },
-  scrim: { flex: 1, backgroundColor: 'rgba(11, 27, 61, 0.32)' },
+  scrim: { flex: 1, backgroundColor: SCRIM_COLOR },
   sheet: {
     backgroundColor: colors.surfaceContainer,
     borderTopLeftRadius: 28,

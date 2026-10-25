@@ -65,77 +65,83 @@ export default function MobileMenu({
   )
 
   return (
-    <div id="mobile-menu" className={`mobile-menu ${isOpen ? 'open' : ''}`}>
-      {isLoggedIn ? (
-        // No bottom padding here: the sticky footer carries the safe-area inset.
-        <div className="min-h-full flex flex-col px-4 pt-4">
-          <MemberCard onClose={onClose} active={pathname === '/profile'} label={t('nav_profile')} />
+    <>
+      {/* On an unfolded foldable (600-1023px) the drawer is a side panel, not a
+          full-screen sheet; this scrim over the rest of the page closes it
+          on a tap. Hidden on phones, where the drawer covers the screen (globals.css). */}
+      <div aria-hidden="true" className={`mobile-menu-scrim ${isOpen ? 'open' : ''}`} onClick={onClose} />
+      <div id="mobile-menu" className={`mobile-menu ${isOpen ? 'open' : ''}`}>
+        {isLoggedIn ? (
+          // No bottom padding here: the sticky footer carries the safe-area inset.
+          <div className="min-h-full flex flex-col px-4 pt-4">
+            <MemberCard onClose={onClose} active={pathname === '/profile'} label={t('nav_profile')} />
 
-          <div className="flex flex-col gap-1 mt-4">
-            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
-              <ItemIcon icon="fa-house" />
-              <span className="min-w-0 flex-1">{t('nav_home')}</span>
-            </a>
-            {/* My Pass opens /member, where the active passes and their QR codes are */}
-            <IconLink href="/member" icon="fa-qrcode" label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
-            <IconLink href="/categories" icon="fa-gift" label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
-            <IconLink href="/wishlist" icon="fa-heart" label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
-            <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
-          </div>
+            <div className="flex flex-col gap-1 mt-4">
+              <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
+                <ItemIcon icon="fa-house" />
+                <span className="min-w-0 flex-1">{t('nav_home')}</span>
+              </a>
+              {/* My Pass opens /member, where the active passes and their QR codes are */}
+              <IconLink href="/member" icon="fa-qrcode" label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
+              <IconLink href="/categories" icon="fa-gift" label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
+              <IconLink href="/wishlist" icon="fa-heart" label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
+              <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
+            </div>
 
-          {settingsLink}
+            {settingsLink}
 
-          {/* mt-auto pins Sign Out to the bottom when the drawer is short;
-              sticky keeps it in reach when the drawer scrolls */}
-          <div
-            className="sticky bottom-0 -mx-4 mt-auto border-t border-slate-100 bg-white/95 backdrop-blur-sm px-4 pt-3"
-            style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-          >
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-red-200 bg-white text-[15px] font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+            {/* mt-auto pins Sign Out to the bottom when the drawer is short;
+                sticky keeps it in reach when the drawer scrolls */}
+            <div
+              className="sticky bottom-0 -mx-4 mt-auto border-t border-slate-100 bg-white/95 backdrop-blur-sm px-4 pt-3"
+              style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
             >
-              <i className="fa-solid fa-arrow-right-from-bracket text-sm rtl:-scale-x-100" aria-hidden="true"></i>
-              {t('nav_logout')}
-            </button>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-red-200 bg-white text-[15px] font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+              >
+                <i className="fa-solid fa-arrow-right-from-bracket text-sm rtl:-scale-x-100" aria-hidden="true"></i>
+                {t('nav_logout')}
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="min-h-full flex flex-col px-4 pt-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-          <div className="flex flex-col gap-1">
-            <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
-              <ItemIcon icon="fa-house" />
-              <span className="min-w-0 flex-1">{t('nav_home')}</span>
-            </a>
-            {/* Guests browse the same catalog members do, before signing in */}
-            <IconLink href="/categories" icon="fa-gift" label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
-            <IconLink href="/#how" icon="fa-list-check" label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
-            <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
-            {/* B2B onboarding, for guests only: members are consumers and never see it */}
-            <IconLink href="/business" icon="fa-handshake" label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
-            <IconLink href="/about" icon="fa-circle-info" label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
-            <IconLink href="/support" icon="fa-headset" label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
-          </div>
+        ) : (
+          <div className="min-h-full flex flex-col px-4 pt-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex flex-col gap-1">
+              <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
+                <ItemIcon icon="fa-house" />
+                <span className="min-w-0 flex-1">{t('nav_home')}</span>
+              </a>
+              {/* Guests browse the same catalog members do, before signing in */}
+              <IconLink href="/categories" icon="fa-gift" label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
+              <IconLink href="/#how" icon="fa-list-check" label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
+              <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
+              {/* B2B onboarding, for guests only: members are consumers and never see it */}
+              <IconLink href="/business" icon="fa-handshake" label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
+              <IconLink href="/about" icon="fa-circle-info" label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
+              <IconLink href="/support" icon="fa-headset" label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
+            </div>
 
-          {settingsLink}
+            {settingsLink}
 
-          {/* mt-auto pins the sign-in block to the bottom of the drawer */}
-          <div className="mt-auto pt-6">
-            <Link href="/login" onClick={onClose} className={primaryClass}>{t('nav_login')}</Link>
-            <p className="text-center text-sm text-slate-500 mt-2">
-              {t('nav_new_to_landly')}{' '}
-              <Link href="/signup" onClick={onClose} className="inline-block py-2 font-bold text-brand hover:underline">{t('signup_title')}</Link>
-            </p>
-            <p className="mt-3 text-center text-xs text-slate-400">
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-brand"><bdi>{SUPPORT_EMAIL}</bdi></a>
-              <span aria-hidden="true"> · </span>
-              <bdi>Landly</bdi>
-            </p>
+            {/* mt-auto pins the sign-in block to the bottom of the drawer */}
+            <div className="mt-auto pt-6">
+              <Link href="/login" onClick={onClose} className={primaryClass}>{t('nav_login')}</Link>
+              <p className="text-center text-sm text-slate-500 mt-2">
+                {t('nav_new_to_landly')}{' '}
+                <Link href="/signup" onClick={onClose} className="inline-block py-2 font-bold text-brand hover:underline">{t('signup_title')}</Link>
+              </p>
+              <p className="mt-3 text-center text-xs text-slate-400">
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-brand"><bdi>{SUPPORT_EMAIL}</bdi></a>
+                <span aria-hidden="true"> · </span>
+                <bdi>Landly</bdi>
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
 

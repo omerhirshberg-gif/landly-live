@@ -80,8 +80,29 @@ export type InboundEvent =
   | (InboundBase & { kind: 'button'; action: BotAction })
   /** A language button tapped (or a row picked from the older language list). */
   | (InboundBase & { kind: 'language'; lang: Lang })
-  /** An image, voice note, sticker, location, or a button we don't know: answered with the menu. `media` is Meta's message type. */
+  /** A photo, video, audio clip or voice note, or a file: stored for the inbox (lib/whatsapp/mediaStore.ts) and answered like 'other'. */
+  | (InboundBase & { kind: 'media'; media: InboundMedia })
+  /** A sticker, location, contact card, or a button we don't know: answered with the menu. `media` is Meta's message type. */
   | (InboundBase & { kind: 'other'; media?: string })
+
+export const MEDIA_TYPES = ['image', 'video', 'audio', 'document'] as const
+export type MediaType = (typeof MEDIA_TYPES)[number]
+
+/** An attachment as the webhook names it; the file itself is fetched from Meta by `mediaId`. */
+export interface InboundMedia {
+  type: MediaType
+  /** Meta's media id: GET /{version}/{mediaId} gives a short-lived download URL. */
+  mediaId: string
+  /** As the member's phone reported it; mediaStore checks it against what is downloaded. */
+  mimeType?: string
+  /** Base64 or hex, as Meta sends it. */
+  sha256?: string
+  caption?: string
+  /** A document's file name. */
+  filename?: string
+  /** An audio message recorded in WhatsApp (a voice note), not a shared audio file. */
+  voice?: boolean
+}
 
 type Raw = Record<string, unknown>
 const obj = (v: unknown): Raw | undefined => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Raw) : undefined)
@@ -89,6 +110,10 @@ const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined)
 
 const MAX_TEXT = 2000
+const MAX_CAPTION = 1024
+const MAX_FILENAME = 240
+const MEDIA_ID = /^[A-Za-z0-9_-]{1,128}$/
+const isMediaType = (value: unknown): value is MediaType => (MEDIA_TYPES as readonly unknown[]).includes(value)
 const PHONE_NUMBER_ID = /^\d{1,32}$/
 
 /** metadata.phone_number_id of a change's value, when it's a well-formed ID (it goes into the Graph URL). */
@@ -169,6 +194,30 @@ function parseMessage(message: Raw | undefined, names: Map<string, string>): Inb
   }
   // Meta's own notices (e.g. "system" number changes) and reactions get no menu.
   if (message.type === 'system' || message.type === 'reaction' || message.type === 'unsupported') return null
+  if (isMediaType(message.type)) {
+    const media = parseMedia(message.type, obj(message[message.type]))
+    if (media) return { ...base, kind: 'media', media }
+  }
   const media = str(message.type)
   return media ? { ...base, kind: 'other', media: media.slice(0, 32) } : { ...base, kind: 'other' }
+}
+
+/** The image/video/audio/document object of a message; null without a usable id (logged as 'other'). */
+function parseMedia(type: MediaType, raw: Raw | undefined): InboundMedia | null {
+  const mediaId = str(raw?.id)
+  if (!raw || !mediaId || !MEDIA_ID.test(mediaId)) return null
+  const mimeType = str(raw.mime_type)?.slice(0, 128)
+  const sha256 = str(raw.sha256)?.slice(0, 128)
+  // Audio and stickers carry no caption.
+  const caption = type === 'audio' ? undefined : str(raw.caption)?.slice(0, MAX_CAPTION)
+  const filename = type === 'document' ? str(raw.filename)?.slice(0, MAX_FILENAME) : undefined
+  return {
+    type,
+    mediaId,
+    ...(mimeType ? { mimeType } : {}),
+    ...(sha256 ? { sha256 } : {}),
+    ...(caption ? { caption } : {}),
+    ...(filename ? { filename } : {}),
+    ...(type === 'audio' && raw.voice === true ? { voice: true } : {}),
+  }
 }

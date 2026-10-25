@@ -61,7 +61,8 @@ describe('navbar layout lock', () => {
   it('leaves the mobile drawer to the page direction', () => {
     const he = render('he')
     const drawer = he.slice(he.indexOf('</nav>'))
-    expect(drawer).toMatch(/^<\/nav><div id="mobile-menu" class="mobile-menu/)
+    // The unfolded-screen scrim (hidden on phones) comes first, then the drawer.
+    expect(drawer).toMatch(/^<\/nav><div aria-hidden="true" class="mobile-menu-scrim ?"><\/div><div id="mobile-menu" class="mobile-menu/)
     expect(drawer).not.toContain('dir="ltr"')
   })
 

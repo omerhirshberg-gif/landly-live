@@ -87,7 +87,7 @@ export default function LoggedInHome({ user }: { user: User }) {
         <Link
           href="/member"
           aria-labelledby="home-pass-count home-pass-cta"
-          className="group relative isolate mt-5 sm:mt-6 flex w-full flex-col md:max-w-xl md:min-h-[200px] overflow-hidden rounded-2xl bg-[#0038B8] p-5 sm:p-6 md:px-8 md:py-7 text-white shadow-[0_12px_32px_-12px_rgba(0,42,138,0.55)] [-webkit-tap-highlight-color:transparent] transition-transform duration-150 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="group relative isolate mt-5 sm:mt-6 flex w-full flex-col fold:max-w-xl md:min-h-[200px] overflow-hidden rounded-2xl bg-[#0038B8] p-5 sm:p-6 md:px-8 md:py-7 text-white shadow-[0_12px_32px_-12px_rgba(0,42,138,0.55)] [-webkit-tap-highlight-color:transparent] transition-transform duration-150 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {/* passGlow: a 200px disc of 8% white, bleeding off the top end corner
               (top -70, end -50) and clipped by the card's overflow-hidden. */}

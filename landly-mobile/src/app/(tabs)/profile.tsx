@@ -23,13 +23,17 @@ import Notice from '../../components/Notice'
 import LineIcon from '../../components/LineIcon'
 import OtpSheet from '../../components/OtpSheet'
 import PendingChangeNotice from '../../components/PendingChangeNotice'
+import ScreenTitleRow from '../../components/ScreenTitleRow'
+import SegmentBadge from '../../components/SegmentBadge'
 import TextField from '../../components/TextField'
 import CountryCodePicker from '../../auth/onboarding/CountryCodePicker'
 import PersonaStep from '../../auth/onboarding/PersonaStep'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
+import { PANE_GAP } from '../../lib/layout'
+import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
-import { colors, radius, type } from '../../theme'
+import { colors, header, radius } from '../../theme'
 
 // The Profile tab (web: /profile): who the member is and their details, all
 // the editable ones behind a single Edit profile button (ProfileDetails).
@@ -46,43 +50,66 @@ export default function ProfileScreen() {
 
   const name = live.profile?.displayName || profile?.displayName || user?.displayName || ''
   const email = live.profile?.email || profile?.email || user?.email || ''
+  // From 600pt (an unfolded foldable, a tablet; src/lib/layout.ts) two panes
+  // in the reading direction: who the member is (avatar, name, email, member
+  // type, Sign out) leading, about 40%, and the details card trailing, 24pt
+  // apart so neither runs over the fold. Hebrew puts the identity on the
+  // right. A phone keeps the one column: identity, details, Sign out.
+  const { panes } = useLayout()
+  const signOutButton = <Button label={t('nav_logout')} onPress={() => signOut(auth)} variant="secondary" />
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.content, panes && styles.contentPanes]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.header}>
-          <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
-            {t('nav_profile')}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('settings_gear_label')}
-            onPress={() => router.push('/settings')}
-            hitSlop={6}
-            style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
-          >
-            <LineIcon name="gear" size={24} color={colors.heading} />
-          </Pressable>
+        <ScreenTitleRow
+          title={t('nav_profile')}
+          style={styles.header}
+          trailing={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('settings_gear_label')}
+              onPress={() => router.push('/settings')}
+              hitSlop={6}
+              style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
+            >
+              <LineIcon name="gear" size={24} color={colors.heading} />
+            </Pressable>
+          }
+        />
+
+        <View style={panes && styles.panes}>
+          <View style={panes && styles.leadingPane}>
+            <View style={[styles.card, styles.identity]}>
+              {user && <AvatarPicker user={user} uri={photoURL} initials={initials} />}
+              {!!name && <AppText style={styles.identityName}>{name}</AppText>}
+              {!!email && (
+                <AppText ltr style={styles.identityEmail}>
+                  {email}
+                </AppText>
+              )}
+              {/* Waits for the live read, so the "Member" fallback never flashes first. */}
+              {live.loaded && (
+                <View style={styles.identityBadge}>
+                  <SegmentBadge customerType={live.profile?.customerType} customerTypeOther={live.profile?.customerTypeOther} />
+                </View>
+              )}
+            </View>
+            {panes && signOutButton}
+          </View>
+
+          <View style={panes && styles.trailingPane}>
+            {user && <ProfileDetails user={user} name={name} email={email} profile={live.profile} loaded={live.loaded} />}
+          </View>
         </View>
 
-        <View style={[styles.card, styles.identity]}>
-          {user && <AvatarPicker user={user} uri={photoURL} initials={initials} />}
-          {!!name && <AppText style={styles.identityName}>{name}</AppText>}
-          {!!email && (
-            <AppText ltr style={styles.identityEmail}>
-              {email}
-            </AppText>
-          )}
-        </View>
-
-        {user && <ProfileDetails user={user} name={name} email={email} profile={live.profile} loaded={live.loaded} />}
-
-        <Button label={t('nav_logout')} onPress={() => signOut(auth)} variant="secondary" />
+        {!panes && signOutButton}
       </ScrollView>
     </SafeAreaView>
   )
@@ -476,11 +503,10 @@ function Row({ label, value, ltr, last, muted, children }: { label: string; valu
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  title: { flex: 1 },
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24 },
+  header: { marginBottom: header.gap },
   // 44pt target at the header's trailing edge; the root view's direction puts it top left in Hebrew.
-  gear: { width: 44, height: 44, borderRadius: 22, marginEnd: -8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  gear: { width: header.action, height: header.action, borderRadius: header.action / 2, marginEnd: -8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
   gearPressed: { backgroundColor: colors.borderLight },
   card: {
     backgroundColor: colors.white,
@@ -493,6 +519,13 @@ const styles = StyleSheet.create({
   identity: { alignItems: 'center', paddingVertical: 20 },
   identityName: { marginTop: 12, fontSize: 18, fontWeight: '700', color: colors.heading, textAlign: 'center' },
   identityEmail: { marginTop: 2, fontSize: 14, color: colors.body, textAlign: 'center' },
+  identityBadge: { marginTop: 12, maxWidth: '100%' },
+  // Two panes: the column capped and centred, then a row (it follows the
+  // root view's direction) split about 40 / 60 with PANE_GAP between.
+  contentPanes: { width: '100%', maxWidth: 1040, alignSelf: 'center' },
+  panes: { flexDirection: 'row', alignItems: 'flex-start', gap: PANE_GAP },
+  leadingPane: { flex: 2, minWidth: 0 },
+  trailingPane: { flex: 3, minWidth: 0 },
   row: { paddingVertical: 14 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   rowLabel: { fontSize: 12, color: colors.textFaint, marginBottom: 2 },

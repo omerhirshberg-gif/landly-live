@@ -30,8 +30,11 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
     )
   }
 
+  // One centred column on phones and desktop; two on an unfolded foldable
+  // (600-1023px; lib/layout/foldable.ts), so the inner screen isn't a strip
+  // of stretched rows.
   return (
-    <ul className="mx-auto max-w-xl space-y-3">
+    <ul className="mx-auto grid max-w-xl gap-3 fold:max-lg:max-w-none fold:max-lg:grid-cols-2">
       {vouchers.map((voucher) => (
         <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:gap-4">
           {/* Muted, with a check on its corner: this one's been used. */}

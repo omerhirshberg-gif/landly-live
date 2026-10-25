@@ -74,7 +74,10 @@ describe('web profile form structure', () => {
     const identity = src.slice(src.indexOf('const identity = ('), src.indexOf('const details = ('))
     expect(identity).toContain('{emailRow}')
     expect(src.slice(src.indexOf('const details = ('))).not.toContain('{emailRow}')
-    expect(src).toMatch(/\{identity\}\s*\{editing \? \(\s*<form onSubmit=\{handleSave\}/)
+    // Outside the form: the leading pane from 600px, above the form on phones (order-4 before order-5).
+    expect(src).toContain('<div className="order-4">{identity}</div>')
+    expect(src).toMatch(/<div className="order-5">\s*\{editing \? \(\s*<form onSubmit=\{handleSave\}/)
+    expect(src.indexOf('{identity}</div>')).toBeLessThan(src.indexOf('<form onSubmit={handleSave}'))
   })
 
   it('isolates the address as LTR in the Edit profile box', () => {

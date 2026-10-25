@@ -159,9 +159,10 @@ export function WhatsAppWidgetView({
 }) {
   return (
     // Bottom right always (dir="ltr" pins the corner); the bubble's own text follows the language.
+    // Inset by the right safe area too, so a landscape notch or cutout never covers it.
     <div
       dir="ltr"
-      className="wa-widget fixed right-5 z-[890] flex flex-col items-end"
+      className="wa-widget fixed right-[calc(1.25rem+env(safe-area-inset-right,0px))] z-[890] flex flex-col items-end"
       style={{ bottom: 'var(--floating-base)', transform: lift ? `translateY(-${lift}px)` : undefined }}
     >
       {/* A plain box (not display: contents, which drops the live region in some Safari versions). */}

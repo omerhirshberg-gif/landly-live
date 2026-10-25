@@ -4,17 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { getOffersByIds, type OfferDocument } from '@shared/firebase/offers'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import AppText from '../../components/AppText'
+import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import Notice from '../../components/Notice'
+import ScreenTitleRow from '../../components/ScreenTitleRow'
 import OfferCard from '../../components/OfferCard'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
-import { colors, type } from '../../theme'
+import { useLayout } from '../../lib/useLayout'
+import { colors, header } from '../../theme'
 
 // The saved perks (web: /wishlist), the Wishlist tab. The list follows the live wishlist in the order it was saved, as on the website:
 // un-hearting a card drops it at once, and only newly saved ids are fetched.
 // An id whose offer was deleted is skipped.
 export default function WishlistScreen() {
   const { t } = useLang()
+  // Columns follow the window (two unfolded, three on a tablet); the key
+  // remounts the list when folding changes them, as numColumns requires.
+  const { columns, paddingLeft, paddingRight } = useLayout()
   const { wishlistIds } = useWishlist()
   // Every id looked up so far, found (an offer) or not (null).
   const [cache, setCache] = useState<Map<string, OfferDocument | null> | null>(null)
@@ -83,17 +89,24 @@ export default function WishlistScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <FlatList
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        key={'cols-' + columns}
         data={offers ?? []}
         keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} />}
-        contentContainerStyle={styles.content}
+        numColumns={columns}
+        columnWrapperStyle={feedColumnWrapper(columns)}
+        renderItem={({ item }) => (
+          <FeedCell>
+            <OfferCard offer={item} onPress={() => openOffer(item)} />
+          </FeedCell>
+        )}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
         ListHeaderComponent={
           <>
-            <AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>
-              {t('wishlist_title')}
-            </AppText>
+            <ScreenTitleRow title={t('wishlist_title')} style={styles.title} />
             {failed && <View style={styles.notice}><Notice message={t('mobile_load_error')} /></View>}
           </>
         }
@@ -114,8 +127,8 @@ export default function WishlistScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
-  title: { marginBottom: 16 },
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
+  title: { marginBottom: header.gap },
   notice: { marginBottom: 16 },
   spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },

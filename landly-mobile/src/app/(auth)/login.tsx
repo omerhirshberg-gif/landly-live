@@ -44,7 +44,8 @@ import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
 import { warning as warningHaptic } from '../../lib/haptics'
 import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
-import { VIEWPORT_HEIGHT, webOnly } from '../../lib/webStyles'
+import { formFactor, usesPanes } from '../../lib/layout'
+import { VIEWPORT_HEIGHT, isWeb, webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
 
 // Password reset and business login stay on the website for now.
@@ -141,6 +142,10 @@ export default function LoginScreen() {
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const { width } = useWindowDimensions()
   const nameRow = width >= NAME_ROW_MIN_WIDTH
+  // An unfolded foldable or a tablet (600pt and up; src/lib/layout.ts): the
+  // hero and card sit in one centred 440pt column, as on the web build
+  // (which has its own, webOnly below), rather than stretching across the inner screen.
+  const bounded = !isWeb && usesPanes(formFactor(width))
 
   useEffect(() => () => clearTimeout(fadeTimer.current), [])
 
@@ -340,17 +345,19 @@ export default function LoginScreen() {
   const busy = submitting || googleBusy
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Onboarding cards are sized to fit without scrolling (no hero,
             compact header, subtitles dropped while typing); scrolling remains
             only as a fallback for very large accessibility text, and never bounces. */}
         <ScrollView
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.content, wizardShown && styles.contentCompact]}
           keyboardShouldPersistTaps="handled"
           alwaysBounceVertical={false}
         >
-          <View style={[styles.main, wizardShown && keyboardVisible && styles.mainTop]}>
+          <View style={[styles.main, bounded && styles.boundedColumn, wizardShown && keyboardVisible && styles.mainTop]}>
             {/* Hidden until the splash hands over: its logo is landing on this exact spot. */}
             {!wizardShown && !restoring && (
               <View
@@ -367,7 +374,7 @@ export default function LoginScreen() {
             )}
 
             {!restoring && (
-              <Animated.View style={[styles.card, riseStyle]}>
+              <Animated.View style={[styles.card, bounded && styles.cardBounded, riseStyle]}>
                 {wizardShown && wizard ? (
                   <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onComplete={handleWizardComplete} />
                 ) : pending ? (
@@ -634,6 +641,8 @@ const styles = StyleSheet.create({
     // Web: one fixed-width column instead of stretching across the viewport.
     ...webOnly({ width: '100%', maxWidth: 440, alignSelf: 'center', marginHorizontal: 'auto' }),
   },
+  // Native, 600pt and up: the web build's fixed-width column.
+  boundedColumn: { width: '100%', maxWidth: 440, alignSelf: 'center' },
   // With the keyboard up, the step sits at the top of the space left above it.
   mainTop: { justifyContent: 'flex-start', paddingTop: 4 },
   header: { alignSelf: 'center', marginBottom: 24, ...webOnly({ marginBottom: 28 }) },
@@ -650,6 +659,8 @@ const styles = StyleSheet.create({
       '0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 20px -4px rgba(15, 23, 42, 0.06), 0 28px 56px -16px rgba(15, 23, 42, 0.14)',
     ...webOnly({ width: '100%', maxWidth: 440, alignSelf: 'center', marginHorizontal: 'auto', padding: 32 }),
   },
+  // The card's roomier padding from 600pt (web: 32 from 640px).
+  cardBounded: { padding: 28 },
   modeSwitch: { marginBottom: 24 },
   nameRow: { flexDirection: 'row', gap: 12 },
   nameCell: { flex: 1, minWidth: 0 },

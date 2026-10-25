@@ -3,13 +3,15 @@ import { perksCountLabel, type CategoryTile } from '@shared/categories'
 import AppText from './AppText'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
 const GAP = 12
 
-// The category discovery grid, two cards per row (web:
-// components/perks/CategoryGrid.tsx). Rows follow the root view's direction,
+// The category discovery grid, two cards per row on a phone, three on an
+// unfolded foldable, four on a tablet (web: components/perks/CategoryGrid.tsx;
+// src/lib/layout.ts), re-laid out as the phone folds. Rows follow the root view's direction,
 // so the first card sits on the right in Hebrew. `counts` is null while
 // offers load, which shows a placeholder bar in place of the perk count.
 export default function CategoryGrid({
@@ -22,8 +24,9 @@ export default function CategoryGrid({
   onSelect: (category: string) => void
 }) {
   const { t } = useLang()
+  const { categoryColumns: columns } = useLayout()
   const rows: CategoryTile[][] = []
-  for (let i = 0; i < tiles.length; i += 2) rows.push(tiles.slice(i, i + 2))
+  for (let i = 0; i < tiles.length; i += columns) rows.push(tiles.slice(i, i + columns))
   return (
     <View style={styles.grid}>
       {rows.map((row) => (
@@ -53,7 +56,10 @@ export default function CategoryGrid({
               )}
             </ScalePressable>
           ))}
-          {row.length === 1 && <View style={styles.spacer} />}
+          {/* A short last row keeps its cards the width of the rest. */}
+          {Array.from({ length: columns - row.length }, (_, i) => (
+            <View key={`spacer-${i}`} style={styles.spacer} />
+          ))}
         </View>
       ))}
     </View>

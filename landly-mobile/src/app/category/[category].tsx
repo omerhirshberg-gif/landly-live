@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
 import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers'
 import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
+import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
@@ -14,6 +15,7 @@ import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
+import { useLayout } from '../../lib/useLayout'
 import { colors, radius, type } from '../../theme'
 
 // A category "folder" (web: /categories/[category]), pushed over the tabs
@@ -23,6 +25,11 @@ import { colors, radius, type } from '../../theme'
 // work within the category, through the same pipeline as the Perks tab.
 export default function CategoryScreen() {
   const { t, lang } = useLang()
+  // Columns follow the window (two unfolded, three on a tablet); the key
+  // remounts the list when folding changes them, as numColumns requires.
+  const { columns, paddingLeft, paddingRight } = useLayout()
+  // The back bar sits outside the list, so it steps in from a side cutout itself.
+  const insets = useSafeAreaInsets()
   const { category: rawCategory } = useLocalSearchParams<{ category: string }>()
   // Canonical name for any spelling of a known category (`Beach+and+Sea`
   // arrives undecoded), so the tile and the Firestore query both match.
@@ -82,14 +89,23 @@ export default function CategoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.bar}>
+      <View style={[styles.bar, { paddingLeft: insets.left + 8, paddingRight: insets.right + 8 }]}>
         <GlassBackButton label={t('cats_detail_back')} onPress={goBack} />
       </View>
       <FlatList
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        key={'cols-' + columns}
         data={visible}
         keyExtractor={(offer) => offer.id}
-        renderItem={({ item }) => <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={false} />}
-        contentContainerStyle={styles.content}
+        numColumns={columns}
+        columnWrapperStyle={feedColumnWrapper(columns)}
+        renderItem={({ item }) => (
+          <FeedCell>
+            <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={false} />
+          </FeedCell>
+        )}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

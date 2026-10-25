@@ -3,7 +3,8 @@ import { FieldValue, Timestamp, type DocumentData } from 'firebase-admin/firesto
 import { maskPhone } from '@/lib/auth/phoneVerification'
 import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
-import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
+import { isAttachmentKind, logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMedia, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
+import { mediaUrls } from './mediaUrls'
 import { sendWhatsAppMessage, WhatsAppApiError, whatsappLive, type WhatsAppMessage } from './graph'
 import {
   currentStatus,
@@ -66,6 +67,21 @@ export interface InboxMessage {
   at: string
   simulated?: true
   error?: string
+  /** A member's attachment (kind image/video/audio/document); `text` is its caption. */
+  media?: InboxMedia
+}
+
+/** An attachment as the inbox gets it: signed URLs, never the Storage path. */
+export interface InboxMedia {
+  status: LoggedMedia['status']
+  mimeType?: string
+  filename?: string
+  size?: number
+  voice?: true
+  /** Shows or plays it in the page; images, video and audio only. */
+  url?: string
+  /** Saves it under its name. */
+  downloadUrl?: string
 }
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
@@ -111,7 +127,30 @@ function toInboxMessage(id: string, data: DocumentData): InboxMessage {
     at: iso(data.at) ?? '',
     ...(data.simulated ? { simulated: true as const } : {}),
     ...(typeof data.error === 'string' ? { error: data.error } : {}),
+    ...(isAttachmentKind(data.kind) ? { media: toInboxMedia(data.media) } : {}),
   }
+}
+
+const MEDIA_STATUSES: readonly LoggedMedia['status'][] = ['stored', 'too_large', 'failed', 'unavailable']
+
+function toInboxMedia(raw: unknown): InboxMedia {
+  const media = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const status = MEDIA_STATUSES.find((s) => s === media.status) ?? 'failed'
+  return {
+    status,
+    ...(typeof media.mimeType === 'string' ? { mimeType: media.mimeType } : {}),
+    ...(typeof media.filename === 'string' ? { filename: media.filename } : {}),
+    ...(typeof media.size === 'number' ? { size: media.size } : {}),
+    ...(media.voice === true ? { voice: true as const } : {}),
+  }
+}
+
+/** The transcript entry with its attachment's URLs signed, when it has a stored one. */
+async function withMediaUrls(message: InboxMessage, data: DocumentData, now: number): Promise<InboxMessage> {
+  if (!message.media || !isAttachmentKind(message.kind) || message.media.status !== 'stored' || typeof data.media?.path !== 'string') return message
+  const at = data.at instanceof Timestamp ? data.at.toMillis() : now
+  const urls = await mediaUrls(message.kind, { status: 'stored', path: data.media.path, filename: message.media.filename }, at, now)
+  return { ...message, media: { ...message.media, ...urls } }
 }
 
 const conversations = () => getAdminDb().collection('whatsappConversations')
@@ -129,7 +168,7 @@ export async function getConversation(waId: string, now = Date.now()) {
   if (!snapshot.exists) return null
   return {
     conversation: toInboxConversation(waId, snapshot.data()!, now),
-    messages: messages.docs.map((doc) => toInboxMessage(doc.id, doc.data())).reverse(),
+    messages: (await Promise.all(messages.docs.map((doc) => withMediaUrls(toInboxMessage(doc.id, doc.data()), doc.data(), now)))).reverse(),
   }
 }
 

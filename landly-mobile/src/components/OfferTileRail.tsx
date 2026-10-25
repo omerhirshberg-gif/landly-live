@@ -5,6 +5,7 @@ import AppText from './AppText'
 import OfferTile from './OfferTile'
 import { useLang } from '../i18n/LangProvider'
 import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, TILE_RAIL_WIDTH, carouselSnapOffsets } from '../lib/carousel'
+import { useLayout } from '../lib/useLayout'
 import { isWeb, webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
@@ -12,7 +13,8 @@ import { colors } from '../theme'
 // stacked above the category grid; web: components/discover/OfferTileRail.tsx):
 // a heading, then the perks as compact OfferTiles in one row that scrolls
 // sideways. A swipe settles on a card's edge with fast deceleration, as
-// Home's carousel does. It bleeds through the screen's 16pt gutter. Native snapping
+// Home's carousel does. It bleeds through the screen's side padding (16pt on
+// a phone, src/lib/layout.ts). Native snapping
 // takes explicit offsets (flipped for Hebrew, where the first column sits at
 // the far right); the web build snaps with CSS scroll-snap.
 export default function OfferTileRail({
@@ -27,11 +29,12 @@ export default function OfferTileRail({
   onOpen: (offer: OfferDocument) => void
 }) {
   const { isRtl } = useLang()
+  const { paddingLeft, paddingRight } = useLayout()
   const list = useRef<FlatList<OfferDocument>>(null)
   const [viewport, setViewport] = useState(0)
 
   const interval = TILE_RAIL_WIDTH + GAP
-  const contentWidth = EDGE * 2 + offers.length * TILE_RAIL_WIDTH + Math.max(0, offers.length - 1) * GAP
+  const contentWidth = paddingLeft + paddingRight + offers.length * TILE_RAIL_WIDTH + Math.max(0, offers.length - 1) * GAP
   const maxOffset = Math.max(0, contentWidth - viewport)
   const snapToOffsets = useMemo(
     () => (isWeb || !viewport ? undefined : carouselSnapOffsets(offers.length, interval, maxOffset, isRtl)),
@@ -48,8 +51,9 @@ export default function OfferTileRail({
           {title}
         </AppText>
       </View>
-      <View style={styles.frame}>
+      <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
         <FlatList
+          showsVerticalScrollIndicator={false}
           ref={list}
           data={offers}
           keyExtractor={(offer) => offer.id}
@@ -58,8 +62,8 @@ export default function OfferTileRail({
           decelerationRate="fast"
           snapToOffsets={snapToOffsets}
           snapToEnd={false}
-          style={styles.scroller}
-          contentContainerStyle={styles.row}
+          style={[styles.scroller, webOnly({ scrollPaddingLeft: paddingLeft, scrollPaddingRight: paddingRight }) as object]}
+          contentContainerStyle={[styles.row, { paddingLeft, paddingRight }]}
           ItemSeparatorComponent={Separator}
           onLayout={(e) => setViewport(e.nativeEvent.layout.width)}
           // Rows lay out right-to-left in Hebrew, but a horizontal list still

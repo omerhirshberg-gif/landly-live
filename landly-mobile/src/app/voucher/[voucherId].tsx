@@ -65,14 +65,14 @@ export default function VoucherScreen() {
   const terms = content.text('redemptionTerms')
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('voucher_page_title')} fallback="/wallet" />
       {voucher === undefined ? (
         <ActivityIndicator color={colors.brand} style={styles.spinner} />
       ) : voucher === null ? (
         <AppText style={styles.notFound}>{t('voucher_not_found')}</AppText>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+        <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <View style={styles.card}>
             <View style={styles.hero}>
               {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
@@ -143,7 +143,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: 48 },
   notFound: { fontSize: 15, color: colors.body, textAlign: 'center', marginTop: 48, paddingHorizontal: 24 },
-  content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
+  // The pass stays phone-sized on an unfolded foldable or a tablet: a centred
+  // column no wider than the website's (max-w-xl, 576 plus the gutters), so
+  // its 16:9 picture and the QR code never balloon.
+  content: { width: '100%', maxWidth: 608, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   hero: { aspectRatio: 16 / 9, backgroundColor: colors.brandTint },
   body: { padding: 20 },

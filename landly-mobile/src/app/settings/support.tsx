@@ -55,9 +55,9 @@ export default function SupportScreen() {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('nav_support_title')} />
-      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         <AppText accessibilityRole="header" style={styles.groupTitle}>{t('support_title')}</AppText>
         <ContactCard
           icon="whatsapp"
@@ -181,7 +181,9 @@ function FaqItem({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   groupTitle: { fontSize: 14, fontWeight: '600', color: colors.textFaint, marginBottom: 8, paddingHorizontal: 4 },
   faqTitle: { marginTop: 16 },
   card: {

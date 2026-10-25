@@ -85,9 +85,9 @@ export default function PrivacyScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('nav_privacy_link')} />
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} ref={scrollRef} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         {lang !== 'en' && (
           <View style={styles.notice}>
             <Notice message={t('legal_translation_notice')} tone="info" />
@@ -136,7 +136,9 @@ const mono = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'mon
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   notice: { marginBottom: 12 },
   card: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 20 },
   text: { color: colors.text, fontSize: 15, lineHeight: 24 },

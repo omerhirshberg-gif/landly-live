@@ -11,14 +11,38 @@ describe('native Home header', () => {
 
   it('is just the avatar and the welcome, with no tagline', () => {
     expect(home).not.toContain("t('deals_title')")
-    expect(home).toContain("<Avatar uri={photoURL} initials={initials} size={48} />")
+    expect(home).toContain('<Avatar uri={photoURL} initials={initials} size={header.avatar} />')
     expect(home).toContain("t('home_welcome').replace('{name}', firstName)")
   })
 
   it('sits close under the safe area without a second gap', () => {
     expect(home).toContain("<SafeAreaView style={styles.safe} edges={['top']}>")
-    expect(home).toContain("content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 }")
-    expect(home).toContain("greetingSlot: { minHeight: 48, marginBottom: 16, justifyContent: 'center' }")
+    expect(home).toContain('<ScreenTitleRow style={styles.greetingSlot}>')
+    expect(home).toContain('greetingSlot: { marginBottom: header.gap }')
+  })
+})
+
+describe('native tab headers share one rhythm', () => {
+  const TABS = ['index', 'perks', 'wishlist', 'wallet', 'profile']
+
+  it('fixes the header metrics in the theme', () => {
+    expect(read('theme.ts')).toContain('export const header = { top: 12, row: 48, gap: 16, avatar: 48, action: 44 } as const')
+    const row = read('components/ScreenTitleRow.tsx')
+    expect(row).toContain("row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: header.row }")
+    expect(row).toContain('<AppText accessibilityRole="header" style={[type.screenTitle, styles.title]}>')
+  })
+
+  it.each(TABS)('(tabs)/%s starts header.top under the safe area, in the shared title row', (tab) => {
+    const source = read(`app/(tabs)/${tab}.tsx`)
+    expect(source).toContain('<ScreenTitleRow')
+    expect(source).toMatch(/content: \{ paddingHorizontal: 16, paddingTop: header\.top,/)
+    expect(source).not.toMatch(/accessibilityRole="header" style=\{(\[)?type\.screenTitle/)
+  })
+
+  it('keeps the Settings gear a 44pt target at the end of the Profile title row', () => {
+    const profile = read('app/(tabs)/profile.tsx')
+    expect(profile).toMatch(/<ScreenTitleRow\s+title=\{t\('nav_profile'\)\}[\s\S]*?trailing=\{\s*<Pressable[\s\S]*?settings_gear_label/)
+    expect(profile).toContain('gear: { width: header.action, height: header.action,')
   })
 })
 
@@ -28,12 +52,17 @@ describe('native My Pass header', () => {
   it('titles the screen My Pass, with no Member Dashboard label or repeated welcome', () => {
     expect(wallet).not.toContain("t('dash_label')")
     expect(wallet).not.toContain('dash_welcome')
-    expect(wallet).toMatch(/<AppText accessibilityRole="header" style=\{type\.screenTitle\}>\s*\{t\('pass_screen_title'\)\}/)
+    expect(wallet).toContain("<ScreenTitleRow title={t('pass_screen_title')} style={styles.titleRow} />")
+  })
+
+  it('spaces the title group, stats and tabs header.gap apart', () => {
+    expect(wallet).toContain('header: { marginBottom: header.gap, gap: 0 }')
+    expect(wallet).toContain("identity: { marginBottom: header.gap, alignItems: 'flex-start', gap: 10 }")
   })
 
   it('keeps the customer-type badge and the stats right under the title', () => {
     const title = wallet.indexOf("t('pass_screen_title')")
-    const badge = wallet.indexOf('styles.badge,')
+    const badge = wallet.indexOf('<SegmentBadge')
     const stats = wallet.indexOf('<DashboardStats')
     expect(title).toBeGreaterThan(0)
     expect(badge).toBeGreaterThan(title)

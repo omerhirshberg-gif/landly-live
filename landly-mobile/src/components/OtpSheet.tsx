@@ -23,6 +23,7 @@ import { formatPhone } from '@shared/auth/onboarding'
 import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@shared/auth/otp'
 import { useResendCountdown } from '@shared/auth/useResendCountdown'
 import AppText from './AppText'
+import { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import Button from './Button'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
@@ -68,6 +69,8 @@ export default function OtpSheet({
 }) {
   const { t, lang, isRtl } = useLang()
   const insets = useSafeAreaInsets()
+  // A centred card no wider than a dialog from 600pt (the scrim already covers the whole screen).
+  const bounds = useSheetBounds()
   const inputRef = useRef<TextInput>(null)
   const [shown, setShown] = useState(true)
   const [code, setCode] = useState('')
@@ -191,7 +194,7 @@ export default function OtpSheet({
           <Animated.View
             entering={SlideInDown.duration(ENTER_MS).easing(Easing.out(Easing.cubic))}
             exiting={SlideOutDown.duration(EXIT_MS).easing(Easing.in(Easing.cubic))}
-            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16), direction: isRtl ? 'rtl' : 'ltr' }]}
+            style={[styles.sheet, bounds, { paddingBottom: Math.max(insets.bottom, 16), direction: isRtl ? 'rtl' : 'ltr' }]}
             accessibilityViewIsModal
           >
             <View style={styles.handle} />
@@ -280,7 +283,7 @@ export default function OtpSheet({
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { flex: 1, backgroundColor: 'rgba(11, 27, 61, 0.32)' },
+  scrim: { flex: 1, backgroundColor: SCRIM_COLOR },
   sheet: {
     backgroundColor: colors.white,
     borderTopLeftRadius: 28,

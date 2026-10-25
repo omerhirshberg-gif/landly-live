@@ -18,9 +18,9 @@ const tiles = CATEGORY_TILES.slice(0, 3)
 const counts = new Map([[tiles[0].category, 4], [tiles[1].category, 1]])
 
 describe('category grid', () => {
-  it('keeps the grid: 2 columns, 3 from lg, one card per tile', () => {
+  it('keeps the grid: 2 columns, 3 from fold (600px), one card per tile', () => {
     const html = withLang('en', createElement(CategoryGrid, { tiles: CATEGORY_TILES, counts }))
-    expect(html).toMatch(/^<ul class="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 touch-pan-y touch-pinch-zoom">/)
+    expect(html).toMatch(/^<ul class="grid grid-cols-2 fold:grid-cols-3 gap-3 lg:gap-4 touch-pan-y touch-pinch-zoom">/)
     expect(html.match(/<li class="min-w-0">/g)).toHaveLength(CATEGORY_TILES.length)
     expect(html.match(/href="\/categories\?cat=/g)).toHaveLength(CATEGORY_TILES.length)
   })

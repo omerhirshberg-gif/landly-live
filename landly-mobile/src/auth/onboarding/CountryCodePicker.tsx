@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg'
 import type { CountryCode } from 'libphonenumber-js'
 import { countryName, listCountries, toCountry, type Country } from '@shared/auth/onboarding'
 import AppText from '../../components/AppText'
+import { useModalSidePadding } from '../../components/SheetSlot'
 import { useLang } from '../../i18n/LangProvider'
 import { webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
@@ -14,6 +15,8 @@ import { colors } from '../../theme'
 // scrolls on its own; the sign-up step behind it never does.
 export default function CountryCodePicker({ value, onChange }: { value: CountryCode; onChange: (code: CountryCode) => void }) {
   const { t, lang, isRtl } = useLang()
+  // Full screen on a phone; from 600pt its content sits in a centred, dialog-wide column.
+  const sidePadding = useModalSidePadding()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const current = toCountry(value)
@@ -54,7 +57,7 @@ export default function CountryCodePicker({ value, onChange }: { value: CountryC
       </Pressable>
 
       <Modal visible={open} animationType="slide" presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined} onRequestClose={close}>
-        <SafeAreaView style={[styles.sheet, { direction: isRtl ? 'rtl' : 'ltr' }]} edges={['top', 'bottom']}>
+        <SafeAreaView style={[styles.sheet, { direction: isRtl ? 'rtl' : 'ltr', paddingHorizontal: sidePadding }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.sheetHeader}>
             <AppText accessibilityRole="header" style={styles.sheetTitle}>
               {t('onb_countryCode')}
@@ -74,6 +77,8 @@ export default function CountryCodePicker({ value, onChange }: { value: CountryC
             style={[styles.search, { textAlign: isRtl ? 'right' : 'left' }]}
           />
           <FlatList
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             data={matches}
             keyExtractor={(c) => c.code}
             keyboardShouldPersistTaps="handled"
