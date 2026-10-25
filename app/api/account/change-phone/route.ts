@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { getAdminDb } from '@/lib/firebase/admin'
-import { CLEAR_PENDING_PHONE, customerOrReply, logContactFailure, preflight, replyFor } from '@/lib/account/contactChangeServer'
+import { CLEAR_PENDING_PHONE, customerOrReply, heldByOther, logContactFailure, phoneHoldersQuery, preflight, replyFor } from '@/lib/account/contactChangeServer'
 import { isOtpChannel, OTP_RESEND_SECONDS, type OtpChannel } from '@/lib/auth/otp'
 import {
   generateOtp,
@@ -25,6 +25,8 @@ import type { Lang } from '@/lib/i18n/translations'
 // { mode: 'otp', channel, resendIn }: the number now waits in
 // users/{uid}.pendingPhone and a 6-digit code is on its way (WhatsApp by
 // default); /api/account/verify-phone-otp applies it.
+// A number already on another member's account is refused (phoneInUse):
+// the WhatsApp support bot finds members by their number.
 export function OPTIONS(request: Request) {
   return preflight(request)
 }
@@ -49,8 +51,9 @@ export async function POST(request: Request) {
   const verificationRef = db.collection('phoneVerifications').doc(uid)
 
   try {
-    const [user, previous] = await Promise.all([userRef.get(), verificationRef.get()])
+    const [user, previous, holders] = await Promise.all([userRef.get(), verificationRef.get(), phoneHoldersQuery(db, phone).get()])
     if (user.get('phone') === phone) return reply({ error: 'Same phone number.', reason: 'samePhone' }, 400)
+    if (heldByOther(holders, uid)) return reply({ error: 'Phone number in use.', reason: 'phoneInUse' }, 409)
     const lastSentAt = previous.get('lastSentAt')
     const wait = lastSentAt instanceof Timestamp ? lastSentAt.toMillis() + OTP_RESEND_COOLDOWN_MS - Date.now() : 0
     if (wait > 0) return reply({ error: 'Too many requests.', reason: 'rateLimited', retryAfter: Math.ceil(wait / 1000) }, 429)

@@ -19,12 +19,14 @@ import {
   followUpMessage,
   inquiryPromptMessage,
   isConversationStatus,
+  isInquiryCategory,
   LANGUAGE_NAMES,
   languagePickerMessage,
-  linkMessage,
   menuMessage,
   resolvedMessage,
+  submenuMessage,
   textMessage,
+  topicMessages,
   transcriptText,
   type BotContext,
 } from './supportBot'
@@ -42,7 +44,8 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   the last text and lastSnippet for the inbox list, and the conversation's
 //   state (lib/whatsapp/supportBot.ts): status (active |
 //   awaiting_user_inquiry | escalated | resolved), lastMenuAt, lastNudgeAt,
-//   inquiryPromptedAt, escalatedAt, resolvedAt.
+//   inquiryPromptedAt, escalatedAt, resolvedAt, and inquiryCategory (what
+//   the latest request to the team is about).
 // - whatsappConversations/{waId}/messages: the message and the bot's replies
 //   (lib/whatsapp/conversationLog.ts).
 //
@@ -107,6 +110,7 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     lastMenuAt: millis(conversation.get('lastMenuAt')),
     lastNudgeAt: millis(conversation.get('lastNudgeAt')),
     inquiryPromptedAt: millis(conversation.get('inquiryPromptedAt')),
+    inquiryCategory: isInquiryCategory(conversation.get('inquiryCategory')) ? conversation.get('inquiryCategory') : undefined,
     escalatedAt: millis(conversation.get('escalatedAt')),
     now,
   }
@@ -148,6 +152,9 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         await reply(menuMessage(ctx))
         update.lastMenuAt = at
         break
+      case 'submenu':
+        await reply(submenuMessage(decision.menu, ctx.lang))
+        break
       case 'languagePicker':
         await reply(languagePickerMessage())
         update.lastMenuAt = at
@@ -164,13 +171,13 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         await reply(textMessage(ctx.lang, 'wa_bot_nudge'))
         update.lastNudgeAt = at
         break
-      case 'link':
-        // A cta_url message holds only its link, so the follow-up buttons come next.
-        await reply(linkMessage(decision.action, ctx), followUpMessage(ctx.lang))
+      case 'topic':
+        await reply(...topicMessages(decision.topic, ctx))
         break
       case 'promptInquiry':
         update.status = 'awaiting_user_inquiry'
         update.inquiryPromptedAt = at
+        update.inquiryCategory = decision.category
         await reply(inquiryPromptMessage(ctx.lang))
         break
       case 'alreadyEscalated':
@@ -180,7 +187,16 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         const email = nonEmpty(member?.get('email'))
         const inquiry = event.kind === 'text' ? event.text : undefined
         try {
-          await notifyTeam({ waId: event.waId, lang: ctx.lang, name: memberName ?? event.name, uid: member?.id, email, inquiry, origin: ctx.origin })
+          await notifyTeam({
+            waId: event.waId,
+            lang: ctx.lang,
+            name: memberName ?? event.name,
+            uid: member?.id,
+            email,
+            inquiry,
+            category: ctx.inquiryCategory ?? 'general',
+            origin: ctx.origin,
+          })
         } catch (err) {
           // The team never heard: say so, and don't silence the bot.
           console.error(`[whatsapp-bot] team notification for ${maskPhone(`+${event.waId}`)} failed:`, err instanceof Error ? err.message : err)

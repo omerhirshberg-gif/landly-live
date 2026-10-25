@@ -46,7 +46,7 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // 6-digit code in OtpDialog. In Edit profile the email shows in a field box:
 // its "Change" (email+password members) opens ChangeEmailForm, which emails
 // the code to the new address; a Google account's address is its Google
-// identity, so its box is locked with a note. The name and email sit above
+// identity, so its box is locked with a note (also when it has a password). The name and email sit above
 // the edit form, so ChangeEmailForm's own form never nests in it. A new phone
 // number gets a WhatsApp code when verification is on
 // (/api/account/change-phone decides, otherwise it saves as before).
@@ -62,8 +62,9 @@ export default function ProfileSection({ user }: { user: User }) {
   const stored = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
-  const canChangeEmail = user.providerData.some((p) => p.providerId === 'password')
   const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
+  // Google linked locks the address, even beside a password (the server refuses it too).
+  const canChangeEmail = !googleAccount && user.providerData.some((p) => p.providerId === 'password')
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(stored)

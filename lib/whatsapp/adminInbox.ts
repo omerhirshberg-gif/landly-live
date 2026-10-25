@@ -5,7 +5,16 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
 import { logMessages, snippetOf, type LoggedMessage, type MessageAuthor, type MessageKind } from './conversationLog'
 import { sendWhatsAppMessage, WhatsAppApiError, whatsappLive, type WhatsAppMessage } from './graph'
-import { currentStatus, CUSTOMER_SERVICE_WINDOW_MS, isConversationStatus, resolvedMessage, transcriptText, type ConversationStatus } from './supportBot'
+import {
+  currentStatus,
+  CUSTOMER_SERVICE_WINDOW_MS,
+  isConversationStatus,
+  isInquiryCategory,
+  resolvedMessage,
+  transcriptText,
+  type ConversationStatus,
+  type InquiryCategory,
+} from './supportBot'
 import { isBotLanguage } from './webhookPayload'
 
 // The support inbox behind /admin/support (app/api/admin/whatsapp/*): the
@@ -37,6 +46,8 @@ export interface InboxConversation {
   lang: Lang
   langSelected: boolean
   status: ConversationStatus
+  /** The bot topic of the member's latest request to the team. */
+  category: InquiryCategory | null
   needsReply: boolean
   /** Free-form replies are still allowed (within 24 hours of the member's last message). */
   windowOpen: boolean
@@ -77,6 +88,7 @@ export function toInboxConversation(waId: string, data: DocumentData, now: numbe
     lang: isBotLanguage(data.lang) ? data.lang : 'en',
     langSelected: data.langSelectedAt instanceof Timestamp,
     status,
+    category: isInquiryCategory(data.inquiryCategory) ? data.inquiryCategory : null,
     needsReply: status === 'escalated' && lastInbound !== undefined && (lastReply === undefined || lastInbound > lastReply),
     windowOpen: lastInbound !== undefined && now - lastInbound < CUSTOMER_SERVICE_WINDOW_MS,
     lastInboundAt: iso(data.lastInboundAt),

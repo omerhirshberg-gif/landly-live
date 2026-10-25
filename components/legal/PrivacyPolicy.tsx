@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { SUPPORT_EMAIL } from '@/lib/config'
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 import { RTL_LANGS, translations, type Lang } from '@/lib/i18n/translations'
 import {
   PRIVACY_POLICY_UPDATED_ISO,
@@ -46,13 +46,13 @@ function Run({ part }: { part: PolicyInline }) {
 }
 
 // Addresses, numbers, URLs and code keep their own left-to-right order inside
-// Hebrew text; a phone number has no strong characters, so it's set ltr.
+// Hebrew text; the WhatsApp number has no strong characters, so it's set ltr.
 function Runs({ parts }: { parts: PolicyInline[] }) {
   return (
     <>
       {parts.map((part, i) =>
         isLtrToken(part) ? (
-          <bdi key={i} dir={typeof part === 'object' && 'href' in part && part.href.startsWith('tel:') ? 'ltr' : undefined}>
+          <bdi key={i} dir={typeof part === 'object' && 'href' in part && part.href === SUPPORT_WHATSAPP_LINK ? 'ltr' : undefined}>
             <Run part={part} />
           </bdi>
         ) : (

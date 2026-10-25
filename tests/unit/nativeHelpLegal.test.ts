@@ -46,7 +46,7 @@ describe('native Help & legal screens', () => {
 
   it('opens WhatsApp in the app with a wa.me fallback, and email in the mail app', () => {
     const support = read('app/settings/support.tsx')
-    expect(support).toContain('whatsapp://send?phone=${WHATSAPP_NUMBER}&text=${text}')
+    expect(support).toContain('whatsapp://send?phone=${SUPPORT_WHATSAPP_NUMBER}&text=${text}')
     expect(support).toContain('${SUPPORT_WHATSAPP_LINK}?text=${text}')
     expect(support).toContain('mailto:${SUPPORT_EMAIL}?subject=')
   })
@@ -55,7 +55,7 @@ describe('native Help & legal screens', () => {
     const website = read('../../components/legal/TermsContent.tsx')
     expect(website).toContain("import { TERMS_SECTIONS } from '@/lib/legal/termsSections'")
     expect(website).toContain('TERMS_SECTIONS.map(')
-    expect(TERMS_SECTIONS.map((s) => s.heading)).toEqual(['terms_h1', 'terms_h2', 'terms_h3', 'terms_h4', 'terms_h5', 'terms_h6', 'terms_h7'])
+    expect(TERMS_SECTIONS.map((s) => s.heading)).toEqual(['terms_h1', 'terms_h2', 'terms_h3', 'terms_h4', 'terms_h5', 'terms_h6', 'terms_h7', 'terms_h8'])
     expect(TERMS_SECTIONS.find((s) => s.heading === 'terms_h2')?.body).toContainEqual(['terms_p2c_label', 'terms_p2c'])
     const terms = read('app/settings/terms.tsx')
     expect(terms).toContain('TERMS_SECTIONS.map(')

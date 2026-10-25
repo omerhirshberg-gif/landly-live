@@ -17,7 +17,8 @@ import type { Lang } from '@/lib/i18n/translations'
 //
 // { newEmail, lang }: needs a sign-in from the last few minutes, i.e. the
 // client re-entered the current password first. Email+password accounts
-// only: a Google account's address is its Google identity.
+// only: a Google account's address is its Google identity, so any account
+// with Google linked is refused, even one that also has a password.
 // { resend: true, lang }: a fresh code to the address already pending (the
 // verification dialog's "Resend code"), at most once a minute; the previous
 // code stops working and the attempts start over.
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
     logContactFailure('change-email', 'user', uid, err)
     return reply({ error: 'Authorization service unavailable.', reason: 'unavailable' }, 503)
   }
-  if (!userRecord.providerData.some((p) => p.providerId === 'password')) {
+  const providers = userRecord.providerData.map((p) => p.providerId)
+  if (!providers.includes('password') || providers.includes('google.com')) {
     return reply({ error: 'This account signs in with Google.', reason: 'notPasswordAccount' }, 403)
   }
 

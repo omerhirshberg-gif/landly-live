@@ -16,9 +16,13 @@ import { useNeedsReplyCount } from '@/lib/admin/needsReply'
 // full width under the header, whose ☰ opens the drawer (./Sidebar.tsx).
 const CANVAS = 'min-h-[var(--app-dvh)] bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] text-[#475569] antialiased'
 
-// The sticky header's height (AdminHeader: h-16 below the notch), for pages
-// that size themselves to the screen.
-const SHELL_VARS = { '--admin-header-h': 'calc(4rem + env(safe-area-inset-top, 0px))' } as React.CSSProperties
+// The sticky header's height, for pages that size themselves to the screen
+// (AdminHeader): on phones a 3rem row between the notch (at least 0.75rem)
+// and 0.75rem below; from md a 4rem row below the notch.
+const SHELL_VARS = {
+  '--admin-header-h': 'calc(max(env(safe-area-inset-top, 0px), 0.75rem) + 3.75rem)',
+  '--admin-header-h-md': 'calc(4rem + env(safe-area-inset-top, 0px))',
+} as React.CSSProperties
 
 // Screens that fill the phone edge to edge below the header (the support
 // inbox) instead of sitting in the padded, centred column; from md they're
@@ -33,7 +37,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   // WhatsApp chats waiting for the team: badges on the ☰ and the nav item.
-  const needsReply = useNeedsReplyCount(pathname !== '/admin/login')
+  // The inbox announces its own count (lib/admin/needsReply.ts).
+  const needsReply = useNeedsReplyCount(pathname !== '/admin/login', { follow: pathname.startsWith('/admin/support') })
 
   // Escape, the backdrop or the close button: focus goes back to the menu button.
   const closeMenu = useCallback(() => {

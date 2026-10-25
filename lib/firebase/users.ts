@@ -34,6 +34,8 @@ export interface UserDocument {
   pendingEmail: string
   /** A new E.164 number waiting for its WhatsApp code (server-written), or ''. */
   pendingPhone: string
+  /** True once `phone` came through the WhatsApp code (server-written); onboarding numbers stay false. */
+  phoneVerified: boolean
 }
 
 // A shape check only, so this module stays free of libphonenumber.
@@ -117,6 +119,7 @@ function toUserDocument(data: DocumentData): UserDocument {
     israelRegion: typeof data.israelRegion === 'string' ? data.israelRegion : '',
     pendingEmail: typeof data.pendingEmail === 'string' ? data.pendingEmail : '',
     pendingPhone: typeof data.pendingPhone === 'string' ? data.pendingPhone : '',
+    phoneVerified: data.phoneVerified === true,
   }
 }
 

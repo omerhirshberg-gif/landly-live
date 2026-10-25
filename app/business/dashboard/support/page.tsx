@@ -27,15 +27,16 @@ export default function BusinessSupportPage() {
         <Card className="p-5">
           <div className="text-2xl mb-2">💬</div>
           <div className="font-bold text-white mb-1">{t('support_whatsapp')}</div>
-          <a
-            href={SUPPORT_WHATSAPP_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            dir="ltr"
-            className="text-brand text-sm font-semibold hover:underline"
-          >
-            {SUPPORT_WHATSAPP_DISPLAY}
-          </a>
+          <bdi dir="ltr">
+            <a
+              href={SUPPORT_WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand text-sm font-semibold hover:underline"
+            >
+              {SUPPORT_WHATSAPP_DISPLAY}
+            </a>
+          </bdi>
           <p className="text-xs text-slate-500 mt-2">{t('support_whatsapp_note')}</p>
         </Card>
       </div>

@@ -4,8 +4,9 @@ import { PRODUCTION_FIREBASE_PROJECT_ID, STAGING_FIREBASE_PROJECT_ID } from '@/l
 // every build (unlike the site's DevEnvironmentBadge, which is `next dev`
 // only): red PROD for the production project, amber DEV for the staging
 // one (lib/firebase/envGuard.ts), so live data is never edited by mistake.
-// A Vercel Preview reads DEV, which is right: it runs on staging. Phones show just the word; the project id joins it
-// from 640px, and the full name is in the tooltip.
+// A Vercel Preview reads DEV, which is right: it runs on staging. Phones show a
+// compact pill with just the word; the project id joins it from 640px, and the
+// full name is in the tooltip.
 const TONES = {
   prod: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]',
   dev: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]',
@@ -27,7 +28,7 @@ export default function AdminEnvironmentBadge() {
   return (
     <span
       title={`Firebase project: ${projectId}`}
-      className={`inline-flex h-8 shrink-0 select-none items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-bold tracking-wide ${TONES[tone]}`}
+      className={`inline-flex h-7 shrink-0 select-none items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-bold tracking-wide sm:h-8 sm:gap-1.5 sm:px-2.5 sm:text-xs ${TONES[tone]}`}
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${DOTS[tone]}`} aria-hidden="true"></span>
       {label}

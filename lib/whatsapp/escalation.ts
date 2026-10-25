@@ -2,6 +2,7 @@ import 'server-only'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { sendToTeamInbox } from '@/lib/email/teamInboxEmail'
 import type { Lang } from '@/lib/i18n/translations'
+import { INQUIRY_CATEGORY_LABELS, type InquiryCategory } from './supportBot'
 
 // "Talk to Team" in the WhatsApp support bot: once the member has described
 // their request, an email to the team inbox with what they wrote, who they
@@ -19,14 +20,17 @@ export interface Escalation {
   email?: string
   /** What they wrote when asked to describe their request; missing when they sent a photo, voice note or the like. */
   inquiry?: string
+  /** The bot topic they asked from. */
+  category?: InquiryCategory
 }
 
-export function escalationEmail({ waId, lang, origin, name, uid, email, inquiry }: Escalation) {
+export function escalationEmail({ waId, lang, origin, name, uid, email, inquiry, category = 'general' }: Escalation) {
   const who = name || `+${waId}`
   return {
     subject: `WhatsApp: ${who} asked to talk to the team`,
     heading: 'A member asked to talk to the team on WhatsApp',
     rows: [
+      { label: 'Topic', value: INQUIRY_CATEGORY_LABELS[category] },
       { label: 'Name', value: name || '(not shared)' },
       { label: 'Support inbox', value: 'Open the chat in Landly Admin', href: `${origin}/admin/support?c=${waId}` },
       { label: 'WhatsApp', value: `+${waId}`, href: `https://wa.me/${waId}` },

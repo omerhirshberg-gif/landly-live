@@ -1,7 +1,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import type { DecodedIdToken } from 'firebase-admin/auth'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, type Firestore } from 'firebase-admin/firestore'
 import { corsHeaders } from '@/lib/auth/cors'
 import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
 import { requireCustomer, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
@@ -46,3 +46,13 @@ export function logContactFailure(route: string, step: string, uid: string | nul
 /** Field deletes that clear a pending change from users/{uid}. */
 export const CLEAR_PENDING_EMAIL = { pendingEmail: FieldValue.delete(), pendingEmailRequestedAt: FieldValue.delete() }
 export const CLEAR_PENDING_PHONE = { pendingPhone: FieldValue.delete(), pendingPhoneRequestedAt: FieldValue.delete() }
+
+/**
+ * Members whose live `phone` is this E.164 number (at most two, enough to
+ * tell whether anyone besides the asking member holds it). The WhatsApp
+ * support bot finds a member by `phone`, so a number may belong to one
+ * account only.
+ */
+export const phoneHoldersQuery = (db: Firestore, phone: string) => db.collection('users').where('phone', '==', phone).limit(2)
+
+export const heldByOther = (holders: { docs: { id: string }[] }, uid: string) => holders.docs.some((doc) => doc.id !== uid)

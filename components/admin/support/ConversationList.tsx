@@ -3,7 +3,7 @@
 import type { InboxConversation } from '@/lib/whatsapp/adminInbox'
 import Alert from '@/components/admin/Alert'
 import { ADMIN_INPUT } from '@/components/admin/formStyles'
-import { ConversationStatusBadge, LanguageBadge } from './ConversationBadges'
+import { CategoryBadge, ConversationStatusBadge, LanguageBadge } from './ConversationBadges'
 import { phoneOf, relativeTime } from './time'
 
 export type InboxFilter = 'all' | 'awaiting' | 'resolved'
@@ -119,7 +119,7 @@ export default function ConversationList({ conversations, error, filter, onFilte
 }
 
 function ConversationRow({ conversation, active, onSelect, now }: { conversation: InboxConversation; active: boolean; onSelect: (waId: string) => void; now: number }) {
-  const { waId, name, lang, langSelected, status, needsReply, lastSnippet, lastInboundAt } = conversation
+  const { waId, name, lang, langSelected, status, category, needsReply, lastSnippet, lastInboundAt } = conversation
   return (
     <button
       type="button"
@@ -135,6 +135,7 @@ function ConversationRow({ conversation, active, onSelect, now }: { conversation
             {name ? <span dir="auto">{name}</span> : <bdi dir="ltr">{phoneOf(waId)}</bdi>}
           </span>
           <LanguageBadge lang={lang} selected={langSelected} />
+          {needsReply && category && <CategoryBadge category={category} />}
         </div>
         {name && (
           <div className="mt-0.5 text-xs text-[#94A3B8]">

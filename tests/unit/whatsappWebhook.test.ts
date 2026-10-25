@@ -18,7 +18,7 @@ vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db }))
 
 import { GET, POST } from '@/app/api/webhooks/whatsapp/route'
 import { verifyMetaSignature, verifyTokenMatches } from '@/lib/whatsapp/signature'
-import { parseWebhookPayload, payloadPhoneNumberIds, type InboundEvent } from '@/lib/whatsapp/webhookPayload'
+import { parseWebhookPayload, payloadPhoneNumberIds, type BotAction, type InboundEvent } from '@/lib/whatsapp/webhookPayload'
 import { graphVersion } from '@/lib/whatsapp/graph'
 import {
   alreadyEscalatedMessage,
@@ -36,11 +36,14 @@ import {
   isLanguageKeyword,
   isMenuKeyword,
   languagePickerMessage,
+  LIST_ROW_DESCRIPTION_MAX,
   LIST_ROW_TITLE_MAX,
-  linkMessage,
   menuMessage,
   resolvedMessage,
+  submenuMessage,
+  topicMessages,
   transcriptText,
+  type Topic,
   type BotContext,
 } from '@/lib/whatsapp/supportBot'
 import { MESSAGE_TTL_MS } from '@/lib/whatsapp/conversationLog'
@@ -107,6 +110,8 @@ const buttonIds = (message: { interactive: { action: { buttons: { reply: { id: s
 const rowIds = (message: { interactive: { action: { sections: { rows: { id: string }[] }[] } } }) =>
   message.interactive.action.sections.flatMap((section) => section.rows.map((row) => row.id))
 const LANGUAGE_ROWS = ['lang_en', 'lang_he', 'lang_ru', 'lang_fr', 'lang_es']
+const MENU_ROWS = ['menu_order', 'menu_new_order', 'menu_pass', 'menu_agent']
+const TOPICS: Topic[] = ['vouchers', 'venue', 'refund', 'new_order', 'pass', 'perks']
 
 const event = (overrides: Partial<InboundEvent> & Pick<InboundEvent, 'kind'>): InboundEvent =>
   ({ messageId: `wamid.${Math.random()}`, waId: WA_ID, at: Date.now(), ...(overrides.kind === 'text' ? { text: 'hi' } : {}), ...overrides }) as InboundEvent
@@ -308,6 +313,15 @@ describe('parseWebhookPayload', () => {
     expect(events[3]).toMatchObject({ kind: 'other', media: 'audio' })
   })
 
+  it('reads a picked menu row as the action it stands for', () => {
+    const events = parseWebhookPayload(payload([listMsg('wamid.1', 'menu_order'), listMsg('wamid.2', 'opt_refund'), listMsg('wamid.3', 'nope')]))
+    expect(events.map((e) => [e.kind, e.kind === 'button' ? e.action : e.kind === 'other' ? e.media : null])).toEqual([
+      ['button', 'menu_order'],
+      ['button', 'opt_refund'],
+      ['other', 'interactive'],
+    ])
+  })
+
   it('treats an unknown button id as a plain message', () => {
     expect(parseWebhookPayload(payload([buttonMsg('b', 'evil')]), PHONE_ID)[0].kind).toBe('other')
     expect(parseWebhookPayload(payload([buttonMsg('b', 'toString')]), PHONE_ID)[0].kind).toBe('other')
@@ -331,12 +345,48 @@ describe('support bot decisions', () => {
   it('answers every button at once, whatever the cooldown', () => {
     const now = Date.now()
     const busy = ctx({ lastMenuAt: now - 1000, lastNudgeAt: now - 500, now })
-    expect(decide(event({ kind: 'button', action: 'btn_perks' }), busy)).toEqual({ kind: 'link', action: 'btn_perks' })
+    expect(decide(event({ kind: 'button', action: 'btn_perks' }), busy)).toEqual({ kind: 'topic', topic: 'perks' })
     expect(decide(event({ kind: 'button', action: 'btn_back_to_menu' }), busy)).toEqual({ kind: 'menu' })
     expect(decide(event({ kind: 'button', action: 'btn_cancel_inquiry' }), busy)).toEqual({ kind: 'menu' })
     expect(decide(event({ kind: 'button', action: 'btn_ticket_resolved' }), busy)).toEqual({ kind: 'resolve' })
-    expect(decide(event({ kind: 'button', action: 'btn_talk_to_team' }), busy)).toEqual({ kind: 'promptInquiry' })
-    expect(decide(event({ kind: 'button', action: 'btn_escalate_prompt' }), busy)).toEqual({ kind: 'promptInquiry' })
+    expect(decide(event({ kind: 'button', action: 'btn_talk_to_team' }), busy)).toEqual({ kind: 'promptInquiry', category: 'general' })
+    expect(decide(event({ kind: 'button', action: 'btn_escalate_prompt' }), busy)).toEqual({ kind: 'promptInquiry', category: 'general' })
+  })
+
+  it('walks the menu tree: two submenus, self-service answers, and Talk to Team tagged by topic', () => {
+    const tap = (action: BotAction) => decide(event({ kind: 'button', action }), ctx())
+    expect(tap('menu_order')).toEqual({ kind: 'submenu', menu: 'order' })
+    expect(tap('menu_pass')).toEqual({ kind: 'submenu', menu: 'pass' })
+    expect(tap('menu_new_order')).toEqual({ kind: 'topic', topic: 'new_order' })
+    expect(tap('menu_agent')).toEqual({ kind: 'promptInquiry', category: 'general' })
+    expect(tap('opt_vouchers')).toEqual({ kind: 'topic', topic: 'vouchers' })
+    expect(tap('opt_venue')).toEqual({ kind: 'topic', topic: 'venue' })
+    expect(tap('opt_refund')).toEqual({ kind: 'topic', topic: 'refund' })
+    expect(tap('opt_pass')).toEqual({ kind: 'topic', topic: 'pass' })
+    expect(tap('opt_perks')).toEqual({ kind: 'topic', topic: 'perks' })
+    expect(tap('opt_account')).toEqual({ kind: 'promptInquiry', category: 'general' })
+    expect(tap('btn_escalate_order')).toEqual({ kind: 'promptInquiry', category: 'order_issue' })
+    expect(tap('btn_escalate_purchase')).toEqual({ kind: 'promptInquiry', category: 'purchase_help' })
+  })
+
+  it('ends each order answer with Talk to Team for the order, and a new-order answer with Talk to Team for a purchase', () => {
+    const escalateId = (topic: Topic) => buttonIds(topicMessages(topic, ctx()).at(-1) as never)[1]
+    expect(escalateId('vouchers')).toBe('btn_escalate_order')
+    expect(escalateId('venue')).toBe('btn_escalate_order')
+    expect(escalateId('refund')).toBe('btn_escalate_order')
+    expect(escalateId('new_order')).toBe('btn_escalate_purchase')
+    expect(escalateId('pass')).toBe('btn_escalate_prompt')
+    expect(escalateId('perks')).toBe('btn_escalate_prompt')
+    // Answers without a link are a single message: the answer is the follow-up's body.
+    expect(topicMessages('refund', ctx())).toHaveLength(1)
+    expect(transcriptText(topicMessages('refund', ctx())[0])).toContain('14 days')
+    expect(topicMessages('vouchers', ctx())).toHaveLength(2)
+  })
+
+  it('lists the submenus with the way back last', () => {
+    expect(rowIds(submenuMessage('order', 'en') as never)).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund', 'btn_back_to_menu'])
+    expect(rowIds(submenuMessage('pass', 'en') as never)).toEqual(['opt_pass', 'opt_perks', 'opt_account', 'btn_back_to_menu'])
+    expect(rowIds(menuMessage(ctx()) as never)).toEqual(MENU_ROWS)
   })
 
   it('shows the menu for a menu keyword during the cooldown and while escalated', () => {
@@ -362,17 +412,23 @@ describe('support bot decisions', () => {
     const escalated = ctx({ status: 'escalated', escalatedAt: now - 1000, now })
     expect(decide(text('hello?'), escalated)).toEqual({ kind: 'silent' })
     expect(decide(event({ kind: 'button', action: 'btn_talk_to_team' }), escalated)).toEqual({ kind: 'alreadyEscalated' })
-    expect(decide(event({ kind: 'button', action: 'btn_pass' }), escalated)).toEqual({ kind: 'link', action: 'btn_pass' })
+    expect(decide(event({ kind: 'button', action: 'btn_pass' }), escalated)).toEqual({ kind: 'topic', topic: 'pass' })
+    expect(decide(event({ kind: 'button', action: 'menu_order' }), escalated)).toEqual({ kind: 'submenu', menu: 'order' })
+    expect(decide(event({ kind: 'button', action: 'btn_escalate_order' }), escalated)).toEqual({ kind: 'alreadyEscalated' })
     expect(decide(text('hello?'), ctx({ status: 'escalated', escalatedAt: now - ESCALATION_SILENCE_MS - 1, now }))).toEqual({ kind: 'menu' })
     // A conversation from before statuses, escalated by escalatedAt alone.
     expect(currentStatus(ctx({ escalatedAt: now - 1000, now }))).toBe('escalated')
   })
 
-  it('links Perks to /categories and Pass to /member', () => {
-    const perks = linkMessage('btn_perks', ctx())
-    const pass = linkMessage('btn_pass', ctx({ isMember: true }))
-    expect(perks.type === 'interactive' && perks.interactive.type === 'cta_url' && perks.interactive.action.parameters.url).toBe('https://landly.test/categories')
-    expect(pass.type === 'interactive' && pass.interactive.type === 'cta_url' && pass.interactive.action.parameters.url).toBe('https://landly.test/member')
+  it('links Perks and New order to /categories, and Pass and My voucher to /member', () => {
+    const url = (topic: Topic) => {
+      const [card] = topicMessages(topic, ctx({ isMember: true }))
+      return card.type === 'interactive' && card.interactive.type === 'cta_url' && card.interactive.action.parameters.url
+    }
+    expect(url('perks')).toBe('https://landly.test/categories')
+    expect(url('new_order')).toBe('https://landly.test/categories')
+    expect(url('pass')).toBe('https://landly.test/member')
+    expect(url('vouchers')).toBe('https://landly.test/member')
   })
 
   it('follows a link with Resolved, Talk to Team and Main Menu', () => {
@@ -404,7 +460,7 @@ describe('support bot decisions', () => {
     expect(decide(event({ kind: 'other' }), fresh)).toEqual({ kind: 'languagePicker' })
     // The list obeys the menu's cooldown.
     expect(decide(text('hi'), ctx({ needsLanguage: true, lastMenuAt: now - 1000, now }))).toEqual({ kind: 'nudge' })
-    expect(decide(event({ kind: 'button', action: 'btn_perks' }), fresh)).toEqual({ kind: 'link', action: 'btn_perks' })
+    expect(decide(event({ kind: 'button', action: 'btn_perks' }), fresh)).toEqual({ kind: 'topic', topic: 'perks' })
     expect(decide(event({ kind: 'language', lang: 'fr' }), fresh)).toEqual({ kind: 'languageChosen', lang: 'fr' })
   })
 
@@ -421,13 +477,14 @@ describe('support bot decisions', () => {
     })
   })
 
-  it('lists the five languages within Meta list limits', () => {
+  it('lists the five languages within Meta list limits, under an English-only greeting', () => {
     const picker = languagePickerMessage()
     if (picker.type !== 'interactive' || picker.interactive.type !== 'list') throw new Error('expected a list message')
     const { body, footer, action } = picker.interactive
+    expect(body.text).toBe('Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:')
+    expect(footer).toBeUndefined()
+    expect(action.button).toBe('Choose language')
     expect(action.button.length).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
-    expect(body.text.length).toBeLessThanOrEqual(1024)
-    expect(footer!.text.length).toBeLessThanOrEqual(FOOTER_MAX)
     expect(action.sections).toHaveLength(1)
     const rows = action.sections[0].rows
     expect(rows.map((row) => row.title)).toEqual(['🇺🇸 English', '🇮🇱 עברית', '🇷🇺 Русский', '🇫🇷 Français', '🇪🇸 Español'])
@@ -437,14 +494,32 @@ describe('support bot decisions', () => {
   it('writes every kind of reply as plain text for the inbox', () => {
     expect(transcriptText({ type: 'text', text: { body: 'Hello' } })).toBe('Hello')
     expect(transcriptText(followUpMessage('en'))).toBe(`${translations.en.wa_bot_followup_body}\n[All set, thanks 👍] [Talk to Team 💬] [Main Menu 🔙]`)
-    expect(transcriptText(linkMessage('btn_perks', ctx()))).toBe(`${translations.en.wa_bot_perks_body}\n[${translations.en.wa_bot_perks_cta}] https://landly.test/categories`)
+    expect(transcriptText(topicMessages('perks', ctx())[0])).toBe(`${translations.en.wa_bot_perks_body}\n[${translations.en.wa_bot_perks_cta}] https://landly.test/categories`)
     expect(transcriptText(languagePickerMessage())).toContain('[🇮🇱 עברית]')
+  })
+
+  it.each(Object.keys(translations) as Lang[])('keeps every %s list within Meta limits', (lang) => {
+    for (const message of [menuMessage(ctx({ lang, memberFirstName: 'Dana' })), submenuMessage('order', lang), submenuMessage('pass', lang)]) {
+      if (message.type !== 'interactive' || message.interactive.type !== 'list') throw new Error('expected a list message')
+      const { body, footer, action } = message.interactive
+      expect(body.text.length).toBeLessThanOrEqual(1024)
+      expect(footer?.text.length ?? 0).toBeLessThanOrEqual(FOOTER_MAX)
+      expect(action.button.length, action.button).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
+      for (const section of action.sections) {
+        expect(section.title.length).toBeLessThanOrEqual(LIST_ROW_TITLE_MAX)
+        expect(section.rows.length).toBeLessThanOrEqual(10)
+        for (const row of section.rows) {
+          expect(row.title.length, row.title).toBeLessThanOrEqual(LIST_ROW_TITLE_MAX)
+          expect(row.description?.length ?? 0, row.description).toBeLessThanOrEqual(LIST_ROW_DESCRIPTION_MAX)
+        }
+      }
+    }
   })
 
   it.each(Object.keys(translations) as Lang[])('keeps every %s button and link label within Meta limits', (lang) => {
     const buttonMessages = [
-      menuMessage(ctx({ lang, memberFirstName: 'Dana' })),
       followUpMessage(lang),
+      followUpMessage(lang, 'order_issue', 'wa_bot_refund_body'),
       inquiryPromptMessage(lang),
       escalatedMessage(lang),
       alreadyEscalatedMessage(lang),
@@ -457,11 +532,16 @@ describe('support bot decisions', () => {
       expect(message.interactive.body.text.length).toBeLessThanOrEqual(1024)
       for (const button of message.interactive.action.buttons) expect(button.reply.title.length, button.reply.title).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
     }
-    for (const action of ['btn_perks', 'btn_pass'] as const) {
-      const link = linkMessage(action, ctx({ lang }))
-      if (link.type !== 'interactive' || link.interactive.type !== 'cta_url') throw new Error('expected a link message')
-      expect(link.interactive.action.parameters.display_text.length).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
-      expect(link.interactive.body.text.length).toBeLessThanOrEqual(1024)
+    for (const topic of TOPICS) {
+      for (const message of topicMessages(topic, ctx({ lang }))) {
+        if (message.type !== 'interactive') throw new Error('expected an interactive message')
+        expect(message.interactive.body.text.length).toBeLessThanOrEqual(1024)
+        if (message.interactive.type === 'cta_url') {
+          expect(message.interactive.action.parameters.display_text.length).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
+        } else if (message.interactive.type === 'button') {
+          for (const button of message.interactive.action.buttons) expect(button.reply.title.length, button.reply.title).toBeLessThanOrEqual(BUTTON_TITLE_MAX)
+        }
+      }
     }
   })
 
@@ -500,7 +580,7 @@ describe('support bot handler', () => {
     const [changed, menu] = replies().slice(1)
     expect(changed).toEqual({ type: 'text', text: { body: translations.ru.wa_bot_lang_changed } })
     expect(menu.interactive.body.text).toBe(translations.ru.wa_bot_menu_body)
-    expect(buttonIds(menu)).toEqual(['btn_perks', 'btn_pass', 'btn_talk_to_team'])
+    expect(rowIds(menu)).toEqual(MENU_ROWS)
     expect(conversation()).toMatchObject({ lang: 'ru' })
     expect(conversation()?.langSelectedAt).toBeInstanceOf(Timestamp)
 
@@ -616,7 +696,7 @@ describe('support bot handler', () => {
     const now = Date.now()
     await handleInboundEvent(event({ kind: 'button', action: 'btn_talk_to_team' }), now)
     await handleInboundEvent(event({ kind: 'button', action: 'btn_cancel_inquiry' }), now + 1000)
-    expect(buttonIds(replies().at(-1))).toEqual(['btn_perks', 'btn_pass', 'btn_talk_to_team'])
+    expect(rowIds(replies().at(-1))).toEqual(MENU_ROWS)
     expect(conversation()).toMatchObject({ status: 'active' })
     expect(conversation()?.inquiryPromptedAt).toBeUndefined()
     // The next message is an ordinary one, not an inquiry.
@@ -629,7 +709,7 @@ describe('support bot handler', () => {
     const now = Date.now()
     mocks.store.seed(`whatsappConversations/${WA_ID}`, { ...hebrew(), status: 'escalated', escalatedAt: Timestamp.fromMillis(now - 1000) })
     await handleInboundEvent(event({ kind: 'text', text: 'תפריט' }), now)
-    expect(buttonIds(replies().at(-1))).toEqual(['btn_perks', 'btn_pass', 'btn_talk_to_team'])
+    expect(rowIds(replies().at(-1))).toEqual(MENU_ROWS)
     expect(conversation()).toMatchObject({ status: 'escalated' })
     await handleInboundEvent(event({ kind: 'text', text: 'still there?' }), now + GREETING_COOLDOWN_MS + 1)
     expect(replies()).toHaveLength(1)
@@ -665,7 +745,7 @@ describe('support bot handler', () => {
     expect(stored).not.toHaveProperty('lastNudgeAt')
     // A greeting right after gets a fresh menu, not a nudge or silence.
     await handleInboundEvent(event({ kind: 'text', text: 'היי' }), now + 1000)
-    expect(buttonIds(replies().at(-1))).toEqual(['btn_perks', 'btn_pass', 'btn_talk_to_team'])
+    expect(rowIds(replies().at(-1))).toEqual(MENU_ROWS)
     expect(conversation()?.status).toBe('active')
   })
 
@@ -680,13 +760,51 @@ describe('support bot handler', () => {
 
     await handleInboundEvent(event({ kind: 'button', action: 'btn_back_to_menu' }), now + 30_000)
     await handleInboundEvent(event({ kind: 'text', text: 'menu' }), now + 31_000)
-    expect(replies().slice(2).map(buttonIds)).toEqual([
-      ['btn_perks', 'btn_pass', 'btn_talk_to_team'],
-      ['btn_perks', 'btn_pass', 'btn_talk_to_team'],
-    ])
+    expect(replies().slice(2).map(rowIds)).toEqual([MENU_ROWS, MENU_ROWS])
 
     await handleInboundEvent(event({ kind: 'text', text: 'היי' }), now + 31_000 + GREETING_COOLDOWN_MS)
-    expect(buttonIds(replies().at(-1))).toEqual(['btn_perks', 'btn_pass', 'btn_talk_to_team'])
+    expect(rowIds(replies().at(-1))).toEqual(MENU_ROWS)
+  })
+
+  it('opens the order submenu, answers an issue at the business, and escalates it tagged as an order', async () => {
+    seedMember()
+    const now = Date.now()
+    await handleInboundEvent(event({ kind: 'button', action: 'menu_order' }), now)
+    expect(rowIds(replies().at(-1))).toEqual(['opt_vouchers', 'opt_venue', 'opt_refund', 'btn_back_to_menu'])
+    expect(replies().at(-1).interactive.body.text).toBe(translations.fr.wa_bot_order_body)
+
+    await handleInboundEvent(event({ kind: 'button', action: 'opt_venue' }), now + 1000)
+    const answer = replies().at(-1)
+    expect(answer.interactive.body.text).toBe(translations.fr.wa_bot_venue_body)
+    expect(buttonIds(answer)).toEqual(['btn_ticket_resolved', 'btn_escalate_order', 'btn_back_to_menu'])
+
+    await handleInboundEvent(event({ kind: 'button', action: 'btn_escalate_order' }), now + 2000)
+    expect(conversation()).toMatchObject({ status: 'awaiting_user_inquiry', inquiryCategory: 'order_issue' })
+    await handleInboundEvent(event({ kind: 'text', text: 'The café refused my QR' }), now + 3000)
+    expect(mocks.send).toHaveBeenCalledTimes(1)
+    expect(mocks.send.mock.calls[0][0].text).toContain('Topic: Existing order')
+    expect(conversation()).toMatchObject({ status: 'escalated', inquiryCategory: 'order_issue' })
+    // The member's taps show in the transcript with the titles they saw.
+    expect(transcript().filter((m) => m.kind === 'button').map((m) => m.text)).toEqual([
+      translations.fr.wa_bot_row_order,
+      translations.fr.wa_bot_row_venue,
+      translations.fr.wa_bot_btn_escalate,
+    ])
+  })
+
+  it('tags a new-order question as purchase help and Talk to an agent as general', async () => {
+    pickHebrew()
+    const now = Date.now()
+    await handleInboundEvent(event({ kind: 'button', action: 'menu_new_order' }), now)
+    const [card, followUp] = replies()
+    expect(card.interactive).toMatchObject({ type: 'cta_url', action: { parameters: { url: 'https://landly.test/categories' } } })
+    expect(buttonIds(followUp)).toEqual(['btn_ticket_resolved', 'btn_escalate_purchase', 'btn_back_to_menu'])
+    await handleInboundEvent(event({ kind: 'button', action: 'btn_escalate_purchase' }), now + 1000)
+    expect(conversation()).toMatchObject({ inquiryCategory: 'purchase_help' })
+    await handleInboundEvent(event({ kind: 'button', action: 'btn_cancel_inquiry' }), now + 2000)
+    await handleInboundEvent(event({ kind: 'button', action: 'menu_agent' }), now + 3000)
+    expect(replies().at(-1).interactive.body.text).toBe(translations.he.wa_bot_inquiry_prompt)
+    expect(conversation()).toMatchObject({ status: 'awaiting_user_inquiry', inquiryCategory: 'general' })
   })
 
   it('tells the sender when the team could not be emailed, and does not go silent', async () => {
@@ -736,7 +854,7 @@ describe('support bot handler', () => {
     pickHebrew()
     await handleInboundEvent(event({ kind: 'text', text: 'היי', phoneNumberId: '1367683866451764' }))
     expect(fetchMock.mock.calls[0][0]).toBe('https://graph.facebook.com/v21.0/1367683866451764/messages')
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ to: WA_ID, type: 'interactive', interactive: { type: 'button' } })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ to: WA_ID, type: 'interactive', interactive: { type: 'list' } })
   })
 
   it('uses a configured Graph version only when it is well formed', () => {
@@ -789,6 +907,13 @@ describe('escalation email', () => {
     expect(mail.rows.find((r) => r.label === 'WhatsApp')).toEqual({ label: 'WhatsApp', value: '+12025550123', href: 'https://wa.me/12025550123' })
     expect(mail.rows.find((r) => r.label === 'Member UID')?.value).toMatch(/No Landly account/)
     expect(mail.rows.find((r) => r.label === 'Support inbox')?.href).toBe('https://landly.test/admin/support?c=12025550123')
+  })
+
+  it('names the topic the member asked from, General when there is none', () => {
+    const base = { waId: WA_ID, lang: 'en' as const, origin: 'https://landly.test' }
+    const topic = (mail: ReturnType<typeof escalationEmail>) => mail.rows.find((row) => row.label === 'Topic')?.value
+    expect(topic(escalationEmail({ ...base, category: 'purchase_help' }))).toBe('New order')
+    expect(topic(escalationEmail(base))).toBe('General')
   })
 
   it('carries the member\'s written inquiry', () => {

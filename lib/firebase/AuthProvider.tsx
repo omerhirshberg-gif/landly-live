@@ -2,7 +2,9 @@
 
 import { createContext, ReactNode, useCallback, useEffect, useState } from 'react'
 import { onAuthStateChanged, User } from 'firebase/auth'
+import { rememberMemberHint } from '@/lib/auth/memberHint'
 import { isOnboardingComplete } from '@/lib/auth/onboardingStatus'
+import { watchAuthState } from './authReady'
 import { auth } from './config'
 import { getUserDocument } from './users'
 
@@ -22,19 +24,43 @@ interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+  children,
+  readyTimeoutMs,
+  memberHint = false,
+}: {
+  children: ReactNode
+  /**
+   * Stop waiting for Firebase Auth after this long and carry on as a guest; a
+   * late answer still signs the member in. Off by default (the app waits as
+   * before); the website sets it, because a browser whose storage stalls
+   * (WebKit's IndexedDB, say) could otherwise hold every page in its
+   * loading state for good.
+   */
+  readyTimeoutMs?: number
+  /** Keep lib/auth/memberHint.ts's flag current (website only). */
+  memberHint?: boolean
+}) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   // Keyed by uid, so an answer read for one account never applies to the next.
   const [status, setStatus] = useState<{ uid: string; complete: boolean } | null>(null)
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      setUser(nextUser)
-      setLoading(false)
-    })
-    return unsubscribe
-  }, [])
+  useEffect(
+    () =>
+      watchAuthState<User>(
+        (next) => onAuthStateChanged(auth, next),
+        {
+          onUser: (nextUser) => {
+            setUser(nextUser)
+            if (memberHint) rememberMemberHint(!!nextUser)
+          },
+          onReady: () => setLoading(false),
+        },
+        readyTimeoutMs,
+      ),
+    [readyTimeoutMs, memberHint]
+  )
 
   const uid = user?.uid ?? null
   const verified = !!user?.emailVerified

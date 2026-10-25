@@ -1,4 +1,4 @@
-import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL } from '@/lib/config'
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 import { translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 
 // The privacy policy as plain data, in all five languages: the structure
@@ -14,7 +14,7 @@ import { translations, type Lang, type TranslationKey } from '@/lib/i18n/transla
 //
 // Strings carry a small inline markup, parsed by parseInline:
 //   **bold**   `code`   [label](https://… or #section-id)
-//   {email} {phone} {site} {googlePermissions}
+//   {email} {whatsapp} {site} {googlePermissions}
 
 /** A run of text: plain, bold, inline code, a link (an http URL, or "#id" for another section), or the support email. */
 export type PolicyInline = string | { bold: string } | { code: string } | { link: string; href: string } | { email: true }
@@ -45,16 +45,16 @@ export interface PrivacyPolicyText {
 }
 
 /** When the policy last changed; each language's pp_updated_date spells this date. */
-export const PRIVACY_POLICY_UPDATED_ISO = '2026-10-23'
+export const PRIVACY_POLICY_UPDATED_ISO = '2026-10-25'
 
 const PLACEHOLDERS: Record<string, PolicyInline> = {
   email: { email: true },
-  phone: { link: SUPPORT_PHONE_DISPLAY, href: SUPPORT_PHONE_TEL },
+  whatsapp: { link: SUPPORT_WHATSAPP_DISPLAY, href: SUPPORT_WHATSAPP_LINK },
   site: { link: 'www.golandly.com', href: 'https://www.golandly.com' },
   googlePermissions: { link: 'myaccount.google.com/permissions', href: 'https://myaccount.google.com/permissions' },
 }
 
-const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|\{(?:email|phone|site|googlePermissions)\})/
+const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|\{(?:email|whatsapp|site|googlePermissions)\})/
 
 /** Splits a marked-up policy string into runs. */
 export function parseInline(source: string): PolicyInline[] {
@@ -104,6 +104,8 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
       ul('pp_collect_location_1', 'pp_collect_location_2', 'pp_collect_location_3'),
       h3('pp_collect_messages_h'),
       p('pp_collect_messages_p'),
+      h3('pp_collect_whatsapp_h'),
+      ul('pp_collect_whatsapp_1', 'pp_collect_whatsapp_2', 'pp_collect_whatsapp_3'),
       h3('pp_collect_mentor_h'),
       p('pp_collect_mentor_p'),
       h3('pp_collect_technical_h'),
@@ -158,7 +160,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
     title: 'pp_providers_title',
     blocks: [
       p('pp_providers_p1'),
-      ul('pp_providers_1', 'pp_providers_2', 'pp_providers_3', 'pp_providers_4', 'pp_providers_5', 'pp_providers_6', 'pp_providers_7', 'pp_providers_8'),
+      ul('pp_providers_1', 'pp_providers_2', 'pp_providers_3', 'pp_providers_4', 'pp_providers_5', 'pp_providers_6', 'pp_providers_7', 'pp_providers_8', 'pp_providers_9'),
     ],
   },
   {
@@ -179,7 +181,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
     id: 'retention',
     title: 'pp_retention_title',
     blocks: [
-      ul('pp_retention_1', 'pp_retention_2', 'pp_retention_3', 'pp_retention_4', 'pp_retention_5', 'pp_retention_6', 'pp_retention_7', 'pp_retention_8', 'pp_retention_9'),
+      ul('pp_retention_1', 'pp_retention_2', 'pp_retention_3', 'pp_retention_4', 'pp_retention_5', 'pp_retention_6', 'pp_retention_7', 'pp_retention_8', 'pp_retention_9', 'pp_retention_10'),
     ],
   },
   {

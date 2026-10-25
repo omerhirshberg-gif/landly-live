@@ -8,15 +8,29 @@
 
 import type { Lang } from '@/lib/i18n/translations'
 
-/** The reply-button ids the bot sends (lib/whatsapp/supportBot.ts). */
+/** The reply-button and list-row ids the bot sends (lib/whatsapp/supportBot.ts). */
 export const BOT_ACTIONS = [
   'btn_perks',
   'btn_pass',
   'btn_talk_to_team',
   'btn_escalate_prompt',
+  'btn_escalate_order',
+  'btn_escalate_purchase',
   'btn_cancel_inquiry',
   'btn_ticket_resolved',
   'btn_back_to_menu',
+  // The main menu's rows.
+  'menu_order',
+  'menu_new_order',
+  'menu_pass',
+  'menu_agent',
+  // The "Existing order" and "My Pass & perks" rows.
+  'opt_vouchers',
+  'opt_venue',
+  'opt_refund',
+  'opt_pass',
+  'opt_perks',
+  'opt_account',
 ] as const
 
 export type BotAction = (typeof BOT_ACTIONS)[number]
@@ -58,6 +72,7 @@ interface InboundBase {
 
 export type InboundEvent =
   | (InboundBase & { kind: 'text'; text: string })
+  /** A reply button tapped, or a row picked from one of the bot's menus. */
   | (InboundBase & { kind: 'button'; action: BotAction })
   /** A row picked from the language list. */
   | (InboundBase & { kind: 'language'; lang: Lang })
@@ -136,9 +151,10 @@ function parseMessage(message: Raw | undefined, names: Map<string, string>): Inb
   }
   if (message.type === 'interactive') {
     const interactive = obj(message.interactive)
-    const lang = toBotLanguage(obj(interactive?.list_reply)?.id)
+    const row = obj(interactive?.list_reply)?.id
+    const lang = toBotLanguage(row)
     if (lang) return { ...base, kind: 'language', lang }
-    const action = toBotAction(obj(interactive?.button_reply)?.id)
+    const action = toBotAction(row ?? obj(interactive?.button_reply)?.id)
     return action ? { ...base, kind: 'button', action } : { ...base, kind: 'other', media: 'interactive' }
   }
   // A template's quick-reply button.

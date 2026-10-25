@@ -213,6 +213,16 @@ describe('/api/account/change-phone', () => {
     expect((await res.json()).retryAfter).toBeGreaterThan(50)
   })
 
+  it('refuses a number already on another account, before any code goes out', async () => {
+    mocks.store.seed('users/member-2', { email: 'other@landly.test', phone: '+12025550123' })
+    const res = await changePhone(post({ phone: '+12025550123' }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).reason).toBe('phoneInUse')
+    expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
+    expect(lastLoggedCode()).toBe('')
+  })
+
   it('leaves nothing pending when the code cannot be delivered', async () => {
     vi.spyOn(devProvider, 'send').mockRejectedValueOnce(new OtpDeliveryError('whatsapp', '131026', 'undeliverable'))
     const res = await changePhone(post({ phone: '+12025550123' }))
@@ -230,8 +240,22 @@ describe('/api/account/verify-phone-otp', () => {
     expect(await res.json()).toEqual({ ok: true, phone: '+447911123456' })
     const user = mocks.store.read(`users/${UID}`)!
     expect(user.phone).toBe('+447911123456')
+    expect(user.phoneVerified).toBe(true)
     expect(user).not.toHaveProperty('pendingPhone')
     expect(user).not.toHaveProperty('pendingPhoneRequestedAt')
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
+  })
+
+  it('drops the change when another member took the number meanwhile', async () => {
+    await changePhone(post({ phone: '+447911123456' }))
+    mocks.store.seed('users/member-2', { email: 'other@landly.test', phone: '+447911123456' })
+    const res = await verifyPhoneOtp(post({ code: lastLoggedCode() }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).reason).toBe('phoneInUse')
+    const user = mocks.store.read(`users/${UID}`)!
+    expect(user.phone).toBe('+972501234567')
+    expect(user).not.toHaveProperty('phoneVerified')
+    expect(user).not.toHaveProperty('pendingPhone')
     expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
   })
 
@@ -295,6 +319,10 @@ describe('/api/account/change-email', () => {
     expect((await (await changeEmail(post({ newEmail: 'new@landly.test' }))).json()).reason).toBe('reauthRequired')
 
     mocks.getUser.mockResolvedValueOnce({ email: 'old@landly.test', providerData: [{ providerId: 'google.com' }] })
+    expect((await (await changeEmail(post({ newEmail: 'new@landly.test' }))).json()).reason).toBe('notPasswordAccount')
+
+    // Google linked beside a password: the address is still the Google identity.
+    mocks.getUser.mockResolvedValueOnce({ email: 'old@landly.test', providerData: [{ providerId: 'password' }, { providerId: 'google.com' }] })
     expect((await (await changeEmail(post({ newEmail: 'new@landly.test' }))).json()).reason).toBe('notPasswordAccount')
 
     expect((await (await changeEmail(post({ newEmail: 'OLD@landly.test' }))).json()).reason).toBe('sameEmail')

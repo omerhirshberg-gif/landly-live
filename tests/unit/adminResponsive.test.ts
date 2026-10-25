@@ -269,7 +269,7 @@ describe('swipe back', () => {
     const open = page.slice(page.indexOf('const open = '), page.indexOf('const closeChat'))
     // From the list: a new entry. Between chats: replaced, so back doesn't walk every chat viewed.
     expect(open).toMatch(/if \(selected\) {\s*router\.replace\(href[\s\S]*} else {\s*pushedRef\.current = true\s*router\.push\(href/)
-    const close = page.slice(page.indexOf('const closeChat'), page.indexOf('const upsertConversation'))
+    const close = page.slice(page.indexOf('const closeChat'), page.indexOf('const appendMessage'))
     expect(close).toMatch(/if \(pushedRef\.current\) router\.back\(\)\s*else router\.replace\(pathname/)
     expect(page).not.toContain('open(null)')
   })
@@ -339,6 +339,37 @@ describe('needs-reply badge', () => {
     expect(quiet).not.toContain('bg-[#16A34A]')
   })
 
+  it('lays the phone top bar out in three zones, the title centred between equal sides', async () => {
+    const { default: AdminHeader } = await import('@/components/admin/AdminHeader')
+    const html = renderToStaticMarkup(createElement(AdminHeader, { menuOpen: false, onOpenMenu: noop, menuButtonRef: null, needsReply: 0 }))
+    const header = html.match(/<header class="([^"]*)"/)![1].split(' ')
+    for (const token of ['sticky', 'top-0', 'z-40', 'overflow-x-clip', 'bg-white/95', 'backdrop-blur-md', 'border-slate-200/80', 'pt-[max(env(safe-area-inset-top),0.75rem)]', 'pb-3', 'md:pt-[env(safe-area-inset-top)]', 'md:pb-0']) {
+      expect(header, token).toContain(token)
+    }
+    const row = html.match(/<header[^>]*><div class="([^"]*)"/)![1].split(' ')
+    for (const token of ['grid', 'h-12', 'grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]', 'px-4', 'sm:px-6', 'md:flex', 'md:h-16']) expect(row, token).toContain(token)
+    expect(html).toMatch(/<span class="[^"]*\btruncate text-center text-base font-semibold text-slate-900 sm:text-lg md:hidden">WhatsApp Support<\/span>/)
+    // The ☰ keeps its 48px target with tap feedback, and nothing sits outside the gutter.
+    expect(html).toMatch(/class="relative flex h-12 w-12 [^"]*active:bg-slate-100/)
+    expect(html).not.toMatch(/-m[se]-\d/)
+  })
+
+  it('keeps the clock out of the phone top bar below 640px, and muted up to md', () => {
+    const header = read('components/admin/AdminHeader.tsx')
+    expect(header).toMatch(/<div className="hidden sm:block md:hidden">\s*<LiveClock compact muted \/>/)
+    expect(header).toMatch(/<div className="hidden lg:block">\s*<LiveClock \/>/)
+    expect(read('components/admin/LiveClock.tsx')).toContain("muted ? 'text-xs font-medium text-slate-400'")
+  })
+
+  it('tells full-screen pages the header\'s height on phones and from md', () => {
+    const shell = read('components/admin/AdminShell.tsx')
+    expect(shell).toContain("'--admin-header-h': 'calc(max(env(safe-area-inset-top, 0px), 0.75rem) + 3.75rem)'")
+    expect(shell).toContain("'--admin-header-h-md': 'calc(4rem + env(safe-area-inset-top, 0px))'")
+    const page = read('app/admin/support/page.tsx')
+    expect(page).toContain("'--panes-h': 'calc(var(--vv-height, var(--app-dvh)) - var(--admin-header-h))'")
+    expect(page).toContain('var(--admin-header-h-md) - 2rem')
+  })
+
   it('badges "WhatsApp Support" at the trailing edge, in the drawer and the sidebar', async () => {
     const { DesktopSidebar, MobileDrawer } = await import('@/components/admin/Sidebar')
     const drawer = renderToStaticMarkup(createElement(MobileDrawer, { open: true, onClose: noop, onNavigate: noop, onLogout: noop, needsReply: 5 }))
@@ -352,9 +383,19 @@ describe('needs-reply badge', () => {
   it('polls every 30 seconds only while the tab is visible and someone is signed in', () => {
     const hook = read('lib/admin/needsReply.ts')
     expect(hook).toContain('export const POLL_MS = 30_000')
-    expect(hook).toContain('if (document.hidden || !getStoredToken()) return')
+    expect(hook).toContain('if (follow || document.hidden || !getStoredToken()) return')
     expect(hook).toContain("document.addEventListener('visibilitychange', load)")
     expect(hook).toContain("'/api/admin/whatsapp/conversations?summary=1'")
-    expect(read('components/admin/AdminShell.tsx')).toContain("useNeedsReplyCount(pathname !== '/admin/login')")
+    expect(read('components/admin/AdminShell.tsx')).toContain("useNeedsReplyCount(pathname !== '/admin/login', { follow: pathname.startsWith('/admin/support') })")
+  })
+
+  it('only follows the inbox\'s announcements while it is open, so a stale summary never brings the old count back', () => {
+    const hook = read('lib/admin/needsReply.ts')
+    expect(hook).toContain('const timer = follow ? undefined : setInterval(load, POLL_MS)')
+    expect(hook).toContain('}, [enabled, follow])')
+    const page = read('app/admin/support/page.tsx')
+    expect(page).toContain('const LIST_POLL_MS = 4_000')
+    expect(page).toContain('const CHAT_POLL_MS = 4_000')
+    expect(page).toContain('if (listLoaded) announceNeedsReply(awaiting)')
   })
 })
