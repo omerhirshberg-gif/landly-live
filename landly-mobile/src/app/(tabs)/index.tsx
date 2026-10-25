@@ -17,11 +17,13 @@ import AvatarViewer, { useAvatarPeek } from '../../components/AvatarViewer'
 import CategoryRail from '../../components/CategoryRail'
 import Notice from '../../components/Notice'
 import OfferCarousel from '../../components/OfferCarousel'
+import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionHeader from '../../components/SectionHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
+import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
-import { colors, radius, type } from '../../theme'
+import { colors, header, radius, type } from '../../theme'
 
 const CURATED_COUNT = 4
 
@@ -38,6 +40,9 @@ const fetchOffers = async () => sortFeaturedOffers(await getAllOffers()).slice(0
 
 export default function HomeScreen() {
   const { t, isRtl } = useLang()
+  // The side padding follows the window: 12 on a folded cover screen, 16 on a
+  // phone, 24 unfolded (src/lib/layout.ts); the rails bleed through the same.
+  const { paddingLeft, paddingRight } = useLayout()
   const { user } = useAuth()
   const router = useRouter()
   const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
@@ -97,11 +102,13 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
       >
-        <View style={styles.greetingSlot}>
+        <ScreenTitleRow style={styles.greetingSlot}>
           {loaded && (
             <Animated.View entering={GREETING_IN} style={styles.greetingRow}>
               {/* With a photo, a tap opens it full size and a long press peeks at it; a monogram stays decorative. */}
@@ -117,11 +124,11 @@ export default function HomeScreen() {
                     hitSlop={4}
                     style={({ pressed }) => [styles.avatarButton, pressed && styles.avatarPressed]}
                   >
-                    <Avatar uri={photoURL} initials={initials} size={48} />
+                    <Avatar uri={photoURL} initials={initials} size={header.avatar} />
                   </Pressable>
                 </GestureDetector>
               ) : (
-                <Avatar uri={photoURL} initials={initials} size={48} />
+                <Avatar uri={photoURL} initials={initials} size={header.avatar} />
               )}
               {/* Just the welcome: no tagline under it, so the header stays one compact row. */}
               <AppText accessibilityRole="header" style={[type.greeting, styles.greetingText]} numberOfLines={1}>
@@ -129,7 +136,7 @@ export default function HomeScreen() {
               </AppText>
             </Animated.View>
           )}
-        </View>
+        </ScreenTitleRow>
 
         {/* The hero: a member pass with the live count, the first thing under the greeting. */}
         <Pressable
@@ -205,17 +212,20 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  // The SafeAreaView already clears the status bar / Dynamic Island, so the
-  // greeting needs only a few points more, not a second gap.
-  content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
-  // Holds the avatar's height while the profile loads, so nothing jumps.
-  greetingSlot: { minHeight: 48, marginBottom: 16, justifyContent: 'center' },
-  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // The SafeAreaView already clears the status bar / Dynamic Island; the
+  // greeting starts header.top below it, as every tab's title does.
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
+  // The title row holds the avatar's height while the profile loads, so nothing jumps.
+  greetingSlot: { marginBottom: header.gap },
+  greetingRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatarButton: { borderRadius: radius.pill, ...webOnly({ cursor: 'zoom-in' }) },
   avatarPressed: { opacity: 0.85 },
   greetingText: { flex: 1, minWidth: 0 },
   // The member pass: solid brand blue, rounded-2xl, lifted off the canvas.
+  // No wider than 576pt (web: fold:max-w-xl), so on an unfolded screen it
+  // stays a card at the start edge rather than a stretched banner.
   passCard: {
+    maxWidth: 576,
     overflow: 'hidden',
     paddingTop: 18,
     paddingBottom: 16,

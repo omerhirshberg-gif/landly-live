@@ -6,7 +6,8 @@ import { useLang } from '@/lib/i18n/useLang'
 import { categoryHref } from '@/lib/perks/perksFilter'
 import { perksCountLabel, type CategoryTile } from '@/lib/categories'
 
-// The category discovery grid: 2 columns on phones, 3 from 1024px. Each card
+// The category discovery grid: 2 columns on phones, 3 from 600px (an unfolded
+// foldable and up; lib/layout/foldable.ts). Each card
 // selects that category's chip on /categories. `counts` is null while offers load, which
 // shows a placeholder pill in place of the status badge. Cards sit on the
 // page as white tiles with a soft shadow, the category's vector icon in a brand-tint box, the
@@ -19,7 +20,7 @@ import { perksCountLabel, type CategoryTile } from '@/lib/categories'
 export default function CategoryGrid({ tiles, counts }: { tiles: readonly CategoryTile[]; counts: Map<string, number> | null }) {
   const { t } = useLang()
   return (
-    <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 touch-pan-y touch-pinch-zoom">
+    <ul className="grid grid-cols-2 fold:grid-cols-3 gap-3 lg:gap-4 touch-pan-y touch-pinch-zoom">
       {tiles.map((tile, i) => {
         const count = counts?.get(tile.category) ?? 0
         return (

@@ -11,7 +11,7 @@ const PAGES = ['components/home/LoggedInHome.tsx', 'app/categories/page.tsx', 'a
 describe('MemberPageShell', () => {
   it('gives every signed-in tab the same column, gutters and top padding', () => {
     const html = renderToStaticMarkup(createElement(MemberPageShell, null, 'CONTENT'))
-    expect(html).toBe('<div class="max-w-member mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-12">CONTENT</div>')
+    expect(html).toBe('<div class="max-w-member mx-auto px-3 min-[380px]:px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-12">CONTENT</div>')
   })
 
   it('pins a footer to the bottom of the screen below the navbar', () => {

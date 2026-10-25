@@ -78,3 +78,11 @@ export const type = StyleSheet.create({
 
 /** 0.5px on native (one physical pixel); web uses 1px borders. */
 export const hairline = StyleSheet.hairlineWidth
+
+// The top of every tab screen (Home, Perks, Wishlist, My Pass, Profile), so a
+// title sits at the same height whichever tab is open: `top` below the
+// SafeAreaView's own inset (which already clears the status bar, notch,
+// Dynamic Island or punch hole; never add the inset again), a `row`-high
+// title row (components/ScreenTitleRow.tsx) holding Home's `avatar` or
+// Profile's 44pt `action`, then `gap` before the first card.
+export const header = { top: 12, row: 48, gap: 16, avatar: 48, action: 44 } as const

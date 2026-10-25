@@ -75,7 +75,7 @@ export default function OrderSuccessScreen() {
   const voucherId = paid ? order.voucherId : null
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('success_title')} fallback="/wallet" />
 
       {pending ? (
@@ -91,7 +91,7 @@ export default function OrderSuccessScreen() {
         </View>
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
             <View style={styles.hero} accessibilityLiveRegion="polite">
               <Animated.View entering={CHECK_IN} style={styles.check}>
                 <LineIcon name="check" size={34} color={colors.white} strokeWidth={3} />

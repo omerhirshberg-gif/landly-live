@@ -9,6 +9,7 @@ import type { User } from 'firebase/auth'
 import { AVATAR_QUALITY, AVATAR_SIZE, coverCrop } from '@shared/avatar/avatar'
 import { uploadAvatar } from '@shared/firebase/avatar'
 import AppText from './AppText'
+import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import Avatar from './Avatar'
 import AvatarViewer, { useAvatarPeek } from './AvatarViewer'
 import { useLang } from '../i18n/LangProvider'
@@ -185,6 +186,7 @@ export default function AvatarPicker({
 function SourceSheet({ visible, onPick, onClose }: { visible: boolean; onPick: (source: Source) => void; onClose: () => void }) {
   const { t } = useLang()
   const insets = useSafeAreaInsets()
+  const bounds = useSheetBounds()
   const rows: { key: Source | 'cancel'; label: string }[] = [
     { key: 'camera', label: t('avatar_take_photo') },
     { key: 'library', label: t('avatar_choose_library') },
@@ -193,20 +195,22 @@ function SourceSheet({ visible, onPick, onClose }: { visible: boolean; onPick: (
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('avatar_cancel')} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 8 }]}>
-        <View style={styles.handle} />
-        {rows.map((row) => (
-          <Pressable
-            key={row.key}
-            accessibilityRole="button"
-            android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
-            onPress={() => (row.key === 'cancel' ? onClose() : onPick(row.key))}
-            style={styles.sheetRow}
-          >
-            <AppText style={[styles.sheetLabel, row.key === 'cancel' && styles.sheetCancel]}>{row.label}</AppText>
-          </Pressable>
-        ))}
-      </View>
+      <SheetSlot>
+        <View style={[styles.sheet, bounds, { paddingBottom: insets.bottom + 8 }]}>
+          <View style={styles.handle} />
+          {rows.map((row) => (
+            <Pressable
+              key={row.key}
+              accessibilityRole="button"
+              android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
+              onPress={() => (row.key === 'cancel' ? onClose() : onPick(row.key))}
+              style={styles.sheetRow}
+            >
+              <AppText style={[styles.sheetLabel, row.key === 'cancel' && styles.sheetCancel]}>{row.label}</AppText>
+            </Pressable>
+          ))}
+        </View>
+      </SheetSlot>
     </Modal>
   )
 }
@@ -253,7 +257,7 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer' }),
   },
   error: { marginTop: 10, fontSize: 13, fontWeight: '600', color: colors.danger, textAlign: 'center' },
-  scrim: { flex: 1, backgroundColor: 'rgba(11, 27, 61, 0.32)' },
+  scrim: { flex: 1, backgroundColor: SCRIM_COLOR },
   sheet: {
     backgroundColor: colors.surfaceContainer,
     borderTopLeftRadius: 28,

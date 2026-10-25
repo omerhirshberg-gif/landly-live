@@ -154,7 +154,7 @@ export default function SortMenu({ value, onChange }: { value: PerkSort; onChang
               aria-modal="true"
               aria-labelledby={titleId}
               onKeyDown={onMenuKeyDown}
-              className="perks-sheet absolute inset-x-0 bottom-0 rounded-t-3xl bg-white px-3 pt-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(15,23,42,.12)]"
+              className="perks-sheet absolute inset-x-0 bottom-0 rounded-t-3xl bg-white pl-[calc(0.75rem+env(safe-area-inset-left,0px))] pr-[calc(0.75rem+env(safe-area-inset-right,0px))] pt-2 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(15,23,42,.12)]"
             >
               <div aria-hidden="true" className="mx-auto mb-2 h-1 w-9 rounded-full bg-slate-300" />
               <h2 id={titleId} className="px-3 pb-2 pt-1 text-base font-bold text-ink">

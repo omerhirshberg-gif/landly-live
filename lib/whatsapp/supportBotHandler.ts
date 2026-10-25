@@ -7,6 +7,7 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import type { Lang } from '@/lib/i18n/translations'
 import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { notifyTeam } from './escalation'
+import { storeInboundMedia } from './mediaStore'
 import { sendWhatsAppMessage, whatsappLive, type WhatsAppMessage } from './graph'
 import {
   alreadyEscalatedMessage,
@@ -52,6 +53,8 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   conversation with its last message.
 // - whatsappConversations/{waId}/messages: the message and the bot's replies
 //   (lib/whatsapp/conversationLog.ts).
+// - whatsapp_media/{waId}/…: a photo, video, audio or file the member sent,
+//   in getAdminBucket() (lib/whatsapp/mediaStore.ts).
 //
 // Firestore is getAdminDb()'s project, which lib/firebase/envGuard.ts pins:
 // the dev project locally and on Vercel Preview, production on Production.
@@ -122,6 +125,8 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
   }
 
   const inbound = inboundEntry(event, ctx.lang)
+  // An attachment downloads while the bot answers; the transcript waits for it.
+  const stored = event.kind === 'media' ? storeInboundMedia(event.waId, event.messageId, event.media, now) : undefined
   const outbound: LoggedMessage[] = []
   // Replies sort after the message they answer, in the order sent.
   const sentAt = Math.max(now, event.at)
@@ -231,13 +236,14 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     if (outbound.length) update.lastOutboundAt = Timestamp.fromMillis(outbound.at(-1)!.at)
     update.expiresAt = Timestamp.fromMillis((outbound.at(-1)?.at ?? inbound.at) + MESSAGE_TTL_MS)
     await conversationRef.set(update, { merge: true })
+    if (stored) inbound.media = await stored
     await logMessages(event.waId, [inbound, ...outbound]).catch((err) =>
       console.error(`[whatsapp-bot] transcript for ${maskPhone(`+${event.waId}`)} not saved:`, err instanceof Error ? err.message : err)
     )
   }
 }
 
-/** The member's message as the inbox shows it: their text, the button they tapped, or what kind of attachment it was. */
+/** The member's message as the inbox shows it: their text, the button they tapped, an attachment (its file follows from mediaStore) or what kind of message it was. */
 function inboundEntry(event: InboundEvent, lang: Lang): LoggedMessage {
   const base = { id: event.messageId, direction: 'in', author: 'member', at: event.at } as const
   switch (event.kind) {
@@ -247,6 +253,13 @@ function inboundEntry(event: InboundEvent, lang: Lang): LoggedMessage {
       return { ...base, kind: 'button', text: buttonTitle(lang, event.action) }
     case 'language':
       return { ...base, kind: 'language', text: LANGUAGE_NAMES[event.lang] }
+    case 'media':
+      return {
+        ...base,
+        kind: event.media.type,
+        text: event.media.caption ?? '',
+        media: { status: 'failed', ...(event.media.filename ? { filename: event.media.filename } : {}), ...(event.media.voice ? { voice: true } : {}) },
+      }
     case 'other':
       return { ...base, kind: 'media', text: `(${event.media ?? 'attachment'})` }
   }

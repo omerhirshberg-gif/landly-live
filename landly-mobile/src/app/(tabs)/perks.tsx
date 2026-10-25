@@ -21,18 +21,21 @@ import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
 import AreaPicker from '../../components/AreaPicker'
 import CategoryGrid from '../../components/CategoryGrid'
+import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import NearMeButton from '../../components/NearMeButton'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
 import OfferTileRail from '../../components/OfferTileRail'
 import PerksCategoryChips from '../../components/PerksCategoryChips'
 import PerksSearchField from '../../components/PerksSearchField'
+import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionDivider from '../../components/SectionDivider'
 import SortSheet from '../../components/SortSheet'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
+import { useLayout } from '../../lib/useLayout'
 import { API_BASE_URL } from '../../lib/env'
-import { colors, type } from '../../theme'
+import { colors, header } from '../../theme'
 
 // The searchable catalog: the same offers collection the website reads. With
 // nothing chosen it's the overview (web: the /categories overview): the
@@ -45,8 +48,12 @@ import { colors, type } from '../../theme'
 // route (?cat=…&sort=…), so Home's "See all" can open the tab reset; the
 // typed search stays local, as keystrokes don't belong in the route.
 export default function PerksScreen() {
-  const { t, lang } = useLang()
+  const { t, lang, isRtl } = useLang()
   const router = useRouter()
+  // One card per row on a phone, two unfolded, three on a tablet; folding the
+  // phone changes `columns`, and the key remounts the list, which React Native
+  // requires for a new numColumns.
+  const { columns, paddingLeft, paddingRight } = useLayout()
   const params = useLocalSearchParams<{ cat?: string; sort?: string }>()
   const category = parseCategoryFilter(params.cat)
   const sort = parsePerkSort(params.sort)
@@ -153,21 +160,26 @@ export default function PerksScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <FlatList
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        key={'cols-' + columns}
         data={visible}
         keyExtractor={(offer) => offer.id}
+        numColumns={columns}
+        columnWrapperStyle={feedColumnWrapper(columns)}
         renderItem={({ item }) => (
-          <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={category === 'all'} distanceKm={offerDistanceKm(item, originCoords)} />
+          <FeedCell>
+            <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={category === 'all'} distanceKm={offerDistanceKm(item, originCoords)} />
+          </FeedCell>
         )}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
         ListHeaderComponent={
           <View style={styles.header}>
-            <AppText accessibilityRole="header" style={type.screenTitle}>
-              {screenTitle}
-            </AppText>
+            <ScreenTitleRow title={screenTitle} />
             <View style={styles.searchRow}>
               <PerksSearchField value={query} onChangeText={setQuery} />
               <NearMeButton
@@ -198,7 +210,7 @@ export default function PerksScreen() {
                 pinned at the end, past a hairline divider. */}
             {!browsing && (
               <View style={styles.filterRow}>
-                <PerksCategoryChips value={category} onChange={setCategory} style={styles.chips} />
+                <PerksCategoryChips value={category} onChange={setCategory} style={[styles.chips, isRtl ? { marginRight: -paddingRight } : { marginLeft: -paddingLeft }]} />
                 <View style={styles.filterDivider} />
                 <SortSheet value={sort} onChange={setSort} />
               </View>
@@ -291,8 +303,9 @@ export default function PerksScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
-  header: { marginBottom: 16, gap: 14 },
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
+  // The title row, search and filters as one group (14 apart), then header.gap before the results.
+  header: { marginBottom: header.gap, gap: 14 },
   // Search and Near Me share one 44pt row; the 44pt Near Me square sits at the
   // reading-direction end and the field takes the rest.
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -302,8 +315,8 @@ const styles = StyleSheet.create({
   nearbyPlace: { fontSize: 14, lineHeight: 20, color: colors.body, marginBottom: 8 },
   nearbyEmpty: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
   filterRow: { flexDirection: 'row', alignItems: 'center' },
-  // Bleed to the start edge only; the rail's own end padding is the gap before the divider.
-  chips: { flex: 1, minWidth: 0, marginHorizontal: 0, marginStart: -16 },
+  // Bleed to the start edge only (by that side's padding, set inline: the right in Hebrew); the rail's own end padding is the gap before the divider.
+  chips: { flex: 1, minWidth: 0, marginLeft: 0, marginRight: 0 },
   rails: { gap: 16, marginTop: 4 },
   filterDivider: { width: 1, height: 24, flexShrink: 0, marginEnd: 12, backgroundColor: colors.border },
   sectionTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },

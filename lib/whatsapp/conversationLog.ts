@@ -1,6 +1,7 @@
 import 'server-only'
 import { Timestamp } from 'firebase-admin/firestore'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { attachmentLabel, isAttachmentKind, type AttachmentKind, type MediaStatus } from './attachments'
 
 // The transcript the support inbox (/admin/support) shows:
 // whatsappConversations/{waId}/messages/{id}, one doc per message in either
@@ -14,7 +15,28 @@ import { getAdminDb } from '@/lib/firebase/admin'
 export const MESSAGE_TTL_MS = 180 * 24 * 60 * 60 * 1000
 
 export type MessageAuthor = 'member' | 'bot' | 'admin'
-export type MessageKind = 'text' | 'button' | 'language' | 'interactive' | 'media'
+/**
+ * 'media' is an attachment that isn't kept (a sticker, location or contact
+ * card), its text naming the type; image/video/audio/document are member
+ * attachments stored under whatsapp_media/ (lib/whatsapp/mediaStore.ts),
+ * their text the caption.
+ */
+export type MessageKind = 'text' | 'button' | 'language' | 'interactive' | 'media' | AttachmentKind
+export { isAttachmentKind, type AttachmentKind, type MediaStatus } from './attachments'
+
+export interface LoggedMedia {
+  /** Whether it's in Storage at `path` (lib/whatsapp/attachments.ts). */
+  status: MediaStatus
+  /** The Storage object; server-only, the inbox gets signed URLs (lib/whatsapp/mediaUrls.ts). */
+  path?: string
+  mimeType?: string
+  /** A document's name, as the member's phone gave it. */
+  filename?: string
+  /** In bytes. */
+  size?: number
+  /** A voice note recorded in WhatsApp. */
+  voice?: boolean
+}
 
 export interface LoggedMessage {
   /** Meta's message id (wamid…); missing for a simulated or failed send. */
@@ -29,13 +51,15 @@ export interface LoggedMessage {
   simulated?: boolean
   /** Meta refused it or couldn't be reached. */
   error?: string
+  /** An attachment's file (kind image/video/audio/document). */
+  media?: LoggedMedia
 }
 
 const MAX_TEXT = 4096
 
 /** The conversation's lastSnippet for a message: the inbox list shows it under the name. */
 export const snippetOf = (message: LoggedMessage) => ({
-  text: message.text.slice(0, 200),
+  text: (isAttachmentKind(message.kind) ? [attachmentLabel(message.kind, message.media), message.text].filter(Boolean).join(' · ') : message.text).slice(0, 200),
   direction: message.direction,
   at: Timestamp.fromMillis(message.at),
 })

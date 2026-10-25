@@ -125,7 +125,7 @@ describe('the badge', () => {
     expect(badge).toContain('bg-[#25D366]')
     expect(badge).toContain('[@media(hover:hover)]:hover:scale-[1.08] active:scale-95')
     // Pinned to the right in every language, 20px in like the accessibility button on the left, on the shared bottom line.
-    expect(html).toMatch(/^<div dir="ltr" class="wa-widget fixed right-5 z-\[890\]/)
+    expect(html).toMatch(/^<div dir="ltr" class="wa-widget fixed right-\[calc\(1\.25rem\+env\(safe-area-inset-right,0px\)\)\] z-\[890\]/)
     expect(html).toContain('bottom:var(--floating-base)')
     expect(html).toContain('<span aria-hidden="true" class="wa-glow')
   })

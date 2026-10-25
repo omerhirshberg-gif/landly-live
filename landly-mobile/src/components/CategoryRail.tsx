@@ -5,6 +5,7 @@ import { CATEGORY_TILES } from '@shared/categories'
 import AppText from './AppText'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -16,14 +17,17 @@ const ICON_SIZE = 56
 // 393pt phone with the fifth peeking. Ends with "View all".
 export default function CategoryRail({ onSelect, onViewAll }: { onSelect: (category: string) => void; onViewAll: () => void }) {
   const { t, isRtl } = useLang()
+  // Bleeds through the screen's side padding (inset plus gutter; src/lib/layout.ts).
+  const { paddingLeft, paddingRight } = useLayout()
   const scroller = useRef<ScrollView>(null)
   return (
-    <View style={styles.frame}>
+    <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         ref={scroller}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
+        contentContainerStyle={[styles.row, { paddingLeft, paddingRight }]}
         style={styles.scroller}
         // Rows lay out right-to-left in Hebrew, but a horizontal ScrollView
         // still opens at its left edge; jump to the reading-direction start.

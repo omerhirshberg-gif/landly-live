@@ -7,6 +7,7 @@ import { SUPPORT_EMAIL } from '@shared/config'
 import { DELETION_DETAILS_MAX, DELETION_REASONS, DELETION_REASON_KEYS, type DeletionReason } from '@shared/account/deletionReasons'
 import { requestAccountDeletion, type DeletionRequestResult } from '@shared/account/requestAccountDeletion'
 import AppText from './AppText'
+import { useModalSidePadding } from './SheetSlot'
 import Button from './Button'
 import Checkbox from './Checkbox'
 import Notice from './Notice'
@@ -26,6 +27,8 @@ import { colors, radius } from '../theme'
 // direction is set again on its content.
 export default function DeleteAccountSheet({ user }: { user: User }) {
   const { t, lang, isRtl } = useLang()
+  // Full screen on a phone; from 600pt its content sits in a centred, dialog-wide column.
+  const sidePadding = useModalSidePadding()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState<DeletionReason | null>(null)
   const [details, setDetails] = useState('')
@@ -107,8 +110,8 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
 
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
         <SafeAreaView
-          style={[styles.sheet, { direction: isRtl ? 'rtl' : 'ltr' }]}
-          edges={Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom']}
+          style={[styles.sheet, { direction: isRtl ? 'rtl' : 'ltr', paddingHorizontal: sidePadding }]}
+          edges={Platform.OS === 'ios' ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']}
         >
           <View style={styles.header}>
             <AppText accessibilityRole="header" style={styles.title}>
@@ -119,7 +122,7 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
             {sentOnWeb ? (
               <>
                 <Notice message={t('del_success_body')} tone="success" />

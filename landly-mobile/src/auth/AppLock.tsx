@@ -420,7 +420,7 @@ export function AppLockOverlay() {
       importantForAccessibility={leaving ? 'no-hide-descendants' : 'auto'}
     >
       <AmbientGlow />
-      <View style={[styles.screen, { paddingTop: insets.top + 36, paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.screen, { paddingTop: insets.top + 36, paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
         <View style={styles.column}>
           {/* Top: the brand, where the splash logo lands (shown once the splash is gone). */}
           <View

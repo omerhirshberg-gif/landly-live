@@ -10,6 +10,22 @@ module.exports = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
+    // The default screens with `fold` (600px, lib/layout/foldable.ts) ahead of
+    // them: a foldable's inner screen (a Galaxy Z Fold reports ~700px, a Pixel
+    // Fold ~840px) gets the two-column layouts that otherwise wait for md.
+    // Listed in full, not in extend, so fold sorts before sm in the CSS and the
+    // min-width cascade holds. Plain min-width strings only: an object (raw or
+    // max) screen makes Tailwind drop every max-* variant (max-md: is in use).
+    // So the folded cover screen uses the arbitrary max-[379px]: variant, and
+    // the hinge (two viewport segments) lives in app/globals.css (--hinge-gap).
+    screens: {
+      fold: '600px',
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         brand: '#0038b8',

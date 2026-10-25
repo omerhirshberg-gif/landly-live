@@ -16,9 +16,9 @@ export default function TermsScreen() {
   const text = (key: Parameters<typeof t>[0]) => (isRtl ? isolateEmails(t(key)) : t(key))
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('nav_terms_link')} />
-      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         <View style={styles.card}>
           <AppText accessibilityRole="header" style={styles.title}>{t('terms_title')}</AppText>
           <AppText style={styles.updated}>
@@ -47,7 +47,9 @@ export default function TermsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   card: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 20 },
   title: { fontSize: 22, lineHeight: 30, fontWeight: '800', color: colors.heading },
   updated: { marginTop: 4, fontSize: 13, color: colors.textMuted },

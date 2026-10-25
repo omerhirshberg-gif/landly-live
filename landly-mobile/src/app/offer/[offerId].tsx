@@ -23,7 +23,9 @@ import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
+import { PANE_GAP } from '../../lib/layout'
 import { cachedOffer } from '../../lib/openOffer'
+import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
 import { colors, radius } from '../../theme'
 
@@ -37,8 +39,16 @@ import { colors, radius } from '../../theme'
 // voucher, so coming back here re-runs the claim check on focus, turning the
 // Buy bar into the "already claimed" notice.
 export default function OfferScreen() {
-  const { t, lang } = useLang()
+  const { t, lang, isRtl } = useLang()
   const insets = useSafeAreaInsets()
+  // Unfolded (600pt and up; src/lib/layout.ts): the picture and the details
+  // side by side, either side of the fold, in the reading direction (the
+  // picture on the right in Hebrew), and the buy button under the details
+  // pane. Folding back re-lays it out as the one phone column. The side
+  // padding carries the safe-area insets, so a landscape camera cutout never
+  // covers the card or the button.
+  const { panes, paddingLeft, paddingRight, width } = useLayout()
+  const bar = panes ? detailsPaneBar(width, paddingLeft, paddingRight, isRtl) : { paddingLeft, paddingRight }
   const { offerId } = useLocalSearchParams<{ offerId: string }>()
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
@@ -112,7 +122,10 @@ export default function OfferScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title={businessName.text} fallback="/perks" />
+      {/* Held landscape, the header steps in from a side cutout like the content below it. */}
+      <View style={{ paddingLeft: insets.left, paddingRight: insets.right }}>
+        <ScreenHeader title={businessName.text} fallback="/perks" />
+      </View>
       {offer === undefined ? (
         <ActivityIndicator color={colors.brand} style={styles.spinner} />
       ) : offer === null ? (
@@ -122,9 +135,9 @@ export default function OfferScreen() {
         </View>
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
-            <View style={styles.card}>
-              <View style={styles.hero}>
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]} contentInsetAdjustmentBehavior="automatic">
+            <View style={[styles.card, panes && styles.cardPanes]}>
+              <View style={[styles.hero, panes && styles.heroPane]}>
                 {/* The framed picture: a photo fills it, a logo sits whole inside with a little room. */}
                 <PerkImage uri={offer.imageUrl} category={offer.category} businessName={businessName.text} />
                 {/* Floats over the picture's top end corner; glass on iOS. */}
@@ -136,7 +149,7 @@ export default function OfferScreen() {
                 />
               </View>
 
-              <View style={styles.body}>
+              <View style={[styles.body, panes && styles.bodyPane]}>
                 <View style={styles.chips}>
                   <View style={styles.categoryChip}>
                     <AppText style={styles.categoryText} numberOfLines={1}>
@@ -214,7 +227,7 @@ export default function OfferScreen() {
           </ScrollView>
 
           {/* Pinned above the home indicator, outside the scroll. */}
-          <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12), ...bar }]}>
             {claimed ? (
               <View style={styles.claimed} accessibilityLiveRegion="polite">
                 <LineIcon name="check" size={20} color={colors.success} strokeWidth={2.5} />
@@ -244,6 +257,26 @@ export default function OfferScreen() {
   )
 }
 
+/** The two-pane card's widest (web: max-w-4xl). */
+const PANES_MAX_WIDTH = 896
+/** The details pane's inner padding (styles.body). */
+const BODY_PADDING = 20
+
+/**
+ * The buy bar's side padding in two panes, so the button spans exactly the
+ * details pane's text column: the card is centred between the side paddings
+ * and capped, and the details take its trailing half (the left in Hebrew).
+ */
+function detailsPaneBar(width: number, paddingLeft: number, paddingRight: number, isRtl: boolean) {
+  const row = width - paddingLeft - paddingRight
+  const card = Math.min(row, PANES_MAX_WIDTH)
+  const cardLeft = paddingLeft + (row - card) / 2
+  const cardRight = width - cardLeft - card
+  return isRtl
+    ? { paddingLeft: cardLeft + BODY_PADDING, paddingRight: cardRight + card / 2 + BODY_PADDING }
+    : { paddingLeft: cardLeft + card / 2 + BODY_PADDING, paddingRight: cardRight + BODY_PADDING }
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: 48 },
@@ -267,7 +300,13 @@ const styles = StyleSheet.create({
   discount: { alignSelf: 'center', backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   discountText: { fontSize: 13, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
   heart: { position: 'absolute', top: 6, end: 6 },
-  body: { padding: 20 },
+  body: { padding: BODY_PADDING },
+  // Two panes: a row (it follows the root view's direction), no wider than the
+  // website's offer page (max-w-4xl), the picture taller and kept clear of the
+  // fold by half the pane gap, the details taking the other half.
+  cardPanes: { flexDirection: 'row', alignItems: 'flex-start', width: '100%', maxWidth: PANES_MAX_WIDTH, alignSelf: 'center' },
+  heroPane: { flex: 1, height: 260, marginEnd: PANE_GAP / 2, marginBottom: 12 },
+  bodyPane: { flex: 1, minWidth: 0 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: { backgroundColor: colors.brandTint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, maxWidth: '100%' },
   categoryText: { fontSize: 12, fontWeight: '600', color: colors.brand },

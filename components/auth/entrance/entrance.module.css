@@ -64,7 +64,8 @@
 
 @media (min-width: 640px) {
   .root {
-    padding: calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 40px);
+    padding: calc(env(safe-area-inset-top) + 20px) calc(env(safe-area-inset-right) + 24px)
+      calc(env(safe-area-inset-bottom) + 40px) calc(env(safe-area-inset-left) + 24px);
   }
   .heroSlot {
     margin-bottom: 28px;
@@ -340,7 +341,10 @@
    two panes: the brand panel (AuthBrandPanel.tsx — the logo, promises and
    step list) and the form pane, where the same card sits in a fixed-width
    column. The panel comes first in the DOM, so it's on the left in LTR and
-   on the right in Hebrew. */
+   on the right in Hebrew. An unfolded foldable held landscape (600px and
+   up, wider than tall, at least 560px tall; lib/layout/foldable.ts) gets the
+   same split rather than one stretched phone column; a landscape phone is
+   too short for it and keeps the phone layout. */
 .brandPanel {
   display: none;
 }
@@ -361,7 +365,7 @@
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1024px), (min-width: 600px) and (min-aspect-ratio: 1/1) and (min-height: 560px) {
   .root,
   .compact {
     flex-direction: row;
@@ -460,6 +464,46 @@
   }
   .stage {
     --stage-pad-x: 48px;
+  }
+}
+
+/* The unfolded split, narrower than a desktop: a slimmer brand panel and
+   tighter gutters, so the form pane keeps a full-width card. Both panes
+   keep the side insets, for a cutout along either edge in either direction. */
+@media (min-width: 600px) and (max-width: 1023.98px) and (min-aspect-ratio: 1/1) and (min-height: 560px) {
+  .brandPanel {
+    flex-basis: clamp(260px, 42%, 400px);
+    padding: calc(env(safe-area-inset-top) + 32px) calc(env(safe-area-inset-right) + 28px) 32px calc(env(safe-area-inset-left) + 28px);
+  }
+  .main,
+  .compact .main {
+    padding: calc(env(safe-area-inset-top) + 72px) calc(env(safe-area-inset-right) + 24px) calc(env(safe-area-inset-bottom) + 32px) calc(env(safe-area-inset-left) + 24px);
+  }
+  .main > * {
+    max-width: 440px;
+  }
+  .card {
+    padding: 28px;
+  }
+  .stage {
+    --stage-pad-x: 28px;
+  }
+  .backSlot {
+    inset-inline-start: 24px;
+  }
+}
+
+/* A browser that reports the hinge (two side-by-side viewport segments):
+   the brand panel fills the first screen exactly and the form starts past
+   the fold, so neither pane runs under it. Segment widths match on a
+   foldable, so this holds in Hebrew, where the panel is on the right. */
+@media (horizontal-viewport-segments: 2) and (min-width: 600px) {
+  .brandPanel {
+    flex-basis: env(viewport-segment-width 0 0, 42%);
+  }
+  .main,
+  .compact .main {
+    padding-inline-start: calc(var(--hinge-gap, 0px) + 24px);
   }
 }
 
@@ -621,8 +665,8 @@ li[data-state='done'] > .brandStepDot {
   color: #0038b8;
 }
 
-/* Short desktop windows: the promises go first, so the panel never overflows. */
-@media (min-width: 1024px) and (max-height: 760px) {
+/* Short desktop windows (and the unfolded split): the promises go first, so the panel never overflows. */
+@media (min-width: 1024px) and (max-height: 760px), (min-width: 600px) and (max-width: 1023.98px) and (min-aspect-ratio: 1/1) and (min-height: 560px) and (max-height: 760px) {
   .brandPoints {
     display: none;
   }

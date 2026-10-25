@@ -17,6 +17,10 @@ import { parseWebhookPayload, payloadPhoneNumberIds } from '@/lib/whatsapp/webho
 // Every delivery and every refusal leaves one log line, so "Meta says
 // delivered but nothing happened" can be told apart from "nothing arrived".
 
+// after() runs within the route's time limit: a member's attachment (up to
+// 25 MB, lib/whatsapp/mediaStore.ts) is copied from Meta into Storage there.
+export const maxDuration = 60
+
 const CHALLENGE = /^[A-Za-z0-9_-]{1,256}$/
 
 export function GET(request: Request) {

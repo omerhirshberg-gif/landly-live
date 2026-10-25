@@ -3,6 +3,7 @@ import { ActionSheetIOS, Modal, Platform, Pressable, ScrollView, StyleSheet, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { localizedName, type Area } from '@shared/geo'
 import AppText from './AppText'
+import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
@@ -59,28 +60,31 @@ export default function AreaPicker({ areas, onPick }: { areas: Area[]; onPick: (
 function AreaSheet({ visible, names, onPick, onClose }: { visible: boolean; names: string[]; onPick: (index: number) => void; onClose: () => void }) {
   const { t, isRtl } = useLang()
   const insets = useSafeAreaInsets()
+  const bounds = useSheetBounds()
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('avatar_cancel')} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 8, direction: isRtl ? 'rtl' : 'ltr' }]} accessibilityViewIsModal>
-        <View style={styles.handle} />
-        <AppText accessibilityRole="header" style={styles.sheetTitle}>
-          {t('geo_choose_area_title')}
-        </AppText>
-        <ScrollView style={styles.list} bounces={false}>
-          {names.map((name, index) => (
-            <Pressable
-              key={`${name}-${index}`}
-              accessibilityRole="button"
-              android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
-              onPress={() => onPick(index)}
-              style={({ pressed }) => [styles.sheetRow, pressed && Platform.OS === 'web' && styles.sheetRowPressed]}
-            >
-              <AppText style={styles.sheetLabel}>{name}</AppText>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
+      <SheetSlot>
+        <View style={[styles.sheet, bounds, { paddingBottom: insets.bottom + 8, direction: isRtl ? 'rtl' : 'ltr' }]} accessibilityViewIsModal>
+          <View style={styles.handle} />
+          <AppText accessibilityRole="header" style={styles.sheetTitle}>
+            {t('geo_choose_area_title')}
+          </AppText>
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} style={styles.list} bounces={false}>
+            {names.map((name, index) => (
+              <Pressable
+                key={`${name}-${index}`}
+                accessibilityRole="button"
+                android_ripple={{ color: 'rgba(0, 56, 184, 0.12)' }}
+                onPress={() => onPick(index)}
+                style={({ pressed }) => [styles.sheetRow, pressed && Platform.OS === 'web' && styles.sheetRowPressed]}
+              >
+                <AppText style={styles.sheetLabel}>{name}</AppText>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </SheetSlot>
     </Modal>
   )
 }
@@ -100,7 +104,7 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
   triggerLabel: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.brand },
-  scrim: { flex: 1, backgroundColor: 'rgba(11, 27, 61, 0.32)' },
+  scrim: { flex: 1, backgroundColor: SCRIM_COLOR },
   sheet: {
     maxHeight: '70%',
     backgroundColor: colors.surfaceContainer,

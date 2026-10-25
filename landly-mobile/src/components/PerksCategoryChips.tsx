@@ -5,6 +5,7 @@ import type { CategoryFilter } from '@shared/perks/perksFilter'
 import AppText from './AppText'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { chipShadow, colors, radius } from '../theme'
 
@@ -26,6 +27,8 @@ export default function PerksCategoryChips({
   style?: StyleProp<ViewStyle>
 }) {
   const { t, isRtl } = useLang()
+  // Bleeds through the screen's side padding (inset plus gutter; src/lib/layout.ts).
+  const { paddingLeft, paddingRight } = useLayout()
   const scroller = useRef<ScrollView>(null)
   const layouts = useRef(new Map<CategoryFilter, LayoutRectangle>())
   const viewport = useRef({ width: 0, contentWidth: 0 })
@@ -52,14 +55,15 @@ export default function PerksCategoryChips({
   }, [value])
 
   return (
-    <View style={[styles.frame, style]}>
+    <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }, style]}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         ref={scroller}
         horizontal
         showsHorizontalScrollIndicator={false}
         accessibilityRole="radiogroup"
         accessibilityLabel={t('cats_category_label')}
-        contentContainerStyle={styles.row}
+        contentContainerStyle={[styles.row, { paddingLeft, paddingRight }]}
         style={styles.scroller}
         onLayout={(e) => {
           viewport.current.width = e.nativeEvent.layout.width

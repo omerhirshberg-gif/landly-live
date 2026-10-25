@@ -31,8 +31,8 @@ export default function CuratedOffers({ showWishlistButton = false }: { showWish
   return (
     <section aria-labelledby="home-curated-title">
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 id="home-curated-title" className="text-xl font-bold text-ink">{t('home_curated_title')}</h2>
-        <Link href="/categories" className="tap-target inline-flex items-center text-sm font-semibold text-brand hover:underline">
+        <h2 id="home-curated-title" className="min-w-0 text-xl font-bold text-ink">{t('home_curated_title')}</h2>
+        <Link href="/categories" className="tap-target inline-flex shrink-0 items-center text-sm font-semibold text-brand hover:underline">
           {t('home_see_all')}
         </Link>
       </div>

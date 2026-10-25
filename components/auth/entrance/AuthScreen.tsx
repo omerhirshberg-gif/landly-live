@@ -92,9 +92,10 @@ const PASSKEY_TROUBLE_AFTER = 3
 // scrolling. The screen fades out before switching to the wizard and before
 // leaving for home, so neither change is a cut.
 //
-// From 1024px wide it's a split screen: AuthBrandPanel (logo, promises, the
-// step list) on one side, the same card on the other, for the tabs and the
-// wizard alike; below that it's the phone layout above, unchanged.
+// From 1024px wide (or an unfolded foldable held landscape, from 600px) it's
+// a split screen: AuthBrandPanel (logo, promises, the step list) on one side,
+// the same card on the other, for the tabs and the wizard alike; below that
+// it's the phone layout above, unchanged.
 //
 // Arriving already signed in (a reload mid-wizard, or a member page sending
 // a member back): unfinished onboarding reopens the wizard at the card the

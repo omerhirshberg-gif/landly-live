@@ -40,7 +40,7 @@ export default function OriginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <ScreenHeader title={t('settings_origin_title')} />
       <View style={styles.content}>
         {failed && (
@@ -56,6 +56,8 @@ export default function OriginScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  // A centred column no wider than 640pt, so an unfolded foldable or a tablet
+  // shows a settings page rather than rows stretched edge to edge.
+  content: { flex: 1, width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   notice: { marginBottom: 10 },
 })

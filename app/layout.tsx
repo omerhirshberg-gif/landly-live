@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Manrope } from 'next/font/google'
 import 'react-phone-number-input/style.css'
 import './globals.css'
@@ -52,6 +52,19 @@ export const metadata: Metadata = {
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
   },
+}
+
+// Every page: viewport-fit=cover runs it edge to edge past the notch, punch
+// hole and a foldable's cutouts, and the pages pad themselves with the
+// safe-area insets (the navbar's .navbar-safe-top, .below-header). With
+// resizes-content the keyboard shrinks the layout viewport, so 100dvh and
+// bottom-pinned bars stay above it on Android as they do on iOS. A page's own
+// viewport export (login, signup, admin) merges over this one.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 }
 
 export default function RootLayout({

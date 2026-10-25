@@ -184,7 +184,7 @@ export default function CheckoutScreen() {
   const backFallback: Href = offerId ? { pathname: '/offer/[offerId]', params: { offerId } } : '/perks'
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <Stack.Screen options={{ gestureEnabled: !paying }} />
       <ScreenHeader title={t('checkout_title')} fallback={backFallback} />
 
@@ -210,12 +210,12 @@ export default function CheckoutScreen() {
           <AppText style={styles.loadingText}>{t('checkout_loading')}</AppText>
         </View>
       ) : step === 'payment' ? (
-        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
           <TranzilaPaymentStep offerTitle={order.offerTitle} amount={order.amount} onBack={() => setStep('summary')} />
         </ScrollView>
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
             <View style={styles.card}>
               {/* Who and what: photo (or the category panel), business, offer. */}
               <View style={styles.offerRow}>

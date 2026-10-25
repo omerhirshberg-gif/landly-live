@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, customerTypeLabel } from '@shared/customerTypes'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { subscribeToUserVouchers, type VoucherDocument } from '@shared/firebase/vouchers'
@@ -10,13 +9,17 @@ import { totalSaved } from '@shared/member/savings'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import DashboardStats from '../../components/DashboardStats'
+import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import LineIcon, { type LineIconName } from '../../components/LineIcon'
 import Notice from '../../components/Notice'
 import RedeemedPass from '../../components/RedeemedPass'
+import ScreenTitleRow from '../../components/ScreenTitleRow'
+import SegmentBadge from '../../components/SegmentBadge'
 import SegmentedControl from '../../components/SegmentedControl'
 import VoucherPass from '../../components/VoucherPass'
 import { useLang } from '../../i18n/LangProvider'
-import { colors, radius, type } from '../../theme'
+import { useLayout } from '../../lib/useLayout'
+import { colors, header } from '../../theme'
 
 type Voucher = VoucherDocument & { id: string }
 type PassTab = 'perks' | 'redeemed'
@@ -28,6 +31,9 @@ type PassTab = 'perks' | 'redeemed'
 // across the same way.
 export default function WalletScreen() {
   const { t } = useLang()
+  // Passes two to a row on an unfolded foldable, three on a tablet; the key
+  // remounts the list when folding changes the count, as numColumns requires.
+  const { columns, paddingLeft, paddingRight } = useLayout()
   const { user } = useAuth()
   const router = useRouter()
   const { loaded, profile } = useMemberProfile(user)
@@ -67,36 +73,29 @@ export default function WalletScreen() {
     }
   }, [active, redeemed])
 
-  const segment = CUSTOMER_TYPES.find((o) => o.value === profile?.customerType)
-  // "Other" shows what the member typed for it.
-  const segmentLabel = customerTypeLabel(profile?.customerType ?? '', profile?.customerTypeOther ?? '', t) ?? t('dash_segment_value_unset')
-
   const list = tab === 'perks' ? active : redeemed
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <FlatList<Voucher>
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        key={'cols-' + columns}
         data={list ?? []}
         keyExtractor={(voucher) => voucher.id}
-        renderItem={({ item }) => (tab === 'perks' ? <VoucherPass voucher={item} /> : <RedeemedPass voucher={item} />)}
-        contentContainerStyle={styles.content}
+        numColumns={columns}
+        columnWrapperStyle={feedColumnWrapper(columns)}
+        renderItem={({ item }) => <FeedCell>{tab === 'perks' ? <VoucherPass voucher={item} /> : <RedeemedPass voucher={item} />}</FeedCell>}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={false} onRefresh={() => setAttempt((n) => n + 1)} tintColor={colors.brand} />}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.identity}>
-              <AppText accessibilityRole="header" style={type.screenTitle}>
-                {t('pass_screen_title')}
-              </AppText>
+              <ScreenTitleRow title={t('pass_screen_title')} style={styles.titleRow} />
               {/* The badge waits for the profile read, so a fallback never flashes first; its slot holds the space. */}
               <View style={styles.badgeSlot}>
-                {loaded && (
-                  <View style={[styles.badge, { backgroundColor: segment?.color ?? CUSTOMER_TYPE_UNSET_COLOR }]}>
-                    <AppText style={styles.badgeText} numberOfLines={1}>
-                      {segmentLabel}
-                    </AppText>
-                  </View>
-                )}
+                {loaded && <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />}
               </View>
             </View>
 
@@ -145,13 +144,12 @@ function EmptyState({ icon, title, sub, children }: { icon: LineIconName; title:
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, flexGrow: 1 },
-  header: { marginBottom: 20, gap: 0 },
-  identity: { marginBottom: 20, alignItems: 'flex-start', gap: 10 },
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
+  // Title and badge, the stats, then the tabs: header.gap apart, and header.gap before the first pass.
+  header: { marginBottom: header.gap, gap: 0 },
+  identity: { marginBottom: header.gap, alignItems: 'flex-start', gap: 10 },
+  titleRow: { alignSelf: 'stretch' },
   badgeSlot: { minHeight: 26, maxWidth: '100%' },
-  // The customer-type badge (web: .segment-badge): solid type colour, white text.
-  badge: { maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 5, borderRadius: radius.pill },
-  badgeText: { fontSize: 12, fontWeight: '800', color: colors.white },
   spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 40, paddingHorizontal: 24 },
   emptyIcon: {

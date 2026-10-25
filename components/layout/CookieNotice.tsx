@@ -50,7 +50,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
     // data-floating-clearance: floating buttons (the WhatsApp widget) rise above the bar while it shows.
     <div
       data-floating-clearance=""
-      className="fixed bottom-0 inset-x-0 z-[900] bg-slate-900 text-slate-300 px-5 pt-3.5 sm:px-6"
+      className="fixed bottom-0 inset-x-0 z-[900] bg-slate-900 text-slate-300 pl-[calc(1.25rem+env(safe-area-inset-left,0px))] pr-[calc(1.25rem+env(safe-area-inset-right,0px))] pt-3.5 sm:pl-[calc(1.5rem+env(safe-area-inset-left,0px))] sm:pr-[calc(1.5rem+env(safe-area-inset-right,0px))]"
       style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="max-w-7xl mx-auto flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">

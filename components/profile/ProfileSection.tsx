@@ -11,6 +11,7 @@ import type { OtpTarget } from '@/lib/auth/otp'
 import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
+import SegmentBadge from '@/components/member/SegmentBadge'
 import AvatarUploader from './AvatarUploader'
 import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
@@ -362,47 +363,69 @@ export default function ProfileSection({ user }: { user: User }) {
     </dl>
   )
 
+  // One card. On phones, top to bottom: the avatar (and member type), the
+  // Profile header with Edit, name and email, then the details. From 600px
+  // (an unfolded foldable, a tablet, desktop; lib/layout/foldable.ts) two
+  // panes in the reading direction, 24px apart either side of a hairline:
+  // who the member is (avatar, member type, name, email) leading, about 40%,
+  // and the details with the one Edit button trailing. The panes are
+  // display:contents on phones, so their blocks keep the phone order above.
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
-      <AvatarUploader user={user} />
-      {saveMsg && (
-        <div role={saveMsg.type === 'error' ? 'alert' : 'status'} className={`mb-4 text-sm font-semibold rounded-xl px-4 py-3 border ${saveMsg.type === 'success' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200'}`}>
-          {saveMsg.text}
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6">
+      <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100">
+        <div className="order-1">
+          <AvatarUploader user={user} />
         </div>
-      )}
-
-      {/* The Edit button sits at the header's end: right in LTR, left in Hebrew. */}
-      <div className="flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
-        <h3 className="text-base font-bold text-slate-900">{t('dash_tab_profile')}</h3>
-        {!editing && (
-          <button
-            type="button"
-            onClick={startEdit}
-            disabled={loadingDoc}
-            className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors disabled:opacity-60"
-          >
-            <i className="fa-solid fa-pen text-xs" aria-hidden="true"></i>
-            {t('profile_edit_profile_btn')}
-          </button>
-        )}
-      </div>
-      {identity}
-      {editing ? (
-        <form onSubmit={handleSave} noValidate>
-          {details}
-          {/* Stacked full-width on phones (Save on top), side by side at the end from sm up */}
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pb-[env(safe-area-inset-bottom,0px)]">
-            <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
-              {t('profile_cancel_btn')}
-            </button>
-            <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md w-full sm:w-auto">
-              {saving ? '…' : t('profile_save_changes_btn')}
-            </button>
+        {/* Waits for the live read, so the "Member" fallback never flashes first. */}
+        {loaded && (
+          <div className="order-1 mb-5">
+            <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
           </div>
-        </form>
-      ) : (
-        details
-      )}
+        )}
+        <div className="order-4">{identity}</div>
+      </div>
+
+      <div className="contents fold:block fold:min-w-0">
+        {saveMsg && (
+          <div role={saveMsg.type === 'error' ? 'alert' : 'status'} className={`order-2 mb-4 text-sm font-semibold rounded-xl px-4 py-3 border ${saveMsg.type === 'success' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200'}`}>
+            {saveMsg.text}
+          </div>
+        )}
+
+        {/* The Edit button sits at the header's end: right in LTR, left in Hebrew. */}
+        <div className="order-3 flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
+          <h3 className="text-base font-bold text-slate-900">{t('dash_tab_profile')}</h3>
+          {!editing && (
+            <button
+              type="button"
+              onClick={startEdit}
+              disabled={loadingDoc}
+              className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors disabled:opacity-60"
+            >
+              <i className="fa-solid fa-pen text-xs" aria-hidden="true"></i>
+              {t('profile_edit_profile_btn')}
+            </button>
+          )}
+        </div>
+        <div className="order-5">
+          {editing ? (
+            <form onSubmit={handleSave} noValidate>
+              {details}
+              {/* Stacked full-width on phones (Save on top), side by side at the end from sm up */}
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pb-[env(safe-area-inset-bottom,0px)]">
+                <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
+                  {t('profile_cancel_btn')}
+                </button>
+                <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md w-full sm:w-auto">
+                  {saving ? '…' : t('profile_save_changes_btn')}
+                </button>
+              </div>
+            </form>
+          ) : (
+            details
+          )}
+        </div>
+      </div>
       {otp && (
         <OtpDialog
           user={user}

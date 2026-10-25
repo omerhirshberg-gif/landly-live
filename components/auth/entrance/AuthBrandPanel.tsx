@@ -29,7 +29,8 @@ function copyFor(context: BrandPanelContext): { title: TranslationKey; body: Tra
   return { title: ONBOARDING_TITLES[context], body: context === 'done' ? 'onb_panel_done_body' : 'onb_panel_body', points: false }
 }
 
-// Desktop web only (from 1024px; entrance.module.css hides it below): the
+// Desktop web and unfolded foldables held landscape (entrance.module.css
+// shows it from 1024px, or from 600px wide when wider than tall): the
 // brand side of the split auth screen. The logo (with its staged intro, in
 // place of the hero above the card), a headline for whatever the form side
 // shows, Landly's promises, and where the member is in the journey (states:
