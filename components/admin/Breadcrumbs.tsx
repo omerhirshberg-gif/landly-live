@@ -28,7 +28,7 @@ export default function Breadcrumbs() {
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
         {crumbs.map((crumb, i) => (
           <li key={crumb.label} className="flex min-w-0 items-center gap-1.5">
-            {i > 0 && <i className="fa-solid fa-chevron-right text-[10px] text-[#CBD5E1] rtl:-scale-x-100" aria-hidden="true" />}
+            {i > 0 && <i className="fa-solid fa-chevron-right text-[10px] text-[#CBD5E1]" aria-hidden="true" />}
             {crumb.href ? (
               <Link
                 href={crumb.href}

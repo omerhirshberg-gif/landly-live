@@ -119,7 +119,7 @@ export default function ImageUploadField({
               aria-selected={tab === option}
               aria-controls={`${id}-${option}`}
               onClick={() => setTab(option)}
-              className={`min-h-10 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
+              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
                 tab === option ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
               }`}
             >
@@ -157,7 +157,7 @@ export default function ImageUploadField({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 disabled={working}
-                className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 px-4 text-center text-[#475569] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0038B8]"
+                className="flex aspect-[16/9] min-h-12 w-full flex-col items-center justify-center gap-2 px-4 text-center text-[#475569] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0038B8]"
               >
                 {working ? (
                   <ProgressOverlay progress={state.progress} inline />

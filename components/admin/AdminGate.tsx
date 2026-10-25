@@ -26,7 +26,7 @@ export default function AdminGate({ children }: { children: React.ReactNode }) {
   }, [pathname, router, checked])
 
   if (!checked) {
-    return <div className="min-h-dvh bg-[#F8FAFC]" />
+    return <div className="min-h-[var(--app-dvh)] bg-[#F8FAFC]" />
   }
   return <>{children}</>
 }

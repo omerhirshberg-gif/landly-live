@@ -41,7 +41,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6">
+    <div className="relative isolate flex min-h-[var(--app-dvh)] items-center justify-center overflow-hidden px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6">
       {/* Decorative: a soft brand wash over a faint grid that fades out toward the edges. */}
       <div
         aria-hidden="true"
@@ -96,7 +96,7 @@ export default function AdminLoginPage() {
               ) : (
                 <>
                   Sign In
-                  <i className="fa-solid fa-arrow-right text-sm rtl:-scale-x-100" aria-hidden="true" />
+                  <i className="fa-solid fa-arrow-right text-sm" aria-hidden="true" />
                 </>
               )}
             </button>

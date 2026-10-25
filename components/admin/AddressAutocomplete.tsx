@@ -171,7 +171,7 @@ export default function AddressAutocomplete({
           <ul
             id={listId}
             role="listbox"
-            className="drop-in absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg"
+            className="drop-in absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg"
           >
             {suggestions.map((suggestion, i) => (
               <li

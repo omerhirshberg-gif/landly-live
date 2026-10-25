@@ -15,7 +15,7 @@ const OFFER_FIELD_LABELS: Record<OfferTextField, string> = {
 }
 
 const LINK_BUTTON =
-  'inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#0038B8] transition-colors [@media(hover:hover)]:hover:bg-[#F0F7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
+  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#0038B8] transition-colors hover:bg-[#F0F7FF] active:bg-[#E0EFFE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
 
 // The offer form's Translations group. Google translates the title,
 // description, terms and steps into the other four languages when the offer
@@ -99,7 +99,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
               aria-selected={active === lang}
               aria-controls={`${id}-panel`}
               onClick={() => setActive(lang)}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
                 active === lang ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
               }`}
             >

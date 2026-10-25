@@ -26,6 +26,9 @@ button,input,select,textarea,optgroup{font-family:inherit;}
    420px. body carries the flat colour, so no page falls back to white; the
    page wrappers (.member-canvas, .home-ambient) add the wash. */
 :root{--canvas:#F8FAFC;--canvas-wash:#EEF3FB;}
+/* The dynamic viewport height (100dvh), or 100vh in older in-app webviews (WhatsApp, Facebook, Gmail) without dvh; the admin portal sizes its screens by it. */
+:root{--app-dvh:100dvh;}
+@supports not (height:100dvh){:root{--app-dvh:100vh;}}
 body{background:var(--canvas);}
 html{scroll-behavior:smooth;}
 /* Sideways overscroll stays with the browser, so its edge swipe (iOS Safari) and back gesture (Chrome) step back through every page (settings, offers, checkout); never set it to none or contain on the page, and never touch-action:none on html/body (tests/unit/backNavigation.test.ts) */

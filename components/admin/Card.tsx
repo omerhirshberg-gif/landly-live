@@ -11,7 +11,7 @@ interface CardProps {
 export default function Card({ href, hover, className = '', children }: CardProps) {
   const classes = `rounded-2xl border border-slate-200/80 bg-white shadow-sm ${
     href || hover
-      ? 'transition-[box-shadow,border-color] duration-150 hover:border-[#CBD5E1] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8]'
+      ? 'transition-[box-shadow,border-color,background-color] duration-150 hover:border-[#CBD5E1] hover:shadow-md active:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8]'
       : ''
   } ${className}`
 
