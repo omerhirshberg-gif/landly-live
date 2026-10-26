@@ -167,10 +167,10 @@ describe('native two-pane profile', () => {
 })
 
 describe('native scroll indicators', () => {
-  /** Every JSX opening tag of a scrolling list (generic ones like <FlatList<Voucher> included), up to its closing ">". */
+  /** Every JSX opening tag of a scrolling list (generic ones like <FlatList<Voucher> and Reanimated's <Animated.FlatList> included), up to its closing ">". */
   const listTags = (source: string) => {
     const tags: string[] = []
-    for (const match of source.matchAll(/<(ScrollView|FlatList|SectionList)(?:<[^>]+>)?(?=\s|>)/g)) {
+    for (const match of source.matchAll(/<(?:Animated\.)?(ScrollView|FlatList|SectionList)(?:<[^>]+>)?(?=\s|>)/g)) {
       const before = source.slice(Math.max(0, match.index - 12), match.index)
       if (/\b(useRef|RefObject|typeof)$/.test(before)) continue
       let depth = 0

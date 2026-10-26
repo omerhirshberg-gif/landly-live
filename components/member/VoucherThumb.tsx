@@ -13,7 +13,7 @@ export default function VoucherThumb({ voucher, muted = false }: { voucher: Pick
 
   return (
     <div
-      className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-[#F0F7FF] sm:h-20 sm:w-20 ${
+      className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-brandTint sm:h-20 sm:w-20 ${
         muted ? 'opacity-75 grayscale-[40%]' : ''
       }`}
     >

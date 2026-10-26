@@ -103,7 +103,7 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
           </table>
         </div>
       )}
-      {nextCursor && <button type="button" onClick={() => void loadVouchers(nextCursor, true)} disabled={loadingMore} className="btn-primary mt-5 disabled:opacity-60">
+      {nextCursor && <button type="button" onClick={() => void loadVouchers(nextCursor, true)} disabled={loadingMore} className="ds-btn ds-btn-primary ds-btn-md mt-5">
         {loadingMore ? '…' : t('bizdash_view_all')}
       </button>}
     </div>

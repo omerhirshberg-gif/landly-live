@@ -36,7 +36,7 @@ describe('Back to Settings on Help & legal pages', () => {
   it.each(['en', 'ru', 'es', 'fr', 'he'] as const)('offers a 44px back button with a direction-aware chevron (%s)', (lang) => {
     const html = render(lang, 'from=settings')
     expect(html).toMatch(/^<button type="button" class="[^"]*min-h-\[44px\][^"]*">/)
-    expect(html).toContain('class="fa-solid fa-chevron-left text-xs rtl:-scale-x-100"')
+    expect(html).toContain('class="lucide lucide-chevron-left h-4 w-4 rtl:-scale-x-100"')
     expect(html).toContain(`<span>${translations[lang].settings_back_to_settings}</span>`)
     // Hover only where there's a pointer, so a tap never leaves it tinted.
     expect(html).toContain('[@media(hover:hover)]:hover:text-brand')

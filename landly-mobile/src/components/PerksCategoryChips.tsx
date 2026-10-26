@@ -5,6 +5,7 @@ import type { CategoryFilter } from '@shared/perks/perksFilter'
 import AppText from './AppText'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { tick } from '../lib/haptics'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { chipShadow, colors, radius } from '../theme'
@@ -87,7 +88,11 @@ export default function PerksCategoryChips({
               accessibilityState={{ selected, checked: selected }}
               accessibilityLabel={label(option.key)}
               hitSlop={{ top: 5, bottom: 5 }}
-              onPress={() => onChange(option.key)}
+              onPress={() => {
+                // A selection tick, as a picker gives, only when the choice changes.
+                if (!selected) tick()
+                onChange(option.key)
+              }}
               onLayout={(e) => layouts.current.set(option.key, e.nativeEvent.layout)}
               style={[styles.chip, selected && styles.chipSelected]}
             >

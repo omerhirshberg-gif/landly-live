@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Gift, History, Tags } from 'lucide-react'
+import IconFrame from '@/components/ui/IconFrame'
 import BusinessProfileCard from '@/components/business/BusinessProfileCard'
 import { useBusiness } from '@/components/business/BusinessGate'
 import LiveOffersPreview from '@/components/business/LiveOffersPreview'
@@ -91,18 +93,18 @@ export default function BusinessDashboardPage() {
       {/* Voucher stats */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
         <div className="dash-stat-card dash-stat-card-dark text-center min-w-0">
-          <i className="fa-solid fa-gift text-blue-400 text-base sm:text-lg mb-1.5 sm:mb-2" aria-hidden="true"></i>
-          <div className="text-[10px] sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_redeemed_month')}</div>
+          <IconFrame icon={Gift} size="sm" tone="glass" className="mx-auto mb-1.5 sm:mb-2" />
+          <div className="text-nano sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_redeemed_month')}</div>
           <div className="text-xs sm:text-base font-black text-white">{business.voucherStats.redeemedThisMonth}</div>
         </div>
         <div className="dash-stat-card dash-stat-card-dark text-center min-w-0">
-          <i className="fa-solid fa-clock-rotate-left text-cyan-400 text-base sm:text-lg mb-1.5 sm:mb-2" aria-hidden="true"></i>
-          <div className="text-[10px] sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_redeemed_total')}</div>
+          <IconFrame icon={History} size="sm" tone="glass" className="mx-auto mb-1.5 sm:mb-2" />
+          <div className="text-nano sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_redeemed_total')}</div>
           <div className="text-xs sm:text-base font-black text-white">{business.voucherStats.redeemedTotal}</div>
         </div>
         <div className="dash-stat-card dash-stat-card-dark text-center min-w-0">
-          <i className="fa-solid fa-tags text-emerald-400 text-base sm:text-lg mb-1.5 sm:mb-2" aria-hidden="true"></i>
-          <div className="text-[10px] sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_active')}</div>
+          <IconFrame icon={Tags} size="sm" tone="glass" className="mx-auto mb-1.5 sm:mb-2" />
+          <div className="text-nano sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_active')}</div>
           <div className="text-xs sm:text-base font-black text-white">{business.voucherStats.active}</div>
         </div>
       </div>

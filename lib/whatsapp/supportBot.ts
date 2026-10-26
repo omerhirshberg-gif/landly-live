@@ -57,6 +57,13 @@ import { BOT_LANGUAGES, isBotLanguage, type BotAction, type InboundEvent } from 
 // IDLE_GRACE_MS it is resolved silently. A chat still awaiting its language
 // gets no check-in.
 //
+// A conversation the team replied in last, and the member left, gets one
+// follow-up from the team (teamNudgeMessage, inside Meta's window: see
+// TEAM_NUDGE_HOURS): All set (resolved) or Still need help (back with the
+// team, awaiting its reply). Without an answer within TEAM_RESOLVE_HOURS it
+// is resolved silently. While the member wrote last, the team owes the reply
+// and nothing times out.
+//
 // Buttons and menu keywords ("menu", "תפריט", ...) are never throttled.
 // Every reply is sent within Meta's 24-hour customer-service window, so no
 // template is needed.
@@ -72,11 +79,29 @@ export const IDLE_MINUTES = { min: 20, max: 30, default: 25 } as const
 /** After the check-in, how long before the conversation is resolved without an answer. */
 export const IDLE_GRACE_MS = 30 * 60 * 1000
 
-export function idleMs(configured = process.env.WHATSAPP_IDLE_MINUTES): number {
-  const minutes = Number(configured)
-  const valid = configured?.trim() && Number.isFinite(minutes) ? Math.min(IDLE_MINUTES.max, Math.max(IDLE_MINUTES.min, minutes)) : IDLE_MINUTES.default
-  return valid * 60 * 1000
+/**
+ * After the team's reply, how long the member may stay quiet before the
+ * follow-up: WHATSAPP_TEAM_NUDGE_HOURS, 12 to 24, else 12. It goes out no
+ * later than TEAM_NUDGE_WINDOW_MARGIN_MS before Meta's window closes, and
+ * not at all when that leaves the member less than TEAM_NUDGE_MIN_WAIT_MS
+ * after the reply.
+ */
+export const TEAM_NUDGE_HOURS = { min: 12, max: 24, default: 12 } as const
+/** After the follow-up (or when it is due, if there was none), how long before the conversation is resolved silently: WHATSAPP_TEAM_RESOLVE_HOURS, 12 to 24, else 24. */
+export const TEAM_RESOLVE_HOURS = { min: 12, max: 24, default: 24 } as const
+export const TEAM_NUDGE_WINDOW_MARGIN_MS = 60 * 60 * 1000
+export const TEAM_NUDGE_MIN_WAIT_MS = 2 * 60 * 60 * 1000
+
+/** A setting from the environment, held to its range, in ms. */
+function setting(configured: string | undefined, range: { min: number; max: number; default: number }, unitMs: number): number {
+  const value = Number(configured)
+  const valid = configured?.trim() && Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, value)) : range.default
+  return valid * unitMs
 }
+
+export const idleMs = (configured = process.env.WHATSAPP_IDLE_MINUTES) => setting(configured, IDLE_MINUTES, 60 * 1000)
+export const teamNudgeMs = (configured = process.env.WHATSAPP_TEAM_NUDGE_HOURS) => setting(configured, TEAM_NUDGE_HOURS, 60 * 60 * 1000)
+export const teamResolveMs = (configured = process.env.WHATSAPP_TEAM_RESOLVE_HOURS) => setting(configured, TEAM_RESOLVE_HOURS, 60 * 60 * 1000)
 
 /** Meta's limits: 20 characters for a button title or link label, 1024 for a body, 60 for a footer, three reply buttons. */
 export const BUTTON_TITLE_MAX = 20
@@ -145,6 +170,7 @@ export type BotDecision =
   | { kind: 'promptInquiry'; category: InquiryCategory }
   | { kind: 'alreadyEscalated' }
   | { kind: 'escalate' }
+  | { kind: 'backToTeam' }
   | { kind: 'resolve' }
 
 /**
@@ -184,7 +210,7 @@ const TYPED_LANGUAGES: Record<string, Lang> = {
 export const typedLanguage = (text: string): Lang | undefined => TYPED_LANGUAGES[keyword(text)]
 
 /** What each button leads to; the legacy btn_perks / btn_pass are the Pass menu's buttons. */
-const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inquiry: InquiryCategory } | 'menu' | 'resolve' | 'language' | 'stillNeedHelp'> = {
+const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inquiry: InquiryCategory } | 'menu' | 'resolve' | 'language' | 'stillNeedHelp' | 'backToTeam'> = {
   menu_order: { submenu: 'order' },
   menu_pass: { submenu: 'pass' },
   menu_new_order: { topic: 'new_order' },
@@ -209,6 +235,7 @@ const ACTIONS: Record<BotAction, { submenu: Submenu } | { topic: Topic } | { inq
   menu_lang: 'language',
   btn_idle_yes: 'stillNeedHelp',
   btn_idle_done: 'resolve',
+  btn_team_nudge_yes: 'backToTeam',
 }
 
 /** The menu's rows, in order; "1" to "6" typed pick them too. */
@@ -230,6 +257,7 @@ export function decide(event: InboundEvent, ctx: BotContext): BotDecision {
     if (next === 'menu') return { kind: 'menu' }
     if (next === 'resolve') return { kind: 'resolve' }
     if (next === 'language') return { kind: 'languagePicker' }
+    if (next === 'backToTeam') return { kind: 'backToTeam' }
     if (next === 'stillNeedHelp') {
       if (ctx.idleResume !== 'inquiry') return { kind: 'menu' }
       return status === 'escalated' ? { kind: 'alreadyEscalated' } : { kind: 'promptInquiry', category: ctx.inquiryCategory ?? 'general' }
@@ -302,6 +330,7 @@ const BUTTON_KEYS = {
   menu_lang: 'wa_bot_btn_language',
   btn_idle_yes: 'wa_bot_btn_idle_yes',
   btn_idle_done: 'wa_bot_btn_resolved',
+  btn_team_nudge_yes: 'wa_bot_btn_team_nudge_yes',
 } as const satisfies Record<BotAction, TranslationKey>
 
 /** Talk to Team from a topic's answer: the id carries the topic. */
@@ -475,6 +504,10 @@ export const idleCheckInMessage = (lang: Lang) => buttonsMessage(lang, tr(lang, 
 export const escalatedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_team_confirm')
 export const alreadyEscalatedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_team_already')
 export const resolvedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_resolved')
+/** The team's one follow-up to a member who went quiet after its reply (lib/whatsapp/idleSweep.ts). */
+export const teamNudgeMessage = (lang: Lang) => buttonsMessage(lang, tr(lang, 'wa_team_nudge'), ['btn_idle_done', 'btn_team_nudge_yes'])
+/** The sign-off when the team resolves a conversation from the inbox. */
+export const teamResolvedMessage = (lang: Lang) => withBackButton(lang, 'wa_team_resolved_thanks')
 
 export function textMessage(lang: Lang, key: 'wa_bot_nudge' | 'wa_bot_team_failed', email = ''): WhatsAppMessage {
   return { type: 'text', text: { body: bidiSafe(lang, tr(lang, key)).replace('{email}', isolate(email)) } }

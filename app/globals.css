@@ -8,24 +8,31 @@
    Tailwind directives above so it wins the cascade on any conflict
    with Tailwind's base/reset styles, exactly as it did when this
    CSS sat after the Tailwind CDN <script> in the original page.
-   Do not reorder, dedupe, or "clean up" — port verbatim only.
+   Rules nothing used any more (the old deal cards, hero video, scroll
+   hook, sticky CTA bar, toast) have been removed; what is left is live.
 ═══════════════════════════════════════════════════════ */
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-/* Typography: Heebo for text, inherited from html (a universal font rule
-   would stop every heading font at its first inner <span>). Headings (h1,
-   h2, .font-display) use Manrope (--font-display, app/layout.tsx), which
-   covers Latin and Cyrillic; Hebrew pages keep Heebo for headings too, so a
-   headline never mixes Manrope digits with Heebo letters. :where() keeps the
-   heading rule at zero specificity, so a component's own font or tracking wins. */
-html{font-family:'Heebo',sans-serif;}
+/* Typography, two families. Interface and body text is Inter (--font-sans,
+   app/layout.tsx), covering Latin and Cyrillic, inherited from html (a
+   universal font rule would stop every heading font at its first inner
+   <span>). Headings (h1, h2, .font-display) are Manrope (--font-display).
+   Hebrew pages are Heebo throughout, headings included, so a line never
+   mixes Inter or Manrope digits with Heebo letters. The var() fallbacks keep
+   Heebo where the font classes aren't on <html> (app/global-error.tsx
+   renders its own). :where() keeps the heading rule at zero specificity, so a
+   component's own font or tracking wins. */
+html{font-family:var(--font-sans,'Heebo'),'Heebo',sans-serif;}
+html[lang="he"]{font-family:'Heebo',sans-serif;}
 button,input,select,textarea,optgroup{font-family:inherit;}
-:where(h1,h2){font-family:var(--font-display),'Heebo',sans-serif;letter-spacing:-0.02em;}
+:where(h1,h2){font-family:var(--font-display,'Heebo'),'Heebo',sans-serif;letter-spacing:-0.02em;}
 [lang="he"] :where(h1,h2),[lang="he"] .font-display{font-family:'Heebo',sans-serif;}
 /* One canvas for the whole site: #F8FAFC with a quiet blue wash over the top
    420px. body carries the flat colour, so no page falls back to white; the
    page wrappers (.member-canvas, .home-ambient) add the wash. */
 :root{--canvas:#F8FAFC;--canvas-wash:#EEF3FB;}
+/* The site's one easing curve: a quick start that settles softly (Tailwind's ease-out-expo). */
+:root{--ease-out-expo:cubic-bezier(0.16, 1, 0.3, 1);}
 /* The dynamic viewport height (100dvh), or 100vh in older in-app webviews (WhatsApp, Facebook, Gmail) without dvh; the admin portal sizes its screens by it. */
 :root{--app-dvh:100dvh;}
 @supports not (height:100dvh){:root{--app-dvh:100vh;}}
@@ -45,24 +52,6 @@ button,a{touch-action:manipulation;}
    zero specificity, so any component focus style still wins. */
 :where(a,button,[role="button"],[role="tab"],[role="checkbox"],summary,select,textarea,input:not([type="checkbox"]):not([type="radio"])):focus-visible{outline:2px solid #0038B8;outline-offset:2px;}
 
-/* ── Scroll row ────────────────────────────────────── */
-.scroll-x{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#0038b8 transparent;-webkit-overflow-scrolling:touch;}
-.scroll-x::-webkit-scrollbar{height:3px;}
-.scroll-x::-webkit-scrollbar-thumb{background:#0038b8;border-radius:4px;}
-
-/* ── Deal card ─────────────────────────────────────── */
-.deal-card{flex-shrink:0;width:168px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.07);transition:transform .22s,box-shadow .22s;cursor:pointer;}
-@media(min-width:640px){.deal-card{width:210px;}}
-.deal-card:hover{transform:translateY(-6px);box-shadow:0 14px 36px rgba(0,56,184,.18);}
-.deal-card img{width:100%;height:108px;object-fit:cover;display:block;}
-@media(min-width:640px){.deal-card img{height:130px;}}
-.card-body{padding:10px 11px 12px;}
-@media(min-width:640px){.card-body{padding:11px 13px 14px;}}
-.deal-badge{display:inline-block;background:#e0effe;color:#0038b8;font-size:10px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:100px;margin-bottom:5px;}
-.deal-name{font-size:12.5px;font-weight:700;color:#0f172a;line-height:1.3;}
-@media(min-width:640px){.deal-name{font-size:13px;}}
-.deal-loc{font-size:10.5px;color:#64748b;margin-top:2px;}
-
 /* ── Accordion ─────────────────────────────────────── */
 .acc-body{max-height:0;overflow:hidden;transition:max-height .36s ease;}
 .acc-body.open{max-height:500px;}
@@ -77,31 +66,12 @@ button,a{touch-action:manipulation;}
 /* An unfolded foldable (600-1023px): a bounded card, not a stretched full-screen sheet (lib/layout/foldable.ts MODAL_MAX_WIDTH). */
 @media(min-width:600px) and (max-width:1023.98px){.modal-box{max-width:540px;border-radius:22px;height:auto;max-height:90vh;max-height:90dvh;}}
 
-/* ── Page view ─────────────────────────────────────── */
-/* z-index kept BELOW the navbar (1000) so the shared header remains visible on every standalone page */
-.pview{display:none;position:fixed;inset:0;background:#f8fafc;z-index:900;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.pview.show{display:block;}
-
-/* ── Steps ─────────────────────────────────────────── */
-.step-card{background:#fff;border-radius:20px;padding:26px 20px;border:2px solid #e0effe;text-align:center;transition:border-color .2s,box-shadow .2s;}
-.step-card:hover{border-color:#0038b8;box-shadow:0 8px 30px rgba(0,56,184,.11);}
-.step-num{width:44px;height:44px;border-radius:50%;background:#0038b8;color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
-.biz-card{background:linear-gradient(135deg,#0038b8,#1d6bdb);color:#fff;border-radius:20px;padding:26px 20px;cursor:pointer;text-align:center;transition:transform .2s,box-shadow .2s;}
-.biz-card:hover{transform:translateY(-5px);box-shadow:0 16px 48px rgba(0,56,184,.35);}
-
-/* ── QR ────────────────────────────────────────────── */
-.qr-box{width:72px;height:72px;background:repeating-conic-gradient(#0038b8 0% 25%,#fff 0% 50%) 0 0/11px 11px;border-radius:6px;border:2px solid #0038b8;flex-shrink:0;}
-@media(min-width:640px){.qr-box{width:80px;height:80px;}}
-
 /* ── Flip card (perk QR / code reveal) ────────────────── */
 .flip-card{perspective:1000px;}
 .flip-card-inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d;}
-.flip-card.flipped .flip-card-inner{transform:rotateY(180deg);}
-.flip-card-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:16px;}
-.flip-card-face-back{transform:rotateY(180deg);}
 
 /* ── Input ─────────────────────────────────────────── */
-.inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
+.inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:inherit;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
 .inp:focus{border-color:#0038b8;}
 .inp:focus-visible{box-shadow:0 0 0 3px rgba(0,56,184,.3);}
 select.inp{cursor:pointer;}
@@ -109,48 +79,6 @@ select.inp{cursor:pointer;}
 /* Dark-theme override for the business login/dashboard pages — layered on top of .inp */
 .inp-dark{background:#0f172a;border-color:#334155;color:#f1f5f9;}
 .inp-dark::placeholder{color:#64748b;}
-
-/* ── Hero video ────────────────────────────────────── */
-.hero-video-wrap{position:relative;min-height:100vh;min-height:100dvh;display:flex;align-items:center;overflow:hidden;padding-top:64px;}
-.hero-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;z-index:0;}
-.hero-vid-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(15,23,42,.72) 0%,rgba(0,38,140,.62) 100%);z-index:1;}
-.hero-vid-content{position:relative;z-index:2;width:100%;}
-
-/* ── CTA buttons ───────────────────────────────────── */
-.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#0038b8;color:#ffffff;font-weight:800;font-size:15px;padding:15px 30px;border-radius:100px;border:none;cursor:pointer;transition:background .2s,transform .18s,box-shadow .2s;box-shadow:0 8px 28px rgba(0,56,184,.4);text-decoration:none;min-height:50px;}
-.btn-primary:hover{background:#002a8a;transform:translateY(-2px);}
-.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.1);color:#ffffff;font-weight:800;font-size:15px;padding:14px 28px;border-radius:100px;border:2px solid rgba(255,255,255,.7);cursor:pointer;transition:background .2s,transform .18s;backdrop-filter:blur(4px);text-decoration:none;min-height:50px;}
-.btn-secondary:hover{background:rgba(255,255,255,.2);transform:translateY(-2px);}
-
-/* ── Hero subtitle glass card ──────────────────────── */
-/* Semi-transparent glassmorphism backdrop + text-shadow so the subtitle stays
-   legible over any part of the background video, bright or dark. */
-.hero-sub-glass{
-  display:inline-block;
-  background:rgba(15,23,42,.38);
-  border:1px solid rgba(255,255,255,.18);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border-radius:16px;
-  padding:14px 18px;
-  box-shadow:0 8px 32px rgba(0,0,0,.25);
-}
-.hero-sub-glass p{
-  text-shadow:0 1px 3px rgba(0,0,0,.55), 0 1px 12px rgba(0,0,0,.35);
-}
-
-/* ── Language dropdown lock (Business Owners page) ──── */
-
-/* ── "New" row indicator dot ─────────────────────────── */
-.new-badge-dot{
-  width:8px; height:8px; border-radius:50%; background:#f97316; flex-shrink:0;
-  box-shadow:0 0 0 rgba(249,115,22,.6); animation:newDotPulse 1.8s infinite;
-}
-@keyframes newDotPulse{
-  0%{ box-shadow:0 0 0 0 rgba(249,115,22,.55); }
-  70%{ box-shadow:0 0 0 7px rgba(249,115,22,0); }
-  100%{ box-shadow:0 0 0 0 rgba(249,115,22,0); }
-}
 
 /* ═══════════════════════════════════════════════════════
    RTL ENGINE — applied when document.documentElement.dir="rtl" (Hebrew)
@@ -167,37 +95,27 @@ html[dir="rtl"] .mobile-menu.open{ transform:translateX(0); }
 /* Language dropdown panel hugs the correct side of its trigger button */
 html[dir="rtl"] .lang-menu{ right:auto; left:0; }
 
-/* Modal close button (✕) sits at the visual top-left in RTL */
-html[dir="rtl"] .modal-close-btn{ right:auto; left:1.1rem; }
-
 /* Directional chevrons/arrows that carry semantic meaning (back / forward)
    are mirrored so they still point the correct visual direction */
 html[dir="rtl"] .fa-arrow-left{ transform:scaleX(-1); display:inline-block; }
 html[dir="rtl"] .fa-arrow-right{ transform:scaleX(-1); display:inline-block; }
 
-/* FAQ accordion chevron uses a symmetric gap now (see markup change) so no
-   RTL override is needed there; kept here for reference only. */
-
-/* Hero decorative gradient text stays visually consistent; no changes needed
-   since it has no directional offsets. */
-
 /* Category filter row and horizontal deal scrollers reorder natively via
    flex-direction under RTL; first card in DOM = visually first in reading
    order (right side), which is correct default RTL behavior. */
 
-/* Numeric price displays stay LTR even inside RTL text blocks, per standard
-   bidi convention, using unicode-bidi isolation. */
-html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; direction:ltr; display:inline-block; }
-
 /* ── Hamburger ─────────────────────────────────────── */
-.hamburger{width:26px;height:20px;position:relative;cursor:pointer;}
-.hamburger span{position:absolute;left:0;width:100%;height:2.5px;background:#0f172a;border-radius:3px;transition:all .3s;}
+/* Three identical 18×2px bars on whole pixels (0, 6, 12), so each one lands
+   on the pixel grid and renders the same weight at every screen density. */
+.hamburger{position:relative;display:block;width:18px;height:14px;}
+.hamburger span{position:absolute;inset-inline:0;height:2px;border-radius:2px;background:#0B1B3D;transition:top .3s cubic-bezier(.16,1,.3,1),transform .3s cubic-bezier(.16,1,.3,1),opacity .2s;}
 .hamburger span:nth-child(1){top:0;}
-.hamburger span:nth-child(2){top:8.5px;}
-.hamburger span:nth-child(3){top:17px;}
-.hamburger.open span:nth-child(1){transform:rotate(45deg);top:8.5px;}
+.hamburger span:nth-child(2){top:6px;}
+.hamburger span:nth-child(3){top:12px;}
+.hamburger.open span:nth-child(1){top:6px;transform:rotate(45deg);}
 .hamburger.open span:nth-child(2){opacity:0;}
-.hamburger.open span:nth-child(3){transform:rotate(-45deg);top:8.5px;}
+.hamburger.open span:nth-child(3){top:6px;transform:rotate(-45deg);}
+@media (prefers-reduced-motion: reduce){.hamburger span{transition:none;}}
 
 .mobile-menu{position:fixed;top:64px;left:0;right:0;height:calc(100vh - 64px);height:calc(100dvh - 64px);background:#fff;z-index:950;transform:translateX(100%);transition:transform .3s ease;overflow-y:auto;}
 .mobile-menu.open{transform:translateX(0);}
@@ -210,13 +128,6 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .lang-item:hover{background:#f1f5f9;}
 .lang-item.active-lang{background:#e0effe;color:#0038b8;}
 
-/* ── Mid-scroll compact "Join Now" CTA banner ─────────── */
-.join-cta-banner{
-  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-  background:linear-gradient(90deg,#eff6ff,#e0effe); border:1.5px solid #bfdbfe;
-  border-radius:18px; padding:18px 22px;
-}
-
 /* ═══════════════════════════════════════════════════════
    LOGIN MODAL & MEMBER DASHBOARD
 ═══════════════════════════════════════════════════════ */
@@ -225,8 +136,6 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 
 /* Dark-theme override for the business dashboard's stat cards */
 .dash-stat-card-dark{background:#0f172a;border-color:#1e293b;}
-.dash-plan-card{background:#fff;border:2px solid #e2e8f0;border-radius:18px;padding:20px;transition:border-color .2s;}
-.dash-plan-card.dash-plan-active{border-color:#0038b8;background:#eff6ff;}
 
 /* Member dashboard tab nav */
 .dash-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:#eef2f7;border-radius:100px;padding:5px;scrollbar-width:none;}
@@ -238,6 +147,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Empty state (e.g. Redeemed tab with no history yet) */
 .dash-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:56px 20px;color:#94a3b8;}
 .dash-empty-state i{font-size:34px;margin-bottom:14px;color:#cbd5e1;}
+.dash-empty-state > svg{width:34px;height:34px;margin-bottom:14px;color:#cbd5e1;}
 
 /* User segment tag/badge shown next to the member's name in the dashboard */
 .segment-badge{
@@ -250,79 +160,15 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 }
 .segment-badge > span{min-width:0; overflow:hidden; text-overflow:ellipsis;}
 
-/* Simple toast confirmation for simulated actions (plan change, etc.) */
-.toast-msg{
-  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
-  background:#0f172a; color:#fff; font-weight:700; font-size:13.5px;
-  padding:13px 24px; border-radius:100px; box-shadow:0 12px 32px rgba(0,0,0,.25);
-  z-index:1300; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
-  max-width:90vw; text-align:center;
-}
-.toast-msg.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-@media(max-width:639px){ .toast-msg{ bottom:92px; } } /* clears the sticky mobile CTA bar */
-
-/* ═══════════════════════════════════════════════════════
-   SCROLL HOOK — curiosity teaser between Hero and Deals
-═══════════════════════════════════════════════════════ */
-.scroll-hook{ position:relative; overflow:hidden; background:#fff; text-align:center; padding:44px 20px 40px; }
-.hook-eyebrow{
-  display:inline-flex; align-items:center; gap:6px;
-  font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
-  color:#f97316; margin-bottom:14px;
-}
-.hook-pills{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:640px; margin:0 auto 22px; }
-.hook-pill{
-  display:inline-flex; align-items:center; gap:8px;
-  background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:100px;
-  padding:10px 18px; font-size:13.5px; font-weight:700; color:#1e293b;
-  transition:transform .2s, border-color .2s, box-shadow .2s; cursor:default;
-}
-.hook-pill:hover{ transform:translateY(-2px); border-color:#93c5fd; box-shadow:0 8px 20px rgba(0,56,184,.12); }
-.hook-pill-icon{ font-size:16px; }
-.hook-tagline{ font-size:clamp(19px,4vw,27px); font-weight:900; color:#0038b8; letter-spacing:-.5px; margin-bottom:18px; }
-.hook-arrow{
-  width:34px; height:34px; border-radius:50%; margin:0 auto;
-  background:#eff6ff; border:1.5px solid #bfdbfe;
-  display:flex; align-items:center; justify-content:center; color:#0038b8; font-size:13px;
-  animation:hookBounce 1.8s ease-in-out infinite;
-}
-.hook-hint{ font-size:11.5px; color:#94a3b8; font-weight:600; margin-top:8px; }
-@keyframes hookBounce{
-  0%,100%{ transform:translateY(0); }
-  50%{ transform:translateY(6px); }
-}
-
-/* ═══════════════════════════════════════════════════════
-   STICKY MOBILE BOTTOM CTA BAR
-═══════════════════════════════════════════════════════ */
-.sticky-cta-bar{
-  position:fixed; left:0; right:0; bottom:0; z-index:800;
-  background:linear-gradient(90deg,#0038b8,#1d4ed8);
-  padding:11px 16px; padding-bottom:calc(11px + env(safe-area-inset-bottom));
-  box-shadow:0 -8px 28px rgba(0,0,0,.18);
-  transform:translateY(0); transition:transform .3s ease;
-}
-.sticky-cta-bar.hidden-bar{ transform:translateY(110%); }
-@media(min-width:640px){ .sticky-cta-bar{ display:none; } }
-@media(max-width:639px){ body{ padding-bottom:74px; } }
-.sticky-cta-close{
-  width:26px; height:26px; border-radius:50%; flex-shrink:0;
-  background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:12px; border:none; cursor:pointer;
-}
-
 /* ═══════════════════════════════════════════════════════
    AUTH PAGES — ported verbatim from the legacy login/signup/
    forgot-password/reset-password HTML files' own <style> blocks.
 ═══════════════════════════════════════════════════════ */
-.lang-toggle{font-size:13px;font-weight:700;color:#64748b;border:1.5px solid #e2e8f0;border-radius:100px;padding:7px 14px;cursor:pointer;background:#fff;transition:border-color .2s,color .2s;}
-.lang-toggle:hover{border-color:#0038b8;color:#0038b8;}
-
 /* Phone input (signup + profile) — matches the height/style of the other .inp fields.
    Flex layout auto-mirrors under dir="rtl" so no separate RTL rules are needed. */
 .PhoneInput{width:100%;display:flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:12px;padding:0 16px;min-height:48px;background:#fff;transition:border-color .2s;}
 .PhoneInput:focus-within{border-color:#0038b8;}
-.PhoneInputInput{flex:1;min-width:0;border:none;outline:none;background:transparent;padding:13px 0;font-size:16px;font-family:'Heebo',sans-serif;color:#0f172a;}
+.PhoneInputInput{flex:1;min-width:0;border:none;outline:none;background:transparent;padding:13px 0;font-size:16px;font-family:inherit;color:#0f172a;}
 .PhoneInputCountry{display:flex;align-items:center;}
 
 /* ═══════════════════════════════════════════════════════
@@ -340,6 +186,16 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 }
 @media (prefers-reduced-motion: reduce){
   .success-checkmark{ animation: greetFade 200ms ease-out both; }
+}
+
+/* A tick that draws itself, start to end, once its badge has landed (the
+   onboarding finish, components/auth/onboarding/CelebrationStep.tsx). The
+   path carries pathLength="1", so one dash covers any path. Reduced motion
+   shows it drawn. */
+.check-draw{ stroke-dasharray:1; stroke-dashoffset:1; animation: checkDraw 420ms var(--ease-out-expo) 320ms forwards; }
+@keyframes checkDraw{ to{ stroke-dashoffset:0; } }
+@media (prefers-reduced-motion: reduce){
+  .check-draw{ animation:none; stroke-dashoffset:0; }
 }
 
 /* Voucher reveal flip (components/member/VoucherReveal.tsx): a card turns
@@ -369,7 +225,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Home greeting: fades and rises in once the member's name is known, on the
    onboarding's silk curve (lib/brand/onboardingMotion.ts: greetingMs). */
 .greet-in{
-  animation: greetIn 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: greetIn 480ms var(--ease-out-expo) both;
 }
 @keyframes greetIn{
   from{ opacity:0; transform:translateY(8px); }
@@ -383,7 +239,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Opening a category "folder" (components/discover/OfferListView.tsx): the
    page slides in a few pixels from the reading direction's far side, like
    the native push. Reduced motion keeps the fade only. */
-.folder-in{ animation: folderIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.folder-in{ animation: folderIn 320ms var(--ease-out-expo) both; }
 [dir="rtl"] .folder-in{ --folder-from: -16px; }
 @keyframes folderIn{
   from{ opacity:0; transform:translateX(var(--folder-from, 16px)); }
@@ -397,11 +253,13 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
    Shared with landly-mobile/src/theme.ts: brand #0038B8, pressed #002A8A,
    tint #E0EFFE, heading #0B1B3D, body #475569, muted #94A3B8, border #E2E8F0,
    canvas #F8FAFC. Buttons: 52px (48px with .ds-btn-md, 44px with .ds-btn-sm),
-   12px radius, 16px semibold with slightly tight tracking. Every CTA uses it,
+   12px radius, 16px bold with slightly tight tracking (the app's Button.tsx
+   is bold too). The primary sits on a soft brand shadow that a press takes
+   away; the secondary on a faint one. Every CTA uses it,
    the guest hero's and the navbar's included. On a dark brand surface (the
    /olim closing card, the About call to action), .ds-btn-inverse
    is the white button and .ds-btn-outline-inverse the outlined one. */
-.ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 24px;border-radius:12px;border:1px solid transparent;font-size:16px;font-weight:600;letter-spacing:-0.01em;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,border-color .2s,color .2s,transform .16s cubic-bezier(.16,1,.3,1);}
+.ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 24px;border-radius:12px;border:1px solid transparent;font-size:16px;font-weight:700;letter-spacing:-0.01em;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .16s cubic-bezier(.16,1,.3,1);}
 .ds-btn-md{height:48px;padding:0 20px;}
 /* The navbar's compact actions: 44px, the minimum tap target. */
 .ds-btn-sm{height:44px;padding:0 16px;font-size:14px;font-weight:700;}
@@ -410,11 +268,11 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .ds-btn-wrap{height:auto;min-height:52px;padding-top:12px;padding-bottom:12px;white-space:normal;line-height:1.25;text-align:center;}
 .ds-btn-md.ds-btn-wrap{min-height:48px;padding-top:10px;padding-bottom:10px;}
 .ds-btn:active{transform:scale(.98);}
-.ds-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;}
+.ds-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;box-shadow:none;}
 .ds-btn:focus-visible{outline:2px solid #0038B8;outline-offset:2px;}
-.ds-btn-primary{background:#0038B8;color:#FFFFFF;}
-.ds-btn-primary:active{background:#002A8A;}
-.ds-btn-secondary{background:#FFFFFF;color:#0B1B3D;border-color:#E2E8F0;}
+.ds-btn-primary{background:#0038B8;color:#FFFFFF;box-shadow:0 2px 8px rgba(0,56,184,.18);}
+.ds-btn-primary:active{background:#002A8A;box-shadow:none;}
+.ds-btn-secondary{background:#FFFFFF;color:#0B1B3D;border-color:#E2E8F0;box-shadow:0 1px 3px rgba(0,0,0,.04);}
 .ds-btn-secondary:active{background:#E0EFFE;}
 .ds-btn-inverse{background:#FFFFFF;color:#0038B8;}
 .ds-btn-inverse:active{background:#E0EFFE;}
@@ -423,7 +281,7 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 .ds-btn-inverse:focus-visible,.ds-btn-outline-inverse:focus-visible{outline-color:#FFFFFF;}
 @media (hover:hover){
   .ds-btn-primary:hover{background:#002A8A;}
-  .ds-btn-secondary:hover{border-color:#CBD5E1;color:#0038B8;}
+  .ds-btn-secondary:hover{background:#F8FAFC;border-color:#CBD5E1;color:#0038B8;}
   .ds-btn-inverse:hover{background:#F0F7FF;}
   .ds-btn-outline-inverse:hover{background:rgba(255,255,255,.1);}
 }
@@ -440,12 +298,13 @@ html[dir="rtl"] .price-ltr, html[dir="rtl"] .rtl-isolate{ unicode-bidi:isolate; 
 /* Home category rail: a 56px round icon over a two-line label, 76px wide so
    four tiles fit a 393px phone with the fifth peeking. Press shrinks the icon. */
 .rail-tile{display:flex;width:76px;flex-direction:column;align-items:center;gap:8px;text-align:center;-webkit-tap-highlight-color:transparent;}
-.rail-tile-icon{display:flex;width:56px;height:56px;align-items:center;justify-content:center;border-radius:9999px;background:#E0EFFE;color:#0038B8;font-size:20px;line-height:1;transition:transform .15s ease-out,background-color .2s;}
+/* The glyph's box: a 16px-radius square in the pale brand tint with a hairline, like the category grid's. */
+.rail-tile-icon{display:flex;width:56px;height:56px;align-items:center;justify-content:center;border-radius:16px;border:1px solid rgba(0,56,184,.1);background:#F0F7FF;color:#0038B8;line-height:1;transition:transform .15s ease-out,background-color .2s;}
 .rail-tile:active .rail-tile-icon{transform:scale(.92);}
 .rail-tile:focus-visible{outline:none;}
 .rail-tile:focus-visible .rail-tile-icon{outline:2px solid #0038B8;outline-offset:2px;}
 .rail-tile-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.3;font-weight:600;color:#0B1B3D;overflow-wrap:anywhere;}
-@media (hover:hover){.rail-tile:hover .rail-tile-icon{background:#F0F7FF;}}
+@media (hover:hover){.rail-tile:hover .rail-tile-icon{background:#E0EFFE;}}
 /* Monogram fallback avatar: brand-blue gradient behind white initials. */
 .ds-avatar-fallback{background:linear-gradient(135deg,#3B6FE0 0%,#0038B8 55%,#002A8A 100%);}
 /* Member pages fill the visible viewport on mobile browsers (toolbar-aware). */
@@ -485,6 +344,8 @@ html.wa-hidden .wa-widget{display:none;}
 @keyframes wa-breathe{0%,100%{transform:scale(1);opacity:.35;}50%{transform:scale(1.32);opacity:0;}}
 .wa-bubble{animation:wa-bubble-in .32s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom right;}
 @keyframes wa-bubble-in{from{opacity:0;transform:translateY(6px) scale(.96);}}
+/* Leaving (its Tailwind exit transition): the entry animation lets go of transform and opacity. */
+.wa-bubble.wa-bubble-leaving{animation:none;}
 @media (prefers-reduced-motion: reduce){
   .wa-widget{transition:none;}
   .wa-glow{animation:none;opacity:0;}
@@ -592,7 +453,6 @@ html.wa-hidden .wa-widget{display:none;}
 /* viewport-fit=cover is site-wide (app/layout.tsx): a landscape phone's notch and a foldable's side cutouts sit in the left/right insets (0 in portrait), so the header and every page below it step clear of them. */
 .below-header,.navbar-safe-top{padding-left:env(safe-area-inset-left, 0px);padding-right:env(safe-area-inset-right, 0px);}
 .mobile-menu{top:var(--header-offset);height:calc(100vh - var(--header-offset));height:calc(100dvh - var(--header-offset));}
-.hero-video-wrap{padding-top:var(--header-offset);}
 #deals, #how, #pricing, #faq, #waitlist{scroll-margin-top:calc(var(--header-offset) + 15px);}
 
 /* ── Avatar preview (components/ui/AvatarLightbox.tsx) ── */
@@ -747,13 +607,6 @@ html.wa-hidden .wa-widget{display:none;}
 .pane-split{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--pane-gap);}
 @media (min-width:600px){
   .pane-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:max(var(--pane-gap),var(--hinge-gap));align-items:start;}
-}
-/* Folded cover screen: narrower deal cards so two still fit with the gutter, and the toast keeps a margin on both sides. */
-@media (max-width:379px){
-  .deal-card{width:152px;}
-  .deal-card img{height:96px;}
-  .toast-msg{max-width:calc(100vw - 24px);padding:12px 18px;}
-  .sticky-cta-bar{padding-left:12px;padding-right:12px;}
 }
 /* The navbar drawer (components/layout/MobileMenu.tsx) on an unfolded screen: a 400px side panel from the end edge over a scrim that closes it, not a stretched full-screen sheet. Below 600px the drawer covers the screen and the scrim stays hidden; from 1024px the navbar has no drawer. */
 .mobile-menu-scrim{display:none;}

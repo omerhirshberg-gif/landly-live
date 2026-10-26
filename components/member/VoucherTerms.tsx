@@ -1,5 +1,6 @@
 'use client'
 
+import { CalendarCheck, CalendarX } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
@@ -25,7 +26,7 @@ export default function VoucherTerms({
     <>
       {voucher.expiresAt && (
         <p className={`flex items-center gap-2 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-600'}`}>
-          <i className={`fa-regular ${expired ? 'fa-calendar-xmark' : 'fa-calendar-check'}`} aria-hidden="true"></i>
+          {expired ? <CalendarX aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.75} /> : <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.75} />}
           <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
         </p>
       )}

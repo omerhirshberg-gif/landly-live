@@ -105,7 +105,7 @@ export default function RedemptionTrendChart({
             ))}
           </div>
 
-          <div className="border-t border-white/10 mt-1 pt-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-600">
+          <div className="border-t border-white/10 mt-1 pt-1.5 flex items-center justify-between text-nano font-semibold text-slate-600">
             <span>{buckets[0]?.label}</span>
             <span>{buckets[midIndex]?.label}</span>
             <span>{buckets[buckets.length - 1]?.label}</span>

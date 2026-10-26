@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { CalendarCheck, CalendarX, ChevronRight, Gift } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
+import { VoucherListSkeleton } from '@/components/ui/Skeleton'
 import VoucherThumb from './VoucherThumb'
 
 type ActiveVoucher = VoucherDocument & { id: string }
@@ -20,18 +22,14 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   const { t } = useLang()
 
   if (vouchers === null) {
-    return (
-      <div role="status" className="dash-empty-state">
-        <span className="sr-only">{t('bizdash_loading')}</span>
-      </div>
-    )
+    return <VoucherListSkeleton />
   }
 
   if (vouchers.length === 0) {
     return (
       <div>
         <div className="dash-empty-state">
-          <i className="fa-solid fa-gift" aria-hidden="true"></i>
+          <Gift aria-hidden="true" strokeWidth={1.75} />
           <div className="font-bold text-ink text-base mb-1">{t('dash_perks_empty_title')}</div>
           <p className="text-sm text-body max-w-xs mb-5">{t('dash_perks_empty_sub')}</p>
           <Link href="/categories" className="ds-btn ds-btn-primary">
@@ -42,11 +40,11 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
     )
   }
 
-  // One centred column on phones and desktop; two on an unfolded foldable
-  // (600-1023px; lib/layout/foldable.ts), so the inner screen isn't a strip
-  // of stretched rows.
+  // One column on phones; two from an unfolded foldable (600px;
+  // lib/layout/foldable.ts) up, so neither the inner screen nor the desktop
+  // page's main column is a strip of stretched rows beside empty space.
   return (
-    <ul className="mx-auto grid max-w-xl gap-3 fold:max-lg:max-w-none fold:max-lg:grid-cols-2">
+    <ul className="grid gap-3 fold:grid-cols-2">
       {vouchers.map((voucher) => (
         <li key={voucher.id}>
           <VoucherCard voucher={voucher} />
@@ -68,7 +66,7 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
   return (
     <Link
       href={`/member/vouchers/${encodeURIComponent(voucher.id)}`}
-      className="group flex min-h-12 items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm transition-all duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] motion-reduce:transition-none motion-reduce:active:scale-100 sm:gap-4 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-md motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+      className="group flex min-h-12 items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-card transition-all duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:gap-4 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
     >
       <VoucherThumb voucher={voucher} />
       <div className="min-w-0 flex-1">
@@ -78,7 +76,7 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
           <RedemptionBadge method={voucher.redemptionMethod} />
           {voucher.expiresAt && (
             <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
-              <i className={`fa-regular ${expired ? 'fa-calendar-xmark' : 'fa-calendar-check'}`} aria-hidden="true"></i>
+              {expired ? <CalendarX aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} /> : <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />}
               <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
             </span>
           )}
@@ -86,10 +84,11 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
       </div>
       {/* Screen readers hear what the card does; sighted members see the chevron. */}
       <span className="sr-only">{t('voucher_show_button')}</span>
-      <i
-        className="fa-solid fa-chevron-right flex-shrink-0 text-sm text-muted transition-[color,transform] duration-200 rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 [@media(hover:hover)]:group-hover:text-brand rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+      <ChevronRight
         aria-hidden="true"
-      ></i>
+        className="h-4 w-4 flex-shrink-0 text-muted transition-[color,transform] duration-200 rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 [@media(hover:hover)]:group-hover:text-brand rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+        strokeWidth={2}
+      />
     </Link>
   )
 }

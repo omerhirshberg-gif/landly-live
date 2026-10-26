@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useSettingsBack } from './useSettingsBack'
 
@@ -34,7 +35,7 @@ export default function BackToSettings({ className = '' }: { className?: string 
       onClick={goBack}
       className={`tap-target inline-flex items-center gap-2 min-h-[44px] -ms-2 px-2 rounded-lg text-sm font-medium text-slate-500 transition-colors [@media(hover:hover)]:hover:text-brand active:bg-slate-100 cursor-pointer ${className}`}
     >
-      <i className="fa-solid fa-chevron-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+      <ChevronLeft aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.75} />
       <span>{t('settings_back_to_settings')}</span>
     </button>
   )

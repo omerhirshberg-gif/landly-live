@@ -47,6 +47,8 @@ export const colors = {
   discount: '#047857',
   // A saved (wishlisted) heart (web: bg-red-500).
   heart: '#ef4444',
+  // An inactive pagination dot (web: components/ui/SnapDots.tsx, bg-slate-300).
+  dotInactive: '#cbd5e1', // slate-300
 }
 
 // The brand-tinted 44pt icon squares at the end of the Perks search row (Near

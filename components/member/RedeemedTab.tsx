@@ -1,11 +1,13 @@
 'use client'
 
+import { Check, Receipt } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { formatRedeemedDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
+import { VoucherListSkeleton } from '@/components/ui/Skeleton'
 import VoucherThumb from './VoucherThumb'
 
 type RedeemedVoucher = VoucherDocument & { id: string }
@@ -17,31 +19,31 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
   const { t, lang } = useLang()
 
   if (vouchers === null) {
-    return <div className="dash-empty-state" />
+    return <VoucherListSkeleton />
   }
 
   if (vouchers.length === 0) {
     return (
       <div className="dash-empty-state">
-        <i className="fa-solid fa-receipt" aria-hidden="true"></i>
+        <Receipt aria-hidden="true" strokeWidth={1.75} />
         <div className="font-bold text-slate-700 text-base mb-1">{t('dash_redeemed_empty_title')}</div>
         <p className="text-sm text-slate-500 max-w-xs">{t('dash_redeemed_empty_sub')}</p>
       </div>
     )
   }
 
-  // One centred column on phones and desktop; two on an unfolded foldable
-  // (600-1023px; lib/layout/foldable.ts), so the inner screen isn't a strip
-  // of stretched rows.
+  // One column on phones; two from an unfolded foldable (600px;
+  // lib/layout/foldable.ts) up, so neither the inner screen nor the desktop
+  // page's main column is a strip of stretched rows beside empty space.
   return (
-    <ul className="mx-auto grid max-w-xl gap-3 fold:max-lg:max-w-none fold:max-lg:grid-cols-2">
+    <ul className="grid gap-3 fold:grid-cols-2">
       {vouchers.map((voucher) => (
         <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:gap-4">
           {/* Muted, with a check on its corner: this one's been used. */}
           <div className="relative flex-shrink-0">
             <VoucherThumb voucher={voucher} muted />
             <span aria-hidden="true" className="absolute -bottom-1.5 -end-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-50 text-green-700 ring-2 ring-white">
-              <i className="fa-solid fa-check text-[11px]" aria-hidden="true"></i>
+              <Check aria-hidden="true" className="h-3 w-3" strokeWidth={2.5} />
             </span>
           </div>
           <div className="min-w-0 flex-1">
@@ -50,7 +52,7 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <RedemptionBadge method={voucher.redemptionMethod} />
               {voucher.redeemedAt && (
-                <span className="text-[13px] text-slate-500">
+                <span className="text-meta text-slate-500">
                   {t('mobile_redeemed_on').replace('{date}', formatRedeemedDate(voucher.redeemedAt, lang))}
                 </span>
               )}

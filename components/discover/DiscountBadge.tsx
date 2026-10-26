@@ -12,8 +12,8 @@ export default function DiscountBadge({ percent, size = 'md', className = '' }: 
   if (percent <= 0) return null
   return (
     <span
-      className={`inline-flex items-center rounded-full bg-[#047857] font-extrabold uppercase leading-none tracking-wide text-white shadow-sm ${
-        size === 'lg' ? 'px-3 py-1.5 text-sm' : size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs sm:text-sm'
+      className={`inline-flex items-center rounded-full bg-success font-extrabold uppercase leading-none tracking-wide text-white shadow-sm ${
+        size === 'lg' ? 'px-3 py-1.5 text-sm' : size === 'sm' ? 'px-2 py-1 text-micro' : 'px-2.5 py-1 text-xs sm:text-sm'
       } ${className}`}
     >
       {t('offer_percent_off').replace('{n}', String(percent))}

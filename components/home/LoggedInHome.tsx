@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { ArrowRight, Ticket } from 'lucide-react'
 import type { User } from 'firebase/auth'
 import Avatar from '@/components/ui/Avatar'
 import AvatarLightbox from '@/components/ui/AvatarLightbox'
@@ -83,37 +84,43 @@ export default function LoggedInHome({ user }: { user: User }) {
             My Pass. The whole card is one link. Hebrew mirrors it through the
             page's dir: `end` puts both layers on the left. Full width on
             phones; from md it keeps a card's proportions (576px, at least
-            200px tall) at the column's start edge, the button at its foot. */}
-        <Link
-          href="/member"
-          aria-labelledby="home-pass-count home-pass-cta"
-          className="group relative isolate mt-5 sm:mt-6 flex w-full flex-col fold:max-w-xl md:min-h-[200px] overflow-hidden rounded-2xl bg-[#0038B8] p-5 sm:p-6 md:px-8 md:py-7 text-white shadow-[0_12px_32px_-12px_rgba(0,42,138,0.55)] [-webkit-tap-highlight-color:transparent] transition-transform duration-150 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        >
-          {/* passGlow: a 200px disc of 8% white, bleeding off the top end corner
-              (top -70, end -50) and clipped by the card's overflow-hidden. */}
-          <span aria-hidden="true" className="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]" />
-          {/* passMark: the emblem, 88x86 at top 12, end 14, every path white at 15%. */}
-          <LandlyMark className="pointer-events-none absolute top-3 end-3.5 z-0 h-[86px] w-[88px] text-white/15" />
-          <span className="relative z-10 flex items-center gap-2.5">
-            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">
-              <i className="fa-solid fa-ticket text-base"></i>
+            200px tall) at the column's start edge, the button at its foot.
+            From 1024px Curated for you sits beside it (the next thing in
+            the page's order, so reading and tab order still agree) and the
+            card stretches to the rail's height, so the first screen is
+            full instead of a lone card beside empty space. */}
+        <div className="mt-5 sm:mt-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-x-8 lg:items-stretch">
+          <Link
+            href="/member"
+            aria-labelledby="home-pass-count home-pass-cta"
+            className="group relative isolate flex w-full flex-col fold:max-w-xl lg:max-w-none md:min-h-[200px] overflow-hidden rounded-2xl bg-brand p-5 sm:p-6 md:px-8 md:py-7 text-white shadow-[0_12px_32px_-12px_rgba(0,42,138,0.55)] [-webkit-tap-highlight-color:transparent] transition-transform duration-150 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            {/* passGlow: a 200px disc of 8% white, bleeding off the top end corner
+                (top -70, end -50) and clipped by the card's overflow-hidden. */}
+            <span aria-hidden="true" className="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]" />
+            {/* passMark: the emblem, 88x86 at top 12, end 14, every path white at 15%. */}
+            <LandlyMark className="pointer-events-none absolute top-3 end-3.5 z-0 h-[86px] w-[88px] text-white/15" />
+            <span className="relative z-10 flex items-center gap-2.5">
+              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">
+                <Ticket aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
+              </span>
+              <span className="text-meta font-bold uppercase tracking-wide text-white/85">{t('home_pass_label')}</span>
             </span>
-            <span className="text-[13px] font-bold uppercase tracking-wide text-white/85">{t('home_pass_label')}</span>
-          </span>
-          <span id="home-pass-count" className="relative z-10 mt-4 md:mb-5 flex items-center gap-3 sm:gap-4 pe-[72px]">
-            <span className="text-[44px] sm:text-5xl leading-none font-extrabold tabular-nums" dir="ltr" aria-live="polite">{activeCount ?? '–'}</span>
-            <span className="min-w-0 text-[15px] sm:text-base font-semibold leading-snug">
-              {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
+            <span id="home-pass-count" className="relative z-10 mt-4 md:mb-5 flex items-center gap-3 sm:gap-4 pe-[72px]">
+              <span className="text-stat sm:text-5xl leading-none font-extrabold tabular-nums" dir="ltr" aria-live="polite">{activeCount ?? '–'}</span>
+              <span className="min-w-0 text-copy sm:text-base font-semibold leading-snug">
+                {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
+              </span>
             </span>
-          </span>
-          <span id="home-pass-cta" className="relative z-10 mt-5 md:mt-auto flex h-12 w-full sm:w-auto sm:self-start sm:inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 text-[15px] font-bold text-brand transition-colors [@media(hover:hover)]:group-hover:bg-brandLight">
-            <span>{t('home_pass_cta')}</span>
-            <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
-          </span>
-        </Link>
+            <span id="home-pass-cta" className="relative z-10 mt-5 md:mt-auto flex h-12 w-full sm:w-auto sm:self-start sm:inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 text-copy font-bold text-brand transition-colors [@media(hover:hover)]:group-hover:bg-brandLight">
+              <span>{t('home_pass_cta')}</span>
+              <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
+            </span>
+          </Link>
 
-        <div className="mt-8 lg:mt-10">
-          <CuratedOffers showWishlistButton />
+          <div className="mt-8 lg:mt-0 min-w-0">
+            <CuratedOffers showWishlistButton />
+          </div>
         </div>
 
         <section className="mt-8 lg:mt-10" aria-labelledby="home-deals-title">

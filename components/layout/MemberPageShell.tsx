@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 /** Every signed-in page's title type: the same size and weight on Home, Explore Perks, Wishlist, My Pass and Support; a step smaller on a folded cover screen (under 380px). */
-export const PAGE_TITLE = 'text-[26px] max-[379px]:text-2xl sm:text-[28px] lg:text-3xl leading-tight font-bold text-ink text-start break-words'
+export const PAGE_TITLE = 'text-page max-[379px]:text-2xl sm:text-page-lg lg:text-3xl leading-tight font-bold text-ink text-start break-words'
 
 /** The space under a page's title block, before its content. */
 export const PAGE_TITLE_GAP = 'mb-6'

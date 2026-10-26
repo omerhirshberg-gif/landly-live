@@ -72,7 +72,7 @@ export default function VerifyEmailNotice({
 
   return (
     <div>
-      <h1 className="mb-1.5 text-center text-[22px] font-extrabold tracking-[-0.5px] text-slate-900">
+      <h1 className="mb-1.5 text-center text-heading-sm font-extrabold tracking-[-0.5px] text-slate-900">
         {t(variant === 'signup' ? 'verifyNotice_signupTitle' : 'verifyNotice_loginTitle')}
       </h1>
       <p className="mb-6 text-center text-sm leading-5 text-slate-500">

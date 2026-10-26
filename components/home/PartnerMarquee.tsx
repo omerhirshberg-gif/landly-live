@@ -30,7 +30,7 @@ export default function PartnerMarquee({ offers }: { offers: readonly ShowcaseOf
   return (
     <section aria-label={label} className="pb-10 sm:pb-12">
       <p className="mb-3 px-5 text-center text-xs font-bold uppercase tracking-widest text-body rtl:tracking-normal" aria-hidden="true">{label}</p>
-      <div className="border-y border-sky-200/70 bg-[#E0F2FE]">
+      <div className="border-y border-sky-200/70 bg-sky-100">
         <div ref={ref} className="marquee mx-auto max-w-screen-2xl" data-paused={!inView || undefined}>
           {items.length > 0 && <MarqueeRow row={items} />}
         </div>
@@ -94,7 +94,7 @@ function TickerItem({ item }: { item: MarqueeItem }) {
       {item.kind === 'offer' ? (
         <>
           <bdi>{localizedBusinessName({ businessName: item.label, businessTranslations: item.businessTranslations }, lang).text}</bdi>
-          {item.percent > 0 && <span className="text-[#047857]">{t('offer_percent_off').replace('{n}', String(item.percent))}</span>}
+          {item.percent > 0 && <span className="text-success">{t('offer_percent_off').replace('{n}', String(item.percent))}</span>}
         </>
       ) : (
         <span>{t(item.labelKey)}</span>

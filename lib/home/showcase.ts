@@ -70,8 +70,8 @@ export function pickTopSavings(offers: readonly ShowcaseOffer[], max = SAVINGS_M
 }
 
 export type MarqueeItem =
-  | { kind: 'offer'; key: string; label: string; businessTranslations?: BusinessTranslations | null; icon: string; percent: number; href: string }
-  | { kind: 'category'; key: string; labelKey: TranslationKey; icon: string; href: string }
+  | { kind: 'offer'; key: string; label: string; businessTranslations?: BusinessTranslations | null; percent: number; href: string }
+  | { kind: 'category'; key: string; labelKey: TranslationKey; href: string }
 
 // Below this many distinct businesses the ticker would repeat one name every
 // few items, so it shows the real categories instead.
@@ -89,15 +89,87 @@ export function pickMarqueeItems(offers: readonly ShowcaseOffer[]): MarqueeItem[
     const percent = Math.max(0, discountPercent(offer.originalPrice, offer.offerPrice))
     const current = byBusiness.get(key)
     if (current && current.percent >= percent) continue
-    byBusiness.set(key, { kind: 'offer', key: `o-${offer.id}`, label, businessTranslations: offer.businessTranslations ?? null, icon: tile.icon, percent, href: `/offers/${encodeURIComponent(offer.id)}` })
+    byBusiness.set(key, { kind: 'offer', key: `o-${offer.id}`, label, businessTranslations: offer.businessTranslations ?? null, percent, href: `/offers/${encodeURIComponent(offer.id)}` })
   }
 
   return byBusiness.size >= MARQUEE_MIN_BUSINESSES
       ? [...byBusiness.values()].slice(0, MARQUEE_MAX_BUSINESSES)
-    : CATEGORY_TILES.map((tile) => ({ kind: 'category', key: `c-${tile.category}`, labelKey: tile.labelKey, icon: tile.icon, href: categoryHref(tile.category) }))
+    : CATEGORY_TILES.map((tile) => ({ kind: 'category', key: `c-${tile.category}`, labelKey: tile.labelKey, href: categoryHref(tile.category) }))
 }
 
 /** How many times a row's items are laid down per half of the loop, so one half is always wider than the screen. */
 export function marqueeRepeats(rowLength: number, minPerHalf = 16): number {
   return rowLength > 0 ? Math.ceil(minPerHalf / rowLength) : 0
+}
+
+export type HeroFeature =
+  | { kind: 'offer'; key: string; offer: ShowcaseOffer; savings: number; percent: number; href: string }
+  | { kind: 'category'; key: string; category: CategoryTile['category']; labelKey: TranslationKey; href: string }
+
+export const HERO_FEATURE_COUNT = 3
+
+// Three everyday categories for the hero when there aren't three real savings
+// to show: links into the catalogue, with no figures of their own.
+const HERO_FALLBACK_CATEGORIES = ['Sport and Fitness', 'Restaurants and Cafes', 'Cars and Transport'] as const
+
+/**
+ * The hero's three feature cards: the biggest real savings, one per business
+ * and a different category each where the catalogue allows, with the deepest
+ * discount among them moved to the third card (the one with the sticker).
+ * Fewer than three savings and all three cards are categories instead, so the
+ * grid never mixes a figure with a blank.
+ */
+export function pickHeroFeatures(offers: readonly ShowcaseOffer[]): HeroFeature[] {
+  const ranked = pickTopSavings(offers, offers.length)
+  const picks: ShowcaseOffer[] = []
+  const categories = new Set<string>()
+  for (const offer of ranked) {
+    if (picks.length === HERO_FEATURE_COUNT) break
+    if (categories.has(offer.category)) continue
+    categories.add(offer.category)
+    picks.push(offer)
+  }
+  for (const offer of ranked) {
+    if (picks.length === HERO_FEATURE_COUNT) break
+    if (!picks.includes(offer)) picks.push(offer)
+  }
+
+  if (picks.length < HERO_FEATURE_COUNT) {
+    return HERO_FALLBACK_CATEGORIES.map((category) => ({
+      kind: 'category', key: `c-${category}`, category, labelKey: tileFor(category)!.labelKey, href: categoryHref(category),
+    }))
+  }
+
+  const features = picks.map((offer): HeroFeature & { kind: 'offer' } => ({
+    kind: 'offer',
+    key: `o-${offer.id}`,
+    offer,
+    savings: offerSavings(offer),
+    percent: Math.max(0, discountPercent(offer.originalPrice, offer.offerPrice)),
+    href: `/offers/${encodeURIComponent(offer.id)}`,
+  }))
+  // The strongest percentage takes the sticker card; the first such pick on a tie.
+  const strongest = features.reduce((best, f, i) => (f.percent > features[best].percent ? i : best), 0)
+  const [sticker] = features.splice(strongest, 1)
+  features.splice(2, 0, sticker)
+  return features
+}
+
+/** What's inside on the guest home: a pillar groups real business categories, or none (Community: mentoring, not a catalogue). */
+export interface ValuePillar {
+  key: 'dining' | 'lifestyle' | 'experiences' | 'community'
+  categories: readonly CategoryTile['category'][]
+}
+
+export const VALUE_PILLARS: readonly ValuePillar[] = [
+  { key: 'dining', categories: ['Restaurants and Cafes'] },
+  { key: 'lifestyle', categories: ['Fashion and Shopping', 'Beauty and Skincare', 'Home and Furnishing', 'Kids and Baby', 'Pampering Bundles', 'Sport and Fitness'] },
+  { key: 'experiences', categories: ['Attractions and Tours', 'Beach and Sea', 'Israel and Global Tourism'] },
+  { key: 'community', categories: [] },
+]
+
+/** Where a pillar's card leads: its one category, the catalogue, or /olim for Community. */
+export function pillarHref(pillar: ValuePillar): string {
+  if (pillar.categories.length === 0) return '/olim'
+  return pillar.categories.length === 1 ? categoryHref(pillar.categories[0]) : '/categories'
 }

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { FlatList, StyleSheet, View } from 'react-native'
 import type { OfferDocument } from '@shared/firebase/offers'
 import AppText from './AppText'
+import LineIcon, { type LineIconName } from './LineIcon'
 import OfferTile from './OfferTile'
 import { useLang } from '../i18n/LangProvider'
 import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, TILE_RAIL_WIDTH, carouselSnapOffsets } from '../lib/carousel'
@@ -11,19 +12,20 @@ import { colors } from '../theme'
 
 // One of the Perks tab's highlight rails (New on Landly, Best Sellers,
 // stacked above the category grid; web: components/discover/OfferTileRail.tsx):
-// a heading, then the perks as compact OfferTiles in one row that scrolls
+// a heading led by its glyph in a 40pt hairline frame (the web's IconFrame,
+// sparkles for New, award for Best Sellers; neither mirrors in Hebrew), then the perks as compact OfferTiles in one row that scrolls
 // sideways. A swipe settles on a card's edge with fast deceleration, as
 // Home's carousel does. It bleeds through the screen's side padding (16pt on
 // a phone, src/lib/layout.ts). Native snapping
 // takes explicit offsets (flipped for Hebrew, where the first column sits at
 // the far right); the web build snaps with CSS scroll-snap.
 export default function OfferTileRail({
-  emoji,
+  icon,
   title,
   offers,
   onOpen,
 }: {
-  emoji: string
+  icon: LineIconName
   title: string
   offers: OfferDocument[]
   onOpen: (offer: OfferDocument) => void
@@ -44,9 +46,9 @@ export default function OfferTileRail({
   return (
     <View>
       <View style={styles.heading}>
-        <AppText style={styles.emoji} accessibilityElementsHidden importantForAccessibility="no">
-          {emoji}
-        </AppText>
+        <View style={styles.iconFrame} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <LineIcon name={icon} size={20} color={colors.brand} strokeWidth={1.75} />
+        </View>
         <AppText accessibilityRole="header" style={styles.title} numberOfLines={1}>
           {title}
         </AppText>
@@ -87,8 +89,18 @@ function Separator() {
 }
 
 const styles = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  emoji: { fontSize: 18 },
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  // The web IconFrame's brand tone: sky-200/60 hairline on the brand tint, 12pt corners.
+  iconFrame: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(186, 230, 253, 0.6)',
+    backgroundColor: colors.brandTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: { flexShrink: 1, fontSize: 17, fontWeight: '700', color: colors.heading },
   frame: { marginHorizontal: -EDGE },
   // CSS-only keys react-native-web passes through; RN's style types don't know them.

@@ -123,8 +123,8 @@ export default function PasskeysCard({ user }: { user: User }) {
 
   return (
     <section aria-labelledby={headingId} className="mb-6">
-      <h2 id={headingId} className="px-1 pb-2 text-[13px] font-semibold text-slate-500">{t('passkeys_title')}</h2>
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm divide-y divide-slate-100">
+      <h2 id={headingId} className="px-1 pb-2 text-meta font-semibold text-slate-500">{t('passkeys_title')}</h2>
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card divide-y divide-slate-100">
         <div className="flex items-start gap-3 px-4 py-4">
           <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-brandTint text-brand" aria-hidden="true">
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -148,12 +148,12 @@ export default function PasskeysCard({ user }: { user: User }) {
                 <div className="flex items-center gap-3 min-h-[44px]">
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="truncate text-[15px] font-semibold text-ink"><bdi>{p.name}</bdi></span>
+                      <span className="truncate text-copy font-semibold text-ink"><bdi>{p.name}</bdi></span>
                       {p.synced && (
-                        <span className="flex-shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">{t('passkeys_synced')}</span>
+                        <span className="flex-shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-micro font-bold text-emerald-700">{t('passkeys_synced')}</span>
                       )}
                     </span>
-                    <span className="block truncate text-[13px] text-slate-500">
+                    <span className="block truncate text-meta text-slate-500">
                       {t('passkeys_created').replace('{date}', formatDate(p.createdAt))}
                       {p.lastUsedAt && <> · {t('passkeys_lastUsed').replace('{date}', formatDate(p.lastUsedAt))}</>}
                     </span>
@@ -184,7 +184,7 @@ export default function PasskeysCard({ user }: { user: User }) {
                         onClick={() => remove(p.id)}
                         disabled={removingId === p.id}
                         aria-busy={removingId === p.id || undefined}
-                        className="tap-target inline-flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-4 text-[15px] font-semibold text-white transition-colors [@media(hover:hover)]:hover:enabled:bg-red-700 active:enabled:bg-red-800 disabled:opacity-60 sm:flex-1"
+                        className="tap-target inline-flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-4 text-copy font-semibold text-white transition-colors [@media(hover:hover)]:hover:enabled:bg-red-700 active:enabled:bg-red-800 disabled:opacity-60 sm:flex-1"
                       >
                         {removingId === p.id && <span aria-hidden="true" className="h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin" />}
                         {t('passkeys_removeYes')}
@@ -209,7 +209,7 @@ export default function PasskeysCard({ user }: { user: User }) {
 
           {reauth ? (
             <form onSubmit={confirmAndAdd} aria-labelledby={`${headingId}-reauth`}>
-              <p id={`${headingId}-reauth`} className="text-[15px] font-semibold text-ink">{t('passkeys_reauth_title')}</p>
+              <p id={`${headingId}-reauth`} className="text-copy font-semibold text-ink">{t('passkeys_reauth_title')}</p>
               <p className="mt-1 text-sm text-body">{t(hasPassword ? 'passkeys_reauth_password' : 'passkeys_reauth_google')}</p>
               {hasPassword && (
                 <input

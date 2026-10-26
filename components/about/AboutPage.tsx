@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Quote } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import SectionDivider from '@/components/ui/SectionDivider'
@@ -23,16 +24,16 @@ export default function AboutPage() {
       <Navbar />
       <main className="home-ambient below-header">
         <section aria-labelledby="about-title" className="max-w-3xl mx-auto px-5 sm:px-6 pt-10 pb-12 sm:pt-14 sm:pb-14 text-center">
-          <h1 id="about-title" className="text-4xl sm:text-5xl font-black text-ink mb-4" style={{ letterSpacing: '-0.03em' }}>
+          <h1 id="about-title" className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-ink mb-4">
             {t('about_title')}
           </h1>
-          <p className="text-[#475569] text-base sm:text-lg leading-relaxed">{t('about_sub')}</p>
+          <p className="text-body text-base sm:text-lg leading-relaxed">{t('about_sub')}</p>
         </section>
 
         <SectionDivider />
 
         <section aria-labelledby="about-founders-title" className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
-          <h2 id="about-founders-title" className="text-2xl sm:text-3xl font-black text-[#0B1B3D] text-center mb-6 sm:mb-8" style={{ letterSpacing: '-0.02em' }}>
+          <h2 id="about-founders-title" className="text-xl sm:text-2xl font-bold tracking-tight text-ink text-center mb-6 sm:mb-8">
             {t('about_founders_title')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -48,19 +49,19 @@ export default function AboutPage() {
 
         <section aria-labelledby="about-mission-title" className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-14">
           {/* Editorial: a brand bar down the start edge, the title as the lead. */}
-          <Reveal className="relative overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 ps-8 sm:p-10 sm:ps-12">
+          <Reveal className="relative overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-card p-6 ps-8 sm:p-10 sm:ps-12">
             <span aria-hidden="true" className="absolute inset-y-0 start-0 w-1.5 bg-gradient-to-b from-brand to-brandGradientStart" />
-            <i aria-hidden="true" className="fa-solid fa-quote-left text-2xl text-brand/20 rtl:-scale-x-100"></i>
-            <h2 id="about-mission-title" className="mt-3 text-2xl sm:text-3xl font-black text-ink mb-4">{t('about_mission_title')}</h2>
+            <Quote aria-hidden="true" className="h-6 w-6 text-brand/20 rtl:-scale-x-100" strokeWidth={1.75} />
+            <h2 id="about-mission-title" className="mt-3 text-xl sm:text-2xl font-bold tracking-tight text-ink mb-4">{t('about_mission_title')}</h2>
             <p className="text-base sm:text-lg leading-relaxed text-body">{t('about_mission_text')}</p>
           </Reveal>
         </section>
 
         <SectionDivider />
 
-        <section aria-labelledby="about-cta-title" className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-16 sm:pt-14 sm:pb-20">
+        <section aria-labelledby="about-cta-title" className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-12 sm:pt-14 sm:pb-16">
           <Reveal className="rounded-3xl bg-brand px-6 py-8 sm:px-10 sm:py-10 text-center text-white shadow-[0_12px_32px_rgba(0,56,184,.22)]">
-            <h2 id="about-cta-title" className="text-2xl sm:text-3xl font-black mb-6">{t('about_cta_title')}</h2>
+            <h2 id="about-cta-title" className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">{t('about_cta_title')}</h2>
             {/* Held empty while auth loads, so neither set of buttons flashes. */}
             <div className="flex min-h-[52px] flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               {loading ? null : user ? (

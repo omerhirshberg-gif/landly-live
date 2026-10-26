@@ -72,7 +72,7 @@ describe('/about', () => {
     const cards = html.match(/<article aria-labelledby="founder-[^"]+" class="([^"]*)"/g) ?? []
     expect(cards).toHaveLength(2)
     for (const card of cards) {
-      for (const c of ['h-full', 'bg-white', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-slate-200/80', 'shadow-sm', 'before:h-1', 'before:from-brand', '[@media(hover:hover)]:hover:-translate-y-1', '[@media(hover:hover)]:hover:shadow-md']) {
+      for (const c of ['h-full', 'bg-white', 'rounded-2xl', 'p-6', 'sm:p-8', 'border', 'border-slate-200/80', 'shadow-card', 'before:h-1', 'before:from-brand', '[@media(hover:hover)]:hover:-translate-y-1', '[@media(hover:hover)]:hover:shadow-card-hover']) {
         expect(card.split('"')[3].split(' ')).toContain(c)
       }
     }
@@ -100,7 +100,7 @@ describe('/about', () => {
   ])('links %s to LinkedIn in a new tab, with a translated accessible name', (id, slug, name) => {
     const en = render('en', createElement(AboutPage))
     const card = en.slice(en.indexOf(`id="founder-${id}"`), en.indexOf('</article>', en.indexOf(`id="founder-${id}"`)))
-    expect(card).toMatch(new RegExp(`<a href="https://www\\.linkedin\\.com/in/${slug}" target="_blank" rel="noopener noreferrer" aria-label="${name} LinkedIn profile" class="[^"]*min-h-\\[38px\\][^"]*focus-visible:outline[^"]*"><i class="fa-brands fa-linkedin text-base leading-none" aria-hidden="true"></i><span>LinkedIn</span></a>`))
+    expect(card).toMatch(new RegExp(`<a href="https://www\\.linkedin\\.com/in/${slug}" target="_blank" rel="noopener noreferrer" aria-label="${name} LinkedIn profile" class="[^"]*min-h-\\[38px\\][^"]*focus-visible:outline[^"]*"><svg [^>]*stroke-width="1.75"[^>]*class="h-4 w-4"[^>]*>.*?</svg><span>LinkedIn</span></a>`))
     const he = render('he', createElement(AboutPage))
     const nameKey = id === 'omer' ? 'about_name_omer' : 'about_name_amit'
     expect(he).toContain(`aria-label="${translations.he.about_linkedin_label.replace('{name}', translations.he[nameKey])}"`)

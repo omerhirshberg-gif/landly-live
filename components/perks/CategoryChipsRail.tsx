@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { useLang } from '@/lib/i18n/useLang'
 import { CATEGORY_TILES } from '@/lib/categories'
 import type { CategoryFilter } from '@/lib/perks/perksFilter'
 
-const OPTIONS: { key: CategoryFilter; icon?: string }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category, icon: tile.icon }))]
+const OPTIONS: { key: CategoryFilter; category?: string }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category, category: tile.category }))]
 
 // The /categories category filter: "All" plus every category as one
 // horizontally scrolling row of single-choice chips (a radiogroup — arrow
@@ -96,7 +98,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
           data-hidden={!edges.start || undefined}
           className="rail-arrow"
         >
-          <i className="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+          <ChevronLeft aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2} />
         </button>
       )}
       <div
@@ -123,7 +125,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
               onKeyDown={onKeyDown}
               className="filter-chip"
             >
-              {option.icon && <i className={`fa-solid ${option.icon} text-[13px]`} aria-hidden="true"></i>}
+              {option.category && <CategoryIcon category={option.category} className="h-4 w-4" />}
               <span>{label(option.key)}</span>
             </button>
           )
@@ -138,7 +140,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
           data-hidden={!edges.end || undefined}
           className="rail-arrow"
         >
-          <i className="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+          <ChevronRight aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2} />
         </button>
       )}
     </div>

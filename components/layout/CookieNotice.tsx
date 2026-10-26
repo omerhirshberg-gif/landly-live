@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 import { CONSENT_PATHS, consentParts } from '@/lib/legal/consentText'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { X } from 'lucide-react'
 
 const STORAGE_KEY = 'landly_cookie_notice_seen'
 
@@ -54,7 +55,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
       style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="max-w-7xl mx-auto flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-        <p className="flex-1 min-w-0 text-xs sm:text-[13px] leading-relaxed text-center sm:text-start">
+        <p className="flex-1 min-w-0 text-xs sm:text-meta leading-relaxed text-center sm:text-start">
           {consentParts(t('cookie_notice_text')).map((part, i) =>
             'link' in part ? (
               <a
@@ -72,7 +73,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
         <div className="flex items-center justify-center gap-2 flex-shrink-0">
           <button
             onClick={onDismiss}
-            className="tap-target bg-white text-slate-900 font-bold text-[13px] px-6 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-slate-200"
+            className="tap-target bg-white text-slate-900 font-bold text-meta px-6 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-slate-200"
           >
             {t('cookie_notice_dismiss')}
           </button>
@@ -82,7 +83,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
             aria-label={t('cookie_notice_dismiss_aria')}
             className="hidden sm:inline-flex tap-target items-center justify-center text-slate-400 hover:text-white transition-colors"
           >
-            <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+            <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
       </div>

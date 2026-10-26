@@ -161,11 +161,11 @@ describe('/olim mentor card', () => {
     expect(html).toContain(`href="/login?redirect=%2Folim%23mentor-section">${esc(t.olim_gate_login)}</a>`)
   })
 
-  it.each(Object.keys(translations) as Lang[])('has the Lone Soldiers section for search and visitors (%s)', (lang) => {
+  it.each(Object.keys(translations) as Lang[])('has the Lone Soldiers card, still at #lone-soldiers, for search and visitors (%s)', (lang) => {
     const t = translations[lang]
     const html = render(lang)
-    expect(html).toContain(`<section id="lone-soldiers" aria-labelledby="lone-soldiers-title"`)
-    expect(html).toContain(`<h2 id="lone-soldiers-title" class="text-xl sm:text-2xl font-black text-ink mb-2">${esc(t.olim_lone_title)}</h2>`)
+    expect(html).toMatch(/<li id="lone-soldiers" class="[^"]*snap-center scroll-mt-24[^"]*"><article aria-labelledby="olim_lone_title-title"/)
+    expect(html).toContain(`<h3 id="olim_lone_title-title" class="mt-4 text-title font-bold text-ink text-balance">${esc(t.olim_lone_title)}</h3>`)
     expect(html).toContain(esc(t.olim_lone_desc))
     expect(t.olim_lone_desc).toContain(t.signup_customerType_loneSoldier)
   })
@@ -232,9 +232,16 @@ describe('/olim follows auth', () => {
   it.each(Object.keys(translations) as Lang[])('pitches guests the community, the free promise and the join steps (%s)', (lang) => {
     const t = translations[lang]
     const html = render(lang)
-    for (const key of ['olim_hero_badge', 'olim_title', 'olim_sub', 'olim_free_badge', 'olim_free_note', 'olim_step1_title', 'olim_step2_title', 'olim_step3_title', 'olim_final_title'] as const) expect(html).toContain(esc(t[key]))
-    expect(html).toContain(`<a class="ds-btn ds-btn-inverse ds-btn-wrap shadow-[0_8px_24px_rgba(0,0,0,.18)]" href="/signup">${esc(t.olim_cta_join)}`)
-    expect(html).toContain(`<a class="ds-btn ds-btn-outline-inverse ds-btn-wrap" href="/login">${esc(t.nav_login)}</a>`)
+    // The free promise is a frosted chip now, one line: no separate fine print.
+    expect(html).not.toContain(esc(t.olim_free_note))
+    expect(html).toMatch(/border-slate-200\/70 bg-white\/80[^"]*backdrop-blur-md"><span aria-hidden="true" class="relative flex h-2 w-2 flex-shrink-0"><span class="absolute inset-0 rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping"><\/span>/)
+    expect(html).not.toContain('bg-emerald-600 text-white')
+    for (const key of ['olim_title', 'olim_sub', 'olim_free_badge', 'olim_step1_title', 'olim_step2_title', 'olim_step3_title'] as const) expect(html).toContain(esc(t[key]))
+    // One join CTA pair, in the hero; the closing "Ready for a smoother landing?" card is gone (the mentor gate closes the page).
+    expect(html.match(/<a class="ds-btn[^"]*" href="\/signup">/g)).toHaveLength(1)
+    expect(html).toContain(`<a class="ds-btn ds-btn-primary ds-btn-wrap shadow-[0_8px_24px_-8px_rgba(0,56,184,.45)]" href="/signup">${esc(t.olim_cta_join)}`)
+    expect(html).toContain(`<a class="ds-btn ds-btn-secondary ds-btn-wrap" href="/login">${esc(t.nav_login)}</a>`)
+    expect(html).not.toContain(esc(t.olim_final_title))
     expect(html).not.toContain(esc(t.olim_member_badge))
     expect(html).not.toContain(esc(t.olim_mstep1_title))
   })
@@ -244,9 +251,10 @@ describe('/olim follows auth', () => {
     const t = translations[lang]
     const html = render(lang)
     expect(html).toContain(esc(t.olim_member_welcome.replace('{name}', 'Olga')))
-    for (const key of ['olim_member_badge', 'olim_member_sub', 'olim_member_how_sub', 'olim_member_status_note', 'olim_mstep1_title', 'olim_mstep2_title', 'olim_mstep3_title', 'olim_step_done', 'olim_member_final_title'] as const) expect(html).toContain(esc(t[key]))
-    expect(html).toContain(`<a class="ds-btn ds-btn-inverse ds-btn-wrap shadow-[0_8px_24px_rgba(0,0,0,.18)]" href="/categories">${esc(t.olim_cta_explore)}`)
-    expect(html).toContain(`<a href="#mentor-section" class="ds-btn ds-btn-outline-inverse ds-btn-wrap">${esc(t.olim_cta_mentor)}</a>`)
+    for (const key of ['olim_member_badge', 'olim_member_sub', 'olim_member_how_sub', 'olim_member_status_note', 'olim_mstep1_title', 'olim_mstep2_title', 'olim_mstep3_title', 'olim_step_done'] as const) expect(html).toContain(esc(t[key]))
+    expect(html).not.toContain(esc(t.olim_member_final_title))
+    expect(html).toContain(`<a class="ds-btn ds-btn-primary ds-btn-wrap shadow-[0_8px_24px_-8px_rgba(0,56,184,.45)]" href="/categories">${esc(t.olim_cta_explore)}`)
+    expect(html).toContain(`<a href="#mentor-section" class="ds-btn ds-btn-secondary ds-btn-wrap">${esc(t.olim_cta_mentor)}</a>`)
     expect(html).toContain(`href="/profile">${esc(t.olim_mstep1_link)}`)
     expect(html).toContain('<section id="mentor-section"')
     for (const key of ['olim_title', 'olim_free_badge', 'olim_step1_title', 'olim_final_title'] as const) expect(html).not.toContain(esc(t[key]))
@@ -271,9 +279,30 @@ describe('/olim follows auth', () => {
     expect(render('en')).toMatch(/<div id="mentor" class="[^"]*scroll-mt-/)
   })
 
-  it('drops the olim-only hero badge in every language', () => {
-    for (const lang of Object.keys(translations) as Lang[]) expect(translations[lang].olim_hero_badge).not.toBe(translations[lang].olim_title)
-    expect(translations.en.olim_hero_badge).toBe('Built for Newcomers, Lone Soldiers & the International Community')
+  it('opens on the headline: no pill above it, for guests or members', () => {
+    const guest = render('en')
+    expect(guest).not.toContain(esc(translations.en.olim_hero_badge))
+    expect(guest).toMatch(/<div class="max-w-4xl mx-auto px-5 sm:px-6 pt-10 pb-10 sm:pt-14 sm:pb-12 text-center"><h1 id="olim-title" class="text-3xl/)
+    signIn()
+    // The member's status shows once, in its own card under How It Works.
+    expect(render('en').match(new RegExp(esc(translations.en.olim_member_badge), 'g'))).toHaveLength(1)
     expect(translations.en.olim_cta_explore).toBe('Explore Community Perks')
+  })
+
+  it.each(Object.keys(translations) as Lang[])('lays the four benefits out as a swipe row with dots below 1024px and a four-column grid above (%s)', (lang) => {
+    const t = translations[lang]
+    const html = render(lang)
+    const row = html.match(/<ul class="([^"]*)"><li[^>]*>.*?<\/ul>/)!
+    for (const c of ['flex', 'overflow-x-auto', 'overscroll-x-contain', 'snap-x', 'snap-mandatory', '[scrollbar-width:none]', 'lg:grid', 'lg:grid-cols-4', 'lg:gap-6', 'lg:overflow-visible']) expect(row[1].split(' ')).toContain(c)
+    const cards = row[0].match(/<li [^>]*class="([^"]*)"/g)!
+    expect(cards).toHaveLength(4)
+    for (const card of cards) expect(card).toContain('w-[260px] flex-shrink-0 snap-center scroll-mt-24 sm:w-[270px] lg:w-auto')
+    for (const key of ['olim_card_title', 'olim_rights_title', 'olim_mentor_title', 'olim_lone_title'] as const) expect(row[0]).toContain(`>${esc(t[key])}</h3>`)
+    // Each in the 40px frame.
+    expect(row[0].match(/class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl /g)).toHaveLength(4)
+    // Four dots that hide where the grid takes over.
+    const dots = html.slice(html.indexOf('</ul>', html.indexOf(row[0].slice(0, 40))))
+    expect(dots).toMatch(/^<\/ul><div class="flex justify-center lg:hidden">/)
+    expect(html.match(/aria-label="[^"]*" aria-current="true"/g)?.length).toBeGreaterThanOrEqual(1)
   })
 })

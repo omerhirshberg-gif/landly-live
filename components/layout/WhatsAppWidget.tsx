@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FocusEvent, type PointerEvent } from 'react'
 import { usePathname } from 'next/navigation'
 import { floatingClearance } from '@/lib/layout/floatingClearance'
 import type { TranslationKey } from '@/lib/i18n/translations'
@@ -21,8 +21,12 @@ import {
 // with a slow breathing glow (still under reduced motion, globals.css
 // .wa-glow), and a speech bubble that rises in a moment after the page
 // loads: "Need help?". Both open a chat with the support line, the greeting
-// pre-filled in the site language, in a new tab. The bubble's X (or Escape)
-// closes it for the rest of the tab session; the small X on the badge hides
+// pre-filled in the site language, in a new tab. The bubble closes itself
+// after BUBBLE_AUTO_DISMISS_MS, held while a mouse is over it or focus is in
+// it (and closing BUBBLE_RESUME_DISMISS_MS after either leaves); its X (or
+// Escape) closes it at once. Either way it fades and sinks out over
+// BUBBLE_EXIT_MS, toward the badge, which never moves, and stays closed for
+// the rest of the tab session; the small X on the badge hides
 // the whole widget for the session. It's in the server HTML, so the badge
 // is a working wa.me link before (or without) JavaScript; a tab that hid it
 // is marked on <html> before the first paint (WHATSAPP_HIDDEN_SCRIPT,
@@ -33,6 +37,10 @@ import {
 // hides a button. Off on staff, checkout and sign-in pages (lib/support/whatsapp.ts).
 
 export const BUBBLE_DELAY_MS = 2000
+export const BUBBLE_AUTO_DISMISS_MS = 5000
+export const BUBBLE_RESUME_DISMISS_MS = 2000
+/** Matches the bubble's duration-500 exit transition. */
+export const BUBBLE_EXIT_MS = 500
 
 const tabStorage = () => window.sessionStorage
 
@@ -93,6 +101,12 @@ export default function WhatsAppWidget() {
   const lift = useFloatingClearance(shown)
   // Closed until the delay passes, and only if this tab hasn't dismissed it.
   const [bubbleOpen, setBubbleOpen] = useState(false)
+  // Fading out: still mounted until the exit transition ends.
+  const [bubbleLeaving, setBubbleLeaving] = useState(false)
+  // A mouse over the bubble, or focus in it, holds the auto-dismiss.
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [dismissIn, setDismissIn] = useState(BUBBLE_AUTO_DISMISS_MS)
 
   useEffect(() => {
     setHidden(isWidgetHidden(tabStorage))
@@ -111,18 +125,40 @@ export default function WhatsAppWidget() {
   }
 
   const dismiss = () => {
-    setBubbleOpen(false)
+    setBubbleLeaving(true)
     rememberBubbleDismissed(tabStorage)
   }
 
+  const held = hovered || focused
   useEffect(() => {
-    if (!bubbleOpen) return
+    if (!bubbleOpen || bubbleLeaving || held) return
+    const timer = window.setTimeout(dismiss, dismissIn)
+    return () => window.clearTimeout(timer)
+  }, [bubbleOpen, bubbleLeaving, held, dismissIn])
+
+  useEffect(() => {
+    if (!bubbleLeaving) return
+    const timer = window.setTimeout(() => {
+      setBubbleOpen(false)
+      setBubbleLeaving(false)
+    }, BUBBLE_EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [bubbleLeaving])
+
+  const hold = (source: 'pointer' | 'focus', on: boolean) => {
+    ;(source === 'pointer' ? setHovered : setFocused)(on)
+    // Let go: a short while longer, then it closes.
+    if (!on) setDismissIn(BUBBLE_RESUME_DISMISS_MS)
+  }
+
+  useEffect(() => {
+    if (!bubbleOpen || bubbleLeaving) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismiss()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [bubbleOpen])
+  }, [bubbleOpen, bubbleLeaving])
 
   if (!shown) return null
   return (
@@ -130,7 +166,9 @@ export default function WhatsAppWidget() {
       href={whatsappChatHref(t('whatsapp_prefill'))}
       lift={lift}
       bubbleOpen={bubbleOpen}
+      bubbleLeaving={bubbleLeaving}
       onDismiss={dismiss}
+      onHold={hold}
       onHide={hide}
       t={t}
       isRtl={isRtl}
@@ -143,7 +181,9 @@ export function WhatsAppWidgetView({
   href,
   lift,
   bubbleOpen,
+  bubbleLeaving = false,
   onDismiss,
+  onHold,
   onHide,
   t,
   isRtl,
@@ -151,12 +191,23 @@ export function WhatsAppWidgetView({
   href: string
   lift: number
   bubbleOpen: boolean
+  /** Fading out; it no longer takes pointer or keyboard input. */
+  bubbleLeaving?: boolean
   onDismiss: () => void
+  /** A mouse over the bubble, or focus in it, holding (on) or letting go of the auto-dismiss. */
+  onHold?: (source: 'pointer' | 'focus', on: boolean) => void
   /** The badge's X: hides the whole widget for the tab session. */
   onHide: () => void
   t: (key: TranslationKey) => string
   isRtl: boolean
 }) {
+  // Only a mouse hovers: a tap's emulated enter would hold the bubble open with no leave to follow.
+  const pointer = (on: boolean) => (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') onHold?.('pointer', on)
+  }
+  const blur = (e: FocusEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onHold?.('focus', false)
+  }
   return (
     // Bottom right always (dir="ltr" pins the corner); the bubble's own text follows the language.
     // Inset by the right safe area too, so a landscape notch or cutout never covers it.
@@ -168,9 +219,19 @@ export function WhatsAppWidgetView({
       {/* A plain box (not display: contents, which drops the live region in some Safari versions). */}
       <div aria-live="polite" className="flex flex-col items-end">
         {bubbleOpen && (
+          // Out of the way of the badge: it fades and sinks toward it (transform-origin bottom right, globals.css), and only
+          // transforms, so the badge below never shifts. .wa-bubble-leaving drops the entry animation, which holds transform.
           <div
             dir={isRtl ? 'rtl' : 'ltr'}
-            className="wa-bubble relative mb-3 w-max max-w-[240px] rounded-2xl border border-slate-100 bg-white/95 p-3 pe-9 shadow-lg backdrop-blur-md"
+            className={`wa-bubble relative mb-3 w-max max-w-[240px] rounded-2xl border border-slate-100 bg-white/95 p-3 pe-9 shadow-lg backdrop-blur-md transition-all duration-500 ease-out motion-reduce:transition-none ${
+              bubbleLeaving ? 'wa-bubble-leaving pointer-events-none translate-y-2 scale-95 opacity-0' : 'translate-y-0 scale-100 opacity-100'
+            }`}
+            aria-hidden={bubbleLeaving || undefined}
+            inert={bubbleLeaving || undefined}
+            onPointerEnter={pointer(true)}
+            onPointerLeave={pointer(false)}
+            onFocus={() => onHold?.('focus', true)}
+            onBlur={blur}
           >
             <a href={href} target="_blank" rel="noopener noreferrer" className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2">
               <span className="block text-sm font-bold text-[#0B1B3D]">{t('whatsapp_bubble_title')}</span>

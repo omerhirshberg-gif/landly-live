@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -17,6 +17,7 @@ import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SegmentBadge from '../../components/SegmentBadge'
 import SegmentedControl from '../../components/SegmentedControl'
 import VoucherPass from '../../components/VoucherPass'
+import { PassListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { useLayout } from '../../lib/useLayout'
 import { colors, header } from '../../theme'
@@ -115,7 +116,7 @@ export default function WalletScreen() {
         }
         ListEmptyComponent={
           list === null ? (
-            failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
+            failed ? null : <PassListSkeleton />
           ) : tab === 'perks' ? (
             <EmptyState icon="gift" title={t('dash_perks_empty_title')} sub={t('dash_perks_empty_sub')}>
               <Button label={t('nav_cta')} onPress={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
@@ -150,7 +151,6 @@ const styles = StyleSheet.create({
   identity: { marginBottom: header.gap, alignItems: 'flex-start', gap: 10 },
   titleRow: { alignSelf: 'stretch' },
   badgeSlot: { minHeight: 26, maxWidth: '100%' },
-  spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 40, paddingHorizontal: 24 },
   emptyIcon: {
     width: 64,

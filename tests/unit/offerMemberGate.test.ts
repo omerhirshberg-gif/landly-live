@@ -54,7 +54,7 @@ describe('offer guest teaser', () => {
     const html = withLang(lang, createElement(OfferGuestTeaser))
     expect(html).toContain(`>${esc(t.offer_teaser_title)}</h2>`)
     expect(html).toContain(`>${esc(t.offer_teaser_message)}</p>`)
-    expect(html).toContain('fa-lock')
+    expect(html).toContain('lucide-lock')
   })
 
   it('replaces How to redeem for guests only, and shortens the description', () => {
@@ -83,13 +83,15 @@ describe('guest home background', () => {
     expect(ambient).not.toContain('radial-gradient(')
     expect(ambient).toContain('min-height:100dvh')
     // Floating cards: near-white glass over it.
-    for (const file of ['ValueProps', 'HowItWorks', 'PerkExampleCard']) expect(read(`components/home/${file}.tsx`)).toContain('bg-white/95 backdrop-blur-sm')
+    for (const file of ['ValueProps', 'PerkExampleCard']) expect(read(`components/home/${file}.tsx`)).toContain('bg-white/95 backdrop-blur-sm')
+    // How It Works' slate-50 wash is the canvas's own colour, so it draws no edge either.
+    expect(read('app/globals.css')).toContain(':root{--canvas:#F8FAFC;')
+    expect(read('components/home/HowItWorks.tsx')).toContain('<section id="how" className="bg-slate-50 py-12 sm:py-14 lg:py-16">')
     // The navbar is translucent, so the sky tone shows through at the top.
     expect(read('components/layout/Navbar.tsx')).toContain('bg-white/70 backdrop-blur-md border-b border-line/60')
     expect(read('components/home/Hero.tsx')).not.toContain('radial-gradient')
     expect(read('components/home/ValueProps.tsx')).toContain('<section id="deals" className="py-12 sm:py-14 lg:py-16">')
     expect(read('components/home/PerkExamples.tsx')).toContain('className="py-12 sm:py-14 lg:py-16"')
     expect(read('components/home/HomeFaqPrompt.tsx')).toContain('py-8 sm:py-10 text-center">')
-    expect(read('components/home/HowItWorks.tsx')).toContain('<section id="how" className="py-12 sm:py-14 lg:py-16">')
   })
 })

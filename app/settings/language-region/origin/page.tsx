@@ -44,12 +44,12 @@ export default function OriginPage() {
     <SettingsPageShell title={t('settings_origin_title')}>
       {user && loaded ? (
         <>
-          <p id="origin-current" className="px-1 pb-3 text-[15px] text-body">
+          <p id="origin-current" className="px-1 pb-3 text-copy text-body">
             <span className="font-semibold text-ink">{t('profile_origin_label')}:</span> {current ?? t('profile_origin_unset')}
           </p>
           <CountryOfOriginPicker value={value} onChange={choose} labelledBy="origin-current" listClassName="max-h-[calc(100dvh-16rem)]" />
           {failed && (
-            <p role="alert" className="mt-3 px-1 text-[13px] font-semibold text-red-600">
+            <p role="alert" className="mt-3 px-1 text-meta font-semibold text-red-600">
               {t('settings_save_error')}
             </p>
           )}

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Manrope } from 'next/font/google'
+import { Inter, Manrope } from 'next/font/google'
 import 'react-phone-number-input/style.css'
 import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
@@ -28,8 +28,17 @@ import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo/site'
 // app/opengraph-image.tsx; X falls back to it.
 // The heading font (h1, h2, .font-display; globals.css), self-hosted by
 // next/font so there's no request to Google and no layout shift. Latin and
-// Cyrillic; Hebrew headings stay in Heebo. Exposed as --font-display.
-const manrope = Manrope({ subsets: ['latin', 'cyrillic'], weight: ['700', '800'], variable: '--font-display', display: 'swap' })
+// Cyrillic, plus Latin Extended for the shekel sign (₪, U+20AA), so a price's
+// symbol is drawn in the same font as its digits. Hebrew headings stay in
+// Heebo. Exposed as --font-display.
+const manrope = Manrope({ subsets: ['latin', 'latin-ext', 'cyrillic'], weight: ['700', '800'], variable: '--font-display', display: 'swap' })
+// The interface and body font (buttons, cards, forms, navigation): Inter,
+// self-hosted the same way, one variable file for every weight, with a
+// size-matched fallback so the swap doesn't shift text. Latin and Cyrillic
+// (Heebo has no Cyrillic), plus Latin Extended, whose range holds the shekel
+// sign: without it "₪" fell back to Heebo beside Inter digits. Hebrew pages
+// stay in Heebo. Exposed as --font-sans.
+const inter = Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-sans', display: 'swap' })
 
 // How long the website waits on Firebase Auth before carrying on as a guest
 // (AuthProvider's readyTimeoutMs); a late answer still signs the member in.
@@ -76,7 +85,7 @@ export default function RootLayout({
     // The <head> scripts may add classes before React hydrates, HydrationMarker
     // sets data-hydrated, and LangProvider later sets lang/dir/class on <html>,
     // hence suppressHydrationWarning.
-    <html lang="en" dir="ltr" className={manrope.variable} suppressHydrationWarning>
+    <html lang="en" dir="ltr" className={`${manrope.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         {/* First, so it hears every later failure: uncaught errors, scripts
             that fail to load, rejected promises; ?debug=1 shows them

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { House, RotateCw, TriangleAlert } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import ErrorScreen from '@/components/errors/ErrorScreen'
 import { useLang } from '@/lib/i18n/useLang'
@@ -19,11 +20,11 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
     <>
       <Navbar />
       <ErrorScreen
-        icon="fa-triangle-exclamation"
+        icon={TriangleAlert}
         title={t('err_title')}
         body={t('err_body')}
-        primary={{ label: t('err_retry'), icon: 'fa-rotate-right', onClick: () => retry() }}
-        secondary={{ label: t('err_home'), icon: 'fa-house', href: '/' }}
+        primary={{ label: t('err_retry'), icon: RotateCw, onClick: () => retry() }}
+        secondary={{ label: t('err_home'), icon: House, href: '/' }}
         footnote={error.digest ? `${t('err_ref')} ${error.digest}` : undefined}
       />
     </>

@@ -63,7 +63,7 @@ describe('voucher terms on the pass', () => {
     expect(html).toContain('Valid until April 16, 2099')
     expect(html).toContain('Redemption terms')
     expect(html).toContain('Dine-in only.')
-    expect(html).toMatch(/<i class="[^"]*" aria-hidden="true">/)
+    expect(html).toMatch(/<svg [^>]*class="lucide lucide-calendar-check[^"]*" aria-hidden="true">/)
   })
 
   it('flags an expired voucher', () => {

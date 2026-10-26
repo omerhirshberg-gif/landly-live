@@ -45,6 +45,8 @@ import {
   LIST_ROWS_MAX,
   menuMessage,
   resolvedMessage,
+  teamNudgeMessage,
+  teamResolvedMessage,
   ROW_DESCRIPTION_MAX,
   ROW_TITLE_MAX,
   submenuMessage,
@@ -691,6 +693,8 @@ describe('support bot decisions', () => {
         alreadyEscalatedMessage(lang),
         resolvedMessage(lang),
         idleCheckInMessage(lang),
+        teamNudgeMessage(lang),
+        teamResolvedMessage(lang),
       ]
       for (const message of all) {
         if (message.type !== 'interactive') continue
@@ -749,6 +753,8 @@ describe('support bot decisions', () => {
       escalatedMessage(lang),
       alreadyEscalatedMessage(lang),
       resolvedMessage(lang),
+      teamNudgeMessage(lang),
+      teamResolvedMessage(lang),
     ]
     for (const message of buttonMessages) {
       if (message.type !== 'interactive' || message.interactive.type !== 'button') throw new Error('expected a button message')

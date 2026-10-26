@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 
 const EXIT_MS = 200
@@ -18,7 +18,7 @@ export default function PendingChangeNotice({
   message,
   placeholder,
   value,
-  icon,
+  icon: Icon,
   actionLabel,
   onAction,
   actionBusy,
@@ -30,8 +30,8 @@ export default function PendingChangeNotice({
   message: string
   placeholder: '{email}' | '{phone}'
   value: string
-  /** Font Awesome classes for the leading icon. */
-  icon: string
+  /** The leading icon: a Lucide glyph, or a brand mark (components/ui/SocialIcon.tsx). */
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>
   actionLabel: string
   onAction: () => void
   actionBusy?: boolean
@@ -78,7 +78,7 @@ export default function PendingChangeNotice({
             className="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-3 text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <p className="flex items-start gap-2.5 min-w-0 leading-5">
-              <i className={`${icon} mt-0.5 text-amber-600 flex-shrink-0`} aria-hidden="true"></i>
+              <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" strokeWidth={1.75} />
               <span className="min-w-0">
                 <span className="font-bold">{t('pending_title')}: </span>
                 {before}

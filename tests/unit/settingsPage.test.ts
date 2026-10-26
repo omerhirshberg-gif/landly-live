@@ -36,7 +36,7 @@ describe('/settings', () => {
     const html = render(lang, { loggedIn: true })
     const t = translations[lang]
     expect(html).toMatch(new RegExp(`<div class="grid grid-cols-\\[48px_1fr_48px\\][^"]*"><button type="button" aria-label="${t.settings_back}"`))
-    expect(html).toContain('fa-chevron-left rtl:-scale-x-100')
+    expect(html).toContain('lucide-chevron-left h-5 w-5 rtl:-scale-x-100')
     expect(html).toMatch(new RegExp(`<h1 class="text-center [^"]*">${t.nav_settings_heading}</h1><span aria-hidden="true"></span>`))
   })
 
@@ -53,7 +53,9 @@ describe('/settings', () => {
     expect(html).toContain('href="/terms?from=settings"')
     expect(html).toContain('href="/privacy?from=settings"')
     expect(html).toContain('<bdi>1.0.0</bdi>')
-    for (const m of html.matchAll(/fa-chevron-right[^"]*/g)) expect(m[0]).toContain('rtl:-scale-x-100')
+    const chevrons = [...html.matchAll(/lucide-chevron-right[^"]*/g)]
+    expect(chevrons.length).toBeGreaterThan(0)
+    for (const m of chevrons) expect(m[0]).toContain('rtl:-scale-x-100')
     expect(html).not.toContain(`>${t.nav_logout}<`)
   })
 
@@ -66,9 +68,9 @@ describe('/settings', () => {
 
   it('styles Delete Account as a red, destructive row', () => {
     const html = render('en', { loggedIn: true })
-    const row = html.match(/<a class="([^"]*)" href="\/settings\/delete-account">(<span[^>]*><i class="fa-solid fa-trash-can[^"]*"><\/i><\/span>.*?)<\/a>/)!
+    const row = html.match(/<a class="([^"]*)" href="\/settings\/delete-account">(<span[^>]*><svg [^>]*class="lucide lucide-trash lucide-trash-2[^"]*"[^>]*>.*?<\/svg><\/span>.*?)<\/a>/)!
     expect(row[1].split(' ')).toContain('text-red-600')
-    expect(row[2]).toContain('bg-red-50 text-red-600')
+    expect(row[2]).toContain('border-red-200/70 bg-red-50 text-red-600')
     expect(row[2]).toContain(`>${translations.en.del_row_sub}<`)
   })
 
@@ -79,13 +81,13 @@ describe('/settings', () => {
     expect(html).toContain('href="/terms?from=settings"')
     expect(html).not.toContain(`>${amp(t.nav_security)}<`)
     expect(html).not.toContain(`>${t.del_row_title}<`)
-    expect(html).not.toContain('fa-trash-can')
+    expect(html).not.toContain('lucide-trash-2')
   })
 
   it('treats a member mid-onboarding as a guest until the guard settles', () => {
     const html = render('en', { loggedIn: true, held: true })
-    expect(html).not.toContain('fa-trash-can')
-    expect(html).not.toContain('fa-shield-halved')
+    expect(html).not.toContain('lucide-trash-2')
+    expect(html).not.toContain('lucide-shield-check')
   })
 })
 

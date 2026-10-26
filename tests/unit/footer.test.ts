@@ -40,7 +40,7 @@ describe('footer', () => {
   })
 
   it('gives the business portal link its own icon and weight', () => {
-    expect(render('en')).toMatch(/<a class="[^"]*text-slate-700 font-semibold[^"]*" href="\/business\/login"><i class="fa-solid fa-store/)
+    expect(render('en')).toMatch(/<a class="[^"]*text-slate-700 font-semibold[^"]*" href="\/business\/login"><svg [^>]*class="lucide lucide-store/)
   })
 
   it('shows the contact email and location exactly once', () => {
@@ -51,8 +51,8 @@ describe('footer', () => {
 
   it('uses the light theme, not the old dark block', () => {
     const html = render('he')
-    expect(html).toContain('bg-[#F8FAFC]')
-    expect(html).toContain('border-[#E2E8F0]')
+    expect(html).toContain('bg-canvas')
+    expect(html).toContain('border-line')
     expect(html).not.toContain('bg-slate-900')
     expect(html).not.toMatch(/\b(ml|mr|pl|pr|left|right)-\d/)
   })

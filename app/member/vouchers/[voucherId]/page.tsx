@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { LoaderCircle, Ticket } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -71,7 +72,7 @@ export default function VoucherPage() {
         <Navbar />
         <div className="below-header member-canvas min-h-screen min-h-dvh">
           <div role="status" className="max-w-xl mx-auto px-5 py-16 flex justify-center text-slate-400">
-            <i className="fa-solid fa-spinner fa-spin text-2xl text-brand" aria-hidden="true"></i>
+            <LoaderCircle aria-hidden="true" className="h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
             <span className="sr-only">{t('bizdash_loading')}</span>
           </div>
         </div>
@@ -88,13 +89,13 @@ export default function VoucherPage() {
           <BackButton fallback="/member" label={t('nav_my_pass')} className="mb-3" />
 
           {voucher === null ? (
-            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-8 shadow-sm text-center">
-              <i className="fa-solid fa-ticket text-slate-300 text-3xl mb-3" aria-hidden="true"></i>
+            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-8 shadow-card text-center">
+              <Ticket aria-hidden="true" className="mx-auto mb-3 h-8 w-8 text-slate-300" strokeWidth={1.5} />
               <p className="text-sm text-slate-600">{t('voucher_not_found')}</p>
             </div>
           ) : (
             <article className="overflow-hidden rounded-3xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-20px_rgba(0,56,184,0.35)] ring-1 ring-slate-200/70">
-              <div className="relative aspect-[16/9] bg-[#F0F7FF]">
+              <div className="relative aspect-[16/9] bg-brandTint">
                 {offer && <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} size="hero" />}
               </div>
               <div className="p-5 sm:p-7">

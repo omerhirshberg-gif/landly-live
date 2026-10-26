@@ -2,14 +2,16 @@
 
 import { ReactNode, useEffect, useState } from 'react'
 import BackButton from '@/components/navigation/BackButton'
+import { LoaderCircle, Tags, type LucideIcon } from 'lucide-react'
+import IconFrame from '@/components/ui/IconFrame'
 import { useLang } from '@/lib/i18n/useLang'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import { perksCountLabel } from '@/lib/categories'
 
 interface Props {
-  /** A Font Awesome solid class for the heading's icon box, e.g. 'fa-fire'. */
-  icon: string
+  /** The heading's Lucide glyph, e.g. Award for Bestsellers. */
+  icon: LucideIcon
   title: string
   // Identifies which listing this is (category name, 'new', 'bestsellers') so the
   // effect only refetches when the listing actually changes — not on every
@@ -50,11 +52,9 @@ export default function OfferListView({ icon, title, depKey, fetchOffers, contro
       <BackButton fallback="/categories" label={t('cats_detail_back')} className="mb-4" />
 
       <div className="flex items-center gap-3 sm:gap-4 mb-8">
-        <span aria-hidden="true" className="flex h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-brand/10 bg-brandTint text-brand shadow-sm">
-          <i className={`fa-solid ${icon} text-xl sm:text-2xl`}></i>
-        </span>
+        <IconFrame icon={icon} size="sm" />
         <div className="min-w-0">
-          <h1 className="text-[26px] sm:text-[28px] lg:text-3xl font-bold text-ink leading-tight break-words">{title}</h1>
+          <h1 className="text-page sm:text-page-lg lg:text-3xl font-bold text-ink leading-tight break-words">{title}</h1>
           {offers === undefined ? (
             <span aria-hidden="true" className="mt-2 block h-3.5 w-28 rounded-full bg-slate-100 animate-pulse motion-reduce:animate-none" />
           ) : (
@@ -67,11 +67,11 @@ export default function OfferListView({ icon, title, depKey, fetchOffers, contro
 
       {visibleOffers === undefined ? (
         <div className="dash-empty-state">
-          <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+          <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" strokeWidth={1.75} />
         </div>
       ) : visibleOffers.length === 0 ? (
         <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-          <i className="fa-solid fa-tags" aria-hidden="true"></i>
+          <Tags aria-hidden="true" strokeWidth={1.75} />
           <div className="font-bold text-ink text-base mb-1">{t('deals_empty_title')}</div>
           <p className="text-sm text-body max-w-xs">{t('deals_empty_sub')}</p>
         </div>

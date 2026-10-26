@@ -38,7 +38,7 @@ describe('navbar layout lock', () => {
     expect(nav).toMatch(/<nav[^>]*><div dir="ltr"/)
 
     const logo = nav.indexOf('alt="Landly"')
-    const langSwitch = nav.indexOf('fa-globe')
+    const langSwitch = nav.indexOf('lucide-globe')
     const hamburger = nav.indexOf('aria-label="Menu"')
     expect(logo).toBeGreaterThan(-1)
     expect(logo).toBeLessThan(langSwitch)
@@ -110,7 +110,7 @@ describe('mobile drawer', () => {
   it.each(['en', 'he'] as const)('lists Partner with Us after Making Aliyah?, before About and Support, styled like its neighbours (%s)', (lang) => {
     const d = drawer(lang)
     const link = d.match(/<a class="([^"]*)" href="\/business">(.*?)<\/a>/)!
-    expect(link[2]).toContain('fa-handshake')
+    expect(link[2]).toContain('lucide-handshake')
     expect(link[2]).toContain(`>${translations[lang].nav_partner}<`)
     expect(link[1]).toBe(d.match(/<a class="([^"]*)" href="\/about">/)![1])
     const partner = d.indexOf('href="/business"')
@@ -146,10 +146,10 @@ describe('header account actions', () => {
     const t = translations[lang]
     expect(nav).not.toContain(`>${t.nav_cta}<`)
     const signUp = nav.search(new RegExp(`class="[^"]*bg-brand text-white[^"]*" href="/signup">${t.signup_title}<`))
-    const signIn = nav.search(new RegExp(`class="[^"]*bg-\\[#FFFFFF\\][^"]*" href="/login">${t.nav_login}<`))
+    const signIn = nav.search(new RegExp(`class="[^"]*bg-white[^"]*" href="/login">${t.nav_login}<`))
     expect(signUp).toBeGreaterThan(-1)
     expect(signIn).toBeGreaterThan(signUp)
-    expect(signIn).toBeLessThan(nav.indexOf('fa-globe'))
+    expect(signIn).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
   it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, Wishlist, My Pass, Making Aliyah? and Support (%s)', (lang) => {
@@ -183,10 +183,10 @@ describe('header account actions', () => {
     const t = translations[lang]
     expect(nav).toMatch(new RegExp(`<button type="button" aria-haspopup="menu" aria-expanded="false" aria-label="${t.account_menu_label}"`))
     expect(nav).toContain('ds-avatar-fallback')
-    expect(nav).not.toContain('fa-arrow-right-from-bracket')
+    expect(nav).not.toContain('lucide-log-out')
     expect(nav).not.toContain(`>${t.nav_logout}<`)
     // The pill sits before the divider and the language picker.
-    expect(nav.indexOf('aria-haspopup="menu"')).toBeLessThan(nav.indexOf('fa-globe'))
+    expect(nav.indexOf('aria-haspopup="menu"')).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
   it('signed in: drops the How it works link but keeps Making Aliyah', () => {
@@ -209,9 +209,9 @@ describe('header account actions', () => {
     // Preferences live on /settings now: no accordions, language buttons, security or legal links in the drawer.
     expect(drawer).not.toContain('aria-expanded')
     expect(drawer).not.toMatch(/<button[^>]*lang="[a-z]{2}"/)
-    expect(drawer).not.toContain('fa-shield-halved')
+    expect(drawer).not.toContain('lucide-shield')
     expect(drawer).not.toContain('href="/terms"')
-    expect(drawer).not.toContain('fa-bell')
+    expect(drawer).not.toContain('lucide-bell')
   })
 
   it.each(['en', 'he'] as const)('signed in: the member card is a soft /profile card with only the avatar and name (%s)', (lang) => {
@@ -223,11 +223,11 @@ describe('header account actions', () => {
     expect(card[1]).toContain('ds-avatar-fallback')
     expect(card[1]).toContain('width:44px')
     // The test member has no profile, so the card names the destination instead.
-    expect(card[1]).toContain('<span class="min-w-0 flex-1 truncate text-[16px] font-bold text-ink">' + translations[lang].nav_profile + '</span>')
+    expect(card[1]).toContain('<span class="min-w-0 flex-1 truncate text-base font-bold text-ink">' + translations[lang].nav_profile + '</span>')
     // No email, badge or chevron.
     expect(card[1]).not.toContain('@')
     expect(card[1]).not.toContain('rounded-full bg-emerald')
-    expect(card[1]).not.toContain('fa-chevron')
+    expect(card[1]).not.toContain('lucide-chevron')
   })
 
   it.each(['en', 'ru', 'es', 'fr', 'he'] as const)('signed in: My Pass is a plain link row to /member right under Home, with no promo card (%s)', (lang) => {
@@ -242,11 +242,11 @@ describe('header account actions', () => {
     const homeClass = home[0].match(/class="([^"]*)"/)![1]
     expect(pass[1].replace(/ text-brand bg-brandLight| text-ink/, '')).toBe(homeClass.replace(/ text-brand bg-brandLight| text-ink/, ''))
     for (const c of ['min-h-[48px]', 'rounded-xl', 'active:bg-slate-100']) expect(pass[1].split(' ')).toContain(c)
-    expect(pass[2]).toContain('fa-qrcode')
+    expect(pass[2]).toContain('lucide-qr-code')
     expect(pass[2]).toContain('>' + t.nav_my_pass + '<')
     const links = drawer.slice(drawer.indexOf(home[0]), drawer.indexOf('href="/settings"'))
     expect(links).toContain('href="/olim"')
-    expect(links).not.toContain('fa-chevron')
+    expect(links).not.toContain('lucide-chevron')
     expect(drawer).not.toContain('bg-[linear-gradient')
     expect(drawer).not.toContain(t.nav_pass_title)
   })
@@ -268,7 +268,7 @@ describe('header account actions', () => {
     const nav = render('en', { loggedIn: true }).split('</nav>')[0]
     const link = nav.match(/<a [^>]*href="\/wishlist"[^>]*>(.*?)<\/a>/)!
     expect(link[1]).toBe(`<span class="truncate">${translations.en.nav_wishlist}</span>`)
-    expect(nav).not.toContain('fa-heart')
+    expect(nav).not.toContain('lucide-heart')
   })
 
   it('signed in: the Wishlist badge sits beside the label (outside its truncation) and caps at 99+', () => {
@@ -299,7 +299,7 @@ describe('header has no business icon', () => {
   it.each([false, true])('no store icon or business-login shortcut (loggedIn=%s)', (loggedIn) => {
     const html = render('en', { loggedIn })
     const nav = html.slice(0, html.indexOf('</nav>'))
-    expect(nav).not.toContain('fa-store')
+    expect(nav).not.toContain('lucide-store')
     expect(nav).not.toContain('href="/business/login"')
     if (!loggedIn) expect(nav).toContain('href="/business"')
   })
@@ -316,35 +316,29 @@ describe('button hierarchy', () => {
     expect(signIn[2]).toBe('Sign In')
     const upClasses = signUp[1].split(' ')
     const inClasses = signIn[1].split(' ')
-    for (const c of ['bg-brand', 'text-white', 'font-bold', '[@media(hover:hover)]:hover:bg-brandDark', 'border-transparent']) expect(upClasses).toContain(c)
-    for (const c of ['bg-[#FFFFFF]', 'text-[#0B1B3D]', 'border-[#E2E8F0]', '[@media(hover:hover)]:hover:border-slate-300', '[@media(hover:hover)]:hover:text-brand']) expect(inClasses).toContain(c)
+    for (const c of ['bg-brand', 'text-white', 'font-bold', '[@media(hover:hover)]:hover:bg-brandDark', 'border-transparent', 'shadow-btn-primary']) expect(upClasses).toContain(c)
+    for (const c of ['bg-white', 'text-ink', 'border-line', '[@media(hover:hover)]:hover:border-slate-300', '[@media(hover:hover)]:hover:text-brand', 'shadow-btn-secondary']) expect(inClasses).toContain(c)
     // Identical box: same padding, text size, radius and a 1px border on both.
-    for (const c of ['px-4', 'py-2', 'text-[13px]', 'rounded-xl', 'tracking-tight', 'border']) {
+    for (const c of ['px-4', 'py-2', 'text-meta', 'rounded-xl', 'tracking-tight', 'border']) {
       expect(upClasses).toContain(c)
       expect(inClasses).toContain(c)
     }
   })
 
-  it('hero: Explore Perks and Sign In share height, padding and radius', async () => {
+  it('hero: Get Started and Sign In are the design-system pair, wrapping long labels', async () => {
     const { default: Hero } = await import('@/components/home/Hero')
     const t = (key: TranslationKey) => translations.he[key]
     const html = renderToStaticMarkup(
-      createElement(LangContext.Provider, { value: { lang: 'he', setLang: () => {}, t, isRtl: true } }, createElement(Hero))
+      createElement(LangContext.Provider, { value: { lang: 'he', setLang: () => {}, t, isRtl: true } }, createElement(Hero, { features: [] }))
     )
-    const primary = html.match(/<a class="([^"]*)" href="\/signup">/)![1]
-    const secondary = html.match(/<a class="([^"]*)" href="\/login">/)![1]
-    for (const shared of ['min-h-[52px]', 'px-8', 'py-3.5', 'rounded-xl', 'tracking-tight', 'border', '[@media(hover:hover)]:hover:-translate-y-0.5']) {
-      expect(primary.split(' ')).toContain(shared)
-      expect(secondary.split(' ')).toContain(shared)
-    }
-    // Whole class names, so two classes run together (a lost space) fail here.
-    for (const c of ['bg-brand', 'hover:bg-brandDark']) expect(primary.split(' ')).toContain(c)
-    for (const c of ['bg-[#FFFFFF]', 'border-[#E2E8F0]', 'text-[#0B1B3D]', 'hover:bg-slate-50', 'hover:border-slate-300']) {
-      expect(secondary.split(' ')).toContain(c)
-    }
+    // Whole class lists, so two classes run together (a lost space) fail here.
+    expect(html.match(/<a class="([^"]*)" href="\/signup">/)![1]).toBe('ds-btn ds-btn-primary ds-btn-wrap')
+    expect(html.match(/<a class="([^"]*)" href="\/login">/)![1]).toBe('ds-btn ds-btn-secondary ds-btn-wrap')
+    // Side by side from 380px, stacked full width below.
+    expect(html).toContain('max-[379px]:flex-col max-[379px]:items-stretch')
     // "Get Started" (בואו נתחיל), with its arrow mirrored for right-to-left.
     expect(html).toContain('>בואו נתחיל<')
-    expect(html).toContain('fa-arrow-right text-sm rtl:-scale-x-100')
+    expect(html).toMatch(/lucide-arrow-right h-4 w-4 rtl:-scale-x-100/)
   })
 })
 
@@ -354,11 +348,17 @@ describe('mobile drawer: signed-out layout', () => {
     return html.slice(html.indexOf('</nav>'))
   }
 
-  it.each(['en', 'he'] as const)('gives every guest link a Font Awesome icon tile, with no images (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('gives every guest link the same 20px fine-stroke vector glyph in a 40px tinted tile, with no images (%s)', (lang) => {
     const d = drawer(lang)
     const links = d.slice(0, d.indexOf('href="/settings"'))
-    for (const icon of ['fa-house', 'fa-gift', 'fa-list-check', 'fa-plane-departure', 'fa-handshake', 'fa-circle-info', 'fa-headset']) expect(links).toContain(`fa-solid ${icon}`)
-    expect(d).not.toContain('<svg')
+    for (const icon of ['house', 'gift', 'list-checks', 'plane-takeoff', 'handshake', 'info', 'headset']) {
+      expect(links).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}[^"]* h-5 w-5"`))
+    }
+    expect(links).not.toContain('fa-')
+    // One 40px tile for every row: same box, tint and hairline, 4px clear of the 48px row.
+    const tiles = links.match(/<span class="[^"]*w-10 h-10[^"]*"/g)!
+    expect(tiles.length).toBeGreaterThanOrEqual(7)
+    for (const tile of tiles) expect(tile).toBe('<span class="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl border border-brand/10 bg-brandTint text-brand"')
     expect(d).not.toContain('<img')
   })
 
@@ -375,7 +375,6 @@ describe('mobile drawer: signed-out layout', () => {
   it.each(['en', 'he'] as const)('runs links, then Settings, then Sign In, Sign Up and the contact line, with no promo card (%s)', (lang) => {
     const d = drawer(lang)
     const t = translations[lang]
-    expect(d).not.toContain('bg-[#F0F7FF]')
     expect(d).not.toContain('Live Israel Like a Local')
     expect(d).toMatch(/class="ds-btn ds-btn-primary ds-btn-md w-full" href="\/login">/)
     expect(d.indexOf('href="/settings"')).toBeGreaterThan(d.indexOf('href="/business"'))
@@ -398,9 +397,9 @@ describe('mobile drawer: Settings link', () => {
       const d = html.slice(html.indexOf('</nav>'))
       const link = d.match(/<a class="([^"]*)" href="\/settings">(.*?)<\/a>/)!
       for (const c of ['min-h-[48px]', 'rounded-xl', '[@media(hover:hover)]:hover:bg-slate-50', 'active:bg-slate-100']) expect(link[1].split(' ')).toContain(c)
-      expect(link[2]).toContain('fa-gear')
+      expect(link[2]).toContain('lucide-settings')
       expect(link[2]).toContain('>' + t.nav_settings_heading + '<')
-      expect(link[2]).toMatch(/fa-chevron-right[^"]*rtl:-scale-x-100/)
+      expect(link[2]).toMatch(/lucide-chevron-right[^"]*rtl:-scale-x-100/)
       expect(d).not.toContain('<h2')
     }
   })
@@ -412,7 +411,7 @@ describe('mobile drawer: Home link', () => {
     const d = html.slice(html.indexOf('</nav>'))
     const firstTag = d.match(/<a [^>]*>(?:(?!<\/a>).)*<\/a>/)![0]
     expect(firstTag).toContain('href="/"')
-    expect(firstTag).toContain('fa-house')
+    expect(firstTag).toContain('lucide-house')
     expect(firstTag).toContain(`<span class="min-w-0 flex-1">${translations[lang].nav_home}</span>`)
     const homeClass = firstTag.match(/class="([^"]*)"/)![1]
     const how = d.match(/<a class="([^"]*)" href="\/#how">/)![1]
@@ -431,7 +430,7 @@ describe('account capsules, divider and language picker', () => {
     const nav = navOf('en', loggedIn)
     const divider = nav.indexOf('<div class="hidden lg:block h-4 w-[1px] bg-slate-200 mx-1" aria-hidden="true"></div>')
     expect(divider).toBeGreaterThan(nav.indexOf(loggedIn ? 'aria-haspopup="menu"' : 'href="/login"'))
-    expect(divider).toBeLessThan(nav.indexOf('fa-globe'))
+    expect(divider).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
   it('styles the language trigger as a plain, non-capsule control', () => {
@@ -460,9 +459,9 @@ describe('language picker placement', () => {
     expect(nav).toContain('<div class="hidden lg:flex items-center gap-4">')
     expect(nav).not.toMatch(/class="[^"]*\bsm:(flex|block)\b/)
     // No heart button in the bar any more: Wishlist is a centre link.
-    expect(nav).not.toContain('fa-heart')
+    expect(nav).not.toContain('lucide-heart')
     expect(nav).toMatch(/<button type="button" class="lg:hidden [^"]*" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">/)
-    expect(nav.indexOf('fa-globe')).toBeLessThan(nav.indexOf('aria-label="Menu"'))
+    expect(nav.indexOf('lucide-globe')).toBeLessThan(nav.indexOf('aria-label="Menu"'))
     expect(nav).toContain('<div class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">')
   })
 
@@ -476,6 +475,6 @@ describe('language picker placement', () => {
     // A guest still switches from the globe in the bar, at every width.
     const guestBar = render(lang).split('</nav>')[0]
     expect(guestBar).toContain('class="lang-dropdown"')
-    expect(guestBar).toContain('fa-globe')
+    expect(guestBar).toContain('lucide-globe')
   })
 })

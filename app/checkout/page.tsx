@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { CalendarCheck, CircleAlert, History, LoaderCircle, Lock, PiggyBank, Play, RotateCw } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import TranzilaPaymentWidget from '@/components/checkout/TranzilaPaymentWidget'
@@ -170,7 +171,7 @@ function CheckoutContent() {
         <Navbar />
         <div className="checkout-canvas below-header min-h-screen min-h-dvh">
           <div role="status" className="max-w-xl mx-auto px-5 sm:px-6 py-16 flex flex-col items-center gap-3 text-slate-500">
-            <i className="fa-solid fa-spinner fa-spin text-brand text-2xl" aria-hidden="true"></i>
+            <LoaderCircle aria-hidden="true" className="h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
             <span className="text-sm">{t('checkout_loading')}</span>
           </div>
         </div>
@@ -192,8 +193,8 @@ function CheckoutContent() {
           <h1 className="text-2xl sm:text-3xl font-black text-ink mb-6">{t('checkout_title')}</h1>
 
           {error && !order && (
-            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
-              <i className="fa-solid fa-circle-exclamation text-red-500 text-2xl mb-3" aria-hidden="true"></i>
+            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center">
+              <CircleAlert aria-hidden="true" className="mx-auto mb-3 h-7 w-7 text-red-500" strokeWidth={1.75} />
               <p className="text-sm text-slate-600">{error}</p>
             </div>
           )}
@@ -201,7 +202,7 @@ function CheckoutContent() {
           {order && step === 'summary' && order.sandbox && showResume && (
             <section aria-labelledby="checkout-resume-heading" className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4">
               <h2 id="checkout-resume-heading" className="flex items-center gap-2 text-sm font-bold text-amber-900">
-                <i className="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                <History aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
                 <span>{t('checkout_sandbox_resume_title')}</span>
               </h2>
               <p className="text-sm text-amber-900/80 mt-1 leading-relaxed">{t('checkout_sandbox_resume_sub')}</p>
@@ -212,7 +213,7 @@ function CheckoutContent() {
                   disabled={restarting}
                   className="ds-btn ds-btn-primary ds-btn-md ds-btn-wrap flex-1"
                 >
-                  <i className="fa-solid fa-play text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                  <Play aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
                   <span>{t('checkout_sandbox_resume_button')}</span>
                 </button>
                 <button
@@ -222,7 +223,7 @@ function CheckoutContent() {
                   aria-busy={restarting || undefined}
                   className="ds-btn ds-btn-secondary ds-btn-md ds-btn-wrap flex-1"
                 >
-                  <i className={`fa-solid ${restarting ? 'fa-spinner fa-spin' : 'fa-rotate-right'} text-xs`} aria-hidden="true"></i>
+                  {restarting ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2} /> : <RotateCw aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />}
                   <span>{t('checkout_sandbox_reset_button')}</span>
                 </button>
               </div>
@@ -272,7 +273,7 @@ function CheckoutContent() {
                       <p className="text-xs text-slate-500">{t('checkout_vat_note')}</p>
                       {discount > 0 && (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                          <i className="fa-solid fa-piggy-bank" aria-hidden="true"></i>
+                          <PiggyBank aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                           <span>{t('checkout_you_save').replace('{amount}', formatPrice(discount))}</span>
                         </span>
                       )}
@@ -282,8 +283,8 @@ function CheckoutContent() {
                   <section aria-labelledby="checkout-voucher-heading" className="mt-6">
                     <h2 id="checkout-voucher-heading" className="text-sm font-bold text-ink mb-2">{t('checkout_voucher_details_title')}</h2>
                     <p className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brandTint text-brand">
-                        <i className="fa-regular fa-calendar-check text-xs" aria-hidden="true"></i>
+                      <span aria-hidden="true" className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-sky-200/60 bg-brandTint text-brand">
+                        <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                       </span>
                       <span>{t('checkout_validity').replace('{days}', String(order.validityDays))}</span>
                     </p>
@@ -321,7 +322,7 @@ function CheckoutContent() {
                   aria-busy={proceeding || undefined}
                   className="checkout-pay ds-btn ds-btn-primary ds-btn-wrap w-full"
                 >
-                  <i className={`fa-solid ${proceeding ? 'fa-spinner fa-spin' : 'fa-lock'} text-sm`} aria-hidden="true"></i>
+                  {proceeding ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={2} /> : <Lock aria-hidden="true" className="h-4 w-4" strokeWidth={2} />}
                   <span dir="auto">{payLabel}</span>
                 </button>
               </div>

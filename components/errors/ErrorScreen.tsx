@@ -1,20 +1,22 @@
 'use client'
 
 import Link from 'next/link'
+import { Compass, Gift, House, type LucideIcon } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 
 // Shared fallback card for app/not-found.tsx, app/error.tsx and
 // app/global-error.tsx. Display only: callers pass already-translated text.
 // Everything has a fixed size (64px icon tile, 52px buttons) so nothing shifts
-// when Font Awesome or Heebo finish loading, and spacing is logical (gap,
-// text-center) so Hebrew mirrors without extra rules.
+// when Heebo finishes loading, and spacing is logical (gap, text-center) so
+// Hebrew mirrors without extra rules. Icons are Lucide components, drawn
+// inline, so even global-error (no app shell) needs no icon font.
 
 type Action =
-  | { label: string; icon?: string; href: string; reload?: boolean }
-  | { label: string; icon?: string; onClick: () => void }
+  | { label: string; icon?: LucideIcon; href: string; reload?: boolean }
+  | { label: string; icon?: LucideIcon; onClick: () => void }
 
 interface ErrorScreenProps {
-  icon: string
+  icon: LucideIcon
   code?: string
   title: string
   body: string
@@ -29,7 +31,7 @@ function ActionButton({ action, variant }: { action: Action; variant: 'primary' 
   const className = `ds-btn ds-btn-${variant} w-full sm:w-auto sm:min-w-[180px]`
   const content = (
     <>
-      {action.icon && <i className={`fa-solid ${action.icon}`} aria-hidden="true"></i>}
+      {action.icon && <action.icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />}
       {action.label}
     </>
   )
@@ -41,7 +43,7 @@ function ActionButton({ action, variant }: { action: Action; variant: 'primary' 
   return <Link href={action.href} className={className}>{content}</Link>
 }
 
-export default function ErrorScreen({ icon, code, title, body, primary, secondary, footnote, withNavbar = true }: ErrorScreenProps) {
+export default function ErrorScreen({ icon: Icon, code, title, body, primary, secondary, footnote, withNavbar = true }: ErrorScreenProps) {
   return (
     <main
       className={`flex min-h-screen min-h-dvh items-center justify-center bg-canvas overflow-x-hidden ${withNavbar ? 'below-header' : ''}`}
@@ -51,13 +53,13 @@ export default function ErrorScreen({ icon, code, title, body, primary, secondar
         className="w-full max-w-[560px] py-10 sm:py-16"
         style={{ paddingLeft: 'max(16px, env(safe-area-inset-left))', paddingRight: 'max(16px, env(safe-area-inset-right))' }}
       >
-        <div className="flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white px-6 py-10 sm:px-12 sm:py-12 shadow-sm">
-          <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-brandLight text-brand text-[26px]" aria-hidden="true">
-            <i className={`fa-solid ${icon}`} aria-hidden="true"></i>
+        <div className="flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white px-6 py-10 sm:px-12 sm:py-12 shadow-card">
+          <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-sky-200/60 bg-brandTint text-brand" aria-hidden="true">
+            <Icon aria-hidden="true" className="h-7 w-7" strokeWidth={1.5} />
           </span>
           {code && <p className="mt-5 text-sm font-bold tracking-[0.2em] text-brand" dir="ltr">{code}</p>}
-          <h1 className={`${code ? 'mt-1' : 'mt-5'} text-2xl sm:text-[28px] font-extrabold leading-tight text-ink`}>{title}</h1>
-          <p className="mt-3 max-w-[400px] text-[15px] sm:text-base leading-relaxed text-body">{body}</p>
+          <h1 className={`${code ? 'mt-1' : 'mt-5'} text-2xl sm:text-page-lg font-extrabold leading-tight text-ink`}>{title}</h1>
+          <p className="mt-3 max-w-[400px] text-copy sm:text-base leading-relaxed text-body">{body}</p>
           <div className="mt-8 flex w-full flex-col items-stretch gap-3 sm:flex-row sm:justify-center">
             <ActionButton action={primary} variant="primary" />
             {secondary && <ActionButton action={secondary} variant="secondary" />}
@@ -75,12 +77,12 @@ export function NotFoundContent() {
   const { t } = useLang()
   return (
     <ErrorScreen
-      icon="fa-compass"
+      icon={Compass}
       code="404"
       title={t('err_404_title')}
       body={t('err_404_body')}
-      primary={{ label: t('err_home'), icon: 'fa-house', href: '/' }}
-      secondary={{ label: t('nav_cta'), icon: 'fa-gift', href: '/categories' }}
+      primary={{ label: t('err_home'), icon: House, href: '/' }}
+      secondary={{ label: t('nav_cta'), icon: Gift, href: '/categories' }}
     />
   )
 }

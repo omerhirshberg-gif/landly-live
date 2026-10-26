@@ -215,7 +215,7 @@ describe('POST /api/admin/whatsapp/reply', () => {
 })
 
 describe('POST /api/admin/whatsapp/status', () => {
-  it('resolves with the sign-off in the member\'s language and clears the timers', async () => {
+  it('resolves with the team\'s thanks in the member\'s language and clears the timers', async () => {
     seedConversation(WA_ID, { lastMenuAt: Timestamp.now(), inquiryPromptedAt: Timestamp.now() })
     const res = await statusRoute(post('/api/admin/whatsapp/status', { waId: WA_ID, status: 'resolved' }))
     expect(res.status).toBe(200)
@@ -224,7 +224,7 @@ describe('POST /api/admin/whatsapp/status', () => {
     const stored = mocks.store.read(conversationPath())!
     expect(stored.resolvedAt).toBeInstanceOf(Timestamp)
     for (const field of ['escalatedAt', 'lastMenuAt', 'inquiryPromptedAt']) expect(stored).not.toHaveProperty(field)
-    expect(transcript()[0].text).toContain(translations.he.wa_bot_resolved)
+    expect(transcript()[0].text).toContain(translations.he.wa_team_resolved_thanks)
 
     // The member's next message gets a fresh Hebrew menu from the bot.
     await handleInboundEvent({ messageId: 'wamid.c', waId: WA_ID, at: Date.now() + 1000, kind: 'text', text: 'היי' }, Date.now() + 1000)

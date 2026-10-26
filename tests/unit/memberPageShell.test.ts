@@ -33,10 +33,13 @@ describe('MemberPageShell', () => {
     expect(source).not.toMatch(/max-w-3xl[^"]*mx-auto|py-8 sm:py-10|text-\[26px\]/)
   })
 
-  it('narrows text-heavy pages from the column’s start edge, never re-centring them', () => {
-    expect(read('app/wishlist/page.tsx')).toContain('<div className="max-w-3xl">')
-    expect(read('app/member/page.tsx')).toContain('<div className="max-w-4xl">')
-    expect(read('app/support/page.tsx')).toContain('<div className="max-w-3xl">')
+  it('narrows text-heavy pages from the column’s start edge below 1024px, never re-centring them, and uses the full column from there', () => {
+    expect(read('app/wishlist/page.tsx')).toContain('<div className="max-w-3xl lg:max-w-none">')
+    expect(read('app/support/page.tsx')).toContain('<div className="max-w-3xl lg:max-w-none lg:grid lg:grid-cols-12 lg:gap-x-8 lg:items-start">')
+    // My Pass: the stats move into a sticky rail beside the passes.
+    const member = read('app/member/page.tsx')
+    expect(member).toContain('<div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10">')
+    expect(member).toContain('<aside className="lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky')
   })
 
   it.each(['app/member/page.tsx', 'app/profile/page.tsx', 'app/settings/page.tsx'])('%s has no Member Dashboard eyebrow, so its title sits on the shared baseline', (path) => {

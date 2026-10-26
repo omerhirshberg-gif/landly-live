@@ -51,8 +51,8 @@ export default function ResetPasswordSuccessPage() {
               </svg>
             </span>
           </div>
-          <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('resetSuccess_title')}</h1>
-          <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500">{t('resetSuccess_message')}</p>
+          <h1 className="text-2xl leading-8 font-extrabold text-slate-900">{t('resetSuccess_title')}</h1>
+          <p className="mt-2 mb-7 text-copy leading-6 text-slate-500">{t('resetSuccess_message')}</p>
           <Button label={t('resetSuccess_backToLogin')} onClick={() => router.push('/login')} large arrow />
         </div>
       </main>

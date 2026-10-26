@@ -37,7 +37,16 @@ export function dayLabel(iso: string, now: number): string {
   return fullDate.format(day)
 }
 
-export const sameDay = (a: string, b: string) => startOfDay(Date.parse(a)) === startOfDay(Date.parse(b))
+/** "14:05", "Tomorrow 09:30" or "Wed 18:00": when a follow-up went or goes out. */
+export function dayTime(iso: string, now: number): string {
+  const at = Date.parse(iso)
+  if (Number.isNaN(at)) return ''
+  const days = Math.round((startOfDay(at) - startOfDay(now)) / DAY)
+  const day = days === 0 ? '' : days === 1 ? 'Tomorrow ' : days === -1 ? 'Yesterday ' : `${weekday.format(at)} `
+  return `${day}${clock.format(at)}`
+}
+
+export const sameDay =(a: string, b: string) => startOfDay(Date.parse(a)) === startOfDay(Date.parse(b))
 
 /** "+972501234567" from a WhatsApp ID. */
 export const phoneOf = (waId: string) => `+${waId}`

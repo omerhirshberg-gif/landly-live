@@ -7,7 +7,7 @@ import styles from '../entrance/entrance.module.css'
 export default function StepIntro({ id, title, subtitle, titleRef }: { id: string; title: string; subtitle?: string; titleRef?: Ref<HTMLHeadingElement> }) {
   return (
     <div className="mb-5">
-      <h2 id={id} ref={titleRef} tabIndex={-1} className="text-[22px] leading-7 font-extrabold text-slate-900 outline-none">
+      <h2 id={id} ref={titleRef} tabIndex={-1} className="text-heading-sm leading-7 font-extrabold text-slate-900 outline-none">
         {title}
       </h2>
       {subtitle && <p className={`${styles.subtitle} mt-1 text-sm leading-5 text-slate-500`}>{subtitle}</p>}

@@ -15,7 +15,7 @@ import HomeFaqPrompt from '@/components/home/HomeFaqPrompt'
 import SectionBoundary from '@/components/errors/SectionBoundary'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
-import { EMPTY_SHOWCASE, pickTopSavings, type Showcase } from '@/lib/home/showcase'
+import { EMPTY_SHOWCASE, pickHeroFeatures, pickTopSavings, type Showcase } from '@/lib/home/showcase'
 
 // The home page's client side (app/page.tsx renders it with the page's
 // metadata and structured data): the member dashboard, or the guest landing.
@@ -91,7 +91,7 @@ function GuestLanding({ showcase }: { showcase: Showcase }) {
   return (
     <>
       <main className="home-ambient">
-        <Hero />
+        <Hero features={pickHeroFeatures(showcase.offers)} />
         <SectionBoundary name="partner-marquee"><PartnerMarquee offers={showcase.offers} /></SectionBoundary>
         <SectionDivider />
         <SectionBoundary name="value-props"><Reveal><ValueProps /></Reveal></SectionBoundary>

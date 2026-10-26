@@ -48,7 +48,7 @@ export default function SecuritySection({ user }: { user: User }) {
   }
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm">
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card">
       <h3 className="text-base font-bold text-slate-900 mb-4">{t('profile_change_password_title')}</h3>
 
       {pwMsg && (

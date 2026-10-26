@@ -1,5 +1,6 @@
 'use client'
 
+import { Search, X } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 
 // The search field in the /categories filter toolbar: filters as you type
@@ -11,10 +12,11 @@ export default function PerksSearchBar({ value, onChange }: { value: string; onC
   const { t } = useLang()
   return (
     <div role="search" className="relative w-full">
-      <i
+      <Search
         aria-hidden="true"
-        className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"
-      ></i>
+        className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        strokeWidth={2}
+      />
       <input
         type="text"
         inputMode="search"
@@ -33,7 +35,7 @@ export default function PerksSearchBar({ value, onChange }: { value: string; onC
           aria-label={t('cats_clear_search')}
           className="absolute end-0 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full text-slate-400 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-brand [@media(hover:hover)]:hover:text-slate-600"
         >
-          <i aria-hidden="true" className="fa-solid fa-xmark text-sm"></i>
+          <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
         </button>
       )}
     </div>

@@ -4,6 +4,8 @@
 export const CAROUSEL_GAP = 12
 // The screen's gutter: the rail bleeds through it, so cards scroll out from under it.
 export const CAROUSEL_EDGE = 16
+// Past this many resting places a row of dots stops reading as a position: longer rows go without (web: SNAP_DOTS_MAX).
+export const PAGER_DOTS_MAX = 8
 
 /** About 72% of the screen, held between 240 and 260pt, so the next card always peeks in. */
 export function carouselCardWidth(screenWidth: number): number {
@@ -22,6 +24,25 @@ export function carouselSnapOffsets(count: number, interval: number, maxOffset: 
     isRtl ? Math.max(0, maxOffset - i * interval) : Math.min(i * interval, maxOffset)
   )
   return [...new Set(offsets)].sort((a, b) => a - b)
+}
+
+/**
+ * Where the row is, in resting places, for its pagination dots: 0 at the
+ * first, 1 at the next, fractions between them. `starts` are the resting
+ * offsets counted from the start edge (carouselSnapOffsets with isRtl false),
+ * so one dot is one place a swipe can stop, and the last cards that can't
+ * reach the gutter share the final dot. `fromStart` is how far the row has
+ * scrolled from its start edge. A worklet: the dots follow the finger on the
+ * UI thread.
+ */
+export function carouselPage(fromStart: number, starts: readonly number[]): number {
+  'worklet'
+  const last = starts.length - 1
+  if (last <= 0 || fromStart <= starts[0]) return 0
+  for (let i = 1; i <= last; i++) {
+    if (fromStart <= starts[i]) return i - 1 + (fromStart - starts[i - 1]) / (starts[i] - starts[i - 1])
+  }
+  return last
 }
 
 // The Perks tab's highlight rails (components/OfferTileRail.tsx): fixed 256pt

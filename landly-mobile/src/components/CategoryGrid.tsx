@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native'
-import { perksCountLabel, type CategoryTile } from '@shared/categories'
+import type { CategoryTile } from '@shared/categories'
 import AppText from './AppText'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
@@ -12,15 +12,15 @@ const GAP = 12
 // The category discovery grid, two cards per row on a phone, three on an
 // unfolded foldable, four on a tablet (web: components/perks/CategoryGrid.tsx;
 // src/lib/layout.ts), re-laid out as the phone folds. Rows follow the root view's direction,
-// so the first card sits on the right in Hebrew. `counts` is null while
-// offers load, which shows a placeholder bar in place of the perk count.
+// so the first card sits on the right in Hebrew. Each card is the category's
+// glyph and name, with no perk count (a young catalogue's small numbers read
+// as empty). Every card is 116pt tall (the web's height on a phone): the glyph
+// at the top, the name held to the foot in a fixed two-line box.
 export default function CategoryGrid({
   tiles,
-  counts,
   onSelect,
 }: {
   tiles: readonly CategoryTile[]
-  counts: Map<string, number> | null
   onSelect: (category: string) => void
 }) {
   const { t } = useLang()
@@ -35,25 +35,18 @@ export default function CategoryGrid({
             <ScalePressable
               key={tile.category}
               accessibilityRole="button"
-              accessibilityLabel={
-                counts ? `${t(tile.labelKey)}, ${perksCountLabel(counts.get(tile.category) ?? 0, t)}` : t(tile.labelKey)
-              }
+              accessibilityLabel={t(tile.labelKey)}
               onPress={() => onSelect(tile.category)}
               style={styles.card}
             >
               <AppText style={styles.emoji} accessibilityElementsHidden importantForAccessibility="no">
                 {tile.emoji}
               </AppText>
-              <AppText style={styles.title} numberOfLines={2}>
-                {t(tile.labelKey)}
-              </AppText>
-              {counts ? (
-                <AppText style={styles.count} numberOfLines={1}>
-                  {perksCountLabel(counts.get(tile.category) ?? 0, t)}
+              <View style={styles.titleBox}>
+                <AppText style={styles.title} numberOfLines={2}>
+                  {t(tile.labelKey)}
                 </AppText>
-              ) : (
-                <View style={styles.countPlaceholder} />
-              )}
+              </View>
             </ScalePressable>
           ))}
           {/* A short last row keeps its cards the width of the rest. */}
@@ -72,8 +65,9 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 0,
+    height: 116,
     padding: 16,
-    gap: 6,
+    justifyContent: 'space-between',
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -81,9 +75,8 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
   spacer: { flex: 1 },
-  emoji: { fontSize: 32, lineHeight: 40, marginBottom: 6 },
-  // Two lines reserved so cards in a row line up whether a label wraps or not.
-  title: { fontSize: 15, lineHeight: 20, minHeight: 40, fontWeight: '700', color: colors.textStrong },
-  count: { fontSize: 12, lineHeight: 16, color: colors.textMuted },
-  countPlaceholder: { height: 12, width: 80, marginTop: 2, borderRadius: radius.pill, backgroundColor: colors.borderLight },
+  emoji: { fontSize: 32, lineHeight: 40 },
+  // Two lines reserved, the name sitting on the box's foot, so every card's label shares one baseline.
+  titleBox: { height: 40, justifyContent: 'flex-end' },
+  title: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.textStrong },
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ChevronRight, Gift, Handshake, Headset, Heart, House, Info, ListChecks, LogOut, PlaneTakeoff, QrCode, Settings, type LucideIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { isNavLinkActive } from '@/lib/navActive'
@@ -42,7 +43,7 @@ export default function MobileMenu({
   const { wishlistCount } = useWishlist()
 
   const linkClass = (href: string) =>
-    `${rowBase} text-[15px] font-semibold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-ink'}`
+    `${rowBase} text-copy font-semibold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-ink'}`
   const primaryClass = 'ds-btn ds-btn-primary ds-btn-md w-full'
 
   // Settings and each of its sub-pages count as "here".
@@ -53,13 +54,13 @@ export default function MobileMenu({
         href="/settings"
         onClick={onClose}
         aria-current={inSettings ? 'page' : undefined}
-        className={`${rowBase} text-[15px] font-semibold ${inSettings ? 'bg-brandLight text-brand' : 'text-ink'}`}
+        className={`${rowBase} text-copy font-semibold ${inSettings ? 'bg-brandLight text-brand' : 'text-ink'}`}
       >
-        <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-600" aria-hidden="true">
-          <i className="fa-solid fa-gear text-sm" aria-hidden="true"></i>
+        <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200/80 bg-slate-50 text-slate-600" aria-hidden="true">
+          <Settings aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
         </span>
         <span className="min-w-0 flex-1">{t('nav_settings_heading')}</span>
-        <i className="fa-solid fa-chevron-right flex-shrink-0 text-xs text-slate-400 rtl:-scale-x-100" aria-hidden="true"></i>
+        <ChevronRight aria-hidden="true" className="h-4 w-4 flex-shrink-0 text-slate-400 rtl:-scale-x-100" strokeWidth={2} />
       </Link>
     </div>
   )
@@ -78,14 +79,14 @@ export default function MobileMenu({
 
             <div className="flex flex-col gap-1 mt-4">
               <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
-                <ItemIcon icon="fa-house" />
+                <ItemIcon icon={House} />
                 <span className="min-w-0 flex-1">{t('nav_home')}</span>
               </a>
               {/* My Pass opens /member, where the active passes and their QR codes are */}
-              <IconLink href="/member" icon="fa-qrcode" label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
-              <IconLink href="/categories" icon="fa-gift" label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
-              <IconLink href="/wishlist" icon="fa-heart" label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
-              <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
+              <IconLink href="/member" icon={QrCode} label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
+              <IconLink href="/categories" icon={Gift} label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
+              <IconLink href="/wishlist" icon={Heart} label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
+              <IconLink href="/olim" icon={PlaneTakeoff} label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
             </div>
 
             {settingsLink}
@@ -99,9 +100,9 @@ export default function MobileMenu({
               <button
                 type="button"
                 onClick={onSignOut}
-                className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-red-200 bg-white text-[15px] font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                className="tap-target flex h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-red-200 bg-white text-copy font-semibold text-red-600 transition-colors [@media(hover:hover)]:hover:bg-red-50 active:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
               >
-                <i className="fa-solid fa-arrow-right-from-bracket text-sm rtl:-scale-x-100" aria-hidden="true"></i>
+                <LogOut aria-hidden="true" className="h-[18px] w-[18px] rtl:-scale-x-100" strokeWidth={2} />
                 {t('nav_logout')}
               </button>
             </div>
@@ -110,17 +111,17 @@ export default function MobileMenu({
           <div className="min-h-full flex flex-col px-4 pt-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
             <div className="flex flex-col gap-1">
               <a href="/" onClick={(e) => { e.preventDefault(); onGoHome() }} className={linkClass('/')}>
-                <ItemIcon icon="fa-house" />
+                <ItemIcon icon={House} />
                 <span className="min-w-0 flex-1">{t('nav_home')}</span>
               </a>
               {/* Guests browse the same catalog members do, before signing in */}
-              <IconLink href="/categories" icon="fa-gift" label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
-              <IconLink href="/#how" icon="fa-list-check" label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
-              <IconLink href="/olim" icon="fa-plane-departure" label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
+              <IconLink href="/categories" icon={Gift} label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
+              <IconLink href="/#how" icon={ListChecks} label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
+              <IconLink href="/olim" icon={PlaneTakeoff} label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
               {/* B2B onboarding, for guests only: members are consumers and never see it */}
-              <IconLink href="/business" icon="fa-handshake" label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
-              <IconLink href="/about" icon="fa-circle-info" label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
-              <IconLink href="/support" icon="fa-headset" label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
+              <IconLink href="/business" icon={Handshake} label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
+              <IconLink href="/about" icon={Info} label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
+              <IconLink href="/support" icon={Headset} label={t('nav_support')} onClose={onClose} className={linkClass('/support')} />
             </div>
 
             {settingsLink}
@@ -149,16 +150,18 @@ export default function MobileMenu({
 const rowBase =
   'tap-target flex items-center gap-3 min-h-[48px] px-3 py-2 rounded-xl text-start transition-colors [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100'
 
-// A 36px brand-tinted tile holding a link's Font Awesome glyph.
-function ItemIcon({ icon }: { icon: string }) {
+// A 40px tile in the pale brand tint with a hairline, holding a link's 20px
+// Lucide glyph at a fine stroke: every row's icon the same size, box and
+// leading edge.
+function ItemIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
-    <span className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-brandLight text-brand" aria-hidden="true">
-      <i className={`fa-solid ${icon} text-sm`} aria-hidden="true"></i>
+    <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl border border-brand/10 bg-brandTint text-brand" aria-hidden="true">
+      <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
     </span>
   )
 }
 
-function IconLink({ href, icon, label, onClose, className, count }: { href: string; icon: string; label: string; onClose: () => void; className: string; count?: number }) {
+function IconLink({ href, icon, label, onClose, className, count }: { href: string; icon: LucideIcon; label: string; onClose: () => void; className: string; count?: number }) {
   return (
     <Link href={href} onClick={onClose} className={className}>
       <ItemIcon icon={icon} />
@@ -187,7 +190,7 @@ function MemberCard({ onClose, active, label }: { onClose: () => void; active: b
       className={`tap-target flex items-center gap-3 rounded-2xl border p-4 transition-colors [@media(hover:hover)]:hover:bg-slate-100/80 active:bg-slate-100 ${active ? 'border-brand/30 bg-brandLight' : 'border-slate-100 bg-slate-50'}`}
     >
       <Avatar src={photoURL} initials={initials} size={44} className="ring-2 ring-white shadow-[0_0_0_3px_#e2e8f0]" />
-      <span className="min-w-0 flex-1 truncate text-[16px] font-bold text-ink">
+      <span className="min-w-0 flex-1 truncate text-base font-bold text-ink">
         {fullName ? (
           <>
             {/* Screen readers hear "Profile" first; sighted members see who they are. */}

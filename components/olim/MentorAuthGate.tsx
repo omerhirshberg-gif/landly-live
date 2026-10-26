@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Lock } from 'lucide-react'
 import { withRedirect } from '@/lib/auth/safeRedirect'
 import { useLang } from '@/lib/i18n/useLang'
 import { MENTOR_SECTION_ID } from './mentorSection'
@@ -14,10 +15,10 @@ export default function MentorAuthGate() {
   return (
     <div className="rounded-2xl border border-white/25 bg-white/10 p-5 sm:p-6">
       <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wide">
-        <i className="fa-solid fa-lock" aria-hidden="true"></i>
+        <Lock aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
         {t('olim_gate_badge')}
       </span>
-      <p className="mt-4 mb-6 text-[15px] leading-relaxed text-white">{t('olim_gate_message')}</p>
+      <p className="mt-4 mb-6 text-copy leading-relaxed text-white">{t('olim_gate_message')}</p>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
         <Link
           href={withRedirect('/signup', MENTOR_RETURN_PATH)}

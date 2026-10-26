@@ -30,7 +30,7 @@ export default function PrivacyPage() {
           <Suspense fallback={null}>
             <BackToSettings className="mb-3 sm:mb-6" />
           </Suspense>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-12 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-12 shadow-card">
             <LocalizedPrivacyPolicy />
           </div>
         </div>

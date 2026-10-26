@@ -54,8 +54,8 @@ export default function MemberTypePage() {
   return (
     <SettingsPageShell title={t('signup_customerTypeLabel')}>
       {user && loaded ? (
-        <form onSubmit={save} className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm">
-          <p id="member-type-label" className="mb-4 text-[15px] font-semibold text-ink">{t('onb_persona_title')}</p>
+        <form onSubmit={save} className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-card">
+          <p id="member-type-label" className="mb-4 text-copy font-semibold text-ink">{t('onb_persona_title')}</p>
           <PersonaStep
             labelledBy="member-type-label"
             value={value}
@@ -64,10 +64,10 @@ export default function MemberTypePage() {
             onNoteChange={(next) => edit(() => setNote(next))}
           />
           {status === 'saved' && (
-            <p role="status" className="mb-3 text-[13px] font-semibold text-emerald-700">{t('profile_save_success')}</p>
+            <p role="status" className="mb-3 text-meta font-semibold text-emerald-700">{t('profile_save_success')}</p>
           )}
           {status === 'failed' && (
-            <p role="alert" className="mb-3 text-[13px] font-semibold text-red-600">{t('settings_save_error')}</p>
+            <p role="alert" className="mb-3 text-meta font-semibold text-red-600">{t('settings_save_error')}</p>
           )}
           <button type="submit" disabled={saving || !changed || !isCustomerType(value)} aria-busy={saving || undefined} className="ds-btn ds-btn-primary w-full disabled:opacity-60">
             {t('profile_save_btn')}

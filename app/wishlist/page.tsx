@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Heart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
+import { OfferGridSkeleton } from '@/components/ui/Skeleton'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
@@ -48,17 +50,17 @@ export default function WishlistPage() {
       <Navbar />
       <div className="below-header member-canvas">
         <MemberPageShell>
-          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
-          <div className="max-w-3xl">
+          {/* Narrower than the column below 1024px, at its start edge, so the
+              title lines up with the other tabs; the full column from there,
+              so saved perks fill the feed's three or four columns. */}
+          <div className="max-w-3xl lg:max-w-none">
             <PageTitle>{t('wishlist_title')}</PageTitle>
 
             {offers === undefined ? (
-              <div className="dash-empty-state">
-                <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-              </div>
+              <OfferGridSkeleton count={3} />
             ) : offers.length === 0 ? (
               <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                <i className="fa-solid fa-heart" aria-hidden="true"></i>
+                <Heart aria-hidden="true" strokeWidth={1.5} />
                 <div className="font-bold text-ink text-base mb-1">{t('wishlist_empty_title')}</div>
                 <p className="text-sm text-body max-w-xs mb-5">{t('wishlist_empty_sub')}</p>
                 <Link href="/categories" className="ds-btn ds-btn-primary">

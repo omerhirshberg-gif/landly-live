@@ -5,7 +5,7 @@ import { useLang } from '@/lib/i18n/useLang'
 import { navigationLinks, type NavigationDestination } from '@/lib/maps/navigation'
 
 const BUTTON =
-  'flex h-[46px] min-w-0 items-center justify-center gap-2 rounded-[14px] border border-slate-200 bg-white px-3 shadow-sm text-[13.5px] font-semibold text-ink transition-colors [@media(hover:hover)]:hover:border-brand [@media(hover:hover)]:hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
+  'flex h-[46px] min-w-0 items-center justify-center gap-2 rounded-[14px] border border-slate-200 bg-white px-3 shadow-sm text-meta font-semibold text-ink transition-colors [@media(hover:hover)]:hover:border-brand [@media(hover:hover)]:hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 // Waze and Google Maps, side by side in equal halves under the address on
 // the offer page (the app: landly-mobile/src/components/NavigationButtons.tsx).

@@ -14,6 +14,7 @@ import ContentText from './ContentText'
 import LineIcon, { type LineIconName } from './LineIcon'
 import PerkImage from './PerkImage'
 import { useLang } from '../i18n/LangProvider'
+import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -39,7 +40,7 @@ const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 // card is the button; the CTA line only says what tapping does. The heart at
 // the photo's bottom end corner saves or un-saves the perk in the member's
 // wishlist, shared live with the website. Compact, so a feed shows two or
-// more perks per screen: a 130pt picture in its own framed box (light canvas,
+// more perks per screen: a 16:9 picture in its own framed box (light canvas,
 // hairline border, 14pt corners) inset from the card's edges, so a white logo
 // never melts into the white card, and the price,
 // the struck-through original and the discount badge sharing one row with
@@ -95,7 +96,7 @@ export default function OfferCard({
       onPressOut={() => pressTo(1)}
     >
       <Animated.View style={[styles.card, variant === 'carousel' && styles.cardCarousel, pressStyle]}>
-        <View style={[styles.media, compact ? styles.mediaCompact : styles.mediaStandard]}>
+        <View style={styles.media}>
           <PerkImage uri={offer.imageUrl} category={offer.category} businessName={name.text} />
           {showCategoryBadge && tile && (
             <View style={[styles.overlay, styles.overlayStart, styles.category]}>
@@ -110,7 +111,10 @@ export default function OfferCard({
             accessibilityState={{ selected: saved }}
             // A 36px circle + 6px slop (compact: 32px + 8px) = a 48px touch target.
             hitSlop={compact ? 8 : 6}
-            onPress={() => toggleWishlist(offer.id)}
+            onPress={() => {
+              impact()
+              toggleWishlist(offer.id)
+            }}
             style={({ pressed }) => [
               styles.overlayBottomEnd,
               styles.heart,
@@ -198,18 +202,18 @@ const styles = StyleSheet.create({
   },
   // The rail spaces its cards itself.
   cardCarousel: { marginBottom: 0 },
-  // The framed picture, inset from the card's edges and clipped to its own corners.
+  // The framed picture, inset from the card's edges and clipped to its own
+  // corners: 16:9 in every size, as on the web (components/discover/OfferCard.tsx).
   media: {
     marginHorizontal: 8,
     marginTop: 8,
+    aspectRatio: 16 / 9,
     borderRadius: radius.frame,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
     backgroundColor: colors.background,
   },
-  mediaStandard: { height: 130 },
-  mediaCompact: { height: 130 },
   overlay: { position: 'absolute', top: 10 },
   overlayStart: { start: 10 },
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },

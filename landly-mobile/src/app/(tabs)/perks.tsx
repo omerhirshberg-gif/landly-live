@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@shared/categories'
+import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@shared/categories'
 import { getAllOffers, isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@shared/geo'
 import {
@@ -31,6 +31,7 @@ import PerksSearchField from '../../components/PerksSearchField'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionDivider from '../../components/SectionDivider'
 import SortSheet from '../../components/SortSheet'
+import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
@@ -116,7 +117,6 @@ export default function PerksScreen() {
   const normalizedQuery = normalizeQuery(appliedQuery)
   // Nothing chosen: the screen is the category grid.
   const browsing = !hasActivePerkFilters({ query: appliedQuery, category, sort })
-  const counts = useMemo(() => (offers ? countOffersByCategory(offers) : null), [offers])
   // A search across All also surfaces the categories it names.
   const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   const visible = useMemo(
@@ -247,10 +247,10 @@ export default function PerksScreen() {
                   <>
                     <SectionDivider />
                     <View style={styles.rails}>
-                      {newOffers.length > 0 && <OfferTileRail emoji="✨" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
+                      {newOffers.length > 0 && <OfferTileRail icon="sparkles" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
                       {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                       {bestsellerOffers.length > 0 && (
-                        <OfferTileRail emoji="🔥" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
+                        <OfferTileRail icon="award" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
                       )}
                     </View>
                   </>
@@ -259,7 +259,7 @@ export default function PerksScreen() {
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_all_categories_title')}
                 </AppText>
-                <CategoryGrid tiles={CATEGORY_TILES} counts={counts} onSelect={openCategory} />
+                <CategoryGrid tiles={CATEGORY_TILES} onSelect={openCategory} />
               </>
             )}
 
@@ -268,7 +268,7 @@ export default function PerksScreen() {
                 <AppText accessibilityRole="header" style={styles.sectionTitle}>
                   {t('cats_matching_categories')}
                 </AppText>
-                <CategoryGrid tiles={matchingTiles} counts={counts} onSelect={openCategory} />
+                <CategoryGrid tiles={matchingTiles} onSelect={openCategory} />
               </>
             )}
 
@@ -286,7 +286,7 @@ export default function PerksScreen() {
         }
         ListEmptyComponent={
           browsing ? null : offers === null ? (
-            failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
+            failed ? null : <OfferListSkeleton />
           ) : matchingTiles.length > 0 ? null : (
             <View style={styles.empty} accessibilityLiveRegion="polite">
               <AppText style={styles.emptyTitle}>
@@ -322,7 +322,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },
   resultsHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 },
   resultsCount: { fontSize: 14, color: colors.textMuted },
-  spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

@@ -83,14 +83,14 @@ export default function ForgotPasswordPage() {
                 </svg>
               </span>
             </div>
-            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('forgot_sentTitle')}</h1>
-            <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500">{t('forgot_sentSubtitle')}</p>
+            <h1 className="text-2xl leading-8 font-extrabold text-slate-900">{t('forgot_sentTitle')}</h1>
+            <p className="mt-2 mb-7 text-copy leading-6 text-slate-500">{t('forgot_sentSubtitle')}</p>
             <Button label={t('forgot_backLink')} onClick={() => router.push('/login')} large arrow />
           </div>
         ) : (
           <div className={styles.card}>
-            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('forgot_title')}</h1>
-            <p className={`${styles.subtitle} mt-2 mb-6 text-[15px] leading-6 text-slate-500`}>{t('forgot_subtitle')}</p>
+            <h1 className="text-2xl leading-8 font-extrabold text-slate-900">{t('forgot_title')}</h1>
+            <p className={`${styles.subtitle} mt-2 mb-6 text-copy leading-6 text-slate-500`}>{t('forgot_subtitle')}</p>
 
             {error && <Notice>{error}</Notice>}
 

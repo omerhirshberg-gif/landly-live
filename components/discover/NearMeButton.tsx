@@ -1,6 +1,7 @@
 'use client'
 
 import { useId } from 'react'
+import { LoaderCircle, LocateFixed } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizedName, type Area, type Coordinates } from '@/lib/geo'
 import { useGeolocation, type GeoStatus } from '@/lib/useGeolocation'
@@ -64,11 +65,15 @@ export default function NearMeButton({
         aria-label={t('geo_near_me_btn')}
         className={`tap-target inline-flex h-11 w-11 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:px-3.5 ${
           active
-            ? 'border-brand bg-brand text-white [@media(hover:hover)]:hover:bg-brandDark'
-            : 'border-line bg-brandTint text-brand [@media(hover:hover)]:hover:bg-brandLight'
+            ? 'border-brand bg-brand text-white shadow-btn-primary [@media(hover:hover)]:hover:bg-brandDark'
+            : 'border-slate-200/80 bg-white text-brand shadow-btn-secondary [@media(hover:hover)]:hover:bg-brandTint'
         }`}
       >
-        <i aria-hidden="true" className={`fa-solid text-base sm:text-xs ${requesting ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'}`}></i>
+        {requesting ? (
+          <LoaderCircle aria-hidden="true" className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none sm:h-4 sm:w-4" strokeWidth={2} />
+        ) : (
+          <LocateFixed aria-hidden="true" className="h-[18px] w-[18px] sm:h-4 sm:w-4" strokeWidth={1.75} />
+        )}
         {/* Shown from 640px; the button's aria-label names it on phones. Not
             sr-only/sm:not-sr-only: Font Awesome's CDN stylesheet also defines
             .sr-only and loads later, so it beat the not-sr-only reset and kept

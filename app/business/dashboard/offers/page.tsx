@@ -75,7 +75,7 @@ export default function BusinessOffersPage() {
           <Card key={offer.id} className="p-5 flex flex-col gap-3">
             <div className="min-w-0">
               <span
-                className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 border mb-1.5 ${STATUS_STYLES[offer.status]}`}
+                className={`inline-flex items-center text-micro font-bold uppercase tracking-wide rounded-full px-2 py-0.5 border mb-1.5 ${STATUS_STYLES[offer.status]}`}
               >
                 {statusLabel[offer.status]}
               </span>
@@ -97,7 +97,7 @@ export default function BusinessOffersPage() {
           </Card>
         ))}
       </div>
-      {nextCursor && <button type="button" onClick={() => void loadOffers(nextCursor, true)} disabled={loadingMore} className="btn-primary mt-6 disabled:opacity-60">
+      {nextCursor && <button type="button" onClick={() => void loadOffers(nextCursor, true)} disabled={loadingMore} className="ds-btn ds-btn-primary ds-btn-md mt-6">
         {loadingMore ? '…' : t('bizdash_view_all')}
       </button>}
     </div>

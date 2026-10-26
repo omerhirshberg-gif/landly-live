@@ -22,7 +22,7 @@ describe('section divider', () => {
   it.each([
     ['components/home/HomePage.tsx', 5],
     ['components/about/AboutPage.tsx', 3],
-    ['app/olim/page.tsx', 7],
+    ['app/olim/page.tsx', 6],
     ['app/categories/page.tsx', 3],
     ['app/business/page.tsx', 3],
     ['app/support/page.tsx', 2],
@@ -37,9 +37,9 @@ describe('section divider', () => {
     expect(read('app/categories/page.tsx')).not.toContain('divide-y')
   })
 
-  it("gives /olim's mentor and closing blocks their own top space now a hairline sits above them", () => {
+  it("ends /olim on the mentor block, with its own top space under the hairline and room for the home indicator", () => {
     const olim = read('app/olim/page.tsx')
-    expect(olim).toContain('<div id="mentor" className="max-w-4xl mx-auto px-4 sm:px-6 py-14 sm:py-20')
-    expect(olim).toContain('className="max-w-4xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-[')
+    expect(olim).toContain('<div id="mentor" className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-[calc(3rem+env(safe-area-inset-bottom))] sm:pb-[calc(4rem+env(safe-area-inset-bottom))]')
+    expect(olim).not.toContain('olim-final-title')
   })
 })

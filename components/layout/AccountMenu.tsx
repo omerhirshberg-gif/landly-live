@@ -8,15 +8,16 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { ChevronDown, LogOut, QrCode, Settings, User, type LucideIcon } from 'lucide-react'
 
 // The menu's link groups, top to bottom: the personal pages, then system and
 // preferences. Privacy & Security isn't here: it's a row on /settings.
-export const ACCOUNT_MENU_GROUPS: readonly (readonly { href: string; icon: string; label: TranslationKey }[])[] = [
+export const ACCOUNT_MENU_GROUPS: readonly (readonly { href: string; icon: LucideIcon; label: TranslationKey }[])[] = [
   [
-    { href: '/profile', icon: 'fa-user', label: 'nav_profile' },
-    { href: '/member', icon: 'fa-qrcode', label: 'nav_my_pass' },
+    { href: '/profile', icon: User, label: 'nav_profile' },
+    { href: '/member', icon: QrCode, label: 'nav_my_pass' },
   ],
-  [{ href: '/settings', icon: 'fa-gear', label: 'nav_settings_heading' }],
+  [{ href: '/settings', icon: Settings, label: 'nav_settings_heading' }],
 ]
 
 // The signed-in member's navbar control: an avatar + first-name pill that
@@ -81,10 +82,10 @@ export default function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
       >
         <Avatar src={photoURL} initials={initials} size={34} />
         {/* The name drops out between lg and xl so the five centre links fit at 1024px */}
-        <span dir={contentDir} className="hidden xl:inline max-w-[9rem] truncate text-[13px] font-semibold text-ink">
+        <span dir={contentDir} className="hidden xl:inline max-w-[9rem] truncate text-meta font-semibold text-ink">
           {firstName ?? t('nav_profile')}
         </span>
-        <i className={`fa-solid fa-chevron-down text-[9px] text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true"></i>
+        <ChevronDown aria-hidden="true" className={`h-3 w-3 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} strokeWidth={2} />
       </button>
 
       {open && (
@@ -102,7 +103,7 @@ export default function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
             <div key={i} role="group" className={i > 0 ? 'mt-1' : undefined}>
               {group.map((item) => (
                 <Link key={item.href} role="menuitem" href={item.href} onClick={close} className="account-item">
-                  <i className={`fa-solid ${item.icon} w-4 text-center text-brand`} aria-hidden="true"></i>
+                  <item.icon aria-hidden="true" className="h-4 w-4 flex-shrink-0 text-brand" strokeWidth={1.75} />
                   <span>{t(item.label)}</span>
                 </Link>
               ))}
@@ -118,7 +119,7 @@ export default function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
             }}
             className="account-item account-item--danger"
           >
-            <i className="fa-solid fa-arrow-right-from-bracket w-4 text-center rtl:-scale-x-100" aria-hidden="true"></i>
+            <LogOut aria-hidden="true" className="h-4 w-4 flex-shrink-0 rtl:-scale-x-100" strokeWidth={1.75} />
             <span>{t('nav_logout')}</span>
           </button>
           <p className="px-3 pt-2 pb-1 mt-1 border-t border-line text-xs text-muted">

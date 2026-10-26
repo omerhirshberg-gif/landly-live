@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics'
 // a device without haptics fails quietly.
 const native = Platform.OS !== 'web'
 
-/** A light tick: a card turning over. */
+/** A light tick: a card turning over, a category chip chosen. */
 export function tick() {
   if (native) Haptics.selectionAsync().catch(() => {})
 }
@@ -21,7 +21,7 @@ export function warning() {
   if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})
 }
 
-/** A light impact: a deliberate tap, like asking for Face ID again. */
+/** A light impact: a deliberate tap, like asking for Face ID again or saving a perk. */
 export function impact() {
   if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
 }

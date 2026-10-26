@@ -97,7 +97,7 @@ describe('member dashboard', () => {
   it.each(['en', 'he'] as const)('greets by first name at the design-system size (%s)', (lang) => {
     profileState.firstName = 'Dana'
     const html = withLang(lang, createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(new RegExp(`<h1 id="home-welcome" class="text-\\[26px\\] max-\\[379px\\]:text-2xl sm:text-\\[28px\\] lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
+    expect(html).toMatch(new RegExp(`<h1 id="home-welcome" class="text-page max-\\[379px\\]:text-2xl sm:text-page-lg lg:text-3xl leading-tight font-bold text-ink[^"]*">${translations[lang].home_welcome.replace('{name}', 'Dana')}</h1>`))
   })
 
   it('shows the monogram fallback when there is no photo, and the photo when there is', () => {
@@ -126,7 +126,7 @@ describe('member dashboard', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(new RegExp(`<h2 id="home-deals-title" class="text-xl font-bold text-ink[^"]*">${translations.en.home_deals_title}</h2>`))
     expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
-    expect(html).toMatch(/<span>Open My Pass<\/span><i class="fa-solid fa-arrow-right text-xs rtl:-scale-x-100"/)
+    expect(html).toMatch(/<span>Open My Pass<\/span><svg [^>]*class="lucide lucide-arrow-right h-3\.5 w-3\.5 rtl:-scale-x-100"/)
   })
 
   it('leads with the greeting, then the blue pass card, the curated perks and the categories', () => {
@@ -136,7 +136,7 @@ describe('member dashboard', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(html).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
     const card = html.match(/<a aria-labelledby="home-pass-count home-pass-cta" class="([^"]*)"/)!
-    for (const c of ['bg-[#0038B8]', 'rounded-2xl', 'overflow-hidden', 'text-white']) expect(card[1].split(' ')).toContain(c)
+    for (const c of ['bg-brand', 'rounded-2xl', 'overflow-hidden', 'text-white']) expect(card[1].split(' ')).toContain(c)
     // The Expo card's two background layers, 1:1: the 200px 8% glow disc off the top end corner, then the 88x86 emblem at 15%.
     expect(html).toContain('<span aria-hidden="true" class="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]"></span>')
     expect(html).toMatch(/<svg viewBox="0 0 526 512" aria-hidden="true" focusable="false" class="pointer-events-none absolute top-3 end-3\.5 z-0 h-\[86px\] w-\[88px\] text-white\/15"/)
@@ -171,7 +171,7 @@ describe('member dashboard: category rail and perk cards', () => {
   it('shows the categories as round icon tiles in an edge-faded rail ending in "View all"', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(/<ul class="edge-fade [^"]*overflow-x-auto[^"]*">/)
-    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon"><i class="fa-solid fa-utensils"><\/i><\/span><span class="rail-tile-label">Restaurants/)
+    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon"><svg [^>]*class="lucide lucide-utensils[^"]* h-\[22px\] w-\[22px\]"[^>]*>.*?<\/svg><\/span><span class="rail-tile-label">Restaurants/)
     const rail = html.slice(html.indexOf('<ul class="edge-fade'), html.indexOf('</ul>'))
     const viewAll = rail.lastIndexOf('href="/categories"')
     expect(rail.slice(viewAll)).toContain(`<span class="rail-tile-label !text-brand">${translations.en.cats_view_all}</span>`)
@@ -213,8 +213,9 @@ describe('member dashboard: category rail and perk cards', () => {
   it('shows how the perk is redeemed, and a branded panel instead of a broken image when there is no photo', () => {
     const html = withLang('he', createElement(OfferCard, { offer: { ...offer, imageUrl: '', redemptionMethod: 'phone_booking' as const } }))
     expect(html).toContain(translations.he.redeem_method_phone_booking)
-    expect(html).toContain('🍽️')
-    expect(html).not.toContain('fa-image')
+    // The category's Lucide glyph in a white frame, never its emoji or a broken-image icon.
+    expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils lucide-fork-knife h-6 w-6"/)
+    expect(html).not.toContain('🍽️')
     expect(html).not.toContain('<img')
   })
 

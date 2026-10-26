@@ -39,7 +39,7 @@ export default function SegmentedControl<T extends string>({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(option.value)}
-              className={`relative flex-1 min-h-[42px] px-2 flex items-center justify-center text-[15px] font-bold cursor-pointer select-none ${
+              className={`relative flex-1 min-h-[42px] px-2 flex items-center justify-center text-copy font-bold cursor-pointer select-none ${
                 active ? 'text-brand' : 'text-slate-500'
               }`}
             >

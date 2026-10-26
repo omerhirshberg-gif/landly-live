@@ -91,14 +91,14 @@ function VerifyEmailContent() {
           </div>
 
           {status === 'verifying' ? (
-            <p className="mb-2 text-[15px] font-semibold text-slate-500">{t('verifyPage_verifying')}</p>
+            <p className="mb-2 text-copy font-semibold text-slate-500">{t('verifyPage_verifying')}</p>
           ) : (
             <>
-              <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">
+              <h1 className="text-2xl leading-8 font-extrabold text-slate-900">
                 {t(status === 'success' ? 'verifyPage_successTitle' : 'verifyPage_errorTitle')}
               </h1>
               {status === 'success' ? (
-                <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500">{t('verifyPage_successMessage')}</p>
+                <p className="mt-2 mb-7 text-copy leading-6 text-slate-500">{t('verifyPage_successMessage')}</p>
               ) : (
                 <div className="mt-4 mb-3 text-start">
                   <Notice>{t('verifyPage_errorMessage')}</Notice>

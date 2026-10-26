@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowDownWideNarrow, Check, ChevronDown } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { DEFAULT_PERK_SORT, PERK_SORTS, PERK_SORT_LABELS, type PerkSort } from '@/lib/perks/perksFilter'
 
@@ -101,7 +102,7 @@ export default function SortMenu({ value, onChange }: { value: PerkSort; onChang
     return (
       <button key={sort} type="button" role="menuitemradio" aria-checked={checked} tabIndex={-1} onClick={() => pick(sort)} className="sort-option">
         <span>{t(PERK_SORT_LABELS[sort])}</span>
-        {checked && <i aria-hidden="true" className="fa-solid fa-check text-sm"></i>}
+        {checked && <Check aria-hidden="true" className="h-4 w-4" strokeWidth={2.25} />}
       </button>
     )
   })
@@ -119,13 +120,13 @@ export default function SortMenu({ value, onChange }: { value: PerkSort; onChang
         data-active={value !== DEFAULT_PERK_SORT || undefined}
         className="filter-chip sort-trigger"
       >
-        <i aria-hidden="true" className="fa-solid fa-arrow-down-wide-short text-[13px]"></i>
+        <ArrowDownWideNarrow aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
         {/* Below 1024px the trigger sits pinned beside the chip rail, so it
             always reads a short "Sort" (solid ink when a sort is applied);
             from 1024px there's room for the applied sort's full name. */}
         <span className="lg:hidden">{t('cats_sort_trigger')}</span>
         <span className="hidden lg:inline">{value === DEFAULT_PERK_SORT ? t('cats_sort_trigger') : t(PERK_SORT_LABELS[value])}</span>
-        <i aria-hidden="true" className="fa-solid fa-chevron-down text-[10px] opacity-70"></i>
+        <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 opacity-70" strokeWidth={2} />
       </button>
 
       {open &&

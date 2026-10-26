@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { User } from 'firebase/auth'
+import { Check, Earth } from 'lucide-react'
 import SettingsPageShell from '@/components/settings/SettingsPageShell'
 import SettingsRow, { SettingsGroup } from '@/components/settings/SettingsRow'
 import { useLang } from '@/lib/i18n/useLang'
@@ -85,7 +86,7 @@ function MemberRegion({ user }: { user: User }) {
     <>
       <SettingsGroup id="settings-origin" title={t('settings_origin_title')}>
         <SettingsRow
-          icon="fa-earth-americas"
+          icon={Earth}
           title={t('profile_origin_label')}
           subtitle={loaded ? origin ?? t('profile_origin_unset') : '…'}
           href="/settings/language-region/origin"
@@ -113,7 +114,7 @@ function MemberRegion({ user }: { user: User }) {
       </SettingsGroup>
 
       {failed && (
-        <p role="alert" className="-mt-3 px-1 text-[13px] font-semibold text-red-600">
+        <p role="alert" className="-mt-3 px-1 text-meta font-semibold text-red-600">
           {t('settings_save_error')}
         </p>
       )}
@@ -146,12 +147,12 @@ function ChoiceRow({
       tabIndex={tabStop ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
-      className={`tap-target flex w-full items-center gap-3 min-h-[52px] px-4 py-3 text-start text-[15px] transition-colors focus-visible:outline-none focus-visible:bg-slate-50 [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100 disabled:opacity-60 ${
+      className={`tap-target flex w-full items-center gap-3 min-h-[52px] px-4 py-3 text-start text-copy transition-colors focus-visible:outline-none focus-visible:bg-slate-50 [@media(hover:hover)]:hover:bg-slate-50 active:bg-slate-100 disabled:opacity-60 ${
         checked ? 'font-semibold text-brand' : 'text-ink'
       }`}
     >
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {checked && <i className="fa-solid fa-check flex-shrink-0 text-sm" aria-hidden="true"></i>}
+      {checked && <Check aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={2} />}
     </button>
   )
 }

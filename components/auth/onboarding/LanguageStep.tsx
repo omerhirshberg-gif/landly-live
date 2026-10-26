@@ -38,7 +38,7 @@ export default function LanguageStep({ labelledBy, selected, onSelect }: { label
               <span
                 lang={option.code}
                 dir={(RTL_LANGS as readonly string[]).includes(option.code) ? 'rtl' : 'ltr'}
-                className={`min-w-0 flex-1 truncate text-start text-[17px] font-bold transition-colors duration-300 ${checked ? 'text-brand' : 'text-slate-800'}`}
+                className={`min-w-0 flex-1 truncate text-start text-title font-bold transition-colors duration-300 ${checked ? 'text-brand' : 'text-slate-800'}`}
               >
                 {option.label}
               </span>

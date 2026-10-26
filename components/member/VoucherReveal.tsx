@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { Check, Copy, Eye, EyeOff, QrCode, X } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import VoucherQRCode from './VoucherQRCode'
 
@@ -64,7 +65,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
         className="w-[288px] max-w-full"
         front={
           <div className={`${FACE} ${WATERMARK} h-full min-h-[360px] gap-4`}>
-            <i className="fa-solid fa-qrcode text-7xl text-slate-400 opacity-30 blur-[2px]" aria-hidden="true"></i>
+            <QrCode aria-hidden="true" className="h-[72px] w-[72px] text-slate-400 opacity-30 blur-[2px]" strokeWidth={1.5} />
             <p className="max-w-[200px] text-sm font-semibold text-slate-600">{t('voucher_qr_tap_reveal')}</p>
             <p className="max-w-[200px] text-xs text-slate-500">{t('voucher_qr_hidden')}</p>
             <button
@@ -75,7 +76,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
               aria-controls={regionId}
               className={`tap-target mt-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold text-white shadow-md transition [@media(hover:hover)]:hover:bg-brandDark ${FOCUS}`}
             >
-              <i className="fa-solid fa-qrcode" aria-hidden="true"></i>
+              <QrCode aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
               <span>{t('voucher_show_qr')}</span>
             </button>
           </div>
@@ -92,7 +93,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
               aria-controls={regionId}
               className={`tap-target mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
             >
-              <i className="fa-solid fa-eye-slash" aria-hidden="true"></i>
+              <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
               <span>{t('voucher_hide_qr')}</span>
             </button>
           </div>
@@ -121,7 +122,7 @@ export function CodeReveal({ code }: { code: string }) {
           <div className={`${FACE} ${WATERMARK} h-full min-h-[148px]`}>
             <div className="text-3xl font-black text-slate-300 tracking-[0.2em]" dir="ltr" role="img" aria-label={t('voucher_code_hidden')}>{masked}</div>
             <button ref={frontButton} type="button" onClick={toggle} aria-pressed={false} className={`mt-3 ${toggleClass}`}>
-              <i className="fa-solid fa-eye" aria-hidden="true"></i>
+              <Eye aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
               <span>{t('voucher_show_code')}</span>
             </button>
           </div>
@@ -131,7 +132,7 @@ export function CodeReveal({ code }: { code: string }) {
             {revealed && <div className="text-3xl font-black text-slate-900 tracking-[0.2em] tabular-nums select-all" dir="ltr">{code}</div>}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               <button ref={backButton} type="button" onClick={toggle} aria-pressed={true} className={toggleClass}>
-                <i className="fa-solid fa-eye-slash" aria-hidden="true"></i>
+                <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
                 <span>{t('voucher_hide_code')}</span>
               </button>
               {revealed && <CopyCodeButton code={code} />}
@@ -168,15 +169,15 @@ function CopyCodeButton({ code }: { code: string }) {
     }
   }
 
-  const icon = status === 'copied' ? 'fa-check text-emerald-600' : status === 'failed' ? 'fa-xmark text-red-600' : 'fa-copy text-brand'
+  const [Icon, tone] = status === 'copied' ? [Check, 'text-emerald-600'] : status === 'failed' ? [X, 'text-red-600'] : [Copy, 'text-brand']
   return (
     <>
       <button
         type="button"
         onClick={copy}
-        className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-full bg-[#F0F7FF] px-5 text-sm font-bold text-[#0038B8] transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
+        className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-full bg-brandTint px-5 text-sm font-bold text-brand transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
       >
-        <i className={`fa-solid ${icon}`} aria-hidden="true"></i>
+        <Icon aria-hidden="true" className={`h-4 w-4 ${tone}`} strokeWidth={1.75} />
         <span>{t('voucher_copy_code')}</span>
       </button>
       <span role="status" className="sr-only">
