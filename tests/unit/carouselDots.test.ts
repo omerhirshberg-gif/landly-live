@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
-import { mostVisibleIndex } from '@/lib/useSnapIndex'
+import { snapIndex } from '@/lib/useSnapIndex'
 
 const { default: ValueProps } = await import('@/components/home/ValueProps')
 
@@ -15,19 +15,38 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
 }
 
 describe('snap index', () => {
-  it('picks the most visible card, and none when nothing shows', () => {
-    expect(mostVisibleIndex([0.2, 0.9, 0.4, 0])).toBe(1)
-    expect(mostVisibleIndex([1, 1, 0, 0])).toBe(0)
-    expect(mostVisibleIndex([0, 0, 0.1, 0.6])).toBe(3)
-    expect(mostVisibleIndex([0, 0, 0, 0])).toBe(-1)
-    expect(mostVisibleIndex([])).toBe(-1)
+  // A 375px row of 180px cards 12px apart (What's inside on a phone): its visible centre is at 187.5.
+  const row = { clientWidth: 375, scrollWidth: 20 + 4 * 180 + 3 * 12 + 20, viewCentre: 187.5 }
+
+  it('counts the card centred in the row, not the first of two that both show whole', () => {
+    // Card 2 centred: cards 1 and 3 half show, and card 2 is nearest the middle.
+    expect(snapIndex({ ...row, scrolled: 206, itemCentres: [-96, 96, 288, 480] })).toBe(1)
+    expect(snapIndex({ ...row, scrolled: 398, itemCentres: [-288, -96, 96, 288] })).toBe(2)
   })
 
-  it('observes the row itself, never scroll events, and scrolls a card in without moving the page', () => {
+  it('reads the same in Hebrew, where the row runs right to left and scrollLeft counts negative', () => {
+    // The same positions mirrored: the first card on the right. `scrolled` is the absolute scrollLeft.
+    expect(snapIndex({ ...row, scrolled: 206, itemCentres: [471, 279, 87, -105] })).toBe(1)
+    expect(snapIndex({ ...row, scrolled: 398, itemCentres: [663, 471, 279, 87] })).toBe(2)
+  })
+
+  it('lights the last dot at the end of the row and the first at its start, though neither card is centred', () => {
+    const end = row.scrollWidth - row.clientWidth
+    expect(snapIndex({ ...row, scrolled: end, itemCentres: [-275, -83, 109, 301] })).toBe(3)
+    expect(snapIndex({ ...row, scrolled: end - 0.5, itemCentres: [-275, -83, 109, 301] })).toBe(3)
+    expect(snapIndex({ ...row, scrolled: 0, itemCentres: [110, 302, 494, 686] })).toBe(0)
+  })
+
+  it('is the first card when the row does not scroll, and none for an empty row', () => {
+    expect(snapIndex({ clientWidth: 900, scrollWidth: 900, viewCentre: 450, scrolled: 0, itemCentres: [100, 400, 700] })).toBe(0)
+    expect(snapIndex({ ...row, scrolled: 0, itemCentres: [] })).toBe(-1)
+  })
+
+  it('measures once a frame while the row scrolls, and scrolls a card in without moving the page', () => {
     const hook = readFileSync('lib/useSnapIndex.ts', 'utf8')
-    expect(hook).toContain('new IntersectionObserver(')
-    expect(hook).toContain('{ root: row,')
-    expect(hook).not.toContain("addEventListener('scroll'")
+    expect(hook).toContain("row.addEventListener('scroll', schedule, { passive: true })")
+    expect(hook).toContain('requestAnimationFrame(measure)')
+    expect(hook).toContain('Math.abs(row.scrollLeft)')
     expect(hook).toContain("inline: 'center', block: 'nearest'")
     expect(hook).toContain("behavior: reduced ? 'auto' : 'smooth'")
   })
@@ -72,6 +91,38 @@ describe('how it works carousel', () => {
     // 44px tap targets; icons, not emoji.
     for (const b of buttons) expect(b).toContain('h-11 w-11')
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
-    for (const icon of ['fa-user-plus', 'fa-ticket', 'fa-bullseye', 'fa-plane-departure']) expect(html).toContain(icon)
+    for (const icon of ['lucide-user-plus', 'lucide-sparkles', 'lucide-qr-code', 'lucide-plane-takeoff']) expect(html).toContain(icon)
+    expect(html).not.toContain('fa-solid')
+  })
+})
+
+describe('rail pagination dots', () => {
+  it('stops at eight: past that a row of dots is noise, on the web and in the app', async () => {
+    const { SNAP_DOTS_MAX } = await import('@/components/ui/SnapDots')
+    const { PAGER_DOTS_MAX } = await import('../../landly-mobile/src/lib/carousel')
+    expect(SNAP_DOTS_MAX).toBe(8)
+    expect(PAGER_DOTS_MAX).toBe(SNAP_DOTS_MAX)
+    for (const path of ['components/discover/OfferTileRail.tsx', 'components/home/CuratedOffers.tsx']) {
+      const source = readFileSync(path, 'utf8')
+      expect(source, path).toContain('.length > 1 && ')
+      expect(source, path).toContain('.length <= SNAP_DOTS_MAX && <SnapDots')
+      expect(source, path).toContain('sm:hidden')
+    }
+  })
+
+  it('places the Expo carousel between its resting offsets, one dot per place a swipe can stop', async () => {
+    const { carouselPage, carouselSnapOffsets } = await import('../../landly-mobile/src/lib/carousel')
+    // Five 260pt cards, 272pt apart, in a row that can scroll 900pt: the last two share the end.
+    const starts = carouselSnapOffsets(5, 272, 900, false)
+    expect(starts).toEqual([0, 272, 544, 816, 900])
+    expect(carouselPage(0, starts)).toBe(0)
+    expect(carouselPage(136, starts)).toBe(0.5)
+    expect(carouselPage(544, starts)).toBe(2)
+    expect(carouselPage(858, starts)).toBe(3.5)
+    expect(carouselPage(900, starts)).toBe(4)
+    // Overscroll at either end holds the first or last dot.
+    expect(carouselPage(-40, starts)).toBe(0)
+    expect(carouselPage(960, starts)).toBe(4)
+    expect(carouselPage(120, [0])).toBe(0)
   })
 })

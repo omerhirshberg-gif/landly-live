@@ -1,5 +1,6 @@
 'use client'
 
+import { FileText, Globe, Headset, ShieldCheck, ShieldUser, Trash2 } from 'lucide-react'
 import SettingsPageShell from '@/components/settings/SettingsPageShell'
 import SettingsRow, { SettingsGroup } from '@/components/settings/SettingsRow'
 import { fromSettingsHref } from '@/components/settings/BackToSettings'
@@ -35,7 +36,7 @@ export default function SettingsPage() {
     <SettingsPageShell title={t('nav_settings_heading')}>
       <SettingsGroup id="settings-prefs" title={t('settings_group_prefs')}>
         <SettingsRow
-          icon="fa-globe"
+          icon={Globe}
           title={t('nav_lang_region')}
           subtitle={origin ? `${currentLang} · ${origin}` : currentLang}
           href="/settings/language-region"
@@ -44,19 +45,19 @@ export default function SettingsPage() {
 
       {user && (
         <SettingsGroup id="settings-account" title={t('settings_group_account')}>
-          <SettingsRow icon="fa-shield-halved" title={t('nav_security')} subtitle={t('nav_security_sub')} href="/settings/privacy-security" />
+          <SettingsRow icon={ShieldCheck} title={t('nav_security')} subtitle={t('nav_security_sub')} href="/settings/privacy-security" />
         </SettingsGroup>
       )}
 
       <SettingsGroup id="settings-help" title={t('settings_group_help')}>
-        <SettingsRow icon="fa-headset" title={t('nav_support_title')} subtitle={t('nav_support_sub')} href={fromSettingsHref('/support')} />
-        <SettingsRow icon="fa-file-lines" title={t('nav_terms_link')} href={fromSettingsHref('/terms')} />
-        <SettingsRow icon="fa-user-shield" title={t('nav_privacy_link')} href={fromSettingsHref('/privacy')} />
+        <SettingsRow icon={Headset} title={t('nav_support_title')} subtitle={t('nav_support_sub')} href={fromSettingsHref('/support')} />
+        <SettingsRow icon={FileText} title={t('nav_terms_link')} href={fromSettingsHref('/terms')} />
+        <SettingsRow icon={ShieldUser} title={t('nav_privacy_link')} href={fromSettingsHref('/privacy')} />
       </SettingsGroup>
 
       {user && (
         <SettingsGroup id="settings-danger" title={t('settings_group_danger')}>
-          <SettingsRow icon="fa-trash-can" title={t('del_row_title')} subtitle={t('del_row_sub')} href="/settings/delete-account" destructive />
+          <SettingsRow icon={Trash2} title={t('del_row_title')} subtitle={t('del_row_sub')} href="/settings/delete-account" destructive />
         </SettingsGroup>
       )}
 

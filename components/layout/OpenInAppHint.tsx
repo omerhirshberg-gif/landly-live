@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useLang } from '@/lib/i18n/useLang'
 import { appUrlForLink } from '@/lib/navigation/deepLinks'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { X } from 'lucide-react'
 
 const STORAGE_KEY = 'landly_open_in_app_dismissed'
 
@@ -59,14 +60,14 @@ export function OpenInAppBar({ t, appUrl, onDismiss, className = '' }: {
     <div
       role="region"
       aria-label={t('openInApp_text')}
-      className={`sm:hidden flex items-center gap-3 rounded-2xl border border-slate-100 bg-white ps-3 pe-1.5 py-2 shadow-sm ${className}`}
+      className={`sm:hidden flex items-center gap-3 rounded-2xl border border-slate-100 bg-white ps-3 pe-1.5 py-2 shadow-card ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo-mark.png" alt="" width={28} height={27} className="h-7 w-7 flex-shrink-0 object-contain" />
-      <p className="flex-1 min-w-0 text-[13px] font-semibold leading-snug text-slate-700">{t('openInApp_text')}</p>
+      <p className="flex-1 min-w-0 text-meta font-semibold leading-snug text-slate-700">{t('openInApp_text')}</p>
       <a
         href={appUrl}
-        className="tap-target flex-shrink-0 rounded-full bg-brand px-4 py-1.5 text-[13px] font-bold text-white whitespace-nowrap transition-colors hover:bg-brandDark"
+        className="tap-target flex-shrink-0 rounded-full bg-brand px-4 py-1.5 text-meta font-bold text-white whitespace-nowrap transition-colors hover:bg-brandDark"
       >
         {t('openInApp_button')}
       </a>
@@ -76,7 +77,7 @@ export function OpenInAppBar({ t, appUrl, onDismiss, className = '' }: {
         aria-label={t('openInApp_dismiss')}
         className="tap-target inline-flex flex-shrink-0 items-center justify-center text-slate-400 transition-colors hover:text-slate-600"
       >
-        <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+        <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
       </button>
     </div>
   )

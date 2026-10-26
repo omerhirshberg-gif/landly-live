@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/i18n/useLang'
 import { backAction, backLabelKey } from '@/lib/navigation/back'
 import { previousPath, willReplace } from '@/lib/navigation/previousPath'
+import { ArrowLeft, ChevronLeft } from 'lucide-react'
 
 interface BackButtonProps {
   /** Where back goes when there's no in-app page behind this one (opened directly). */
@@ -46,16 +47,16 @@ export default function BackButton({ fallback, label, contextLabel = false, vari
     }
   }
 
-  const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0038B8] focus-visible:ring-offset-2'
+  const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2'
   if (variant === 'icon') {
     return (
       <button
         type="button"
         onClick={goBack}
         aria-label={text}
-        className={`tap-target inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#0B1B3D] transition-colors active:bg-slate-200 [@media(hover:hover)]:hover:bg-slate-100 ${focus} ${className}`}
+        className={`tap-target inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink transition-colors active:bg-slate-200 [@media(hover:hover)]:hover:bg-slate-100 ${focus} ${className}`}
       >
-        <i className="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+        <ChevronLeft aria-hidden="true" className="h-5 w-5 rtl:-scale-x-100" strokeWidth={1.75} />
       </button>
     )
   }
@@ -63,9 +64,9 @@ export default function BackButton({ fallback, label, contextLabel = false, vari
     <button
       type="button"
       onClick={goBack}
-      className={`tap-target -ms-2 inline-flex min-h-12 items-center gap-2 rounded-full pe-4 ps-3 text-sm font-semibold text-[#0038B8] transition-colors active:bg-[#E0EDFF] [@media(hover:hover)]:hover:bg-[#F0F7FF] ${focus} ${className}`}
+      className={`tap-target -ms-2 inline-flex min-h-12 items-center gap-2 rounded-full pe-4 ps-3 text-sm font-semibold text-brand transition-colors active:bg-[#E0EDFF] [@media(hover:hover)]:hover:bg-brandTint ${focus} ${className}`}
     >
-      <i className="fa-solid fa-arrow-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+      <ArrowLeft aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.75} />
       <span>{text}</span>
     </button>
   )

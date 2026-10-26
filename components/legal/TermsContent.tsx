@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { TranslationKey } from '@/lib/i18n/translations'
 import { splitEmails } from '@/lib/legal/bidi'
@@ -24,8 +25,8 @@ export default function TermsContent() {
   const { t, isRtl } = useLang()
 
   return (
-    <article dir={isRtl ? 'rtl' : 'ltr'} className="text-[#475569] text-[15px] leading-relaxed">
-      <h1 className="text-2xl sm:text-3xl font-black text-[#0B1B3D] mb-2" style={{ letterSpacing: '-0.02em' }}>{t('terms_title')}</h1>
+    <article dir={isRtl ? 'rtl' : 'ltr'} className="text-body text-copy leading-relaxed">
+      <h1 className="text-2xl sm:text-3xl font-black text-ink mb-2" style={{ letterSpacing: '-0.02em' }}>{t('terms_title')}</h1>
       <p className="text-sm text-slate-500 mb-8">
         <strong className="font-semibold">{t('terms_updated_label')}</strong> <span>{t('terms_updated_date')}</span>
       </p>
@@ -34,19 +35,19 @@ export default function TermsContent() {
           const link = LINKS[s.heading]
           return (
             <section key={s.heading}>
-              <h2 className="font-bold text-[#0B1B3D] text-lg mb-2">{t(s.heading)}</h2>
+              <h2 className="font-bold text-ink text-lg mb-2">{t(s.heading)}</h2>
               {s.body.map((p) =>
                 Array.isArray(p) ? (
-                  <p key={p[1]} className="mt-2 first:mt-0"><strong className="text-[#0B1B3D]">{t(p[0])}</strong> <span><Text value={t(p[1])} /></span></p>
+                  <p key={p[1]} className="mt-2 first:mt-0"><strong className="text-ink">{t(p[0])}</strong> <span><Text value={t(p[1])} /></span></p>
                 ) : (
                   <p key={p}><Text value={t(p)} /></p>
                 )
               )}
               {link && (
                 <p className="mt-3">
-                  <Link href={link.href} className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-[#0038B8] underline-offset-4 hover:underline">
+                  <Link href={link.href} className="inline-flex min-h-[44px] items-center gap-2 font-semibold text-brand underline-offset-4 hover:underline">
                     {t(link.label)}
-                    <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
                   </Link>
                 </p>
               )}

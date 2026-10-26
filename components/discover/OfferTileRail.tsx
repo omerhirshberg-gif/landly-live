@@ -1,9 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
+import IconFrame from '@/components/ui/IconFrame'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
+import { useSnapIndex } from '@/lib/useSnapIndex'
+import SnapDots, { SNAP_DOTS_MAX } from '@/components/ui/SnapDots'
 import OfferTile from './OfferTile'
 
 // One of the /categories highlight rails (New on Landly, Best Sellers, stacked
@@ -15,7 +19,8 @@ import OfferTile from './OfferTile'
 // From 640px with a real mouse, two chevrons in the heading row page it,
 // fading out at either end. An RTL page fills and starts it from the right
 // on its own; scrollLeft counts negative there, so distances are measured
-// from the start edge and paging flips its sign.
+// from the start edge and paging flips its sign. On phones a short rail
+// (SNAP_DOTS_MAX cards or fewer) has pagination dots underneath.
 export default function OfferTileRail({
   icon,
   title,
@@ -23,8 +28,8 @@ export default function OfferTileRail({
   href,
   seeMore,
 }: {
-  /** A Font Awesome solid class for the heading's icon box, e.g. 'fa-fire'. */
-  icon: string
+  /** The heading's Lucide glyph, e.g. Award for Bestsellers. */
+  icon: LucideIcon
   title: string
   offers: OfferDocument[]
   href?: string
@@ -32,7 +37,7 @@ export default function OfferTileRail({
 }) {
   const { isRtl } = useLang()
   const headingId = useId()
-  const railRef = useRef<HTMLDivElement>(null)
+  const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
   const [edges, setEdges] = useState({ start: false, end: false })
 
   const measure = useCallback(() => {
@@ -41,7 +46,7 @@ export default function OfferTileRail({
     const fromStart = Math.abs(rail.scrollLeft)
     const max = rail.scrollWidth - rail.clientWidth
     setEdges({ start: fromStart > 1, end: fromStart < max - 1 })
-  }, [])
+  }, [railRef])
 
   useEffect(() => {
     const rail = railRef.current
@@ -50,7 +55,7 @@ export default function OfferTileRail({
     const observer = new ResizeObserver(measure)
     observer.observe(rail)
     return () => observer.disconnect()
-  }, [measure, isRtl, offers.length])
+  }, [railRef, measure, isRtl, offers.length])
 
   // +1 = toward the reading-direction end.
   const page = (direction: 1 | -1) => {
@@ -66,9 +71,7 @@ export default function OfferTileRail({
     <section aria-labelledby={headingId} className="py-5 first:pt-0 last:pb-0">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 id={headingId} className="flex min-w-0 items-center gap-2 text-base font-bold text-slate-900">
-          <span aria-hidden="true" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-brand/10 bg-brandTint text-brand">
-            <i className={`fa-solid ${icon} text-sm`}></i>
-          </span>
+          <IconFrame icon={icon} size="sm" />
           <span className="truncate">{title}</span>
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">
@@ -81,10 +84,10 @@ export default function OfferTileRail({
           {overflowing && (
             <>
               <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => page(-1)} data-hidden={!edges.start || undefined} className="tile-rail-arrow">
-                <i className="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+                <ChevronLeft aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2} />
               </button>
               <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => page(1)} data-hidden={!edges.end || undefined} className="tile-rail-arrow">
-                <i className="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+                <ChevronRight aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2} />
               </button>
             </>
           )}
@@ -99,6 +102,7 @@ export default function OfferTileRail({
           <OfferTile key={offer.id} offer={offer} />
         ))}
       </div>
+      {offers.length > 1 && offers.length <= SNAP_DOTS_MAX && <SnapDots count={offers.length} active={active} onSelect={scrollTo} className="-mb-2 sm:hidden" />}
     </section>
   )
 }

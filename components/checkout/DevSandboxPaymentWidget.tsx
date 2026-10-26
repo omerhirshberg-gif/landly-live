@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowLeft, CircleCheck, CircleX, FlaskConical, LoaderCircle } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { formatPrice } from '@/lib/format'
@@ -54,9 +55,9 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
   const buttonBase = 'tap-target min-h-12 w-full inline-flex items-center justify-center gap-2 font-bold py-3 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60'
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-sm text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-card text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8">
       <p className="inline-flex items-center gap-2 rounded-full bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 mb-4">
-        <i className="fa-solid fa-flask" aria-hidden="true"></i>
+        <FlaskConical aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
         <span>{t('checkout_sandbox_badge')}</span>
       </p>
       <h2 className="text-lg font-bold text-slate-900 mb-2">{t('checkout_sandbox_title')}</h2>
@@ -78,7 +79,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
           aria-busy={pending === 'approve' || undefined}
           className={`${buttonBase} bg-brand text-white hover:bg-brandDark shadow-md focus-visible:ring-brand`}
         >
-          <i className={`fa-solid ${pending === 'approve' ? 'fa-spinner fa-spin' : 'fa-circle-check'}`} aria-hidden="true"></i>
+          {pending === 'approve' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={2} /> : <CircleCheck aria-hidden="true" className="h-4 w-4" strokeWidth={2} />}
           <span>{t('checkout_sandbox_approve')}</span>
         </button>
         <button
@@ -88,7 +89,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
           aria-busy={pending === 'decline' || undefined}
           className={`${buttonBase} bg-white text-red-700 border border-red-200 hover:bg-red-50 focus-visible:ring-red-500`}
         >
-          <i className={`fa-solid ${pending === 'decline' ? 'fa-spinner fa-spin' : 'fa-circle-xmark'}`} aria-hidden="true"></i>
+          {pending === 'decline' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={2} /> : <CircleX aria-hidden="true" className="h-4 w-4" strokeWidth={2} />}
           <span>{t('checkout_sandbox_decline')}</span>
         </button>
       </div>
@@ -99,7 +100,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
         disabled={pending !== null}
         className="tap-target min-h-12 inline-flex items-center gap-2 text-brand font-bold text-sm hover:underline mt-4 px-4 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:opacity-60"
       >
-        <i className="fa-solid fa-arrow-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+        <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
         <span>{t('checkout_back_to_summary')}</span>
       </button>
     </div>

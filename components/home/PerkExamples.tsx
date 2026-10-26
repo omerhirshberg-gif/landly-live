@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
 import PerkExampleCard from './PerkExampleCard'
@@ -42,17 +43,17 @@ export default function PerkExamples() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-start justify-between gap-4 mb-5 sm:mb-6">
           <div className="min-w-0">
-            <h2 id="home-examples-title" className="text-2xl sm:text-3xl font-black text-[#0B1B3D] mb-1.5" style={{ letterSpacing: '-0.02em' }}>
+            <h2 id="home-examples-title" className="text-xl sm:text-2xl font-bold tracking-tight text-ink mb-1.5">
               {t('home_examples_title')}
             </h2>
-            <p className="text-[#475569] text-[15px] leading-relaxed">{t('home_examples_sub')}</p>
+            <p className="text-body text-copy leading-relaxed">{t('home_examples_sub')}</p>
           </div>
           <Link
             href="/categories"
             className="tap-target flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline whitespace-nowrap"
           >
             <span>{t('home_examples_all')}</span>
-            <i className="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+            <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
           </Link>
         </div>
 
@@ -63,7 +64,7 @@ export default function PerkExamples() {
           {offers === null
             ? Array.from({ length: DESKTOP_COUNT }, (_, i) => (
                 <li key={i} aria-hidden="true" className={item(i)}>
-                  <div className="h-[236px] w-full rounded-2xl border border-[#E2E8F0] bg-white animate-pulse motion-reduce:animate-none" />
+                  <div className="h-[236px] w-full rounded-2xl border border-line bg-white animate-pulse motion-reduce:animate-none" />
                 </li>
               ))
             : offers.map((offer, i) => (

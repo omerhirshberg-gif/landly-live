@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring } from 'react-native-reanimated'
 import { GlassFallback } from './GlassBackButton'
 import LineIcon from './LineIcon'
+import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors, hairline } from '../theme'
 
@@ -18,7 +19,7 @@ const POP_SPRING = { damping: 9, stiffness: 380, mass: 0.6 }
 //   blurring the picture under it, a hairline specular rim, an ambient shadow.
 // - Android and web: a near-opaque white circle, no faux blur.
 // An outline heart in ink until saved, then a solid red one. The press and
-// the pop are skipped under Reduce Motion.
+// the pop are skipped under Reduce Motion; the light haptic on a toggle stays.
 export default function GlassHeartButton({
   saved,
   onToggle,
@@ -41,6 +42,7 @@ export default function GlassHeartButton({
   const toggle = () => {
     // Saving pops past rest and settles; un-saving just settles.
     if (!reduced) scale.set(saved ? withSpring(1, PRESS_SPRING) : withSequence(withSpring(1.14, POP_SPRING), withSpring(1, PRESS_SPRING)))
+    impact()
     onToggle()
   }
 

@@ -29,6 +29,7 @@ interface HowToRedeemProps {
 export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, includePurchaseStep = false, variant = 'card' }: HowToRedeemProps) {
   const { t } = useLang()
   const headingId = useId()
+  const MethodIcon = REDEMPTION_METHOD_ICONS[method]
   const steps = [...(includePurchaseStep ? [t('redeem_step_buy')] : []), ...redemptionSteps(method, instructions, t)]
   // The merchant's own steps are in the content's language; the standard ones in the reader's.
   const stepLang = instructions.trim() ? instructionsLang ?? undefined : undefined
@@ -36,14 +37,14 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
   return (
     <section
       aria-labelledby={headingId}
-      className={variant === 'card' ? 'rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm sm:p-6' : ''}
+      className={variant === 'card' ? 'rounded-2xl border border-line bg-white p-5 shadow-sm sm:p-6' : ''}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={headingId} className={`font-bold text-[#0B1B3D] ${variant === 'inline' ? 'text-sm' : 'text-base'}`}>
+        <h2 id={headingId} className={`font-bold text-ink ${variant === 'inline' ? 'text-sm' : 'text-base'}`}>
           {t('redeem_how_title')}
         </h2>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F0F7FF] px-3 py-1 text-xs font-semibold text-[#0038B8]">
-          <i className={`fa-solid ${REDEMPTION_METHOD_ICONS[method]} text-[10px]`} aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brandTint px-3 py-1 text-xs font-semibold text-brand">
+          <MethodIcon aria-hidden="true" className="h-3 w-3" strokeWidth={2} />
           {t(REDEMPTION_METHOD_LABEL_KEYS[method])}
         </span>
       </div>
@@ -53,11 +54,11 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
           <li key={i} className="flex items-start gap-3">
             <span
               aria-hidden="true"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0038B8] text-[11px] font-bold text-white"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-micro font-bold text-white"
             >
               {i + 1}
             </span>
-            <span className="pt-0.5 text-sm leading-relaxed text-[#475569]" lang={includePurchaseStep && i === 0 ? undefined : stepLang} dir="auto">
+            <span className="pt-0.5 text-sm leading-relaxed text-body" lang={includePurchaseStep && i === 0 ? undefined : stepLang} dir="auto">
               {step}
             </span>
           </li>
@@ -65,9 +66,9 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
       </ol>
 
       {terms && (
-        <div className="mt-5 border-t border-[#F1F5F9] pt-4">
-          <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-[#94A3B8]">{t('voucher_redemption_terms_label')}</h3>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-[#475569]" lang={termsLang ?? undefined} dir="auto">
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">{t('voucher_redemption_terms_label')}</h3>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-body" lang={termsLang ?? undefined} dir="auto">
             {terms}
           </p>
         </div>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 // Explicit way back to the home page for the auth screens, which render
 // without the site Navbar. Matches the back-pill style used on offer/category
@@ -21,7 +22,7 @@ export default function BackToHomeLink({
         href="/"
         className={`tap-target inline-flex items-center gap-2 text-sm font-bold border rounded-full px-4 py-2 transition ${colors}`}
       >
-        <i className="fa-solid fa-arrow-left text-xs rtl:rotate-180" aria-hidden="true"></i>
+        <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
         <span>{label}</span>
       </Link>
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import type { Founder } from '@/lib/about/founders'
+import { LinkedinIcon } from '@/components/ui/SocialIcon'
 import { useLang } from '@/lib/i18n/useLang'
 
 // One co-founder on the About page, as an editorial card: a brand accent bar
@@ -20,7 +21,7 @@ export default function FounderCard({ founder }: { founder: Founder }) {
   return (
     <article
       aria-labelledby={`founder-${founder.id}`}
-      className="relative flex h-full flex-col items-center overflow-hidden text-center sm:flex-row sm:items-start sm:text-start gap-5 bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-sm transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-brand before:to-brandGradientStart rtl:before:bg-gradient-to-l [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-md motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+      className="relative flex h-full flex-col items-center overflow-hidden text-center sm:flex-row sm:items-start sm:text-start gap-5 bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-card transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-brand before:to-brandGradientStart rtl:before:bg-gradient-to-l [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
     >
       <div className="h-32 w-32 flex-shrink-0 overflow-hidden rounded-full border border-line shadow-[0_8px_20px_-8px_rgba(0,56,184,.45)]">
         {founder.photo ? (
@@ -35,7 +36,7 @@ export default function FounderCard({ founder }: { founder: Founder }) {
       <div className="flex min-w-0 flex-1 flex-col self-stretch">
         <h3 id={`founder-${founder.id}`} className="font-display text-xl font-extrabold text-ink">{name}</h3>
         <p className="mt-1.5 mb-3 text-xs sm:text-sm font-semibold uppercase tracking-[0.18em] rtl:tracking-normal text-brand">{t(founder.roleKey)}</p>
-        <p className="text-[15px] leading-relaxed text-body">{t(founder.bioKey)}</p>
+        <p className="text-copy leading-relaxed text-body">{t(founder.bioKey)}</p>
         {founder.linkedin && (
           <div className="mt-auto pt-6">
             <a
@@ -43,9 +44,9 @@ export default function FounderCard({ founder }: { founder: Founder }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t('about_linkedin_label').replace('{name}', name)}
-              className="relative inline-flex min-h-[38px] items-center gap-2 rounded-full border border-[#0A66C2]/20 bg-[#0A66C2]/[0.06] px-4 py-2 text-sm font-bold leading-none text-[#0A66C2] before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-[#0A66C2]/40 [@media(hover:hover)]:hover:bg-[#0A66C2]/10 [@media(hover:hover)]:hover:shadow-[0_6px_16px_-8px_rgba(10,102,194,.5)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A66C2] motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
+              className="relative inline-flex min-h-[38px] items-center gap-2 rounded-full border border-linkedin/20 bg-linkedin/[0.06] px-4 py-2 text-sm font-bold leading-none text-linkedin before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-linkedin/40 [@media(hover:hover)]:hover:bg-linkedin/10 [@media(hover:hover)]:hover:shadow-[0_6px_16px_-8px_rgba(10,102,194,.5)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-linkedin motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
             >
-              <i className="fa-brands fa-linkedin text-base leading-none" aria-hidden="true"></i>
+              <LinkedinIcon className="h-4 w-4" strokeWidth={1.75} />
               <span>LinkedIn</span>
             </a>
           </div>

@@ -12,11 +12,12 @@ import {
   CUSTOMER_SERVICE_WINDOW_MS,
   isConversationStatus,
   isInquiryCategory,
-  resolvedMessage,
+  teamResolvedMessage,
   transcriptText,
   type ConversationStatus,
   type InquiryCategory,
 } from './supportBot'
+import { idleSchedule, nextIdleDue } from './idleSweep'
 import { isBotLanguage } from './webhookPayload'
 
 // The support inbox behind /admin/support (app/api/admin/whatsapp/*): the
@@ -24,9 +25,12 @@ import { isBotLanguage } from './webhookPayload'
 // status change. Replies are plain text from the number the member last
 // wrote to, as Landly, and only inside Meta's 24-hour customer-service
 // window. A reply keeps the conversation escalated (and refreshes
-// escalatedAt) so the bot stays quiet while a person is answering. Anything
-// the team does answers the bot's idle check-in, and a message sent moves
-// the conversation's expiresAt to 180 days after it.
+// escalatedAt) so the bot stays quiet while a person is answering, and
+// starts the clock on the team's follow-up and silent resolve
+// (lib/whatsapp/idleSweep.ts) should the member not answer. Anything the
+// team does answers the bot's idle check-in; a status change stops the
+// follow-up clock. A message sent moves the conversation's expiresAt to 180
+// days after it.
 //
 // A conversation needs a reply while it is escalated and the member wrote
 // after the team's last reply; that drives the "Awaiting reply" tab without
@@ -57,6 +61,8 @@ export interface InboxConversation {
   windowOpen: boolean
   lastInboundAt: string | null
   lastSnippet: { text: string; direction: 'in' | 'out'; at: string } | null
+  /** The team spoke last and the member hasn't answered: the follow-up (sentAt once it went out) and the silent resolve that come next. */
+  followUp: { stage: 'nudge' | 'resolve'; sentAt: string | null; dueAt: string } | null
 }
 
 export interface InboxMessage {
@@ -117,7 +123,16 @@ export function toInboxConversation(waId: string, data: DocumentData, now: numbe
       snippet && typeof snippet.text === 'string' && (snippet.direction === 'in' || snippet.direction === 'out')
         ? { text: snippet.text, direction: snippet.direction, at: iso(snippet.at) ?? '' }
         : null,
+    followUp: followUpOf(data, now),
   }
+}
+
+/** What the sweep has scheduled for the team's side of the conversation, while it has (idleDueAt is set). */
+function followUpOf(data: DocumentData, now: number): InboxConversation['followUp'] {
+  if (!(data.idleDueAt instanceof Timestamp)) return null
+  const next = idleSchedule(data, now)
+  if (next?.action !== 'teamNudge' && next?.action !== 'teamResolve') return null
+  return { stage: next.action === 'teamNudge' ? 'nudge' : 'resolve', sentAt: iso(data.teamNudgeAt), dueAt: new Date(next.at).toISOString() }
 }
 
 function toInboxMessage(id: string, data: DocumentData): InboxMessage {
@@ -197,6 +212,8 @@ export async function replyAsTeam(waId: string, text: string, now = Date.now()):
   const logged = await sendAndLog(waId, data, { type: 'text', text: { body: text } }, now)
   if (logged.error) return { ok: false, error: 'send_failed', code: logged.code ?? 'unknown', message: logged.message }
   const at = Timestamp.fromMillis(now)
+  // The team spoke last: its follow-up falls due, unless the member answers first.
+  const followUpDue = nextIdleDue({ ...data, status: 'escalated', lastAdminReplyAt: at, teamNudgeAt: undefined, idleCheckInAt: undefined }, now)
   await ref.set(
     {
       status: 'escalated',
@@ -208,7 +225,8 @@ export async function replyAsTeam(waId: string, text: string, now = Date.now()):
       inquiryPromptedAt: FieldValue.delete(),
       idleCheckInAt: FieldValue.delete(),
       idleResume: FieldValue.delete(),
-      idleDueAt: FieldValue.delete(),
+      teamNudgeAt: FieldValue.delete(),
+      idleDueAt: followUpDue !== undefined ? Timestamp.fromMillis(followUpDue) : FieldValue.delete(),
     },
     { merge: true }
   )
@@ -219,9 +237,10 @@ export type StatusResult = { ok: true; conversation: InboxConversation; notified
 
 /**
  * Sets the status the way the bot would: resolved clears the escalation and
- * the menu timers (and, with `notify`, sends the member's sign-off while the
- * window is open); escalated silences the bot for another 24 hours; active
- * hands the conversation back to the bot.
+ * the menu timers (and, with `notify`, thanks the member while the window is
+ * open); escalated silences the bot for another 24 hours; active hands the
+ * conversation back to the bot. Each stops the follow-up clock; only the
+ * team's next reply starts it again.
  */
 export async function setConversationStatus(waId: string, status: AdminStatus, notify = true, now = Date.now()): Promise<StatusResult> {
   const ref = conversations().doc(waId)
@@ -230,7 +249,7 @@ export async function setConversationStatus(waId: string, status: AdminStatus, n
   const data = snapshot.data()!
   const at = Timestamp.fromMillis(now)
   const clear = FieldValue.delete()
-  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear, idleCheckInAt: clear, idleResume: clear, idleDueAt: clear }
+  const update: Record<string, unknown> = { status, inquiryPromptedAt: clear, idleCheckInAt: clear, idleResume: clear, teamNudgeAt: clear, idleDueAt: clear }
   if (status === 'escalated') update.escalatedAt = at
   if (status === 'active') update.escalatedAt = clear
   if (status === 'resolved') Object.assign(update, { resolvedAt: at, escalatedAt: clear, lastMenuAt: clear, lastNudgeAt: clear })
@@ -238,7 +257,7 @@ export async function setConversationStatus(waId: string, status: AdminStatus, n
   let notified = false
   if (status === 'resolved' && notify && toInboxConversation(waId, data, now).windowOpen) {
     const lang = isBotLanguage(data.lang) ? data.lang : 'en'
-    const logged = await sendAndLog(waId, data, resolvedMessage(lang), now)
+    const logged = await sendAndLog(waId, data, teamResolvedMessage(lang), now)
     notified = !logged.error
     if (notified) Object.assign(update, { lastOutboundAt: at, lastSnippet: snippetOf(logged.entry), expiresAt: Timestamp.fromMillis(now + MESSAGE_TTL_MS) })
   }

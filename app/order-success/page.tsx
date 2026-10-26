@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Check, CircleAlert, Copy, LoaderCircle, Mail, PiggyBank, QrCode, Wallet, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import Confetti from '@/components/checkout/Confetti'
@@ -84,12 +85,12 @@ function OrderSuccessContent() {
       {paid && <Confetti />}
       <div className="below-header member-canvas">
         <div className="max-w-lg mx-auto px-5 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm text-center">
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center">
             {/* One live region for every state, so the confirmation is announced as it arrives. */}
             <div role="status" aria-live="polite">
               {pending && (
                 <>
-                  <i className="fa-solid fa-spinner fa-spin text-brand text-2xl mb-4" aria-hidden="true"></i>
+                  <LoaderCircle aria-hidden="true" className="mx-auto mb-4 h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
                   <h1 className="text-lg font-bold text-slate-900">{t('checkout_confirming_title')}</h1>
                   <p className="text-sm text-slate-500 mt-1">{t('checkout_confirming_sub')}</p>
                 </>
@@ -97,7 +98,7 @@ function OrderSuccessContent() {
 
               {!pending && !paid && (
                 <>
-                  <i className="fa-solid fa-circle-exclamation text-red-500 text-2xl mb-4" aria-hidden="true"></i>
+                  <CircleAlert aria-hidden="true" className="mx-auto mb-4 h-7 w-7 text-red-500" strokeWidth={1.75} />
                   <h1 className="text-lg font-bold text-slate-900">{t('checkout_failed_title')}</h1>
                   <p className="text-sm text-slate-500 mt-1">{t('checkout_failed_sub')}</p>
                   <Link href="/member" className="ds-btn ds-btn-primary mt-6">
@@ -109,7 +110,7 @@ function OrderSuccessContent() {
               {paid && (
                 <>
                   <div className="success-checkmark" aria-hidden="true">
-                    <i className="fa-solid fa-check" aria-hidden="true"></i>
+                    <Check aria-hidden="true" className="h-8 w-8" strokeWidth={2} />
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-black text-ink mb-1">{t('success_celebration_title')}</h1>
                   <p className="text-sm text-slate-500">{t('success_subtitle')}</p>
@@ -133,7 +134,7 @@ function OrderSuccessContent() {
                       </span>
                       {discount > 0 && (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                          <i className="fa-solid fa-piggy-bank" aria-hidden="true"></i>
+                          <PiggyBank aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                           <span>{t('checkout_you_save').replace('{amount}', formatPrice(discount))}</span>
                         </span>
                       )}
@@ -150,11 +151,11 @@ function OrderSuccessContent() {
                 </div>
 
                 <p className="mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700">
-                  <i className="fa-solid fa-wallet" aria-hidden="true"></i>
+                  <Wallet aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
                   <span>{t('success_voucher_ready')}</span>
                 </p>
                 <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
-                  <i className="fa-regular fa-envelope" aria-hidden="true"></i>
+                  <Mail aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                   <span>{t('success_receipt_note')}</span>
                 </p>
 
@@ -166,7 +167,7 @@ function OrderSuccessContent() {
                       href={`/member/vouchers/${encodeURIComponent(voucherId)}`}
                       className="ds-btn ds-btn-primary ds-btn-wrap w-full"
                     >
-                      <i className="fa-solid fa-qrcode" aria-hidden="true"></i>
+                      <QrCode aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
                       <span>{t('success_view_voucher')}</span>
                     </Link>
                   )}
@@ -213,7 +214,7 @@ function CopyOrderIdButton({ value }: { value: string }) {
     }
   }
 
-  const icon = status === 'copied' ? 'fa-check text-emerald-600' : status === 'failed' ? 'fa-xmark text-red-600' : 'fa-copy text-brand'
+  const [Icon, tone] = status === 'copied' ? [Check, 'text-emerald-600'] : status === 'failed' ? [X, 'text-red-600'] : [Copy, 'text-brand']
   return (
     <>
       <button
@@ -222,7 +223,7 @@ function CopyOrderIdButton({ value }: { value: string }) {
         aria-label={t('success_copy_order_id')}
         className={`tap-target inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brandTint transition [@media(hover:hover)]:hover:bg-brandLight ${FOCUS}`}
       >
-        <i className={`fa-solid ${icon}`} aria-hidden="true"></i>
+        <Icon aria-hidden="true" className={`h-[18px] w-[18px] ${tone}`} strokeWidth={1.75} />
       </button>
       <span role="status" className="sr-only">
         {status === 'copied' ? t('success_order_id_copied') : status === 'failed' ? t('voucher_copy_failed') : ''}

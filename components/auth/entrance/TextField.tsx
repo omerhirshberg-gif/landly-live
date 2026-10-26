@@ -59,7 +59,7 @@ export default function TextField({
   const iconColor = error ? 'stroke-red-600' : 'stroke-slate-400 group-focus-within:stroke-brand'
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="block mb-2 text-[13px] font-semibold text-slate-700">
+      <label htmlFor={id} className="block mb-2 text-meta font-semibold text-slate-700">
         {label}
       </label>
       <div

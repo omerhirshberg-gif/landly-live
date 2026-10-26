@@ -1,6 +1,8 @@
 'use client'
 
+import { IdCard, Mail, MapPin, Phone, type LucideIcon } from 'lucide-react'
 import Card from '@/components/admin/Card'
+import IconFrame from '@/components/ui/IconFrame'
 import { useBusiness } from '@/components/business/BusinessGate'
 import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 
@@ -11,7 +13,7 @@ function InfoItem({
   notSetLabel,
   ltr,
 }: {
-  icon: string
+  icon: LucideIcon
   label: string
   value: string
   notSetLabel: string
@@ -20,11 +22,9 @@ function InfoItem({
   const isSet = value.trim().length > 0
   return (
     <div className="flex items-start gap-2.5 min-w-0">
-      <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0 text-slate-400">
-        <i className={`fa-solid ${icon} text-xs`} aria-hidden="true" />
-      </div>
+      <IconFrame icon={icon} size="sm" tone="glass" />
       <div className="min-w-0">
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{label}</div>
+        <div className="text-nano font-bold text-slate-500 uppercase tracking-wide">{label}</div>
         <div
           className={`text-sm truncate ${isSet ? 'text-white font-semibold' : 'text-slate-500 italic font-normal'}`}
           dir={isSet && ltr ? 'ltr' : undefined}
@@ -59,10 +59,10 @@ export default function BusinessProfileCard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 mt-5 pt-5 border-t border-white/5">
-        <InfoItem icon="fa-id-card" label={t('bizdash_id_label')} value={business.businessId} notSetLabel={notSet} ltr />
-        <InfoItem icon="fa-location-dot" label={t('bizdash_info_location')} value={business.location} notSetLabel={notSet} />
-        <InfoItem icon="fa-envelope" label={t('bizdash_info_email')} value={business.email} notSetLabel={notSet} ltr />
-        <InfoItem icon="fa-phone" label={t('bizdash_info_phone')} value={business.phone} notSetLabel={notSet} ltr />
+        <InfoItem icon={IdCard} label={t('bizdash_id_label')} value={business.businessId} notSetLabel={notSet} ltr />
+        <InfoItem icon={MapPin} label={t('bizdash_info_location')} value={business.location} notSetLabel={notSet} />
+        <InfoItem icon={Mail} label={t('bizdash_info_email')} value={business.email} notSetLabel={notSet} ltr />
+        <InfoItem icon={Phone} label={t('bizdash_info_phone')} value={business.phone} notSetLabel={notSet} ltr />
       </div>
     </Card>
   )

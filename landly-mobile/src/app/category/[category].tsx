@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
@@ -13,6 +13,7 @@ import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
 import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
+import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
@@ -140,7 +141,7 @@ export default function CategoryScreen() {
         }
         ListEmptyComponent={
           offers === null ? (
-            failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
+            failed ? null : <OfferListSkeleton />
           ) : offers.length > 0 ? (
             <View style={styles.empty} accessibilityLiveRegion="polite">
               <AppText style={styles.emptyTitle}>{t('cats_search_no_results_sub')}</AppText>
@@ -179,7 +180,6 @@ const styles = StyleSheet.create({
   titleText: { flex: 1, minWidth: 0, gap: 2 },
   count: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
   countPlaceholder: { height: 12, width: 110, marginTop: 6, borderRadius: radius.pill, backgroundColor: colors.borderLight },
-  spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

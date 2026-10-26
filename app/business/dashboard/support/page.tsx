@@ -1,6 +1,8 @@
 'use client'
 
+import { Mail, MessageCircle } from 'lucide-react'
 import Card from '@/components/admin/Card'
+import IconFrame from '@/components/ui/IconFrame'
 import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
 
@@ -17,7 +19,7 @@ export default function BusinessSupportPage() {
 
       <div className="grid sm:grid-cols-2 gap-4 max-w-xl">
         <Card className="p-5">
-          <div className="text-2xl mb-2">📧</div>
+          <IconFrame icon={Mail} size="sm" tone="glass" className="mb-3" />
           <div className="font-bold text-white mb-1">{t('support_email_us')}</div>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand text-sm font-semibold hover:underline" dir="ltr">
             {SUPPORT_EMAIL}
@@ -25,7 +27,7 @@ export default function BusinessSupportPage() {
           <p className="text-xs text-slate-500 mt-2">{t('support_email_note')}</p>
         </Card>
         <Card className="p-5">
-          <div className="text-2xl mb-2">💬</div>
+          <IconFrame icon={MessageCircle} size="sm" tone="glass" className="mb-3" />
           <div className="font-bold text-white mb-1">{t('support_whatsapp')}</div>
           <bdi dir="ltr">
             <a

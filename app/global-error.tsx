@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { House, RotateCw, TriangleAlert } from 'lucide-react'
 import './globals.css'
 import ErrorScreen from '@/components/errors/ErrorScreen'
 
@@ -63,16 +64,15 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
       </head>
       <body>
         <ErrorScreen
           withNavbar={false}
-          icon="fa-triangle-exclamation"
+          icon={TriangleAlert}
           title={copy.title}
           body={copy.body}
-          primary={{ label: copy.retry, icon: 'fa-rotate-right', onClick: () => retry() }}
-          secondary={{ label: copy.home, icon: 'fa-house', href: '/', reload: true }}
+          primary={{ label: copy.retry, icon: RotateCw, onClick: () => retry() }}
+          secondary={{ label: copy.home, icon: House, href: '/', reload: true }}
           footnote={
             [error.digest ? `Ref: ${error.digest}` : '', debug ? `${error.name}: ${error.message}` : ''].filter(Boolean).join(' · ') || undefined
           }

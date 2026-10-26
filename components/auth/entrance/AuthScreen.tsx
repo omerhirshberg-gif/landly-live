@@ -512,7 +512,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         disabled={submitting || googleBusy}
       />
       {passkeyFailures >= PASSKEY_TROUBLE_AFTER && (
-        <p role="status" className="mt-2 text-center text-[13px] font-semibold text-slate-500">
+        <p role="status" className="mt-2 text-center text-meta font-semibold text-slate-500">
           {t('login_passkeyTrouble')}
         </p>
       )}
@@ -553,7 +553,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           {finishingGoogle ? (
             <div role="status" aria-live="polite" className="flex flex-col items-center gap-4 py-10 text-center">
               <span aria-hidden="true" className="h-8 w-8 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
-              <p className="text-[15px] font-semibold text-slate-600">{t('auth_googleFinishing')}</p>
+              <p className="text-copy font-semibold text-slate-600">{t('auth_googleFinishing')}</p>
             </div>
           ) : wizard ? (
             <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onStepChange={setOnbStep} onComplete={handleWizardComplete} />
@@ -703,7 +703,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       describedBy={signUpErrors.terms ? 'signup-terms-error' : undefined}
                     />
                     {signUpErrors.terms && (
-                      <p id="signup-terms-error" role="alert" className="mt-2 text-[13px] font-semibold text-red-600">
+                      <p id="signup-terms-error" role="alert" className="mt-2 text-meta font-semibold text-red-600">
                         {t('signup_termsRequired')}
                       </p>
                     )}
@@ -760,7 +760,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
 
                   <div className="flex flex-wrap items-center justify-between gap-3 -mt-0.5 mb-6">
                     <Checkbox label={t('login_rememberMe')} checked={rememberMe} onChange={setRememberMe} />
-                    <Link href="/forgot-password" className="py-3 -my-3 text-[13px] font-bold text-brand hover:underline">
+                    <Link href="/forgot-password" className="py-3 -my-3 text-meta font-bold text-brand hover:underline">
                       {t('login_forgotLink')}
                     </Link>
                   </div>

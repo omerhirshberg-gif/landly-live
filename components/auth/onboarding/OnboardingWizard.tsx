@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import Confetti from '@/components/checkout/Confetti'
 import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { completeOnboardingProfile } from '@/lib/firebase/users'
@@ -385,6 +387,9 @@ export default function OnboardingWizard({
           {renderStep(step, true)}
         </div>
       </div>
+      {/* The finish gets a small confetti burst. Portalled to <body>: the
+          step animates transform, which would trap a fixed canvas in its box. */}
+      {step === 'done' && createPortal(<Confetti count={60} />, document.body)}
     </div>
   )
 }

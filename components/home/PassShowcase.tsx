@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
+import { CircleCheck, PiggyBank, QrCode, Ticket } from 'lucide-react'
+import IconFrame from '@/components/ui/IconFrame'
 import Reveal from '@/components/ui/Reveal'
 import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@/lib/brand/emblemPaths'
 import { WORDMARK_PATH, WORDMARK_VIEWBOX } from '@/lib/brand/wordmarkPath'
@@ -21,9 +23,9 @@ export function formatValidThru(date: Date): string {
 }
 
 const POINTS = [
-  { icon: 'fa-ticket', key: 'landing_pass_point1' },
-  { icon: 'fa-qrcode', key: 'landing_pass_point2' },
-  { icon: 'fa-piggy-bank', key: 'landing_pass_point3' },
+  { icon: Ticket, key: 'landing_pass_point1' },
+  { icon: QrCode, key: 'landing_pass_point2' },
+  { icon: PiggyBank, key: 'landing_pass_point3' },
 ] as const
 
 // The guest home's look at the member pass: a phone drawn in CSS with the
@@ -75,19 +77,19 @@ export default function PassShowcase() {
 
   return (
     <section aria-labelledby="home-pass-title" className="pass-stage py-12 sm:py-14 lg:py-16">
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      {/* From lg the copy takes the room and the phone only its own width,
+          the pair held to 64rem, so there's no empty half around the phone. */}
+      <div className="max-w-5xl mx-auto px-5 sm:px-6 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
         <Reveal>
           <div className="text-xs font-bold tracking-widest text-brand uppercase mb-3">{t('landing_pass_label')}</div>
-          <h2 id="home-pass-title" className="text-3xl sm:text-4xl font-black text-ink mb-3" style={{ letterSpacing: '-0.025em' }}>
+          <h2 id="home-pass-title" className="text-xl sm:text-2xl font-bold tracking-tight text-ink mb-2">
             {t('landing_pass_title')}
           </h2>
-          <p className="text-body text-[15px] sm:text-base leading-relaxed mb-6 max-w-xl">{t('landing_pass_sub')}</p>
+          <p className="text-body text-copy sm:text-base leading-relaxed mb-6 max-w-xl">{t('landing_pass_sub')}</p>
           <ul className="space-y-3">
             {POINTS.map((p) => (
-              <li key={p.key} className="flex items-center gap-3 text-[15px] font-semibold text-ink">
-                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/95 text-brand shadow-sm border border-line">
-                  <i className={`fa-solid ${p.icon}`} aria-hidden="true"></i>
-                </span>
+              <li key={p.key} className="flex items-center gap-3 text-copy font-semibold text-ink">
+                <IconFrame icon={p.icon} size="sm" />
                 <span>{t(p.key)}</span>
               </li>
             ))}
@@ -99,7 +101,7 @@ export default function PassShowcase() {
           <div aria-hidden="true" className="relative rounded-[2.75rem] bg-ink p-2.5 shadow-[0_2px_4px_rgba(11,27,61,.12),0_24px_48px_-12px_rgba(11,27,61,.35),0_48px_96px_-24px_rgba(0,56,184,.35)]">
             <div className="relative flex aspect-[9/19] flex-col overflow-hidden rounded-[2.25rem] bg-gradient-to-b from-brandTint to-white px-3.5 pt-11 pb-4">
               <div className="absolute top-2.5 left-1/2 h-[22px] w-[84px] -translate-x-1/2 rounded-full bg-ink" />
-              <div className="mb-3 px-1 text-[13px] font-extrabold text-ink">{t('landing_pass_screen_title')}</div>
+              <div className="mb-3 px-1 text-meta font-extrabold text-ink">{t('landing_pass_screen_title')}</div>
 
               <div className="pass-card rounded-2xl sm:rounded-3xl border border-white/20 bg-gradient-to-br from-brand to-brandDark p-4 text-start text-white shadow-[0_25px_50px_-12px_rgba(0,56,184,.5)]">
                 <div className="flex items-start justify-between gap-2">
@@ -110,14 +112,14 @@ export default function PassShowcase() {
                     </svg>
                   </span>
                   <span className="text-end leading-tight">
-                    <span className="block text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_member')}</span>
+                    <span className="block text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_member')}</span>
                     <bdi dir="ltr" className="block font-mono text-xs font-bold text-white/90">#{DEMO_MEMBER_ID}</bdi>
                   </span>
                 </div>
                 <div className="mt-1.5 truncate font-display text-xl sm:text-2xl font-bold tracking-tight text-white" dir="auto">{t('landing_pass_demo_name')}</div>
                 {/* The pass itself costs nothing to hold: a quiet chip under the name. */}
-                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider rtl:tracking-normal text-white/90">
-                  <i className="fa-solid fa-circle-check text-[8px] text-emerald-300"></i>
+                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-nano font-semibold uppercase tracking-wider rtl:tracking-normal text-white/90">
+                  <CircleCheck aria-hidden="true" className="h-2.5 w-2.5 text-emerald-300" strokeWidth={2.5} />
                   {t('landing_pass_free_member')}
                 </span>
                 <div className="mt-4 flex justify-center">
@@ -133,11 +135,11 @@ export default function PassShowcase() {
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_valid')}</div>
+                    <div className="text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_valid')}</div>
                     <bdi dir="ltr" className="block min-h-[1.25rem] font-mono text-xs sm:text-sm font-bold text-white">{validThru}</bdi>
                   </div>
                   <div className="min-w-0 text-end">
-                    <div className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_status')}</div>
+                    <div className="text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_status')}</div>
                     <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
                       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                       {t('landing_pass_status_active')}
@@ -146,8 +148,8 @@ export default function PassShowcase() {
                 </div>
               </div>
 
-              <div className="pass-pill mx-auto mt-auto inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[12px] font-bold text-ink shadow-sm">
-                <i className="fa-solid fa-qrcode text-brand"></i>
+              <div className="pass-pill mx-auto mt-auto inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-sm">
+                <QrCode aria-hidden="true" className="h-3.5 w-3.5 text-brand" strokeWidth={2} />
                 {t('landing_pass_redeem')}
               </div>
             </div>

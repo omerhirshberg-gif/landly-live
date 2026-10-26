@@ -15,7 +15,7 @@ export default function DashboardSectionCard({ title, meta, children, className 
   return (
     <Card className={`p-5 ${className}`}>
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-sm font-black text-white uppercase tracking-wide">{title}</h2>
+        <h2 className="text-sm font-bold text-white uppercase tracking-wide">{title}</h2>
         {meta}
       </div>
       {children}

@@ -102,8 +102,9 @@ describe('member dashboard live data', () => {
     const html = withLang('he', createElement(PerksTab, { vouchers: [{ ...voucher('u1_o1', 'o1'), status: 'active' as const, redeemedAt: null }] }))
     // The label is for screen readers only; the chevron (mirrored in Hebrew) is the visible cue.
     expect(html).toContain(`<span class="sr-only">${translations.he.voucher_show_button}</span>`)
-    expect(html).toMatch(/<i class="fa-solid fa-chevron-right [^"]*rtl:-scale-x-100[^"]*" aria-hidden="true"><\/i><\/a>/)
-    expect(html).not.toContain('bg-brand')
+    expect(html).toMatch(/<svg [^>]*class="lucide lucide-chevron-right [^"]*rtl:-scale-x-100[^"]*"[^>]*>.*?<\/svg><\/a>/)
+    // No solid blue button (bg-brandTint, a pale tint, is fine).
+    expect(html).not.toMatch(/\bbg-brand(?![A-Za-z])/)
     expect(html).not.toContain('<button')
     vi.mocked(getOffer).mockReset()
   })
@@ -125,12 +126,14 @@ describe('member dashboard live data', () => {
     expect(html).toContain('Cafe Nadi')
     expect(html).toContain('Two coffees')
     expect(html).toContain(translations[lang].mobile_redeemed_on.replace('{date}', formatRedeemedDate(new Date(2026, 9, 17), lang)))
-    expect(html).not.toMatch(/<svg|<canvas|qr/i)
+    // Icons only (Lucide): no QR image, canvas or code.
+    expect(html).not.toMatch(/<canvas|<img|qr/i)
+    for (const svg of html.match(/<svg [^>]*>/g) ?? []) expect(svg).toContain('class="lucide ')
   })
 
   it('keeps the receipt empty state with nothing redeemed', () => {
     const html = withLang('en', createElement(RedeemedTab, { vouchers: [] }))
-    expect(html).toContain('fa-receipt')
+    expect(html).toContain('lucide-receipt')
     expect(html).toContain(translations.en.dash_redeemed_empty_title)
   })
 })

@@ -16,7 +16,7 @@ export default function MentorRequestCard() {
 
   return (
     <section id={MENTOR_SECTION_ID} aria-labelledby="mentor-title" className="scroll-mt-[calc(var(--header-offset)+16px)] bg-brand rounded-3xl p-6 sm:p-8 text-white">
-      <h2 id="mentor-title" className="text-xl sm:text-2xl font-black mb-2">{t('olim_mentor_form_title')}</h2>
+      <h2 id="mentor-title" className="text-xl sm:text-2xl font-bold tracking-tight mb-2">{t('olim_mentor_form_title')}</h2>
       <p className="text-white/80 text-sm mb-6">{t('olim_mentor_form_sub')}</p>
       {loading ? (
         // Holds the form's height so neither state flashes while auth resolves.

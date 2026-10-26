@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Suspense, useState, type ChangeEvent, type ComponentType, type FormEvent } from 'react'
+import { ArrowRight, Clock, ExternalLink, Mail, MessageCircle, type LucideIcon } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
 import BackToSettings from '@/components/settings/BackToSettings'
@@ -8,6 +9,7 @@ import Faq from '@/components/home/Faq'
 import Notice from '@/components/auth/entrance/Notice'
 import Reveal from '@/components/ui/Reveal'
 import SectionDivider from '@/components/ui/SectionDivider'
+import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
@@ -24,9 +26,9 @@ const SUBJECT_OPTIONS: [string, TranslationKey][] = [
 
 const EMPTY_FIELDS = { name: '', email: '', subject: 'general', message: '', website: '' }
 
-const CHANNELS: { href: string; external: boolean; display: string; dir?: 'ltr'; icon: string; iconClass: string; titleKey: TranslationKey; noteKey: TranslationKey; noteIcon: string }[] = [
-  { href: `mailto:${SUPPORT_EMAIL}`, external: false, display: SUPPORT_EMAIL, icon: 'fa-solid fa-envelope', iconClass: 'bg-brandTint text-brand', titleKey: 'support_email_us', noteKey: 'support_email_note', noteIcon: 'fa-clock' },
-  { href: SUPPORT_WHATSAPP_LINK, external: true, display: SUPPORT_WHATSAPP_DISPLAY, dir: 'ltr', icon: 'fa-brands fa-whatsapp', iconClass: 'bg-[#E7F8EE] text-[#128C4B]', titleKey: 'support_whatsapp', noteKey: 'support_whatsapp_note', noteIcon: 'fa-comment' },
+const CHANNELS: { href: string; external: boolean; display: string; dir?: 'ltr'; icon: ComponentType<{ className?: string; strokeWidth?: number }>; iconClass: string; titleKey: TranslationKey; noteKey: TranslationKey; noteIcon: LucideIcon }[] = [
+  { href: `mailto:${SUPPORT_EMAIL}`, external: false, display: SUPPORT_EMAIL, icon: Mail, iconClass: 'border-sky-200/60 bg-brandTint text-brand', titleKey: 'support_email_us', noteKey: 'support_email_note', noteIcon: Clock },
+  { href: SUPPORT_WHATSAPP_LINK, external: true, display: SUPPORT_WHATSAPP_DISPLAY, dir: 'ltr', icon: WhatsAppIcon, iconClass: 'border-emerald-200/70 bg-[#E7F8EE] text-[#128C4B]', titleKey: 'support_whatsapp', noteKey: 'support_whatsapp_note', noteIcon: MessageCircle },
 ]
 
 export default function SupportPage() {
@@ -74,38 +76,44 @@ export default function SupportPage() {
       <Navbar />
       <div className="below-header member-canvas">
         <MemberPageShell>
-          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
-          <div className="max-w-3xl">
-            <Suspense fallback={null}>
-              <BackToSettings className="mb-3 sm:mb-6" />
-            </Suspense>
-            <PageTitle>{t('support_title')}</PageTitle>
+          {/* Narrower than the column below 1024px, at its start edge, so the
+              title lines up with the other tabs. From 1024px the column is
+              used in full: the channels stack on the start side (5 of 12)
+              and the form sits beside them (7 of 12), instead of one narrow
+              strip with the right half of the screen empty. */}
+          <div className="max-w-3xl lg:max-w-none lg:grid lg:grid-cols-12 lg:gap-x-8 lg:items-start">
+            <div className="lg:col-span-12">
+              <Suspense fallback={null}>
+                <BackToSettings className="mb-3 sm:mb-6" />
+              </Suspense>
+              <PageTitle>{t('support_title')}</PageTitle>
+            </div>
 
             {/* The two ways to reach us, each one whole tappable card: icon,
                 channel, address (in <bdi>, so it stays whole in Hebrew), the
                 reply note from the copy (no live "online" claim; nothing tracks
                 that), and an arrow that nudges toward the reading direction. */}
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10">
+            <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mb-8 sm:mb-10 lg:col-span-5 lg:grid-cols-1 lg:gap-4 lg:mb-0">
               {CHANNELS.map((c, i) => (
                 <Reveal key={c.titleKey} delay={i * 60} className="h-full">
                   <a
                     href={c.href}
                     {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    className="group flex h-full min-h-[64px] items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 text-start shadow-sm [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-brand/25 [@media(hover:hover)]:hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
+                    className="group flex h-full min-h-[64px] items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 text-start shadow-card [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-brand/25 [@media(hover:hover)]:hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
                   >
-                    <span aria-hidden="true" className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-xl ${c.iconClass}`}>
-                      <i className={c.icon}></i>
+                    <span aria-hidden="true" className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border ${c.iconClass}`}>
+                      <c.icon className="h-6 w-6" strokeWidth={1.75} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-bold text-ink">{t(c.titleKey)}</span>
                       <bdi dir={c.dir} className="block break-all text-sm font-semibold text-brand">{c.display}</bdi>
                       <span className="mt-1.5 flex items-start gap-1.5 text-xs leading-snug text-body">
-                        <i className={`fa-regular ${c.noteIcon} mt-px flex-shrink-0`} aria-hidden="true"></i>
+                        <c.noteIcon aria-hidden="true" className="mt-px h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.75} />
                         <span>{t(c.noteKey)}</span>
                       </span>
                     </span>
                     <span aria-hidden="true" className="cat-card-nudge flex-shrink-0 text-sm text-slate-300 transition-colors [@media(hover:hover)]:group-hover:text-brand">
-                      <i className={`fa-solid ${c.external ? 'fa-arrow-up-right-from-square' : 'fa-arrow-right'} rtl:-scale-x-100`}></i>
+                      {c.external ? <ExternalLink aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.75} /> : <ArrowRight aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.75} />}
                     </span>
                   </a>
                 </Reveal>
@@ -113,9 +121,9 @@ export default function SupportPage() {
             </div>
 
             {/* Soft hairlines between the channels, the form and the FAQ, as on the home page. */}
-            <SectionDivider className="mb-8 sm:mb-10" />
+            <SectionDivider className="mb-8 sm:mb-10 lg:hidden" />
 
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-card lg:col-span-7">
               <h2 className="text-lg sm:text-xl font-bold text-ink mb-6">{t('support_form_title')}</h2>
               {status === 'sent' && <Notice tone="success">{t('support_form_success')}</Notice>}
               {error && <Notice>{error}</Notice>}

@@ -1,5 +1,6 @@
 'use client'
 
+import { ShieldUser, Trash2 } from 'lucide-react'
 import SettingsPageShell from '@/components/settings/SettingsPageShell'
 import SettingsRow, { SettingsGroup } from '@/components/settings/SettingsRow'
 import SecuritySection from '@/components/settings/SecuritySection'
@@ -22,9 +23,9 @@ export default function PrivacySecurityPage() {
       {user ? (
         <>
           <section aria-labelledby="settings-signin" className="mb-6">
-            <h2 id="settings-signin" className="px-1 pb-2 text-[13px] font-semibold text-slate-500">{t('security_signin_title')}</h2>
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <p className="text-[15px] font-semibold text-ink">{hasPassword ? t('security_method_password') : t('security_method_google')}</p>
+            <h2 id="settings-signin" className="px-1 pb-2 text-meta font-semibold text-slate-500">{t('security_signin_title')}</h2>
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
+              <p className="text-copy font-semibold text-ink">{hasPassword ? t('security_method_password') : t('security_method_google')}</p>
               {user.email && <p className="text-sm text-body truncate"><bdi>{user.email}</bdi></p>}
               {!hasPassword && <p className="mt-3 text-sm text-body">{t('security_google_note')}</p>}
             </div>
@@ -41,8 +42,8 @@ export default function PrivacySecurityPage() {
           <SessionsCard user={user} />
 
           <SettingsGroup id="settings-data" title={t('security_data_title')}>
-            <SettingsRow icon="fa-user-shield" title={t('security_data_privacy')} href="/privacy" />
-            <SettingsRow icon="fa-trash-can" title={t('security_data_delete')} href="/settings/delete-account" />
+            <SettingsRow icon={ShieldUser} title={t('security_data_privacy')} href="/privacy" />
+            <SettingsRow icon={Trash2} title={t('security_data_delete')} href="/settings/delete-account" />
           </SettingsGroup>
         </>
       ) : (

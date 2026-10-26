@@ -3,16 +3,18 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Gauge, History, LifeBuoy, LogOut, Menu, Tags, Ticket } from 'lucide-react'
 import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import type { LucideIcon } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/business/dashboard', key: 'bizdash_nav_dashboard', icon: 'fa-gauge-high', exact: true },
-  { href: '/business/dashboard/offers', key: 'bizdash_nav_offers', icon: 'fa-tags', exact: false },
-  { href: '/business/dashboard/vouchers', key: 'bizdash_nav_vouchers', icon: 'fa-ticket', exact: false },
-  { href: '/business/dashboard/history', key: 'bizdash_nav_history', icon: 'fa-clock-rotate-left', exact: false },
-  { href: '/business/dashboard/support', key: 'bizdash_nav_support', icon: 'fa-life-ring', exact: false },
-] satisfies { href: string; key: TranslationKey; icon: string; exact: boolean }[]
+  { href: '/business/dashboard', key: 'bizdash_nav_dashboard', icon: Gauge, exact: true },
+  { href: '/business/dashboard/offers', key: 'bizdash_nav_offers', icon: Tags, exact: false },
+  { href: '/business/dashboard/vouchers', key: 'bizdash_nav_vouchers', icon: Ticket, exact: false },
+  { href: '/business/dashboard/history', key: 'bizdash_nav_history', icon: History, exact: false },
+  { href: '/business/dashboard/support', key: 'bizdash_nav_support', icon: LifeBuoy, exact: false },
+] satisfies { href: string; key: TranslationKey; icon: LucideIcon; exact: boolean }[]
 
 // Same structure as components/admin/Sidebar.tsx, but built with logical
 // (start/end) properties instead of physical left/right ones -- the admin
@@ -42,7 +44,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
           className="w-9 h-9 rounded-lg border border-white/10 flex items-center justify-center text-slate-300 shrink-0"
           aria-label="Open menu"
         >
-          <i className="fa-solid fa-bars" aria-hidden="true" />
+          <Menu aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </button>
       </div>
 
@@ -71,7 +73,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
           <img src="/logo-mark.png" alt="Landly" className="h-8 w-auto" />
           <div className="flex items-center gap-2">
             <span className="font-black text-white text-lg leading-none">Landly</span>
-            <span className="inline-flex items-center text-[11px] font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
+            <span className="inline-flex items-center text-micro font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
               Business
             </span>
           </div>
@@ -109,7 +111,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
                   : 'text-slate-400 border border-transparent hover:text-white hover:bg-white/5'
               }`}
             >
-              <i className={`fa-solid ${item.icon} w-4 text-center`} aria-hidden="true" />
+              <item.icon aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
               {t(item.key)}
             </Link>
           ))}
@@ -120,7 +122,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
             onClick={onLogout}
             className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-semibold text-red-400 border border-transparent transition-colors hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20"
           >
-            <i className="fa-solid fa-right-from-bracket w-4 text-center" aria-hidden="true" />
+            <LogOut aria-hidden="true" className="h-4 w-4 flex-shrink-0 rtl:-scale-x-100" strokeWidth={1.75} />
             {t('bizdash_logout')}
           </button>
         </div>

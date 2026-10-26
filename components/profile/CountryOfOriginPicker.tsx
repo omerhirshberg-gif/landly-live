@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { Check, Search } from 'lucide-react'
 import { filterCountries, listOriginCountries, type OriginCountry } from '@/lib/profile/countryOfOrigin'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -67,14 +68,14 @@ export default function CountryOfOriginPicker({
         }`}
       >
         <span aria-hidden="true" className="w-7 shrink-0 text-center text-xl leading-6">{c.flag}</span>
-        <span className="min-w-0 flex-1 truncate text-[15px]">{c.name}</span>
-        {selected && <i className="fa-solid fa-check flex-shrink-0 text-sm" aria-hidden="true"></i>}
+        <span className="min-w-0 flex-1 truncate text-copy">{c.name}</span>
+        {selected && <Check aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={2} />}
       </button>
     )
   }
 
   const heading = (label: string) => (
-    <div role="presentation" className="sticky top-0 z-[1] bg-white/95 backdrop-blur-sm px-3.5 pt-3 pb-1.5 text-[12px] font-semibold uppercase tracking-wide text-slate-500">
+    <div role="presentation" className="sticky top-0 z-[1] bg-white/95 backdrop-blur-sm px-3.5 pt-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
       {label}
     </div>
   )
@@ -82,7 +83,7 @@ export default function CountryOfOriginPicker({
   return (
     <div>
       <div className="relative mb-3">
-        <i className="fa-solid fa-magnifying-glass pointer-events-none absolute top-1/2 -translate-y-1/2 start-4 text-sm text-slate-400" aria-hidden="true"></i>
+        <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-4 h-4 w-4 text-slate-400" strokeWidth={1.75} />
         <input
           id={searchId}
           type="search"

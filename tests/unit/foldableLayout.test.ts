@@ -60,8 +60,8 @@ describe('foldable web layout', () => {
     expect(read('app/globals.css')).toContain('.below-header,.navbar-safe-top{padding-left:env(safe-area-inset-left, 0px);padding-right:env(safe-area-inset-right, 0px);}')
   })
 
-  it('shows two perks per row from 600px and three on desktop, one on phones and cover screens', () => {
-    expect(OFFER_FEED_GRID).toBe('grid grid-cols-1 gap-3 fold:grid-cols-2 fold:gap-4 lg:grid-cols-3')
+  it('shows two perks per row from 600px, three on desktop and four from 1280px, one on phones and cover screens', () => {
+    expect(OFFER_FEED_GRID).toBe('grid grid-cols-1 gap-3 fold:grid-cols-2 fold:gap-4 lg:grid-cols-3 xl:grid-cols-4')
     expect(OFFER_FEED_GRID).not.toMatch(/\bmd:grid-cols-2\b/)
   })
 
@@ -94,12 +94,15 @@ describe('foldable web layout', () => {
     expect(page).toContain('<div className="fold:grid fold:grid-cols-2 fold:items-start">')
   })
 
-  it.each(['components/member/PerksTab.tsx', 'components/member/RedeemedTab.tsx'])('%s lists passes two to a row when unfolded, one centred column elsewhere', (path) => {
-    expect(read(path)).toContain('<ul className="mx-auto grid max-w-xl gap-3 fold:max-lg:max-w-none fold:max-lg:grid-cols-2">')
+  it.each(['components/member/PerksTab.tsx', 'components/member/RedeemedTab.tsx'])('%s lists passes one to a row on phones and two from 600px, never a narrow strip on desktop', (path) => {
+    expect(read(path)).toContain('<ul className="grid gap-3 fold:grid-cols-2">')
+    expect(read(path)).not.toContain('max-w-xl')
   })
 
-  it('caps the home pass card from 600px so it never stretches across an inner screen', () => {
-    expect(read('components/home/LoggedInHome.tsx')).toContain('flex w-full flex-col fold:max-w-xl md:min-h-[200px]')
+  it('caps the home pass card from 600px so it never stretches across an inner screen, and pairs it with Curated for you from 1024px', () => {
+    const home = read('components/home/LoggedInHome.tsx')
+    expect(home).toContain('flex w-full flex-col fold:max-w-xl lg:max-w-none md:min-h-[200px]')
+    expect(home).toContain('lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-x-8 lg:items-stretch')
   })
 })
 

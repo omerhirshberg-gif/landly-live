@@ -15,6 +15,7 @@ import type { Lang } from '@/lib/i18n/translations'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import AccountMenu from './AccountMenu'
 import MobileMenu from './MobileMenu'
+import { ChevronDown, Globe } from 'lucide-react'
 
 // The only homepage section the navbar scroll-spies on — Deals now goes to the
 // /categories catalog instead of the #deals overview.
@@ -42,10 +43,10 @@ export default function Navbar() {
 
   // Both account buttons share size and shape (the design system's 12px
   // radius, globals.css .ds-btn); the transparent border keeps the blue one
-  // exactly as tall as the outlined one.
-  const pillBase = 'tap-target inline-flex items-center text-[13px] font-bold tracking-tight px-4 py-2 rounded-xl border transition-colors'
-  const accountPillClass = `${pillBase} bg-brand text-white border-transparent [@media(hover:hover)]:hover:bg-brandDark shadow-md`
-  const accountSecondaryPillClass = `${pillBase} bg-[#FFFFFF] text-[#0B1B3D] border-[#E2E8F0] [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:text-brand`
+  // exactly as tall as the outlined one. Each carries the .ds-btn shadow of its kind.
+  const pillBase = 'tap-target inline-flex items-center text-meta font-bold tracking-tight px-4 py-2 rounded-xl border transition-colors'
+  const accountPillClass = `${pillBase} bg-brand text-white border-transparent [@media(hover:hover)]:hover:bg-brandDark shadow-btn-primary`
+  const accountSecondaryPillClass = `${pillBase} bg-white text-ink border-line shadow-btn-secondary [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:text-brand`
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
@@ -117,7 +118,7 @@ export default function Navbar() {
             <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
           </a>
 
-          <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-[13px] font-semibold text-slate-600">
+          <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-meta font-semibold text-slate-600">
             {user ? (
               <>
                 {/* Members get Home, Explore Perks, Wishlist, My Pass,
@@ -173,11 +174,11 @@ export default function Navbar() {
                 onClick={toggleLangMenu}
                 aria-expanded={langMenuOpen}
                 aria-haspopup="true"
-                className="tap-target flex items-center gap-1.5 text-[13px] font-semibold text-slate-600 rounded-lg px-2.5 py-1.5 [@media(hover:hover)]:hover:bg-slate-100 [@media(hover:hover)]:hover:text-[#0B1B3D] transition-colors"
+                className="tap-target flex items-center gap-1.5 text-meta font-semibold text-slate-600 rounded-lg px-2.5 py-1.5 [@media(hover:hover)]:hover:bg-slate-100 [@media(hover:hover)]:hover:text-ink transition-colors"
               >
-                <i className="fa-solid fa-globe text-xs" aria-hidden="true"></i>
+                <Globe aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                 <span>{lang.toUpperCase()}</span>
-                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${langMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true"></i>
+                <ChevronDown aria-hidden="true" className={`h-3 w-3 transition-transform duration-200 ${langMenuOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
               </button>
               <div dir={contentDir} className={`lang-menu ${langMenuOpen ? 'show' : ''}`} style={{ right: 0, left: 'auto' }}>
                 {/* Real buttons, so the options are reachable by keyboard */}
@@ -196,9 +197,18 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Hamburger (mobile/tablet only) */}
-            <button type="button" className="lg:hidden tap-target flex items-center justify-center" onClick={() => { setLangMenuOpen(false); setMobileMenuOpen((v) => !v) }} aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
-              <div className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}><span></span><span></span><span></span></div>
+            {/* Hamburger (mobile/tablet only): a 40px frosted tile with a
+                hairline (44px to the touch, tap-target), its three fine bars
+                folding into an X while the drawer is open (globals.css .hamburger). */}
+            <button
+              type="button"
+              className="lg:hidden tap-target flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 shadow-btn-secondary backdrop-blur-sm [-webkit-tap-highlight-color:transparent] transition-[background-color,transform] duration-200 [@media(hover:hover)]:hover:bg-slate-50 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+              onClick={() => { setLangMenuOpen(false); setMobileMenuOpen((v) => !v) }}
+              aria-label="Menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
+            >
+              <span aria-hidden="true" className={`hamburger ${mobileMenuOpen ? 'open' : ''}`}><span></span><span></span><span></span></span>
             </button>
           </div>
         </div>
@@ -222,7 +232,7 @@ function WishlistNavLink({ count, active, label }: { count: number; active: bool
     >
       <span className={active ? 'truncate underline decoration-2 underline-offset-[9px]' : 'truncate'}>{label}</span>
       {count > 0 && (
-        <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1.5 inline-flex items-center justify-center rounded-full bg-brand text-white text-[10px] font-bold leading-none tabular-nums">
+        <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1.5 inline-flex items-center justify-center rounded-full bg-brand text-white text-nano font-bold leading-none tabular-nums">
           {count > 99 ? '99+' : count}
         </span>
       )}

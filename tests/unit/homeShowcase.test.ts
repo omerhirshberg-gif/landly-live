@@ -56,7 +56,8 @@ describe('showcase data', () => {
     const items = pickMarqueeItems(offers)
     expect(items).toHaveLength(MARQUEE_MIN_BUSINESSES)
     const best = items.find((item) => item.kind === 'offer' && item.label === 'Business 0')
-    expect(best).toMatchObject({ percent: 50, href: '/offers/o99', icon: 'fa-utensils' })
+    expect(best).toMatchObject({ percent: 50, href: '/offers/o99' })
+    expect(best).not.toHaveProperty('icon')
   })
 
   it('falls back to the real categories when there are too few businesses', () => {
@@ -89,10 +90,10 @@ describe('partner ticker', () => {
     expect(html).toMatch(/<a class="inline-flex min-h-\[44px\][^"]*font-display text-sm font-bold uppercase tracking-wider[^"]*rtl:tracking-normal/)
     expect(html).not.toMatch(/<a class="[^"]*rounded-xl border/)
     // A sky-blue band in brand blue type, with no pause button.
-    expect(html).toContain('<div class="border-y border-sky-200/70 bg-[#E0F2FE]"><div class="marquee mx-auto max-w-screen-2xl"')
+    expect(html).toContain('<div class="border-y border-sky-200/70 bg-sky-100"><div class="marquee mx-auto max-w-screen-2xl"')
     expect(html).toMatch(/<a class="[^"]*text-brand[^"]*"/)
     expect(html).not.toContain('<button')
-    expect(html).not.toContain('fa-pause')
+    expect(html).not.toContain('lucide-pause')
   })
 
   it('animates transform only, runs with the reading in Hebrew, keeps flowing under the pointer and respects reduced motion', () => {
@@ -114,7 +115,7 @@ describe('savings showcase', () => {
     expect(en).toContain('Save <bdi>₪150</bdi>')
     expect(en).toContain('href="/offers/o1"')
     expect(en).toContain('href="/categories?sort=savings"')
-    expect(en).toContain('<bdi class="font-extrabold text-[#047857]">₪190</bdi>')
+    expect(en).toContain('<bdi class="font-extrabold text-success">₪190</bdi>')
     const he = withLang('he', createElement(SavingsShowcase, { offers }))
     // Hebrew writes the amount first, with its own direction marks, inside the <bdi>.
     expect(he).toMatch(/חוסכים <bdi>[^<]*150[^<]*₪<\/bdi>/)

@@ -47,7 +47,7 @@ describe('settings sub-pages', () => {
   it.each([LanguageRegionPage, OriginPage, PrivacySecurityPage, DeleteAccountPage])('are standalone pages with a back button and no dialog (%#)', (page) => {
     const html = render('he', page)
     expect(html).toContain(`aria-label="${translations.he.settings_back}"`)
-    expect(html).toContain('fa-chevron-left rtl:-scale-x-100')
+    expect(html).toContain('lucide-chevron-left h-5 w-5 rtl:-scale-x-100')
     expect(html).not.toContain('<dialog')
     expect(html).not.toContain('role="dialog"')
   })

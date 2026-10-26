@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
+import { Lock, MailCheck, Pencil } from 'lucide-react'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
 import { updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
@@ -12,6 +13,7 @@ import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerT
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
 import SegmentBadge from '@/components/member/SegmentBadge'
+import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import AvatarUploader from './AvatarUploader'
 import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
@@ -193,7 +195,7 @@ export default function ProfileSection({ user }: { user: User }) {
           </button>
         )
       ) : (
-        <i className="fa-solid fa-lock flex-shrink-0 text-xs text-slate-400" aria-hidden="true"></i>
+        <Lock aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" strokeWidth={1.75} />
       )}
     </div>
   )
@@ -223,7 +225,7 @@ export default function ProfileSection({ user }: { user: User }) {
           message={t('pending_email_body')}
           placeholder="{email}"
           value={pendingEmail}
-          icon="fa-solid fa-envelope-circle-check"
+          icon={MailCheck}
           actionLabel={t('pending_email_enter')}
           onAction={() => {
             setEmailStatus(null)
@@ -243,7 +245,7 @@ export default function ProfileSection({ user }: { user: User }) {
       message={t('pending_phone_body')}
       placeholder="{phone}"
       value={pendingPhone ? formatPhoneNumberIntl(pendingPhone) || pendingPhone : ''}
-      icon="fa-brands fa-whatsapp"
+      icon={WhatsAppIcon}
       actionLabel={t('pending_phone_enter')}
       onAction={() => {
         setPhoneStatus(null)
@@ -371,7 +373,7 @@ export default function ProfileSection({ user }: { user: User }) {
   // and the details with the one Edit button trailing. The panes are
   // display:contents on phones, so their blocks keep the phone order above.
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6">
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6">
       <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100">
         <div className="order-1">
           <AvatarUploader user={user} />
@@ -400,9 +402,9 @@ export default function ProfileSection({ user }: { user: User }) {
               type="button"
               onClick={startEdit}
               disabled={loadingDoc}
-              className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-[#F0F7FF] transition-colors disabled:opacity-60"
+              className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-brandTint transition-colors disabled:opacity-60"
             >
-              <i className="fa-solid fa-pen text-xs" aria-hidden="true"></i>
+              <Pencil aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
               {t('profile_edit_profile_btn')}
             </button>
           )}

@@ -5,7 +5,20 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { recordUsage } from '@/lib/usage/recordUsage'
 import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { sendWhatsAppMessage, whatsappLive } from './graph'
-import { currentStatus, CUSTOMER_SERVICE_WINDOW_MS, IDLE_GRACE_MS, idleCheckInMessage, idleMs, isConversationStatus, transcriptText } from './supportBot'
+import {
+  currentStatus,
+  CUSTOMER_SERVICE_WINDOW_MS,
+  IDLE_GRACE_MS,
+  idleCheckInMessage,
+  idleMs,
+  isConversationStatus,
+  TEAM_NUDGE_MIN_WAIT_MS,
+  TEAM_NUDGE_WINDOW_MARGIN_MS,
+  teamNudgeMessage,
+  teamNudgeMs,
+  teamResolveMs,
+  transcriptText,
+} from './supportBot'
 import { isBotLanguage } from './webhookPayload'
 
 // The support bot's timed work, run every few minutes by
@@ -20,13 +33,24 @@ import { isBotLanguage } from './webhookPayload'
 // - resolve: a check-in unanswered for IDLE_GRACE_MS resolves the
 //   conversation without a word to the member (resolvedBy: idle), and
 //   leaves the team a note in the transcript (AUTO_RESOLVED_NOTE).
+// - team nudge: a conversation with the team whose last word was the team's
+//   (lastAdminReplyAt, not followed by the member) gets one follow-up
+//   (teamNudgeAt) after teamNudgeMs(), held inside Meta's window (see
+//   TEAM_NUDGE_HOURS); it keeps the bot quiet for another 24 hours. While the
+//   member wrote last, the team owes the reply and nothing is due.
+// - team resolve: teamResolveMs() after the follow-up, or after it was due
+//   when the window left no room for one, the conversation is resolved
+//   without a word (the window has closed by then: resolvedBy: team_idle),
+//   with TEAM_AUTO_RESOLVED_NOTE for the team. The member's next message
+//   starts over, as after any resolve.
 // - purge: a safety net behind the Firestore TTL policy on expiresAt (180
 //   days after the latest message): conversations PURGE_SLACK_MS past it are
 //   deleted with their messages, in case the policy isn't deployed.
 //
-// Conversations are found by idleDueAt, when the next check-in or resolve
-// falls due: set by the bot's replies (supportBotHandler.ts) and the
-// check-in, cleared by the member, the team, an escalation or a resolve. Only
+// Conversations are found by idleDueAt, when the next of these falls due:
+// set by the bot's replies (supportBotHandler.ts), the team's
+// (adminInbox.ts), the check-in and the follow-up; cleared by the member, a
+// status change from the inbox, an escalation or a resolve. Only
 // conversations with work due are read, so chats with the team or already
 // over never crowd out the ones waiting. A due conversation is checked
 // against idleAction first; one with nothing to do after all gets its
@@ -46,13 +70,44 @@ export const PURGE_SLACK_MS = 3 * 24 * 60 * 60 * 1000
 const PHONE_NUMBER_ID = /^\d{1,32}$/
 /** What the team sees in the transcript when the sweep resolves a chat; the member gets nothing. */
 export const AUTO_RESOLVED_NOTE = 'Auto-resolved: no reply to the check-in'
+export const TEAM_AUTO_RESOLVED_NOTE = 'Auto-resolved: no reply to the team’s follow-up'
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
 
-export type IdleAction = 'checkIn' | 'resolve'
+export type IdleAction = 'checkIn' | 'resolve' | 'teamNudge' | 'teamResolve'
 
-/** When the sweep next has work for this conversation (ms): its check-in, or its resolve; undefined for none until something changes. */
+/** The sweep's next work for this conversation and when it falls due (ms); undefined for none until something changes. */
+export function idleSchedule(data: DocumentData, now: number, idle = idleMs()): { action: IdleAction; at: number } | undefined {
+  const lastInbound = millis(data.lastInboundAt)
+  const lastReply = millis(data.lastAdminReplyAt)
+  // The team spoke last: by the stored status, so the follow-up outlives the escalation's 24 hours.
+  if (data.status === 'escalated' && lastReply !== undefined && (lastInbound === undefined || lastInbound <= lastReply)) {
+    return teamSchedule(data, now, lastReply, lastInbound)
+  }
+  const at = botDue(data, now, idle)
+  if (at === undefined) return undefined
+  return { action: millis(data.idleCheckInAt) !== undefined ? 'resolve' : 'checkIn', at }
+}
+
+function teamSchedule(data: DocumentData, now: number, lastReply: number, lastInbound: number | undefined): { action: IdleAction; at: number } {
+  const nudged = millis(data.teamNudgeAt)
+  if (nudged !== undefined) return { action: 'teamResolve', at: nudged + teamResolveMs() }
+  if (lastInbound !== undefined) {
+    const windowCloses = lastInbound + CUSTOMER_SERVICE_WINDOW_MS
+    const due = Math.min(lastReply + teamNudgeMs(), windowCloses - TEAM_NUDGE_WINDOW_MARGIN_MS)
+    // Only while Meta's window is open, and once the member has had time to read the reply.
+    if (due >= lastReply + TEAM_NUDGE_MIN_WAIT_MS && now < windowCloses) return { action: 'teamNudge', at: due }
+  }
+  return { action: 'teamResolve', at: lastReply + teamNudgeMs() + teamResolveMs() }
+}
+
+/** When the sweep next has work for this conversation (ms); undefined for none until something changes. */
 export function nextIdleDue(data: DocumentData, now: number, idle = idleMs()): number | undefined {
+  return idleSchedule(data, now, idle)?.at
+}
+
+/** The bot's check-in, or its resolve: when it falls due. */
+function botDue(data: DocumentData, now: number, idle: number): number | undefined {
   const status = currentStatus({
     status: isConversationStatus(data.status) ? data.status : undefined,
     escalatedAt: millis(data.escalatedAt),
@@ -75,9 +130,8 @@ export function nextIdleDue(data: DocumentData, now: number, idle = idleMs()): n
 
 /** What the sweep does to a conversation now, if anything: whatever nextIdleDue says has fallen due. */
 export function idleAction(data: DocumentData, now: number, idle = idleMs()): IdleAction | null {
-  const due = nextIdleDue(data, now, idle)
-  if (due === undefined || now < due) return null
-  return millis(data.idleCheckInAt) !== undefined ? 'resolve' : 'checkIn'
+  const due = idleSchedule(data, now, idle)
+  return due === undefined || now < due.at ? null : due.action
 }
 
 export interface SweepResult {
@@ -99,12 +153,13 @@ export async function sweepIdleConversations(now = Date.now(), deadline = Date.n
     try {
       const claimed = await claim(doc.ref, now, idle, expected)
       if (!claimed) return
-      if (expected === 'checkIn') {
-        await checkIn(doc.id, claimed, now)
+      if (expected === 'checkIn' || expected === 'teamNudge') {
+        await followUp(doc.id, claimed, now, expected)
         result.checkedIn++
       } else {
         result.resolved++
-        await logMessages(doc.id, [{ direction: 'out', author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE, at: now }])
+        const note = expected === 'teamResolve' ? TEAM_AUTO_RESOLVED_NOTE : AUTO_RESOLVED_NOTE
+        await logMessages(doc.id, [{ direction: 'out', author: 'system', kind: 'note', text: note, at: now }])
       }
     } catch (err) {
       console.error(`[whatsapp-idle] ${expected ?? 'rescheduling'} for ${maskPhone(`+${doc.id}`)} failed:`, err instanceof Error ? err.message : err)
@@ -128,7 +183,7 @@ export async function sweepIdleConversations(now = Date.now(), deadline = Date.n
     }
   }
 
-  console.info(`[whatsapp-idle] ${result.checkedIn} checked in, ${result.resolved} resolved, ${result.purged} purged`)
+  console.info(`[whatsapp-idle] ${result.checkedIn} checked in or followed up, ${result.resolved} resolved, ${result.purged} purged`)
   return result
 }
 
@@ -154,6 +209,9 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
     if (action === 'checkIn') {
       const awaitingInquiry = currentStatus({ status: isConversationStatus(data.status) ? data.status : undefined, inquiryPromptedAt: millis(data.inquiryPromptedAt), now }) === 'awaiting_user_inquiry'
       tx.set(ref, { idleCheckInAt: at, idleDueAt: Timestamp.fromMillis(now + IDLE_GRACE_MS), ...(awaitingInquiry ? { idleResume: 'inquiry' } : {}) }, { merge: true })
+    } else if (action === 'teamNudge') {
+      // The bot stays quiet while the member may answer the team.
+      tx.set(ref, { teamNudgeAt: at, escalatedAt: at, idleDueAt: Timestamp.fromMillis(now + teamResolveMs()) }, { merge: true })
     } else {
       // Like the member's own All set, without a sign-off: they have gone.
       tx.set(
@@ -161,7 +219,7 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
         {
           status: 'resolved',
           resolvedAt: at,
-          resolvedBy: 'idle',
+          resolvedBy: action === 'teamResolve' ? 'team_idle' : 'idle',
           escalatedAt: clear,
           lastMenuAt: clear,
           lastNudgeAt: clear,
@@ -169,6 +227,7 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
           idleCheckInAt: clear,
           idleResume: clear,
           idleDueAt: clear,
+          teamNudgeAt: clear,
         },
         { merge: true }
       )
@@ -177,15 +236,16 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
   })
 }
 
-/** Sends the check-in from the number the member last wrote to (or logs it, when not live), and adds it to the transcript. */
-async function checkIn(waId: string, data: DocumentData, now: number): Promise<void> {
+/** Sends the check-in or the team's follow-up from the number the member last wrote to (or logs it, when not live), and adds it to the transcript. */
+async function followUp(waId: string, data: DocumentData, now: number, action: 'checkIn' | 'teamNudge'): Promise<void> {
   const lang = isBotLanguage(data.lang) ? data.lang : 'en'
-  const message = idleCheckInMessage(lang)
+  const message = action === 'teamNudge' ? teamNudgeMessage(lang) : idleCheckInMessage(lang)
+  const label = action === 'teamNudge' ? 'team follow-up' : 'check-in'
   const phoneNumberId = typeof data.phoneNumberId === 'string' && PHONE_NUMBER_ID.test(data.phoneNumberId) ? data.phoneNumberId : undefined
   const entry: LoggedMessage = { direction: 'out', author: 'bot', kind: 'interactive', text: transcriptText(message), at: now }
   const to = maskPhone(`+${waId}`)
   if (!whatsappLive(phoneNumberId)) {
-    console.info(`[whatsapp-idle] simulated check-in to ${to}: ${JSON.stringify(message)}`)
+    console.info(`[whatsapp-idle] simulated ${label} to ${to}: ${JSON.stringify(message)}`)
     recordUsage('whatsapp.simulated')
     entry.simulated = true
   } else {
@@ -194,7 +254,7 @@ async function checkIn(waId: string, data: DocumentData, now: number): Promise<v
     } catch (err) {
       // The claim stands: the conversation is resolved after the grace period rather than retried.
       entry.error = err instanceof Error ? err.message : String(err)
-      console.error(`[whatsapp-idle] check-in to ${to} not sent:`, entry.error)
+      console.error(`[whatsapp-idle] ${label} to ${to} not sent:`, entry.error)
     }
   }
   await logMessages(waId, [entry])

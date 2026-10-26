@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import OfferCard from '@/components/discover/OfferCard'
+import SnapDots, { SNAP_DOTS_MAX } from '@/components/ui/SnapDots'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
+import { useSnapIndex } from '@/lib/useSnapIndex'
 
 const CURATED_COUNT = 8
 
@@ -13,6 +15,7 @@ const CURATED_COUNT = 8
 export default function CuratedOffers({ showWishlistButton = false }: { showWishlistButton?: boolean }) {
   const { t } = useLang()
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
+  const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers?.length ?? 0)
 
   useEffect(() => {
     let cancelled = false
@@ -50,13 +53,17 @@ export default function CuratedOffers({ showWishlistButton = false }: { showWish
       ) : (
         // Compact rail cards, about 72vw wide, so the next one peeks in; a swipe
         // settles on a card's start edge, and the row never drags the page sideways.
-        <div className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {offers.map((offer) => (
-            <div key={offer.id} className="flex shrink-0 snap-start">
-              <OfferCard offer={offer} showWishlistButton={showWishlistButton} />
-            </div>
-          ))}
-        </div>
+        // On phones, pagination dots underneath show where in the row you are.
+        <>
+          <div ref={railRef} className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {offers.map((offer) => (
+              <div key={offer.id} className="flex shrink-0 snap-start">
+                <OfferCard offer={offer} showWishlistButton={showWishlistButton} />
+              </div>
+            ))}
+          </div>
+          {offers.length > 1 && offers.length <= SNAP_DOTS_MAX && <SnapDots count={offers.length} active={active} onSelect={scrollTo} className="-mt-1 sm:hidden" />}
+        </>
       )}
     </section>
   )

@@ -23,8 +23,9 @@ interface Piece {
 // pieces up from the lower centre, lets them fall and fade, then removes
 // itself after 3.5s. No library, no listeners left behind. Skipped entirely
 // under prefers-reduced-motion. The Expo app's counterpart is
-// landly-mobile/src/components/Confetti.tsx.
-export default function Confetti() {
+// landly-mobile/src/components/Confetti.tsx. `count` makes a smaller burst
+// (onboarding's finish is a quieter moment than a purchase).
+export default function Confetti({ count = COUNT }: { count?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [done, setDone] = useState(false)
 
@@ -42,7 +43,7 @@ export default function Confetti() {
     canvas.height = height * dpr
     ctx.scale(dpr, dpr)
 
-    const pieces: Piece[] = Array.from({ length: COUNT }, () => {
+    const pieces: Piece[] = Array.from({ length: count }, () => {
       const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.6
       const speed = 9 + Math.random() * 9
       return {
@@ -82,7 +83,7 @@ export default function Confetti() {
       else setDone(true)
     })
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [count])
 
   if (done) return null
   return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-50 h-dvh w-screen" />

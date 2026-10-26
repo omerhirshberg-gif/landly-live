@@ -50,9 +50,10 @@ import { isBotLanguage, type InboundEvent } from './webhookPayload'
 //   inquiryPromptedAt, escalatedAt, resolvedAt, inquiryCategory (what
 //   the latest request to the team is about, or login_help once the member
 //   opens Login & Account help), and the idle check-in's
-//   idleCheckInAt / idleResume (lib/whatsapp/idleSweep.ts, cleared by any
-//   message from the member) and idleDueAt, when the sweep next has work
-//   for the conversation (set when the bot answers, cleared otherwise). expiresAt is MESSAGE_TTL_MS (180 days) after
+//   idleCheckInAt / idleResume and the team's follow-up teamNudgeAt
+//   (lib/whatsapp/idleSweep.ts, cleared by any message from the member), and
+//   idleDueAt, when the sweep next has work for the conversation (set when
+//   the bot or the team answers, cleared otherwise). expiresAt is MESSAGE_TTL_MS (180 days) after
 //   the latest message either way, so a Firestore TTL policy deletes the
 //   conversation with its last message.
 // - whatsappConversations/{waId}/messages: the message and the bot's replies
@@ -156,6 +157,8 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
     // The member is back: the idle check-in, if any, is answered.
     ...(clear && conversation.get('idleCheckInAt') !== undefined ? { idleCheckInAt: clear } : {}),
     ...(clear && conversation.get('idleResume') !== undefined ? { idleResume: clear } : {}),
+    // So is the team's follow-up: the reply is the team's to give again.
+    ...(clear && conversation.get('teamNudgeAt') !== undefined ? { teamNudgeAt: clear } : {}),
     ...(member ? { uid: member.id } : {}),
     ...(memberName ? { memberName } : {}),
     ...(event.name ? { profileName: event.name } : {}),
@@ -229,6 +232,12 @@ export async function handleInboundEvent(event: InboundEvent, now = Date.now()):
         await reply(escalatedMessage(ctx.lang))
         break
       }
+      case 'backToTeam':
+        // Still need help, from the team's follow-up: the team's again, awaiting its reply, and the bot quiet for another 24 hours.
+        update.status = 'escalated'
+        update.escalatedAt = at
+        await reply(alreadyEscalatedMessage(ctx.lang))
+        break
       case 'resolve':
         update.status = 'resolved'
         update.resolvedAt = at

@@ -72,7 +72,7 @@ interface Chat {
 }
 
 interface Override {
-  patch: Pick<InboxConversation, 'needsReply'> & Partial<Pick<InboxConversation, 'status'>>
+  patch: Pick<InboxConversation, 'needsReply'> & Partial<Pick<InboxConversation, 'status' | 'followUp'>>
   /** When it was made; a member message after this is real news. */
   since: number
 }
@@ -304,7 +304,7 @@ function SupportInbox() {
     setPendingStatus(status)
     setActionError(null)
     // Resolved or back to the bot: no longer waiting for the team, from this moment.
-    if (status !== 'escalated') optimistic(waId, { status, needsReply: false })
+    if (status !== 'escalated') optimistic(waId, { status, needsReply: false, followUp: null })
     try {
       const res = await adminFetch('/api/admin/whatsapp/status', {
         method: 'POST',
@@ -391,7 +391,7 @@ function SupportInbox() {
             </div>
           ) : (
             <>
-              <ChatHeader conversation={conversation} onBack={closeChat} onStatus={changeStatus} pendingStatus={pendingStatus} />
+              <ChatHeader conversation={conversation} onBack={closeChat} onStatus={changeStatus} pendingStatus={pendingStatus} now={now} />
               {(actionError || (chatError && chat)) && (
                 <Alert className="mx-3 mt-3 shrink-0" tone={actionError?.startsWith('Marked resolved') ? 'warning' : 'error'}>
                   {actionError ?? chatError}

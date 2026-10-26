@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { User } from 'firebase/auth'
+import { Camera, LoaderCircle } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
 import AvatarLightbox, { useAvatarPeek } from '@/components/ui/AvatarLightbox'
 import { compressAvatar } from '@/lib/avatar/compressImage'
@@ -94,7 +95,7 @@ export default function AvatarUploader({ user }: { user: User }) {
           disabled={busy}
           className="absolute -bottom-0.5 -end-0.5 w-7 h-7 rounded-full bg-white border border-line shadow-sm flex items-center justify-center text-brand"
         >
-          <i className="fa-solid fa-camera text-[11px]" aria-hidden="true"></i>
+          <Camera aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
       </div>
       <div className="min-w-0">
@@ -116,8 +117,8 @@ export default function AvatarUploader({ user }: { user: User }) {
 
 function BusyOverlay() {
   return (
-    <span className="absolute inset-0 rounded-full bg-[#0B1B3D]/40 flex items-center justify-center">
-      <i className="fa-solid fa-spinner fa-spin text-white" aria-hidden="true"></i>
+    <span className="absolute inset-0 rounded-full bg-ink/40 flex items-center justify-center">
+      <LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin text-white motion-reduce:animate-none" strokeWidth={2} />
     </span>
   )
 }

@@ -39,7 +39,8 @@ export default function Button({
         primary
           ? 'bg-brand text-white [@media(hover:hover)]:hover:enabled:bg-brandDark active:enabled:bg-brandDark'
           : 'bg-white text-ink border border-line [@media(hover:hover)]:hover:enabled:border-slate-300 [@media(hover:hover)]:hover:enabled:text-brand active:enabled:bg-brandLight',
-        primary && large && !inactive && 'shadow-[0_8px_20px_-8px_rgba(0,56,184,0.55)]',
+        // The hero CTA's deeper glow; every other primary the .ds-btn-primary shadow.
+        primary && !inactive && (large ? 'shadow-[0_8px_20px_-8px_rgba(0,56,184,0.55)]' : 'shadow-btn-primary'),
         inactive ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer [@media(hover:hover)]:hover:scale-[1.01] active:scale-[0.98]',
       ]
         .filter(Boolean)
@@ -52,7 +53,7 @@ export default function Button({
           className={`me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin ${primary ? 'text-white' : 'text-brand'}`}
         />
       )}
-      <span className={large ? 'text-[17px] font-extrabold tracking-[0.2px]' : 'text-base font-bold'}>{label}</span>
+      <span className={large ? 'text-title font-extrabold tracking-[0.2px]' : 'text-base font-bold'}>{label}</span>
       {arrow && !busy && (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ms-2.5 rtl:-scale-x-100">
           <path d="M5 12h14M12 5l7 7-7 7" />

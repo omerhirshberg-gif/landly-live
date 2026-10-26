@@ -6,6 +6,7 @@ import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 
 import { isOfferAvailable, type OfferDocument } from '@/lib/firebase/offers'
+import { Sparkles } from 'lucide-react'
 import OfferTileRail from '@/components/discover/OfferTileRail'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import { TILE_RAIL_TILE_HEIGHT, TILE_RAIL_WIDTH } from '../../landly-mobile/src/lib/carousel'
@@ -60,7 +61,7 @@ describe('web OfferTileRail', () => {
   const offers = ['1', '2', '3', '4', '5'].map((id) => offer(id))
 
   it('is one row of tiles scrolling sideways, with a hidden scrollbar and snapping', () => {
-    const html = render('en', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'New on Landly', offers }))
+    const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'New on Landly', offers }))
     const rail = html.match(/<div class="(offer-tile-rail[^"]*)">/)![1].split(' ')
     expect(rail).not.toContain('grid-rows-2')
     for (const c of ['grid', 'grid-flow-col', 'auto-cols-[256px]', 'sm:auto-cols-[272px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
@@ -70,9 +71,9 @@ describe('web OfferTileRail', () => {
   })
 
   it('renders compact 140px tiles with a framed picture, both prices and the discount pill after them', () => {
-    const html = render('en', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'x', offers: [offer('1')] }))
+    const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers: [offer('1')] }))
     expect(html).toContain('h-[140px]')
-    expect(html).toContain('w-24 flex-shrink-0 overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC]')
+    expect(html).toContain('w-24 flex-shrink-0 overflow-hidden rounded-[14px] border border-line bg-canvas')
     const pill = html.indexOf(translations.en.offer_percent_off.replace('{n}', '20'))
     // In the price row after the prices, never over the picture.
     expect(pill).toBeGreaterThan(html.indexOf('line-through'))
@@ -82,7 +83,7 @@ describe('web OfferTileRail', () => {
   })
 
   it('leaves Hebrew to the page direction, so it fills and starts from the right', () => {
-    const html = render('he', createElement(OfferTileRail, { icon: 'fa-wand-magic-sparkles', title: 'x', offers }))
+    const html = render('he', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers }))
     // No dir on the section or the rail: they inherit the page's.
     expect(html).toMatch(/^<section aria-labelledby="[^"]*" class="[^"]*">/)
     expect(html).toMatch(/<div class="offer-tile-rail /)

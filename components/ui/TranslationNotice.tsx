@@ -1,5 +1,6 @@
 'use client'
 
+import { Languages } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 
 // The attribution under machine-translated content: "Translated by Google ·
@@ -19,8 +20,8 @@ export default function TranslationNotice({
 }) {
   const { t } = useLang()
   return (
-    <p className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[#94A3B8] ${className}`}>
-      <i className="fa-solid fa-language text-[13px]" aria-hidden="true"></i>
+    <p className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted ${className}`}>
+      <Languages aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
       <bdi>{t('content_translated_by_google')}</bdi>
       <span aria-hidden="true">·</span>
       <button

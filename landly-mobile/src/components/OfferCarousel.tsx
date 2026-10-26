@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { FlatList, StyleSheet, View } from 'react-native'
+import Animated, { useAnimatedScrollHandler, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import type { OfferDocument } from '@shared/firebase/offers'
 import OfferCard from './OfferCard'
+import PagerDots from './PagerDots'
 import { useLang } from '../i18n/LangProvider'
-import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, carouselCardWidth, carouselSnapOffsets } from '../lib/carousel'
+import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, PAGER_DOTS_MAX, carouselCardWidth, carouselPage, carouselSnapOffsets } from '../lib/carousel'
 import { useLayout } from '../lib/useLayout'
 import { isWeb, webOnly } from '../lib/webStyles'
 
@@ -13,6 +15,8 @@ import { isWeb, webOnly } from '../lib/webStyles'
 // Native snapping takes explicit offsets; the web build snaps with CSS
 // scroll-snap, which handles right-to-left on its own. It bleeds through the
 // screen's side padding, whatever the fold makes it (src/lib/layout.ts).
+// Pagination dots underneath (PagerDots) follow the swipe, one per place the
+// row can come to rest.
 export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocument[]; onOpen: (offer: OfferDocument) => void }) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
@@ -27,10 +31,25 @@ export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocumen
     () => (isWeb || !viewport ? undefined : carouselSnapOffsets(offers.length, interval, maxOffset, isRtl)),
     [offers.length, interval, maxOffset, isRtl, viewport]
   )
+  // The resting places counted from the start edge, whichever way the row reads.
+  const starts = useMemo(() => (viewport ? carouselSnapOffsets(offers.length, interval, maxOffset, false) : []), [offers.length, interval, maxOffset, viewport])
+  const reduced = useReducedMotion()
+  const position = useSharedValue(0)
+  // contentOffset.x counts from the left on native (so from the far end in
+  // Hebrew) and, on the web build, negative from the right in Hebrew.
+  const onScroll = useAnimatedScrollHandler((e) => {
+    const x = e.contentOffset.x
+    position.set(carouselPage(isWeb ? Math.abs(x) : isRtl ? maxOffset - x : x, starts))
+  })
+  const goTo = (i: number) => {
+    const fromStart = starts[i] ?? 0
+    const offset = !isRtl ? fromStart : isWeb ? -fromStart : maxOffset - fromStart
+    list.current?.scrollToOffset({ offset, animated: !reduced })
+  }
 
   return (
     <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
-      <FlatList
+      <Animated.FlatList
         showsVerticalScrollIndicator={false}
         ref={list}
         data={offers}
@@ -40,6 +59,8 @@ export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocumen
         decelerationRate="fast"
         snapToOffsets={snapToOffsets}
         snapToEnd={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         style={[styles.scroller, webOnly({ scrollPaddingLeft: paddingLeft, scrollPaddingRight: paddingRight }) as object]}
         contentContainerStyle={[styles.row, { paddingLeft, paddingRight }]}
         ItemSeparatorComponent={Separator}
@@ -55,6 +76,7 @@ export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocumen
           </View>
         )}
       />
+      {starts.length > 1 && starts.length <= PAGER_DOTS_MAX && <PagerDots count={starts.length} position={position} onSelect={goTo} />}
     </View>
   )
 }

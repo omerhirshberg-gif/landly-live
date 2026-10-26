@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronLeft } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
 import { useSettingsBack } from './useSettingsBack'
@@ -33,7 +34,7 @@ export default function SettingsPageShell({ title, children }: { title: string; 
               aria-label={t('settings_back')}
               className="tap-target flex items-center justify-center w-12 h-12 rounded-full text-ink transition-colors [@media(hover:hover)]:hover:bg-slate-100 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
-              <i className="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+              <ChevronLeft aria-hidden="true" className="h-5 w-5 rtl:-scale-x-100" strokeWidth={1.75} />
             </button>
             <h1 className="text-center text-lg sm:text-xl font-bold text-ink truncate">{title}</h1>
             <span aria-hidden="true"></span>

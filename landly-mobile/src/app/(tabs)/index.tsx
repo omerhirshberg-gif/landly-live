@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
@@ -19,6 +19,7 @@ import Notice from '../../components/Notice'
 import OfferCarousel from '../../components/OfferCarousel'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionHeader from '../../components/SectionHeader'
+import { OfferCarouselSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
@@ -189,7 +190,7 @@ export default function HomeScreen() {
         <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
         {failed && <Notice message={t('mobile_load_error')} />}
         {offers === null ? (
-          !failed && <ActivityIndicator color={colors.brand} style={styles.spinner} />
+          !failed && <OfferCarouselSkeleton />
         ) : offers.length === 0 ? (
           <View style={styles.empty}>
             <AppText style={styles.emptyTitle}>{t('deals_empty_title')}</AppText>
@@ -274,7 +275,6 @@ const styles = StyleSheet.create({
   },
   passCtaText: { fontSize: 15, fontWeight: '700', color: colors.brand },
   flip: { transform: [{ scaleX: -1 }] },
-  spinner: { marginTop: 32 },
   empty: { alignItems: 'center', marginTop: 24, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

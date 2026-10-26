@@ -59,19 +59,22 @@ describe('one site canvas', () => {
 })
 
 describe('typography and buttons', () => {
-  it('inherits Heebo from html instead of forcing it on every element', () => {
+  it('inherits Inter (Heebo for Hebrew) from html instead of forcing it on every element', () => {
     expect(css).not.toMatch(/\*\{font-family:/)
-    expect(css).toContain("html{font-family:'Heebo',sans-serif;}")
+    expect(css).toContain("html{font-family:var(--font-sans,'Heebo'),'Heebo',sans-serif;}")
+    expect(css).toContain(`html[lang="he"]{font-family:'Heebo',sans-serif;}`)
     expect(css).toContain('button,input,select,textarea,optgroup{font-family:inherit;}')
   })
 
   it('sets headings in Manrope, and keeps Hebrew headings in Heebo', () => {
-    expect(css).toContain(":where(h1,h2){font-family:var(--font-display),'Heebo',sans-serif;letter-spacing:-0.02em;}")
+    expect(css).toContain(":where(h1,h2){font-family:var(--font-display,'Heebo'),'Heebo',sans-serif;letter-spacing:-0.02em;}")
     expect(css).toContain(`[lang="he"] :where(h1,h2),[lang="he"] .font-display{font-family:'Heebo',sans-serif;}`)
     const layout = read('app/layout.tsx')
-    expect(layout).toContain("import { Manrope } from 'next/font/google'")
-    expect(layout).toContain("Manrope({ subsets: ['latin', 'cyrillic'], weight: ['700', '800'], variable: '--font-display', display: 'swap' })")
-    expect(layout).toContain('className={manrope.variable}')
+    expect(layout).toContain("import { Inter, Manrope } from 'next/font/google'")
+    expect(layout).toContain("Manrope({ subsets: ['latin', 'latin-ext', 'cyrillic'], weight: ['700', '800'], variable: '--font-display', display: 'swap' })")
+    expect(layout).toContain("Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-sans', display: 'swap' })")
+    expect(layout).toContain('className={`${manrope.variable} ${inter.variable}`}')
+    expect(read('tailwind.config.js')).toContain("sans: [\"var(--font-sans, 'Heebo')\", 'Heebo', 'sans-serif']")
     expect(read('tailwind.config.js')).toContain("display: ['var(--font-display)', 'Heebo', 'sans-serif']")
   })
 
@@ -115,7 +118,9 @@ describe('/business and /support', () => {
     expect(html).toContain('<span class="sr-only">12</span>')
     expect(html).toContain('<span class="sr-only">5</span>')
     expect(html).toContain('<span class="sr-only">6</span>')
-    expect(html).toContain('fa-handshake')
+    // The page's mark: a handshake in the shared frame, not a solid blue tile.
+    expect(html).toMatch(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-12 w-12 rounded-xl border-sky-200\/60 bg-white text-brand mx-auto mb-5 shadow-card"><svg [^>]*lucide-handshake/)
+    expect(html).not.toContain('bg-brand text-white shadow-[0_10px_24px')
     expect(html).not.toMatch(/revenue|₪\d/i)
   })
 

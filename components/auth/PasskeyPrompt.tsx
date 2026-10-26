@@ -186,7 +186,7 @@ export default function PasskeyPrompt() {
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[15px] font-bold leading-5 text-ink">{t('passkeyPrompt_title')}</h2>
+          <h2 id={titleId} className="text-copy font-bold leading-5 text-ink">{t('passkeyPrompt_title')}</h2>
           <p id={bodyId} className="mt-1 text-sm leading-5 text-body">{t('passkeyPrompt_body')}</p>
         </div>
         <button
@@ -204,7 +204,7 @@ export default function PasskeyPrompt() {
       {message && (
         <p
           role={phase === 'added' ? 'status' : 'alert'}
-          className={`mt-3 rounded-xl border px-3 py-2 text-[13px] font-semibold ${phase === 'added' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200'}`}
+          className={`mt-3 rounded-xl border px-3 py-2 text-meta font-semibold ${phase === 'added' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200'}`}
         >
           {t(message)}
           {phase === 'error' && (

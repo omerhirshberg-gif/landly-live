@@ -5,14 +5,16 @@ import Navbar from '@/components/layout/Navbar'
 import NearMeButton from '@/components/discover/NearMeButton'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import OfferTileRail from '@/components/discover/OfferTileRail'
+import { Award, MapPin, Search, Sparkles, Tags } from 'lucide-react'
 import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import SectionDivider from '@/components/ui/SectionDivider'
+import { OfferGridSkeleton } from '@/components/ui/Skeleton'
 import MemberPageShell, { PAGE_TITLE_GAP, PageTitle } from '@/components/layout/MemberPageShell'
 import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
 import { useLang } from '@/lib/i18n/useLang'
 import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@/lib/geo'
-import { CATEGORY_TILES, countOffersByCategory, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
+import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
 import { getAllOffers, isOfferAvailable, isOfferNew, OfferDocument, sortFeaturedOffers } from '@/lib/firebase/offers'
 import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery, offerDistanceKm, sortByNearest } from '@/lib/perks/perksFilter'
 
@@ -21,18 +23,10 @@ type Origin = { coords: Coordinates; area: Area | null }
 
 const NEARBY_MAX = 12
 
-function Spinner() {
-  return (
-    <div className="dash-empty-state">
-      <i className="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-    </div>
-  )
-}
-
 // The perks catalog. At rest (All, no search, Recommended) it's the
 // overview: the search row (no chips or Sort), the New on Landly and Best
 // Sellers rails (OfferTileRail, real perks still claimable only), then the
-// full category grid with counts, a soft hairline (SectionDivider) between
+// full category grid, a soft hairline (SectionDivider) between
 // each block, as on the home page. A search, a tapped tile (?cat=) or a
 // non-default sort switches to one filtered, sorted grid of full offer
 // cards, and only then do the chips and Sort appear. The filters live in the URL (?cat=&sort=&q=), so the view
@@ -53,7 +47,6 @@ function PerksBrowser() {
   const filtering = hasActivePerkFilters(filters)
   const normalizedQuery = normalizeQuery(appliedQuery)
 
-  const counts = useMemo(() => (offers ? countOffersByCategory(offers) : null), [offers])
   const originCoords = origin?.coords ?? null
   const results = useMemo(
     () => (offers && filtering ? filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang, originCoords) : []),
@@ -127,12 +120,12 @@ function PerksBrowser() {
           {matchingTiles.length > 0 && (
             <section>
               <h2 className="text-base font-bold text-ink mb-3">{t('cats_matching_categories')}</h2>
-              <CategoryGrid tiles={matchingTiles} counts={counts} />
+              <CategoryGrid tiles={matchingTiles} />
             </section>
           )}
 
           {offers === undefined ? (
-            <Spinner />
+            <OfferGridSkeleton />
           ) : results.length > 0 ? (
             <section aria-live="polite">
               <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
@@ -148,7 +141,7 @@ function PerksBrowser() {
           ) : (
             matchingTiles.length === 0 && (
               <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                <i className={normalizedQuery ? 'fa-solid fa-magnifying-glass' : 'fa-solid fa-tags'} aria-hidden="true"></i>
+                {normalizedQuery ? <Search aria-hidden="true" strokeWidth={1.75} /> : <Tags aria-hidden="true" strokeWidth={1.75} />}
                 <div className="font-bold text-ink text-base mb-1">
                   {normalizedQuery ? t('cats_search_no_results_title').replace('{query}', appliedQuery.trim()) : t('deals_empty_title')}
                 </div>
@@ -175,7 +168,7 @@ function PerksBrowser() {
               )}
               {nearby.length === 0 ? (
                 <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                  <i className="fa-solid fa-location-dot" aria-hidden="true"></i>
+                  <MapPin aria-hidden="true" strokeWidth={1.75} />
                   <div className="font-bold text-ink text-base mb-1">{t('geo_nearby_empty_title')}</div>
                   <p className="text-sm text-body max-w-xs">{t('geo_nearby_empty_sub')}</p>
                 </div>
@@ -195,11 +188,11 @@ function PerksBrowser() {
               {/* The rails pad themselves (py-5), so the hairline between them needs no spacing of its own. */}
               <div className="mb-8">
                 {newOffers.length > 0 && (
-                  <OfferTileRail icon="fa-wand-magic-sparkles" title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} />
+                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} />
                 )}
                 {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                 {bestsellerOffers.length > 0 && (
-                  <OfferTileRail icon="fa-fire" title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} />
+                  <OfferTileRail icon={Award} title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} />
                 )}
               </div>
             </>
@@ -209,7 +202,7 @@ function PerksBrowser() {
 
           <section className="mb-10">
             <h2 className="text-base font-bold text-ink mb-3">{t('cats_all_categories_title')}</h2>
-            <CategoryGrid tiles={CATEGORY_TILES} counts={counts} />
+            <CategoryGrid tiles={CATEGORY_TILES} />
           </section>
         </>
       )}
@@ -239,7 +232,7 @@ export default function CategoriesPage() {
             fallback={
               <>
                 <PageHeading />
-                <Spinner />
+                <OfferGridSkeleton />
               </>
             }
           >

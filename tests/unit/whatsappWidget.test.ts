@@ -21,7 +21,9 @@ import {
   WHATSAPP_WIDGET_HIDDEN_KEY,
 } from '@/lib/support/whatsapp'
 import { bottomCoverage, floatingClearance } from '@/lib/layout/floatingClearance'
-const { default: WhatsAppWidget, WhatsAppWidgetView, BUBBLE_DELAY_MS } = await import('@/components/layout/WhatsAppWidget')
+const { default: WhatsAppWidget, WhatsAppWidgetView, BUBBLE_DELAY_MS, BUBBLE_AUTO_DISMISS_MS, BUBBLE_RESUME_DISMISS_MS, BUBBLE_EXIT_MS } = await import(
+  '@/components/layout/WhatsAppWidget'
+)
 
 const read = (path: string) => readFileSync(path, 'utf8')
 // Text as React writes it into markup.
@@ -33,10 +35,10 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
   return renderToStaticMarkup(createElement(LangContext.Provider, { value: { lang, setLang: () => {}, t, isRtl } }, element))
 }
 
-function view(lang: Lang, bubbleOpen: boolean, lift = 0) {
+function view(lang: Lang, bubbleOpen: boolean, lift = 0, bubbleLeaving = false) {
   const t = (key: TranslationKey) => translations[lang][key]
   return renderToStaticMarkup(
-    createElement(WhatsAppWidgetView, { href: whatsappChatHref(t('whatsapp_prefill')), lift, bubbleOpen, onDismiss: () => {}, onHide: () => {}, t, isRtl: lang === 'he' })
+    createElement(WhatsAppWidgetView, { href: whatsappChatHref(t('whatsapp_prefill')), lift, bubbleOpen, bubbleLeaving, onDismiss: () => {}, onHide: () => {}, t, isRtl: lang === 'he' })
   )
 }
 
@@ -177,6 +179,51 @@ describe('the bubble', () => {
 
   it('closes with Escape too', () => {
     expect(read('components/layout/WhatsAppWidget.tsx')).toMatch(/if \(e\.key === 'Escape'\) dismiss\(\)/)
+  })
+})
+
+describe('the bubble closing itself', () => {
+  const source = read('components/layout/WhatsAppWidget.tsx')
+  const bubbleClass = (html: string) => html.match(/<div dir="(?:ltr|rtl)" class="(wa-bubble[^"]*)"/)?.[1] ?? ''
+
+  it('closes 5 seconds after it opens, 2 seconds after a mouse or focus lets go, over a 500ms exit', () => {
+    expect([BUBBLE_AUTO_DISMISS_MS, BUBBLE_RESUME_DISMISS_MS, BUBBLE_EXIT_MS]).toEqual([5000, 2000, 500])
+    expect(source).toContain('const [dismissIn, setDismissIn] = useState(BUBBLE_AUTO_DISMISS_MS)')
+    expect(source).toMatch(/if \(!bubbleOpen \|\| bubbleLeaving \|\| held\) return\s*const timer = window\.setTimeout\(dismiss, dismissIn\)\s*return \(\) => window\.clearTimeout\(timer\)/)
+    expect(source).toContain('if (!on) setDismissIn(BUBBLE_RESUME_DISMISS_MS)')
+    // Unmounted only once the exit has played, and the timer cleared on unmount.
+    expect(source).toMatch(/setBubbleOpen\(false\)\s*setBubbleLeaving\(false\)\s*\}, BUBBLE_EXIT_MS\)\s*return \(\) => window\.clearTimeout\(timer\)/)
+    // The X and Escape close it through the same exit, and it stays closed for the tab.
+    expect(source).toMatch(/const dismiss = \(\) => \{\s*setBubbleLeaving\(true\)\s*rememberBubbleDismissed\(tabStorage\)/)
+  })
+
+  it('holds for a mouse only, so a tap on a phone never pins it open', () => {
+    expect(source).toContain("if (e.pointerType === 'mouse') onHold?.('pointer', on)")
+    expect(source).toContain("if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onHold?.('focus', false)")
+  })
+
+  it.each(['en', 'he'] as const)('is fully shown while open, with a 500ms ease-out transition ready (%s)', (lang) => {
+    const cls = bubbleClass(view(lang, true))
+    expect(cls).toContain('transition-all duration-500 ease-out motion-reduce:transition-none')
+    expect(cls).toContain('translate-y-0 scale-100 opacity-100')
+    expect(cls).not.toContain('wa-bubble-leaving')
+    expect(view(lang, true)).not.toContain('aria-hidden="true" inert')
+  })
+
+  it.each(['en', 'he'] as const)('fades, shrinks and sinks out, taking no input, while the badge stays put (%s)', (lang) => {
+    const html = view(lang, true, 0, true)
+    const cls = bubbleClass(html)
+    expect(cls).toContain('wa-bubble-leaving pointer-events-none translate-y-2 scale-95 opacity-0')
+    expect(html).toMatch(/class="wa-bubble[^"]*" aria-hidden="true" inert=""/)
+    // The badge is untouched: same link, same place.
+    const badge = (h: string) => h.match(/<div class="relative"><a [^>]*class="wa-badge[\s\S]*$/)?.[0]
+    expect(badge(html)).toBe(badge(view(lang, false)))
+  })
+
+  it('lets the entry animation go while leaving, toward the badge in every language', () => {
+    const css = read('app/globals.css')
+    expect(css).toContain('.wa-bubble.wa-bubble-leaving{animation:none;}')
+    expect(css).toContain('.wa-bubble{animation:wa-bubble-in .32s cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom right;}')
   })
 })
 

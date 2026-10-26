@@ -120,7 +120,7 @@ function ResetPasswordContent() {
                 <span className="h-10 w-10 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
               </span>
             </div>
-            <p className="mb-2 text-[15px] font-semibold text-slate-500">{t('resetPage_checking')}</p>
+            <p className="mb-2 text-copy font-semibold text-slate-500">{t('resetPage_checking')}</p>
           </div>
         ) : status === 'invalid' ? (
           <div className={`${styles.card} text-center`} aria-live="polite">
@@ -131,7 +131,7 @@ function ResetPasswordContent() {
                 </svg>
               </span>
             </div>
-            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('resetPage_invalidTitle')}</h1>
+            <h1 className="text-2xl leading-8 font-extrabold text-slate-900">{t('resetPage_invalidTitle')}</h1>
             <div className="mt-4 mb-3 text-start">
               <Notice>{t('resetPage_invalidMessage')}</Notice>
             </div>
@@ -144,12 +144,12 @@ function ResetPasswordContent() {
           </div>
         ) : (
           <div className={styles.card}>
-            <h1 className="text-[24px] leading-8 font-extrabold text-slate-900">{t('resetPage_title')}</h1>
-            <p className={`${styles.subtitle} mt-2 mb-5 text-[15px] leading-6 text-slate-500`}>{t('resetPage_subtitle')}</p>
+            <h1 className="text-2xl leading-8 font-extrabold text-slate-900">{t('resetPage_title')}</h1>
+            <p className={`${styles.subtitle} mt-2 mb-5 text-copy leading-6 text-slate-500`}>{t('resetPage_subtitle')}</p>
 
             <div className="mb-5 flex items-center gap-3 rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-3">
-              <span className="text-[13px] font-semibold text-slate-500">{t('resetPage_accountLabel')}</span>
-              <span dir="ltr" className="min-w-0 flex-1 truncate text-end text-[15px] font-semibold text-slate-900 rtl:text-start">
+              <span className="text-meta font-semibold text-slate-500">{t('resetPage_accountLabel')}</span>
+              <span dir="ltr" className="min-w-0 flex-1 truncate text-end text-copy font-semibold text-slate-900 rtl:text-start">
                 {email}
               </span>
             </div>

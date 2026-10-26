@@ -95,7 +95,7 @@ export default function BusinessLoginPage() {
               <Link href="/forgot-password" className="text-sm text-blue-400 font-bold hover:underline">{t('login_forgotLink')}</Link>
             </div>
 
-            <button type="submit" disabled={submitting} className="btn-primary mt-2 w-full disabled:opacity-70">
+            <button type="submit" disabled={submitting} className="ds-btn ds-btn-primary mt-2 w-full">
               {submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
             </button>
           </form>

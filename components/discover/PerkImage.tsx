@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CATEGORY_TILES } from '@/lib/categories'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { perkImageFit } from '@/lib/offers/imageFit'
 
 interface PerkImageProps {
@@ -16,7 +16,8 @@ interface PerkImageProps {
 
 // An offer's photo, or -- when there is none or it fails to load -- a branded
 // panel: a soft brand gradient, the business's initial as a large watermark
-// and the category's emoji on a white tile. Never the old broken-image icon.
+// and the category's Lucide glyph in a white hairline frame (a price tag for
+// an unknown category). Never the old broken-image icon.
 // Plain <img>: offer photos are admin-pasted links on any host, outside
 // next/image's remote patterns. no-referrer keeps hotlink-protected hosts
 // (which refuse requests from other sites) serving the file. A photo covers
@@ -47,27 +48,27 @@ export default function PerkImage({ src, alt, category, businessName, size = 'ca
     )
   }
 
-  const emoji = CATEGORY_TILES.find((c) => c.category === category)?.emoji ?? '🎁'
   const initial = Array.from(businessName.trim())[0]?.toUpperCase() ?? ''
-  const initialSize = { thumb: 'text-[4rem]', card: 'text-[7rem]', hero: 'text-[11rem]' }[size]
-  const tileSize = { thumb: 'h-9 w-9 rounded-xl text-lg', card: 'h-14 w-14 rounded-2xl text-2xl', hero: 'h-20 w-20 rounded-2xl text-4xl' }[size]
+  const initialSize = { thumb: 'text-monogram-sm', card: 'text-monogram-md', hero: 'text-monogram-lg' }[size]
+  const tileSize = { thumb: 'h-9 w-9 rounded-xl', card: 'h-14 w-14 rounded-2xl', hero: 'h-20 w-20 rounded-2xl' }[size]
+  const glyphSize = { thumb: 'h-[18px] w-[18px]', card: 'h-6 w-6', hero: 'h-9 w-9' }[size]
 
   return (
     <div
       aria-hidden="true"
-      className={`relative flex h-full w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#F0F7FF] via-[#EEF2F8] to-[#E2E8F0] ${className}`}
+      className={`relative flex h-full w-full items-center justify-center overflow-hidden bg-gradient-to-br from-brandTint via-[#EEF2F8] to-line ${className}`}
     >
       {initial && (
         <span
-          className={`pointer-events-none absolute -bottom-[0.18em] end-[0.06em] select-none font-black leading-none text-[#0038B8]/[0.07] ${initialSize}`}
+          className={`pointer-events-none absolute -bottom-[0.18em] end-[0.06em] select-none font-black leading-none text-brand/[0.07] ${initialSize}`}
         >
           {initial}
         </span>
       )}
       <span
-        className={`relative flex items-center justify-center bg-white/90 shadow-sm ring-1 ring-[#E2E8F0] ${tileSize}`}
+        className={`relative flex items-center justify-center bg-white/90 text-brand shadow-sm ring-1 ring-slate-200/70 ${tileSize}`}
       >
-        {emoji}
+        <CategoryIcon category={category} className={glyphSize} strokeWidth={1.5} />
       </span>
     </div>
   )

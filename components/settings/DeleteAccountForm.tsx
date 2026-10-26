@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import type { User } from 'firebase/auth'
+import { Check, Trash2 } from 'lucide-react'
+import IconFrame from '@/components/ui/IconFrame'
 import { useLang } from '@/lib/i18n/useLang'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { DELETION_DETAILS_MAX, DELETION_REASONS, DELETION_REASON_KEYS, isDeletionReason } from '@/lib/account/deletionReasons'
@@ -39,11 +41,9 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
     result === 'rateLimited' ? t('del_rate_limited') : result === 'unauthorized' ? t('del_session_expired') : result === 'failed' || result === 'offline' ? t('del_error') : null
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-card">
       <div className="flex items-center gap-3 mb-4">
-        <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-red-50 text-red-600" aria-hidden="true">
-          <i className={`fa-solid ${result === 'sent' ? 'fa-check' : 'fa-trash-can'}`} aria-hidden="true"></i>
-        </span>
+        <IconFrame icon={result === 'sent' ? Check : Trash2} size="sm" tone="danger" />
         <h2 className="flex-1 min-w-0 text-lg font-bold text-ink">
           {result === 'sent' ? t('del_success_title') : t('del_title')}
         </h2>
@@ -51,12 +51,12 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
 
       {result === 'sent' ? (
         <div role="status">
-          <p className="text-[15px] text-body">{t('del_success_body')}</p>
+          <p className="text-copy text-body">{t('del_success_body')}</p>
           <button type="button" onClick={onLeave} className="ds-btn ds-btn-primary w-full mt-6">{t('del_done')}</button>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          <p className="text-[15px] text-body">{t('del_intro')}</p>
+          <p className="text-copy text-body">{t('del_intro')}</p>
 
           <div>
             <label htmlFor="delete-email" className="block mb-1.5 text-sm font-semibold text-slate-700">{t('del_email_label')}</label>
@@ -112,7 +112,7 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
               type="submit"
               disabled={!confirmed || sending}
               aria-busy={sending || undefined}
-              className="tap-target inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-5 text-[15px] font-semibold text-white transition-colors [@media(hover:hover)]:hover:enabled:bg-red-700 active:enabled:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed sm:flex-1"
+              className="tap-target inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-5 text-copy font-semibold text-white transition-colors [@media(hover:hover)]:hover:enabled:bg-red-700 active:enabled:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed sm:flex-1"
             >
               {sending && <span aria-hidden="true" className="h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin" />}
               {sending ? t('del_sending') : t('del_submit')}

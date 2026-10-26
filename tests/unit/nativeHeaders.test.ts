@@ -179,10 +179,10 @@ describe('native offer screen heart', () => {
 describe('native offer card', () => {
   const card = read('components/OfferCard.tsx')
 
-  it('keeps the photo short and framed, and the discount in the price row', () => {
-    expect(card).toContain('mediaStandard: { height: 130 }')
-    expect(card).toContain('mediaCompact: { height: 130 }')
-    expect(card).toMatch(/media: \{\s*marginHorizontal: 8,\s*marginTop: 8,\s*borderRadius: radius.frame,\s*borderWidth: 1,\s*borderColor: colors.border,\s*overflow: 'hidden',\s*backgroundColor: colors.background,/)
+  it('frames the photo at 16:9, as on the web, and keeps the discount in the price row', () => {
+    expect(card).not.toContain('height: 130')
+    expect(read('../../components/discover/OfferCard.tsx')).toContain('aspect-video')
+    expect(card).toMatch(/media: \{\s*marginHorizontal: 8,\s*marginTop: 8,\s*aspectRatio: 16 \/ 9,\s*borderRadius: radius.frame,\s*borderWidth: 1,\s*borderColor: colors.border,\s*overflow: 'hidden',\s*backgroundColor: colors.background,/)
     const price = card.indexOf('styles.priceRow')
     expect(card.indexOf('<View style={styles.discount}>')).toBeGreaterThan(price)
   })

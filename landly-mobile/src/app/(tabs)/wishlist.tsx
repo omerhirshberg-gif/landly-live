@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { getOffersByIds, type OfferDocument } from '@shared/firebase/offers'
 import { useWishlist } from '@shared/firebase/useWishlist'
@@ -8,6 +8,7 @@ import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import Notice from '../../components/Notice'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import OfferCard from '../../components/OfferCard'
+import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
@@ -112,7 +113,7 @@ export default function WishlistScreen() {
         }
         ListEmptyComponent={
           offers === null || pending ? (
-            failed ? null : <ActivityIndicator color={colors.brand} style={styles.spinner} />
+            failed ? null : <OfferListSkeleton />
           ) : (
             <View style={styles.empty}>
               <AppText style={styles.emptyTitle}>{t('wishlist_empty_title')}</AppText>
@@ -130,7 +131,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
   title: { marginBottom: header.gap },
   notice: { marginBottom: 16 },
-  spinner: { marginTop: 48 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
+import { CalendarCheck, Check, GraduationCap, Luggage, PlaneLanding, ShieldCheck, Users, type LucideIcon } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
 import { CUSTOMER_TYPES, OTHER_CUSTOMER_TYPE, type CustomerType } from '@/lib/customerTypes'
 import { useLang } from '@/lib/i18n/useLang'
@@ -11,13 +12,13 @@ type Segment = Exclude<CustomerType, typeof OTHER_CUSTOMER_TYPE>
 
 // Each member type's icon and one line on what Landly gives it. "Other" is
 // left out: it's a catch-all at sign-up, not an audience.
-const SEGMENT_DETAILS: Record<Segment, { icon: string; descKey: TranslationKey }> = {
-  new_immigrant: { icon: 'fa-plane-arrival', descKey: 'olim_seg_new_immigrant_desc' },
-  lone_soldier: { icon: 'fa-shield-halved', descKey: 'olim_seg_lone_soldier_desc' },
-  student: { icon: 'fa-graduation-cap', descKey: 'olim_seg_student_desc' },
-  taglit: { icon: 'fa-people-group', descKey: 'olim_seg_taglit_desc' },
-  long_term_program: { icon: 'fa-calendar-check', descKey: 'olim_seg_long_term_program_desc' },
-  traveler: { icon: 'fa-suitcase-rolling', descKey: 'olim_seg_traveler_desc' },
+const SEGMENT_DETAILS: Record<Segment, { icon: LucideIcon; descKey: TranslationKey }> = {
+  new_immigrant: { icon: PlaneLanding, descKey: 'olim_seg_new_immigrant_desc' },
+  lone_soldier: { icon: ShieldCheck, descKey: 'olim_seg_lone_soldier_desc' },
+  student: { icon: GraduationCap, descKey: 'olim_seg_student_desc' },
+  taglit: { icon: Users, descKey: 'olim_seg_taglit_desc' },
+  long_term_program: { icon: CalendarCheck, descKey: 'olim_seg_long_term_program_desc' },
+  traveler: { icon: Luggage, descKey: 'olim_seg_traveler_desc' },
 }
 
 // "Who Landly is for" on /olim: the real member types picked at sign-up
@@ -31,14 +32,14 @@ export default function SegmentCards({ member, joinable, currentType }: { member
   const segments = CUSTOMER_TYPES.filter((c): c is (typeof CUSTOMER_TYPES)[number] & { value: Segment } => c.value !== OTHER_CUSTOMER_TYPE)
 
   return (
-    <section aria-labelledby="olim-segments-title" className="max-w-5xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+    <section aria-labelledby="olim-segments-title" className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
       <div className="text-center mb-8 sm:mb-10">
-        <h2 id="olim-segments-title" className="text-2xl sm:text-4xl font-black text-ink">{t('olim_segments_title')}</h2>
-        <p className="mt-3 text-[15px] sm:text-base text-body">{t('olim_segments_sub')}</p>
+        <h2 id="olim-segments-title" className="text-xl sm:text-2xl font-bold tracking-tight text-ink">{t('olim_segments_title')}</h2>
+        <p className="mt-3 text-copy sm:text-base text-body">{t('olim_segments_sub')}</p>
       </div>
       <ul className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {segments.map((segment, i) => {
-          const { icon, descKey } = SEGMENT_DETAILS[segment.value]
+          const { icon: Icon, descKey } = SEGMENT_DETAILS[segment.value]
           const isYou = member && currentType === segment.value
           // Alpha tints as 8-digit hex, which every supported browser (older iOS Safari too) reads.
           const accent = { '--seg': segment.color, '--seg-tint': `${segment.color}1F`, '--seg-line': `${segment.color}59`, '--seg-ring': `${segment.color}33` } as CSSProperties
@@ -47,19 +48,19 @@ export default function SegmentCards({ member, joinable, currentType }: { member
               <span className="flex items-start justify-between gap-3">
                 <span
                   aria-hidden="true"
-                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[color:var(--seg-tint)] text-[color:var(--seg)]"
+                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-[color:var(--seg-ring)] bg-[color:var(--seg-tint)] text-[color:var(--seg)]"
                 >
-                  <i className={`fa-solid ${icon} text-base`}></i>
+                  <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
                 </span>
                 {isYou && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--seg)] px-2.5 py-1 text-[11px] font-bold text-white">
-                    <i className="fa-solid fa-check text-[9px]" aria-hidden="true"></i>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--seg)] px-2.5 py-1 text-micro font-bold text-white">
+                    <Check aria-hidden="true" className="h-3 w-3" strokeWidth={2.5} />
                     {t('olim_segment_you')}
                   </span>
                 )}
               </span>
               <span className="mt-4 block text-lg font-bold text-ink">{t(segment.labelKey)}</span>
-              <span className="mt-1.5 block text-[15px] leading-relaxed text-body">{t(descKey)}</span>
+              <span className="mt-1.5 block text-copy leading-relaxed text-body">{t(descKey)}</span>
             </>
           )
           const card = `relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-5 sm:p-6 text-start shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-[color:var(--seg)] ${

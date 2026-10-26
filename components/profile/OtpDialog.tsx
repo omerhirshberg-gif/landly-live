@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPhoneNumberIntl } from 'react-phone-number-input'
 import type { User } from 'firebase/auth'
+import { Mail, X } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import {
   CONTACT_CHANGE_FAILED,
   contactChangeErrorKey,
@@ -165,14 +167,14 @@ export default function OtpDialog({
           aria-label={t('otp_close')}
           className="tap-target absolute top-3 end-3 inline-flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
         >
-          <i className="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
+          <X aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
         </button>
 
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${isEmail ? 'bg-brandLight text-brand' : 'bg-[#E7F8EE] text-[#128C4B]'}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-xl border ${isEmail ? 'border-sky-200/60 bg-brandTint text-brand' : 'border-emerald-200/70 bg-[#E7F8EE] text-[#128C4B]'}`}
           aria-hidden="true"
         >
-          <i className={isEmail ? 'fa-solid fa-envelope text-xl' : 'fa-brands fa-whatsapp text-2xl'}></i>
+          {isEmail ? <Mail aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : <WhatsAppIcon className="h-6 w-6" />}
         </div>
         <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(isEmail ? 'otp_email_title' : 'otp_title')}</h2>
         <p id="otp-dialog-subtitle" className="mt-1 text-sm text-slate-500">

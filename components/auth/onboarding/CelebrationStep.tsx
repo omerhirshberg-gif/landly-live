@@ -9,6 +9,8 @@ import styles from '../entrance/entrance.module.css'
 // Card 6: the answers are saved. A glowing badge lands on a soft spring (no
 // bounce), its halo settles into a slow breath, and the copy follows. Its
 // children are the step root's, so the wizard's .celebrate stagger applies.
+// The tick draws itself in once the badge has landed (.check-draw); the
+// wizard adds a small confetti burst. Reduced motion skips both.
 export default function CelebrationStep({
   id,
   name,
@@ -29,14 +31,14 @@ export default function CelebrationStep({
         <span className={styles.halo} />
         <span className={styles.badge}>
           <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth={2.75} strokeLinecap="round" strokeLinejoin="round">
-            <path d={ONB_ICONS.check} />
+            <path d={ONB_ICONS.check} pathLength={1} className="check-draw" />
           </svg>
         </span>
       </div>
-      <h2 id={id} ref={titleRef} tabIndex={-1} className="text-[24px] leading-8 font-extrabold text-slate-900 text-center outline-none">
+      <h2 id={id} ref={titleRef} tabIndex={-1} className="text-2xl leading-8 font-extrabold text-slate-900 text-center outline-none">
         {name ? t('onb_done_title').replace('{name}', name) : t('onb_done_title_generic')}
       </h2>
-      <p className="mt-2 mb-7 text-[15px] leading-6 text-slate-500 text-center">{t('onb_done_body')}</p>
+      <p className="mt-2 mb-7 text-copy leading-6 text-slate-500 text-center">{t('onb_done_body')}</p>
       <div>
         <Button label={t('onb_done_cta')} onClick={onExplore} busy={busy} large />
       </div>

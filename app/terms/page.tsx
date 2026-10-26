@@ -28,7 +28,7 @@ export default function TermsPage() {
           <Suspense fallback={null}>
             <BackToSettings className="mb-3 sm:mb-6" />
           </Suspense>
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 sm:p-12 shadow-[0_1px_2px_rgba(15,23,42,.04),0_8px_24px_rgba(15,23,42,.06)]">
+          <div className="rounded-2xl border border-line bg-white p-6 sm:p-12 shadow-[0_1px_2px_rgba(15,23,42,.04),0_8px_24px_rgba(15,23,42,.06)]">
             <TermsContent />
           </div>
         </div>

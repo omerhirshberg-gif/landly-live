@@ -36,8 +36,8 @@ describe('real perk examples section', () => {
     const html = withLang(lang, createElement(PerkExamples))
     expect(html).toContain(`>${esc(t.home_examples_title)}</h2>`)
     expect(html).toContain(esc(t.home_examples_sub))
-    expect(html).toMatch(new RegExp(`href="/categories"[^>]*><span>${esc(t.home_examples_all)}</span><i class="fa-solid fa-arrow-right[^"]*rtl:-scale-x-100`))
-    expect(html).not.toContain('fa-circle-check')
+    expect(html).toMatch(new RegExp(`href="/categories"[^>]*><span>${esc(t.home_examples_all)}</span><svg [^>]*class="lucide lucide-arrow-right[^"]*rtl:-scale-x-100`))
+    expect(html).not.toContain('lucide-circle-check')
   })
 
   it('uses the Hebrew copy from the brief', () => {
@@ -58,7 +58,7 @@ describe('perk example card', () => {
     const t = translations[lang]
     const html = withLang(lang, createElement(PerkExampleCard, { offer }))
     expect(html).toContain('href="/offers/o1"')
-    expect(html).toContain(`<span class="truncate">${t.row_restaurants}</span><i class="fa-solid fa-utensils text-[10px] text-brand" aria-hidden="true"></i>`)
+    expect(html).toMatch(new RegExp(`<span class="truncate">${esc(t.row_restaurants)}</span><svg [^>]*class="lucide lucide-utensils lucide-fork-knife h-3 w-3 flex-shrink-0 text-brand"`))
     expect(html).toContain('h-[130px]')
     expect(html).toContain('>Cafe Nadi</div>')
     expect(html).toContain('>Coffee and pastry for 29</p>')
@@ -78,7 +78,13 @@ describe("what's inside", () => {
     expect(html).toMatch(/<ul class="[^"]*flex[^"]*overflow-x-auto[^"]*snap-x snap-mandatory[^"]*sm:grid sm:grid-cols-2 lg:grid-cols-4[^"]*sm:overflow-visible"/)
     const cards = html.match(/<li class="[^"]*"/g) ?? []
     expect(cards).toHaveLength(4)
-    for (const card of cards) expect(card).toContain('w-[230px] flex-shrink-0 snap-center sm:w-auto')
+    for (const card of cards) expect(card).toContain('w-[200px] flex-shrink-0 snap-center sm:w-auto')
+    // Each card is its glyph in the shared 40px frame, its name and one short lifestyle line; no intro under the heading.
+    const t = translations.he
+    expect(html).not.toContain(t.vp_sub)
+    for (const key of ['vp_dining_desc', 'vp_lifestyle_desc', 'vp_experiences_desc', 'vp_community_desc'] as const) expect(html).toContain(t[key])
+    expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl /g)).toHaveLength(4)
+    expect(html.match(/<p[ >]/g)).toHaveLength(4)
     // No background of its own: the page gradient shows through.
     expect(html).toMatch(/<section id="deals" class="py-12 sm:py-14 lg:py-16">/)
   })

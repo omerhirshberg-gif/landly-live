@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { CircleCheck, Clock, Heart, MapPin, Tags, Ticket } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
@@ -21,6 +22,8 @@ import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
 import TranslationNotice from '@/components/ui/TranslationNotice'
+import CategoryIcon from '@/components/ui/CategoryIcon'
+import IconFrame from '@/components/ui/IconFrame'
 import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { offerTextSources } from '@/lib/offers/offerText'
 import { offerFullAddress } from '@/lib/geo'
@@ -91,7 +94,7 @@ export default function OfferDetailPage() {
         <div className="below-header member-canvas">
           <div className="max-w-lg mx-auto px-5 sm:px-6 py-16">
             <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-              <i className="fa-solid fa-tags" aria-hidden="true"></i>
+              <Tags aria-hidden="true" strokeWidth={1.75} />
               <div className="font-bold text-ink text-base mb-1">{t('offer_detail_not_found_title')}</div>
               <p className="text-sm text-body max-w-xs mb-5">{t('offer_detail_not_found_sub')}</p>
               <Link href="/categories" className="ds-btn ds-btn-primary">
@@ -147,9 +150,9 @@ export default function OfferDetailPage() {
               phones keep the one column. How to redeem and the purchase
               row stack under the details in the trailing pane; the photo
               spans their rows in the leading one. */}
-          <article className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+          <article className="rounded-3xl border border-slate-200/80 bg-white shadow-card">
             <div className="fold:grid fold:grid-cols-2 fold:items-start">
-              <div className="relative mx-3 mt-3 sm:mx-4 sm:mt-4 h-[180px] sm:h-[220px] overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] fold:row-span-3 fold:mb-4 fold:sticky fold:top-[calc(var(--header-offset)+1rem)]">
+              <div className="relative mx-3 mt-3 sm:mx-4 sm:mt-4 h-[180px] sm:h-[220px] overflow-hidden rounded-[14px] border border-line bg-canvas fold:row-span-3 fold:mb-4 fold:sticky fold:top-[calc(var(--header-offset)+1rem)]">
                 <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={businessName.text} size="hero" />
                 {user && (
                   // A 42px frosted-glass circle in a 48px tap target: the picture
@@ -166,11 +169,12 @@ export default function OfferDetailPage() {
                     className="group/heart absolute top-1.5 end-1.5 flex h-12 w-12 items-center justify-center rounded-full [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand"
                   >
                     <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/60 bg-white/80 shadow-[0_3px_10px_rgba(15,23,42,0.16)] backdrop-blur-md backdrop-saturate-150 transition-transform duration-200 ease-[cubic-bezier(.34,1.56,.64,1)] group-active/heart:scale-90 motion-reduce:transition-none motion-reduce:group-active/heart:scale-100">
-                      <i
+                      <Heart
                         key={saved ? 'saved' : 'unsaved'}
-                        className={`${saved ? `fa-solid text-[#EF4444] ${heartPop ? 'heart-pop' : ''}` : 'fa-regular text-[#0B1B3D]'} fa-heart text-[18px]`}
                         aria-hidden="true"
-                      ></i>
+                        className={`h-5 w-5 ${saved ? `fill-current text-red-500 ${heartPop ? 'heart-pop' : ''}` : 'text-ink'}`}
+                        strokeWidth={2}
+                      />
                     </span>
                   </button>
                 )}
@@ -179,7 +183,7 @@ export default function OfferDetailPage() {
               <div className="px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-7 fold:col-start-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brandTint px-3 py-1.5 text-xs font-semibold text-brand">
-                    {tile && <i className={`fa-solid ${tile.icon} text-[11px]`} aria-hidden="true"></i>}
+                    {tile && <CategoryIcon category={tile.category} className="h-3.5 w-3.5" strokeWidth={2} />}
                     {tile ? t(tile.labelKey) : <span dir="auto">{offer.category}</span>}
                   </span>
                   <RedemptionBadge method={offer.redemptionMethod} className="!py-1.5 !text-xs" />
@@ -194,8 +198,8 @@ export default function OfferDetailPage() {
                   {title.text}
                 </p>
                 {address && (
-                  <p className="mt-2 flex items-start gap-1.5 text-sm text-[#94A3B8]">
-                    <i className="fa-solid fa-location-dot mt-[3px] text-xs" aria-hidden="true"></i>
+                  <p className="mt-2 flex items-start gap-1.5 text-sm text-muted">
+                    <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
                     {/* The full address as Google writes it in the reader's language. */}
                     <span className="min-w-0 break-words" dir="auto">{address}</span>
                   </p>
@@ -205,17 +209,18 @@ export default function OfferDetailPage() {
                   destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }}
                 />
 
-                <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-[#0038B8]" dir="ltr">{formatPrice(offer.offerPrice)}</span>
+                {/* Prices in <bdi>, in the body font with their "₪" (app/layout.tsx loads its subset). */}
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                  <bdi className="text-price-lg tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
                   {discount > 0 && (
-                    <span className="text-lg text-[#94A3B8] line-through decoration-[#94A3B8]/70" dir="ltr">{formatPrice(offer.originalPrice)}</span>
+                    <bdi className="text-price-was sm:text-base tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>
                   )}
                   <DiscountBadge percent={discount} size="lg" />
                 </div>
 
                 {/* Guests get a short version; members the whole text. */}
                 {description.text && (
-                  <p className={`mt-5 whitespace-pre-line text-[15px] leading-relaxed text-[#475569] ${user ? '' : 'line-clamp-4'}`} lang={description.lang ?? undefined} dir="auto">{description.text}</p>
+                  <p className={`mt-5 whitespace-pre-line text-copy leading-relaxed text-body ${user ? '' : 'line-clamp-4'}`} lang={description.lang ?? undefined} dir="auto">{description.text}</p>
                 )}
                 {machine && (
                   <TranslationNotice className="mt-3" showingOriginal={showingOriginal} onToggle={toggleOriginal} />
@@ -224,14 +229,14 @@ export default function OfferDetailPage() {
                 {(formattedExpiry || remaining !== null) && (
                   <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
                     {formattedExpiry && (
-                      <div className="flex items-center gap-2 text-xs font-medium text-[#475569]">
-                        <i className="fa-regular fa-clock text-[#94A3B8]" aria-hidden="true"></i>
+                      <div className="flex items-center gap-2 text-xs font-medium text-body">
+                        <Clock aria-hidden="true" className="h-3.5 w-3.5 text-muted" strokeWidth={2} />
                         <span>{t('offer_detail_expires').replace('{date}', formattedExpiry)}</span>
                       </div>
                     )}
                     {remaining !== null && (
-                      <div className="flex items-center gap-2 text-xs font-medium text-[#475569]">
-                        <i className="fa-solid fa-ticket text-[#94A3B8]" aria-hidden="true"></i>
+                      <div className="flex items-center gap-2 text-xs font-medium text-body">
+                        <Ticket aria-hidden="true" className="h-3.5 w-3.5 text-muted" strokeWidth={2} />
                         <span>{t('offer_detail_remaining').replace('{count}', String(remaining))}</span>
                       </div>
                     )}
@@ -278,10 +283,10 @@ export default function OfferDetailPage() {
 
                 {user && !authLoading && !claimLoading && alreadyClaimed && (
                   <div className="flex items-start gap-3 rounded-2xl bg-canvas p-4">
-                    <i className="fa-solid fa-circle-check mt-0.5 flex-shrink-0 text-lg text-emerald-600" aria-hidden="true"></i>
+                    <IconFrame icon={CircleCheck} size="sm" tone="success" />
                     <div>
-                      <div className="mb-1 text-sm font-bold text-[#0B1B3D]">{t('offer_already_claimed_title')}</div>
-                      <p className="mb-2 text-sm text-[#475569]">{t('offer_already_claimed_sub')}</p>
+                      <div className="mb-1 text-sm font-bold text-ink">{t('offer_already_claimed_title')}</div>
+                      <p className="mb-2 text-sm text-body">{t('offer_already_claimed_sub')}</p>
                       <Link href="/member" className="text-sm font-bold text-brand hover:underline">{t('offer_already_claimed_link')}</Link>
                     </div>
                   </div>

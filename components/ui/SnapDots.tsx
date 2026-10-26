@@ -2,6 +2,9 @@
 
 import { useLang } from '@/lib/i18n/useLang'
 
+/** Past this many cards a row of dots stops reading as a position and becomes noise: longer rows go without. */
+export const SNAP_DOTS_MAX = 8
+
 // iOS-style pagination dots under a phone swipe row (with useSnapIndex): the
 // active dot stretches into a pill, the rest are small slate circles. Each
 // dot is a 44px tap target that brings its card into view. They follow the

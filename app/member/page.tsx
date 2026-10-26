@@ -95,9 +95,14 @@ export default function MemberPage() {
       <Navbar />
       <div className="below-header member-canvas">
         <MemberPageShell>
-          {/* Narrower than the column, at its start edge, so the title lines up with the other tabs. */}
-          <div className="max-w-4xl">
-            <div className={`flex items-start justify-between ${PAGE_TITLE_GAP} gap-3`}>
+          {/* Phones and tablets: one column (title, stats, hairline, tabs,
+              passes). From 1024px the stats move into a sticky rail beside
+              the passes, so the full member column is used instead of a
+              narrow strip with empty space beside it. The rail spans all
+              three rows; the last row is 1fr, so the rail's height never
+              pushes the title and the tabs apart. */}
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10">
+            <div className={`flex items-start justify-between ${PAGE_TITLE_GAP} gap-3 lg:col-start-1 lg:row-start-1`}>
               <div>
                 <h1 className={PAGE_TITLE}>{welcomeMessage}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2.5">
@@ -107,16 +112,18 @@ export default function MemberPage() {
             </div>
 
             {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
-            <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
+            <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky lg:top-[calc(var(--header-offset)+1.5rem)]">
+              <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
+            </aside>
 
-            {/* A soft hairline between the member's status and their passes, as on the home page. */}
-            <SectionDivider className="mb-6" />
+            {/* A soft hairline between the member's status and their passes, as on the home page; the rail separates them on wide screens. */}
+            <SectionDivider className="mb-6 lg:hidden" />
 
             {/* Tabs: My Perks / Redeemed */}
-            <div className="mb-5">
+            <div className="mb-5 lg:col-start-1 lg:row-start-2">
               <MemberTabs active={activeTab} onChange={setActiveTab} />
             </div>
-            <div className="mb-4">
+            <div className="mb-4 lg:col-start-1 lg:row-start-3">
               {activeTab === 'perks' && <PerksTab vouchers={active} />}
               {activeTab === 'redeemed' && <RedeemedTab vouchers={redeemed} />}
             </div>

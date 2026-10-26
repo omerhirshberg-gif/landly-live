@@ -29,7 +29,7 @@ function A({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}
-      className="text-[#0038B8] font-semibold underline underline-offset-2 break-words hover:text-[#0066FF]"
+      className="text-brand font-semibold underline underline-offset-2 break-words hover:text-[#0066FF]"
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
     >
       {children}
@@ -66,12 +66,12 @@ function Runs({ parts }: { parts: PolicyInline[] }) {
 function Block({ block }: { block: PolicyBlock }) {
   switch (block.kind) {
     case 'h3':
-      return <h3 className="text-base sm:text-lg font-bold text-[#0F172A] pt-2">{block.text}</h3>
+      return <h3 className="text-base sm:text-lg font-bold text-slate-900 pt-2">{block.text}</h3>
     case 'p':
       return <p><Runs parts={block.text} /></p>
     case 'callout':
       return (
-        <p className="rounded-xl border border-[#BFD4FF] bg-[#EFF5FF] p-4 sm:p-5 text-[#0F172A]">
+        <p className="rounded-xl border border-[#BFD4FF] bg-[#EFF5FF] p-4 sm:p-5 text-slate-900">
           <Runs parts={block.text} />
         </p>
       )
@@ -83,13 +83,13 @@ function Block({ block }: { block: PolicyBlock }) {
       )
     case 'ol':
       return (
-        <ol className="list-decimal ps-6 space-y-2 marker:font-semibold marker:text-[#0F172A]">
+        <ol className="list-decimal ps-6 space-y-2 marker:font-semibold marker:text-slate-900">
           {block.items.map((item, i) => <li key={i}><Runs parts={item} /></li>)}
         </ol>
       )
     case 'address':
       return (
-        <address className="not-italic rounded-xl border border-slate-200 bg-[#F8FAFC] p-5 sm:p-6 space-y-1">
+        <address className="not-italic rounded-xl border border-slate-200 bg-canvas p-5 sm:p-6 space-y-1">
           {block.lines.map((line, i) => <p key={i}><Runs parts={line} /></p>)}
         </address>
       )
@@ -101,27 +101,27 @@ export default function PrivacyPolicy({ lang = 'en' }: { lang?: Lang }) {
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
 
   return (
-    <article lang={lang} dir={isRtl ? 'rtl' : 'ltr'} className="text-[#334155] text-base leading-[1.7] break-words">
+    <article lang={lang} dir={isRtl ? 'rtl' : 'ltr'} className="text-slate-700 text-base leading-[1.7] break-words">
       <header className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0066FF] mb-2">Landly</p>
-        <h1 className="text-3xl sm:text-4xl font-black text-[#0F172A] leading-tight mb-3">{policy.title}</h1>
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight mb-3">{policy.title}</h1>
         <p className="text-sm text-slate-500">
           {policy.updatedLabel} <time dateTime={PRIVACY_POLICY_UPDATED_ISO}>{policy.updatedDate}</time>
         </p>
         {lang !== 'en' && (
-          <p role="note" className="mt-5 rounded-xl border border-[#BFD4FF] bg-[#EFF5FF] px-4 py-3 text-sm text-[#0F172A]">
+          <p role="note" className="mt-5 rounded-xl border border-[#BFD4FF] bg-[#EFF5FF] px-4 py-3 text-sm text-slate-900">
             {translations[lang].legal_translation_notice}
           </p>
         )}
         <p className="mt-5"><Runs parts={policy.intro} /></p>
       </header>
 
-      <nav aria-label={policy.contents} className="mb-10 rounded-xl border border-slate-200 bg-[#F8FAFC] p-5 sm:p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-[#0F172A] mb-3">{policy.contents}</h2>
+      <nav aria-label={policy.contents} className="mb-10 rounded-xl border border-slate-200 bg-canvas p-5 sm:p-6">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 mb-3">{policy.contents}</h2>
         <ol className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2 list-decimal ps-5 text-sm marker:text-slate-400">
           {policy.sections.map((s) => (
             <li key={s.id}>
-              <a href={`#${s.id}`} className="text-[#0038B8] hover:underline underline-offset-2">{s.title}</a>
+              <a href={`#${s.id}`} className="text-brand hover:underline underline-offset-2">{s.title}</a>
             </li>
           ))}
         </ol>
@@ -134,7 +134,7 @@ export default function PrivacyPolicy({ lang = 'en' }: { lang?: Lang }) {
           aria-labelledby={`${section.id}-title`}
           className="scroll-mt-24 border-t border-slate-200 pt-8 mt-8 first:border-t-0 first:pt-0 first:mt-0"
         >
-          <h2 id={`${section.id}-title`} className="text-xl sm:text-2xl font-extrabold text-[#0F172A] mb-4 leading-snug">
+          <h2 id={`${section.id}-title`} className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-4 leading-snug">
             {index + 1}. {section.title}
           </h2>
           <div className="space-y-4">

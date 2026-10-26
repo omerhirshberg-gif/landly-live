@@ -41,7 +41,7 @@ export default function Checkbox({
           </svg>
         )}
       </span>
-      <span className="text-[13px] font-semibold text-slate-700">{label}</span>
+      <span className="text-meta font-semibold text-slate-700">{label}</span>
     </label>
   )
 }

@@ -79,7 +79,7 @@ describe('member hint plumbing', () => {
     for (const name of ['partner-marquee', 'value-props', 'savings-showcase', 'how-it-works', 'pass-showcase', 'faq-prompt']) {
       expect(home).toContain(`<SectionBoundary name="${name}">`)
     }
-    expect(home).toMatch(/<Hero \/>\n\s*<SectionBoundary/)
+    expect(home).toMatch(/<Hero features=\{pickHeroFeatures\(showcase\.offers\)\} \/>\n\s*<SectionBoundary/)
     for (const name of ['accessibility-widget', 'route-tracker', 'whatsapp-widget', 'cookie-notice', 'passkey-prompt']) {
       expect(layout).toContain(`<SectionBoundary name="${name}">`)
     }

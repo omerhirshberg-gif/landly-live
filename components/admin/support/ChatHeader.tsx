@@ -6,7 +6,7 @@ import BackButton from '@/components/admin/BackButton'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { CategoryBadge, ConversationStatusBadge, LanguageBadge } from './ConversationBadges'
-import { phoneOf } from './time'
+import { dayTime, phoneOf } from './time'
 
 const RESOLVE_BUTTON =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-semibold whitespace-nowrap bg-emerald-600 text-white shadow-sm ' +
@@ -19,10 +19,11 @@ interface ChatHeaderProps {
   onStatus: (status: AdminStatus) => void
   /** The status being saved, while a change is in flight. */
   pendingStatus: AdminStatus | null
+  now: number
 }
 
-export default function ChatHeader({ conversation, onBack, onStatus, pendingStatus }: ChatHeaderProps) {
-  const { waId, name, uid, lang, langSelected, status, category } = conversation
+export default function ChatHeader({ conversation, onBack, onStatus, pendingStatus, now }: ChatHeaderProps) {
+  const { waId, name, uid, lang, langSelected, status, category, windowOpen, followUp } = conversation
   const [copied, setCopied] = useState(false)
 
   const copyUid = () => {
@@ -82,6 +83,24 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
             <span className="rounded-md border border-dashed border-[#CBD5E1] px-1.5 py-0.5 text-[11px]">Not a member</span>
           )}
         </div>
+        {followUp && status !== 'resolved' && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-[#64748B]">
+            <i className="fa-regular fa-clock" aria-hidden="true" />
+            {followUp.sentAt ? (
+              <span>
+                Follow-up sent <bdi dir="ltr">{dayTime(followUp.sentAt, now)}</bdi> · auto-resolves ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi>
+              </span>
+            ) : followUp.stage === 'nudge' ? (
+              <span>
+                Follow-up ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi> if no reply
+              </span>
+            ) : (
+              <span>
+                Auto-resolves ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi> if no reply
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="flex w-full gap-2 sm:w-auto">
@@ -103,10 +122,14 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
             onClick={() => onStatus('resolved')}
             disabled={busy}
             className={`${RESOLVE_BUTTON} flex-1 sm:flex-none`}
-            title="Marks it resolved and sends the member the sign-off in their language"
+            title={
+              windowOpen
+                ? 'Marks it resolved and thanks the member in their language'
+                : 'Meta’s 24-hour window has closed: marks it resolved without a message to the member'
+            }
           >
             {pendingStatus === 'resolved' ? <ButtonSpinner /> : <i className="fa-solid fa-circle-check text-sm" aria-hidden="true" />}
-            Mark resolved
+            {windowOpen ? 'Resolve & thank' : 'Resolve (no message)'}
           </button>
         )}
       </div>

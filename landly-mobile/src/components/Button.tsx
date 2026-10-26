@@ -82,7 +82,7 @@ export default function Button({
       >
         {busy && <ActivityIndicator color={filled ? colors.white : colors.brand} style={styles.spinner} />}
         {icon && !busy && <LineIcon name={icon} size={20} color={filled ? colors.white : colors.brand} style={styles.icon} />}
-        <AppText style={[styles.label, large && styles.largeLabel, { color: filled ? colors.white : colors.heading }]}>
+        <AppText style={[styles.label, { color: filled ? colors.white : colors.heading }]}>
           {label}
         </AppText>
         {arrow && !busy && (
@@ -140,8 +140,9 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.7 },
   spinner: { marginEnd: 8 },
   icon: { marginEnd: 10 },
-  label: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  largeLabel: { letterSpacing: 0.2 },
+  // Bold and slightly tight, as on the web (.ds-btn: 700, -0.01em): one
+  // button label on every platform.
+  label: { fontSize: 16, fontWeight: '700', letterSpacing: -0.16, textAlign: 'center' },
   arrow: { marginStart: 10 },
   flip: { transform: [{ scaleX: -1 }] },
 })

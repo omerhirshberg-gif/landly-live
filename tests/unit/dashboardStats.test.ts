@@ -16,16 +16,18 @@ function render(lang: Lang, props: { activePerks?: number; redeemed?: number; sa
   )
 }
 
-// Each card: <div shell><i/><div label>…</div><div value>…</div></div>
-const cards = (html: string) => [...html.matchAll(/<div class="([^"]*min-h-\[96px\][^"]*)"><i [^>]*><\/i><div class="([^"]*)">([^<]*)<\/div><div class="([^"]*)">([^<]*)<\/div><\/div>/g)]
+// Each card: <div shell><span frame><svg/></span><div label>…</div><div value>…</div></div>
+const cards = (html: string) => [...html.matchAll(/<div class="([^"]*min-h-\[96px\][^"]*)"><span aria-hidden="true" class="([^"]*)"><svg [^>]*>.*?<\/svg><\/span><div class="([^"]*)">([^<]*)<\/div><div class="([^"]*)">([^<]*)<\/div><\/div>/g)]
 
 describe('member dashboard stats', () => {
   it.each(LANGS)('gives all three cards the same shell, label band and bottom-pinned number (%s)', (lang) => {
     const found = cards(render(lang))
     expect(found).toHaveLength(3)
     const t = translations[lang]
-    expect(found.map((m) => m[3].replace(/&quot;/g, '"'))).toEqual([t.dash_active_perks_label, t.dash_perks_redeemed_label, t.dash_total_saved])
-    for (const [, shell, label, , value] of found) {
+    expect(found.map((m) => m[4].replace(/&quot;/g, '"'))).toEqual([t.dash_active_perks_label, t.dash_perks_redeemed_label, t.dash_total_saved])
+    // Each icon in the shared 40px frame: brand blue, emerald for money saved.
+    expect(found.map((m) => m[2].includes('h-10 w-10 rounded-xl') && (m[2].includes('bg-brandTint') ? 'brand' : m[2].includes('bg-emerald-50') ? 'success' : '?'))).toEqual(['brand', 'brand', 'success'])
+    for (const [, shell, , label, , value] of found) {
       for (const c of ['flex', 'flex-col', 'h-full', 'min-h-[96px]', 'min-w-0']) expect(shell.split(' ')).toContain(c)
       // A two-line band, centred, so one- and two-line labels take the same room.
       for (const c of ['min-h-[36px]', 'flex', 'items-center', 'justify-center']) expect(label.split(' ')).toContain(c)
@@ -34,17 +36,17 @@ describe('member dashboard stats', () => {
     }
     // Identical classes on every card, so nothing shifts one of them.
     expect(new Set(found.map((m) => m[1])).size).toBe(1)
-    expect(new Set(found.map((m) => m[2])).size).toBe(1)
-    expect(new Set(found.map((m) => m[4])).size).toBe(1)
+    expect(new Set(found.map((m) => m[3])).size).toBe(1)
+    expect(new Set(found.map((m) => m[5])).size).toBe(1)
   })
 
   it('shows the counts and the savings it is given', () => {
     const found = cards(render('en', { activePerks: 3, redeemed: 12, saved: 1250 }))
-    expect(found.map((m) => m[5])).toEqual(['3', '12', '₪1,250'])
+    expect(found.map((m) => m[6])).toEqual(['3', '12', '₪1,250'])
   })
 
   it('defaults to zero', () => {
-    expect(cards(render('en')).map((m) => m[5])).toEqual(['0', '0', '₪0'])
+    expect(cards(render('en')).map((m) => m[6])).toEqual(['0', '0', '₪0'])
   })
 })
 

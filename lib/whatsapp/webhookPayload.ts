@@ -23,6 +23,8 @@ export const BOT_ACTIONS = [
   // The idle check-in's buttons.
   'btn_idle_yes',
   'btn_idle_done',
+  // The team's follow-up: Still need help (its All set is btn_idle_done).
+  'btn_team_nudge_yes',
   // The main menu's rows.
   'menu_order',
   'menu_new_order',
