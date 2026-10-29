@@ -17,7 +17,8 @@
     "mobile": "npm --prefix landly-mobile start",
     "test": "vitest run --exclude 'tests/emulator/**'",
     "test:emulator": "firebase emulators:exec --config firebase.test.json --project demo-landly-payments --only firestore \"vitest run tests/emulator --no-file-parallelism\"",
-    "typecheck": "tsc --noEmit --incremental false"
+    "typecheck": "tsc --noEmit --incremental false",
+    "check:apple": "node scripts/check-apple-oauth.mjs"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
