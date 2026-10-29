@@ -1,4 +1,5 @@
 import { type Href, router, Stack, usePathname } from 'expo-router'
+import * as NativeSplash from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { I18nManager, StyleSheet, View } from 'react-native'
@@ -25,6 +26,13 @@ import { colors } from '../theme'
 // language: the root view below sets `direction`, which Yoga applies to the
 // whole tree — rows, start/end margins and the tab bar flip together.
 I18nManager.allowRTL(false)
+
+// The native launch screen holds, in the canvas colour (app.json), until the
+// branded splash has drawn its first frame (SplashScreen.tsx hides it), then
+// fades into it rather than cutting. Module scope, so it's in place before
+// anything renders. A no-op on the web.
+NativeSplash.setOptions({ fade: true, duration: 200 })
+NativeSplash.preventAutoHideAsync().catch(() => undefined)
 
 const UNLOCK_EASE = Easing.bezier(...UNLOCK.curve)
 

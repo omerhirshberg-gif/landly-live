@@ -44,9 +44,24 @@ export interface Spring {
 export const ARROW_SPRING = { damping: 12, stiffness: 220, mass: 1 } as const satisfies Spring
 // One spring for everything else that moves in the entrance (card rise, splash hand-over).
 export const ENTRANCE_SPRING = { damping: 15, stiffness: 90 } as const satisfies Spring
-// The splash logo gliding up into the app lock's header (native only): a touch
-// firmer than ENTRANCE_SPRING (ζ ≈ 0.73), since it travels further and shrinks.
-export const LOCK_GLIDE_SPRING = { damping: 16, stiffness: 120 } as const satisfies Spring
+// The splash logo's hand-over glide (native only), as Reanimated
+// duration-based springs: `duration` is perceptual and the spring settles at
+// 1.5x it. Near-critical, so the logo lands without a visible overshoot; the
+// glide into the app lock's header travels further and shrinks, so it gets a
+// little longer and a touch livelier.
+export const SPLASH_GLIDE = {
+  login: { duration: 650, dampingRatio: 0.9 },
+  lock: { duration: 750, dampingRatio: 0.86 },
+} as const
+export const SPLASH_BACKDROP_MS = 420
+// Once the glide lands, the screen's own logo shows under the splash's and
+// the splash fades off it: two identical marks crossfading, never a cut.
+export const SPLASH_RELEASE_MS = 140
+
+/** The latest a glide can still be moving: its spring's 1.5x settle plus slack for dropped frames. */
+export function splashGlideBackstopMs(duration: number): number {
+  return Math.round(duration * 1.5) + 600
+}
 
 export interface Box {
   x: number

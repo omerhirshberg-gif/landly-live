@@ -2,10 +2,11 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { Lock, MailCheck, Pencil } from 'lucide-react'
+import { Lock, MailCheck, Pencil, Plus } from 'lucide-react'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
-import { updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
+import { updateUserName, updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
+import { fullName, MAX_NAME_LENGTH, profileNameErrors, splitDisplayName, type NameFieldErrors } from '@/lib/auth/names'
 import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange } from '@/lib/account/contactChange'
 import type { OtpTarget } from '@/lib/auth/otp'
@@ -37,13 +38,17 @@ const detailsOf = (profile: UserDocument | null): Details => ({
 
 type Status = { tone: 'info' | 'error'; text: string } | null
 
-// The member's profile on /profile (desktop and mobile browsers). The name
-// is a plain read-only row. One "Edit profile" button at the header's
-// end (top right, top left in Hebrew) turns the phone number, customer type,
+// The member's profile on /profile (desktop and mobile browsers). One "Edit
+// profile" button at the header's end (top right, top left in Hebrew) turns
+// the name (first and last, both required once there is one; written to
+// users/{uid} and the Auth record, updateUserName), the phone number, customer type,
 // country of origin and region in Israel into fields at once; "Save changes"
 // writes them to users/{uid} in one update, "Cancel" drops them (app: the
 // Profile tab). A customer type of "Other" shows, and edits, what the member
-// typed for it; members from before the origin card see "Not set".
+// typed for it; members from before the origin card see "Not set". A member
+// with no name yet (Apple sends it on the first authorization only, and
+// never when it's hidden) sees "Add your name", which opens the editor on
+// the first name.
 //
 // Email and phone changes are verified before they apply, both with a
 // 6-digit code in OtpDialog. In Edit profile the email shows in a field box:
@@ -75,6 +80,11 @@ export default function ProfileSection({ user }: { user: User }) {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  // The stored parts, else a best split of the display name (Google, older profiles).
+  const storedNames = profile?.firstName || profile?.lastName ? { firstName: profile.firstName, lastName: profile.lastName } : splitDisplayName(displayName)
+  const [names, setNames] = useState(storedNames)
+  const [nameErrors, setNameErrors] = useState<NameFieldErrors>({})
+  const [focusName, setFocusName] = useState(false)
 
   const [emailFormOpen, setEmailFormOpen] = useState(false)
   const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
@@ -86,7 +96,15 @@ export default function ProfileSection({ user }: { user: User }) {
 
   const change = (patch: Partial<Details>) => setDraft((d) => ({ ...d, ...patch }))
 
-  const startEdit = () => {
+  const changeName = (patch: Partial<typeof names>) => {
+    setNames((n) => ({ ...n, ...patch }))
+    setNameErrors((e) => ({ ...e, ...Object.fromEntries(Object.keys(patch).map((k) => [k, undefined])) }))
+  }
+
+  const startEdit = (onName = false) => {
+    setNames(storedNames)
+    setNameErrors({})
+    setFocusName(onName)
     setDraft(stored)
     setSaveMsg(null)
     setPhoneError(null)
@@ -103,6 +121,10 @@ export default function ProfileSection({ user }: { user: User }) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaveMsg(null)
+    const errors = profileNameErrors(names, { hadName: !!displayName })
+    setNameErrors(errors)
+    if (errors.firstName || errors.lastName) return
+    const nameChanged = fullName(names.firstName, names.lastName) !== fullName(storedNames.firstName, storedNames.lastName)
     const phone = draft.phone.trim()
     // Empty removes the number; anything else must be a valid number.
     if (phone && !isValidPhoneNumber(phone)) {
@@ -130,6 +152,7 @@ export default function ProfileSection({ user }: { user: User }) {
         if (verify) savedPhone = stored.phone
       }
       const next = { ...draft, phone: savedPhone, customerType: isCustomerType(draft.customerType) ? draft.customerType : '' as const }
+      if (nameChanged) await updateUserName(user, names)
       await updateUserProfileDetails(user.uid, next)
       invalidateMemberProfile(user.uid)
       setEditing(false)
@@ -258,18 +281,71 @@ export default function ProfileSection({ user }: { user: User }) {
     />
   )
 
-  // Name and email stay outside the edit form (see the header comment).
+  // No name yet: an "Add your name" button in its place, opening the editor on it.
+  const nameRow =
+    displayName || loadingDoc ? (
+      plainRow(t('profile_name_label'), displayName || '…')
+    ) : (
+      <div>
+        <dt className={dt}>{t('profile_name_label')}</dt>
+        <dd>
+          <button
+            type="button"
+            onClick={() => startEdit(true)}
+            className="tap-target -ms-2 inline-flex items-center gap-1.5 min-h-11 px-2 rounded-[10px] text-sm font-bold text-brand hover:bg-brandLight transition-colors"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+            {t('profile_add_name')}
+          </button>
+        </dd>
+      </div>
+    )
+
+  // Name and email stay outside the edit form (see the header comment); while
+  // editing, the name moves into the form as its two fields.
   const identity = (
     <dl className="space-y-4">
-      {plainRow(t('profile_name_label'), displayName || '—')}
+      {!editing && nameRow}
       {emailRow}
     </dl>
   )
+
+  // A dt/dd pair, so the two sit directly in one <dl> group.
+  const nameField = (part: 'firstName' | 'lastName', autoComplete: string, labelKey: 'onb_firstNameLabel' | 'onb_lastNameLabel') => {
+    const id = `profile-${part === 'firstName' ? 'first' : 'last'}-name`
+    const error = nameErrors[part]
+    return (
+      <>
+        <dt><label htmlFor={id} className={label}>{t(labelKey)}</label></dt>
+        <dd className="min-w-0 mb-4 sm:mb-0">
+          <input
+            id={id}
+            type="text"
+            value={names[part]}
+            onChange={(e) => changeName({ [part]: e.target.value })}
+            maxLength={MAX_NAME_LENGTH}
+            autoComplete={autoComplete}
+            autoCapitalize="words"
+            autoFocus={part === 'firstName' && focusName}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className={`${field} ${error ? 'border-red-500 focus:border-red-500' : ''}`}
+          />
+          {error && <p id={`${id}-error`} role="alert" className="text-xs text-red-600 font-semibold mt-1.5">{t(error)}</p>}
+        </dd>
+      </>
+    )
+  }
 
   const details = (
     <dl className="space-y-4 mt-4">
       {editing ? (
         <>
+          {/* Side by side from sm up, in the reading direction (columns: label over field); stacked on phones. */}
+          <div className="sm:grid sm:grid-flow-col sm:grid-rows-[auto_auto] sm:grid-cols-2 sm:gap-x-4">
+            {nameField('firstName', 'given-name', 'onb_firstNameLabel')}
+            {nameField('lastName', 'family-name', 'onb_lastNameLabel')}
+          </div>
           <div>
             <dt><label htmlFor="profile-phone" className={label}>{t('profile_phone_label')}</label></dt>
             <dd>
@@ -279,7 +355,7 @@ export default function ProfileSection({ user }: { user: User }) {
                 countryCallingCodeEditable={false}
                 defaultCountry="IL"
                 autoComplete="tel"
-                autoFocus
+                autoFocus={!focusName}
                 value={draft.phone}
                 onChange={(value) => {
                   change({ phone: value ?? '' })
@@ -401,7 +477,7 @@ export default function ProfileSection({ user }: { user: User }) {
           {!editing && (
             <button
               type="button"
-              onClick={startEdit}
+              onClick={() => startEdit()}
               disabled={loadingDoc}
               className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-brandTint transition-colors disabled:opacity-60"
             >

@@ -1,6 +1,6 @@
-import type { User } from 'firebase/auth'
+import { updateProfile, type User } from 'firebase/auth'
 import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, type DocumentData } from 'firebase/firestore'
-import { splitDisplayName } from '@/lib/auth/names'
+import { fullName, normalizePersonName, splitDisplayName } from '@/lib/auth/names'
 import { personaNote, type CustomerType } from '@/lib/customerTypes'
 import { db } from './config'
 import { recheckSessionIfDenied } from './sessionCheck'
@@ -140,6 +140,20 @@ export async function updateUserDocument(
   data: { displayName: string; phone: string; customerType?: string }
 ) {
   await updateDoc(doc(db, 'users', uid), data)
+}
+
+/**
+ * A name typed in the profile editor (website /profile, the app's Profile
+ * tab): users/{uid} first, then the Auth record, so the greeting, the avatar's
+ * initials and every screen that falls back to Auth agree. The Auth update is
+ * best effort: the doc is what the profile screens read.
+ */
+export async function updateUserName(user: User, names: { firstName: string; lastName: string }) {
+  const firstName = normalizePersonName(names.firstName)
+  const lastName = normalizePersonName(names.lastName)
+  const displayName = fullName(firstName, lastName)
+  await updateDoc(doc(db, 'users', user.uid), { firstName, lastName, displayName })
+  if (user.displayName !== displayName) await updateProfile(user, { displayName }).catch(() => undefined)
 }
 
 /**

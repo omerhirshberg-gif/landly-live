@@ -35,6 +35,17 @@ export function nameFieldErrors(fields: { firstName: string; lastName: string })
   return errors
 }
 
+/**
+ * The profile editors' name check (website /profile, the app's Profile tab):
+ * both parts required, except that a member who has no name yet (Apple's
+ * hidden name, or a first authorization that was lost) may leave both blank
+ * and still save the rest of their details.
+ */
+export function profileNameErrors(fields: { firstName: string; lastName: string }, { hadName }: { hadName: boolean }): NameFieldErrors {
+  if (!hadName && !normalizePersonName(fields.firstName) && !normalizePersonName(fields.lastName)) return {}
+  return nameFieldErrors(fields)
+}
+
 /** "First Last", as written to users/{uid}.displayName and the Auth record. */
 export function fullName(firstName: string, lastName: string): string {
   return `${normalizePersonName(firstName)} ${normalizePersonName(lastName)}`.trim()

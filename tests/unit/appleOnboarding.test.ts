@@ -189,3 +189,46 @@ describe('both screens route Apple through the same post-sign-in step', () => {
     }
   })
 })
+
+// A member Apple sent no name for (hidden, or a first authorization that was
+// lost) adds one on the profile screen, website and app alike.
+describe('adding a name on the profile', () => {
+  it('requires both parts once there is a name, and lets a nameless member skip it', async () => {
+    const { profileNameErrors } = await import('@/lib/auth/names')
+    expect(profileNameErrors({ firstName: '', lastName: '' }, { hadName: false })).toEqual({})
+    expect(profileNameErrors({ firstName: '  ', lastName: '' }, { hadName: false })).toEqual({})
+    expect(profileNameErrors({ firstName: 'Noa', lastName: '' }, { hadName: false })).toEqual({ lastName: 'form_fieldRequired' })
+    expect(profileNameErrors({ firstName: '', lastName: '' }, { hadName: true })).toEqual({ firstName: 'form_fieldRequired', lastName: 'form_fieldRequired' })
+    expect(profileNameErrors({ firstName: 'נועה', lastName: 'לוי' }, { hadName: true })).toEqual({})
+  })
+
+  it('writes the parts and the joined name to users/{uid}, then the Auth record', async () => {
+    const { updateUserName } = await import('@/lib/firebase/users')
+    const user = appleUser()
+    await updateUserName(user, { firstName: '  נועה ', lastName: 'לוי\n' })
+    expect(mocks.updateDoc).toHaveBeenCalledWith('users/a1', { firstName: 'נועה', lastName: 'לוי', displayName: 'נועה לוי' })
+    expect(mocks.updateProfile).toHaveBeenCalledWith(user, { displayName: 'נועה לוי' })
+    // An Auth hiccup doesn't fail the save: the doc is what the profile reads.
+    mocks.updateProfile.mockRejectedValueOnce(new Error('network'))
+    await expect(updateUserName(appleUser(), { firstName: 'Noa', lastName: 'Levi' })).resolves.toBeUndefined()
+    // Already the Auth name: no second write.
+    mocks.updateProfile.mockClear()
+    await updateUserName(appleUser({ displayName: 'Noa Levi' }), { firstName: 'Noa', lastName: 'Levi' })
+    expect(mocks.updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('offers "Add your name" and the two name fields in both profile editors, never from the email', async () => {
+    for (const file of ['components/profile/ProfileSection.tsx', 'landly-mobile/src/app/(tabs)/profile.tsx']) {
+      const source = read(file)
+      expect(source, file).toContain("t('profile_add_name')")
+      expect(source, file).toContain('startEdit(true)')
+      expect(source, file).toContain('profileNameErrors(names, { hadName: ')
+      expect(source, file).toContain('if (nameChanged) await updateUserName(user, names)')
+      expect(source, file).toMatch(/given-name[\s\S]*family-name/)
+      expect(source, file).not.toMatch(/email\.split\('@'\)/)
+    }
+    const { translations } = await import('@/lib/i18n/translations')
+    for (const lang of Object.keys(translations) as (keyof typeof translations)[]) expect(translations[lang].profile_add_name, lang).toBeTruthy()
+    expect(translations.he.profile_add_name).toBe('הוסיפו את השם שלכם')
+  })
+})

@@ -5,11 +5,12 @@ import { router } from 'expo-router'
 import { signOut, type User } from 'firebase/auth'
 import type { CountryCode } from 'libphonenumber-js'
 import { formatPhone, phoneToE164, splitPhone } from '@shared/auth/onboarding'
+import { fullName, MAX_NAME_LENGTH, profileNameErrors, splitDisplayName, type NameFieldErrors } from '@shared/auth/names'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
 import { invalidateMemberProfile, useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { useLiveUserDocument } from '@shared/firebase/useLiveUserDocument'
-import { updateUserProfileDetails, type UserDocument } from '@shared/firebase/users'
+import { updateUserName, updateUserProfileDetails, type UserDocument } from '@shared/firebase/users'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, type ContactChangeResult } from '@shared/account/contactChange'
 import type { OtpTarget } from '@shared/auth/otp'
 import { customerTypeLabel, isCustomerType } from '@shared/customerTypes'
@@ -135,14 +136,17 @@ const detailsOf = (profile: UserDocument | null): Details => ({
 
 type Status = { tone: 'info' | 'error'; text: string } | null
 
-// The member's details. The name is read-only (a lock marks it). One "Edit
-// profile" button at the card header's trailing edge (top right, top left in
-// Hebrew) turns the phone (the onboarding's country code picker + number,
+// The member's details. One "Edit profile" button at the card header's
+// trailing edge (top right, top left in Hebrew) turns the name (first and
+// last, both required once there is one; written to users/{uid} and the Auth
+// record, updateUserName), the phone (the onboarding's country code picker + number,
 // any country), customer type (the onboarding chips, "Other" with its note),
 // country of origin (the searchable list) and region in Israel into fields
 // at once; "Save changes" writes them to users/{uid} in one update, the same
 // write as the website's /profile, and "Cancel" drops them. users/{uid} is
-// read live, so a save shows at once.
+// read live, so a save shows at once. A member with no name yet (Apple
+// sends it on the first authorization only, and never when it's hidden) sees
+// "Add your name" in the name row, which opens the editor on the first name.
 //
 // Email and phone changes are verified before they apply, both with a
 // 6-digit code in OtpSheet (web: the same flow). In Edit profile the email
@@ -189,6 +193,12 @@ function ProfileDetails({
   const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
+  // The stored parts, else a best split of the display name (Google, older profiles).
+  const storedNames = profile?.firstName || profile?.lastName ? { firstName: profile.firstName, lastName: profile.lastName } : splitDisplayName(name)
+  const [names, setNames] = useState(storedNames)
+  const [nameErrors, setNameErrors] = useState<NameFieldErrors>({})
+  const [nameShake, setNameShake] = useState(0)
+  const [focusName, setFocusName] = useState(false)
 
   useEffect(() => {
     if (!notice) return
@@ -201,7 +211,16 @@ function ProfileDetails({
     setSaveError(null)
   }
 
-  const startEdit = () => {
+  const changeName = (patch: Partial<typeof names>) => {
+    setNames((n) => ({ ...n, ...patch }))
+    setNameErrors((e) => ({ ...e, ...Object.fromEntries(Object.keys(patch).map((k) => [k, undefined])) }))
+    setSaveError(null)
+  }
+
+  const startEdit = (onName = false) => {
+    setNames(storedNames)
+    setNameErrors({})
+    setFocusName(onName)
     const split = splitPhone(current.phone)
     setCountry(split.country)
     setNational(split.national)
@@ -215,6 +234,13 @@ function ProfileDetails({
   }
 
   const save = async () => {
+    const errors = profileNameErrors(names, { hadName: !!name })
+    if (errors.firstName || errors.lastName) {
+      setNameErrors(errors)
+      setNameShake((n) => n + 1)
+      return
+    }
+    const nameChanged = fullName(names.firstName, names.lastName) !== fullName(storedNames.firstName, storedNames.lastName)
     const trimmed = national.trim()
     const phone = trimmed ? phoneToE164(country, trimmed) : ''
     if (phone === null) {
@@ -243,6 +269,7 @@ function ProfileDetails({
         if (verify) savedPhone = current.phone
       }
       const next = { ...draft, phone: savedPhone, customerType }
+      if (nameChanged) await updateUserName(user, names)
       await updateUserProfileDetails(user.uid, next)
       invalidateMemberProfile(user.uid)
       setEditing(false)
@@ -299,7 +326,7 @@ function ProfileDetails({
         {!editing && (
           <Pressable
             accessibilityRole="button"
-            onPress={startEdit}
+            onPress={() => startEdit()}
             disabled={!loaded}
             hitSlop={8}
             style={({ pressed }) => [styles.editButton, pressed && styles.editPressed, !loaded && styles.editDisabled]}
@@ -309,7 +336,54 @@ function ProfileDetails({
         )}
       </View>
 
-      <Row label={t('profile_name_label')} value={name || t('profile_no_phone')} muted={editing} />
+      {editing ? (
+        <View style={[styles.row, styles.rowBorder, styles.nameFields]}>
+          <TextField
+            label={t('onb_firstNameLabel')}
+            icon="user"
+            natural
+            value={names.firstName}
+            onChangeText={(firstName) => changeName({ firstName })}
+            error={nameErrors.firstName ? t(nameErrors.firstName) : null}
+            shake={nameShake}
+            autoCapitalize="words"
+            autoComplete="given-name"
+            textContentType="givenName"
+            returnKeyType="next"
+            maxLength={MAX_NAME_LENGTH}
+            autoFocus={focusName}
+          />
+          <TextField
+            label={t('onb_lastNameLabel')}
+            natural
+            value={names.lastName}
+            onChangeText={(lastName) => changeName({ lastName })}
+            error={nameErrors.lastName ? t(nameErrors.lastName) : null}
+            shake={nameShake}
+            autoCapitalize="words"
+            autoComplete="family-name"
+            textContentType="familyName"
+            returnKeyType="done"
+            maxLength={MAX_NAME_LENGTH}
+          />
+        </View>
+      ) : name || !loaded ? (
+        <Row label={t('profile_name_label')} value={name || '…'} />
+      ) : (
+        <View style={[styles.row, styles.rowBorder]}>
+          <AppText style={styles.rowLabel}>{t('profile_name_label')}</AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${t('profile_add_name')}: ${t('profile_name_label')}`}
+            onPress={() => startEdit(true)}
+            hitSlop={8}
+            style={({ pressed }) => [styles.addName, pressed && styles.editPressed]}
+          >
+            <LineIcon name="plus" size={16} color={colors.brand} />
+            <AppText style={styles.addNameText}>{t('profile_add_name')}</AppText>
+          </Pressable>
+        </View>
+      )}
       <View style={[styles.row, styles.rowBorder]}>
         <AppText style={editing ? styles.fieldLabel : styles.rowLabel}>{t('profile_email_label')}</AppText>
         {editing ? (
@@ -385,7 +459,7 @@ function ProfileDetails({
               autoComplete="tel"
               textContentType="telephoneNumber"
               returnKeyType="done"
-              autoFocus
+              autoFocus={!focusName}
             />
             {phoneNotice}
           </View>
@@ -593,4 +667,18 @@ const styles = StyleSheet.create({
   editActions: { flexDirection: 'row', gap: 12, paddingTop: 4, paddingBottom: 16 },
   editAction: { flex: 1 },
   savedNotice: { paddingBottom: 16 },
+  nameFields: { gap: 12 },
+  // At the row's leading edge (left, right in Hebrew), a 44pt target with the hitSlop.
+  addName: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    minHeight: 28,
+    marginStart: -8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    ...webOnly({ cursor: 'pointer' }),
+  },
+  addNameText: { fontSize: 16, fontWeight: '600', color: colors.brand },
 })
