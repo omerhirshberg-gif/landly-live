@@ -43,3 +43,24 @@ export function appleNamesFromNative(fullName: { givenName?: string | null; fami
   if (!fullName) return null
   return toNames(fullName.givenName, fullName.familyName)
 }
+
+// The app keeps the name Apple sent (expo-secure-store) until a sign-in has
+// stored it: Apple sends it once, and a Firebase step that fails after the
+// Apple sheet (a misconfigured project, a dropped network) would lose it
+// for good. Keyed by Apple's stable user identifier.
+export const appleNameCacheKey = (appleUser: string) => `apple.name.${appleUser.replace(/[^A-Za-z0-9._-]/g, '_')}`
+
+export function appleNamesToCache(names: PersonNames): string {
+  return JSON.stringify(names)
+}
+
+/** A cached name back, re-normalised; null for nothing or anything malformed. */
+export function appleNamesFromCache(raw: string | null | undefined): PersonNames | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as { firstName?: unknown; lastName?: unknown } | null
+    return parsed && typeof parsed === 'object' ? toNames(parsed.firstName, parsed.lastName) : null
+  } catch {
+    return null
+  }
+}

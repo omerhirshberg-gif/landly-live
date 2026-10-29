@@ -191,8 +191,8 @@ describe('check:apple', () => {
   it("reads Apple's answer to Firebase redeeming a made-up code", () => {
     const answer = (error: string) =>
       `INVALID_IDP_RESPONSE : Error getting access token from https://appleid.apple.com, OAuth2 redirect uri is: https://x/__/auth/handler, response: OAuth2TokenResponse{params: error=${error}&error_description=x, httpMetadata: HttpMetadata{status=400}}`
-    expect(classifyTokenExchange(answer('invalid_grant'))).toBe('key-ok')
-    expect(classifyTokenExchange(answer('invalid_client'))).toBe('bad-key')
+    expect(classifyTokenExchange(answer('invalid_grant'))).toBe('sent')
+    expect(classifyTokenExchange(answer('invalid_client'))).toBe('no-key')
     expect(classifyTokenExchange('MISSING_OR_INVALID_NONCE : Duplicate credential received.')).toBe('unknown')
     expect(classifyTokenExchange(undefined)).toBe('unknown')
   })
@@ -215,12 +215,12 @@ describe('check:apple', () => {
   })
 
   it('passes a row only with the right Services ID for the project, Apple accepting and a working key', () => {
-    const KEY_OK = 'INVALID_IDP_RESPONSE : ... OAuth2TokenResponse{params: error=invalid_grant&error_description=x}'
-    const KEY_BAD = 'INVALID_IDP_RESPONSE : ... OAuth2TokenResponse{params: error=invalid_client}'
-    const prod = { projectId: 'landly-be752', host: 'www.golandly.com', status: 200, exchangeMessage: KEY_OK }
-    expect(assessRow({ ...prod, exchangeMessage: KEY_BAD, authUri: authUri('com.amitbd.landlyapp.web', prod.host), body: APPLE_ACCEPTED })).toMatchObject({
+    const SECRET_SENT = 'INVALID_IDP_RESPONSE : ... OAuth2TokenResponse{params: error=invalid_grant&error_description=x}'
+    const NO_SECRET = 'INVALID_IDP_RESPONSE : ... OAuth2TokenResponse{params: error=invalid_client}'
+    const prod = { projectId: 'landly-be752', host: 'www.golandly.com', status: 200, exchangeMessage: SECRET_SENT }
+    expect(assessRow({ ...prod, exchangeMessage: NO_SECRET, authUri: authUri('com.amitbd.landlyapp.web', prod.host), body: APPLE_ACCEPTED })).toMatchObject({
       ok: false,
-      exchange: 'bad-key',
+      exchange: 'no-key',
     })
     expect(assessRow({ ...prod, authUri: authUri('com.amitbd.landlyapp.web', prod.host), body: APPLE_ACCEPTED }).ok).toBe(true)
     expect(assessRow({ ...prod, authUri: authUri('com.amitbd.landlyapp.web', prod.host), body: APPLE_BAD_REDIRECT })).toMatchObject({
@@ -229,7 +229,7 @@ describe('check:apple', () => {
     })
     // PROD must never send DEV's Services ID, and the other way round.
     expect(assessRow({ ...prod, authUri: authUri('com.amitbd.landlyapp.web.dev', prod.host), body: APPLE_ACCEPTED }).ok).toBe(false)
-    const dev = { projectId: 'landly-dev', host: 'landly-dev.firebaseapp.com', status: 200, exchangeMessage: KEY_OK }
+    const dev = { projectId: 'landly-dev', host: 'landly-dev.firebaseapp.com', status: 200, exchangeMessage: SECRET_SENT }
     expect(assessRow({ ...dev, authUri: authUri('com.amitbd.landlyapp.web.dev', dev.host), body: APPLE_ACCEPTED }).ok).toBe(true)
     expect(assessRow({ ...dev, authUri: authUri('com.amitbd.landlyapp.web', dev.host), body: APPLE_ACCEPTED }).ok).toBe(false)
   })

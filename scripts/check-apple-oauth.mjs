@@ -7,8 +7,10 @@
 // is missing from the Services ID's Return URLs in the Apple Developer portal.
 // Then has Firebase redeem a made-up code with Apple (accounts:signInWithIdp,
 // as the handler does after Face ID): Apple refusing the code (invalid_grant)
-// proves the Team ID, Key ID and private key in Firebase's Apple provider
-// work; invalid_client means they don't. No account is created.
+// shows Firebase sends a client secret; invalid_client, that its Apple
+// provider has no key. Apple checks the code before the secret, so this can't
+// tell a wrong key from a right one: `npm run check:apple-key` does, with a
+// real sign-in. No account is created.
 // Then hands Firebase an unsigned Apple identity token addressed to the app's
 // bundle ID, as the native sheet's are: Firebase must accept that audience
 // (an iOS app with the bundle ID registered in the project), or the app's
@@ -116,6 +118,7 @@ for (const { label, file } of ENVS) {
       const notes = []
       if (row.clientId !== row.expectedClientId) notes.push(`client_id ${row.clientId}, expected ${row.expectedClientId}`)
       if (row.exchange === 'unknown') notes.push(`token exchange: ${exchangeMessage.split(',')[0].slice(0, 160)}`)
+      if (row.exchange === 'no-key') notes.push("Firebase sends Apple no client secret: enter the Team ID, Key ID and .p8 in this project's Apple provider")
       const note = notes.join('; ')
       rows.push({ label, ...row, note })
     } catch (err) {
@@ -181,7 +184,7 @@ rows.push({
   note: SCENE_NOTES[sceneStatus],
 })
 
-console.log(`     ${'ENV'.padEnd(4)} ${'PROJECT'.padEnd(13)} ${'HOST'.padEnd(30)} ${'AUTHORIZE'.padEnd(12)} ${'KEY'.padEnd(8)} SERVICES ID`)
+console.log(`     ${'ENV'.padEnd(4)} ${'PROJECT'.padEnd(13)} ${'HOST'.padEnd(30)} ${'AUTHORIZE'.padEnd(12)} ${'SECRET'.padEnd(8)} SERVICES ID`)
 for (const r of rows) {
   const status = r.ok ? 'OK  ' : 'FAIL'
   console.log(
@@ -189,5 +192,7 @@ for (const r of rows) {
   )
 }
 const failed = rows.filter((r) => !r.ok).length
-console.log(failed ? `\n${failed} of ${rows.length} failed.` : `\nAll ${rows.length} accepted by Apple, every project's Apple key works and the app's iOS project is set up.`)
+console.log(failed ? `\n${failed} of ${rows.length} failed.` : `\nAll ${rows.length} OK: Apple accepts every Services ID and Return URL, Firebase sends it a client secret, and the app's iOS project is set up.`)
+// Apple only checks the key itself on a real code.
+console.log('Whether that secret is signed with the right key: `npm run check:apple-key` (one real sign-in).')
 process.exit(failed ? 1 : 0)

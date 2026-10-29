@@ -10,9 +10,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
-import { glideToLockup, LOCK_GLIDE_SPRING } from '@shared/brand/entranceTimeline'
+import * as NativeSplash from 'expo-splash-screen'
+import {
+  glideToLockup,
+  SPLASH_BACKDROP_MS,
+  SPLASH_GLIDE,
+  SPLASH_RELEASE_MS,
+  splashGlideBackstopMs,
+} from '@shared/brand/entranceTimeline'
 import BrandHero, { LOCKUP_HEIGHT, LOCKUP_SCALE } from './BrandHero'
-import { ENTRANCE_SPRING, useEntrance, type Rect } from './Entrance'
+import { useEntrance, type Rect } from './Entrance'
 import { colors } from '../theme'
 
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1)
@@ -22,9 +29,10 @@ const PULSE_EASE = cubicBezier(0.42, 0, 0.58, 1)
 // before giving up on the glide and crossfading instead.
 const HANDOFF_TIMEOUT_MS = 1200
 // A glide normally ends on its spring's callback; whatever happens to that,
-// the splash (and its logo) is gone by this long after the glide starts, so
-// it can never be left over the screen underneath.
-const GLIDE_MAX_MS = 1600
+// it's released this long after it starts, so the splash (and its logo) can
+// never be left over the screen underneath. Past the spring's own settle, so
+// it never cuts a glide that is merely running a few frames late.
+const GLIDE_MAX_MS = splashGlideBackstopMs(Math.max(SPLASH_GLIDE.login.duration, SPLASH_GLIDE.lock.duration))
 export const SPLASH_Z = 1100
 
 /** Where the splash logo goes: the login hero, the app lock's header, or nowhere (the tabs). */
@@ -78,14 +86,27 @@ export default function SplashScreen({
   const backdrop = useSharedValue(1)
   const overlay = useSharedValue(1)
 
+  // The native launch screen (expo-splash-screen, app.json) stays up until
+  // the splash has drawn its first frame on the same canvas colour, then
+  // fades: the intro starts from it, never from a blank or white flash.
+  const nativeHidden = useRef(false)
+  const hideNativeSplash = useCallback(() => {
+    if (nativeHidden.current) return
+    nativeHidden.current = true
+    NativeSplash.hide()
+  }, [])
+
   useEffect(() => {
     if (!ready || !introDone || started.current) return
     // Once only, whichever ends it first: the animation's callback or the timer.
+    // The screen's own logo shows under the splash's (phase 'done'), then the
+    // splash fades off it and unmounts.
     const finish = () => {
       if (finished.current) return
       finished.current = true
       setPhase('done')
-      onDone()
+      overlay.set(withTiming(0, { duration: SPLASH_RELEASE_MS, easing: EASE_OUT }))
+      setTimeout(onDone, SPLASH_RELEASE_MS)
     }
     const fadeOut = () => {
       started.current = true
@@ -99,18 +120,18 @@ export default function SplashScreen({
       setPhase('settling')
       // Not cleared when this effect re-runs (the lock may open mid-glide): only on unmount.
       glideTimer.current = setTimeout(finish, GLIDE_MAX_MS)
-      backdrop.set(withTiming(0, { duration: 380, easing: EASE_OUT }))
+      backdrop.set(withTiming(0, { duration: SPLASH_BACKDROP_MS, easing: EASE_OUT }))
       if (handoff === 'login') {
-        tx.set(withSpring(target.x - from.x, ENTRANCE_SPRING))
-        ty.set(withSpring(target.y - from.y, ENTRANCE_SPRING, (fin) => fin && scheduleOnRN(finish)))
+        tx.set(withSpring(target.x - from.x, SPLASH_GLIDE.login))
+        ty.set(withSpring(target.y - from.y, SPLASH_GLIDE.login, (fin) => fin && scheduleOnRN(finish)))
         return
       }
       // Scaling about the hero's centre moves the lockup (its top part) too.
       const to = glideToLockup(from, target, LOCKUP_HEIGHT, LOCKUP_SCALE)
       sloganFade.set(withTiming(0, { duration: 200, easing: EASE_OUT }))
-      scale.set(withSpring(LOCKUP_SCALE, LOCK_GLIDE_SPRING))
-      tx.set(withSpring(to.x, LOCK_GLIDE_SPRING))
-      ty.set(withSpring(to.y, LOCK_GLIDE_SPRING, (fin) => fin && scheduleOnRN(finish)))
+      scale.set(withSpring(LOCKUP_SCALE, SPLASH_GLIDE.lock))
+      tx.set(withSpring(to.x, SPLASH_GLIDE.lock))
+      ty.set(withSpring(to.y, SPLASH_GLIDE.lock, (fin) => fin && scheduleOnRN(finish)))
       return
     }
     // Reduced motion lands here too: no glide, just a crossfade into the screen.
@@ -130,6 +151,7 @@ export default function SplashScreen({
       style={[styles.root, overlayStyle]}
       // Once the hand-over starts, the login screen underneath is live.
       pointerEvents={phase === 'splash' ? 'auto' : 'none'}
+      onLayout={hideNativeSplash}
       accessibilityRole="progressbar"
       accessibilityLabel="Landly"
     >

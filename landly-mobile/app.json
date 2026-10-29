@@ -37,6 +37,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#f8fafc"
+        }
+      ],
       "expo-notifications",
       "expo-web-browser",
       "expo-apple-authentication",

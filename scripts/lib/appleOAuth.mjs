@@ -1,6 +1,8 @@
-// The pure half of scripts/check-apple-oauth.mjs, kept free of network and
-// file access so tests/unit/checkAppleOAuth.test.ts can feed it recorded
-// responses.
+// The pure half of scripts/check-apple-oauth.mjs and check-apple-key.mjs,
+// kept free of network and file access so tests/unit/checkAppleOAuth.test.ts
+// can feed it recorded responses.
+
+import { createPrivateKey, sign } from 'node:crypto'
 
 /** The Services ID each Firebase project's Apple provider must send. */
 export const EXPECTED_APPLE_CLIENT_IDS = {
@@ -34,17 +36,19 @@ export function classifyAppleAuthorize(status, body) {
 
 /**
  * What Apple's token endpoint said when Firebase redeemed a made-up code
- * (accounts:signInWithIdp's error message):
- *   key-ok    -- invalid_grant: Apple accepted the client secret Firebase
- *                signs with the project's Team ID, Key ID and private key,
- *                and only refused the code
- *   bad-key   -- invalid_client: that Apple configuration in Firebase is wrong
- *   unknown   -- anything else (shown as is)
+ * (accounts:signInWithIdp's error message). Apple judges the code before the
+ * client secret's signature (a made-up code gets invalid_grant even with a
+ * secret signed by a stranger's key), so this proves only that Firebase
+ * sends a secret, never that its key is right: `npm run check:apple-key`
+ * does that, with a real code.
+ *   sent     -- invalid_grant: Firebase sent Apple a client secret
+ *   no-key   -- invalid_client: it sent none (no key in its Apple provider)
+ *   unknown  -- anything else (shown as is)
  */
 export function classifyTokenExchange(message) {
   const error = String(message ?? '').match(/[{\s,&]error=([^&,}\s]+)/)?.[1]
-  if (error === 'invalid_grant') return 'key-ok'
-  if (error === 'invalid_client') return 'bad-key'
+  if (error === 'invalid_grant') return 'sent'
+  if (error === 'invalid_client') return 'no-key'
   return 'unknown'
 }
 
@@ -71,14 +75,14 @@ export function classifyNativeAudience(message) {
   return { status: 'unknown', audience: null, expectedAudience: null }
 }
 
-/** One row of the report; ok only when Apple accepts, the client is the expected one and the key works. */
+/** One row of the report; ok only when Apple accepts, the client is the expected one and Firebase sends a secret. */
 export function assessRow({ projectId, host, authUri, status, body, exchangeMessage }) {
   const { origin, clientId, redirectUri } = parseAuthUri(authUri)
   const expectedClientId = EXPECTED_APPLE_CLIENT_IDS[projectId] ?? null
   const apple = origin === 'https://appleid.apple.com' ? classifyAppleAuthorize(status, body) : 'not-apple'
   const exchange = classifyTokenExchange(exchangeMessage)
   const clientOk = expectedClientId !== null && clientId === expectedClientId
-  return { projectId, host, clientId, expectedClientId, redirectUri, apple, exchange, ok: clientOk && apple === 'accepted' && exchange === 'key-ok' }
+  return { projectId, host, clientId, expectedClientId, redirectUri, apple, exchange, ok: clientOk && apple === 'accepted' && exchange === 'sent' }
 }
 
 /**
@@ -120,4 +124,98 @@ export function nativeSceneLifecycleStatus({ infoPlist, pbxproj, appDelegate, sc
     /class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider\b/.test(appDelegate ?? '') &&
     !/factory\.startReactNative\(/.test(appDelegate ?? '')
   return manifest && compiled && delegate && provider ? 'ok' : 'stale-build'
+}
+
+/** The Apple Developer team that owns the app, its Services IDs and the Sign in with Apple key. */
+export const EXPECTED_APPLE_TEAM_ID = 'Q9PZPLU6GY'
+
+/**
+ * Problems with a Sign in with Apple key found before asking Apple (empty
+ * when none): Team and Key IDs are 10 letters/digits, the .p8 must be an EC
+ * P-256 private key, and Apple names the download AuthKey_<Key ID>.p8, so a
+ * file named for another key means the Key ID and the key don't belong
+ * together.
+ */
+export function appleKeyProblems({ teamId, keyId, privateKeyPem, fileName }) {
+  const problems = []
+  if (!/^[A-Z0-9]{10}$/.test(teamId ?? '')) problems.push(`Team ID ${JSON.stringify(teamId ?? '')} is not 10 letters/digits`)
+  else if (teamId !== EXPECTED_APPLE_TEAM_ID) problems.push(`Team ID ${teamId} is not Landly's (${EXPECTED_APPLE_TEAM_ID})`)
+  if (!/^[A-Z0-9]{10}$/.test(keyId ?? '')) problems.push(`Key ID ${JSON.stringify(keyId ?? '')} is not 10 letters/digits`)
+  const named = String(fileName ?? '').match(/AuthKey_([A-Z0-9]{10})\.p8$/)?.[1]
+  if (named && keyId && named !== keyId) problems.push(`the key file is AuthKey_${named}.p8 but the Key ID is ${keyId}: they belong to different keys`)
+  try {
+    const key = createPrivateKey(privateKeyPem ?? '')
+    if (key.asymmetricKeyType !== 'ec' || key.asymmetricKeyDetails?.namedCurve !== 'prime256v1') problems.push('the .p8 is not an EC P-256 key')
+  } catch {
+    problems.push('the .p8 is not a readable private key')
+  }
+  return problems
+}
+
+const b64url = (value) => Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)).toString('base64url')
+
+/**
+ * The client secret Firebase signs for Apple's token endpoint, as Apple
+ * documents it: an ES256 JWT from the team (iss) for the Services ID (sub),
+ * signed with the key (kid). `now` in seconds.
+ */
+export function appleClientSecret({ teamId, keyId, clientId, privateKeyPem, now, ttlSeconds = 300 }) {
+  const input = `${b64url({ alg: 'ES256', kid: keyId })}.${b64url({ iss: teamId, iat: now, exp: now + ttlSeconds, aud: 'https://appleid.apple.com', sub: clientId })}`
+  const signature = sign('sha256', Buffer.from(input), { key: createPrivateKey(privateKeyPem), dsaEncoding: 'ieee-p1363' })
+  return `${input}.${signature.toString('base64url')}`
+}
+
+/**
+ * Where `npm run check:apple-key` has Apple send its real code: a Return URL
+ * each project's Services ID already lists, so nothing changes in the Apple
+ * portal. response_mode=query (allowed when no scopes are asked for) puts
+ * the code in the address bar, to be pasted back.
+ */
+export const APPLE_KEY_CHECK_RETURN_URLS = {
+  'landly-dev': 'https://landly-dev.firebaseapp.com/__/auth/handler',
+  'landly-be752': 'https://www.golandly.com/__/auth/handler',
+}
+export const APPLE_KEY_CHECK_STATE = 'landly-key-check'
+
+export function appleKeyCheckAuthorizeUrl(projectId) {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    response_mode: 'query',
+    client_id: EXPECTED_APPLE_CLIENT_IDS[projectId],
+    redirect_uri: APPLE_KEY_CHECK_RETURN_URLS[projectId],
+    state: APPLE_KEY_CHECK_STATE,
+  })
+  return `https://appleid.apple.com/auth/authorize?${params}`
+}
+
+/** The project, Services ID, Return URL and code from the address Apple sent the browser to; null if it isn't one. */
+export function parseKeyCheckReturn(address) {
+  let url
+  try {
+    url = new URL(String(address ?? '').trim())
+  } catch {
+    return null
+  }
+  const redirectUri = `${url.origin}${url.pathname}`
+  const projectId = Object.keys(APPLE_KEY_CHECK_RETURN_URLS).find((id) => APPLE_KEY_CHECK_RETURN_URLS[id] === redirectUri)
+  const code = url.searchParams.get('code')
+  if (!projectId || !code || url.searchParams.get('state') !== APPLE_KEY_CHECK_STATE) return null
+  return { projectId, clientId: EXPECTED_APPLE_CLIENT_IDS[projectId], redirectUri, code }
+}
+
+/**
+ * Apple's token endpoint's answer to a real code. Apple checks the code
+ * first, so only a real one reaches the client secret:
+ *   key-ok      -- tokens: the key, Key ID and Team ID belong to this Services ID
+ *   bad-key     -- invalid_client: they don't
+ *   code-spent  -- invalid_grant: the code was used, expired (5 minutes) or
+ *                  came for another Return URL; sign in again
+ *   unknown     -- anything else
+ */
+export function classifyAppleTokenAnswer(status, json) {
+  if (status === 200 && json && typeof json === 'object' && json.id_token) return 'key-ok'
+  const error = json && typeof json === 'object' ? json.error : null
+  if (error === 'invalid_client') return 'bad-key'
+  if (error === 'invalid_grant') return 'code-spent'
+  return 'unknown'
 }

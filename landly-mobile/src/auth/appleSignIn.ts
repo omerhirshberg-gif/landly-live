@@ -1,9 +1,10 @@
 import { Platform } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
+import * as SecureStore from 'expo-secure-store'
 import { FirebaseError } from 'firebase/app'
 import { OAuthProvider, signInWithCredential } from 'firebase/auth'
-import { appleNamesFromNative } from '@shared/auth/appleName'
+import { appleNameCacheKey, appleNamesFromCache, appleNamesFromNative, appleNamesToCache, type PersonNames } from '@shared/auth/appleName'
 import { finishCustomerOAuthSignIn, type CustomerSignInResult } from '@shared/auth/signInCustomer'
 import { auth } from '@shared/firebase/config'
 import type { Lang } from '@shared/i18n/translations'
@@ -27,6 +28,21 @@ import type { Lang } from '@shared/i18n/translations'
 export async function isAppleSignInAvailable(): Promise<boolean> {
   if (Platform.OS !== 'ios') return false
   return AppleAuthentication.isAvailableAsync().catch(() => false)
+}
+
+/**
+ * The name Apple sent with this authorization, kept on the device until a
+ * sign-in has stored it (lib/auth/appleName.ts); on later authorizations,
+ * which carry none, the one kept from an earlier attempt that failed.
+ */
+async function namesFor(apple: AppleAuthentication.AppleAuthenticationCredential): Promise<PersonNames | null> {
+  const key = appleNameCacheKey(apple.user)
+  const fresh = appleNamesFromNative(apple.fullName)
+  if (fresh) {
+    await SecureStore.setItemAsync(key, appleNamesToCache(fresh)).catch(() => undefined)
+    return fresh
+  }
+  return appleNamesFromCache(await SecureStore.getItemAsync(key).catch(() => null))
 }
 
 function randomNonce(): string {
@@ -57,8 +73,12 @@ export async function signInWithApple(currentLang: Lang): Promise<CustomerSignIn
     throw err
   }
   if (!apple.identityToken) throw new FirebaseError('ERR_REQUEST_INVALID_RESPONSE', 'Apple returned no identity token')
+  // Before Firebase: fullName is only filled on the first authorization, so
+  // it's kept until the profile has it, whatever happens below.
+  const names = await namesFor(apple)
   const credential = new OAuthProvider('apple.com').credential({ idToken: apple.identityToken, rawNonce })
   const cred = await signInWithCredential(auth, credential)
-  // fullName is only filled on the first authorization (lib/auth/appleName.ts).
-  return finishCustomerOAuthSignIn(cred, currentLang, { names: appleNamesFromNative(apple.fullName) })
+  const result = await finishCustomerOAuthSignIn(cred, currentLang, { names })
+  if (names) await SecureStore.deleteItemAsync(appleNameCacheKey(apple.user)).catch(() => undefined)
+  return result
 }

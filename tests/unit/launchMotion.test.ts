@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ENTRANCE_SPRING, glideToLockup, LOCK_GLIDE_SPRING, T } from '@/lib/brand/entranceTimeline'
+import { ENTRANCE_SPRING, glideToLockup, SPLASH_GLIDE, SPLASH_RELEASE_MS, splashGlideBackstopMs, T } from '@/lib/brand/entranceTimeline'
 import { LOCK_RISE, UNLOCK } from '@/lib/brand/onboardingMotion'
 
 const read = (file: string) => readFile(path.join('landly-mobile/src', file), 'utf8')
@@ -61,12 +61,17 @@ describe('splash logo into the app lock', () => {
     expect(landed.y).toBeCloseTo(target.y + target.height / 2, 6)
   })
 
-  it('glides on its damped spring while the slogan fades, then hands over in one frame', async () => {
-    expect(LOCK_GLIDE_SPRING).toEqual({ damping: 16, stiffness: 120 })
+  it('glides on its damped spring while the slogan fades, then crossfades onto the screen\'s own logo', async () => {
+    expect(SPLASH_GLIDE).toEqual({ login: { duration: 650, dampingRatio: 0.9 }, lock: { duration: 750, dampingRatio: 0.86 } })
+    expect(SPLASH_RELEASE_MS).toBe(140)
+    // The card's rise (login.tsx, and the web) keeps its own spring.
     expect(ENTRANCE_SPRING).toEqual({ damping: 15, stiffness: 90 })
     const splash = await read('components/SplashScreen.tsx')
     expect(splash).toContain('const to = glideToLockup(from, target, LOCKUP_HEIGHT, LOCKUP_SCALE)')
-    expect(splash).toContain('scale.set(withSpring(LOCKUP_SCALE, LOCK_GLIDE_SPRING))')
+    expect(splash).toContain('scale.set(withSpring(LOCKUP_SCALE, SPLASH_GLIDE.lock))')
+    expect(splash).toContain('ty.set(withSpring(target.y - from.y, SPLASH_GLIDE.login, (fin) => fin && scheduleOnRN(finish)))')
+    // The screen's logo shows (phase 'done') before the splash fades off it.
+    expect(splash).toMatch(/setPhase\('done'\)\s*overlay\.set\(withTiming\(0, \{ duration: SPLASH_RELEASE_MS/)
     expect(splash).toContain('sloganFade.set(withTiming(0')
     // The lock's own lockup shows only once the splash is gone (same commit as its removal).
     const lock = await read('auth/AppLock.tsx')
@@ -139,6 +144,9 @@ describe('unlock into the app', () => {
     expect(lock).toContain("pointerEvents={leaving ? 'none' : 'auto'}")
     const splash = await read('components/SplashScreen.tsx')
     expect(splash).toContain('glideTimer.current = setTimeout(finish, GLIDE_MAX_MS)')
+    // The backstop sits past both springs' settle (1.5x their perceptual duration), so it never cuts a glide short.
+    expect(splash).toContain('const GLIDE_MAX_MS = splashGlideBackstopMs(Math.max(SPLASH_GLIDE.login.duration, SPLASH_GLIDE.lock.duration))')
+    for (const { duration } of Object.values(SPLASH_GLIDE)) expect(splashGlideBackstopMs(duration)).toBeGreaterThanOrEqual(duration * 1.5 + 500)
     expect(splash).toMatch(/const finish = \(\) => \{\s*if \(finished\.current\) return\s*finished\.current = true/)
   })
 
@@ -147,5 +155,19 @@ describe('unlock into the app', () => {
     expect(lock).toContain('successHaptic()')
     const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'))
     expect(overlay.match(/unlock\(\)/g)).toHaveLength(1)
+  })
+})
+
+describe('native launch screen', () => {
+  it('holds in the canvas colour until the splash has drawn, then fades into it', async () => {
+    const appJson = JSON.parse(await readFile(path.join('landly-mobile', 'app.json'), 'utf8'))
+    const plugin = appJson.expo.plugins.find((p: unknown) => Array.isArray(p) && p[0] === 'expo-splash-screen')
+    const theme = await read('theme.ts')
+    expect(theme).toContain(`background: '${plugin[1].backgroundColor}'`)
+    const layout = await read('app/_layout.tsx')
+    expect(layout).toContain('NativeSplash.setOptions({ fade: true, duration: 200 })')
+    expect(layout).toContain('NativeSplash.preventAutoHideAsync().catch(() => undefined)')
+    const splash = await read('components/SplashScreen.tsx')
+    expect(splash).toContain('onLayout={hideNativeSplash}')
   })
 })
