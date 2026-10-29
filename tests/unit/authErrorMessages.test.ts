@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { FirebaseError } from 'firebase/app'
-import { authErrorDetail, describeAuthError, withIsolatedCode } from '@/lib/firebase/authErrors'
+import { authErrorDetail, describeAuthError, isAuthCancellation, withIsolatedCode } from '@/lib/firebase/authErrors'
 import { translations, type Lang } from '@/lib/i18n/translations'
-import { assessRow, classifyAppleAuthorize, classifyTokenExchange, parseAuthUri } from '../../scripts/lib/appleOAuth.mjs'
+import { assessRow, classifyAppleAuthorize, classifyTokenExchange, nativeAppleSignInStatus, parseAuthUri } from '../../scripts/lib/appleOAuth.mjs'
 
 const LANGS = Object.keys(translations) as Lang[]
 const fbErr = (code: string) => new FirebaseError(code, 'x')
@@ -70,10 +70,71 @@ describe('sign-in error messages', () => {
       error: 'invalid_grant',
       errorDescription: 'The code has expired or has been revoked.',
       redirectUri: 'https://www.golandly.com/__/auth/handler',
+      audience: null,
+      expectedAudience: null,
     })
     expect(authErrorDetail(new FirebaseError('auth/invalid-credential', 'Firebase: Error (auth/invalid-credential).'))).toBeNull()
     expect(authErrorDetail(null)).toBeNull()
     expect(authErrorDetail({ message: 42 })).toBeNull()
+  })
+
+  it("names the native Apple token's audience and the one Firebase expected, in the log only", () => {
+    for (const expected of ['com.amitbd.landlyapp.web.dev', 'com.amitbd.landlyapp.web']) {
+      const err = new FirebaseError(
+        'auth/invalid-credential',
+        `Firebase: The audience in ID Token [com.amitbd.landlyapp] does not match the expected audience ${expected}. (auth/invalid-credential).`,
+      )
+      expect(authErrorDetail(err)).toEqual({
+        error: null,
+        errorDescription: null,
+        redirectUri: null,
+        audience: 'com.amitbd.landlyapp',
+        expectedAudience: expected,
+      })
+      // On screen it stays the plain code, isolated in the Hebrew sentence.
+      expect(describeAuthError(err, { provider: 'apple' })).toEqual({ key: 'autherr_appleFailed', code: 'auth/invalid-credential' })
+      expect(withIsolatedCode(translations.he.autherr_appleFailed, 'auth/invalid-credential')).toBe(
+        `${translations.he.autherr_appleFailed} \u2066(auth/invalid-credential)\u2069`,
+      )
+    }
+  })
+
+  it("puts Apple's own reason after the code, and only an OAuth error name", () => {
+    const appleSaid = (error: string) =>
+      new FirebaseError(
+        'auth/invalid-credential',
+        `Error getting access token from https://appleid.apple.com, OAuth2 redirect uri is: https://www.golandly.com/__/auth/handler, response: OAuth2TokenResponse{params: error=${error}&error_description=x}`,
+      )
+    expect(describeAuthError(appleSaid('invalid_grant'), { provider: 'apple' })).toEqual({
+      key: 'autherr_appleFailed',
+      code: 'auth/invalid-credential · invalid_grant',
+    })
+    expect(describeAuthError(appleSaid('<script>'), { provider: 'apple' }).code).toBe('auth/invalid-credential')
+    // The email form never shows a provider's reason (there isn't one).
+    expect(describeAuthError(appleSaid('invalid_grant'))).toEqual({ key: 'autherr_badCredentials', code: null })
+    expect(withIsolatedCode(translations.he.autherr_appleFailed, 'auth/invalid-credential · invalid_grant')).toBe(
+      `${translations.he.autherr_appleFailed} \u2066(auth/invalid-credential · invalid_grant)\u2069`,
+    )
+  })
+
+  it("says the app's native Apple sheet failed, with iOS's code, and stays quiet on a cancel", () => {
+    for (const code of ['ERR_REQUEST_UNKNOWN', 'ERR_REQUEST_FAILED', 'ERR_REQUEST_NOT_HANDLED', 'ERR_REQUEST_INVALID_RESPONSE', 'ERR_REQUEST_NOT_INTERACTIVE']) {
+      const err = Object.assign(new Error('The authorization attempt failed for an unknown reason'), { code })
+      expect(describeAuthError(err, { provider: 'apple' })).toEqual({ key: 'autherr_appleFailed', code })
+      expect(describeAuthError(err)).toEqual({ key: 'autherr_appleFailed', code })
+      expect(isAuthCancellation(err)).toBe(false)
+    }
+    for (const code of ['ERR_REQUEST_CANCELED', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled']) {
+      expect(isAuthCancellation({ code }), code).toBe(true)
+    }
+    expect(describeAuthError({ code: 'ERR_REQUEST_CANCELED' })).toEqual({ key: 'autherr_cancelled', code: null })
+    expect(isAuthCancellation(fbErr('auth/invalid-credential'))).toBe(false)
+    expect(isAuthCancellation(null)).toBe(false)
+
+    const native = readFileSync('landly-mobile/src/auth/appleSignIn.ts', 'utf8')
+    expect(native).toMatch(/console\.warn\('\[auth\] Apple sheet failed:'/)
+    const app = readFileSync('landly-mobile/src/app/(auth)/login.tsx', 'utf8')
+    expect(app).toMatch(/if \(!isAuthCancellation\(err\)\) showAuthError\(err, provider\)/)
   })
 
   it('falls back to the generic message plus the code for anything else', () => {
@@ -134,6 +195,23 @@ describe('check:apple', () => {
     expect(classifyTokenExchange(answer('invalid_client'))).toBe('bad-key')
     expect(classifyTokenExchange('MISSING_OR_INVALID_NONCE : Duplicate credential received.')).toBe('unknown')
     expect(classifyTokenExchange(undefined)).toBe('unknown')
+  })
+
+  it("checks the app's local iOS project for the Sign in with Apple entitlement", () => {
+    const appJson = JSON.parse(readFileSync('landly-mobile/app.json', 'utf8'))
+    const plist = (dict: string) =>
+      `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n${dict}\n</plist>`
+    // The project generated before ios.usesAppleSignIn was added.
+    expect(nativeAppleSignInStatus({ appJson, entitlements: plist('<dict/>') })).toBe('stale-build')
+    const granted = plist(
+      '<dict>\n  <key>aps-environment</key>\n  <string>development</string>\n  <key>com.apple.developer.applesignin</key>\n  <array>\n    <string>Default</string>\n  </array>\n</dict>',
+    )
+    expect(nativeAppleSignInStatus({ appJson, entitlements: granted })).toBe('ok')
+    expect(nativeAppleSignInStatus({ appJson, entitlements: null })).toBe('no-native-project')
+    const withoutFlag = { expo: { ...appJson.expo, ios: { ...appJson.expo.ios, usesAppleSignIn: false } } }
+    expect(nativeAppleSignInStatus({ appJson: withoutFlag, entitlements: granted })).toBe('missing-config')
+    const withoutPlugin = { expo: { ...appJson.expo, plugins: appJson.expo.plugins.filter((p: unknown) => p !== 'expo-apple-authentication') } }
+    expect(nativeAppleSignInStatus({ appJson: withoutPlugin, entitlements: granted })).toBe('missing-config')
   })
 
   it('passes a row only with the right Services ID for the project, Apple accepting and a working key', () => {

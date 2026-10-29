@@ -19,7 +19,7 @@ import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResu
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { auth, devicePersistence } from '@shared/firebase/config'
-import { describeAuthError, logAuthError, withIsolatedCode, type AuthErrorDescription, type AuthErrorProvider } from '@shared/firebase/authErrors'
+import { describeAuthError, isAuthCancellation, logAuthError, withIsolatedCode, type AuthErrorDescription, type AuthErrorProvider } from '@shared/firebase/authErrors'
 import { getUserDocument } from '@shared/firebase/users'
 import { useAuth } from '@shared/firebase/useAuth'
 import type { Lang } from '@shared/i18n/translations'
@@ -323,7 +323,8 @@ export default function LoginScreen() {
       if (result.status === 'businessAccount') setBusinessAccount(true)
       else if (result.status === 'signedIn') await afterSignIn(result.user.uid, result.preferredLanguage)
     } catch (err) {
-      showAuthError(err, provider)
+      // Backing out of Google's or Apple's sheet isn't an error.
+      if (!isAuthCancellation(err)) showAuthError(err, provider)
     } finally {
       setChecking(false)
       setOAuthBusy(null)

@@ -55,7 +55,28 @@ const CODE_KEYS: Record<string, TranslationKey> = {
   'auth/operation-not-allowed': 'autherr_methodUnavailable',
   'auth/web-storage-unsupported': 'autherr_storage',
   'auth/operation-not-supported-in-this-environment': 'autherr_storage',
+  // expo-apple-authentication (the app's native Apple sheet).
+  ERR_REQUEST_CANCELED: 'autherr_cancelled',
 }
+
+/** Backing out of Google's or Apple's sign-in: nothing to report. */
+const CANCEL_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled', 'ERR_REQUEST_CANCELED'])
+
+export function isAuthCancellation(err: unknown): boolean {
+  const code = authErrorCode(err)
+  return code !== null && CANCEL_CODES.has(code)
+}
+
+// The native Apple sheet failing (expo-apple-authentication). ERR_REQUEST_UNKNOWN
+// is what iOS reports when the build lacks the Sign in with Apple entitlement
+// (scripts/check-apple-oauth.mjs checks the local native project for it).
+const NATIVE_APPLE_CODES = new Set([
+  'ERR_REQUEST_UNKNOWN',
+  'ERR_REQUEST_FAILED',
+  'ERR_REQUEST_NOT_HANDLED',
+  'ERR_REQUEST_INVALID_RESPONSE',
+  'ERR_REQUEST_NOT_INTERACTIVE',
+])
 
 // Failures that only happen inside Google's or Apple's sign-in, said as that
 // provider's (an Apple failure never talks about an email or password).
@@ -70,17 +91,29 @@ export function authErrorCode(err: unknown): string | null {
 
 /**
  * The message to show for a sign-in failure, and the code to show with it:
- * on the generic message, and on a Google or Apple failure (whose reason is
- * only in the log, authErrorDetail).
+ * on the generic message, and on a Google or Apple failure. When Firebase
+ * passed on the provider's own reason it follows the code, e.g.
+ * "auth/invalid-credential · invalid_grant", so a member's screenshot is
+ * enough to tell why without the browser's console.
  */
 export function describeAuthError(err: unknown, options: { provider?: AuthErrorProvider | null } = {}): AuthErrorDescription {
   const code = authErrorCode(err)
-  if (code && options.provider && PROVIDER_CODES.has(code)) return { key: PROVIDER_KEYS[options.provider], code }
+  // Only an OAuth error name ("invalid_grant") goes on screen, never free text.
+  const reason = authErrorDetail(err)?.error?.match(/^[a-z_]{1,40}$/i)?.[0]
+  const shown = code && reason ? `${code} · ${reason}` : code
+  if (code && NATIVE_APPLE_CODES.has(code)) return { key: 'autherr_appleFailed', code: shown }
+  if (code && options.provider && PROVIDER_CODES.has(code)) return { key: PROVIDER_KEYS[options.provider], code: shown }
   const key = code ? CODE_KEYS[code] : undefined
-  return key ? { key, code: null } : { key: 'autherr_generic', code }
+  return key ? { key, code: null } : { key: 'autherr_generic', code: shown }
 }
 
-export type AuthErrorDetail = { error: string | null; errorDescription: string | null; redirectUri: string | null }
+export type AuthErrorDetail = {
+  error: string | null
+  errorDescription: string | null
+  redirectUri: string | null
+  audience: string | null
+  expectedAudience: string | null
+}
 
 function decodeParam(value: string | undefined): string | null {
   if (!value) return null
@@ -96,8 +129,11 @@ function decodeParam(value: string | undefined): string | null {
  * provider's code it puts the provider's answer in the error message
  * ("... OAuth2 redirect uri is: https://.../__/auth/handler, response:
  * OAuth2TokenResponse{params: error=invalid_grant&error_description=...");
- * the message carries no token or code. Null when there's nothing more than
- * the code.
+ * the message carries no token or code. When it refuses an identity token
+ * for its audience ("The audience in ID Token [com.amitbd.landlyapp] does
+ * not match the expected audience com.amitbd.landlyapp.web.dev." -- the app's
+ * native Apple sheet, when the project has no iOS app with that bundle ID)
+ * it names both. Null when there's nothing more than the code.
  */
 export function authErrorDetail(err: unknown): AuthErrorDetail | null {
   const message = (err as { message?: unknown } | null)?.message
@@ -106,13 +142,20 @@ export function authErrorDetail(err: unknown): AuthErrorDetail | null {
     error: message.match(/[{\s,&]error=([^&,}\s]+)/)?.[1] ?? null,
     errorDescription: decodeParam(message.match(/error_description=([^&,}\s]+)/)?.[1]),
     redirectUri: message.match(/redirect uri is:\s*([^\s,]+)/i)?.[1] ?? null,
+    audience: message.match(/audience in ID Token \[([^\]\s]+)\]/)?.[1] ?? null,
+    expectedAudience: message.match(/expected audience ([^\s,()]+?)\.?(?=[\s,()]|$)/)?.[1] ?? null,
   }
-  return detail.error || detail.errorDescription || detail.redirectUri ? detail : null
+  return Object.values(detail).some(Boolean) ? detail : null
 }
 
-/** One console line for a failed sign-in: the code, and the provider's reason when there is one. */
+/** One console line for a failed sign-in: the code, the message, and the provider's reason when there is one. */
 export function logAuthError(err: unknown): void {
-  console.warn('[auth] sign-in failed:', authErrorCode(err) ?? err, authErrorDetail(err) ?? '')
+  const message = (err as { message?: unknown } | null)?.message
+  console.warn('[auth] sign-in failed:', {
+    code: authErrorCode(err),
+    message: typeof message === 'string' ? message : String(err),
+    ...authErrorDetail(err),
+  })
 }
 
 /**
