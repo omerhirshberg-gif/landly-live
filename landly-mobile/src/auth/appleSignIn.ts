@@ -15,9 +15,13 @@ import type { Lang } from '@shared/i18n/translations'
 // no Apple sheet, so the button isn't shown there at all.
 //
 // Needs the "Sign in with Apple" entitlement (app.json ios.usesAppleSignIn),
-// so it only works in a development or store build -- not Expo Go -- and the
-// Firebase project's Apple provider must accept the bundle ID
-// (com.amitbd.landlyapp) on both landly-dev and landly-be752.
+// so it only works in a development or store build -- not Expo Go. The
+// identity token's audience is the bundle ID (com.amitbd.landlyapp), not the
+// web Services ID, and Firebase only accepts it when both landly-dev and
+// landly-be752 have an iOS app with that bundle ID registered (Project
+// settings); otherwise signInWithCredential fails with
+// auth/invalid-credential ("The audience in ID Token ... does not match the
+// expected audience ..."). `npm run check:apple` checks both projects.
 
 /** Whether to show the button: iOS 13+ with the entitlement; never Android. */
 export async function isAppleSignInAvailable(): Promise<boolean> {
@@ -45,9 +49,14 @@ export async function signInWithApple(currentLang: Lang): Promise<CustomerSignIn
     if ((err as { code?: unknown } | null)?.code === 'ERR_REQUEST_CANCELED') {
       throw new FirebaseError('auth/popup-closed-by-user', 'Apple sign-in was cancelled')
     }
+    // iOS's own reason, before login.tsx turns it into a message.
+    // ERR_REQUEST_UNKNOWN usually means this build lacks the Sign in with
+    // Apple entitlement: run `npx expo prebuild --platform ios` and rebuild.
+    const { code, message } = (err ?? {}) as { code?: unknown; message?: unknown }
+    console.warn('[auth] Apple sheet failed:', { code, message })
     throw err
   }
-  if (!apple.identityToken) throw new Error('Apple returned no identity token')
+  if (!apple.identityToken) throw new FirebaseError('ERR_REQUEST_INVALID_RESPONSE', 'Apple returned no identity token')
   const credential = new OAuthProvider('apple.com').credential({ idToken: apple.identityToken, rawNonce })
   const cred = await signInWithCredential(auth, credential)
   // fullName is only filled on the first authorization (lib/auth/appleName.ts).

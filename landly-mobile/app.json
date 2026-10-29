@@ -14,7 +14,8 @@
         "CFBundleLocalizations": [
           "en",
           "he"
-        ]
+        ],
+        "NSLocalNetworkUsageDescription": "Landly connects to the development server on your local network while the app is being developed."
       },
       "bundleIdentifier": "com.amitbd.landlyapp",
       "usesAppleSignIn": true
@@ -39,6 +40,7 @@
       "expo-notifications",
       "expo-web-browser",
       "expo-apple-authentication",
+      "./plugins/withSceneLifecycle",
       [
         "expo-local-authentication",
         {
