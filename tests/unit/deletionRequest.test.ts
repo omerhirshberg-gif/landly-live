@@ -97,6 +97,20 @@ describe('/api/account/delete-request', () => {
     const record = db.docs.get('accountDeletionRequests/user-1')!
     expect(record).toMatchObject({ uid: 'user-1', email: 'dana@example.com', name: 'Dana Levi', reason: 'privacy', lang: 'he', status: 'pending' })
     expect(record.requestedAt).toBeInstanceOf(Date)
+    expect(record.appleRevocation).toBeNull()
+  })
+
+  it('records and emails an Apple account\'s revocation outcome', async () => {
+    mocks.requireCustomer.mockResolvedValue({ ...token, firebase: { identities: { email: ['dana@example.com'], 'apple.com': ['000123.abc'] }, sign_in_provider: 'apple.com' } })
+    const res = await post({ ...valid, appleRevocation: 'revoked' })
+    expect(res.status).toBe(200)
+    expect(db.docs.get('accountDeletionRequests/user-1')).toMatchObject({ appleRevocation: 'revoked' })
+    expect(mocks.send.mock.calls[0][0].text).toContain('Apple tokens: Revoked')
+  })
+
+  it('refuses an unknown revocation outcome', async () => {
+    expect((await post({ ...valid, appleRevocation: 'maybe' })).status).toBe(400)
+    expect(mocks.send).not.toHaveBeenCalled()
   })
 
   it('takes who is asking from the verified token, never the body', async () => {
@@ -222,9 +236,9 @@ describe('/api/account/delete-request', () => {
 
 describe('parseDeletionRequest', () => {
   it('treats the reason and details as optional', () => {
-    expect(parseDeletionRequest({ confirm: true })).toEqual({ reason: null, details: '', lang: '' })
-    expect(parseDeletionRequest({ confirm: true, reason: '', details: '' })).toEqual({ reason: null, details: '', lang: '' })
-    expect(parseDeletionRequest({ confirm: true, reason: null })).toEqual({ reason: null, details: '', lang: '' })
+    expect(parseDeletionRequest({ confirm: true })).toEqual({ reason: null, details: '', lang: '', appleRevocation: null })
+    expect(parseDeletionRequest({ confirm: true, reason: '', details: '' })).toEqual({ reason: null, details: '', lang: '', appleRevocation: null })
+    expect(parseDeletionRequest({ confirm: true, reason: null })).toEqual({ reason: null, details: '', lang: '', appleRevocation: null })
   })
 
   it('accepts every listed reason', () => {
@@ -236,6 +250,7 @@ describe('parseDeletionRequest', () => {
       reason: null,
       details: 'a\n\nb',
       lang: 'he X-Inj',
+      appleRevocation: null,
     })
   })
 
@@ -244,12 +259,21 @@ describe('parseDeletionRequest', () => {
     expect(parseDeletionRequest('confirm')).toBeNull()
     expect(parseDeletionRequest({ confirm: true, details: 42 })).toBeNull()
   })
+
+  it('takes an Apple account\'s revocation outcome, and nothing else in its place', () => {
+    for (const outcome of ['revoked', 'failed', 'unavailable'] as const) {
+      expect(parseDeletionRequest({ confirm: true, appleRevocation: outcome })?.appleRevocation).toBe(outcome)
+    }
+    expect(parseDeletionRequest({ confirm: true, appleRevocation: null })?.appleRevocation).toBeNull()
+    expect(parseDeletionRequest({ confirm: true, appleRevocation: 'done' })).toBeNull()
+    expect(parseDeletionRequest({ confirm: true, appleRevocation: true })).toBeNull()
+  })
 })
 
 describe('deletion email', () => {
   const base: DeletionRequestEmail = {
     uid: 'u1', name: 'Dana Levi', email: 'dana@example.com', providers: ['password'], requestedAt: new Date('2026-10-16T09:30:00Z'),
-    reason: null, details: '', lang: 'en',
+    reason: null, details: '', lang: 'en', appleRevocation: null,
   }
 
   it('escapes HTML and keeps the subject on one line', () => {
@@ -258,6 +282,19 @@ describe('deletion email', () => {
     expect(mail.subject).not.toMatch(/[\r\n]/)
     expect(mail.html).not.toContain('<script>')
     expect(mail.html).toContain('&lt;script&gt;')
+  })
+
+  it('tells the team what happened to an Apple account\'s tokens', () => {
+    const apple = { ...base, providers: ['apple.com'] }
+    expect(buildDeletionRequestEmail({ ...apple, appleRevocation: 'revoked' }).text).toContain('Apple tokens: Revoked (the member confirmed with Apple)')
+    expect(buildDeletionRequestEmail({ ...apple, appleRevocation: 'failed' }).text).toContain('Apple tokens: NOT revoked: confirming with Apple or revoking failed')
+    expect(buildDeletionRequestEmail({ ...apple, appleRevocation: 'unavailable' }).text).toContain("Apple tokens: NOT revoked: Apple confirmation isn't available on this device")
+    // An app from before the Apple step sends no outcome.
+    expect(buildDeletionRequestEmail(apple).text).toContain('Apple tokens: NOT revoked: not attempted (an older version of the app)')
+  })
+
+  it('adds no Apple line for other accounts', () => {
+    expect(buildDeletionRequestEmail(base).text).not.toContain('Apple tokens')
   })
 
   it('says when no reason or details were given, and shows Israel time', () => {
@@ -275,6 +312,7 @@ describe('deletion translations', () => {
       'del_row_title', 'del_row_sub', 'del_title', 'del_intro', 'del_email_label', 'del_reason_label', 'del_reason_placeholder',
       'del_details_label', 'del_confirm', 'del_submit', 'del_sending', 'del_cancel', 'del_success_title', 'del_success_body',
       'del_rate_limited', 'del_error', 'del_session_expired', 'del_done',
+      'del_submit_apple', 'del_apple_note', 'del_apple_mismatch', 'del_apple_manual',
       'settings_back', 'settings_group_prefs', 'settings_group_account', 'settings_group_help', 'settings_group_danger',
       'settings_close',
     ] as const

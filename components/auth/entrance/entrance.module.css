@@ -869,7 +869,11 @@ li[data-state='done'] > .brandStepDot {
   animation-duration: var(--card-fade-ms), var(--card-fade-ms);
   animation-timing-function: var(--ease-out), var(--ease-out-soft);
   animation-delay: var(--card-delay), var(--card-delay);
-  animation-fill-mode: both, both;
+  /* Backwards, not both: the end state is the card's own (opaque, in place),
+     and a transform animation left filling forwards can keep the card on a
+     GPU layer for good, softening everything on it (the provider tiles' 1px
+     borders and logos most of all). */
+  animation-fill-mode: backwards, backwards;
 }
 @supports (animation-timing-function: linear(0, 1)) {
   .root[data-entrance='intro'] .card,

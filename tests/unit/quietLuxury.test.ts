@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { Gift } from 'lucide-react'
 import { LangContext } from '@/lib/i18n/LangProvider'
@@ -141,10 +141,11 @@ describe("what's inside: lifestyle lines, no counts", () => {
 })
 
 describe('the icon sweep', () => {
-  // Every tracked or new web source outside the internal admin.
+  // Every tracked or new web source outside the internal admin, as it is in
+  // the working tree (a deleted file stays tracked until that's committed).
   const files = execFileSync('git', ['ls-files', '-co', '--exclude-standard', 'app', 'components', 'lib'], { encoding: 'utf8' })
     .split('\n')
-    .filter((f) => /\.tsx?$/.test(f) && !/^(app|components)\/admin\//.test(f))
+    .filter((f) => /\.tsx?$/.test(f) && !/^(app|components)\/admin\//.test(f) && existsSync(f))
 
   it('draws no Font Awesome glyph outside admin', () => {
     expect(files.length).toBeGreaterThan(100)

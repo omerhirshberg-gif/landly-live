@@ -12,7 +12,9 @@ import { claimDeletionRequest } from '@/lib/account/deletionRequests'
 // accountDeletionRequests/{uid}. Signed-in customers only, but not only
 // verified ones: an unverified member can still ask to be deleted. Who is
 // asking comes from the verified ID token and users/{uid}, never the body. A
-// repeat within 24 hours answers ok without emailing again.
+// repeat within 24 hours answers ok without emailing again. An Apple account's
+// form confirms with Apple and revokes its tokens first, and reports the
+// outcome (appleRevocation), which goes in the email and the record.
 // CORS for the app's Expo web build (lib/auth/cors.ts); native apps and the
 // website itself don't need it.
 export function OPTIONS(request: Request) {

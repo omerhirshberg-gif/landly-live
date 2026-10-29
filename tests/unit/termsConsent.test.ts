@@ -5,7 +5,7 @@ import { translations, type Lang, type TranslationKey } from '@/lib/i18n/transla
 import { consentParts } from '@/lib/legal/consentText'
 
 const mocks = vi.hoisted(() => ({
-  getDoc: vi.fn(), setDoc: vi.fn(), ensure: vi.fn(), businessSignOut: vi.fn(), resolveLang: vi.fn(),
+  getDoc: vi.fn(), setDoc: vi.fn(), updateDoc: vi.fn(), signOut: vi.fn(), updateProfile: vi.fn(), ensure: vi.fn(), businessSignOut: vi.fn(), resolveLang: vi.fn(),
 }))
 
 vi.mock('firebase/firestore', () => ({
@@ -13,10 +13,10 @@ vi.mock('firebase/firestore', () => ({
   getDoc: mocks.getDoc,
   setDoc: mocks.setDoc,
   serverTimestamp: () => 'SERVER_TS',
-  updateDoc: vi.fn(), arrayUnion: vi.fn(), arrayRemove: vi.fn(),
+  updateDoc: mocks.updateDoc, arrayUnion: vi.fn(), arrayRemove: vi.fn(),
 }))
 vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {} }))
-vi.mock('firebase/auth', () => ({ signInWithEmailAndPassword: vi.fn(), signOut: vi.fn() }))
+vi.mock('firebase/auth', () => ({ signInWithEmailAndPassword: vi.fn(), signOut: mocks.signOut, updateProfile: mocks.updateProfile }))
 vi.mock('@/lib/firebase/businesses', () => ({ signOutIfBusinessAccount: mocks.businessSignOut }))
 vi.mock('@/lib/i18n/preferredLanguage', () => ({ resolvePreferredLanguage: mocks.resolveLang }))
 
@@ -26,6 +26,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.getDoc.mockResolvedValue({ exists: () => false })
   mocks.setDoc.mockResolvedValue(undefined)
+  mocks.updateDoc.mockResolvedValue(undefined)
+  mocks.updateProfile.mockResolvedValue(undefined)
   mocks.businessSignOut.mockResolvedValue(false)
   mocks.resolveLang.mockResolvedValue(null)
 })
@@ -55,7 +57,7 @@ describe('consent text templates', () => {
     const he = translations.he
     const render = (s: string) => consentParts(s).map((p) => ('link' in p ? (p.link === 'terms' ? he.legal_terms_link : he.legal_privacy_link) : p.text)).join('')
     expect(render(he.signup_terms_agree)).toBe('אני מאשר/ת שמלאו לי 16 ומעלה ומאשר/ת את תנאי השימוש ומדיניות הפרטיות')
-    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google, הינך מאשר/ת שמלאו לך 16 ומעלה ואת תנאי השימוש ומדיניות הפרטיות של Landly.')
+    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google או Apple, הינך מאשר/ת שמלאו לך 16 ומעלה ואת תנאי השימוש ומדיניות הפרטיות של Landly.')
   })
 
   it.each(LANGS)('every sign-up consent sentence states the 16+ age requirement (%s)', (lang) => {
@@ -90,7 +92,7 @@ describe('web ConsentText', () => {
 })
 
 describe('recording consent on the user document', () => {
-  const user = { uid: 'u1', email: 'g@example.com', displayName: 'Gal Cohen' } as never
+  const user = { uid: 'u1', email: 'g@example.com', displayName: 'Gal Cohen', emailVerified: true } as never
 
   it('stores agreedToTerms and termsAgreedAt for a new Google account', async () => {
     const { finishCustomerGoogleSignIn } = await import('@/lib/auth/signInCustomer')
@@ -123,6 +125,55 @@ describe('recording consent on the user document', () => {
     expect(data).not.toHaveProperty('agreedToTerms')
     expect(data).not.toHaveProperty('termsAgreedAt')
     expect(data).not.toHaveProperty('isAgeConfirmed')
+  })
+})
+
+describe('Apple\'s first-time name', () => {
+  const appleUser = (displayName: string | null = null) => ({ uid: 'a1', email: 'x7@privaterelay.appleid.com', displayName, emailVerified: true }) as never
+  const names = { firstName: 'Noa', lastName: 'Levi' }
+
+  it('creates a new Apple account\'s document with the name and the relay email', async () => {
+    const { finishCustomerOAuthSignIn } = await import('@/lib/auth/signInCustomer')
+    await finishCustomerOAuthSignIn({ user: appleUser() } as never, 'he', { names })
+    const data = mocks.setDoc.mock.calls[0][1]
+    expect(data).toMatchObject({
+      email: 'x7@privaterelay.appleid.com', firstName: 'Noa', lastName: 'Levi', displayName: 'Noa Levi', agreedToTerms: true, isAgeConfirmed: true,
+    })
+  })
+
+  it('puts the name on the Auth record first, only when it has none', async () => {
+    const { finishCustomerOAuthSignIn } = await import('@/lib/auth/signInCustomer')
+    await finishCustomerOAuthSignIn({ user: appleUser() } as never, 'en', { names })
+    expect(mocks.updateProfile).toHaveBeenCalledWith(expect.anything(), { displayName: 'Noa Levi' })
+    expect(mocks.updateProfile.mock.invocationCallOrder[0]).toBeLessThan(mocks.setDoc.mock.invocationCallOrder[0])
+    mocks.updateProfile.mockClear()
+    await finishCustomerOAuthSignIn({ user: appleUser('Noa Levi') } as never, 'en', { names })
+    expect(mocks.updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('still creates the document when the Auth update fails', async () => {
+    mocks.updateProfile.mockRejectedValue(new Error('network'))
+    const { finishCustomerOAuthSignIn } = await import('@/lib/auth/signInCustomer')
+    await finishCustomerOAuthSignIn({ user: appleUser() } as never, 'en', { names })
+    expect(mocks.setDoc).toHaveBeenCalledTimes(1)
+  })
+
+  it('fills in a blank name on an existing document, and never overwrites one', async () => {
+    const { ensureUserDocument } = await import('@/lib/firebase/users')
+    mocks.getDoc.mockResolvedValue({ exists: () => true, data: () => ({ firstName: '', lastName: '' }) })
+    await ensureUserDocument(appleUser(), { names })
+    expect(mocks.updateDoc).toHaveBeenCalledWith('users/a1', { firstName: 'Noa', lastName: 'Levi', displayName: 'Noa Levi' })
+    mocks.updateDoc.mockClear()
+    mocks.getDoc.mockResolvedValue({ exists: () => true, data: () => ({ firstName: 'Dana', lastName: '' }) })
+    await ensureUserDocument(appleUser(), { names })
+    expect(mocks.updateDoc).not.toHaveBeenCalled()
+  })
+
+  it('creates a nameless document for a member who hid their name', async () => {
+    const { finishCustomerOAuthSignIn } = await import('@/lib/auth/signInCustomer')
+    await finishCustomerOAuthSignIn({ user: appleUser() } as never, 'en', { names: null })
+    expect(mocks.updateProfile).not.toHaveBeenCalled()
+    expect(mocks.setDoc.mock.calls[0][1]).toMatchObject({ firstName: '', lastName: '', displayName: '' })
   })
 })
 

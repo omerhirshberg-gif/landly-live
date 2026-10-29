@@ -16,7 +16,8 @@
           "he"
         ]
       },
-      "bundleIdentifier": "com.amitbd.landlyapp"
+      "bundleIdentifier": "com.amitbd.landlyapp",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -37,6 +38,7 @@
       "expo-router",
       "expo-notifications",
       "expo-web-browser",
+      "expo-apple-authentication",
       [
         "expo-local-authentication",
         {

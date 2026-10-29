@@ -66,8 +66,9 @@ export default function ProfileSection({ user }: { user: User }) {
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
   const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
-  // Google linked locks the address, even beside a password (the server refuses it too).
-  const canChangeEmail = !googleAccount && user.providerData.some((p) => p.providerId === 'password')
+  const appleAccount = user.providerData.some((p) => p.providerId === 'apple.com')
+  // Google or Apple linked locks the address, even beside a password (the server refuses it too).
+  const canChangeEmail = !googleAccount && !appleAccount && user.providerData.some((p) => p.providerId === 'password')
 
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Details>(stored)
@@ -205,8 +206,8 @@ export default function ProfileSection({ user }: { user: User }) {
       <dt className={editing ? label : dt}>{t('profile_email_label')}</dt>
       <dd>
         {editing ? emailBox : <div className={dd}><bdi dir="ltr">{email}</bdi></div>}
-        {editing && !canChangeEmail && googleAccount && (
-          <p className="mt-1.5 text-xs text-slate-500">{t('profile_email_google_locked')}</p>
+        {editing && !canChangeEmail && (googleAccount || appleAccount) && (
+          <p className="mt-1.5 text-xs text-slate-500">{t(googleAccount ? 'profile_email_google_locked' : 'profile_email_apple_locked')}</p>
         )}
         {canChangeEmail && emailFormOpen && editing && (
           <ChangeEmailForm

@@ -10,7 +10,7 @@ import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { AppLockOverlay, AppLockProvider, useAppLock } from '../auth/AppLock'
-import { SignInGateProvider, useSignInGate } from '../auth/SignInGate'
+import { rootSignedIn, SignInGateProvider, useSignInGate } from '../auth/SignInGate'
 import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
@@ -69,7 +69,7 @@ function RootNavigator() {
   // finished onboarding never gets them either: launching with such a saved
   // session opens the login screen, which resumes the wizard.
   const verified = !!user && user.emailVerified
-  const signedIn = verified && !checking && !onboarding && onboardingComplete !== false
+  const signedIn = rootSignedIn({ verified, checking, onboarding, onboardingComplete })
 
   // At launch the navigator waits for that answer too, so neither the tabs
   // nor the sign-in form flashes first. Later sign-ins hold the gate with

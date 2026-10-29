@@ -9,6 +9,10 @@ const MESSAGES: Record<string, string> = {
   'auth/wrong-password': 'Incorrect email or password.',
   'auth/too-many-requests': 'Too many attempts. Please try again later.',
   'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+  // Apple or Google with an email that already has a Landly account made another way.
+  // A Google or Apple session Firebase didn't mark verified (signInCustomer.ts signs it out).
+  'auth/unverified-provider-email': "We couldn't confirm your email with that account. Please try again or sign in with your email.",
+  'auth/account-exists-with-different-credential': 'An account with this email already exists. Sign in the way you first signed up.',
   'auth/expired-action-code': 'This link has expired. Please request a new one.',
   'auth/invalid-action-code': 'This link is invalid or has already been used.',
   'auth/requires-recent-login': 'Please sign in again to complete this action.',

@@ -1,5 +1,6 @@
 import 'server-only'
 import type { DocumentData, Firestore } from 'firebase-admin/firestore'
+import type { AppleRevocation } from './appleRevocation'
 
 // accountDeletionRequests/{uid}: the team's record of each request (what to
 // delete, and why), and the 24-hour dedupe that keeps a double tap or a
@@ -15,6 +16,8 @@ export interface DeletionRecord {
   reason: string | null
   details: string
   lang: string
+  /** What the member's device reported about their Sign in with Apple tokens; null for other accounts. */
+  appleRevocation: AppleRevocation | null
   requestedAt: Date
   status: 'pending'
 }

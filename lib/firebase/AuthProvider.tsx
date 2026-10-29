@@ -3,7 +3,7 @@
 import { createContext, ReactNode, useCallback, useEffect, useState } from 'react'
 import { onAuthStateChanged, User } from 'firebase/auth'
 import { rememberMemberHint } from '@/lib/auth/memberHint'
-import { isOnboardingComplete } from '@/lib/auth/onboardingStatus'
+import { sessionOnboardingStatus } from '@/lib/auth/onboardingStatus'
 import { watchAuthState } from './authReady'
 import { auth } from './config'
 import { getUserDocument } from './users'
@@ -76,10 +76,12 @@ export function AuthProvider({
       return
     }
     let cancelled = false
+    const providerIds = auth.currentUser?.providerData.map((p) => p.providerId) ?? []
     getUserDocument(uid)
-      // No doc: not a customer profile (a business account, or a sign-in
-      // still creating it, which decides on its own) — leave it ungated.
-      .then((doc) => (doc ? isOnboardingComplete(doc) : true))
+      // No doc: ungated for a password session (a business account, or a
+      // sign-in still creating it, which decides on its own); owed for a
+      // Google or Apple one, whose doc the sign-in screen then recreates.
+      .then((doc) => sessionOnboardingStatus(doc, providerIds))
       // A failed read doesn't lock a member out of the site; the next sign-in checks again.
       .catch(() => true)
       .then((complete) => {

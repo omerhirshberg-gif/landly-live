@@ -22,6 +22,20 @@ export function SignInGateProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Whether the root navigator may show the tabs: a verified session, no
+ * sign-in check under way, no onboarding cards still owed (the login screen's
+ * hold, or the auth provider's answer). The same for every sign-in method.
+ */
+export function rootSignedIn(state: {
+  verified: boolean
+  checking: boolean
+  onboarding: boolean
+  onboardingComplete: boolean | null
+}): boolean {
+  return state.verified && !state.checking && !state.onboarding && state.onboardingComplete !== false
+}
+
 export function useSignInGate() {
   const ctx = useContext(SignInGateContext)
   if (!ctx) throw new Error('useSignInGate must be used within a SignInGateProvider')

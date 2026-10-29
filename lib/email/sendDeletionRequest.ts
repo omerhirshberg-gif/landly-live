@@ -1,13 +1,17 @@
 import 'server-only'
 import { buildTeamInboxEmail, sendToTeamInbox } from './teamInboxEmail'
 import { multiLine, singleLine } from './formFields'
+import { isAppleRevocation, type AppleRevocation } from '@/lib/account/appleRevocation'
 import { DELETION_DETAILS_MAX, isDeletionReason, type DeletionReason } from '@/lib/account/deletionReasons'
 
 // The account-deletion request (web /settings, app Profile tab), delivered to
 // the team inbox (teamInboxEmail.ts) with Reply-To set to the member. Only the
 // optional reason, details and site language come from the request body; who
 // is asking (UID, name, email) is filled in by the route from the verified ID
-// token and users/{uid}.
+// token and users/{uid}. For an Apple account, the body also says what
+// happened to its Sign in with Apple tokens (lib/account/appleRevocation.ts),
+// as reported by the member's device: a note for the team, never trusted for
+// anything else.
 
 const REASON_LABELS: Record<DeletionReason, string> = {
   not_using: "Doesn't use Landly anymore",
@@ -21,6 +25,14 @@ export interface DeletionRequestBody {
   reason: DeletionReason | null
   details: string
   lang: string
+  /** null when the form didn't run the Apple step (not an Apple account, or an older app). */
+  appleRevocation: AppleRevocation | null
+}
+
+const APPLE_REVOCATION_LABELS: Record<AppleRevocation, string> = {
+  revoked: 'Revoked (the member confirmed with Apple)',
+  failed: 'NOT revoked: confirming with Apple or revoking failed',
+  unavailable: "NOT revoked: Apple confirmation isn't available on this device (the member was told how to remove Landly in their Apple ID settings)",
 }
 
 /** Cleans the raw request body, or returns null unless it confirms and every field is valid. */
@@ -37,14 +49,19 @@ export function parseDeletionRequest(body: unknown): DeletionRequestBody | null 
   const details = typeof raw.details === 'string' ? multiLine(raw.details) : ''
   if (details.length > DELETION_DETAILS_MAX) return null
   const lang = typeof raw.lang === 'string' ? singleLine(raw.lang).slice(0, 8) : ''
-  return { reason, details, lang }
+  let appleRevocation: AppleRevocation | null = null
+  if (raw.appleRevocation !== undefined && raw.appleRevocation !== null) {
+    if (!isAppleRevocation(raw.appleRevocation)) return null
+    appleRevocation = raw.appleRevocation
+  }
+  return { reason, details, lang, appleRevocation }
 }
 
 export interface DeletionRequestEmail extends DeletionRequestBody {
   uid: string
   name: string
   email: string
-  /** Firebase sign-in providers, e.g. ["password"] or ["google.com"]. */
+  /** Firebase sign-in providers, e.g. ["password"], ["google.com"] or ["apple.com"]. */
   providers: string[]
   requestedAt: Date
 }
@@ -67,6 +84,9 @@ function deletionEmail(req: DeletionRequestEmail) {
       { label: 'Site language', value: req.lang || 'unknown' },
       { label: 'Requested at', value: `${req.requestedAt.toISOString()} (Israel: ${israelTime(req.requestedAt)})` },
       { label: 'Reason', value: req.reason ? REASON_LABELS[req.reason] : 'Not given' },
+      ...(req.providers.includes('apple.com') || req.appleRevocation
+        ? [{ label: 'Apple tokens', value: req.appleRevocation ? APPLE_REVOCATION_LABELS[req.appleRevocation] : 'NOT revoked: not attempted (an older version of the app)' }]
+        : []),
     ],
     message: req.details || '(no details given)',
     replyName: name,

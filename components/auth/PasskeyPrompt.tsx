@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { auth } from '@/lib/firebase/config'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useLang } from '@/lib/i18n/useLang'
-import { isEmbeddedBrowser } from '@/lib/auth/googleWebSignIn'
+import { isEmbeddedBrowser } from '@/lib/auth/oauthWebSignIn'
 import { addPasskey, fetchPasskeys, hasPasskeyHint, passkeySupport } from '@/lib/auth/passkeyClient'
 import {
   clearPasskeyOffer,

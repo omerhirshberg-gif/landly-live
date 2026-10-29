@@ -14,7 +14,8 @@ import {
   type SignUpFieldErrors,
 } from '@shared/auth/onboarding'
 import { EASE_FADE, EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
-import { signInCustomerWithEmail } from '@shared/auth/signInCustomer'
+import { isAppleMobileWeb, providerOrder } from '@shared/auth/appleDevice'
+import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@shared/auth/signInCustomer'
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { auth, devicePersistence } from '@shared/firebase/config'
@@ -27,14 +28,15 @@ import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
 import ConsentText from '../../components/ConsentText'
-import GoogleButton from '../../components/GoogleButton'
 import { ENTRANCE_SPRING, useEntrance } from '../../components/Entrance'
 import Notice from '../../components/Notice'
+import ProviderTile from '../../components/ProviderTile'
 import BrandHero from '../../components/BrandHero'
 import SegmentedControl from '../../components/SegmentedControl'
 import TextField from '../../components/TextField'
 import { useAppLock } from '../../auth/AppLock'
 import { useSignInGate } from '../../auth/SignInGate'
+import { isAppleSignInAvailable, signInWithApple } from '../../auth/appleSignIn'
 import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSignIn'
 import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
 import { loadOnboardingDraft } from '../../auth/onboarding/draftStorage'
@@ -109,7 +111,14 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
-  const [googleBusy, setGoogleBusy] = useState(false)
+  // The provider whose sign-in is under way; every button waits on it.
+  const [oauthBusy, setOAuthBusy] = useState<'google' | 'apple' | null>(null)
+  // Apple's button shows only where it can work: iOS, and the browser build.
+  // Never on Android, which has no Apple sheet.
+  const [appleAvailable, setAppleAvailable] = useState(false)
+  // iPhone and iPad (native, or a browser on one) lead with Apple; everywhere
+  // else Google comes first.
+  const appleFirst = Platform.OS === 'ios' || (isWeb && isAppleMobileWeb(globalThis.navigator?.userAgent, globalThis.navigator?.maxTouchPoints))
   const [confirm, setConfirm] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -199,13 +208,28 @@ export default function LoginScreen() {
     const uid = user.uid
     setOnboarding(true)
     let cancelled = false
-    Promise.all([getUserDocument(uid).catch(() => null), loadOnboardingDraft(uid)]).then(([doc, draft]) => {
-      if (cancelled) return
-      setOnboardingName(greetingName(doc, user.displayName))
-      setWizard({ uid, draft })
-      setWizardShown(true)
-      setRestoring(false)
-    })
+    // A Google or Apple member whose profile was never written gets it now (resumeCustomerSession).
+    Promise.all([resumeCustomerSession(user, lang), loadOnboardingDraft(uid)])
+      .then(([resumed, draft]) => {
+        if (cancelled) return
+        if (resumed.status === 'businessAccount') {
+          // Already signed back out: the form shows the business notice.
+          setBusinessAccount(true)
+          setOnboarding(false)
+          setRestoring(false)
+          return
+        }
+        setOnboardingName(greetingName(resumed.doc, user.displayName))
+        setWizard({ uid, draft })
+        setWizardShown(true)
+        setRestoring(false)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getAuthErrorMessage(err))
+        setOnboarding(false)
+        setRestoring(false)
+      })
     return () => {
       cancelled = true
     }
@@ -271,29 +295,47 @@ export default function LoginScreen() {
     }
   }
 
-  // Google from either tab. Native builds need an OAuth client ID per
-  // platform (see auth/googleSignIn.ts); until then the button explains why.
-  const handleGoogle = async () => {
+  useEffect(() => {
+    let cancelled = false
+    isAppleSignInAvailable().then((available) => {
+      if (!cancelled) setAppleAvailable(available)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Google or Apple from either tab: a new (or never finished) account
+  // continues in the wizard; everyone else goes on in.
+  const handleOAuth = async (provider: 'google' | 'apple', signIn: (lang: Lang) => Promise<CustomerSignInResult>) => {
     setError(null)
     setBusinessAccount(false)
-    if (!GOOGLE_SIGN_IN_CONFIGURED) {
-      setError(t('onb_googleUnavailable'))
-      return
-    }
-    setGoogleBusy(true)
+    setOAuthBusy(provider)
     setChecking(true)
     try {
       await setPersistence(auth, rememberMe ? devicePersistence : inMemoryPersistence)
-      const result = await signInWithGoogle(lang)
+      const result = await signIn(lang)
       if (result.status === 'businessAccount') setBusinessAccount(true)
       else if (result.status === 'signedIn') await afterSignIn(result.user.uid, result.preferredLanguage)
     } catch (err) {
       setError(getAuthErrorMessage(err))
     } finally {
       setChecking(false)
-      setGoogleBusy(false)
+      setOAuthBusy(null)
     }
   }
+
+  // Native builds need a Google OAuth client ID per platform (see
+  // auth/googleSignIn.ts); until then the button explains why.
+  const handleGoogle = () => {
+    if (!GOOGLE_SIGN_IN_CONFIGURED) {
+      setError(t('onb_googleUnavailable'))
+      return
+    }
+    return handleOAuth('google', signInWithGoogle)
+  }
+
+  const handleApple = () => handleOAuth('apple', signInWithApple)
 
   // The celebration's "Let's explore": fade out, then open the gate; the
   // tabs fade in (root layout).
@@ -342,7 +384,9 @@ export default function LoginScreen() {
   }
 
   const signUp = mode === 'signUp'
-  const busy = submitting || googleBusy
+  const busy = submitting || oauthBusy !== null
+  // Google and Apple only: passkeys are website-only for now.
+  const providers = providerOrder({ appleFirst, apple: appleAvailable })
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
@@ -539,7 +583,7 @@ export default function LoginScreen() {
                             onPress={handleSignUp}
                             busy={submitting}
                             // Always pressable: an incomplete form says what's missing instead of greying out.
-                            disabled={googleBusy}
+                            disabled={oauthBusy !== null}
                             large
                             arrow
                           />
@@ -584,7 +628,7 @@ export default function LoginScreen() {
                           label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
                           onPress={handleSubmit}
                           busy={submitting}
-                          disabled={!email || !password || googleBusy}
+                          disabled={!email || !password || oauthBusy !== null}
                           large
                           arrow
                         />
@@ -596,8 +640,31 @@ export default function LoginScreen() {
                       <AppText style={styles.or}>{t('login_orDivider')}</AppText>
                       <View style={styles.rule} />
                     </View>
-                    <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onPress={handleGoogle} disabled={busy} />
-                    {/* On both tabs: Google from either one can create an account. */}
+                    {/* In render order, so VoiceOver and TalkBack follow it; the root's RTL direction mirrors the row for Hebrew. */}
+                    <View style={styles.providerRow}>
+                      {providers.map((provider) =>
+                        provider === 'apple' ? (
+                          <ProviderTile
+                            key={provider}
+                            provider={provider}
+                            label={t(signUp ? 'signup_appleBtn' : 'login_appleBtn')}
+                            busy={oauthBusy === 'apple'}
+                            disabled={busy}
+                            onPress={handleApple}
+                          />
+                        ) : (
+                          <ProviderTile
+                            key={provider}
+                            provider={provider}
+                            label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')}
+                            busy={oauthBusy === 'google'}
+                            disabled={busy}
+                            onPress={handleGoogle}
+                          />
+                        )
+                      )}
+                    </View>
+                    {/* On both tabs: Google or Apple from either one can create an account. */}
                     <AppText style={styles.disclosure}>
                       <ConsentText template={t('auth_google_disclosure')} t={t} onOpen={openWebSheet} />
                     </AppText>
@@ -687,6 +754,7 @@ const styles = StyleSheet.create({
   link: { fontSize: 14, fontWeight: '700', color: colors.brand },
   muted: { fontSize: 14, color: colors.textMuted },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 14 },
+  providerRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', alignItems: 'center' },
   rule: { flex: 1, height: 1, backgroundColor: colors.border },
   or: { fontSize: 12, fontWeight: '600', color: colors.textFaint, textTransform: 'uppercase' },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 24 },

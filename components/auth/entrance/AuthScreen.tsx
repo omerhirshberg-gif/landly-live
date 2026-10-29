@@ -6,12 +6,18 @@ import { useRouter } from 'next/navigation'
 import { browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
-import { signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
-import { completeGoogleRedirect, hasPendingGoogleRedirect, isEmbeddedBrowser, startGoogleWebSignIn } from '@/lib/auth/googleWebSignIn'
+import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
+import { isAppleMobileWeb, providerOrder, type AuthProvider } from '@/lib/auth/appleDevice'
+import {
+  completeOAuthRedirect,
+  isEmbeddedBrowser,
+  pendingOAuthRedirect,
+  startOAuthWebSignIn,
+  type OAuthWebProvider,
+} from '@/lib/auth/oauthWebSignIn'
 import { markPasskeyOfferDue } from '@/lib/auth/passkeyPrompt'
 import {
   cancelPasskeyRequest,
-  hasPasskeyHint,
   passkeySupport,
   signInWithPasskey,
   type PasskeyErrorCode,
@@ -40,8 +46,6 @@ import type { Lang, TranslationKey } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
 import BackToHomeLink from '../BackToHomeLink'
 import BusinessAccountNotice from '../BusinessAccountNotice'
-import GoogleButton from '../GoogleButton'
-import PasskeyButton from '../PasskeyButton'
 import VerifyEmailNotice, { type PendingVerification } from '../VerifyEmailNotice'
 import OnboardingWizard, { readOnboardingDraft } from '../onboarding/OnboardingWizard'
 import PasswordRequirements from '../onboarding/PasswordRequirements'
@@ -50,6 +54,8 @@ import BrandHero, { type EntranceMode } from './BrandHero'
 import Button from './Button'
 import Checkbox from './Checkbox'
 import Notice from './Notice'
+import ProviderRow from './ProviderRow'
+import ProviderTile from './ProviderTile'
 import SegmentedControl from './SegmentedControl'
 import TextField from './TextField'
 import ConsentText from './ConsentText'
@@ -76,8 +82,8 @@ const PASSKEY_ERRORS: Record<PasskeyErrorCode, TranslationKey> = {
   unavailable: 'passkey_err_unavailable',
   failed: 'passkey_err_failed',
 }
-// After this many cancelled or failed passkey attempts in a row, the button
-// gets a nudge towards email and password and stops leading the card.
+// After this many cancelled or failed passkey attempts in a row, the row gets
+// a nudge towards email and password.
 const PASSKEY_TROUBLE_AFTER = 3
 
 // Web counterpart of the Expo login screen (landly-mobile/src/app/(auth)/
@@ -112,21 +118,26 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [submitting, setSubmitting] = useState(false)
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
-  const [googleBusy, setGoogleBusy] = useState(false)
-  // Google refuses sign-in inside in-app browsers (Instagram, Facebook, ...):
-  // tapping the button there explains how to open the page in a real browser.
-  const [inAppNotice, setInAppNotice] = useState(false)
+  // The provider whose popup (or redirect) is under way; every button waits on it.
+  const [oauthBusy, setOAuthBusy] = useState<OAuthWebProvider | null>(null)
+  // Neither Google nor Apple works inside in-app browsers (Instagram,
+  // Facebook, ...): tapping either button there explains how to open the page
+  // in a real browser, naming the provider that was tapped.
+  const [inAppNotice, setInAppNotice] = useState<OAuthWebProvider | null>(null)
+  // iPhone and iPad browsers lead with Apple; everywhere else Google comes
+  // first. Decided after mount, from the user agent.
+  const [appleFirst, setAppleFirst] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  // A Google redirect sign-in (the popup fallback) lands back here; its result
+  // A Google or Apple redirect sign-in (the popup fallback) lands back here; its result
   // is handled before the restore below looks at the session, so a new
   // member goes through the same customer rules and into the wizard.
   const [redirectChecked, setRedirectChecked] = useState(false)
   const redirectStarted = useRef(false)
-  // Back from a Google redirect started here: the card says sign-in is being
-  // finished instead of staying hidden while the result is fetched (capped
-  // by REDIRECT_RESULT_TIMEOUT_MS, then the form returns with an error).
-  const [finishingGoogle, setFinishingGoogle] = useState(false)
-  // A Google sign-up skips verification, so the brand panel's journey moves straight to Personalize.
+  // Back from a Google or Apple redirect started here: the card says sign-in
+  // is being finished instead of staying hidden while the result is fetched
+  // (capped by REDIRECT_RESULT_TIMEOUT_MS, then the form returns with an error).
+  const [finishingOAuth, setFinishingOAuth] = useState<OAuthWebProvider | null>(null)
+  // A Google or Apple sign-up skips verification, so the brand panel's journey moves straight to Personalize.
   const [via, setVia] = useState<SignInMethod>('email')
   const [confirm, setConfirm] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -170,7 +181,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // the browser offers passkeys among its suggestions. A browser that made or
   // used a Landly passkey before puts the button above the form.
   const [passkey, setPasskey] = useState<PasskeySupport>({ webauthn: false, autofill: false })
-  const [passkeyFirst, setPasskeyFirst] = useState(false)
   const [passkeyBusy, setPasskeyBusy] = useState(false)
   const [passkeyFailures, setPasskeyFailures] = useState(0)
   // Bumped to arm the autofill request again (after the button, or an expired challenge).
@@ -191,13 +201,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   useEffect(() => {
     if (redirectStarted.current) return
     redirectStarted.current = true
-    if (hasPendingGoogleRedirect()) setFinishingGoogle(true)
-    completeGoogleRedirect(lang)
-      .then(async (result) => {
-        if (!result) return
+    setFinishingOAuth(pendingOAuthRedirect())
+    completeOAuthRedirect(lang)
+      .then(async (outcome) => {
+        if (!outcome) return
         restoreDecided.current = true
-        setVia('google')
-        await handleGoogleResult(result, { fade: false })
+        await handleOAuthResult(outcome.provider, outcome.result, { fade: false })
         setRestoring(false)
       })
       .catch((err) => {
@@ -207,7 +216,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       })
       .finally(() => {
         setRedirectChecked(true)
-        setFinishingGoogle(false)
+        setFinishingOAuth(null)
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per page load, in the language it loaded with
   }, [])
@@ -215,7 +224,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   useEffect(() => {
     if (restoreDecided.current || authLoading) return
     // Nobody signed in: the form can show without waiting on the redirect
-    // check; a result that still arrives goes through handleGoogleResult.
+    // check; a result that still arrives goes through handleOAuthResult.
     if (!user?.emailVerified) {
       restoreDecided.current = true
       setRestoring(false)
@@ -229,11 +238,20 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       return
     }
     const uid = user.uid
-    getUserDocument(uid)
-      .catch(() => null)
-      .then((doc) => {
-        setOnboardingName(greetingName(doc, user.displayName))
+    // A Google or Apple member whose profile was never written gets it now (resumeCustomerSession).
+    resumeCustomerSession(user, lang)
+      .then((resumed) => {
+        if (resumed.status === 'businessAccount') {
+          setBusinessAccount(true)
+          setRestoring(false)
+          return
+        }
+        setOnboardingName(greetingName(resumed.doc, user.displayName))
         openWizard(uid)
+        setRestoring(false)
+      })
+      .catch((err) => {
+        setError(getAuthErrorMessage(err))
         setRestoring(false)
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openWizard only reads storage and sets state
@@ -254,6 +272,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setEntrance('intro')
   }, [])
 
+  useEffect(() => {
+    setAppleFirst(isAppleMobileWeb(navigator.userAgent, navigator.maxTouchPoints))
+  }, [])
+
   // In-app browsers (Instagram, Facebook, ...) can't reach the member's
   // password manager, so they get no passkey controls.
   useEffect(() => {
@@ -262,7 +284,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     passkeySupport().then((support) => {
       if (cancelled) return
       setPasskey(support)
-      setPasskeyFirst(support.webauthn && hasPasskeyHint())
     })
     return () => {
       cancelled = true
@@ -310,11 +331,11 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     })
   }
 
-  // The popup and redirect paths end the same way.
-  const handleGoogleResult = async (result: CustomerSignInResult, options?: { fade: boolean }) => {
+  // The popup and redirect paths end the same way, for Google and Apple alike.
+  const handleOAuthResult = async (provider: OAuthWebProvider, result: CustomerSignInResult, options?: { fade: boolean }) => {
     if (result.status === 'businessAccount') setBusinessAccount(true)
     else if (result.status === 'signedIn') {
-      setVia('google')
+      setVia(provider)
       // The landing page offers a passkey (components/auth/PasskeyPrompt.tsx).
       markPasskeyOfferDue(result.user.uid)
       await afterSignIn(result.user.uid, result.preferredLanguage, options)
@@ -377,37 +398,33 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     }
   }
 
-  // Google from either tab: a new (or never finished) account continues in
-  // the wizard; everyone else goes home.
-  const handleGoogle = async () => {
+  // Google or Apple from either tab: a new (or never finished) account
+  // continues in the wizard; everyone else goes home.
+  const handleOAuth = async (provider: OAuthWebProvider) => {
     setError(null)
     setBusinessAccount(false)
     if (isEmbeddedBrowser(navigator.userAgent)) {
-      setInAppNotice(true)
+      setInAppNotice(provider)
       return
     }
-    setGoogleBusy(true)
+    setOAuthBusy(provider)
     let redirecting = false
     try {
-      const outcome = await startGoogleWebSignIn(lang, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+      const outcome = await startOAuthWebSignIn(provider, lang, rememberMe ? browserLocalPersistence : browserSessionPersistence)
       if (outcome.kind === 'redirecting') redirecting = true
-      else await handleGoogleResult(outcome.result)
+      else await handleOAuthResult(provider, outcome.result)
     } catch (err) {
       // A second tap while the popup opens supersedes the first: nothing to report.
       if ((err as { code?: unknown } | null)?.code !== 'auth/cancelled-popup-request') setError(getAuthErrorMessage(err))
     } finally {
-      // Leaving for Google: keep the buttons disabled until the page unloads.
-      if (!redirecting) setGoogleBusy(false)
+      // Leaving for the provider: keep the buttons disabled until the page unloads.
+      if (!redirecting) setOAuthBusy(null)
     }
   }
 
   const passkeyPersistence = () => (rememberRef.current ? browserLocalPersistence : browserSessionPersistence)
 
-  const noteFailedPasskey = () =>
-    setPasskeyFailures((n) => {
-      if (n + 1 >= PASSKEY_TROUBLE_AFTER) setPasskeyFirst(false)
-      return n + 1
-    })
+  const noteFailedPasskey = () => setPasskeyFailures((n) => n + 1)
 
   // The button and the autofill end the same way.
   const handlePasskeyOutcome = async (outcome: PasskeySignInOutcome) => {
@@ -452,7 +469,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // is cancelled when the form goes away or another sign-in starts. The
   // button cancels it itself (above) and re-arms it when it's done.
   const autofillArmed =
-    passkey.autofill && !restoring && !finishingGoogle && mode === 'signIn' && !pending && !wizard && !submitting && !googleBusy
+    passkey.autofill && !restoring && !finishingOAuth && mode === 'signIn' && !pending && !wizard && !submitting && !oauthBusy
   useEffect(() => {
     if (!autofillArmed) return
     let active = true
@@ -501,23 +518,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   }
 
   const signUp = mode === 'signUp'
-  const busy = submitting || googleBusy || passkeyBusy
-  const passkeyButton = passkey.webauthn && !signUp && (
-    <>
-      <PasskeyButton
-        label={t('login_passkeyBtn')}
-        busyLabel={t('login_passkeyBusy')}
-        busy={passkeyBusy}
-        onClick={handlePasskey}
-        disabled={submitting || googleBusy}
-      />
-      {passkeyFailures >= PASSKEY_TROUBLE_AFTER && (
-        <p role="status" className="mt-2 text-center text-meta font-semibold text-slate-500">
-          {t('login_passkeyTrouble')}
-        </p>
-      )}
-    </>
-  )
+  const busy = submitting || oauthBusy !== null || passkeyBusy
   const divider = (
     <div className="flex items-center gap-3 mt-[18px] mb-3.5">
       <div className="h-px flex-1 bg-slate-200" />
@@ -526,7 +527,32 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     </div>
   )
 
-  const shown: EntranceMode = restoring && !finishingGoogle ? 'pending' : entrance
+  // Google and Apple on both tabs (either can create an account); the
+  // passkey on Sign In only, where the browser supports it.
+  const providers = providerOrder({ appleFirst, passkey: passkey.webauthn && !signUp })
+  const providerTile = (provider: AuthProvider) =>
+    provider === 'passkey' ? (
+      <ProviderTile
+        key={provider}
+        provider={provider}
+        label={t('login_passkeyBtn')}
+        busyLabel={t('login_passkeyBusy')}
+        busy={passkeyBusy}
+        disabled={submitting || oauthBusy !== null}
+        onClick={handlePasskey}
+      />
+    ) : (
+      <ProviderTile
+        key={provider}
+        provider={provider}
+        label={t(provider === 'apple' ? (signUp ? 'signup_appleBtn' : 'login_appleBtn') : signUp ? 'signup_googleBtn' : 'login_googleBtn')}
+        busy={oauthBusy === provider}
+        disabled={busy}
+        onClick={() => handleOAuth(provider)}
+      />
+    )
+
+  const shown: EntranceMode = restoring && !finishingOAuth ? 'pending' : entrance
 
   return (
     <div
@@ -550,10 +576,10 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         </div>
 
         <div className={styles.card}>
-          {finishingGoogle ? (
+          {finishingOAuth ? (
             <div role="status" aria-live="polite" className="flex flex-col items-center gap-4 py-10 text-center">
               <span aria-hidden="true" className="h-8 w-8 rounded-full border-[3px] border-brand border-r-transparent animate-spin" />
-              <p className="text-copy font-semibold text-slate-600">{t('auth_googleFinishing')}</p>
+              <p className="text-copy font-semibold text-slate-600">{t(finishingOAuth === 'apple' ? 'auth_appleFinishing' : 'auth_googleFinishing')}</p>
             </div>
           ) : wizard ? (
             <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onStepChange={setOnbStep} onComplete={handleWizardComplete} />
@@ -723,7 +749,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                       label={submitting ? t('onb_createAccountBusy') : t('onb_createAccount')}
                       busy={submitting}
                       // Always pressable: an incomplete form says what's missing instead of greying out.
-                      disabled={googleBusy || passkeyBusy}
+                      disabled={oauthBusy !== null || passkeyBusy}
                       large
                       arrow
                     />
@@ -731,12 +757,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 </form>
               ) : (
                 <form noValidate onSubmit={handleSubmit}>
-                  {passkeyFirst && passkeyButton && (
-                    <>
-                      {passkeyButton}
-                      {divider}
-                    </>
-                  )}
                   {/* "webauthn" last, so the browser offers saved passkeys in this field's suggestions. */}
                   <TextField
                     label={t('login_emailLabel')}
@@ -769,7 +789,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     type="submit"
                     label={submitting ? t('login_submitBtnBusy') : t('login_submitBtn')}
                     busy={submitting}
-                    disabled={!email || !password || googleBusy || passkeyBusy}
+                    disabled={!email || !password || oauthBusy !== null || passkeyBusy}
                     large
                     arrow
                   />
@@ -779,15 +799,20 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
               {divider}
               {inAppNotice && (
                 <Notice tone="info">
-                  <p>{t('auth_inAppBrowser_body')}</p>
+                  <p>{t(inAppNotice === 'apple' ? 'auth_inAppBrowser_appleBody' : 'auth_inAppBrowser_body')}</p>
                   <button type="button" onClick={copyPageLink} className="mt-2 underline underline-offset-2">
                     {t(linkCopied ? 'auth_inAppBrowser_copied' : 'auth_inAppBrowser_copy')}
                   </button>
                 </Notice>
               )}
-              <GoogleButton label={t(signUp ? 'signup_googleBtn' : 'login_googleBtn')} onClick={handleGoogle} disabled={busy} />
-              {!passkeyFirst && passkeyButton && <div className="mt-3">{passkeyButton}</div>}
-              {/* On both tabs: Google from either one can create an account. */}
+              {/* Ordered in the DOM, not visually, so focus and screen readers follow what's on screen. */}
+              <ProviderRow>{providers.map(providerTile)}</ProviderRow>
+              {!signUp && passkeyFailures >= PASSKEY_TROUBLE_AFTER && (
+                <p role="status" className="mt-2 text-center text-meta font-semibold text-slate-500">
+                  {t('login_passkeyTrouble')}
+                </p>
+              )}
+              {/* On both tabs: Google or Apple from either one can create an account. */}
               <p className="mt-3 text-center text-xs leading-5 text-slate-500">
                 <ConsentText template={t('auth_google_disclosure')} t={t} />
               </p>
@@ -795,7 +820,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           )}
         </div>
 
-        {!pending && !onboarding && !finishingGoogle && (
+        {!pending && !onboarding && !finishingOAuth && (
           <div className={`${styles.chrome} flex flex-wrap items-center justify-center gap-1.5 mt-6`}>
             <span className="text-sm text-slate-500">{t(signUp ? 'signup_haveAccount' : 'login_noAccount')}</span>
             <button
