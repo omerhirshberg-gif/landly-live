@@ -66,7 +66,7 @@ export default function CountryOfOriginList({
         <AppText style={[styles.name, selected && styles.nameSelected]} numberOfLines={1}>
           {country.name}
         </AppText>
-        {selected && <LineIcon name="check" color={colors.brand} strokeWidth={2.6} />}
+        {selected && <LineIcon name="check" color={colors.brand} strokeWidth={2.4} />}
       </Pressable>
     )
   }

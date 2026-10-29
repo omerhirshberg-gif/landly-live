@@ -2,7 +2,7 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 
 // The app lock's welcome-back line (landly-mobile/src/auth/AppLock.tsx):
 // a time-of-day greeting by first name, and when the member last came in on
-// this device ("23.10.2026 17:36"). Pure and dependency-free, so the website
+// this device ("23.10.2026 17:36", always the Israeli format). Pure and dependency-free, so the website
 // can use it too and tests can pin the boundaries.
 
 export type GreetingPeriod = 'morning' | 'afternoon' | 'evening' | 'night'
@@ -35,20 +35,11 @@ export function resolveLastEntry(stored: string | null | undefined, firebaseLast
 }
 
 /**
- * The lock screen's "Last sign-in" stamp: the numeric date and the time in the
- * member's language ("23.10.2026 17:36" in Hebrew, "10/23/2026 17:36" in
- * English). `hour12` follows the device's clock setting when known.
+ * The lock screen's "Last sign-in" stamp, in the Israeli format whatever the
+ * language or device clock: DD.MM.YYYY HH:mm, 24-hour ("23.10.2026 09:05").
+ * Built by hand, not with Intl, so Hermes and every browser agree.
  */
-export function formatLastEntry(at: Date, lang: string, hour12?: boolean): string {
-  const format = (options: Intl.DateTimeFormatOptions) => {
-    try {
-      return new Intl.DateTimeFormat(lang, options).format(at)
-    } catch {
-      return new Intl.DateTimeFormat('en', options).format(at)
-    }
-  }
-  const date = format({ day: '2-digit', month: '2-digit', year: 'numeric' })
-  // 24-hour times keep the leading zero (09:41); 12-hour ones don't (9:41 AM).
-  const time = format(hour12 ? { hour: 'numeric', minute: '2-digit', hour12: true } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-  return `${date} ${time}`
+export function formatLastEntry(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()} ${pad(at.getHours())}:${pad(at.getMinutes())}`
 }

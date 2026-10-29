@@ -364,7 +364,7 @@ describe('needs-reply badge', () => {
     }
     const row = html.match(/<header[^>]*><div class="([^"]*)"/)![1].split(' ')
     for (const token of ['grid', 'h-12', 'grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]', 'px-4', 'sm:px-6', 'md:flex', 'md:h-16']) expect(row, token).toContain(token)
-    expect(html).toMatch(/<span class="[^"]*\btruncate text-center text-base font-semibold text-slate-900 sm:text-lg md:hidden">WhatsApp Support<\/span>/)
+    expect(html).toMatch(/<span class="[^"]*\btruncate text-center text-base font-semibold text-slate-900 sm:text-lg md:hidden"[^>]*>WhatsApp Support<\/span>/)
     // The ☰ keeps its 48px target with tap feedback, and nothing sits outside the gutter.
     expect(html).toMatch(/class="relative flex h-12 w-12 [^"]*active:bg-slate-100/)
     expect(html).not.toMatch(/-m[se]-\d/)

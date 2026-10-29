@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true,
         "CFBundleDevelopmentRegion": "en",
         "CFBundleLocalizations": [
           "en",

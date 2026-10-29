@@ -1,18 +1,8 @@
-// Single source of truth for "what page am I on" -- used by both the
-// desktop header bar (layout.tsx) and the mobile top bar (Sidebar.tsx) so
-// the two never drift out of sync with each other or with the sidebar nav.
+import { matchAdminRoute } from './routes'
+
+// "What page am I on", for the mobile header's title and anywhere else that
+// needs a page's name without its data: read off the route tree
+// (lib/admin/routes.ts), like the breadcrumbs, so the two never drift apart.
 export function getAdminPageTitle(pathname: string): string {
-  if (pathname === '/admin') return 'Dashboard'
-  if (pathname === '/admin/search') return 'Search'
-  if (pathname.startsWith('/admin/support')) return 'WhatsApp Support'
-  if (pathname === '/admin/businesses/new') return 'Add Business'
-  if (pathname === '/admin/businesses') return 'Businesses'
-  if (pathname.startsWith('/admin/businesses/')) return 'Business Details'
-  if (pathname === '/admin/offers/new') return 'Add Offer'
-  if (pathname === '/admin/offers') return 'Offers'
-  if (pathname.startsWith('/admin/offers/')) return 'Edit Offer'
-  if (pathname === '/admin/orphans') return 'Orphans'
-  if (pathname === '/admin/system/costs') return 'Usage & Costs'
-  if (pathname === '/admin/login') return 'Login'
-  return 'Admin'
+  return matchAdminRoute(pathname)?.title ?? 'Admin'
 }

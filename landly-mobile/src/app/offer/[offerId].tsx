@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES } from '@shared/categories'
@@ -18,13 +19,15 @@ import TranslationNotice from '../../components/TranslationNotice'
 import Button from '../../components/Button'
 import LineIcon from '../../components/LineIcon'
 import GlassHeartButton from '../../components/GlassHeartButton'
+import MerchantBadge from '../../components/MerchantBadge'
 import NavigationButtons from '../../components/NavigationButtons'
-import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
-import PerkImage from '../../components/PerkImage'
+import { CategoryPanel } from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { PANE_GAP } from '../../lib/layout'
+import { badgeLogoUri, businessInitial, secureImageUrl } from '../../lib/imageSource'
 import { cachedOffer } from '../../lib/openOffer'
+import { useDealImage } from '../../lib/useDealImage'
 import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
 import { colors, radius } from '../../theme'
@@ -32,7 +35,8 @@ import { colors, radius } from '../../theme'
 // One offer as its own screen (web: /offers/[offerId]), pushed from a perk
 // card as a page flip (lib/pageFlip.ts): a full-screen swipe in the reading
 // direction turns it back, the same as the header's back button. The photo
-// with the wishlist heart, the business, the offer and its price, the
+// with the wishlist heart and the business's logo circle hanging off its
+// foot (the perk card's two pictures, DealMedia.tsx), the business, the offer and its price, the
 // description, validity and how to redeem; the Buy button sits in a bar
 // pinned above the home indicator. Buy pushes the native checkout
 // (app/checkout/[offerId].tsx); a finished purchase replaces it with the new
@@ -107,6 +111,7 @@ export default function OfferScreen() {
   // The business name has its own translations; one "Show original" switch flips both.
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
   const businessName = nameContent.text('businessName')
+  const image = useDealImage(offer?.imageUrl ?? '')
   const machine = content.machine || nameContent.machine
   const showingOriginal = content.showingOriginal || nameContent.showingOriginal
   const toggleOriginal = () => {
@@ -137,28 +142,47 @@ export default function OfferScreen() {
         <>
           <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]} contentInsetAdjustmentBehavior="automatic">
             <View style={[styles.card, panes && styles.cardPanes]}>
-              <View style={[styles.hero, panes && styles.heroPane]}>
-                {/* The framed picture: a photo fills it, a logo sits whole inside with a little room. */}
-                <PerkImage uri={offer.imageUrl} category={offer.category} businessName={businessName.text} />
-                {/* Floats over the picture's top end corner; glass on iOS. */}
-                <GlassHeartButton
-                  saved={saved}
-                  onToggle={() => toggleWishlist(offer.id)}
-                  label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-                  style={styles.heart}
+              {/* Not clipped, so the logo circle can hang over the picture's foot. */}
+              <View style={[styles.heroWrap, panes && styles.heroPane]}>
+                {/* The framed picture, as the perk card draws it: a photo fades in over the category's panel;
+                    an offer image that is a logo goes to the circle instead. */}
+                <View style={[styles.hero, panes && styles.heroTall]}>
+                  <CategoryPanel category={offer.category} size="hero" />
+                  {(image.role === 'pending' || image.role === 'photo') && (
+                    <Animated.View style={[StyleSheet.absoluteFill, image.photoStyle]}>
+                      <Image source={{ uri: image.uri }} style={styles.fill} resizeMode="cover" resizeMethod="scale" onError={image.onError} onLoad={image.onLoad} accessibilityIgnoresInvertColors />
+                    </Animated.View>
+                  )}
+                  {/* Floats over the picture's top end corner; glass on iOS. */}
+                  <GlassHeartButton
+                    saved={saved}
+                    onToggle={() => toggleWishlist(offer.id)}
+                    label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
+                    style={styles.heart}
+                  />
+                </View>
+                <MerchantBadge
+                  logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
+                  initial={businessInitial(businessName.text)}
+                  size={DETAIL_BADGE}
+                  style={styles.badge}
                 />
               </View>
 
               <View style={[styles.body, panes && styles.bodyPane]}>
-                <View style={styles.chips}>
-                  <View style={styles.categoryChip}>
-                    <AppText style={styles.categoryText} numberOfLines={1}>
-                      {tile ? `${tile.emoji} ${t(tile.labelKey)}` : offer.category}
+                {/* One inline row of text-only pills. In one column it sits beside the
+                    badge's lower half, where the category gives way (truncates) so the
+                    redemption method never drops under it; in two panes it can wrap. */}
+                <View style={[styles.chips, !panes && styles.chipsBesideBadge]}>
+                  <View style={[styles.chip, styles.categoryChip]}>
+                    <AppText style={[styles.chipText, styles.categoryText]} numberOfLines={1}>
+                      {tile ? t(tile.labelKey) : offer.category}
                     </AppText>
                   </View>
-                  <View style={styles.methodChip}>
-                    <LineIcon name={REDEMPTION_METHOD_ICONS[offer.redemptionMethod]} size={13} color={colors.brand} strokeWidth={2.2} />
-                    <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
+                  <View style={[styles.chip, styles.methodChip]}>
+                    <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>
+                      {t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}
+                    </AppText>
                   </View>
                 </View>
 
@@ -230,7 +254,7 @@ export default function OfferScreen() {
           <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12), ...bar }]}>
             {claimed ? (
               <View style={styles.claimed} accessibilityLiveRegion="polite">
-                <LineIcon name="check" size={20} color={colors.success} strokeWidth={2.5} />
+                <LineIcon name="check" size={20} color={colors.success} strokeWidth={2.4} />
                 <AppText style={styles.claimedTitle}>{t('offer_already_claimed_title')}</AppText>
                 <Pressable
                   accessibilityRole="link"
@@ -261,6 +285,11 @@ export default function OfferScreen() {
 const PANES_MAX_WIDTH = 896
 /** The details pane's inner padding (styles.body). */
 const BODY_PADDING = 20
+/** The picture's inset from the card's edges (styles.heroWrap). */
+const HERO_INSET = 12
+/** The business's logo circle: a little larger than the cards' 56pt, as the picture is, and how far in from the picture's start edge it hangs. */
+const DETAIL_BADGE = 64
+const DETAIL_BADGE_INSET = 16
 
 /**
  * The buy bar's side padding in two panes, so the button spans exactly the
@@ -286,10 +315,9 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   // Inset from the card's edges in its own snug frame: light canvas, hairline border, 14pt corners.
+  heroWrap: { marginHorizontal: HERO_INSET, marginTop: HERO_INSET, zIndex: 1 },
   hero: {
     height: 180,
-    marginHorizontal: 12,
-    marginTop: 12,
     borderRadius: radius.frame,
     borderWidth: 1,
     borderColor: colors.border,
@@ -299,27 +327,30 @@ const styles = StyleSheet.create({
   // Web: components/discover/DiscountBadge.tsx (solid emerald-700, white text).
   discount: { alignSelf: 'center', backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
   discountText: { fontSize: 13, fontWeight: '800', color: colors.white, letterSpacing: 0.5, textTransform: 'uppercase' },
+  fill: { width: '100%', height: '100%' },
   heart: { position: 'absolute', top: 6, end: 6 },
+  // Half over the picture's foot at its start edge, so it mirrors in Hebrew.
+  badge: { position: 'absolute', start: DETAIL_BADGE_INSET, bottom: -DETAIL_BADGE / 2 },
   body: { padding: BODY_PADDING },
   // Two panes: a row (it follows the root view's direction), no wider than the
   // website's offer page (max-w-4xl), the picture taller and kept clear of the
   // fold by half the pane gap, the details taking the other half.
   cardPanes: { flexDirection: 'row', alignItems: 'flex-start', width: '100%', maxWidth: PANES_MAX_WIDTH, alignSelf: 'center' },
-  heroPane: { flex: 1, height: 260, marginEnd: PANE_GAP / 2, marginBottom: 12 },
+  // The pane keeps the circle's hanging half inside the card.
+  heroPane: { flex: 1, marginEnd: PANE_GAP / 2, marginBottom: HERO_INSET + DETAIL_BADGE / 2 },
+  heroTall: { height: 260 },
   bodyPane: { flex: 1, minWidth: 0 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryChip: { backgroundColor: colors.brandTint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, maxWidth: '100%' },
-  categoryText: { fontSize: 12, fontWeight: '600', color: colors.brand },
-  methodChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.borderLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  methodText: { fontSize: 12, fontWeight: '600', color: colors.body },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  // Clear of the badge: its start edge and width, plus 8pt, less the body's own padding.
+  // One line there: the category truncates instead of pushing the method under it.
+  chipsBesideBadge: { flexWrap: 'nowrap', marginStart: HERO_INSET + DETAIL_BADGE_INSET + DETAIL_BADGE + 8 - BODY_PADDING },
+  // Both pills share one shape: compact, fully rounded, text only.
+  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  chipText: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  categoryChip: { flexShrink: 1, minWidth: 0, backgroundColor: colors.brandTint },
+  categoryText: { flexShrink: 1, color: colors.brand },
+  methodChip: { flexShrink: 0, backgroundColor: colors.borderLight },
+  methodText: { color: colors.body },
   business: { fontSize: 26, lineHeight: 32, fontWeight: '800', color: colors.heading, marginTop: 16 },
   title: { fontSize: 17, lineHeight: 24, fontWeight: '600', color: colors.text, marginTop: 6 },
   location: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },

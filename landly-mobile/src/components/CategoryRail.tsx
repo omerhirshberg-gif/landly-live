@@ -3,8 +3,10 @@ import { ScrollView, StyleSheet, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import { CATEGORY_TILES } from '@shared/categories'
 import AppText from './AppText'
+import Emoji from './Emoji'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { categoryGlyph } from '../lib/categoryGlyphs'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
@@ -45,7 +47,7 @@ export default function CategoryRail({ onSelect, onViewAll }: { onSelect: (categ
             style={styles.tile}
           >
             <View style={styles.icon}>
-              <AppText style={styles.emoji}>{tile.emoji}</AppText>
+              <Emoji glyph={categoryGlyph(tile.category)} size={26} />
             </View>
             <AppText style={styles.label} numberOfLines={2}>
               {t(tile.labelKey)}
@@ -91,7 +93,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 26, lineHeight: 32, textAlign: 'center' },
   viewAllIcon: { backgroundColor: colors.brand },
   label: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: colors.heading, textAlign: 'center' },
   viewAllLabel: { color: colors.brand },

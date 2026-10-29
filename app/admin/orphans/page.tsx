@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { formatIsraeliDate } from '@/lib/admin/formatDate'
 import Alert from '@/components/admin/Alert'
 import Card, { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
@@ -83,7 +84,7 @@ export default function OrphansPage() {
               <div className="min-w-0">
                 <div className="truncate font-semibold text-[#0B1B3D]" dir="ltr">{orphan.email}</div>
                 <div className="truncate text-xs text-[#94A3B8]">
-                  {orphan.providerIds.join(', ') || 'no provider'} · created {new Date(orphan.createdAt).toLocaleDateString()} ·{' '}
+                  {orphan.providerIds.join(', ') || 'no provider'} · created <bdi dir="ltr">{formatIsraeliDate(orphan.createdAt)}</bdi> ·{' '}
                   <span className="font-mono">{orphan.uid}</span>
                 </div>
               </div>

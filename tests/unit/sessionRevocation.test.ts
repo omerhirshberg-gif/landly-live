@@ -52,6 +52,17 @@ describe('revokeMemberSessions', () => {
     expect(mocks.store.read(`users/${UID}`)?.email).toBe('a@landly.test')
   })
 
+  it('clears the devices Privacy & Security lists, and only that member\'s', async () => {
+    mocks.store.seed(`users/${UID}/sessions/aaaaaaaaaaaaaaaa`, { deviceName: 'iPhone 15 Pro', platform: 'ios' })
+    mocks.store.seed(`users/${UID}/sessions/bbbbbbbbbbbbbbbb`, { deviceName: 'Mac · Chrome', platform: 'web' })
+    mocks.store.seed('users/someone-else/sessions/cccccccccccccccc', { deviceName: 'Android phone', platform: 'android' })
+    await revokeMemberSessions(UID)
+    expect(mocks.store.read(`users/${UID}/sessions/aaaaaaaaaaaaaaaa`)).toBeUndefined()
+    expect(mocks.store.read(`users/${UID}/sessions/bbbbbbbbbbbbbbbb`)).toBeUndefined()
+    expect(mocks.store.read('users/someone-else/sessions/cccccccccccccccc')).toBeDefined()
+    expect(mocks.store.read(`users/${UID}`)?.email).toBe('a@landly.test')
+  })
+
   it('falls back to the current whole second when Auth reports no cutoff', async () => {
     mocks.getUser.mockResolvedValue({})
     const before = Math.floor(Date.now() / 1000) * 1000

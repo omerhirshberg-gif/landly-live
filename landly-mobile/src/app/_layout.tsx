@@ -11,6 +11,7 @@ import { AuthProvider } from '@shared/firebase/AuthProvider'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { AppLockOverlay, AppLockProvider, useAppLock } from '../auth/AppLock'
+import { useDeviceSession } from '../lib/deviceSession'
 import { rootSignedIn, SignInGateProvider, useSignInGate } from '../auth/SignInGate'
 import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
@@ -19,6 +20,7 @@ import SplashScreen, { type Handoff } from '../components/SplashScreen'
 import { LangProvider, useLang } from '../i18n/LangProvider'
 import { clearPendingDeepLink, pendingDeepLink } from '../lib/deepLinks'
 import { pageFlipOptions } from '../lib/pageFlip'
+import { whenIdle } from '../lib/whenIdle'
 import { colors } from '../theme'
 
 // Native RTL is disabled (expo-localization plugin in app.json), so the app
@@ -78,6 +80,8 @@ function RootNavigator() {
   // session opens the login screen, which resumes the wizard.
   const verified = !!user && user.emailVerified
   const signedIn = rootSignedIn({ verified, checking, onboarding, onboardingComplete })
+  // This phone's row in Privacy & Security › Sessions.
+  useDeviceSession(signedIn ? user : null)
 
   // At launch the navigator waits for that answer too, so neither the tabs
   // nor the sign-in form flashes first. Later sign-ins hold the gate with
@@ -92,15 +96,36 @@ function RootNavigator() {
   if (known && !booted) setBooted(true)
   const ready = booted || known
 
-  // The splash intro (0–2950ms) gets the UI thread to itself: the screens,
-  // and the lock over them, mount only once it has played, so creating the
-  // tab bar, Home's cards and their images never drops its frames.
+  // The splash intro (0–2950ms) gets the UI thread to itself: the screens
+  // mount only once it has played, so creating the tab bar, Home's cards and
+  // their images never drops its frames. The lock is the exception (below).
   const [introDone, setIntroDone] = useState(false)
   const handleIntroDone = useCallback(() => setIntroDone(true), [])
   const screensUp = ready && introDone
   // Where the splash logo lands: the login hero, the lock's header, or (signed
   // in and unlocked) nowhere.
   const handoff: Handoff = !signedIn ? 'login' : locked ? 'lock' : 'none'
+
+  // The splash plays its intro, waits for auth, hands over, then removes itself.
+  const [splashDone, setSplashDone] = useState(false)
+  const handleSplashDone = useCallback(() => setSplashDone(true), [])
+  // Gliding into the lock screen, the tabs (hidden under the lock until it
+  // opens) mount only once the splash is gone and the JS thread is idle, so
+  // creating the tab bar and Home's cards never drops the glide's frames or
+  // the lock screen's first ones; the login screen mounts with the screens as
+  // before. Unlocking is still instant: nobody can pass Face ID that fast. A
+  // latch, like `booted`.
+  const [stackUp, setStackUp] = useState(false)
+  if (screensUp && !stackUp && handoff !== 'lock') setStackUp(true)
+  useEffect(() => {
+    if (stackUp || !screensUp || handoff !== 'lock' || !splashDone) return
+    return whenIdle(() => setStackUp(true))
+  }, [stackUp, screensUp, handoff, splashDone])
+  // The lock mounts under the splash as soon as the launch is known to be
+  // locked, often mid-intro: laid out and measured before the glide, so the
+  // glide never starts on the frames that create it (SplashScreen.tsx). It
+  // draws nothing until it locks or covers, so `ready` alone is enough.
+  const lockUp = ready
 
   // Unlocking: from UNLOCK.revealDelayMs the screens rise UNLOCK.risePx and
   // fade in, landing as the lock screen finishes dissolving (AppLock.tsx).
@@ -130,7 +155,7 @@ function RootNavigator() {
   }, [pathname])
   const sawSignedOut = useRef(false)
   useEffect(() => {
-    if (!screensUp) return
+    if (!stackUp) return
     if (!signedIn) {
       sawSignedOut.current = true
       return
@@ -139,18 +164,14 @@ function RootNavigator() {
     clearPendingDeepLink()
     if (target && sawSignedOut.current) router.push(target as Href)
     sawSignedOut.current = false
-  }, [screensUp, signedIn])
-
-  // The splash plays its intro, waits for auth, hands over, then removes itself.
-  const [splashDone, setSplashDone] = useState(false)
-  const handleSplashDone = useCallback(() => setSplashDone(true), [])
+  }, [stackUp, signedIn])
 
   return (
     <View style={[styles.root, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       <StatusBar style="dark" />
       {/* Every pushed screen can be swiped back; the page-flip screens below add the full-screen drag. */}
       <Animated.View style={[styles.root, riseStyle]}>
-        {screensUp && (
+        {stackUp && (
           <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: colors.background } }}>
             <Stack.Protected guard={signedIn}>
               {/* Signing in (or finishing onboarding) fades into the tabs instead of sliding. */}
@@ -175,7 +196,7 @@ function RootNavigator() {
       </Animated.View>
       <Animated.View pointerEvents="none" style={[styles.veil, veilStyle]} />
       {/* Above the screens, under the splash (its zIndex outranks the lock's). */}
-      {screensUp && <AppLockOverlay />}
+      {lockUp && <AppLockOverlay settled={stackUp} />}
       {!splashDone && <SplashScreen ready={screensUp} handoff={handoff} onIntroDone={handleIntroDone} onDone={handleSplashDone} />}
       {__DEV__ && <DevEnvironmentBadge />}
     </View>

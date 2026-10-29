@@ -1,8 +1,10 @@
 import { StyleSheet, View } from 'react-native'
 import type { CategoryTile } from '@shared/categories'
 import AppText from './AppText'
+import Emoji from './Emoji'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { categoryGlyph } from '../lib/categoryGlyphs'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
@@ -39,9 +41,7 @@ export default function CategoryGrid({
               onPress={() => onSelect(tile.category)}
               style={styles.card}
             >
-              <AppText style={styles.emoji} accessibilityElementsHidden importantForAccessibility="no">
-                {tile.emoji}
-              </AppText>
+              <Emoji glyph={categoryGlyph(tile.category)} size={32} />
               <View style={styles.titleBox}>
                 <AppText style={styles.title} numberOfLines={2}>
                   {t(tile.labelKey)}
@@ -75,7 +75,6 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
   spacer: { flex: 1 },
-  emoji: { fontSize: 32, lineHeight: 40 },
   // Two lines reserved, the name sitting on the box's foot, so every card's label shares one baseline.
   titleBox: { height: 40, justifyContent: 'flex-end' },
   title: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.textStrong },

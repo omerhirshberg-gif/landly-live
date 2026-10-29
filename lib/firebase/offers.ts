@@ -16,6 +16,9 @@ export interface OfferDocument {
   businessTranslations?: BusinessTranslations | null
   location: string // denormalized from businesses/{businessId}.location
   imageUrl: string // externally-hosted image link, admin-pasted; empty = no image
+  // The business's logo (lib/business/businessLogo.ts), copied from businesses/{businessId}.logoUrl; '' = none.
+  // Optional only for hand-built fixtures: every offer read from Firestore has it.
+  businessLogoUrl?: string
   title: string
   description: string
   originalPrice: number
@@ -46,6 +49,7 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     location: (data.location as string) ?? '',
     // Normalized on read too, so links saved before the admin routes did it still render.
     imageUrl: normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : ''),
+    businessLogoUrl: normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : ''),
     title: (data.title as string) ?? '',
     description: (data.description as string) ?? '',
     originalPrice: Number(data.originalPrice) || 0,

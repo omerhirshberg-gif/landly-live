@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { AdminCrumbProvider } from './AdminCrumbContext'
 import AdminGate from './AdminGate'
 import AdminHeader from './AdminHeader'
 import { DesktopSidebar, MobileDrawer } from './Sidebar'
@@ -72,17 +73,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <AdminGate>
-      <div className={`${CANVAS} flex`} style={SHELL_VARS} dir="ltr">
-        <DesktopSidebar onLogout={logout} needsReply={needsReply} />
-        <MobileDrawer open={isMobileOpen} onClose={closeMenu} onNavigate={dismissMenu} onLogout={logout} needsReply={needsReply} />
-        <div className="flex min-h-[var(--app-dvh)] w-full min-w-0 flex-1 flex-col">
-          <AdminHeader menuOpen={isMobileOpen} onOpenMenu={() => setIsMobileOpen(true)} menuButtonRef={menuButtonRef} needsReply={needsReply} />
-          {/* Centred in the space beside the sidebar, capped so it doesn't stretch across wide monitors. */}
-          <main className={FULL_BLEED.some((path) => pathname.startsWith(path)) ? MAIN_FULL_BLEED : MAIN}>
-            {children}
-          </main>
+      <AdminCrumbProvider>
+        <div className={`${CANVAS} flex`} style={SHELL_VARS} dir="ltr">
+          <DesktopSidebar onLogout={logout} needsReply={needsReply} />
+          <MobileDrawer open={isMobileOpen} onClose={closeMenu} onNavigate={dismissMenu} onLogout={logout} needsReply={needsReply} />
+          <div className="flex min-h-[var(--app-dvh)] w-full min-w-0 flex-1 flex-col">
+            <AdminHeader menuOpen={isMobileOpen} onOpenMenu={() => setIsMobileOpen(true)} menuButtonRef={menuButtonRef} needsReply={needsReply} />
+            {/* Centred in the space beside the sidebar, capped so it doesn't stretch across wide monitors. */}
+            <main className={FULL_BLEED.some((path) => pathname.startsWith(path)) ? MAIN_FULL_BLEED : MAIN}>
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
+      </AdminCrumbProvider>
     </AdminGate>
   )
 }

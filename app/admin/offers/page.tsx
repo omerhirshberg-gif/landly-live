@@ -2,23 +2,27 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { formatIsraeliDate } from '@/lib/admin/formatDate'
 import Alert from '@/components/admin/Alert'
-import Card, { CardSkeletons } from '@/components/admin/Card'
+import { CardSkeletons } from '@/components/admin/Card'
+import DataTable from '@/components/admin/DataTable'
 import EmptyState from '@/components/admin/EmptyState'
 import { FilterChips, ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import OfferPrice from '@/components/admin/OfferPrice'
 import { OfferStatusBadge } from '@/components/admin/StatusBadge'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
-import TranslateMissingButton from '@/components/admin/TranslateMissingButton'
+import BidiText from '@/components/admin/BidiText'
+import OfferThumb from '@/components/admin/OfferThumb'
 
 interface Offer {
   id: string
   title: string
   businessId: string
   businessName: string
+  imageUrl: string
+  businessLogoUrl: string
   originalPrice: number
   offerPrice: number
   expiryDate: string | null
@@ -36,7 +40,6 @@ const STATUS_OPTIONS = [
 ] as const
 
 export default function OffersListPage() {
-  const router = useRouter()
   const [offers, setOffers] = useState<Offer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -64,19 +67,30 @@ export default function OffersListPage() {
     setStatus('all')
   }
 
+  const deleteOffer = async (offer: Offer) => {
+    const warning =
+      offer.claimedCount > 0
+        ? `${offer.claimedCount} customer(s) have already claimed "${offer.title}". Delete it anyway?`
+        : `Delete "${offer.title}"?`
+    if (!window.confirm(warning)) return
+    const res = await adminFetch(`/api/admin/offers/${offer.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      setError((await res.json().catch(() => ({}))).error ?? 'Failed to delete offer.')
+      return
+    }
+    setOffers((prev) => prev?.filter((o) => o.id !== offer.id) ?? null)
+  }
+
   return (
     <div>
       <PageHeader
         title="Offers"
         subtitle="All perks across every business."
         actions={
-          <>
-            <TranslateMissingButton className="w-full sm:w-auto" />
-            <Link href="/admin/offers/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
-              <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add new offer
-            </Link>
-          </>
+          <Link href="/admin/offers/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
+            <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+            Add new offer
+          </Link>
         }
       />
 
@@ -124,73 +138,98 @@ export default function OffersListPage() {
       )}
 
       {filtered.length > 0 && (
-        <>
-          {/* Desktop: a table. Each row opens the offer's edit page; the title link keeps it keyboard reachable. */}
-          <Card className="hidden overflow-hidden md:block">
-            <table className="w-full text-start text-sm">
-              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
-                <tr>
-                  <th scope="col" className="px-5 py-3 text-start">Offer</th>
-                  <th scope="col" className="px-5 py-3 text-start">Status</th>
-                  <th scope="col" className="px-5 py-3 text-end">Price</th>
-                  <th scope="col" className="px-5 py-3 text-end">Claimed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
-                {filtered.map((offer) => (
-                  <tr
-                    key={offer.id}
-                    onClick={() => router.push(`/admin/offers/${offer.id}/edit`)}
-                    className="cursor-pointer transition-colors hover:bg-[#F8FAFC]"
-                  >
-                    <td className="max-w-0 px-5 py-4">
-                      <Link
-                        href={`/admin/offers/${offer.id}/edit`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="block truncate font-semibold text-[#0B1B3D] hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
-                        dir="auto"
-                      >
-                        {offer.title}
-                      </Link>
-                      <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="auto">{offer.businessName}</div>
-                    </td>
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <OfferStatusBadge offer={offer} />
-                    </td>
-                    <td className="px-5 py-4 text-end whitespace-nowrap">
-                      <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
-                    </td>
-                    <td className="px-5 py-4 text-end whitespace-nowrap tabular-nums text-[#475569]" dir="ltr">
-                      {offer.claimedCount}/{offer.totalQuantity ?? '∞'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-
-          {/* Phones: stacked cards. */}
-          <div className="space-y-3 md:hidden">
-            {filtered.map((offer) => (
-              <Card key={offer.id} href={`/admin/offers/${offer.id}/edit`} className="block p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{offer.title}</div>
-                    <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="auto">{offer.businessName}</div>
-                  </div>
-                  <OfferStatusBadge offer={offer} />
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-[#E2E8F0] pt-3">
-                  <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
-                  <span className="text-xs font-medium text-[#94A3B8] tabular-nums" dir="ltr">
-                    {offer.claimedCount}/{offer.totalQuantity ?? '∞'} claimed
-                  </span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </>
+        <DataTable
+          label="Offers"
+          rows={filtered}
+          rowKey={(offer) => offer.id}
+          rowHref={(offer) => `/admin/offers/${offer.id}/edit`}
+          columns={[
+            {
+              id: 'offer',
+              header: 'Offer',
+              sortValue: (offer) => offer.title,
+              cell: (offer) => <OfferIdentity offer={offer} />,
+            },
+            { id: 'status', header: 'Status', width: 'w-28', sortValue: (offer) => (offer.active ? 0 : 1), cell: (offer) => <OfferStatusBadge offer={offer} /> },
+            {
+              id: 'price',
+              header: 'Price',
+              align: 'end',
+              width: 'w-32',
+              sortValue: (offer) => offer.offerPrice,
+              cell: (offer) => <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} align="end" />,
+            },
+            {
+              id: 'claimed',
+              header: 'Claimed',
+              align: 'end',
+              width: 'w-24',
+              sortValue: (offer) => offer.claimedCount,
+              cell: (offer) => <Claimed offer={offer} />,
+            },
+            {
+              id: 'expires',
+              header: 'Expires',
+              align: 'end',
+              width: 'w-28',
+              // Shown on desktop widths; tablets beside the sidebar give the title the room.
+              className: 'hidden xl:table-cell',
+              sortValue: (offer) => (offer.expiryDate ? new Date(offer.expiryDate).getTime() : Number.MAX_SAFE_INTEGER),
+              cell: (offer) => (
+                <bdi dir="ltr" className="tabular-nums text-[#475569]">
+                  {formatIsraeliDate(offer.expiryDate)}
+                </bdi>
+              ),
+            },
+          ]}
+          actions={(offer) => [
+            { label: 'Edit offer', icon: 'fa-pen', href: `/admin/offers/${offer.id}/edit` },
+            { label: 'View business', icon: 'fa-store', href: `/admin/businesses/${offer.businessId}` },
+            { label: 'Delete offer', icon: 'fa-trash', danger: true, onSelect: () => void deleteOffer(offer) },
+          ]}
+          card={(offer) => (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <OfferIdentity offer={offer} />
+                <OfferStatusBadge offer={offer} />
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3 border-t border-[#E2E8F0] pt-3">
+                <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
+                <span className="text-end text-xs text-[#94A3B8]">
+                  <Claimed offer={offer} /> claimed
+                  {offer.expiryDate && (
+                    <span className="block">
+                      expires <bdi dir="ltr" className="tabular-nums">{formatIsraeliDate(offer.expiryDate)}</bdi>
+                    </span>
+                  )}
+                </span>
+              </div>
+            </>
+          )}
+        />
       )}
     </div>
+  )
+}
+
+/** Thumbnail, then the title over its business: a row's first cell, and a phone card's top. */
+function OfferIdentity({ offer }: { offer: Offer }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <OfferThumb imageUrl={offer.imageUrl} logoUrl={offer.businessLogoUrl} />
+      <span className="min-w-0 flex-1">
+        <BidiText className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{offer.title}</BidiText>
+        <BidiText className="mt-0.5 text-xs text-[#94A3B8]">{offer.businessName}</BidiText>
+      </span>
+    </span>
+  )
+}
+
+/** "12/50" claimed ("∞" when unlimited), as one LTR run. */
+function Claimed({ offer }: { offer: Offer }) {
+  return (
+    <bdi dir="ltr" className="font-semibold tabular-nums text-[#475569]">
+      {offer.claimedCount}/{offer.totalQuantity ?? '∞'}
+    </bdi>
   )
 }

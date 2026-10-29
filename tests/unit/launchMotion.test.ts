@@ -1,7 +1,14 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ENTRANCE_SPRING, glideToLockup, SPLASH_GLIDE, SPLASH_RELEASE_MS, splashGlideBackstopMs, T } from '@/lib/brand/entranceTimeline'
+import { ENTRANCE_SPRING, glideToLockup, SPLASH_RELEASE_MS, splashGlideBackstopMs, T } from '@/lib/brand/entranceTimeline'
+
+// A runtime-only import: a typed one would pull the app's @shared paths into the root typecheck.
+const splashMotionPath = '../../landly-mobile/src/lib/splashMotion'
+const { GLIDE, LOCK_RISE_PROGRESS } = (await import(splashMotionPath)) as {
+  GLIDE: Record<'login' | 'lock', { duration: number; dampingRatio: number }>
+  LOCK_RISE_PROGRESS: readonly [number, number]
+}
 import { LOCK_RISE, UNLOCK } from '@/lib/brand/onboardingMotion'
 
 const read = (file: string) => readFile(path.join('landly-mobile/src', file), 'utf8')
@@ -15,11 +22,15 @@ async function sources(dir: string): Promise<string[]> {
 }
 
 describe('splash intro', () => {
-  it('has the UI thread to itself: the screens and the lock mount only after it', async () => {
+  it('has the UI thread to itself: the screens mount only after it, the lock under it beforehand', async () => {
     const layout = await read('app/_layout.tsx')
     expect(layout).toContain('const screensUp = ready && introDone')
-    expect(layout).toMatch(/\{screensUp && \(\s*<Stack /)
-    expect(layout).toContain('{screensUp && <AppLockOverlay />}')
+    // Gliding into the lock, the tabs wait until the splash is gone and JS is idle (landly-mobile/tests/splashGlide.test.ts).
+    expect(layout).toContain("if (screensUp && !stackUp && handoff !== 'lock') setStackUp(true)")
+    expect(layout).toMatch(/\{stackUp && \(\s*<Stack /)
+    // The lock is laid out before the glide, never created on its first frames.
+    expect(layout).toContain('const lockUp = ready')
+    expect(layout).toContain('{lockUp && <AppLockOverlay settled={stackUp} />}')
     expect(layout).toContain('<SplashScreen ready={screensUp} handoff={handoff} onIntroDone={handleIntroDone}')
     // The splash still waits for both before handing over.
     expect(await read('components/SplashScreen.tsx')).toContain('if (!ready || !introDone || started.current) return')
@@ -61,30 +72,44 @@ describe('splash logo into the app lock', () => {
     expect(landed.y).toBeCloseTo(target.y + target.height / 2, 6)
   })
 
-  it('glides on its damped spring while the slogan fades, then crossfades onto the screen\'s own logo', async () => {
-    expect(SPLASH_GLIDE).toEqual({ login: { duration: 650, dampingRatio: 0.9 }, lock: { duration: 750, dampingRatio: 0.86 } })
+  it('glides on one critically damped progress spring while the slogan fades, then crossfades onto the screen\'s own logo', async () => {
+    expect(GLIDE).toEqual({ login: { duration: 620, dampingRatio: 1 }, lock: { duration: 700, dampingRatio: 1 } })
     expect(SPLASH_RELEASE_MS).toBe(140)
     // The card's rise (login.tsx, and the web) keeps its own spring.
     expect(ENTRANCE_SPRING).toEqual({ damping: 15, stiffness: 90 })
     const splash = await read('components/SplashScreen.tsx')
     expect(splash).toContain('const to = glideToLockup(from, target, LOCKUP_HEIGHT, LOCKUP_SCALE)')
-    expect(splash).toContain('scale.set(withSpring(LOCKUP_SCALE, SPLASH_GLIDE.lock))')
-    expect(splash).toContain('ty.set(withSpring(target.y - from.y, SPLASH_GLIDE.login, (fin) => fin && scheduleOnRN(finish)))')
-    // The screen's logo shows (phase 'done') before the splash fades off it.
-    expect(splash).toMatch(/setPhase\('done'\)\s*overlay\.set\(withTiming\(0, \{ duration: SPLASH_RELEASE_MS/)
+    // Position and scale are read off one spring (landly-mobile/src/lib/splashMotion.ts), released near its end.
+    expect(splash).toContain('p.set(withSpring(1, GLIDE[glideTo]))')
+    expect(splash).toContain('{ scale: 1 + (toScale.get() - 1) * progress }')
+    // Landed: in one UI-thread frame the screen's logo shows (`landed`) and the splash starts fading off it.
+    expect(splash).toMatch(/if \(!arrived \|\| was\) return\s*p\.set\(1\)[^]*?landed\.set\(1\)\s*overlay\.set\(withTiming\(0, \{ duration: SPLASH_RELEASE_MS[^]*?scheduleOnRN\(release\)/)
+    // The backstop's finish shows it and fades the splash itself.
+    expect(splash).toMatch(/landed\.set\(1\)\s*setPhase\('done'\)\s*if \(!fading\) overlay\.set\(withTiming\(0, \{ duration: SPLASH_RELEASE_MS/)
     expect(splash).toContain('sloganFade.set(withTiming(0')
-    // The lock's own lockup shows only once the splash is gone (same commit as its removal).
+    // The lock's own lockup is shown by `landed` on the UI thread, never by a React render.
     const lock = await read('auth/AppLock.tsx')
-    expect(lock).toContain("style={[styles.brand, phase !== 'done' && styles.hidden]}")
+    expect(lock).toContain('const lockupStyle = useAnimatedStyle(() => ({ opacity: landed.get() }))')
+    expect(lock).not.toContain("phase !== 'done' && styles.hidden")
     expect(lock).toContain('lockupRef.current?.measureInWindow((x, y, width, height) => setLockRect({ x, y, width, height }))')
   })
 
-  it('rises the hub, greeting and actions in under the glide', async () => {
-    expect(LOCK_RISE).toEqual({ ms: 520, risePx: 15 })
+  it('rises the hub, greeting and actions in off the glide’s own progress, on the UI thread', async () => {
+    expect(LOCK_RISE.risePx).toBe(15)
+    expect(LOCK_RISE_PROGRESS).toEqual([0.2, 0.85])
     const lock = await read('auth/AppLock.tsx')
-    expect(lock).toContain("const under = phase === 'splash'")
-    expect(lock.match(/<Rise under=\{under\} reduced=\{reduced\}/g)).toHaveLength(2)
-    expect(lock).toContain('translateY: under && !reduced ? LOCK_RISE.risePx : 0')
+    expect(lock.match(/<Rise reduced=\{reduced\}/g)).toHaveLength(2)
+    expect(lock).toContain('Math.max(interpolate(glide.get(), LOCK_RISE_PROGRESS, [0, 1], Extrapolation.CLAMP), landed.get())')
+    expect(lock).toContain('translateY: reduced ? 0 : LOCK_RISE.risePx * (1 - shown)')
+    // No CSS transition keyed on a React phase change mid-glide.
+    expect(lock).not.toContain('transitionProperty')
+  })
+
+  it('re-renders only the greeting when the member’s name arrives', async () => {
+    const lock = await read('auth/AppLock.tsx')
+    expect(lock).toContain('const LockGreeting = memo(function LockGreeting(')
+    const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'), lock.indexOf('function Rise('))
+    expect(overlay).not.toContain('useMemberProfile')
   })
 
   it('sends the logo to the lock only when the launch is locked', async () => {
@@ -143,11 +168,11 @@ describe('unlock into the app', () => {
     expect(lock).toContain('const timer = setTimeout(done, EXIT_MAX_MS)')
     expect(lock).toContain("pointerEvents={leaving ? 'none' : 'auto'}")
     const splash = await read('components/SplashScreen.tsx')
-    expect(splash).toContain('glideTimer.current = setTimeout(finish, GLIDE_MAX_MS)')
+    expect(splash).toContain('glideTimer.current = setTimeout(() => finish(false), GLIDE_MAX_MS)')
     // The backstop sits past both springs' settle (1.5x their perceptual duration), so it never cuts a glide short.
-    expect(splash).toContain('const GLIDE_MAX_MS = splashGlideBackstopMs(Math.max(SPLASH_GLIDE.login.duration, SPLASH_GLIDE.lock.duration))')
-    for (const { duration } of Object.values(SPLASH_GLIDE)) expect(splashGlideBackstopMs(duration)).toBeGreaterThanOrEqual(duration * 1.5 + 500)
-    expect(splash).toMatch(/const finish = \(\) => \{\s*if \(finished\.current\) return\s*finished\.current = true/)
+    expect(splash).toContain('const GLIDE_MAX_MS = splashGlideBackstopMs(Math.max(GLIDE.login.duration, GLIDE.lock.duration))')
+    for (const { duration } of Object.values(GLIDE)) expect(splashGlideBackstopMs(duration)).toBeGreaterThanOrEqual(duration * 1.5 + 500)
+    expect(splash).toMatch(/const finish = \(fading: boolean\) => \{\s*if \(finished\.current\) return\s*finished\.current = true/)
   })
 
   it('keeps the success haptic and the tap-only prompt', async () => {

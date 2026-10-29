@@ -41,11 +41,14 @@ const LIT_MS = 300
 export default function BiometricGlyph({
   kind,
   pulsing,
+  breathing = true,
   onPress,
   label,
 }: {
   kind: BiometricKind
   pulsing: boolean
+  /** The outer ring's slow breath; held still while the app's screens mount under the lock. */
+  breathing?: boolean
   onPress: () => void
   label: string
 }) {
@@ -65,13 +68,13 @@ export default function BiometricGlyph({
   }, [pulsing, reduced, progress])
 
   useEffect(() => {
-    if (!pulsing && !reduced) {
+    if (!pulsing && !reduced && breathing) {
       breath.set(withRepeat(withTiming(1, { duration: BREATH_MS, easing: Easing.inOut(Easing.sin) }), -1, true))
     } else {
       cancelAnimation(breath)
       breath.set(withTiming(0, { duration: 200 }))
     }
-  }, [pulsing, reduced, breath])
+  }, [pulsing, reduced, breathing, breath])
 
   useEffect(() => {
     lit.set(withTiming(pulsing ? 1 : 0, { duration: reduced ? 0 : LIT_MS, easing: Easing.out(Easing.quad) }))

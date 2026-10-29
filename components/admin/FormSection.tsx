@@ -26,13 +26,23 @@ export function FormSection({ icon, title, description, children }: FormSectionP
 }
 
 /**
- * The submit row. On phones it sticks to the bottom of the screen (above the
- * home indicator) so the button stays reachable in a long form.
+ * The form's Save / Cancel row, sticky at the bottom of the screen at every
+ * size (above the home indicator on a phone), so a long form never hides its
+ * primary action. `status` says whether there's anything to save.
  */
-export function FormActions({ children }: { children: React.ReactNode }) {
+export function StickyActionBar({ status, children }: { status?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 border-t border-[#E2E8F0] bg-white/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-      {children}
+    <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-[#E2E8F0] bg-white/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 md:bottom-4 md:mx-0 md:rounded-2xl md:border md:px-5 md:pb-3 md:shadow-lg md:shadow-slate-900/5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {status ? (
+          <p className="text-sm text-[#475569]" role="status">
+            {status}
+          </p>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{children}</div>
+      </div>
     </div>
   )
 }

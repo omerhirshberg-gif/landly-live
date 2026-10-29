@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bannerPathFromUrl, isJpeg, storageDownloadUrl } from '@/lib/storage/bannerPath'
-import { BANNER_ASPECT, BANNER_MAX_EDGE, centeredCrop } from '@/lib/images/crop'
+import { BANNER_ASPECT, BANNER_MAX_EDGE, BANNER_QUALITIES, centeredCrop, isLowResolution, MAX_UPLOAD_BYTES } from '@/lib/images/crop'
 
 describe('banner storage URLs', () => {
   const bucket = 'landly-dev.firebasestorage.app'
@@ -25,13 +25,24 @@ describe('banner storage URLs', () => {
 })
 
 describe('centeredCrop', () => {
-  it('crops a 12MP portrait photo to a centred 16:9 band, at most 1600px wide', () => {
+  it('crops a 12MP portrait photo to a centred 16:9 band at its full 3024px width (under the 2400px cap: scaled to it)', () => {
     const box = centeredCrop(3024, 4032, BANNER_ASPECT, BANNER_MAX_EDGE)
     expect(box.sw).toBe(3024)
     expect(box.sh).toBe(1701)
     expect(box.sy).toBe(Math.floor((4032 - 1701) / 2))
-    expect(box.width).toBe(1600)
-    expect(box.height).toBe(900)
+    expect(box.width).toBe(2400)
+    expect(box.height).toBe(1350)
+  })
+
+  it('keeps a 2x desktop hero sharp: quality 90 first, stepping down only to fit under Vercel’s body limit', () => {
+    expect(BANNER_QUALITIES[0]).toBe(0.9)
+    expect([...BANNER_QUALITIES]).toEqual([...BANNER_QUALITIES].sort((a, b) => b - a))
+    expect(MAX_UPLOAD_BYTES).toBeLessThan(4.5 * 1024 * 1024)
+  })
+
+  it('warns about a banner narrower than a phone at @3x', () => {
+    expect(isLowResolution('banner', 1200, 675)).toBe(true)
+    expect(isLowResolution('banner', 2400, 1350)).toBe(false)
   })
 
   it('crops a panorama’s sides and never upscales a small image', () => {

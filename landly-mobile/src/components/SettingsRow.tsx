@@ -53,7 +53,7 @@ export default function SettingsRow({
         )}
       </View>
       {choice ? (
-        selected && <LineIcon name="check" color={colors.brand} strokeWidth={2.6} />
+        selected && <LineIcon name="check" color={colors.brand} strokeWidth={2.4} />
       ) : (
         <LineIcon name="chevronEnd" color={colors.textFaint} strokeWidth={2.2} flip={isRtl} />
       )}

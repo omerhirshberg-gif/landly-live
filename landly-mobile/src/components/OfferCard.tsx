@@ -3,7 +3,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import Svg, { Path } from 'react-native-svg'
 import { CATEGORY_TILES } from '@shared/categories'
 import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
-import { REDEMPTION_METHOD_LABEL_KEYS, type RedemptionMethod } from '@shared/offers/redemption'
+import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import { formatPrice } from '@shared/format'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { localizeText } from '@shared/i18n/contentTranslation'
@@ -11,18 +11,14 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import { formatDistance, offerPlaceLabel } from '@shared/geo'
 import AppText from './AppText'
 import ContentText from './ContentText'
-import LineIcon, { type LineIconName } from './LineIcon'
-import PerkImage from './PerkImage'
+import DealMedia, { DEAL_BADGE } from './DealMedia'
+import Emoji from './Emoji'
+import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
+import { categoryGlyph } from '../lib/categoryGlyphs'
 import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
-
-export const REDEMPTION_METHOD_ICONS: Record<RedemptionMethod, LineIconName> = {
-  in_store: 'tag',
-  online: 'globe',
-  phone_booking: 'phone',
-}
 
 /**
  * 'standard': full width, for the vertical feeds (Perks, a category, the
@@ -35,19 +31,17 @@ export type OfferCardVariant = 'standard' | 'compact' | 'carousel'
 // A press settles quickly without bouncing past rest.
 const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 
-// A perk: photo (or branded fallback) with its category badge, then the
-// business, the offer, how it's redeemed and where, and the price. The whole
-// card is the button; the CTA line only says what tapping does. The heart at
-// the photo's bottom end corner saves or un-saves the perk in the member's
-// wishlist, shared live with the website. Compact, so a feed shows two or
-// more perks per screen: a 16:9 picture in its own framed box (light canvas,
-// hairline border, 14pt corners) inset from the card's edges, so a white logo
-// never melts into the white card, and the price,
-// the struck-through original and the discount badge sharing one row with
-// the CTA. A list already scoped to one category passes
+// A perk: a full-width hero picture with the business's badge hanging over
+// its foot (DealMedia.tsx: the deal's photo with the business's initial, or
+// the category's panel with its logo), then the business, the offer, how
+// it's redeemed and where, and the price. Over the hero: the category pill
+// at the top start corner, the discount at the top end and the heart at the
+// bottom end, which saves or un-saves the perk in the member's wishlist,
+// shared live with the website. The whole card is the button; the CTA line
+// only says what tapping does. The price and the struck-through original
+// share one row with the CTA. A list already scoped to one category passes
 // `showCategoryBadge={false}`, since every card would repeat the same pill.
-// Same anatomy as the website's components/discover/OfferCard.tsx, whose
-// 'rail' layout is the carousel variant here.
+// Every position is start/end, so Hebrew mirrors the card.
 export default function OfferCard({
   offer,
   onPress,
@@ -70,6 +64,7 @@ export default function OfferCard({
   const compact = variant !== 'standard'
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
+  const badge = DEAL_BADGE[compact ? 'compact' : 'standard']
   const { isWishlisted, toggleWishlist } = useWishlist()
   const saved = isWishlisted(offer.id)
   const wishlistLabel = saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')
@@ -96,13 +91,18 @@ export default function OfferCard({
       onPressOut={() => pressTo(1)}
     >
       <Animated.View style={[styles.card, variant === 'carousel' && styles.cardCarousel, pressStyle]}>
-        <View style={styles.media}>
-          <PerkImage uri={offer.imageUrl} category={offer.category} businessName={name.text} />
+        <DealMedia uri={offer.imageUrl} logoUri={offer.businessLogoUrl ?? ''} category={offer.category} businessName={name.text} size={compact ? 'compact' : 'standard'}>
           {showCategoryBadge && tile && (
-            <View style={[styles.overlay, styles.overlayStart, styles.category]}>
+            <View style={[styles.overlayTopStart, styles.pill, styles.category]}>
+              <Emoji glyph={categoryGlyph(tile.category)} size={compact ? 11 : 12} />
               <AppText style={[styles.categoryText, compact && styles.categoryTextCompact]} numberOfLines={1}>
-                {`${tile.emoji} ${t(tile.labelKey)}`}
+                {t(tile.labelKey)}
               </AppText>
+            </View>
+          )}
+          {discount > 0 && (
+            <View style={[styles.overlayTopEnd, styles.pill, styles.discount]}>
+              <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
             </View>
           )}
           <Pressable
@@ -123,12 +123,15 @@ export default function OfferCard({
               pressed && styles.heartPressed,
             ]}
           >
-            <LineIcon name="heart" size={compact ? 16 : 18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2.2} />
+            <LineIcon name="heart" size={compact ? 16 : 18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2} />
           </Pressable>
-        </View>
+        </DealMedia>
 
         <View style={[styles.body, compact && styles.bodyCompact]}>
-          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>{name.text}</AppText>
+          {/* Clear of the badge hanging over the hero's foot. */}
+          <AppText style={[styles.business, compact && styles.businessCompact, { marginStart: badge + 8 }]} numberOfLines={1}>
+            {name.text}
+          </AppText>
           <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact, variant === 'carousel' && styles.titleReserved]} numberOfLines={2}>
             {title.text}
           </ContentText>
@@ -136,7 +139,6 @@ export default function OfferCard({
           {/* Compact: one line, the location giving way to the method. */}
           <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
             <View style={styles.methodChip}>
-              <LineIcon name={REDEMPTION_METHOD_ICONS[offer.redemptionMethod]} size={compact ? 12 : 13} color={colors.brand} strokeWidth={2.2} />
               <AppText style={[styles.methodText, compact && styles.metaTextCompact]}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
             </View>
             {(!!place || !!distance) && (
@@ -157,11 +159,6 @@ export default function OfferCard({
             <View style={styles.priceRow}>
               <AppText ltr style={[styles.price, compact && styles.priceCompact]}>{formatPrice(offer.offerPrice)}</AppText>
               {discount > 0 && <AppText ltr style={[styles.original, compact && styles.originalCompact]}>{formatPrice(offer.originalPrice)}</AppText>}
-              {discount > 0 && (
-                <View style={styles.discount}>
-                  <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
-                </View>
-              )}
             </View>
             <View style={styles.cta}>
               <AppText style={[styles.ctaText, compact && styles.ctaTextCompact]}>{t('offer_view_cta')}</AppText>
@@ -202,21 +199,20 @@ const styles = StyleSheet.create({
   },
   // The rail spaces its cards itself.
   cardCarousel: { marginBottom: 0 },
-  // The framed picture, inset from the card's edges and clipped to its own
-  // corners: 16:9 in every size, as on the web (components/discover/OfferCard.tsx).
-  media: {
-    marginHorizontal: 8,
-    marginTop: 8,
-    aspectRatio: 16 / 9,
-    borderRadius: radius.frame,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    backgroundColor: colors.background,
-  },
-  overlay: { position: 'absolute', top: 10 },
-  overlayStart: { start: 10 },
+  // Over the hero: the pills at its top corners, the heart at its bottom end
+  // (the badge holds the bottom start).
+  overlayTopStart: { position: 'absolute', top: 10, start: 10 },
+  overlayTopEnd: { position: 'absolute', top: 10, end: 10 },
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
+  // A soft drop shadow lifts the pills and the heart off any photo.
+  pill: {
+    borderRadius: radius.pill,
+    shadowColor: colors.textStrong,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
   heart: {
     width: 36,
     height: 36,
@@ -224,19 +220,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    shadowColor: colors.textStrong,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
     ...webOnly({ cursor: 'pointer' }),
   },
   heartCompact: { width: 32, height: 32 },
   heartSaved: { backgroundColor: colors.heart },
   heartPressed: { transform: [{ scale: 0.92 }] },
+  // The emoji and the label are separate views, so the row's direction orders them.
   category: {
-    maxWidth: '65%',
+    maxWidth: '62%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingStart: 6,
+    paddingEnd: 9,
+    paddingVertical: 2,
   },
-  categoryText: { fontSize: 11, fontWeight: '600', color: colors.heading },
+  categoryText: { flexShrink: 1, fontSize: 11, fontWeight: '600', color: colors.heading },
   categoryTextCompact: { fontSize: 10 },
   body: { paddingHorizontal: 12, paddingTop: 9, paddingBottom: 12 },
   bodyCompact: { paddingHorizontal: 10, paddingTop: 9, paddingBottom: 10 },
@@ -269,8 +274,8 @@ const styles = StyleSheet.create({
   priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },
   originalCompact: { fontSize: 12 },
-  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1), sized down to sit in the price row.
-  discount: { backgroundColor: colors.discount, borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 2 },
+  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1).
+  discount: { backgroundColor: colors.discount, paddingHorizontal: 8, paddingVertical: 4 },
   discountText: { fontSize: 11, fontWeight: '800', color: colors.white, letterSpacing: 0.3, textTransform: 'uppercase' },
   discountTextCompact: { fontSize: 10 },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },

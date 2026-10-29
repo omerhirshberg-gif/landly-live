@@ -1,21 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signOut, type User } from 'firebase/auth'
-import { LogOut, Smartphone } from 'lucide-react'
+import { LogOut, Monitor, Smartphone } from 'lucide-react'
 import IconFrame from '@/components/ui/IconFrame'
 import { auth } from '@/lib/firebase/config'
 import { useLang } from '@/lib/i18n/useLang'
+import { formatLastEntry } from '@/lib/auth/greeting'
 import { revokeAllSessions, type RevokeSessionsResult } from '@/lib/account/revokeSessions'
+import { orderSessions, type UserSession } from '@/lib/account/sessionList'
+import { watchSessions } from '@/lib/account/sessions'
+import { forgetWebSessionBeat, webSessionId, webSessionName } from '@/lib/account/webSession'
 
-// Privacy & Security's Sessions card: this device (the one signed in now),
-// then "Sign out of all devices". Firebase can't list a member's other
-// sessions from the client, so instead of a list it offers the one control
-// that matters: revoking them all (app/api/account/revoke-sessions). The
-// confirmation opens inline under the button, not in a dialog; a success
-// signs this device out too, and the settings page sends it to /login.
+// Privacy & Security's Sessions card: every device signed in to the account
+// (users/{uid}/sessions, each device writing its own: SessionHeartbeat here,
+// landly-mobile/src/lib/deviceSession.ts in the app), this browser first,
+// the others by name and when they were last active; then "Sign out of all
+// devices" (app/api/account/revoke-sessions), which also clears the list.
+// The confirmation opens inline under the button, not in a dialog; a
+// success signs this device out too, and the settings page sends it to /login.
 export default function SessionsCard({ user }: { user: User }) {
   const { t } = useLang()
+  const sessions = useSessionList(user.uid)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<RevokeSessionsResult | null>(null)
@@ -31,6 +37,7 @@ export default function SessionsCard({ user }: { user: User }) {
     }
     // An already-revoked session has nothing left to end here either.
     if (outcome === 'done' || outcome === 'unauthorized') {
+      forgetWebSessionBeat()
       await signOut(auth).catch(() => {})
       return
     }
@@ -44,14 +51,32 @@ export default function SessionsCard({ user }: { user: User }) {
     <section aria-labelledby="settings-sessions" className="mb-6">
       <h2 id="settings-sessions" className="px-1 pb-2 text-meta font-semibold text-slate-500">{t('security_sessions_title')}</h2>
       <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card divide-y divide-slate-100">
-        <div className="flex items-center gap-3 min-h-[56px] px-4 py-3">
-          <IconFrame icon={Smartphone} size="sm" tone="success" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-copy font-semibold text-ink">{t('security_this_device')}</span>
-            <span className="block truncate text-meta text-slate-500">{t('security_this_device_sub')}</span>
-          </span>
-          <span className="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-        </div>
+        <ul className="divide-y divide-slate-100">
+          {sessions.map((session) => (
+            <li key={session.id} className="flex items-center gap-3 min-h-[56px] px-4 py-3">
+              <IconFrame icon={session.platform === 'web' ? Monitor : Smartphone} size="sm" tone={session.current ? 'success' : 'ink'} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-copy font-semibold text-ink">
+                  {session.current && !session.deviceName ? (
+                    t('security_this_device')
+                  ) : session.current ? (
+                    <Fill text={t('security_this_device_named')} slot="{device}" value={<bdi>{session.deviceName}</bdi>} />
+                  ) : (
+                    <bdi>{session.deviceName}</bdi>
+                  )}
+                </span>
+                <span className="block truncate text-meta text-slate-500">
+                  {session.current || !session.lastActiveAt ? (
+                    t('security_this_device_sub')
+                  ) : (
+                    <Fill text={t('security_last_active')} slot="{time}" value={<bdi dir="ltr">{formatLastEntry(session.lastActiveAt)}</bdi>} />
+                  )}
+                </span>
+              </span>
+              {session.current && <span className="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500" aria-hidden="true"></span>}
+            </li>
+          ))}
+        </ul>
 
         <div className="px-4 py-3">
           {confirming ? (
@@ -95,4 +120,40 @@ export default function SessionsCard({ user }: { user: User }) {
       </div>
     </section>
   )
+}
+
+/** A translated sentence with an element (an isolated name or date) in its {slot}. */
+function Fill({ text, slot, value }: { text: string; slot: string; value: React.ReactNode }) {
+  const [before, after = ''] = text.split(slot)
+  return (
+    <>
+      {before}
+      {value}
+      {after}
+    </>
+  )
+}
+
+/**
+ * The listed devices, live. This browser is always first, named from its
+ * user agent even before its own row has landed (or when the list can't be read).
+ */
+function useSessionList(uid: string): UserSession[] {
+  const [here, setHere] = useState<{ id: string; name: string } | null>(null)
+  const [stored, setStored] = useState<UserSession[]>([])
+  // Read once on opening, so the list doesn't reorder while it's open.
+  const [now] = useState(() => Date.now())
+  useEffect(() => setHere({ id: webSessionId(), name: webSessionName() }), [])
+  useEffect(() => (here ? watchSessions(uid, here.id, setStored) : undefined), [uid, here])
+
+  // Before the browser is known (the server render, the first paint) the row reads plain "This device".
+  const current: UserSession = stored.find((s) => s.current) ?? {
+    id: here?.id ?? 'this-device',
+    deviceName: here?.name ?? '',
+    platform: 'web',
+    lastActiveAt: null,
+    createdAt: null,
+    current: true,
+  }
+  return orderSessions([current, ...stored.filter((s) => !s.current)], now)
 }

@@ -1,10 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, memo, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AppState, Pressable, StyleSheet, View, type AppStateStatus, type ViewStyle } from 'react-native'
-import Animated, { cubicBezier, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated'
 import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
-import { getCalendars } from 'expo-localization'
 import { signOut } from 'firebase/auth'
 import { appLockOn, entryExpired } from '@shared/auth/appLockPolicy'
 import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '@shared/auth/greeting'
@@ -20,6 +19,7 @@ import { BrandLockup, LOCKUP_SCALE } from '../components/BrandHero'
 import Button from '../components/Button'
 import { StaticEmblem } from '../components/Emblem'
 import { useEntrance } from '../components/Entrance'
+import { LOCK_RISE_PROGRESS } from '../lib/splashMotion'
 import Notice from '../components/Notice'
 import { useLang } from '../i18n/LangProvider'
 import { impact, success as successHaptic } from '../lib/haptics'
@@ -327,7 +327,6 @@ export function useAppLock() {
   return ctx
 }
 
-const RISE_EASE = cubicBezier(...UNLOCK.curve)
 const UNLOCK_EASE = Easing.bezier(...UNLOCK.curve)
 // However the exit animation ends, the lock screen is unmounted by then.
 const EXIT_MAX_MS = UNLOCK.ms + 400
@@ -337,18 +336,22 @@ const EXIT_MAX_MS = UNLOCK.ms + 400
  * root navigator. The system prompt opens only when the member taps the
  * glyph or the unlock button.
  *
- * At launch it mounts under the splash, reports where its header lockup sits
- * (the splash logo glides onto it) and keeps the lockup hidden until the
- * splash is gone; the hub, greeting and actions rise in under the glide.
+ * At launch it mounts under the splash as soon as the launch is known to be
+ * locked (during the intro, not on the glide's first frame), reports where
+ * its header lockup sits (the splash logo glides onto it) and keeps the
+ * lockup hidden until the glide lands; the hub, greeting and actions rise
+ * in off the glide's own progress. Both are read on the UI thread
+ * (Entrance.tsx `glide`, `landed`), so nothing here re-renders mid-glide.
+ * `settled`: the app's screens are mounted under it (_layout.tsx); the
+ * hub's breathing waits for that, so it never stutters through their mount.
  */
-export function AppLockOverlay() {
-  const { t, lang, ready: langReady } = useLang()
+export function AppLockOverlay({ settled }: { settled: boolean }) {
+  const { t, ready: langReady } = useLang()
   const { user } = useAuth()
-  const { profile } = useMemberProfile(user)
   const { status, locked, covered, tries, lockedAt, lastEntry, promptOpen, unlock, signInWithPasswordInstead } = useAppLock()
   const insets = useSafeAreaInsets()
   const reduced = useReducedMotion()
-  const { phase, setLockRect } = useEntrance()
+  const { phase, setLockRect, landed } = useEntrance()
   const lockupRef = useRef<View>(null)
 
   // The lock screen stays mounted through its exit: `shown` turns on with the
@@ -376,6 +379,8 @@ export function AppLockOverlay() {
     opacity: 1 - exit.get(),
     transform: [{ scale: 1 + (UNLOCK.scaleTo - 1) * exit.get() }],
   }))
+  // The header lockup shows in the very frame the splash logo lands on it.
+  const lockupStyle = useAnimatedStyle(() => ({ opacity: landed.get() }))
 
   if (!shown) {
     if (!locked && !covered) return null
@@ -393,13 +398,9 @@ export function AppLockOverlay() {
   const kind = status?.kind ?? 'biometrics'
   const method = t(methodKey(kind))
   const exhausted = tries >= APP_LOCK_MAX_TRIES
-  // Profile first, then the account's own name (on the device, so it works offline at launch).
-  const name = greetingName(profile, user?.displayName)
-  const greeting = t(greetingKey(greetingPeriod((lockedAt ?? new Date()).getHours()), !!name)).replace('{name}', name ?? '')
   // The entry stored on this device, else Firebase's last sign-in; hidden without either.
   const lastAt = resolveLastEntry(lastEntry, user?.metadata.lastSignInTime)
-  const uses24 = getCalendars()[0]?.uses24hourClock
-  const lastLine = lastAt && t('applock_lastEntry').replace('{time}', formatLastEntry(lastAt, lang, uses24 == null ? undefined : !uses24))
+  const lastLine = lastAt && t('applock_lastEntry').replace('{time}', formatLastEntry(lastAt))
   const unlockTapped = () => {
     impact()
     unlock()
@@ -409,7 +410,6 @@ export function AppLockOverlay() {
     if (phase === 'done') return
     lockupRef.current?.measureInWindow((x, y, width, height) => setLockRect({ x, y, width, height }))
   }
-  const under = phase === 'splash'
 
   return (
     <Animated.View
@@ -427,25 +427,31 @@ export function AppLockOverlay() {
             ref={lockupRef}
             collapsable={false}
             onLayout={reportLockup}
-            style={[styles.brand, phase !== 'done' && styles.hidden]}
+            style={styles.brand}
             accessible
             accessibilityRole="image"
             accessibilityLabel="Landly"
           >
-            <BrandLockup scale={LOCKUP_SCALE} />
+            <Animated.View style={lockupStyle}>
+              <BrandLockup scale={LOCKUP_SCALE} />
+            </Animated.View>
           </View>
 
           {/* Centre: the hub, the greeting and when the member last came in. */}
-          <Rise under={under} reduced={reduced} style={styles.middle}>
-            <BiometricGlyph kind={kind} pulsing={promptOpen} onPress={unlock} label={t('applock_glyphLabel').replace('{method}', method)} />
-            <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
-              {greeting}
-            </AppText>
+          <Rise reduced={reduced} style={styles.middle}>
+            <BiometricGlyph
+              kind={kind}
+              pulsing={promptOpen}
+              breathing={settled}
+              onPress={unlock}
+              label={t('applock_glyphLabel').replace('{method}', method)}
+            />
+            <LockGreeting lockedAt={lockedAt} />
             {lastLine && <AppText style={styles.lastEntry}>{lastLine}</AppText>}
           </Rise>
 
           {/* Bottom: unlock, then the password route. */}
-          <Rise under={under} reduced={reduced} style={styles.actions}>
+          <Rise reduced={reduced} style={styles.actions}>
             {exhausted && <Notice message={t('applock_tooMany')} />}
             <Button label={t('applock_unlock')} onPress={unlockTapped} busy={promptOpen} height={50} />
             <Pressable onPress={signInWithPasswordInstead} accessibilityRole="button" style={styles.link} hitSlop={8}>
@@ -458,26 +464,36 @@ export function AppLockOverlay() {
   )
 }
 
-// Hidden under the splash, rising in as its logo glides up (a CSS transition,
-// on the UI thread); already in place when the lock engages later.
-function Rise({ under, reduced, style, children }: { under: boolean; reduced: boolean; style: ViewStyle; children: ReactNode }) {
-  return (
-    <Animated.View
-      style={[
-        style,
-        {
-          opacity: under ? 0 : 1,
-          transform: [{ translateY: under && !reduced ? LOCK_RISE.risePx : 0 }],
-          transitionProperty: ['opacity', 'transform'],
-          transitionDuration: LOCK_RISE.ms,
-          transitionTimingFunction: RISE_EASE,
-        },
-      ]}
-    >
-      {children}
-    </Animated.View>
-  )
+// Hidden under the splash, rising in off the splash glide's own progress
+// (LOCK_RISE_PROGRESS of it), so it moves frame for frame with the logo on
+// the UI thread; shown in full once the splash has landed or crossfaded
+// (`landed`), so it's already in place whenever the lock engages later.
+// Reduced motion: no travel, it only fades with the crossfade.
+function Rise({ reduced, style, children }: { reduced: boolean; style: ViewStyle; children: ReactNode }) {
+  const { glide, landed } = useEntrance()
+  const riseStyle = useAnimatedStyle(() => {
+    const shown = Math.max(interpolate(glide.get(), LOCK_RISE_PROGRESS, [0, 1], Extrapolation.CLAMP), landed.get())
+    return { opacity: shown, transform: [{ translateY: reduced ? 0 : LOCK_RISE.risePx * (1 - shown) }] }
+  })
+  return <Animated.View style={[style, riseStyle]}>{children}</Animated.View>
 }
+
+// The greeting, on its own: the member's profile (and so the first name)
+// often arrives after the lock screen is up, and only this line re-renders
+// for it. Profile first, then the account's own name (on the device, so it
+// works offline at launch).
+const LockGreeting = memo(function LockGreeting({ lockedAt }: { lockedAt: Date | null }) {
+  const { t } = useLang()
+  const { user } = useAuth()
+  const { profile } = useMemberProfile(user)
+  const name = greetingName(profile, user?.displayName)
+  const greeting = t(greetingKey(greetingPeriod((lockedAt ?? new Date()).getHours()), !!name)).replace('{name}', name ?? '')
+  return (
+    <AppText accessibilityRole="header" style={styles.greeting} numberOfLines={2}>
+      {greeting}
+    </AppText>
+  )
+})
 
 // A soft brand light behind the lockup at the top; the hub carries its own
 // (BiometricGlyph.tsx). A radial gradient, as React Native has no blur
@@ -510,7 +526,6 @@ const styles = StyleSheet.create({
   column: { flex: 1, width: '100%', maxWidth: 420 },
   // Room below the larger lockup before the hub's glow begins.
   brand: { alignItems: 'center', marginBottom: 16 },
-  hidden: { opacity: 0 },
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
   greeting: { fontSize: 28, lineHeight: 36, fontWeight: '700', letterSpacing: -0.3, color: colors.heading, textAlign: 'center', marginTop: 24 },
   lastEntry: { fontSize: 14, lineHeight: 20, color: colors.textMuted, textAlign: 'center', marginTop: 6, fontVariant: ['tabular-nums'] },

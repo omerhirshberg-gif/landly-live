@@ -14,6 +14,22 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 export async function revokeMemberSessions(uid: string): Promise<void> {
   await getAdminAuth().revokeRefreshTokens(uid)
   await syncSessionCutoff(uid, Math.floor(Date.now() / 1000) * 1000)
+  await clearSessionList(uid)
+}
+
+/**
+ * Empties users/{uid}/sessions (the devices Privacy & Security lists,
+ * lib/account/sessionList.ts): every one of them was just signed out, and
+ * each writes its row again when it next signs in.
+ */
+export async function clearSessionList(uid: string): Promise<void> {
+  const db = getAdminDb()
+  const { docs } = await db.collection('users').doc(uid).collection('sessions').get()
+  for (let i = 0; i < docs.length; i += 500) {
+    const batch = db.batch()
+    for (const doc of docs.slice(i, i + 500)) batch.delete(doc.ref)
+    await batch.commit()
+  }
 }
 
 /**

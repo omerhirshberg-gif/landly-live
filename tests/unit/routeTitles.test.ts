@@ -114,6 +114,7 @@ const EXPECTED: [string, string][] = [
   ['/admin/offers/new', 'New Offer | Landly Admin'],
   ['/admin/offers/[offerId]/edit', 'Edit Offer | Landly Admin'],
   ['/admin/orphans', 'Orphaned Accounts | Landly Admin'],
+  ['/admin/users', 'Users | Landly Admin'],
   ['/admin/system/costs', 'Usage & Costs | Landly Admin'],
   ['/admin/search', 'Search | Landly Admin'],
   ['/admin/support', 'Support Inbox | Landly Admin'],

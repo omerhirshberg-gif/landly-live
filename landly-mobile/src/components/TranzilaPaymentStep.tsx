@@ -41,7 +41,7 @@ export default function TranzilaPaymentStep({
         hitSlop={8}
         style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
       >
-        <LineIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2.4} flip={isRtl} />
+        <LineIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2.2} flip={isRtl} />
         <AppText style={styles.backText}>{t('checkout_back_to_summary')}</AppText>
       </Pressable>
     </View>

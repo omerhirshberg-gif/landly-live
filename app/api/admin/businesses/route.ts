@@ -16,6 +16,8 @@ import { parseTranslationOverrides } from '@/lib/translate/offerTranslations'
 import { parseBusinessNameOverrides } from '@/lib/translate/businessTranslations'
 import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { parseBusinessTranslations } from '@/lib/business/businessText'
+import { parseLogoUrl } from '@/lib/business/businessLogo'
+import { parseBusinessPhone } from '@/lib/admin/businessPhone'
 
 interface RequestBody {
   business: {
@@ -27,6 +29,10 @@ interface RequestBody {
     loginPassword: string
     /** Picked from Places autocomplete; absent when the admin typed a free-text location. */
     address?: unknown
+    /** Uploaded (logos/…) or pasted; copied onto the business's offers. Absent or '' = none. */
+    logoUrl?: unknown
+    /** Optional contact number, local Israeli or "+country"; stored as E.164. */
+    phone?: unknown
   }
   offer: {
     title: string
@@ -80,6 +86,8 @@ export async function GET(request: Request) {
     category: doc.data().category ?? '',
     location: doc.data().location ?? '',
     address: parseGeoAddress(doc.data().address),
+    logoUrl: typeof doc.data().logoUrl === 'string' ? doc.data().logoUrl : '',
+    phone: typeof doc.data().phone === 'string' ? doc.data().phone : '',
     email: doc.data().email ?? '',
     activePerkCount: activeCounts.get(doc.id) ?? 0,
     redeemedTotal: Number(doc.data().voucherStats?.redeemedTotal) || 0,
@@ -127,6 +135,10 @@ export async function POST(request: Request) {
   if (!overrides.ok) return badRequest(overrides.error)
   const nameOverrides = parseBusinessNameOverrides(body.businessNameOverrides)
   if (!nameOverrides.ok) return badRequest(nameOverrides.error)
+  const logo = parseLogoUrl(business.logoUrl)
+  if (!logo.ok) return badRequest(logo.error)
+  const phone = parseBusinessPhone(business.phone)
+  if (!phone.ok) return badRequest(phone.error)
 
   const duplicate = await adminDb.collection('businesses').where('businessId', '==', business.businessId).limit(1).get()
   if (!duplicate.empty) {
@@ -168,6 +180,8 @@ export async function POST(request: Request) {
       translations: nameTranslated.translations,
       category: business.category,
       ...businessDoc,
+      ...(logo.logoUrl ? { logoUrl: logo.logoUrl } : {}),
+      ...(phone.phone ? { phone: phone.phone } : {}),
       email: business.loginEmail,
       voucherStats: { active: 0, redeemedTotal: 0, redeemedThisMonth: 0 },
     })
@@ -176,6 +190,7 @@ export async function POST(request: Request) {
       businessName: business.businessName,
       businessTranslations: nameTranslated.translations,
       ...offerPlaceFields(businessDoc),
+      businessLogoUrl: logo.logoUrl,
       imageUrl,
       title: offer.title,
       description: offer.description,

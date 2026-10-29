@@ -181,12 +181,14 @@ export default function OfferDetailPage() {
               </div>
 
               <div className="px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-7 fold:col-start-2">
+                {/* One inline row: the category gives way (truncates) before the
+                    redemption method would drop under it. Both pills share one shape. */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brandTint px-3 py-1.5 text-xs font-semibold text-brand">
-                    {tile && <CategoryIcon category={tile.category} className="h-3.5 w-3.5" strokeWidth={2} />}
-                    {tile ? t(tile.labelKey) : <span dir="auto">{offer.category}</span>}
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-brandTint px-3 py-1 text-xs font-semibold leading-4 text-brand">
+                    {tile && <CategoryIcon category={tile.category} className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />}
+                    <span className="truncate">{tile ? t(tile.labelKey) : <span dir="auto">{offer.category}</span>}</span>
                   </span>
-                  <RedemptionBadge method={offer.redemptionMethod} className="!py-1.5 !text-xs" />
+                  <RedemptionBadge method={offer.redemptionMethod} className="!px-3 !py-1 !text-xs !leading-4" />
                 </div>
 
                 {/* The business is the page's heading (what members search and

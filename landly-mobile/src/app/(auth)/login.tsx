@@ -119,8 +119,11 @@ export default function LoginScreen() {
   // The provider whose sign-in is under way; every button waits on it.
   const [oauthBusy, setOAuthBusy] = useState<'google' | 'apple' | null>(null)
   // Apple's button shows only where it can work: iOS, and the browser build.
-  // Never on Android, which has no Apple sheet.
-  const [appleAvailable, setAppleAvailable] = useState(false)
+  // Never on Android, which has no Apple sheet. Assumed on iOS until the
+  // check answers (every supported iOS has it), so the button's row is there
+  // from the first frame: appearing later, it grew the card and moved the
+  // centred hero after the splash logo had landed on it.
+  const [appleAvailable, setAppleAvailable] = useState(Platform.OS === 'ios')
   // iPhone and iPad (native, or a browser on one) lead with Apple; everywhere
   // else Google comes first.
   const appleFirst = Platform.OS === 'ios' || (isWeb && isAppleMobileWeb(globalThis.navigator?.userAgent, globalThis.navigator?.maxTouchPoints))
@@ -375,9 +378,19 @@ export default function LoginScreen() {
   const heroFadeStyle = useAnimatedStyle(() => ({ opacity: heroOpacity.get() }))
 
   // Tell the splash where the hero sits so its logo can land exactly on it.
+  // Measured again whenever anything that moves it lays out: the hero, the
+  // card under it (the column is centred, so a taller card lifts the hero)
+  // and the screen's frame (safe-area insets settling). A changed spot bends
+  // the splash's glide to it (SplashScreen.tsx); an unchanged one is dropped.
+  const lastHeroRect = useRef<string | null>(null)
   const reportHero = () => {
     if (phase === 'done') return
-    heroRef.current?.measureInWindow((x, y, width, height) => setHeroRect({ x, y, width, height }))
+    heroRef.current?.measureInWindow((x, y, width, height) => {
+      const key = [x, y, width, height].map((n) => Math.round(n * 2) / 2).join(',')
+      if (key === lastHeroRect.current) return
+      lastHeroRect.current = key
+      setHeroRect({ x, y, width, height })
+    })
   }
 
   // Back from "check your inbox": land on Sign In with the email filled in.
@@ -396,7 +409,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} onLayout={reportHero}>
         {/* Onboarding cards are sized to fit without scrolling (no hero,
             compact header, subtitles dropped while typing); scrolling remains
             only as a fallback for very large accessibility text, and never bounces. */}
@@ -424,7 +437,7 @@ export default function LoginScreen() {
             )}
 
             {!restoring && (
-              <Animated.View style={[styles.card, bounded && styles.cardBounded, riseStyle]}>
+              <Animated.View style={[styles.card, bounded && styles.cardBounded, riseStyle]} onLayout={reportHero}>
                 {wizardShown && wizard ? (
                   <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onComplete={handleWizardComplete} />
                 ) : pending ? (

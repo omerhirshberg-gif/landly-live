@@ -9,10 +9,11 @@ import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
 import ContentText from './ContentText'
+import Emoji from './Emoji'
 import LineIcon from './LineIcon'
-import { REDEMPTION_METHOD_ICONS } from './OfferCard'
 import ScalePressable from './ScalePressable'
 import VoucherThumb from './VoucherThumb'
+import { PASS_GLYPHS } from '../lib/categoryGlyphs'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -51,12 +52,11 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
           <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
           <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>
           <View style={styles.methodChip}>
-            <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={12} color={colors.brand} strokeWidth={2.2} />
             <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
           </View>
           {validity && (
             <View style={styles.validityRow}>
-              <LineIcon name="calendar" size={14} color={expired ? colors.danger : colors.textMuted} />
+              <Emoji glyph={PASS_GLYPHS.validity} size={13} />
               <AppText style={[styles.validity, expired && styles.expired]}>{validity}</AppText>
             </View>
           )}

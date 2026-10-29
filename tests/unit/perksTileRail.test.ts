@@ -9,7 +9,7 @@ import { isOfferAvailable, type OfferDocument } from '@/lib/firebase/offers'
 import { Sparkles } from 'lucide-react'
 import OfferTileRail from '@/components/discover/OfferTileRail'
 import PerksToolbar from '@/components/perks/PerksToolbar'
-import { TILE_RAIL_TILE_HEIGHT, TILE_RAIL_WIDTH } from '../../landly-mobile/src/lib/carousel'
+import { existsSync, readFileSync } from 'node:fs'
 
 function render(lang: Lang, element: ReactElement) {
   const t = (key: TranslationKey) => translations[lang][key]
@@ -42,10 +42,14 @@ function offer(id: string, extra: Partial<OfferDocument> = {}): OfferDocument {
   }
 }
 
-describe('Expo tile rail sizes', () => {
-  it('matches the web rail: 256pt slots of 140pt tiles', () => {
-    expect(TILE_RAIL_WIDTH).toBe(256)
-    expect(TILE_RAIL_TILE_HEIGHT).toBe(140)
+describe('Expo highlight rails', () => {
+  it('draw their perks as Home’s carousel does: the same compact cards, width, snapping and dots', () => {
+    const rail = readFileSync('landly-mobile/src/components/OfferTileRail.tsx', 'utf8')
+    expect(rail).toContain('<OfferCarousel offers={offers} onOpen={onOpen} />')
+    expect(readFileSync('landly-mobile/src/components/OfferCarousel.tsx', 'utf8')).toContain('<OfferCard offer={item} variant="carousel"')
+    // The small sideways tile and its fixed slot are gone.
+    expect(existsSync('landly-mobile/src/components/OfferTile.tsx')).toBe(false)
+    expect(readFileSync('landly-mobile/src/lib/carousel.ts', 'utf8')).not.toContain('TILE_RAIL')
   })
 })
 

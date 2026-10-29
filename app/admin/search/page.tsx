@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Alert from '@/components/admin/Alert'
 import Card, { CardSkeletons } from '@/components/admin/Card'
+import BidiText from '@/components/admin/BidiText'
+import CategoryBadge from '@/components/admin/CategoryBadge'
 import EmptyState from '@/components/admin/EmptyState'
 import { SearchInput } from '@/components/admin/ListToolbar'
 import OfferPrice from '@/components/admin/OfferPrice'
@@ -115,13 +117,11 @@ export default function AdminSearchPage() {
             {matchedBusinesses.map((business) => (
               <Card key={business.uid} href={`/admin/businesses/${business.uid}`} className="flex flex-col gap-3 p-5">
                 <div className="min-w-0">
-                  <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{business.businessName}</div>
+                  <BidiText className="font-semibold text-[#0B1B3D]">{business.businessName}</BidiText>
                   <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="ltr">{business.email}</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3">
-                  <StatusBadge tone="blue">
-                    <span dir="auto">{business.category}</span>
-                  </StatusBadge>
+                  <CategoryBadge category={business.category} />
                   <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
                     {business.activePerkCount} active perks
                   </StatusBadge>
@@ -140,8 +140,8 @@ export default function AdminSearchPage() {
               <Card key={offer.id} href={`/admin/offers/${offer.id}/edit`} className="flex flex-col gap-3 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{offer.title}</div>
-                    <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="auto">{offer.businessName}</div>
+                    <BidiText className="font-semibold text-[#0B1B3D]">{offer.title}</BidiText>
+                    <BidiText className="mt-0.5 text-xs text-[#94A3B8]">{offer.businessName}</BidiText>
                   </div>
                   <OfferStatusBadge offer={offer} />
                 </div>

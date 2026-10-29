@@ -5,6 +5,7 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*"],
+    // tests/ runs under the repo root's vitest and imports it from there.
+    ignores: ["dist/*", "tests/*"],
   }
 ]);

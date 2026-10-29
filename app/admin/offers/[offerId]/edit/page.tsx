@@ -1,20 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { Suspense, useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import { formatIsraeliDate } from '@/lib/admin/formatDate'
+import OfferFormFields, { OFFER_FORM_TABS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import { useAdminCrumbs, useAdminParent } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
-import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
+import { ButtonSpinner, FormSection, StickyActionBar } from '@/components/admin/FormSection'
+import { FormTabs, TabPanel, useFormTabs } from '@/components/admin/FormTabs'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge from '@/components/admin/StatusBadge'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
+import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 import { manualOverridesOf } from '@/lib/offers/offerText'
 
 function toFormValue(offer: OfferDocument): OfferFormValue {
@@ -36,9 +40,16 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
   }
 }
 
-export default function EditOfferPage() {
+// Opened from Offers it sits under Offers; opened from its business's page
+// (?from=business&businessUid=…) under that business, once the offer is
+// confirmed to be its. Back, Cancel and Save all return to that parent, the
+// crumb before this page in the breadcrumbs (lib/admin/routes.ts).
+function EditOfferForm() {
   const { offerId } = useParams<{ offerId: string }>()
   const router = useRouter()
+  const search = useSearchParams()
+  const claimedBusiness = search.get('from') === 'business' ? search.get('businessUid') : null
+  const tabs = useFormTabs(OFFER_FORM_TABS)
 
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(undefined)
   const [form, setForm] = useState<OfferFormValue | null>(null)
@@ -57,6 +68,21 @@ export default function EditOfferPage() {
     return () => { cancelled = true }
   }, [offerId])
 
+  // Under its business only if it really is that business's offer; until it has loaded, as the URL says.
+  const businessUid = offer === undefined ? claimedBusiness : offer && claimedBusiness === offer.businessId ? claimedBusiness : null
+  useAdminCrumbs(
+    useMemo(
+      () => ({ businessUid, labels: offer && businessUid ? { [`/admin/businesses/${businessUid}`]: offer.businessName } : undefined }),
+      [businessUid, offer]
+    )
+  )
+  const parent = useAdminParent()
+  const backHref = parent?.href ?? '/admin/offers'
+
+  const initial = useMemo(() => (offer ? JSON.stringify(toFormValue(offer)) : null), [offer])
+  const dirty = !!form && initial !== null && JSON.stringify(form) !== initial && !savedWarning
+  useUnsavedGuard(dirty && !submitting)
+
   const updateForm = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
 
@@ -68,6 +94,7 @@ export default function EditOfferPage() {
     const priceError = validateOfferPrices(originalPrice, offerPrice)
     if (priceError) {
       setError(priceError)
+      tabs.setActive('pricing')
       return
     }
     setError(null)
@@ -103,7 +130,7 @@ export default function EditOfferPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
         return
       }
-      router.push(`/admin/businesses/${offer!.businessId}`)
+      router.push(backHref)
     } catch {
       setError('Something went wrong. Try again.')
       setSubmitting(false)
@@ -121,68 +148,92 @@ export default function EditOfferPage() {
   if (offer === null) {
     return (
       <div className="max-w-3xl">
-        <BackLink href="/admin/offers">Back to offers</BackLink>
+        <BackLink />
         <EmptyState icon="fa-tags" title="Offer not found" description="It may have been deleted." />
       </div>
     )
   }
 
-  const backHref = `/admin/businesses/${offer.businessId}`
-
   return (
-    <div className="max-w-3xl">
-      <BackLink href={backHref}>Back to business</BackLink>
-      <PageHeader title="Edit offer" subtitle={<span dir="auto">{offer.title}</span>} />
+    <div className="max-w-4xl">
+      <BackLink />
+      <PageHeader title="Edit offer" subtitle={<bdi dir="auto">{offer.title}</bdi>} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
       {savedWarning && (
         <Alert tone="warning" className="mb-6">
           <p>Saved. {savedWarning}</p>
           <Link href={backHref} className={`${SECONDARY_BUTTON} mt-3`}>
-            Back to business
+            Done
           </Link>
         </Alert>
       )}
 
-      <div className="space-y-6">
-        <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
-          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
-              <dd className="mt-1 font-semibold text-[#0B1B3D]" dir="auto">{offer.businessName}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Category</dt>
-              <dd className="mt-1">
-                <StatusBadge tone="blue">
-                  <span dir="auto">{offer.category}</span>
-                </StatusBadge>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Created</dt>
-              <dd className="mt-1 font-semibold text-[#0B1B3D]">{offer.createdAt ? offer.createdAt.toLocaleDateString() : '—'}</dd>
-            </div>
-          </dl>
-          <p className="mt-4 text-xs text-[#94A3B8]">
-            Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
-          </p>
-        </FormSection>
+      <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
+            <dd className="mt-1 font-semibold text-[#0B1B3D]">
+              <Link href={`/admin/businesses/${offer.businessId}`} className="hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
+                <bdi dir="auto">{offer.businessName}</bdi>
+              </Link>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Category</dt>
+            <dd className="mt-1">
+              <StatusBadge tone="blue">
+                <span dir="auto">{offer.category}</span>
+              </StatusBadge>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Created</dt>
+            <dd className="mt-1 font-semibold text-[#0B1B3D]"><bdi dir="ltr">{formatIsraeliDate(offer.createdAt)}</bdi></dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-xs text-[#94A3B8]">
+          Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
+        </p>
+      </FormSection>
 
-        {form && (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <FormSection icon="fa-tags" title="Offer" description="Changes apply to new purchases; existing vouchers keep their terms.">
-              <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} />
-            </FormSection>
-            <FormActions>
-              <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>
-                {submitting && <ButtonSpinner />}
-                {submitting ? 'Saving…' : 'Save changes'}
-              </button>
-            </FormActions>
-          </form>
-        )}
-      </div>
+      {form && (
+        <form className="mt-6" onSubmit={handleSubmit} {...tabs.formProps}>
+          <FormTabs state={tabs} label="Offer sections" />
+          {OFFER_FORM_TABS.map((tab) => (
+            <TabPanel key={tab.id} state={tabs} tab={tab.id}>
+              <FormSection icon={tab.icon} title={tab.label} description="Changes apply to new purchases; existing vouchers keep their terms.">
+                <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} section={tab.id} />
+              </FormSection>
+            </TabPanel>
+          ))}
+          <StickyActionBar status={dirty ? 'Unsaved changes' : 'No changes yet'}>
+            <button
+              type="button"
+              className={SECONDARY_BUTTON}
+              disabled={submitting}
+              onClick={() => {
+                if (confirmLeave(dirty)) router.push(backHref)
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting} aria-busy={submitting} className={PRIMARY_BUTTON}>
+              {submitting && <ButtonSpinner />}
+              {submitting ? 'Saving…' : 'Save changes'}
+            </button>
+          </StickyActionBar>
+        </form>
+      )}
     </div>
+  )
+}
+
+export default function EditOfferPage() {
+  // useSearchParams needs a Suspense boundary to prerender.
+  return (
+    <Suspense fallback={null}>
+      <EditOfferForm />
+    </Suspense>
   )
 }
