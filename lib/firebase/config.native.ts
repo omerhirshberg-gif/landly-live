@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app'
-import { getAuth, getReactNativePersistence, GoogleAuthProvider, initializeAuth } from 'firebase/auth'
+import { getAuth, getReactNativePersistence, GoogleAuthProvider, OAuthProvider, initializeAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { assertDevFirebaseProject, assertFirebaseConfigConsistent } from './envGuard'
@@ -32,3 +32,9 @@ export const db = getFirestore(app)
 // Member avatars (avatars/{uid}, see storage.rules).
 export const storage = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()
+// Sign in with Apple. The name is only ever sent on the first authorization
+// (lib/auth/appleName.ts); native iOS builds its credential from the system
+// sheet instead (landly-mobile/src/auth/appleSignIn.ts).
+export const appleProvider = new OAuthProvider('apple.com')
+appleProvider.addScope('email')
+appleProvider.addScope('name')

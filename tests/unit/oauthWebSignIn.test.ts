@@ -11,19 +11,25 @@ vi.mock('firebase/auth', () => ({
   signInWithRedirect: mocks.redirect,
   getRedirectResult: mocks.redirectResult,
 }))
-vi.mock('@/lib/firebase/config', () => ({ auth: mocks.auth, googleProvider: { providerId: 'google.com' } }))
-vi.mock('@/lib/auth/signInCustomer', () => ({ finishCustomerGoogleSignIn: mocks.finish }))
+const appleProvider = vi.hoisted(() => ({ providerId: 'apple.com', setCustomParameters: vi.fn() }))
+vi.mock('@/lib/firebase/config', () => ({ auth: mocks.auth, googleProvider: { providerId: 'google.com' }, appleProvider }))
+vi.mock('@/lib/auth/signInCustomer', () => ({ finishCustomerOAuthSignIn: mocks.finish }))
 
 import {
-  completeGoogleRedirect,
-  hasPendingGoogleRedirect,
+  completeOAuthRedirect,
+  pendingOAuthRedirect,
   isEmbeddedBrowser,
   REDIRECT_RESULT_TIMEOUT_MS,
   shouldFallBackToRedirect,
-  startGoogleWebSignIn,
-} from '@/lib/auth/googleWebSignIn'
+  startOAuthWebSignIn,
+} from '@/lib/auth/oauthWebSignIn'
+import { isAppleMobileWeb } from '@/lib/auth/appleDevice'
 import { resolveAuthDomain } from '@/lib/firebase/authDomain'
 
+const startGoogleWebSignIn = (lang: 'en' | 'he' | 'fr', p: never) => startOAuthWebSignIn('google', lang, p)
+const completeGoogleRedirect = async (lang: 'en' | 'he' | 'fr') => (await completeOAuthRedirect(lang))?.result ?? null
+const hasPendingGoogleRedirect = () => pendingOAuthRedirect() === 'google'
+const mark = (provider: string, at = Date.now()) => store.set('landly_oauth_redirect', `${provider}:${at}`)
 const firebaseError = (code: string) => Object.assign(new Error(code), { code })
 const persistence = { type: 'LOCAL' } as never
 const signedIn = { status: 'signedIn', user: { uid: 'u1' }, preferredLanguage: null }
@@ -54,7 +60,7 @@ describe('startGoogleWebSignIn', () => {
     expect(await startGoogleWebSignIn('he', persistence)).toEqual({ kind: 'signedIn', result: signedIn })
     expect(mocks.setPersistence).toHaveBeenCalledWith(mocks.auth, persistence)
     expect(mocks.setPersistence.mock.invocationCallOrder[0]).toBeLessThan(mocks.popup.mock.invocationCallOrder[0])
-    expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'he')
+    expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'he', {})
     expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
@@ -87,7 +93,7 @@ describe('completeGoogleRedirect', () => {
   it('runs the shared customer rules on the redirect credential', async () => {
     mocks.redirectResult.mockResolvedValue({ user: { uid: 'u1' } })
     expect(await completeGoogleRedirect('fr')).toBe(signedIn)
-    expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'fr')
+    expect(mocks.finish).toHaveBeenCalledWith({ user: { uid: 'u1' } }, 'fr', {})
   })
 
   it('marks the page before leaving for Google, and not on a popup sign-in', async () => {
@@ -111,35 +117,35 @@ describe('completeGoogleRedirect', () => {
   })
 
   it('ignores a stale mark', () => {
-    store.set('landly_google_redirect', String(Date.now() - 11 * 60 * 1000))
+    mark('google', Date.now() - 11 * 60 * 1000)
     expect(hasPendingGoogleRedirect()).toBe(false)
   })
 
   it('finishes with the restored Google session when the result was lost', async () => {
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     mocks.redirectResult.mockResolvedValue(null)
     mocks.auth.currentUser = googleUser
     expect(await completeGoogleRedirect('he')).toBe(signedIn)
-    expect(mocks.finish).toHaveBeenCalledWith({ user: googleUser }, 'he')
+    expect(mocks.finish).toHaveBeenCalledWith({ user: googleUser }, 'he', {})
     expect(hasPendingGoogleRedirect()).toBe(false)
   })
 
   it('recovers the session when the result fails on missing state', async () => {
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     mocks.redirectResult.mockRejectedValue(firebaseError('auth/missing-initial-state'))
     mocks.auth.currentUser = googleUser
     expect(await completeGoogleRedirect('en')).toBe(signedIn)
   })
 
   it('reports the failure when no session was restored', async () => {
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     mocks.redirectResult.mockRejectedValue(firebaseError('auth/missing-initial-state'))
     await expect(completeGoogleRedirect('en')).rejects.toMatchObject({ code: 'auth/missing-initial-state' })
     expect(hasPendingGoogleRedirect()).toBe(false)
   })
 
   it('never runs the Google rules on an email session', async () => {
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     mocks.redirectResult.mockResolvedValue(null)
     mocks.auth.currentUser = { uid: 'u2', providerData: [{ providerId: 'password' }] }
     expect(await completeGoogleRedirect('en')).toBeNull()
@@ -149,12 +155,12 @@ describe('completeGoogleRedirect', () => {
   it('stops waiting on a hung result: the session if there is one, else a timeout', async () => {
     vi.useFakeTimers()
     mocks.redirectResult.mockReturnValue(new Promise(() => undefined))
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     const failed = expect(completeGoogleRedirect('en')).rejects.toMatchObject({ code: 'auth/timeout' })
     await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
     await failed
 
-    store.set('landly_google_redirect', String(Date.now()))
+    mark('google')
     mocks.auth.currentUser = googleUser
     const recovered = completeGoogleRedirect('en')
     await vi.advanceTimersByTimeAsync(REDIRECT_RESULT_TIMEOUT_MS)
@@ -178,6 +184,76 @@ describe('completeGoogleRedirect', () => {
     expect(await result).toBeNull()
     reject(firebaseError('auth/internal-error'))
     await vi.advanceTimersByTimeAsync(0)
+  })
+})
+
+describe('Apple on the web', () => {
+  const appleUser = { uid: 'a1', providerData: [{ providerId: 'apple.com' }] }
+
+  it('uses the Apple popup in the member\'s language and passes Apple\'s first-time name on', async () => {
+    const cred = { user: { uid: 'a1' }, providerId: 'apple.com', _tokenResponse: { firstName: ' Noa ', lastName: 'Levi' } }
+    mocks.popup.mockResolvedValue(cred)
+    expect(await startOAuthWebSignIn('apple', 'he', persistence)).toEqual({ kind: 'signedIn', result: signedIn })
+    expect(mocks.popup).toHaveBeenCalledWith(mocks.auth, appleProvider)
+    expect(appleProvider.setCustomParameters).toHaveBeenCalledWith({ locale: 'he_IL' })
+    expect(mocks.finish).toHaveBeenCalledWith(cred, 'he', { names: { firstName: 'Noa', lastName: 'Levi' } })
+  })
+
+  it('passes no name on a returning sign-in', async () => {
+    const cred = { user: { uid: 'a1' }, providerId: 'apple.com', _tokenResponse: {} }
+    mocks.popup.mockResolvedValue(cred)
+    await startOAuthWebSignIn('apple', 'en', persistence)
+    expect(mocks.finish).toHaveBeenCalledWith(cred, 'en', { names: null })
+  })
+
+  it('falls back to an Apple redirect and marks it as Apple\'s', async () => {
+    mocks.popup.mockRejectedValue(firebaseError('auth/popup-blocked'))
+    mocks.redirect.mockImplementation(async () => {
+      expect(pendingOAuthRedirect()).toBe('apple')
+    })
+    expect(await startOAuthWebSignIn('apple', 'en', persistence)).toEqual({ kind: 'redirecting' })
+    expect(mocks.redirect).toHaveBeenCalledWith(mocks.auth, appleProvider)
+  })
+
+  it('finishes an Apple redirect result as Apple, whatever the marker says', async () => {
+    const cred = { user: { uid: 'a1' }, providerId: 'apple.com', _tokenResponse: { fullName: 'Dana Cohen' } }
+    mocks.redirectResult.mockResolvedValue(cred)
+    expect(await completeOAuthRedirect('en')).toEqual({ provider: 'apple', result: signedIn })
+    expect(mocks.finish).toHaveBeenCalledWith(cred, 'en', { names: { firstName: 'Dana', lastName: 'Cohen' } })
+  })
+
+  it('recovers a lost Apple redirect only from an Apple session', async () => {
+    mark('apple')
+    mocks.redirectResult.mockResolvedValue(null)
+    mocks.auth.currentUser = googleUser
+    expect(await completeOAuthRedirect('en')).toBeNull()
+    expect(mocks.finish).not.toHaveBeenCalled()
+
+    mark('apple')
+    mocks.auth.currentUser = appleUser
+    expect(await completeOAuthRedirect('en')).toEqual({ provider: 'apple', result: signedIn })
+    expect(mocks.finish).toHaveBeenCalledWith({ user: appleUser }, 'en', { names: null })
+  })
+
+  it('ignores a marker for an unknown provider', () => {
+    mark('facebook')
+    expect(pendingOAuthRedirect()).toBeNull()
+  })
+})
+
+describe('isAppleMobileWeb', () => {
+  it.each([
+    ['iPhone Safari', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', 5, true],
+    ['iPad (desktop-class UA)', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15', 5, true],
+    ['Mac Safari', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15', 0, false],
+    ['Android Chrome', 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36', 5, false],
+    ['Windows Edge', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0', 10, false],
+  ] as const)('%s leads with Apple: %s', (_name, ua, touch, expected) => {
+    expect(isAppleMobileWeb(ua, touch)).toBe(expected)
+  })
+
+  it('treats a missing user agent as not iOS', () => {
+    expect(isAppleMobileWeb(undefined)).toBe(false)
   })
 })
 

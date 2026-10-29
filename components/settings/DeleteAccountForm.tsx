@@ -7,13 +7,20 @@ import IconFrame from '@/components/ui/IconFrame'
 import { useLang } from '@/lib/i18n/useLang'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { DELETION_DETAILS_MAX, DELETION_REASONS, DELETION_REASON_KEYS, isDeletionReason } from '@/lib/account/deletionReasons'
+import { hasAppleSignIn, type AppleRevocation } from '@/lib/account/appleRevocation'
 import { requestAccountDeletion, type DeletionRequestResult } from '@/lib/account/requestAccountDeletion'
+import { confirmAndRevokeAppleOnWeb } from '@/lib/auth/appleWebRevocation'
 
 // The Delete Account request form on /settings/delete-account (app:
 // DeleteAccountSheet): the account email (read-only), an optional reason and
 // note, and a required "I understand" box; submitting emails the team, who
 // delete the account. Once sent the form gives way to a confirmation. It
 // sits on its own page, never in a dialog; Cancel and Done leave it.
+// An account with Sign in with Apple confirms with Apple first (its popup
+// opens on the submit tap), which revokes Landly's Apple tokens
+// (lib/auth/appleWebRevocation.ts); backing out sends nothing, and when the
+// tokens couldn't be revoked the confirmation says how to remove Landly in
+// the Apple Account settings.
 export default function DeleteAccountForm({ user, onLeave }: { user: User; onLeave: () => void }) {
   const { t, lang } = useLang()
   const [reason, setReason] = useState('')
@@ -21,15 +28,38 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
   const [confirmed, setConfirmed] = useState(false)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<DeletionRequestResult | null>(null)
+  const appleAccount = hasAppleSignIn(user)
+  const [appleMismatch, setAppleMismatch] = useState(false)
+  const [appleRevocation, setAppleRevocation] = useState<AppleRevocation | undefined>(undefined)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!confirmed || sending) return
     setSending(true)
     setResult(null)
+    setAppleMismatch(false)
     try {
+      let revocation: AppleRevocation | undefined
+      if (appleAccount) {
+        // First, so the popup opens on the member's tap.
+        const apple = await confirmAndRevokeAppleOnWeb(user, lang)
+        if (apple.status !== 'done') {
+          setAppleMismatch(apple.status === 'mismatch')
+          setSending(false)
+          return
+        }
+        revocation = apple.appleRevocation
+        setAppleRevocation(revocation)
+      }
       const idToken = await user.getIdToken()
-      setResult(await requestAccountDeletion(idToken, { reason: isDeletionReason(reason) ? reason : null, details: details.trim(), lang }))
+      setResult(
+        await requestAccountDeletion(idToken, {
+          reason: isDeletionReason(reason) ? reason : null,
+          details: details.trim(),
+          lang,
+          appleRevocation: revocation,
+        })
+      )
     } catch {
       setResult('unauthorized')
     } finally {
@@ -37,8 +67,9 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
     }
   }
 
-  const error =
-    result === 'rateLimited' ? t('del_rate_limited') : result === 'unauthorized' ? t('del_session_expired') : result === 'failed' || result === 'offline' ? t('del_error') : null
+  const error = appleMismatch
+    ? t('del_apple_mismatch')
+    : result === 'rateLimited' ? t('del_rate_limited') : result === 'unauthorized' ? t('del_session_expired') : result === 'failed' || result === 'offline' ? t('del_error') : null
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-card">
@@ -52,11 +83,13 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
       {result === 'sent' ? (
         <div role="status">
           <p className="text-copy text-body">{t('del_success_body')}</p>
+          {appleRevocation && appleRevocation !== 'revoked' && <p className="mt-3 text-copy text-body">{t('del_apple_manual')}</p>}
           <button type="button" onClick={onLeave} className="ds-btn ds-btn-primary w-full mt-6">{t('del_done')}</button>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4">
           <p className="text-copy text-body">{t('del_intro')}</p>
+          {appleAccount && <p className="text-copy text-body">{t('del_apple_note')}</p>}
 
           <div>
             <label htmlFor="delete-email" className="block mb-1.5 text-sm font-semibold text-slate-700">{t('del_email_label')}</label>
@@ -100,7 +133,7 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
           {error && (
             <p role="alert" className="text-sm font-semibold rounded-xl px-4 py-3 border text-red-600 bg-red-50 border-red-200">
               {error}
-              {(result === 'failed' || result === 'offline') && (
+              {!appleMismatch && (result === 'failed' || result === 'offline') && (
                 <> <a href={`mailto:${SUPPORT_EMAIL}`} className="underline"><bdi>{SUPPORT_EMAIL}</bdi></a></>
               )}
             </p>
@@ -115,7 +148,7 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
               className="tap-target inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-5 text-copy font-semibold text-white transition-colors [@media(hover:hover)]:hover:enabled:bg-red-700 active:enabled:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed sm:flex-1"
             >
               {sending && <span aria-hidden="true" className="h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin" />}
-              {sending ? t('del_sending') : t('del_submit')}
+              {sending ? t('del_sending') : t(appleAccount ? 'del_submit_apple' : 'del_submit')}
             </button>
           </div>
         </form>

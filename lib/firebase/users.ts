@@ -42,19 +42,31 @@ export interface UserDocument {
 const isoCode = (v: unknown) => (typeof v === 'string' && /^[A-Z]{2}$/.test(v) ? v : '')
 
 /**
- * Creates the users/{uid} doc if it's missing: on every Google sign-in, and on
- * an email+password account's first verified sign-in (normally already created
- * server-side by /api/auth/send-verification, names included; sign-up itself
- * writes nothing). Here the names can only come from the Auth display name.
+ * Creates the users/{uid} doc if it's missing: on every Google or Apple
+ * sign-in, and on an email+password account's first verified sign-in
+ * (normally already created server-side by /api/auth/send-verification, names
+ * included; sign-up itself writes nothing). The names come from `names` when
+ * the provider sent them (Apple, first authorization only), else from the
+ * Auth display name. An existing doc is left alone, except that a name Apple
+ * sent fills in one that's still blank (an earlier attempt lost it).
  */
 export async function ensureUserDocument(
   user: User,
-  { preferredLanguage = 'en', agreedToTerms = false }: { preferredLanguage?: string; agreedToTerms?: boolean } = {}
+  {
+    preferredLanguage = 'en',
+    agreedToTerms = false,
+    names = null,
+  }: { preferredLanguage?: string; agreedToTerms?: boolean; names?: { firstName: string; lastName: string } | null } = {}
 ) {
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
-  if (snap.exists()) return
-  const { firstName, lastName } = splitDisplayName(user.displayName)
+  if (snap.exists()) {
+    if (names && !snap.data().firstName && !snap.data().lastName) {
+      await updateDoc(ref, { firstName: names.firstName, lastName: names.lastName, displayName: `${names.firstName} ${names.lastName}`.trim() })
+    }
+    return
+  }
+  const { firstName, lastName } = names ?? splitDisplayName(user.displayName)
   await setDoc(ref, {
     email: user.email ?? '',
     firstName,
@@ -64,12 +76,12 @@ export async function ensureUserDocument(
     customerType: '',
     wishlistOfferIds: [],
     preferredLanguage,
-    // Never opted in here: Google sign-ups don't see the sign-up form's
+    // Never opted in here: Google and Apple sign-ups don't see the sign-up form's
     // marketing checkbox, and an email account only lands here if the
     // server-side profile write failed, so its choice is lost, never invented.
     marketingOptIn: false,
     createdAt: serverTimestamp(),
-    // Only when this sign-in path showed the Terms/Privacy disclosure (Google),
+    // Only when this sign-in path showed the Terms/Privacy disclosure (Google, Apple),
     // which also has the member confirm they are 16 or older.
     ...(agreedToTerms ? { agreedToTerms: true, isAgeConfirmed: true, termsAgreedAt: serverTimestamp() } : {}),
   })

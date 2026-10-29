@@ -47,8 +47,8 @@ export async function POST(request: Request) {
     return reply({ error: 'Authorization service unavailable.', reason: 'unavailable' }, 503)
   }
   const providers = userRecord.providerData.map((p) => p.providerId)
-  if (!providers.includes('password') || providers.includes('google.com')) {
-    return reply({ error: 'This account signs in with Google.', reason: 'notPasswordAccount' }, 403)
+  if (!providers.includes('password') || providers.includes('google.com') || providers.includes('apple.com')) {
+    return reply({ error: 'This account signs in with Google or Apple.', reason: 'notPasswordAccount' }, 403)
   }
 
   let newEmail: string

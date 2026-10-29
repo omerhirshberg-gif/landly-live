@@ -1,4 +1,5 @@
 import { normalizeApiBaseUrl } from '@/lib/apiOrigin'
+import type { AppleRevocation } from './appleRevocation'
 import type { DeletionReason } from './deletionReasons'
 
 /**
@@ -17,6 +18,8 @@ export interface DeletionRequestInput {
   reason: DeletionReason | null
   details: string
   lang: string
+  /** Apple accounts only: what happened to their Sign in with Apple tokens (appleRevocation.ts). */
+  appleRevocation?: AppleRevocation
 }
 
 // Client-side caller for /api/account/delete-request, shared by the website
@@ -40,7 +43,7 @@ export async function requestAccountDeletion(
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ confirm: true, reason: input.reason, details: input.details, lang: input.lang }),
+      body: JSON.stringify({ confirm: true, reason: input.reason, details: input.details, lang: input.lang, appleRevocation: input.appleRevocation }),
       redirect: 'manual',
       signal: controller.signal,
     })

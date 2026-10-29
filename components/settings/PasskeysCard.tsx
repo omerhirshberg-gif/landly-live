@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from 'react'
 import { EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, type User } from 'firebase/auth'
-import { googleProvider } from '@/lib/firebase/config'
+import { appleProvider, googleProvider } from '@/lib/firebase/config'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
 import { addPasskey, fetchPasskeys, passkeySupport, removePasskey, type PasskeySummary } from '@/lib/auth/passkeyClient'
 import { useLang } from '@/lib/i18n/useLang'
@@ -29,6 +29,8 @@ export default function PasskeysCard({ user }: { user: User }) {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [message, setMessage] = useState<Message | null>(null)
   const hasPassword = !!user.providerData?.some((p) => p.providerId === 'password')
+  // Apple without Google: the reauth popup is Apple's, not Google's.
+  const appleOnly = !!user.providerData?.some((p) => p.providerId === 'apple.com') && !user.providerData.some((p) => p.providerId === 'google.com')
 
   useEffect(() => {
     let cancelled = false
@@ -92,7 +94,8 @@ export default function PasskeysCard({ user }: { user: User }) {
         if (!user.email) throw new Error('no-email')
         await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password))
       } else {
-        await reauthenticateWithPopup(user, googleProvider)
+        // No password: confirm with the provider the account signs in with.
+        await reauthenticateWithPopup(user, appleOnly ? appleProvider : googleProvider)
       }
       await user.getIdToken(true)
       setPassword('')
@@ -236,7 +239,7 @@ export default function PasskeysCard({ user }: { user: User }) {
                   {t('del_cancel')}
                 </button>
                 <button type="submit" disabled={adding || (hasPassword && !password)} aria-busy={adding || undefined} className="ds-btn ds-btn-primary ds-btn-md w-full sm:flex-1">
-                  {adding ? t('passkeys_adding') : t(hasPassword ? 'passkeys_reauth_confirm' : 'passkeys_reauth_googleBtn')}
+                  {adding ? t('passkeys_adding') : t(hasPassword ? 'passkeys_reauth_confirm' : appleOnly ? 'passkeys_reauth_appleBtn' : 'passkeys_reauth_googleBtn')}
                 </button>
               </div>
             </form>

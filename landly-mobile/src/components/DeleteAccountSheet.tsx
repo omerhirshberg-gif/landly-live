@@ -5,12 +5,14 @@ import Svg, { Path } from 'react-native-svg'
 import type { User } from 'firebase/auth'
 import { SUPPORT_EMAIL } from '@shared/config'
 import { DELETION_DETAILS_MAX, DELETION_REASONS, DELETION_REASON_KEYS, type DeletionReason } from '@shared/account/deletionReasons'
+import { hasAppleSignIn, type AppleRevocation } from '@shared/account/appleRevocation'
 import { requestAccountDeletion, type DeletionRequestResult } from '@shared/account/requestAccountDeletion'
 import AppText from './AppText'
 import { useModalSidePadding } from './SheetSlot'
 import Button from './Button'
 import Checkbox from './Checkbox'
 import Notice from './Notice'
+import { confirmAndRevokeApple } from '../auth/appleRevocation'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
 import { webOnly } from '../lib/webStyles'
@@ -23,7 +25,12 @@ import { colors, radius } from '../theme'
 // reason and note, and a required "I understand" box. Once sent, iOS and
 // Android confirm with a native alert that closes the sheet; the Expo web
 // build (where Alert is a no-op) shows the confirmation in the sheet, as the
-// website does. A page sheet on iOS, full screen on Android; a Modal is its own layout root, so the language's
+// website does. An account with Sign in with Apple confirms with Apple first
+// on iOS and in the browser build, which revokes Landly's Apple tokens
+// (auth/appleRevocation.ts); backing out sends nothing. Android can't confirm
+// with Apple, so its request goes out marked 'unavailable', and any request
+// whose tokens weren't revoked says how to remove Landly in the Apple Account
+// settings. A page sheet on iOS, full screen on Android; a Modal is its own layout root, so the language's
 // direction is set again on its content.
 export default function DeleteAccountSheet({ user }: { user: User }) {
   const { t, lang, isRtl } = useLang()
@@ -35,12 +42,19 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
   const [confirmed, setConfirmed] = useState(false)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<DeletionRequestResult | null>(null)
+  const appleAccount = hasAppleSignIn(user)
+  // Android has no Apple sheet: the button stays the plain one there.
+  const confirmWithApple = appleAccount && Platform.OS !== 'android'
+  const [appleMismatch, setAppleMismatch] = useState(false)
+  const [appleRevocation, setAppleRevocation] = useState<AppleRevocation | undefined>(undefined)
 
   const show = () => {
     setReason(null)
     setDetails('')
     setConfirmed(false)
     setResult(null)
+    setAppleMismatch(false)
+    setAppleRevocation(undefined)
     setOpen(true)
   }
   const close = () => {
@@ -51,24 +65,38 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
     if (!confirmed || sending) return
     setSending(true)
     setResult(null)
+    setAppleMismatch(false)
     let next: DeletionRequestResult
+    let revocation: AppleRevocation | undefined
     try {
+      if (appleAccount) {
+        const apple = await confirmAndRevokeApple(user, lang)
+        if (apple.status !== 'done') {
+          setAppleMismatch(apple.status === 'mismatch')
+          setSending(false)
+          return
+        }
+        revocation = apple.appleRevocation
+        setAppleRevocation(revocation)
+      }
       const idToken = await user.getIdToken()
-      next = await requestAccountDeletion(idToken, { reason, details: details.trim(), lang }, API_BASE_URL)
+      next = await requestAccountDeletion(idToken, { reason, details: details.trim(), lang, appleRevocation: revocation }, API_BASE_URL)
     } catch {
       next = 'unauthorized'
     }
     setSending(false)
     setResult(next)
     if (next === 'sent' && Platform.OS !== 'web') {
-      Alert.alert(t('del_success_title'), t('del_success_body'), [{ text: t('del_done'), onPress: () => setOpen(false) }], {
+      const body = revocation && revocation !== 'revoked' ? `${t('del_success_body')}\n\n${t('del_apple_manual')}` : t('del_success_body')
+      Alert.alert(t('del_success_title'), body, [{ text: t('del_done'), onPress: () => setOpen(false) }], {
         cancelable: false,
       })
     }
   }
 
-  const error =
-    result === 'rateLimited'
+  const error = appleMismatch
+    ? t('del_apple_mismatch')
+    : result === 'rateLimited'
       ? t('del_rate_limited')
       : result === 'unauthorized'
         ? t('del_session_expired')
@@ -126,12 +154,14 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
             {sentOnWeb ? (
               <>
                 <Notice message={t('del_success_body')} tone="success" />
+                {appleRevocation && appleRevocation !== 'revoked' && <AppText style={styles.appleManual}>{t('del_apple_manual')}</AppText>}
                 <View style={styles.gap} />
                 <Button label={t('del_done')} onPress={() => setOpen(false)} />
               </>
             ) : (
               <>
                 <AppText style={styles.intro}>{t('del_intro')}</AppText>
+                {confirmWithApple && <AppText style={styles.intro}>{t('del_apple_note')}</AppText>}
 
                 <View style={styles.card}>
                   <AppText style={styles.label}>{t('del_email_label')}</AppText>
@@ -182,7 +212,7 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
                   </View>
                 )}
 
-                <Button label={sending ? t('del_sending') : t('del_submit')} onPress={submit} disabled={!confirmed} busy={sending} variant="danger" />
+                <Button label={sending ? t('del_sending') : t(confirmWithApple ? 'del_submit_apple' : 'del_submit')} onPress={submit} disabled={!confirmed} busy={sending} variant="danger" />
                 <View style={styles.gapSmall} />
                 <Button label={t('del_cancel')} onPress={close} disabled={sending} variant="secondary" />
               </>
@@ -238,6 +268,7 @@ const styles = StyleSheet.create({
   closeText: { fontSize: 16, fontWeight: '600', color: colors.brand },
   content: { paddingHorizontal: 16, paddingBottom: 32 },
   intro: { fontSize: 15, lineHeight: 22, color: colors.body, marginBottom: 16 },
+  appleManual: { fontSize: 15, lineHeight: 22, color: colors.body, marginTop: 12 },
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,

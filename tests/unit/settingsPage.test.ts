@@ -10,6 +10,8 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/settings', useRouter: (
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: authState.user, loading: false }) }))
 vi.mock('@/components/auth/useOnboardingGuard', () => ({ useOnboardingGuard: () => authState.held }))
 vi.mock('@/lib/firebase/users', () => ({ updateUserLanguage: vi.fn() }))
+// The deletion form's Apple step (lib/auth/appleWebRevocation.ts) would initialise Firebase.
+vi.mock('@/lib/auth/appleWebRevocation', () => ({ confirmAndRevokeAppleOnWeb: vi.fn() }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ useMemberProfile: () => ({ loaded: true, profile: null, firstName: null, initials: '', photoURL: null }) }))
 vi.mock('@/components/layout/Navbar', () => ({ default: () => 'NAVBAR' }))
 

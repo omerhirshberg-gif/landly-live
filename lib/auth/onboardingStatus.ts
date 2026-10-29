@@ -15,3 +15,27 @@ export function isOnboardingComplete(
   if (!doc) return false
   return !!doc.onboardingCompleted || (!!doc.phone && !!doc.customerType)
 }
+
+/** Sign-in providers whose accounts are always customers (businesses sign in with a password). */
+export const OAUTH_PROVIDER_IDS: readonly string[] = ['google.com', 'apple.com']
+
+export function hasOAuthProvider(providerIds: readonly string[]): boolean {
+  return providerIds.some((id) => OAUTH_PROVIDER_IDS.includes(id))
+}
+
+/**
+ * The gate the auth provider applies to a verified session. With a profile
+ * doc, isOnboardingComplete decides. Without one, a password session stays
+ * ungated (a business account, or an email sign-in still creating its doc,
+ * which decides on its own); a Google or Apple session is a customer whose
+ * doc never got written (a dropped connection right after sign-in, a lost
+ * web redirect), so it owes onboarding, and the sign-in screen recreates the
+ * doc before the wizard opens.
+ */
+export function sessionOnboardingStatus(
+  doc: Parameters<typeof isOnboardingComplete>[0],
+  providerIds: readonly string[]
+): boolean {
+  if (doc) return isOnboardingComplete(doc)
+  return !hasOAuthProvider(providerIds)
+}

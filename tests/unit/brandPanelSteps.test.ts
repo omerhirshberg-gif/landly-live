@@ -20,8 +20,8 @@ describe('brandPanelSteps', () => {
     expect(states('verified')).toEqual(['done', 'done', 'current'])
   })
 
-  it('skips verification for Google sign-ups', () => {
-    expect(states('signUp', 'google')).toEqual(['done', 'done', 'current'])
+  it.each(['google', 'apple'] as const)('skips verification for %s sign-ups', (via) => {
+    expect(states('signUp', via)).toEqual(['done', 'done', 'current'])
   })
 
   it('lists every wizard question once, in wizard order', () => {

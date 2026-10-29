@@ -4,7 +4,7 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 // The step list on the desktop brand panel (components/auth/entrance/
 // AuthBrandPanel.tsx), as pure data so the states can be tested. Email and
 // Google members get the same onboarding list; only the account journey
-// before it differs, since Google accounts are verified by Google.
+// before it differs, since Google and Apple accounts are verified by them.
 
 /**
  * What the form side is showing: a tab, the "check your inbox" card, the
@@ -15,7 +15,7 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 export type BrandPanelContext = 'signIn' | 'signUp' | 'verify' | 'verified' | 'reset' | OnboardingStep
 
 /** How the member got (or is getting) their account. */
-export type SignInMethod = 'email' | 'google'
+export type SignInMethod = 'email' | 'google' | 'apple'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -37,7 +37,7 @@ const stateOf = (i: number, current: number): StepState => (i < current ? 'done'
 /**
  * The step list beside the form: none on Sign In or password reset (a member
  * resetting a password is past the journey); the account journey on Sign
- * Up and around verification (a Google sign-up has nothing to verify, so it's
+ * Up and around verification (a Google or Apple sign-up has nothing to verify, so it's
  * already at Personalize); the setup cards during onboarding — all upcoming
  * on the welcome, earlier ones done on each question, all done on the
  * celebration.
@@ -45,7 +45,7 @@ const stateOf = (i: number, current: number): StepState => (i < current ? 'done'
 export function brandPanelSteps(context: BrandPanelContext, via: SignInMethod = 'email'): BrandPanelSteps | null {
   if (context === 'signIn' || context === 'reset') return null
   if (context === 'signUp' || context === 'verify' || context === 'verified') {
-    const current = via === 'google' || context === 'verified' ? 2 : context === 'verify' ? 1 : 0
+    const current = via !== 'email' || context === 'verified' ? 2 : context === 'verify' ? 1 : 0
     return { label: 'auth_panel_journey', items: JOURNEY.map((label, i) => ({ label, state: stateOf(i, current) })) }
   }
   const at = ONBOARDING_STEPS.indexOf(context)

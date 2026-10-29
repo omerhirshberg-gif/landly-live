@@ -11,17 +11,18 @@ const SCREENS = [
 ]
 
 describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, otpTag }) => {
-  it('offers "Change" only inside Edit profile, to password accounts, and locks a Google address', () => {
+  it('offers "Change" only inside Edit profile, to password accounts, and locks a Google or Apple address', () => {
     const src = read(profile)
     expect(src).toContain("const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')")
-    // Google linked locks it even beside a password.
-    expect(src).toContain("const canChangeEmail = !googleAccount && user.providerData.some((p) => p.providerId === 'password')")
+    expect(src).toContain("const appleAccount = user.providerData.some((p) => p.providerId === 'apple.com')")
+    // Google or Apple linked locks it even beside a password.
+    expect(src).toContain("const canChangeEmail = !googleAccount && !appleAccount && user.providerData.some((p) => p.providerId === 'password')")
     // No entry point outside Edit profile any more.
     expect(src).not.toMatch(/canChangeEmail && !editing/)
     expect(src).toMatch(/\{editing \? \(?\s*(\/\/[^\n]*\n\s*)?(emailBox|<View style=\{\[styles\.emailBox)/)
     expect(src).toMatch(/canChangeEmail \? \(\s*!emailFormOpen &&/)
     expect(src).toMatch(/canChangeEmail && emailFormOpen && editing &&/)
-    expect(src).toMatch(/editing && !canChangeEmail && googleAccount &&[\s\S]{0,80}t\('profile_email_google_locked'\)/)
+    expect(src).toMatch(/editing && !canChangeEmail && \(googleAccount \|\| appleAccount\) &&[\s\S]{0,120}t\(googleAccount \? 'profile_email_google_locked' : 'profile_email_apple_locked'\)/)
     expect(src).toMatch(/<ChangeEmailForm[\s\S]*?pendingEmail=\{pendingEmail\}/)
   })
 
