@@ -58,9 +58,14 @@ describe('category vector icons', () => {
     expect(read('app/categories/new/page.tsx')).toContain('icon={Sparkles}')
     expect(read('app/categories/bestsellers/page.tsx')).toContain('<OfferListView icon={Award}')
     const perks = read('landly-mobile/src/app/(tabs)/perks.tsx')
-    expect(perks).toContain('<OfferTileRail icon="sparkles"')
-    expect(perks).toContain('<OfferTileRail icon="award"')
-    expect(perks).not.toMatch(/[✨🔥]/u)
+    // The app's rails lead with emoji, kept in landly-mobile/src/lib/categoryGlyphs.ts (🆕, 🔥).
+    expect(perks).toContain('<OfferTileRail glyph="new"')
+    expect(perks).toContain('<OfferTileRail glyph="bestsellers"')
+    expect(perks).not.toMatch(/[✨🔥🆕]/u)
+    const glyphs = read('landly-mobile/src/lib/categoryGlyphs.ts')
+    expect(glyphs).toContain("new: '\\u{1F195}', // 🆕")
+    expect(glyphs).toContain("bestsellers: '\\u{1F525}', // 🔥")
+    expect(read('landly-mobile/src/components/OfferTileRail.tsx')).toContain('<Emoji glyph={RAIL_GLYPHS[glyph]} size={20} />')
     // Their heads use the shared frame: no solid tiles, no Font Awesome.
     for (const file of ['components/discover/OfferTileRail.tsx', 'components/discover/OfferListView.tsx']) {
       expect(read(file)).toContain('<IconFrame icon={icon}')

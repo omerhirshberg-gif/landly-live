@@ -12,6 +12,7 @@ import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { formatDistance, offerPlaceLabel } from '@/lib/geo'
 import DiscountBadge from './DiscountBadge'
+import MerchantBadge from './MerchantBadge'
 import PerkImage from './PerkImage'
 import RedemptionBadge from './RedemptionBadge'
 
@@ -66,40 +67,46 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 [@media(hover:hover)]:hover:-translate-y-0.5' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
       }`}
     >
-      {/* The framed picture: 16:9 in every layout, as in the Expo app. */}
-      <div className="relative mx-2 mt-2 aspect-video overflow-hidden rounded-[14px] border border-line bg-canvas">
-        <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={name.text} />
-        {showCategoryBadge && tile && (
-          <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-micro font-semibold text-ink shadow-sm">
-            {t(tile.labelKey)}
-          </span>
-        )}
-        {showWishlistButton && user && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              toggleWishlist(offer.id)
-            }}
-            aria-pressed={saved}
-            aria-label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-            // A 48px tap target around a 36px visible circle.
-            className="absolute top-0 end-0 flex h-12 w-12 items-center justify-center"
-          >
-            <span
-              className={`flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors ${
-                saved ? 'bg-red-500 text-white' : 'bg-white/95 text-body [@media(hover:hover)]:hover:text-red-500'
-              }`}
-            >
-              <Heart aria-hidden="true" className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} strokeWidth={2} />
+      {/* The framed picture: 16:9 in every layout, as in the Expo app, with the
+          business's logo tile hanging half over its foot at the start edge
+          (outside the clipped frame, so it mirrors in Hebrew and isn't cut). */}
+      <div className="relative z-[1] mx-2 mt-2">
+        <div className="relative aspect-video overflow-hidden rounded-[14px] border border-line bg-canvas">
+          <PerkImage src={offer.imageUrl} alt={title.text} category={offer.category} businessName={name.text} />
+          {showCategoryBadge && tile && (
+            <span className="absolute top-2.5 start-2.5 max-w-[65%] truncate rounded-full bg-white/95 px-2.5 py-1 text-micro font-semibold text-ink shadow-sm">
+              {t(tile.labelKey)}
             </span>
-          </button>
-        )}
+          )}
+          {showWishlistButton && user && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                toggleWishlist(offer.id)
+              }}
+              aria-pressed={saved}
+              aria-label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
+              // A 48px tap target around a 36px visible circle.
+              className="absolute top-0 end-0 flex h-12 w-12 items-center justify-center"
+            >
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors ${
+                  saved ? 'bg-red-500 text-white' : 'bg-white/95 text-body [@media(hover:hover)]:hover:text-red-500'
+                }`}
+              >
+                <Heart aria-hidden="true" className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} strokeWidth={2} />
+              </span>
+            </button>
+          )}
+        </div>
+        <MerchantBadge logoUrl={offer.businessLogoUrl ?? ''} businessName={name.text} className="absolute start-2 -bottom-6" />
       </div>
 
       <div className={`flex flex-1 flex-col ${rail ? 'px-3 pb-3 pt-2.5' : 'px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4'}`}>
-        <div className="truncate text-micro font-bold uppercase leading-snug tracking-wider rtl:tracking-normal text-slate-500" lang={name.lang ?? undefined} dir="auto">
+        {/* Clear of the logo tile: its 16px inset and 48px width plus 8px, less the body's 12px padding. */}
+        <div className="truncate ps-[60px] text-micro font-bold uppercase leading-snug tracking-wider rtl:tracking-normal text-slate-500" lang={name.lang ?? undefined} dir="auto">
           {name.text}
         </div>
         {/* A rail keeps two lines reserved so neighbouring cards line up; a grid row stretches its cards anyway. */}

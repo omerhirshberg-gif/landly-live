@@ -12,8 +12,6 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
 import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
-import LineIcon from '../../components/LineIcon'
-import { REDEMPTION_METHOD_ICONS } from '../../components/OfferCard'
 import PerkImage from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
 import { CodeReveal, QrReveal } from '../../components/VoucherReveal'
@@ -82,7 +80,6 @@ export default function VoucherScreen() {
               <ContentText contentLang={title.lang} style={styles.title}>{title.text}</ContentText>
               {content.machine && <TranslationNotice showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />}
               <View style={styles.methodChip}>
-                <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={13} color={colors.brand} strokeWidth={2.2} />
                 <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
               </View>
 

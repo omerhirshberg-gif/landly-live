@@ -19,15 +19,34 @@ import WhatsAppBadge from './WhatsAppBadge'
 // descendant of a [dir="rtl"] element, so nothing here uses ltr:/rtl:
 // variants: a closed drawer once slid onto the screen instead of off it.
 
-const NAV_ITEMS = [
-  { href: '/admin', label: 'Dashboard', icon: 'fa-gauge-high', exact: true },
-  { href: '/admin/support', label: 'WhatsApp Support', icon: 'fa-comments', exact: false },
-  { href: '/admin/search', label: 'Search', icon: 'fa-magnifying-glass', exact: false },
-  { href: '/admin/businesses', label: 'Businesses', icon: 'fa-store', exact: false },
-  { href: '/admin/offers', label: 'Offers', icon: 'fa-tags', exact: false },
-  { href: '/admin/orphans', label: 'Orphans', icon: 'fa-triangle-exclamation', exact: false },
-  { href: '/admin/system/costs', label: 'Usage & Costs', icon: 'fa-coins', exact: false },
+// In groups, in this order; the labels are the route tree's titles (lib/admin/routes.ts).
+const NAV_GROUPS = [
+  { label: null, items: [{ href: '/admin', label: 'Dashboard', icon: 'fa-gauge-high', exact: true }] },
+  {
+    label: 'Operations',
+    items: [
+      { href: '/admin/support', label: 'WhatsApp Support', icon: 'fa-comments', exact: false },
+      { href: '/admin/users', label: 'Users', icon: 'fa-users', exact: false },
+      { href: '/admin/search', label: 'Search', icon: 'fa-magnifying-glass', exact: false },
+    ],
+  },
+  {
+    label: 'Catalog',
+    items: [
+      { href: '/admin/businesses', label: 'Businesses', icon: 'fa-store', exact: false },
+      { href: '/admin/offers', label: 'Offers', icon: 'fa-tags', exact: false },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { href: '/admin/orphans', label: 'Orphans', icon: 'fa-triangle-exclamation', exact: false },
+      { href: '/admin/system/costs', label: 'Usage & Costs', icon: 'fa-coins', exact: false },
+    ],
+  },
 ] as const
+
+type NavItem = (typeof NAV_GROUPS)[number]['items'][number]
 
 // Tailwind's md breakpoint, where the inline sidebar takes over.
 const DESKTOP_QUERY = '(min-width: 768px)'
@@ -47,7 +66,7 @@ interface NavProps {
 /** Logo, links and logout: the same in the sidebar and the drawer. */
 function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
   const pathname = usePathname()
-  const isActive = (item: (typeof NAV_ITEMS)[number]) => (item.exact ? pathname === item.href : pathname.startsWith(item.href))
+  const isActive = (item: NavItem) => (item.exact ? pathname === item.href : pathname.startsWith(item.href))
 
   return (
     <>
@@ -70,29 +89,34 @@ function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
       </div>
 
       <nav aria-label="Admin sections" className="flex-1 overflow-y-auto overscroll-y-contain px-3 py-4">
-        <ul className="space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const active = isActive(item)
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={onNavigate}
-                  aria-current={active ? 'page' : undefined}
-                  className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors ${FOCUS_RING} ${
-                    active
-                      ? 'bg-[#F0F7FF] text-[#0038B8] before:absolute before:inset-y-2.5 before:start-0 before:w-[3px] before:rounded-full before:bg-[#0038B8]'
-                      : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0B1B3D] active:bg-[#F1F5F9]'
-                  }`}
-                >
-                  <i className={`fa-solid ${item.icon} w-5 text-center text-sm`} aria-hidden="true" />
-                  {item.label}
-                  {item.href === '/admin/support' && <WhatsAppBadge count={needsReply} className="ms-auto" />}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label ?? 'top'} className={group.label ? 'mt-5' : undefined}>
+            {group.label && <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-[#94A3B8]">{group.label}</p>}
+            <ul className="space-y-1">
+              {group.items.map((item) => {
+                const active = isActive(item)
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      aria-current={active ? 'page' : undefined}
+                      className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors ${FOCUS_RING} ${
+                        active
+                          ? 'bg-[#F0F7FF] text-[#0038B8] before:absolute before:inset-y-2.5 before:start-0 before:w-[3px] before:rounded-full before:bg-[#0038B8]'
+                          : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0B1B3D] active:bg-[#F1F5F9]'
+                      }`}
+                    >
+                      <i className={`fa-solid ${item.icon} w-5 text-center text-sm`} aria-hidden="true" />
+                      {item.label}
+                      {item.href === '/admin/support' && <WhatsAppBadge count={needsReply} className="ms-auto" />}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="shrink-0 border-t border-[#E2E8F0] px-3 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">

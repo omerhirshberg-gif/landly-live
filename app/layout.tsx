@@ -5,6 +5,7 @@ import './globals.css'
 import { LangProvider } from '@/lib/i18n/LangProvider'
 import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
+import SessionHeartbeat from '@/components/settings/SessionHeartbeat'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
 import PasskeyPrompt from '@/components/auth/PasskeyPrompt'
@@ -121,6 +122,7 @@ export default function RootLayout({
           <WishlistProvider>
             <LangProvider>
               <PreferredLanguageSync />
+              <SectionBoundary name="session-heartbeat"><SessionHeartbeat /></SectionBoundary>
               {children}
               <SectionBoundary name="whatsapp-widget"><WhatsAppWidget /></SectionBoundary>
               <SectionBoundary name="cookie-notice"><CookieNotice /></SectionBoundary>

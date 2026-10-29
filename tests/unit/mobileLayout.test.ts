@@ -98,7 +98,8 @@ describe('native screens follow the live window', () => {
     expect(read('components/FeedCell.tsx')).toContain('return columns > 1 ? styles.row : undefined')
   })
 
-  it.each(['components/OfferCarousel.tsx', 'components/OfferTileRail.tsx', 'components/CategoryRail.tsx', 'components/PerksCategoryChips.tsx'])(
+  // The Perks rails (OfferTileRail.tsx) draw through OfferCarousel, so they bleed with it.
+  it.each(['components/OfferCarousel.tsx', 'components/CategoryRail.tsx', 'components/PerksCategoryChips.tsx'])(
     '%s bleeds through each side’s live padding (inset plus gutter), not a fixed 16',
     (path) => {
       const source = read(path)
@@ -188,7 +189,8 @@ describe('native scroll indicators', () => {
   it('finds the lists it guards', () => {
     expect(listTags(read('app/(tabs)/wallet.tsx'))).toHaveLength(1)
     expect(listTags(read('components/CategoryRail.tsx'))).toHaveLength(1)
-    expect(sources('landly-mobile/src').flatMap((file) => listTags(readFileSync(file, 'utf8'))).length).toBeGreaterThanOrEqual(28)
+    // 27 since the Perks rails draw through OfferCarousel's list rather than their own.
+    expect(sources('landly-mobile/src').flatMap((file) => listTags(readFileSync(file, 'utf8'))).length).toBeGreaterThanOrEqual(27)
   })
 
   it.each(sources('landly-mobile/src').filter((file) => listTags(readFileSync(file, 'utf8')).length))('%s hides both scroll indicators on every list', (file) => {

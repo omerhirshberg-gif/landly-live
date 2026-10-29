@@ -17,6 +17,7 @@ const PATHS = {
   navigation: 'M3 11 22 2l-9 19-2-8z',
   map: 'M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0zM15 5.764v15M9 3.236v15',
   phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 18h.01',
+  monitor: 'M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 21h8M12 17v4',
   signOut: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   check: 'M20 6 9 17l-5-5',
   plus: 'M12 5v14M5 12h14',
@@ -50,6 +51,9 @@ const PATHS = {
 
 export type LineIconName = keyof typeof PATHS
 
+// The action controls share one stroke scale: 2 for the heart, the pin and
+// the rest (the default), 2.2 for chevrons, 2.4 for a selection or success
+// check; only display-sized marks (the order celebration, the QR stand-in) differ.
 export default function LineIcon({
   name,
   size = 18,

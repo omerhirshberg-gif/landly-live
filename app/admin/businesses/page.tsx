@@ -4,11 +4,16 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Alert from '@/components/admin/Alert'
-import Card, { CardSkeletons } from '@/components/admin/Card'
+import { CardSkeletons } from '@/components/admin/Card'
+import DataTable from '@/components/admin/DataTable'
 import EmptyState from '@/components/admin/EmptyState'
 import { FilterChips, ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge from '@/components/admin/StatusBadge'
+import CategoryBadge from '@/components/admin/CategoryBadge'
+import LogoTile from '@/components/admin/LogoTile'
+import BidiText from '@/components/admin/BidiText'
+import { alternateBusinessName, type BusinessTranslations } from '@/lib/business/businessText'
 import TranslateMissingButton from '@/components/admin/TranslateMissingButton'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 
@@ -18,6 +23,8 @@ interface Business {
   businessId: string
   category: string
   email: string
+  logoUrl: string
+  translations?: BusinessTranslations | null
   activePerkCount: number
   redeemedTotal: number
 }
@@ -50,6 +57,7 @@ export default function BusinessesListPage() {
         (category === ALL || b.category === category) &&
         (!q ||
           b.businessName.toLowerCase().includes(q) ||
+          alternateBusinessName(b.businessName, b.translations).toLowerCase().includes(q) ||
           b.businessId.toLowerCase().includes(q) ||
           b.email.toLowerCase().includes(q)),
     )
@@ -103,8 +111,8 @@ export default function BusinessesListPage() {
       )}
 
       {businesses === null && !error && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <CardSkeletons count={6} />
+        <div className="space-y-3">
+          <CardSkeletons count={5} className="h-20" />
         </div>
       )}
 
@@ -135,36 +143,97 @@ export default function BusinessesListPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((business) => (
-          <Card key={business.uid} href={`/admin/businesses/${business.uid}`} className="flex flex-col gap-4 p-5">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0F7FF] text-[#0038B8]">
-                <i className="fa-solid fa-store" aria-hidden="true" />
+      {filtered.length > 0 && (
+        <DataTable
+          label="Businesses"
+          rows={filtered}
+          rowKey={(business) => business.uid}
+          rowHref={(business) => `/admin/businesses/${business.uid}`}
+          initialSort={{ id: 'business', direction: 'asc' }}
+          columns={[
+            {
+              id: 'business',
+              header: 'Business',
+              sortValue: (business) => business.businessName,
+              cell: (business) => <BusinessIdentity business={business} />,
+            },
+            {
+              id: 'category',
+              header: 'Category',
+              width: 'w-48',
+              sortValue: (business) => business.category,
+              cell: (business) => <CategoryBadge category={business.category} />,
+            },
+            {
+              id: 'businessId',
+              header: 'ח.פ',
+              width: 'w-32',
+              className: 'hidden xl:table-cell',
+              cell: (business) => (
+                <bdi dir="ltr" className="tabular-nums text-[#475569]">
+                  {business.businessId}
+                </bdi>
+              ),
+            },
+            {
+              id: 'active',
+              header: 'Active offers',
+              align: 'end',
+              width: 'w-32',
+              sortValue: (business) => business.activePerkCount,
+              cell: (business) => (
+                <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
+                  {business.activePerkCount} active
+                </StatusBadge>
+              ),
+            },
+            {
+              id: 'redeemed',
+              header: 'Redeemed',
+              align: 'end',
+              width: 'w-28',
+              sortValue: (business) => business.redeemedTotal,
+              cell: (business) => <span className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</span>,
+            },
+          ]}
+          actions={(business) => [
+            { label: 'Open business', icon: 'fa-store', href: `/admin/businesses/${business.uid}` },
+            { label: 'Add offer', icon: 'fa-plus', href: `/admin/offers/new?businessUid=${business.uid}` },
+          ]}
+          card={(business) => (
+            <>
+              <BusinessIdentity business={business} />
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3 text-sm">
+                <CategoryBadge category={business.category} />
+                <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
+                  {business.activePerkCount} active
+                </StatusBadge>
+                <span className="ms-auto inline-flex items-center gap-1.5 text-[#475569]">
+                  <i className="fa-solid fa-ticket text-xs text-[#94A3B8]" aria-hidden="true" />
+                  <bdi dir="ltr" className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</bdi> redeemed
+                </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{business.businessName}</div>
-                <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="ltr">{business.email}</div>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge tone="blue">
-                <span dir="auto">{business.category}</span>
-              </StatusBadge>
-              <span className="text-xs text-[#94A3B8]" dir="ltr">ח.פ {business.businessId}</span>
-            </div>
-            <div className="mt-auto flex items-center gap-4 border-t border-[#E2E8F0] pt-3 text-sm">
-              <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
-                {business.activePerkCount} active
-              </StatusBadge>
-              <span className="inline-flex items-center gap-1.5 text-[#475569]">
-                <i className="fa-solid fa-ticket text-xs text-[#94A3B8]" aria-hidden="true" />
-                <span className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</span> redeemed
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </>
+          )}
+        />
+      )}
     </div>
+  )
+}
+
+/** Logo, name (and the name in the other language) and login email: a row's first cell, and a phone card's top. */
+function BusinessIdentity({ business }: { business: Business }) {
+  const altName = alternateBusinessName(business.businessName, business.translations)
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <LogoTile logoUrl={business.logoUrl} name={business.businessName} />
+      <span className="min-w-0 flex-1">
+        <BidiText className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{business.businessName}</BidiText>
+        {altName && <BidiText className="text-sm text-[#475569]">{altName}</BidiText>}
+        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-[#94A3B8] [text-align:match-parent]">
+          {business.email}
+        </bdi>
+      </span>
+    </span>
   )
 }

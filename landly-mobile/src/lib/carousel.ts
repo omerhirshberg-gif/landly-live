@@ -44,9 +44,3 @@ export function carouselPage(fromStart: number, starts: readonly number[]): numb
   }
   return last
 }
-
-// The Perks tab's highlight rails (components/OfferTileRail.tsx): fixed 256pt
-// slots of 140pt tiles, so the New and Best Sellers rails both fit a small
-// phone above the category grid.
-export const TILE_RAIL_WIDTH = 256
-export const TILE_RAIL_TILE_HEIGHT = 140

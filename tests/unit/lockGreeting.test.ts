@@ -73,17 +73,15 @@ describe('time-of-day greeting', () => {
 describe('"Last sign-in"', () => {
   const at = new Date(2026, 9, 23, 17, 36)
 
-  it('shows the numeric date and the time in the member language', () => {
-    expect(formatLastEntry(at, 'he', false)).toBe('23.10.2026 17:36')
-    expect(formatLastEntry(at, 'en', false)).toBe('10/23/2026 17:36')
-    expect(formatLastEntry(at, 'fr', false)).toBe('23/10/2026 17:36')
-    expect(translations.he.applock_lastEntry.replace('{time}', formatLastEntry(at, 'he', false))).toBe('כניסה אחרונה: 23.10.2026 17:36')
+  it('is always the Israeli format, DD.MM.YYYY HH:mm, in every language', () => {
+    expect(formatLastEntry(at)).toBe('23.10.2026 17:36')
+    expect(translations.he.applock_lastEntry.replace('{time}', formatLastEntry(at))).toBe('כניסה אחרונה: 23.10.2026 17:36')
+    expect(translations.en.applock_lastEntry.replace('{time}', formatLastEntry(at))).toBe('Last sign-in: 23.10.2026 17:36')
   })
 
-  it('follows the device clock: a leading zero in 24-hour time, AM/PM in 12-hour time', () => {
-    expect(formatLastEntry(new Date(2026, 9, 23, 9, 5), 'en', false)).toBe('10/23/2026 09:05')
-    expect(formatLastEntry(new Date(2026, 9, 23, 0, 1), 'en')).toBe('10/23/2026 00:01')
-    expect(formatLastEntry(at, 'en', true)).toMatch(/^10\/23\/2026 5:36\sPM$/)
+  it('pads the day, month, hour and minute, on a 24-hour clock', () => {
+    expect(formatLastEntry(new Date(2026, 0, 5, 9, 5))).toBe('05.01.2026 09:05')
+    expect(formatLastEntry(new Date(2026, 9, 23, 0, 1))).toBe('23.10.2026 00:01')
   })
 
   it('prefers the entry stored on this device, then Firebase, then nothing', () => {
@@ -150,7 +148,7 @@ describe('lock screen wiring', () => {
 
   it('breathes the glyph only while waiting, and keeps it still with reduced motion', async () => {
     const glyph = await readFile('landly-mobile/src/components/BiometricGlyph.tsx', 'utf8')
-    expect(glyph).toContain('if (!pulsing && !reduced) {')
+    expect(glyph).toContain('if (!pulsing && !reduced && breathing) {')
     expect(glyph).toContain('const TILE = 96')
     expect(glyph).toContain('const BREATH_SCALE = 1.05')
     expect(glyph).toContain('const BREATH_MS = 1200')
@@ -161,7 +159,7 @@ describe('lock screen wiring', () => {
   it('lays the lock screen out open, top to bottom: brand, glyph, greeting, last sign-in, actions', async () => {
     const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
     const overlay = lock.slice(lock.indexOf('export function AppLockOverlay'))
-    const order = ['<BrandLockup scale={LOCKUP_SCALE} />', '<BiometricGlyph', '{greeting}', '{lastLine', "t('applock_unlock')", "t('applock_passwordInstead')"]
+    const order = ['<BrandLockup scale={LOCKUP_SCALE} />', '<BiometricGlyph', '<LockGreeting lockedAt={lockedAt} />', '{lastLine', "t('applock_unlock')", "t('applock_passwordInstead')"]
     const at = order.map((part) => overlay.indexOf(part))
     expect(at.every((i) => i > -1)).toBe(true)
     expect([...at].sort((a, b) => a - b)).toEqual(at)
@@ -211,7 +209,7 @@ describe('biometric kind', () => {
     const glyph = await readFile('landly-mobile/src/components/BiometricGlyph.tsx', 'utf8')
     expect(glyph).toContain("const face = kind === 'faceId' || kind === 'face'")
     expect(glyph).toContain("face ? 'faceId' : 'fingerprint'")
-    expect(lock).toContain('<BiometricGlyph kind={kind}')
+    expect(lock).toMatch(/<BiometricGlyph\s+kind=\{kind\}/)
     // The button says only "Unlock", so it never names the wrong method.
     expect(lock).not.toContain("icon={face ? 'faceId' : 'fingerprint'}")
   })

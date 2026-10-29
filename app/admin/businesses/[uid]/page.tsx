@@ -1,20 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { useAdminCrumbs } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
-import Card, { CardSkeletons } from '@/components/admin/Card'
+import BusinessHero from '@/components/admin/BusinessHero'
+import { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
-import OfferPrice from '@/components/admin/OfferPrice'
-import PageHeader from '@/components/admin/PageHeader'
-import StatusBadge, { OfferStatusBadge } from '@/components/admin/StatusBadge'
+import OfferShowcaseCard, { type ShowcaseOffer } from '@/components/admin/OfferShowcaseCard'
 import BusinessEditForm from '@/components/admin/BusinessEditForm'
-import { DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import { FormTabs, TabPanel, useFormTabs } from '@/components/admin/FormTabs'
+import RowActionsMenu from '@/components/admin/RowActionsMenu'
+import { PRIMARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
 import type { GeoAddress } from '@/lib/geo'
-import type { BusinessTranslations } from '@/lib/business/businessText'
+import { alternateBusinessName, type BusinessTranslations } from '@/lib/business/businessText'
 
 interface Business {
   uid: string
@@ -24,28 +26,34 @@ interface Business {
   location: string
   address: GeoAddress | null
   translations?: BusinessTranslations | null
+  /** '' = no logo (GET /api/admin/businesses). */
+  logoUrl: string
+  /** E.164, or '' for none. */
+  phone: string
 }
 
-interface Offer {
-  id: string
-  title: string
-  originalPrice: number
-  offerPrice: number
-  expiryDate: string | null
-  totalQuantity: number | null
-  claimedCount: number
-  active: boolean
-}
+const BUSINESS_TABS = [
+  { id: 'offers', label: 'Offers', icon: 'fa-tags' },
+  { id: 'details', label: 'Details', icon: 'fa-pen' },
+] as const
 
+// One business: a hero header (logo, names, category, ח.פ, address with map
+// links, phone), then its offers as the cards members see (the default tab)
+// and its details, edited in place on the Details tab. Its name is its crumb
+// in the breadcrumbs; deleting it is the ⋯ menu's only action, away from
+// the everyday ones.
 export default function BusinessDetailPage() {
   const { uid } = useParams<{ uid: string }>()
   const router = useRouter()
 
   const [business, setBusiness] = useState<Business | null | undefined>(undefined)
-  const [offers, setOffers] = useState<Offer[] | null>(null)
+  const [offers, setOffers] = useState<ShowcaseOffer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
   const [warning, setWarning] = useState<string | null>(null)
+  // Bumped on every save, so the Details form starts again from what was saved.
+  const [savedVersion, setSavedVersion] = useState(0)
+  const tabs = useFormTabs(BUSINESS_TABS)
+  useAdminCrumbs(useMemo(() => (business ? { labels: { [`/admin/businesses/${uid}`]: business.businessName } } : null), [business, uid]))
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
@@ -59,7 +67,7 @@ export default function BusinessDetailPage() {
       .catch(() => setError('Failed to load offers.'))
   }, [uid])
 
-  const deleteOffer = async (offer: Offer) => {
+  const deleteOffer = async (offer: ShowcaseOffer) => {
     const warning =
       offer.claimedCount > 0
         ? `${offer.claimedCount} customer(s) have already claimed "${offer.title}". Delete it anyway?`
@@ -94,15 +102,17 @@ export default function BusinessDetailPage() {
       <Alert>{error}</Alert>
     ) : (
       <div className="space-y-4">
-        <CardSkeletons count={1} className="h-24" />
-        <CardSkeletons count={2} className="h-20" />
+        <CardSkeletons count={1} className="h-44" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <CardSkeletons count={3} className="h-64" />
+        </div>
       </div>
     )
   }
   if (business === null) {
     return (
       <div>
-        <BackLink href="/admin/businesses">Back to businesses</BackLink>
+        <BackLink />
         <EmptyState icon="fa-store-slash" title="Business not found" description="It may have been deleted." />
       </div>
     )
@@ -110,10 +120,13 @@ export default function BusinessDetailPage() {
 
   const activeOffers = offers?.filter((o) => o.active) ?? []
   const inactiveOffers = offers?.filter((o) => !o.active) ?? []
+  // Edits open the offer under this business (Back and Save return here).
+  const editHref = (offer: ShowcaseOffer) => `/admin/offers/${offer.id}/edit?from=business&businessUid=${uid}`
+  const addHref = `/admin/offers/new?businessUid=${uid}`
 
   return (
     <div>
-      <BackLink href="/admin/businesses">Back to businesses</BackLink>
+      <BackLink />
 
       {error && <Alert className="mb-6">{error}</Alert>}
       {warning && (
@@ -122,134 +135,103 @@ export default function BusinessDetailPage() {
         </Alert>
       )}
 
-      <PageHeader
-        className="mb-8"
-        title={<span dir="auto">{business.businessName}</span>}
-        subtitle={
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone="blue">
-              <span dir="auto">{business.category}</span>
-            </StatusBadge>
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8]">
-              <i className="fa-solid fa-hashtag text-[10px]" aria-hidden="true" />
-              <span dir="ltr">{business.businessId}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-[#94A3B8]">
-              <i className={`fa-solid fa-location-dot text-[10px] ${business.address ? 'text-emerald-600' : ''}`} aria-hidden="true" />
-              <span dir="auto">{business.location}</span>
-              {!business.address && <StatusBadge tone="amber">Not on the map</StatusBadge>}
-            </span>
-          </div>
-        }
+      <BusinessHero
+        business={{ ...business, altName: alternateBusinessName(business.businessName, business.translations) }}
         actions={
           <>
-            <Link href={`/admin/offers/new?businessUid=${uid}`} className={`${PRIMARY_BUTTON} flex-1 sm:flex-none`}>
+            <Link href={addHref} className={`${PRIMARY_BUTTON} flex-1 sm:flex-none`}>
               <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add offer
+              Add offer for this business
             </Link>
-            <button type="button" className={`${SECONDARY_BUTTON} flex-1 sm:flex-none`} onClick={() => setEditing(true)} disabled={editing}>
-              <i className="fa-solid fa-pen text-xs" aria-hidden="true" />
-              Edit details
-            </button>
-            <button type="button" className={`${DANGER_BUTTON} flex-1 sm:flex-none`} onClick={deleteBusiness}>
-              <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
-              Delete business
-            </button>
+            <RowActionsMenu
+              label="More business actions"
+              // Editing is the Details tab; the menu keeps only what's dangerous.
+              actions={[{ label: 'Delete business', icon: 'fa-trash', danger: true, onSelect: () => void deleteBusiness() }]}
+            />
           </>
         }
       />
 
-      {editing && (
+      <FormTabs state={tabs} label="Business sections" />
+
+      <TabPanel state={tabs} tab="details">
         <BusinessEditForm
+          key={savedVersion}
           uid={uid}
           business={business}
-          onCancel={() => setEditing(false)}
           onSaved={(next, translationWarning) => {
             setBusiness({ ...business, ...next })
             setWarning(translationWarning)
-            setEditing(false)
+            setSavedVersion((n) => n + 1)
           }}
         />
-      )}
+      </TabPanel>
 
-      {offers === null && !error && (
-        <div className="space-y-2">
-          <CardSkeletons count={3} className="h-20" />
-        </div>
-      )}
+      <TabPanel state={tabs} tab="offers">
+        {offers === null && !error && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <CardSkeletons count={3} className="h-64" />
+          </div>
+        )}
 
-      {offers !== null && offers.length === 0 && (
-        <EmptyState
-          icon="fa-tags"
-          title="No offers yet"
-          description="This business doesn't have any perks. Add one to get it live."
-          action={
-            <Link href={`/admin/offers/new?businessUid=${uid}`} className={PRIMARY_BUTTON}>
-              <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add offer
-            </Link>
-          }
-        />
-      )}
+        {offers !== null && offers.length === 0 && (
+          <EmptyState
+            icon="fa-tags"
+            title="No offers yet"
+            description="This business doesn't have any perks. Add one to get it live."
+            action={
+              <Link href={addHref} className={PRIMARY_BUTTON}>
+                <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+                Add offer
+              </Link>
+            }
+          />
+        )}
 
-      {offers !== null && offers.length > 0 && (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <OfferSection title={`Active perks (${activeOffers.length})`} offers={activeOffers} onDelete={deleteOffer} />
-          <OfferSection title={`Not active perks (${inactiveOffers.length})`} offers={inactiveOffers} onDelete={deleteOffer} />
-        </div>
-      )}
+        {offers !== null && offers.length > 0 && (
+          <div className="space-y-10">
+            <OfferSection title={`Active perks (${activeOffers.length})`} offers={activeOffers} editHref={editHref} onDelete={deleteOffer} />
+            {inactiveOffers.length > 0 && (
+              <OfferSection title={`Not active perks (${inactiveOffers.length})`} offers={inactiveOffers} editHref={editHref} onDelete={deleteOffer} />
+            )}
+          </div>
+        )}
+      </TabPanel>
     </div>
   )
 }
 
-function OfferSection({ title, offers, onDelete }: { title: string; offers: Offer[]; onDelete: (offer: Offer) => void }) {
+function OfferSection({
+  title,
+  offers,
+  editHref,
+  onDelete,
+}: {
+  title: string
+  offers: ShowcaseOffer[]
+  editHref: (offer: ShowcaseOffer) => string
+  onDelete: (offer: ShowcaseOffer) => void
+}) {
   return (
     <section>
       <h2 className={SECTION_HEADING}>{title}</h2>
       {offers.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#94A3B8]">None.</p>
       ) : (
-        <Card className="divide-y divide-[#E2E8F0] overflow-hidden">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {offers.map((offer) => (
-            <OfferRow key={offer.id} offer={offer} onDelete={() => onDelete(offer)} />
+            <OfferShowcaseCard
+              key={offer.id}
+              offer={offer}
+              editHref={editHref(offer)}
+              actions={[
+                { label: 'Edit offer', icon: 'fa-pen', href: editHref(offer) },
+                { label: 'Delete offer', icon: 'fa-trash', danger: true, onSelect: () => onDelete(offer) },
+              ]}
+            />
           ))}
-        </Card>
+        </div>
       )}
     </section>
-  )
-}
-
-function OfferRow({ offer, onDelete }: { offer: Offer; onDelete: () => void }) {
-  return (
-    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-semibold text-[#0B1B3D]" dir="auto">{offer.title}</span>
-          <OfferStatusBadge offer={offer} />
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#94A3B8]">
-          <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
-          <span dir="ltr">{offer.claimedCount}/{offer.totalQuantity ?? '∞'} claimed</span>
-          {offer.expiryDate && <span>expires {new Date(offer.expiryDate).toLocaleDateString()}</span>}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <Link
-          href={`/admin/offers/${offer.id}/edit`}
-          className="inline-flex min-h-12 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-[#0038B8] transition-colors hover:bg-[#F0F7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
-        >
-          <i className="fa-solid fa-pen text-xs" aria-hidden="true" />
-          Edit
-        </Link>
-        <button
-          type="button"
-          className="inline-flex min-h-12 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-[#B91C1C] transition-colors hover:bg-[#FEF2F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
-          onClick={onDelete}
-        >
-          <i className="fa-solid fa-trash text-xs" aria-hidden="true" />
-          Delete
-        </button>
-      </div>
-    </div>
   )
 }

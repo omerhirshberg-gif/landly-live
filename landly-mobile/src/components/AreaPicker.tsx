@@ -37,7 +37,7 @@ export default function AreaPicker({ areas, onPick }: { areas: Area[]; onPick: (
   return (
     <>
       <ScalePressable pressedScale={0.96} accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={show} style={styles.trigger}>
-        <LineIcon name="pin" size={15} color={colors.brand} strokeWidth={2.2} />
+        <LineIcon name="pin" size={15} color={colors.brand} strokeWidth={2} />
         <AppText style={styles.triggerLabel}>{t('geo_choose_area')}</AppText>
         <LineIcon name="chevronDown" size={14} color={colors.brand} />
       </ScalePressable>

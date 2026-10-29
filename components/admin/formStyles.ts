@@ -2,10 +2,12 @@
 // rather than the global .inp/.ds-btn classes: app/globals.css comes after
 // Tailwind's utilities, so its rules would win over any per-field override.
 // Every control is at least 48px tall (touch target) and uses 16px text so
-// iOS Safari doesn't zoom into a focused field.
+// iOS Safari doesn't zoom into a focused field. Fields start at their own
+// start edge (text-start), so one marked dir="auto" lines Hebrew up on the
+// right as it's typed and English on the left.
 
 export const ADMIN_INPUT =
-  'block w-full min-h-12 rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 text-base text-[#0F172A] ' +
+  'block w-full min-h-12 rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 text-start text-base text-[#0F172A] ' +
   'placeholder:text-[#94A3B8] outline-none transition-[border-color,background-color,box-shadow] duration-150 ' +
   'focus:border-[#0038B8] focus:bg-[#F8FBFF] focus:ring-4 focus:ring-[#0038B8]/15 ' +
   'disabled:cursor-not-allowed disabled:bg-[#F1F5F9] disabled:text-[#94A3B8]'

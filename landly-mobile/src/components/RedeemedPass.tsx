@@ -6,10 +6,10 @@ import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
 import ContentText from './ContentText'
-import LineIcon from './LineIcon'
-import { REDEMPTION_METHOD_ICONS } from './OfferCard'
+import Emoji from './Emoji'
 import VoucherThumb from './VoucherThumb'
 import { useLang } from '../i18n/LangProvider'
+import { PASS_GLYPHS } from '../lib/categoryGlyphs'
 import { colors, radius } from '../theme'
 
 // One redeemed voucher in My Pass → Redeemed: no QR (it can't be used again),
@@ -25,7 +25,7 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
       <View>
         <VoucherThumb voucher={voucher} muted />
         <View style={styles.check}>
-          <LineIcon name="check" size={13} color={colors.success} strokeWidth={2.8} />
+          <Emoji glyph={PASS_GLYPHS.redeemedMark} size={14} />
         </View>
       </View>
       <View style={styles.text}>
@@ -37,7 +37,6 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
         </ContentText>
         <View style={styles.metaRow}>
           <View style={styles.methodChip}>
-            <LineIcon name={REDEMPTION_METHOD_ICONS[voucher.redemptionMethod]} size={12} color={colors.textMuted} strokeWidth={2.2} />
             <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
           </View>
           {voucher.redeemedAt && (

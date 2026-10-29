@@ -1,52 +1,40 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { getAdminPageTitle } from '@/lib/admin/pageTitle'
+import { useAdminTrail } from './AdminCrumbContext'
 
-interface Crumb {
-  label: string
-  href?: string
-}
-
-// Sections that only group pages and have none of their own: Dashboard › page.
-const SECTIONS_WITHOUT_PAGE = new Set(['system'])
-
-/** Dashboard › section › page, labelled by lib/admin/pageTitle.ts like the rest of the shell. */
-export function adminBreadcrumbs(pathname: string): Crumb[] {
-  const crumbs: Crumb[] = [{ label: getAdminPageTitle('/admin'), href: '/admin' }]
-  const section = pathname.split('/')[2]
-  if (!section) return [{ label: crumbs[0]!.label }]
-  if (SECTIONS_WITHOUT_PAGE.has(section)) return [...crumbs, { label: getAdminPageTitle(pathname) }]
-
-  const sectionPath = `/admin/${section}`
-  if (pathname === sectionPath) return [...crumbs, { label: getAdminPageTitle(sectionPath) }]
-  return [...crumbs, { label: getAdminPageTitle(sectionPath), href: sectionPath }, { label: getAdminPageTitle(pathname) }]
-}
-
+/**
+ * Dashboard › section › page, from the route tree (lib/admin/routes.ts) and
+ * the page's own crumb names (AdminCrumbContext.tsx): the same trail the
+ * page's BackLink steps up.
+ */
 export default function Breadcrumbs() {
-  const crumbs = adminBreadcrumbs(usePathname())
+  const crumbs = useAdminTrail()
 
   return (
     <nav aria-label="Breadcrumb" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
-        {crumbs.map((crumb, i) => (
-          <li key={crumb.label} className="flex min-w-0 items-center gap-1.5">
-            {i > 0 && <i className="fa-solid fa-chevron-right text-[10px] text-[#CBD5E1]" aria-hidden="true" />}
-            {crumb.href ? (
-              <Link
-                href={crumb.href}
-                className="truncate rounded-md font-medium text-[#475569] transition-colors hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
-              >
-                {crumb.label}
-              </Link>
-            ) : (
-              <span aria-current="page" className="truncate font-semibold text-[#0B1B3D]">
-                {crumb.label}
-              </span>
-            )}
-          </li>
-        ))}
+        {crumbs.map((crumb, i) => {
+          const current = i === crumbs.length - 1
+          return (
+            <li key={crumb.href} className="flex min-w-0 items-center gap-1.5">
+              {i > 0 && <i className="fa-solid fa-chevron-right text-[10px] text-[#CBD5E1]" aria-hidden="true" />}
+              {current ? (
+                <span aria-current="page" className="truncate font-semibold text-[#0B1B3D]" dir="auto">
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.href}
+                  className="truncate rounded-md font-medium text-[#475569] transition-colors hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
+                  dir="auto"
+                >
+                  {crumb.label}
+                </Link>
+              )}
+            </li>
+          )
+        })}
       </ol>
     </nav>
   )

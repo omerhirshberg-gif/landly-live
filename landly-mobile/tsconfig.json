@@ -17,5 +17,6 @@
   // ../lib is checked only where the app imports it (it also holds server code),
   // plus the web-only config that the ".native" suffix above would skip.
   "include": ["**/*.ts", "**/*.tsx", "../lib/firebase/config.web.ts"],
-  "exclude": ["node_modules"]
+  // tests/ runs under the repo root's vitest (npx vitest run), which provides its imports.
+  "exclude": ["node_modules", "tests"]
 }

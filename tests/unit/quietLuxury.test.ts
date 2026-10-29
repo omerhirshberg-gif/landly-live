@@ -56,8 +56,10 @@ describe('the shekel sign in the price font', () => {
       originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '',
     } as never
     const html = withLang('en', createElement(OfferCard, { offer, layout: 'grid' }))
-    expect(html).toContain('relative mx-2 mt-2 aspect-video overflow-hidden rounded-[14px]')
-    expect(html).toMatch(/<div class="truncate text-micro font-bold uppercase[^"]*" dir="auto">Cafe Nadi<\/div><p class="mt-1 line-clamp-2 font-bold[^"]*" dir="auto">Two coffees<\/p>/)
+    // The photo sits in a frame the merchant badge overlaps; the eyebrow clears the badge.
+    expect(html).toContain('<div class="relative z-[1] mx-2 mt-2"><div class="relative aspect-video overflow-hidden rounded-[14px]')
+    expect(html).toMatch(/rounded-xl bg-brandTint absolute start-2 -bottom-6"/)
+    expect(html).toMatch(/<div class="truncate ps-\[60px\] text-micro font-bold uppercase[^"]*" dir="auto">Cafe Nadi<\/div><p class="mt-1 line-clamp-2 font-bold[^"]*" dir="auto">Two coffees<\/p>/)
     expect(html).toMatch(/rounded-full border border-slate-200\/80 bg-slate-50[^"]*"><svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-map-pin/)
   })
 })

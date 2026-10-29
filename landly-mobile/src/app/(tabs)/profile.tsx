@@ -33,6 +33,7 @@ import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
 import { PANE_GAP } from '../../lib/layout'
 import { useLayout } from '../../lib/useLayout'
+import { endDeviceSession } from '../../lib/deviceSession'
 import { webOnly } from '../../lib/webStyles'
 import { colors, header, radius } from '../../theme'
 
@@ -57,7 +58,16 @@ export default function ProfileScreen() {
   // apart so neither runs over the fold. Hebrew puts the identity on the
   // right. A phone keeps the one column: identity, details, Sign out.
   const { panes } = useLayout()
-  const signOutButton = <Button label={t('nav_logout')} onPress={() => signOut(auth)} variant="secondary" />
+  const signOutButton = (
+    <Button
+      label={t('nav_logout')}
+      onPress={async () => {
+        if (user) await endDeviceSession(user.uid)
+        await signOut(auth)
+      }}
+      variant="secondary"
+    />
+  )
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>

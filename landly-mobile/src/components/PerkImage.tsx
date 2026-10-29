@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Image, StyleSheet, View } from 'react-native'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
-import { CATEGORY_TILES } from '@shared/categories'
 import { perkImageFit } from '@shared/offers/imageFit'
 import AppText from './AppText'
+import Emoji from './Emoji'
+import { categoryGlyph } from '../lib/categoryGlyphs'
+import { businessInitial, secureImageUrl } from '../lib/imageSource'
 import { colors, radius } from '../theme'
 
 // An offer's photo, or -- when there is none or it fails to load -- a branded
@@ -15,7 +17,7 @@ import { colors, radius } from '../theme'
 // it; a logo (lib/offers/imageFit.ts) sits whole inside with room around it.
 // `thumb` scales the fallback's watermark and emoji tile down for a list thumbnail.
 export default function PerkImage({
-  uri,
+  uri: rawUri,
   category,
   businessName,
   size = 'card',
@@ -26,6 +28,7 @@ export default function PerkImage({
   size?: 'card' | 'thumb'
 }) {
   const thumb = size === 'thumb'
+  const uri = secureImageUrl(rawUri)
   // Keyed on the URL, so a changed image gets a fresh attempt.
   const [failedUri, setFailedUri] = useState<string | null>(null)
   const [measured, setMeasured] = useState<{ uri: string; width: number; height: number } | null>(null)
@@ -47,9 +50,18 @@ export default function PerkImage({
     )
   }
 
-  const emoji = CATEGORY_TILES.find((c) => c.category === category)?.emoji ?? '🎁'
-  const initial = Array.from(businessName.trim())[0]?.toUpperCase() ?? ''
+  return <CategoryPanel category={category} initial={businessInitial(businessName)} size={size} />
+}
 
+/**
+ * The branded panel on its own: the gradient, the category's emoji on a
+ * white tile and, unless the card already shows the business elsewhere (the
+ * perk card's badge), its initial as a watermark. 'hero' is the perk card's
+ * full-width picture with no photo (DealMedia.tsx).
+ */
+export function CategoryPanel({ category, initial, size = 'card' }: { category: string; initial?: string; size?: 'card' | 'thumb' | 'hero' }) {
+  const thumb = size === 'thumb'
+  const hero = size === 'hero'
   return (
     <View style={[styles.fill, styles.fallback]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
@@ -67,8 +79,8 @@ export default function PerkImage({
           {initial}
         </AppText>
       )}
-      <View style={[styles.tile, thumb && styles.tileThumb]}>
-        <AppText style={[styles.emoji, thumb && styles.emojiThumb]}>{emoji}</AppText>
+      <View style={[styles.tile, thumb && styles.tileThumb, hero && styles.tileHero]}>
+        <Emoji glyph={categoryGlyph(category)} size={hero ? 56 : thumb ? 17 : 26} />
       </View>
     </View>
   )
@@ -99,8 +111,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  emoji: { fontSize: 26, lineHeight: 32 },
   initialThumb: { bottom: -12, fontSize: 60, lineHeight: 64 },
   tileThumb: { width: 34, height: 34, borderRadius: 10 },
-  emojiThumb: { fontSize: 17, lineHeight: 22 },
+  tileHero: { width: 92, height: 92, borderRadius: 26 },
 })

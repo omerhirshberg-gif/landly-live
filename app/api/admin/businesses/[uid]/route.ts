@@ -4,7 +4,9 @@ import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { offerPlaceFields, parseGeoAddress } from '@/lib/geo'
-import { deleteBannerByUrl } from '@/lib/storage/banners'
+import { parseLogoUrl } from '@/lib/business/businessLogo'
+import { parseBusinessPhone } from '@/lib/admin/businessPhone'
+import { deleteBannerByUrl, deleteLogoByUrl } from '@/lib/storage/banners'
 import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 
 interface PatchBody {
@@ -14,6 +16,10 @@ interface PatchBody {
     location: string
     /** Picked from Places autocomplete; null clears a stale one when the admin types free text. */
     address?: unknown
+    /** Uploaded (logos/…) or pasted; '' removes it. Absent keeps the stored one. */
+    logoUrl?: unknown
+    /** Contact number (local Israeli or "+country"); '' removes it. Absent keeps the stored one. */
+    phone?: unknown
   }
   /** The admin's own wording for the name, per language; the rest is Google's (Hebrew names only). */
   businessNameOverrides?: unknown
@@ -24,10 +30,12 @@ function badRequest(message: string) {
 }
 
 // Edits what the admin can change after onboarding: the name (and its
-// translations), category and address. Offers carry copies of all of it
-// (plus the address's coordinates, city and lines in each language, for
-// cards and "Near me"), so they're rewritten in the same batch. Vouchers and
-// orders keep the name and address they were bought under.
+// translations), category, address, logo and contact phone. Offers carry
+// copies of all of it but the phone (plus the address's coordinates, city
+// and lines in each language, for cards and "Near me"), so they're
+// rewritten in the same batch. A replaced
+// or removed uploaded logo is deleted once the batch has landed. Vouchers
+// and orders keep the name and address they were bought under.
 export async function PATCH(request: Request, { params }: { params: Promise<{ uid: string }> }) {
   const authError = requireAdminAuth(request)
   if (authError) return authError
@@ -42,6 +50,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
   }
   const address = business.address === undefined || business.address === null ? null : parseGeoAddress(business.address)
   if (business.address && !address) return badRequest('business.address is not a valid place.')
+  const logo = parseLogoUrl(business.logoUrl)
+  if (!logo.ok) return badRequest(logo.error)
+  const phone = parseBusinessPhone(business.phone)
+  if (!phone.ok) return badRequest(phone.error)
 
   const businessRef = adminDb.collection('businesses').doc(uid)
   const businessSnap = await businessRef.get()
@@ -55,24 +67,42 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
     location: business.location.trim(),
   }
   // An unchanged name costs nothing: only a changed (Hebrew) name goes to Google.
+  const storedLogo = typeof businessSnap.data()?.logoUrl === 'string' ? (businessSnap.data()?.logoUrl as string) : ''
+  const logoUrl = business.logoUrl === undefined ? storedLogo : logo.logoUrl
   const translated = await businessTranslationsForSave(fields.businessName, businessSnap.data()?.translations, body?.businessNameOverrides)
   if (!translated.ok) return badRequest(translated.error)
   const offersSnap = await adminDb.collection('offers').where('businessId', '==', uid).get()
   // A batch holds 500 writes; one is the business itself.
   if (offersSnap.size > 499) return NextResponse.json({ error: 'Too many offers to update in one save.' }, { status: 500 })
   const batch = adminDb.batch()
-  batch.update(businessRef, { ...fields, translations: translated.translations, address: address ?? FieldValue.delete() })
+  batch.update(businessRef, {
+    ...fields,
+    translations: translated.translations,
+    address: address ?? FieldValue.delete(),
+    logoUrl: logoUrl || FieldValue.delete(),
+    // The phone is the business's own: offers don't copy it.
+    ...(business.phone === undefined ? {} : { phone: phone.phone || FieldValue.delete() }),
+  })
   const place = offerPlaceFields({ location: fields.location, address })
   for (const doc of offersSnap.docs) {
-    batch.update(doc.ref, { businessName: fields.businessName, businessTranslations: translated.translations, category: fields.category, ...place })
+    batch.update(doc.ref, {
+      businessName: fields.businessName,
+      businessTranslations: translated.translations,
+      businessLogoUrl: logoUrl,
+      category: fields.category,
+      ...place,
+    })
   }
   await batch.commit()
   revalidateGuestHome()
+  if (storedLogo !== logoUrl) await deleteLogoByUrl(storedLogo)
 
   return NextResponse.json({
     updated: true,
     updatedOfferCount: offersSnap.size,
     translations: translated.translations,
+    logoUrl,
+    phone: business.phone === undefined ? (typeof businessSnap.data()?.phone === 'string' ? businessSnap.data()?.phone : '') : phone.phone,
     translationWarning: translated.warning,
   })
 }
@@ -119,7 +149,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ u
     }, { status: 500 })
   }
   revalidateGuestHome()
-  await Promise.all(offersSnap.docs.map((doc) => deleteBannerByUrl(doc.data().imageUrl)))
+  await Promise.all([
+    ...offersSnap.docs.map((doc) => deleteBannerByUrl(doc.data().imageUrl)),
+    deleteLogoByUrl(businessSnap.data()?.logoUrl),
+  ])
 
   return NextResponse.json({ deletedOfferCount: offersSnap.size })
 }

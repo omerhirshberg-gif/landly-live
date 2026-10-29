@@ -179,11 +179,14 @@ describe('native offer screen heart', () => {
 describe('native offer card', () => {
   const card = read('components/OfferCard.tsx')
 
-  it('frames the photo at 16:9, as on the web, and keeps the discount in the price row', () => {
+  it('leads with a full-width hero carrying the badge and the discount, the price row below', () => {
     expect(card).not.toContain('height: 130')
-    expect(read('../../components/discover/OfferCard.tsx')).toContain('aspect-video')
-    expect(card).toMatch(/media: \{\s*marginHorizontal: 8,\s*marginTop: 8,\s*aspectRatio: 16 \/ 9,\s*borderRadius: radius.frame,\s*borderWidth: 1,\s*borderColor: colors.border,\s*overflow: 'hidden',\s*backgroundColor: colors.background,/)
+    // The hero and its merchant badge (components/DealMedia.tsx); the discount pill sits on the hero's top end corner.
+    expect(card).toContain("<DealMedia uri={offer.imageUrl} logoUri={offer.businessLogoUrl ?? ''}")
+    expect(read('components/DealMedia.tsx')).toContain('frame: { aspectRatio: 16 / 10, zIndex: 1 }')
+    expect(card).toContain('<View style={[styles.overlayTopEnd, styles.pill, styles.discount]}>')
     const price = card.indexOf('styles.priceRow')
-    expect(card.indexOf('<View style={styles.discount}>')).toBeGreaterThan(price)
+    expect(card.indexOf('styles.discount')).toBeLessThan(price)
+    expect(card.slice(price)).not.toContain('styles.discount}')
   })
 })

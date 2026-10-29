@@ -88,6 +88,30 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
+    // The devices a member is signed in on (lib/account/sessionList.ts), one
+    // document per device under a random id the device keeps. The member
+    // lists and removes their own; a device writes only its name, platform
+    // and the server's time, and keeps createdAt as first written. "Sign out
+    // of all devices" clears them with the Admin SDK.
+    match /users/{userId}/sessions/{sessionId} {
+      allow read, delete: if isCustomer() && request.auth.uid == userId && isVerified() && authFresh();
+      allow create: if isCustomer() && request.auth.uid == userId && isVerified() && authFresh()
+        && sessionId.matches('^[A-Za-z0-9_-]{16,64}$')
+        && request.resource.data.keys().hasOnly(['deviceName', 'platform', 'lastActiveAt', 'createdAt'])
+        && validSession(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if isCustomer() && request.auth.uid == userId && isVerified() && authFresh()
+        && request.resource.data.keys().hasOnly(['deviceName', 'platform', 'lastActiveAt', 'createdAt'])
+        && validSession(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function validSession(data) {
+      return data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 80
+        && data.platform in ['ios', 'android', 'web']
+        && data.lastActiveAt == request.time;
+    }
+
     // Email and phone change codes (hashed, with their attempt count): read
     // and written by the /api/account change routes only. A readable code
     // would let a member confirm an inbox or number they don't own.

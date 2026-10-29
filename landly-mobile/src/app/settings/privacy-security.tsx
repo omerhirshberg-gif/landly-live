@@ -1,9 +1,13 @@
-import { useState } from 'react'
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { signOut, type User } from 'firebase/auth'
 import { revokeAllSessions, type RevokeSessionsResult } from '@shared/account/revokeSessions'
+import { orderSessions, type UserSession } from '@shared/account/sessionList'
+import { watchSessions } from '@shared/account/sessions'
+import { formatLastEntry } from '@shared/auth/greeting'
+import { signInProvider, signInProviderCopy } from '@shared/auth/signInProvider'
 import { auth } from '@shared/firebase/config'
 import { useAuth } from '@shared/firebase/useAuth'
 import { methodKey, useAppLock } from '../../auth/AppLock'
@@ -12,22 +16,26 @@ import Button from '../../components/Button'
 import ChangePassword from '../../components/ChangePassword'
 import LineIcon from '../../components/LineIcon'
 import Notice from '../../components/Notice'
+import { ProviderGlyph } from '../../components/ProviderTile'
 import ScreenHeader from '../../components/ScreenHeader'
 import SettingsRow, { SettingsGroup } from '../../components/SettingsRow'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
+import { deviceSessionId, deviceSessionName, forgetSessionWrite } from '../../lib/deviceSession'
 import { colors, radius } from '../../theme'
 
 // Privacy & Security (web: app/settings/privacy-security/page.tsx): how the
-// member signs in, the app lock (where the device has biometrics; the
-// website has Passkeys in this spot), Change Password for email/password
-// accounts (a Google-only account has no Landly password, so it gets a note
-// instead), Sessions, then the data controls. The account-deletion request itself
-// stays in Settings' Danger zone.
+// member signs in (password, Apple or Google, from the account's linked
+// providers: lib/auth/signInProvider.ts), the app lock (where the device has
+// biometrics; the website has Passkeys in this spot), Change Password for
+// email/password accounts (an Apple or Google account has no Landly
+// password, so it gets a note instead), the devices signed in, then the data
+// controls. The account-deletion request itself stays in Settings' Danger zone.
 export default function PrivacySecurityScreen() {
   const { t } = useLang()
   const { user } = useAuth()
-  const hasPassword = !!user?.providerData.some((p) => p.providerId === 'password')
+  const provider = user ? signInProvider(user) : null
+  const hasPassword = provider === 'password'
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -36,11 +44,7 @@ export default function PrivacySecurityScreen() {
         {user && (
           <>
             <AppText accessibilityRole="header" style={styles.groupTitle}>{t('security_signin_title')}</AppText>
-            <View style={styles.card}>
-              <AppText style={styles.value}>{hasPassword ? t('security_method_password') : t('security_method_google')}</AppText>
-              {!!user.email && <AppText ltr style={styles.email}>{user.email}</AppText>}
-              {!hasPassword && <AppText style={styles.note}>{t('security_google_note')}</AppText>}
-            </View>
+            <SignInMethod user={user} />
 
             <AppLockSection />
 
@@ -114,17 +118,44 @@ function AppLockSection() {
   )
 }
 
-// This device, then "Sign out of all devices" (app/api/account/revoke-sessions).
-// Firebase can't list a member's other sessions from the client, so this
-// offers the one control that matters. The confirmation opens in place, as
-// on the website; a success signs this device out too, which returns the app
-// to the sign-in screen.
+/** "Sign-in method": Apple or Google with its logo and why there's no password here, or Email & password. */
+function SignInMethod({ user }: { user: User }) {
+  const { t } = useLang()
+  const provider = signInProvider(user)
+  const { title, note } = signInProviderCopy(provider)
+  const logo = provider === 'apple' || provider === 'google' ? provider : null
+  return (
+    <View style={styles.card}>
+      <View style={styles.device}>
+        {logo && (
+          <View style={styles.providerIcon}>
+            <ProviderGlyph provider={logo} appleColor={colors.heading} />
+          </View>
+        )}
+        <View style={styles.deviceText}>
+          <AppText style={styles.value}>{t(title)}</AppText>
+          {!!user.email && <AppText ltr style={styles.email}>{user.email}</AppText>}
+        </View>
+      </View>
+      {note && <AppText style={styles.note}>{t(note)}</AppText>}
+    </View>
+  )
+}
+
+// Every device signed in to the account (users/{uid}/sessions, written by
+// each device: src/lib/deviceSession.ts on phones, the website for
+// browsers), this phone first with its model, the others by their name and
+// when they were last active; then "Sign out of all devices"
+// (app/api/account/revoke-sessions), which also clears the list. The
+// confirmation opens in place, as on the website; a success signs this
+// device out too, which returns the app to the sign-in screen.
 function Sessions({ user }: { user: User }) {
   const { t } = useLang()
   const { clearForSignOutEverywhere } = useAppLock()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<RevokeSessionsResult | null>(null)
+  const sessions = useSessionList(user.uid)
 
   const revoke = async () => {
     setBusy(true)
@@ -137,6 +168,7 @@ function Sessions({ user }: { user: User }) {
     }
     // An already-revoked session has nothing left to end here either.
     if (outcome === 'done' || outcome === 'unauthorized') {
+      forgetSessionWrite()
       await clearForSignOutEverywhere()
       await signOut(auth).catch(() => {})
       return
@@ -151,16 +183,24 @@ function Sessions({ user }: { user: User }) {
     <View style={styles.sessions}>
       <AppText accessibilityRole="header" style={styles.groupTitle}>{t('security_sessions_title')}</AppText>
       <View style={styles.card}>
-        <View style={styles.device}>
-          <View style={styles.deviceIcon}>
-            <LineIcon name="phone" color={colors.success} />
+        {sessions.map((session, i) => (
+          <View key={session.id} style={[styles.device, i > 0 && styles.deviceGap]}>
+            <View style={[styles.deviceIcon, !session.current && styles.deviceIconOther]}>
+              <LineIcon name={session.platform === 'web' ? 'monitor' : 'phone'} color={session.current ? colors.success : colors.textMuted} />
+            </View>
+            <View style={styles.deviceText}>
+              <AppText style={styles.value} numberOfLines={1}>
+                {session.current ? t('security_this_device_named').replace('{device}', isolate(session.deviceName)) : session.deviceName}
+              </AppText>
+              <AppText style={styles.sub}>
+                {session.current || !session.lastActiveAt
+                  ? t('security_this_device_sub')
+                  : t('security_last_active').replace('{time}', isolate(formatLastEntry(session.lastActiveAt), 'ltr'))}
+              </AppText>
+            </View>
+            {session.current && <View style={styles.dot} />}
           </View>
-          <View style={styles.deviceText}>
-            <AppText style={styles.value}>{t('security_this_device')}</AppText>
-            <AppText style={styles.sub}>{t('security_this_device_sub')}</AppText>
-          </View>
-          <View style={styles.dot} />
-        </View>
+        ))}
 
         <View style={styles.divider} />
 
@@ -197,6 +237,41 @@ function Sessions({ user }: { user: User }) {
   )
 }
 
+/**
+ * Unicode isolates (FSI, or LRI for a date, … PDI): a device name or date
+ * inside a Hebrew sentence keeps its own order, the app's <bdi>.
+ */
+const isolate = (text: string, dir: 'auto' | 'ltr' = 'auto') => `${dir === 'ltr' ? '\u2066' : '\u2068'}${text}\u2069`
+
+/**
+ * The listed devices, live. This phone is always first, named by its model
+ * even before its own row has landed (or when the list can't be read).
+ */
+function useSessionList(uid: string): UserSession[] {
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [stored, setStored] = useState<UserSession[]>([])
+  // Read once on opening, so the list doesn't reorder while it's open.
+  const [now] = useState(() => Date.now())
+  useEffect(() => {
+    let cancelled = false
+    void deviceSessionId().then((id) => !cancelled && setCurrentId(id))
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  useEffect(() => (currentId ? watchSessions(uid, currentId, setStored) : undefined), [uid, currentId])
+
+  const here: UserSession = stored.find((s) => s.current) ?? {
+    id: currentId ?? 'this-device',
+    deviceName: deviceSessionName(),
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    lastActiveAt: null,
+    createdAt: null,
+    current: true,
+  }
+  return orderSessions([here, ...stored.filter((s) => !s.current)], now)
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   // A centred column no wider than 640pt, so an unfolded foldable or a tablet
@@ -217,6 +292,9 @@ const styles = StyleSheet.create({
   sessions: { marginTop: 24 },
   device: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   deviceIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.successBg, alignItems: 'center', justifyContent: 'center' },
+  deviceIconOther: { backgroundColor: colors.borderLight },
+  deviceGap: { marginTop: 14 },
+  providerIcon: { width: 32, height: 32, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   deviceText: { flex: 1, minWidth: 0 },
   sub: { marginTop: 1, fontSize: 13, color: colors.textMuted },
   lockIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },

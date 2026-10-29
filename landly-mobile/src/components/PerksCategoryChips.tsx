@@ -3,14 +3,19 @@ import { ScrollView, StyleSheet, View, type LayoutRectangle, type StyleProp, typ
 import { CATEGORY_TILES } from '@shared/categories'
 import type { CategoryFilter } from '@shared/perks/perksFilter'
 import AppText from './AppText'
+import Emoji from './Emoji'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
+import { ALL_GLYPH, categoryGlyph } from '../lib/categoryGlyphs'
 import { tick } from '../lib/haptics'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { chipShadow, colors, radius } from '../theme'
 
-const OPTIONS: { key: CategoryFilter; emoji?: string }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category, emoji: tile.emoji }))]
+const OPTIONS: { key: CategoryFilter; glyph: string }[] = [
+  { key: 'all', glyph: ALL_GLYPH },
+  ...CATEGORY_TILES.map((tile) => ({ key: tile.category, glyph: categoryGlyph(tile.category) })),
+]
 
 // The Perks tab's category filter (web: components/perks/CategoryChipsRail.tsx):
 // "All" plus every category as one horizontally scrolling row of
@@ -96,11 +101,7 @@ export default function PerksCategoryChips({
               onLayout={(e) => layouts.current.set(option.key, e.nativeEvent.layout)}
               style={[styles.chip, selected && styles.chipSelected]}
             >
-              {option.emoji && (
-                <AppText style={styles.emoji} accessibilityElementsHidden importantForAccessibility="no">
-                  {option.emoji}
-                </AppText>
-              )}
+              <Emoji glyph={option.glyph} size={15} />
               {/* No numberOfLines: inside the horizontal scroller the chip is
                   as wide as its text, and a one-line cap made Android clip
                   bold labels short ("Restaurants an"). */}
@@ -133,7 +134,6 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none', transitionProperty: 'background-color', transitionDuration: '150ms' }),
   },
   chipSelected: { backgroundColor: colors.brand, ...chipShadow },
-  emoji: { flexShrink: 0, fontSize: 15, lineHeight: 20 },
   label: { flexShrink: 0, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.text },
   labelSelected: { color: colors.white },
 })

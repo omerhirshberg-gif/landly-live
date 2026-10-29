@@ -36,7 +36,7 @@ export default function GlassBackButton({ onPress, label }: { onPress: () => voi
                 <BlurView tint="systemChromeMaterial" intensity={80} style={StyleSheet.absoluteFill} />
               </GlassFallback>
             )}
-            <LineIcon name="chevronStart" size={22} color={colors.heading} strokeWidth={2.4} flip={isRtl} />
+            <LineIcon name="chevronStart" size={22} color={colors.heading} strokeWidth={2.2} flip={isRtl} />
           </View>
         </View>
       )}

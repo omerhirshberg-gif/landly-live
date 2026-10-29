@@ -2,18 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, OFFER_FORM_TABS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import { useAdminCrumbs, useAdminParent } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
-import { ButtonSpinner, FormActions, FormSection } from '@/components/admin/FormSection'
+import BidiText from '@/components/admin/BidiText'
+import { ButtonSpinner, FormSection, StickyActionBar } from '@/components/admin/FormSection'
+import { FormTabs, TabPanel, useFormTabs } from '@/components/admin/FormTabs'
 import { SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
+import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 
 interface Business {
   uid: string
@@ -36,9 +40,13 @@ const emptyOffer: OfferFormValue = {
   ...EMPTY_OFFER_TRANSLATIONS,
 }
 
+// Added from a business's page (?businessUid=…) it sits under that business
+// (once it's found); from Offers, under Offers. Back, Cancel and Done return there.
 function NewOfferForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const preselectUid = searchParams.get('businessUid')
+  const tabs = useFormTabs(OFFER_FORM_TABS)
 
   const [businesses, setBusinesses] = useState<Business[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -70,8 +78,19 @@ function NewOfferForm() {
   }, [businesses, search])
 
   const selected = businesses?.find((b) => b.uid === selectedUid) ?? null
-  const backUid = selectedUid ?? preselectUid
-  const backHref = backUid ? `/admin/businesses/${backUid}` : '/admin/offers'
+  const preselected = businesses === null ? undefined : (businesses.find((b) => b.uid === preselectUid) ?? null)
+  useAdminCrumbs(
+    useMemo(
+      () =>
+        preselected === undefined
+          ? { businessUid: preselectUid }
+          : { businessUid: preselected?.uid ?? null, labels: preselected ? { [`/admin/businesses/${preselected.uid}`]: preselected.businessName } : undefined },
+      [preselected, preselectUid]
+    )
+  )
+  const backHref = useAdminParent()?.href ?? '/admin/offers'
+  const dirty = !result && JSON.stringify(offer) !== JSON.stringify(emptyOffer)
+  useUnsavedGuard(dirty && !submitting)
 
   const updateOffer = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setOffer((prev) => ({ ...prev, [key]: value }))
@@ -84,6 +103,7 @@ function NewOfferForm() {
     const priceError = validateOfferPrices(originalPrice, offerPrice)
     if (priceError) {
       setError(priceError)
+      tabs.setActive('pricing')
       return
     }
     setError(null)
@@ -124,7 +144,7 @@ function NewOfferForm() {
   if (result) {
     return (
       <div className="max-w-2xl">
-        <BackLink href={backHref}>Back</BackLink>
+        <BackLink />
         <Card className="overflow-hidden">
           <div className="flex items-start gap-4 border-b border-[#E2E8F0] bg-[#ECFDF5] px-5 py-5 sm:px-6">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
@@ -138,12 +158,14 @@ function NewOfferForm() {
           <dl className="divide-y divide-[#E2E8F0]">
             <div className="px-5 py-4 sm:px-6">
               <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
-              <dd className="mt-1 font-semibold text-[#0B1B3D]" dir="auto">{result.businessName}</dd>
+              <dd className="mt-1 font-semibold text-[#0B1B3D]">
+                <BidiText>{result.businessName}</BidiText>
+              </dd>
             </div>
             <div className="px-5 py-4 sm:px-6">
               <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Offer</dt>
               <dd className="mt-1">
-                <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
+                <BidiText lines={2} className="font-semibold text-[#0B1B3D]">{result.offerTitle}</BidiText>
                 <div className="font-mono text-xs text-[#94A3B8]">{result.offerId}</div>
               </dd>
             </div>
@@ -175,8 +197,8 @@ function NewOfferForm() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <BackLink href={backHref}>Back</BackLink>
+    <div className="max-w-4xl">
+      <BackLink />
       <PageHeader title="Add offer to existing business" subtitle="Pick the business, then describe the perk." />
 
       {(error || loadError) && <Alert className="mb-6">{error ?? loadError}</Alert>}
@@ -186,7 +208,7 @@ function NewOfferForm() {
           {selected ? (
             <div className="flex flex-col gap-3 rounded-xl border border-[#0038B8]/20 bg-[#F0F7FF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <div className="truncate font-semibold text-[#0B1B3D]" dir="auto">{selected.businessName}</div>
+                <BidiText className="font-semibold text-[#0B1B3D]">{selected.businessName}</BidiText>
                 <div className="text-xs text-[#475569]" dir="ltr">{selected.businessId}</div>
               </div>
               <button type="button" className={SECONDARY_BUTTON} onClick={() => setSelectedUid(null)}>
@@ -211,7 +233,7 @@ function NewOfferForm() {
                           className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-start transition-colors hover:bg-[#F8FAFC] focus-visible:bg-[#F0F7FF] focus-visible:outline-none"
                         >
                           <span className="min-w-0">
-                            <span className="block truncate font-semibold text-[#0B1B3D]" dir="auto">{b.businessName}</span>
+                            <BidiText className="font-semibold text-[#0B1B3D]">{b.businessName}</BidiText>
                             <span className="block text-xs text-[#94A3B8]" dir="ltr">{b.businessId}</span>
                           </span>
                           <i className="fa-solid fa-chevron-right text-xs text-[#CBD5E1]" aria-hidden="true" />
@@ -231,16 +253,31 @@ function NewOfferForm() {
         </FormSection>
 
         {selected && (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <FormSection icon="fa-tags" title="Offer" description="The perk members will see.">
-              <OfferFormFields value={offer} onChange={updateOffer} />
-            </FormSection>
-            <FormActions>
-              <button type="submit" disabled={submitting} aria-busy={submitting} className={`${PRIMARY_BUTTON} w-full`}>
+          <form onSubmit={handleSubmit} {...tabs.formProps}>
+            <FormTabs state={tabs} label="Offer sections" />
+            {OFFER_FORM_TABS.map((tab) => (
+              <TabPanel key={tab.id} state={tabs} tab={tab.id}>
+                <FormSection icon={tab.icon} title={tab.label} description="The perk members will see.">
+                  <OfferFormFields value={offer} onChange={updateOffer} section={tab.id} />
+                </FormSection>
+              </TabPanel>
+            ))}
+            <StickyActionBar status={dirty ? 'Not saved yet' : undefined}>
+              <button
+                type="button"
+                className={SECONDARY_BUTTON}
+                disabled={submitting}
+                onClick={() => {
+                  if (confirmLeave(dirty)) router.push(backHref)
+                }}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={submitting} aria-busy={submitting} className={PRIMARY_BUTTON}>
                 {submitting && <ButtonSpinner />}
                 {submitting ? 'Creating…' : 'Create offer'}
               </button>
-            </FormActions>
+            </StickyActionBar>
           </form>
         )}
       </div>

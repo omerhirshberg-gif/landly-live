@@ -7,6 +7,7 @@ import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers
 import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
+import Emoji from '../../components/Emoji'
 import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
@@ -15,6 +16,7 @@ import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
 import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
+import { categoryGlyph } from '../../lib/categoryGlyphs'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
 import { colors, radius, type } from '../../theme'
@@ -115,9 +117,7 @@ export default function CategoryScreen() {
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <View style={styles.emojiBox}>
-                <AppText style={styles.emoji} accessibilityElementsHidden importantForAccessibility="no">
-                  {tile?.emoji ?? '🏷️'}
-                </AppText>
+                <Emoji glyph={categoryGlyph(category)} size={32} />
               </View>
               <View style={styles.titleText}>
                 <AppText accessibilityRole="header" style={type.screenTitle}>
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 32, lineHeight: 40, textAlign: 'center' },
   titleText: { flex: 1, minWidth: 0, gap: 2 },
   count: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
   countPlaceholder: { height: 12, width: 110, marginTop: 6, borderRadius: radius.pill, backgroundColor: colors.borderLight },

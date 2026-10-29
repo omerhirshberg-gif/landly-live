@@ -60,6 +60,9 @@ export async function GET(request: Request) {
         title: data.title ?? '',
         businessId: data.businessId ?? '',
         businessName: data.businessName ?? '',
+        category: typeof data.category === 'string' ? data.category : '',
+        imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : '',
+        businessLogoUrl: typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : '',
         originalPrice: Number(data.originalPrice) || 0,
         offerPrice: Number(data.offerPrice) || 0,
         expiryDate: expiryDate ? expiryDate.toISOString() : null,
@@ -110,6 +113,8 @@ export async function POST(request: Request) {
     businessName: business.businessName ?? '',
     businessTranslations: parseBusinessTranslations(business.translations),
     ...offerPlaceFields(business),
+    // The business's logo (lib/business/businessLogo.ts), for the perk card's badge.
+    businessLogoUrl: typeof business.logoUrl === 'string' ? business.logoUrl : '',
     imageUrl,
     title: offer.title,
     description: offer.description,

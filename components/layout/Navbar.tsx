@@ -10,6 +10,7 @@ import { useWishlist } from '@/lib/firebase/useWishlist'
 import { isNavLinkActive } from '@/lib/navActive'
 import { useScrollSpy } from '@/lib/useScrollSpy'
 import { auth } from '@/lib/firebase/config'
+import { endWebSession } from '@/lib/account/webSession'
 import { updateUserLanguage } from '@/lib/firebase/users'
 import type { Lang } from '@/lib/i18n/translations'
 import { LANGUAGES } from '@/lib/i18n/languages'
@@ -75,6 +76,8 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     closeMobileMenu()
+    // This browser leaves the member's device list (Privacy & Security › Sessions).
+    if (auth.currentUser) await endWebSession(auth.currentUser.uid)
     await signOut(auth)
     router.push('/')
   }

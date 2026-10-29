@@ -47,3 +47,10 @@ export function businessNameVariants(item: { businessName: string; businessTrans
   }
   return variants
 }
+
+/** The name in the other language (English for a Hebrew name, Hebrew otherwise), or '' when it reads the same. */
+export function alternateBusinessName(name: string, translations: BusinessTranslations | null | undefined): string {
+  const other: Lang = isHebrewScriptName(name) ? 'en' : 'he'
+  const alt = localizedBusinessName({ businessName: name, businessTranslations: translations }, other).text.trim()
+  return alt && alt !== name.trim() ? alt : ''
+}
