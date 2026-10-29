@@ -1,4 +1,5 @@
 import { FirebaseError } from 'firebase/app'
+import type { TranslationKey } from '../i18n/translations'
 
 const MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'Could not create an account. Please try again, or try signing in or resetting your password.',
@@ -23,4 +24,102 @@ export function getAuthErrorMessage(err: unknown): string {
     return MESSAGES[err.code] ?? 'Something went wrong. Please try again.'
   }
   return 'Something went wrong. Please try again.'
+}
+
+// The sign-in screens (web AuthScreen, the app's login) show these in the
+// member's language. A failure with no message of its own falls back to the
+// generic one plus its code, e.g. "(auth/internal-error)", so a screenshot of
+// it says what went wrong; the screens show the code left-to-right inside
+// the sentence, so a Hebrew page doesn't scramble it.
+
+export type AuthErrorProvider = 'google' | 'apple'
+export type AuthErrorDescription = { key: TranslationKey; code: string | null }
+
+const CODE_KEYS: Record<string, TranslationKey> = {
+  'auth/popup-closed-by-user': 'autherr_cancelled',
+  'auth/cancelled-popup-request': 'autherr_cancelled',
+  'auth/user-cancelled': 'autherr_cancelled',
+  'auth/popup-blocked': 'autherr_popupBlocked',
+  'auth/network-request-failed': 'autherr_network',
+  'auth/timeout': 'autherr_network',
+  'auth/too-many-requests': 'autherr_tooMany',
+  'auth/invalid-credential': 'autherr_badCredentials',
+  'auth/user-not-found': 'autherr_badCredentials',
+  'auth/wrong-password': 'autherr_badCredentials',
+  'auth/invalid-email': 'autherr_invalidEmail',
+  'auth/weak-password': 'autherr_weakPassword',
+  'auth/email-already-in-use': 'autherr_emailInUse',
+  'auth/account-exists-with-different-credential': 'autherr_accountExists',
+  'auth/unverified-provider-email': 'autherr_unverifiedEmail',
+  'auth/user-disabled': 'autherr_userDisabled',
+  'auth/operation-not-allowed': 'autherr_methodUnavailable',
+  'auth/web-storage-unsupported': 'autherr_storage',
+  'auth/operation-not-supported-in-this-environment': 'autherr_storage',
+}
+
+// Failures that only happen inside Google's or Apple's sign-in, said as that
+// provider's (an Apple failure never talks about an email or password).
+const PROVIDER_CODES = new Set(['auth/invalid-credential', 'auth/missing-or-invalid-nonce', 'auth/invalid-auth-event'])
+const PROVIDER_KEYS: Record<AuthErrorProvider, TranslationKey> = { google: 'autherr_googleFailed', apple: 'autherr_appleFailed' }
+
+/** The Firebase-style code on an error, if it has one. */
+export function authErrorCode(err: unknown): string | null {
+  const code = (err as { code?: unknown } | null)?.code
+  return typeof code === 'string' && code ? code : null
+}
+
+/**
+ * The message to show for a sign-in failure, and the code to show with it:
+ * on the generic message, and on a Google or Apple failure (whose reason is
+ * only in the log, authErrorDetail).
+ */
+export function describeAuthError(err: unknown, options: { provider?: AuthErrorProvider | null } = {}): AuthErrorDescription {
+  const code = authErrorCode(err)
+  if (code && options.provider && PROVIDER_CODES.has(code)) return { key: PROVIDER_KEYS[options.provider], code }
+  const key = code ? CODE_KEYS[code] : undefined
+  return key ? { key, code: null } : { key: 'autherr_generic', code }
+}
+
+export type AuthErrorDetail = { error: string | null; errorDescription: string | null; redirectUri: string | null }
+
+function decodeParam(value: string | undefined): string | null {
+  if (!value) return null
+  try {
+    return decodeURIComponent(value.replace(/\+/g, ' '))
+  } catch {
+    return value
+  }
+}
+
+/**
+ * Why Google or Apple refused, for the log. When Firebase can't redeem the
+ * provider's code it puts the provider's answer in the error message
+ * ("... OAuth2 redirect uri is: https://.../__/auth/handler, response:
+ * OAuth2TokenResponse{params: error=invalid_grant&error_description=...");
+ * the message carries no token or code. Null when there's nothing more than
+ * the code.
+ */
+export function authErrorDetail(err: unknown): AuthErrorDetail | null {
+  const message = (err as { message?: unknown } | null)?.message
+  if (typeof message !== 'string') return null
+  const detail = {
+    error: message.match(/[{\s,&]error=([^&,}\s]+)/)?.[1] ?? null,
+    errorDescription: decodeParam(message.match(/error_description=([^&,}\s]+)/)?.[1]),
+    redirectUri: message.match(/redirect uri is:\s*([^\s,]+)/i)?.[1] ?? null,
+  }
+  return detail.error || detail.errorDescription || detail.redirectUri ? detail : null
+}
+
+/** One console line for a failed sign-in: the code, and the provider's reason when there is one. */
+export function logAuthError(err: unknown): void {
+  console.warn('[auth] sign-in failed:', authErrorCode(err) ?? err, authErrorDetail(err) ?? '')
+}
+
+/**
+ * Plain text with the code appended between Unicode isolates (for React
+ * Native Text, which has no <bdi>): "(auth/internal-error)" keeps its order
+ * in a Hebrew sentence and the sentence keeps its own full stop.
+ */
+export function withIsolatedCode(text: string, code: string | null): string {
+  return code ? `${text} ⁦(${code})⁩` : text
 }

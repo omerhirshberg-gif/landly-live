@@ -19,7 +19,7 @@ import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResu
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { auth, devicePersistence } from '@shared/firebase/config'
-import { getAuthErrorMessage } from '@shared/firebase/authErrors'
+import { describeAuthError, logAuthError, withIsolatedCode, type AuthErrorDescription, type AuthErrorProvider } from '@shared/firebase/authErrors'
 import { getUserDocument } from '@shared/firebase/users'
 import { useAuth } from '@shared/firebase/useAuth'
 import type { Lang } from '@shared/i18n/translations'
@@ -107,7 +107,12 @@ export default function LoginScreen() {
   const { prefillEmail, clearPrefillEmail } = useAppLock()
   const [email, setEmail] = useState(() => prefillEmail ?? '')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  // Kept as a key so the message follows a language switch.
+  const [error, setError] = useState<AuthErrorDescription | null>(null)
+  const showAuthError = (err: unknown, provider?: AuthErrorProvider) => {
+    logAuthError(err)
+    setError(describeAuthError(err, { provider }))
+  }
   const [submitting, setSubmitting] = useState(false)
   const [businessAccount, setBusinessAccount] = useState(false)
   const [pending, setPending] = useState<PendingVerification | null>(null)
@@ -226,7 +231,7 @@ export default function LoginScreen() {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(getAuthErrorMessage(err))
+        showAuthError(err)
         setOnboarding(false)
         setRestoring(false)
       })
@@ -258,7 +263,7 @@ export default function LoginScreen() {
       }
       // On success the root layout swaps this screen for the tabs once the gate opens.
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err)
       setSubmitting(false)
     } finally {
       setChecking(false)
@@ -288,7 +293,7 @@ export default function LoginScreen() {
       const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang, API_BASE_URL)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err)
     } finally {
       setChecking(false)
       setSubmitting(false)
@@ -318,7 +323,7 @@ export default function LoginScreen() {
       if (result.status === 'businessAccount') setBusinessAccount(true)
       else if (result.status === 'signedIn') await afterSignIn(result.user.uid, result.preferredLanguage)
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err, provider)
     } finally {
       setChecking(false)
       setOAuthBusy(null)
@@ -329,7 +334,7 @@ export default function LoginScreen() {
   // auth/googleSignIn.ts); until then the button explains why.
   const handleGoogle = () => {
     if (!GOOGLE_SIGN_IN_CONFIGURED) {
-      setError(t('onb_googleUnavailable'))
+      setError({ key: 'onb_googleUnavailable', code: null })
       return
     }
     return handleOAuth('google', signInWithGoogle)
@@ -435,7 +440,7 @@ export default function LoginScreen() {
                       style={styles.modeSwitch}
                     />
 
-                    {error && <Notice message={error} />}
+                    {error && <Notice message={withIsolatedCode(t(error.key), error.code)} />}
                     {businessAccount && (
                       <View style={styles.businessNotice}>
                         <Notice message={t('login_businessAccountError')} />

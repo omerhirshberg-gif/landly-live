@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
-import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import { describeAuthError, logAuthError, type AuthErrorDescription, type AuthErrorProvider } from '@/lib/firebase/authErrors'
 import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
 import { isAppleMobileWeb, providerOrder, type AuthProvider } from '@/lib/auth/appleDevice'
 import {
@@ -114,9 +114,14 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [rememberMe, setRememberMe] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  // Kept as a key so the message follows a language switch.
+  const [error, setError] = useState<AuthErrorDescription | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [businessAccount, setBusinessAccount] = useState(false)
+  const showAuthError = (err: unknown, provider?: AuthErrorProvider | null) => {
+    logAuthError(err)
+    setError(describeAuthError(err, { provider }))
+  }
   const [pending, setPending] = useState<PendingVerification | null>(null)
   // The provider whose popup (or redirect) is under way; every button waits on it.
   const [oauthBusy, setOAuthBusy] = useState<OAuthWebProvider | null>(null)
@@ -201,7 +206,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   useEffect(() => {
     if (redirectStarted.current) return
     redirectStarted.current = true
-    setFinishingOAuth(pendingOAuthRedirect())
+    const redirectProvider = pendingOAuthRedirect()
+    setFinishingOAuth(redirectProvider)
     completeOAuthRedirect(lang)
       .then(async (outcome) => {
         if (!outcome) return
@@ -211,7 +217,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       })
       .catch((err) => {
         restoreDecided.current = true
-        setError(getAuthErrorMessage(err))
+        showAuthError(err, redirectProvider)
         setRestoring(false)
       })
       .finally(() => {
@@ -251,7 +257,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         setRestoring(false)
       })
       .catch((err) => {
-        setError(getAuthErrorMessage(err))
+        showAuthError(err)
         setRestoring(false)
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openWizard only reads storage and sets state
@@ -365,7 +371,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       await afterSignIn(result.user.uid, result.preferredLanguage)
       setSubmitting(false)
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err)
       setSubmitting(false)
     }
   }
@@ -392,7 +398,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang)
       setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err)
     } finally {
       setSubmitting(false)
     }
@@ -415,7 +421,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       else await handleOAuthResult(provider, outcome.result)
     } catch (err) {
       // A second tap while the popup opens supersedes the first: nothing to report.
-      if ((err as { code?: unknown } | null)?.code !== 'auth/cancelled-popup-request') setError(getAuthErrorMessage(err))
+      if ((err as { code?: unknown } | null)?.code !== 'auth/cancelled-popup-request') showAuthError(err, provider)
     } finally {
       // Leaving for the provider: keep the buttons disabled until the page unloads.
       if (!redirecting) setOAuthBusy(null)
@@ -429,7 +435,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // The button and the autofill end the same way.
   const handlePasskeyOutcome = async (outcome: PasskeySignInOutcome) => {
     if (outcome.kind === 'error') {
-      setError(t(PASSKEY_ERRORS[outcome.code]))
+      setError({ key: PASSKEY_ERRORS[outcome.code], code: null })
       noteFailedPasskey()
       return
     }
@@ -455,7 +461,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
       if (outcome.kind === 'cancelled') noteFailedPasskey()
       else await handlePasskeyOutcome(outcome)
     } catch (err) {
-      setError(getAuthErrorMessage(err))
+      showAuthError(err)
       noteFailedPasskey()
     } finally {
       setPasskeyBusy(false)
@@ -486,7 +492,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         if (outcome.kind === 'error') setAutofillRound((r) => r + 1)
       })
       .catch((err) => {
-        if (active) setError(getAuthErrorMessage(err))
+        if (active) showAuthError(err)
       })
     return () => {
       active = false
@@ -603,7 +609,17 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                 className="mb-6"
               />
 
-              {error && <Notice>{error}</Notice>}
+              {error && (
+                <Notice>
+                  {t(error.key)}
+                  {error.code && (
+                    <>
+                      {' '}
+                      <bdi dir="ltr">({error.code})</bdi>
+                    </>
+                  )}
+                </Notice>
+              )}
               {businessAccount && (
                 <BusinessAccountNotice message={t('login_businessAccountError')} linkLabel={t('login_businessAccountLink')} />
               )}
