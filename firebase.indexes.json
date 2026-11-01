@@ -44,6 +44,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "prelaunch_throttle",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "messages",
       "fieldPath": "expiresAt",
       "ttl": true,

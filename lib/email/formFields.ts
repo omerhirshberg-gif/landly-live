@@ -1,7 +1,6 @@
-import 'server-only'
-
 // Input cleaning shared by the public contact forms (/api/support,
-// /api/business/inquiry) before their fields reach an email.
+// /api/business/inquiry) before their fields reach an email, and by the /join
+// form (lib/prelaunch/validation.ts), which also runs in the browser.
 
 // Same shape the browser's type="email" accepts, minus anything that could
 // break the reply-to header.

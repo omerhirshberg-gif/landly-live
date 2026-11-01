@@ -18,9 +18,9 @@ const text = (html: string) =>
 describe('privacy policy: member types, lone soldiers and mentor requests', () => {
   const policy = text(renderToStaticMarkup(createElement(PrivacyPolicy)))
 
-  it('is dated October 2026', () => {
-    expect(PRIVACY_POLICY_UPDATED.label).toMatch(/^October \d{1,2}, 2026$/)
-    expect(PRIVACY_POLICY_UPDATED.iso).toMatch(/^2026-10-/)
+  it('is dated November 2026', () => {
+    expect(PRIVACY_POLICY_UPDATED.label).toMatch(/^November \d{1,2}, 2026$/)
+    expect(PRIVACY_POLICY_UPDATED.iso).toMatch(/^2026-11-/)
   })
 
   it('lists every member type a member can choose, Lone Soldier included', () => {

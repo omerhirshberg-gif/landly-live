@@ -11,8 +11,8 @@ export const PASSKEY_PROMPT_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000
 const DUE_KEY = 'landly.passkeyOfferDue'
 const snoozeKey = (uid: string) => `landly.passkeyPromptSnoozed.${uid}`
 
-// Pages where the card would get in the way: signing in, checkout, staff areas.
-const HIDDEN_PREFIXES = ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/checkout', '/admin', '/business']
+// Pages where the card would get in the way: signing in, checkout, staff areas, the /join campaign page.
+const HIDDEN_PREFIXES = ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/checkout', '/admin', '/business', '/join']
 
 export function isPasskeyPromptPage(pathname: string): boolean {
   return !HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
