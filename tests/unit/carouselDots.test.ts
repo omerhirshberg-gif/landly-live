@@ -102,7 +102,7 @@ describe('rail pagination dots', () => {
     const { PAGER_DOTS_MAX } = await import('../../landly-mobile/src/lib/carousel')
     expect(SNAP_DOTS_MAX).toBe(8)
     expect(PAGER_DOTS_MAX).toBe(SNAP_DOTS_MAX)
-    for (const path of ['components/discover/OfferTileRail.tsx', 'components/home/CuratedOffers.tsx']) {
+    for (const path of ['components/discover/OfferTileRail.tsx', 'components/discover/OfferCardRail.tsx']) {
       const source = readFileSync(path, 'utf8')
       expect(source, path).toContain('.length > 1 && ')
       expect(source, path).toContain('.length <= SNAP_DOTS_MAX && <SnapDots')

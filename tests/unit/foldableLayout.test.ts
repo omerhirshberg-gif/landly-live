@@ -90,8 +90,8 @@ describe('foldable web layout', () => {
 
   it('splits the offer page into photo and details panes from 600px, desktop included, leaving phones alone', () => {
     const page = read('app/offers/[offerId]/page.tsx')
-    expect(page).toContain('mx-auto max-w-2xl fold:max-w-4xl')
-    expect(page).toContain('<div className="fold:grid fold:grid-cols-2 fold:items-start">')
+    expect(page).toContain('mx-auto max-w-2xl fold:max-w-6xl')
+    expect(page).toContain('fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-[1.6fr_1fr] lg:gap-x-10')
   })
 
   it.each(['components/member/PerksTab.tsx', 'components/member/RedeemedTab.tsx'])('%s lists passes one to a row on phones and two from 600px, never a narrow strip on desktop', (path) => {
@@ -99,10 +99,14 @@ describe('foldable web layout', () => {
     expect(read(path)).not.toContain('max-w-xl')
   })
 
-  it('caps the home pass card from 600px so it never stretches across an inner screen, and pairs it with Curated for you from 1024px', () => {
+  it('keeps the home pass card on the member column and lets the rails reach the screen’s edges', () => {
     const home = read('components/home/LoggedInHome.tsx')
-    expect(home).toContain('flex w-full flex-col fold:max-w-xl lg:max-w-none md:min-h-[200px]')
-    expect(home).toContain('lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-x-8 lg:items-stretch')
+    expect(home).toContain('<MemberPageShell\n        fluid')
+    expect(home.indexOf('<ActivePassCard')).toBeLessThan(home.indexOf('</MemberColumn>'))
+    expect(home.indexOf('<OfferCardRail')).toBeGreaterThan(home.indexOf('</MemberColumn>'))
+    const css = read('app/globals.css')
+    expect(css).toContain('--bleed-inset:max(var(--bleed-gutter),calc((100% - 1240px)/2 + var(--bleed-gutter)))')
+    expect(css).toContain('padding-inline:var(--bleed-inset);scroll-padding-inline:var(--bleed-inset);')
   })
 })
 

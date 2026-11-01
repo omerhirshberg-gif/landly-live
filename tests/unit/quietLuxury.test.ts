@@ -50,17 +50,18 @@ describe('the shekel sign in the price font', () => {
     expect(page).not.toMatch(/fa-(solid|regular)/)
   })
 
-  it('frames the card photo at 16:9, with the merchant as an eyebrow over a two-line title and a pin chip for the place', () => {
+  it('runs the card photo edge to edge at 16:9, with the merchant over a two-line title and a plain pin for the place', () => {
     const offer = {
       id: 'o1', businessName: 'Cafe Nadi', title: 'Two coffees', category: 'Restaurants and Cafes', location: 'Tel Aviv',
       originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '',
     } as never
     const html = withLang('en', createElement(OfferCard, { offer, layout: 'grid' }))
-    // The photo sits in a frame the merchant badge overlaps; the eyebrow clears the badge.
-    expect(html).toContain('<div class="relative z-[1] mx-2 mt-2"><div class="relative aspect-video overflow-hidden rounded-[14px]')
-    expect(html).toMatch(/rounded-xl bg-brandTint absolute start-2 -bottom-6"/)
-    expect(html).toMatch(/<div class="truncate ps-\[60px\] text-micro font-bold uppercase[^"]*" dir="auto">Cafe Nadi<\/div><p class="mt-1 line-clamp-2 font-bold[^"]*" dir="auto">Two coffees<\/p>/)
-    expect(html).toMatch(/rounded-full border border-slate-200\/80 bg-slate-50[^"]*"><svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-map-pin/)
+    // The hero fills the card with nothing tinting it; the logo box sits across its bottom start corner, the title and the business under it at full width.
+    expect(html).toContain('<div class="relative z-[1] aspect-video "><div class="absolute inset-0 overflow-hidden rounded-[inherit]">')
+    expect(html).not.toContain('to-black/')
+    expect(html).toMatch(/<span class="absolute -bottom-5 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white h-12 min-w-\[56px\] px-2\.5 shadow-sm sm:h-14"/)
+    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><div class="mt-0\.5 truncate[^"]*"><bdi dir="auto">Cafe Nadi<\/bdi><\/div>/)
+    expect(html).toMatch(/text-muted"><svg [^>]*class="lucide lucide-map-pin/)
   })
 })
 

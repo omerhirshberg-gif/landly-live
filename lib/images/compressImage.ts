@@ -1,4 +1,4 @@
-import { alphaBounds, centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALITY, LOGO_SHARP_EDGE, trimmedSquare } from './crop'
+import { centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALITY, LOGO_SHARP_EDGE, logoBounds, trimmedBox } from './crop'
 
 // Browser-only (desktop and mobile web): crops a picked photo to `aspect`
 // around its centre and re-encodes it as a JPEG no larger than `maxEdge`,
@@ -8,12 +8,11 @@ import { alphaBounds, centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALIT
 // Safari passes HEIC picks over as JPEG already; desktop Chrome and Firefox
 // can't decode HEIC at all, which surfaces as UnreadableImageError.
 //
-// compressLogo fits a business logo whole into a square rather than cropping
-// it, as a lossless PNG with its transparency (the badge is white on every
-// surface). Its transparent margins are trimmed first, so a wordmark that came
-// with a wide empty border still fills the badge's width. An SVG is drawn at
-// the full size, so a vector logo is as sharp as the square allows; the SVG
-// itself is never stored.
+// compressLogo keeps a business logo whole rather than cropping it, as a lossless
+// PNG with its transparency (the badge is white on every surface). Its transparent
+// or white margins are trimmed and it keeps its own shape, so a wordmark stays wide
+// and the badge grows with it. An SVG is drawn at the full size, so a vector
+// logo is as sharp as the canvas allows; the SVG itself is never stored.
 
 export class UnreadableImageError extends Error {}
 
@@ -61,7 +60,7 @@ export async function compressLogo(file: Blob, { maxEdge, maxBytes }: { maxEdge:
     // An SVG without width/height reports 0 in some browsers; its viewBox shape is then unknown, so square.
     const width = image.naturalWidth || maxEdge
     const height = image.naturalHeight || maxEdge
-    // Drawn once at the fitted size to find the mark inside its transparent margins.
+    // Drawn once at the fitted size to find the mark inside its margins.
     const drawn = fitWithin(width, height, maxEdge, { vector })
     const probe = document.createElement('canvas')
     probe.width = drawn.width
@@ -69,17 +68,17 @@ export async function compressLogo(file: Blob, { maxEdge, maxBytes }: { maxEdge:
     const probeContext = probe.getContext('2d', { willReadFrequently: true })
     if (!probeContext) throw new Error('Canvas unavailable')
     probeContext.drawImage(image, 0, 0, drawn.width, drawn.height)
-    const content = alphaBounds(probeContext.getImageData(0, 0, drawn.width, drawn.height).data, drawn.width, drawn.height) ?? {
+    const content = logoBounds(probeContext.getImageData(0, 0, drawn.width, drawn.height).data, drawn.width, drawn.height) ?? {
       x: 0,
       y: 0,
       width: drawn.width,
       height: drawn.height,
     }
     // Then drawn again from the source itself, so the trim never costs sharpness.
-    const box = trimmedSquare(drawn, content, drawn.scale, maxEdge, { vector })
+    const box = trimmedBox(drawn, content, drawn.scale, maxEdge, { vector })
     const canvas = document.createElement('canvas')
-    canvas.width = box.size
-    canvas.height = box.size
+    canvas.width = box.width
+    canvas.height = box.height
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas unavailable')
     context.imageSmoothingEnabled = true
@@ -91,7 +90,7 @@ export async function compressLogo(file: Blob, { maxEdge, maxBytes }: { maxEdge:
     // A photo-like logo: JPEG on the badge's white instead.
     context.globalCompositeOperation = 'destination-over'
     context.fillStyle = '#FFFFFF'
-    context.fillRect(0, 0, box.size, box.size)
+    context.fillRect(0, 0, box.width, box.height)
     return { blob: await encode(canvas, 'image/jpeg', LOGO_JPEG_QUALITY), lowResolution }
   } finally {
     URL.revokeObjectURL(url)

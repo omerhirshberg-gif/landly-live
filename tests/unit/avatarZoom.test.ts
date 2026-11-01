@@ -108,14 +108,14 @@ describe('app avatar preview', () => {
 
   it('eases back without a bounce and fades the blur out', () => {
     expect(source).toContain('const SETTLE = { duration: 320, easing: Easing.bezier(0.16, 1, 0.3, 1) }')
-    expect(source).toContain('scale.value = withTiming(1, SETTLE)')
+    expect(source).toContain('scale.set(withTiming(1, SETTLE))')
     expect(source).not.toContain('withSpring')
-    expect(source).toContain('fade.value = withDelay(')
+    expect(source).toContain('withDelay(')
     expect(source).toContain("import { BlurView } from 'expo-blur'")
   })
 
   it('scales the clipped circle freely, up to 5×, with nothing over the view', () => {
-    expect(source).toContain('Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.value * e.scale))')
+    expect(source).toContain('Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.get() * e.scale))')
     expect(source).toMatch(/stage: \{[^}]*overflow: 'visible' \}/)
     expect(source).toMatch(/frame: \{\s*overflow: 'hidden',/)
     expect(source).not.toContain('name="close"')

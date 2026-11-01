@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
-import PerkExampleCard from './PerkExampleCard'
+import OfferCard from '@/components/discover/OfferCard'
 
 const EXAMPLE_COUNT = 8
 // Desktop shows one row of four; phones swipe through all of them.
@@ -60,16 +60,16 @@ export default function PerkExamples() {
         {/* A swipe rail on phones and tablets (the next card peeks in, a swipe
             settles on a card's start edge, the page never drags sideways); a
             plain four-column grid from lg. */}
-        <ul className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+        <ul className="edge-fade -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
           {offers === null
             ? Array.from({ length: DESKTOP_COUNT }, (_, i) => (
                 <li key={i} aria-hidden="true" className={item(i)}>
-                  <div className="h-[236px] w-full rounded-2xl border border-line bg-white animate-pulse motion-reduce:animate-none" />
+                  <div className="h-[300px] w-full rounded-2xl border border-line bg-white animate-pulse motion-reduce:animate-none" />
                 </li>
               ))
             : offers.map((offer, i) => (
                 <li key={offer.id} className={item(i)}>
-                  <PerkExampleCard offer={offer} />
+                  <OfferCard offer={offer} layout="grid" />
                 </li>
               ))}
         </ul>

@@ -18,7 +18,7 @@ describe('loading skeletons', () => {
   it('holds a perk feed in its own grid, one status for screen readers and still under reduced motion', () => {
     const html = render(createElement(OfferGridSkeleton, { count: 4 }))
     expect(html.startsWith(`<div role="status" class="${OFFER_FEED_GRID}"><span class="sr-only">${translations.en.bizdash_loading}</span>`)).toBe(true)
-    expect(html.match(/aspect-video rounded-\[14px\]/g)).toHaveLength(4)
+    expect(html.match(/aspect-video !rounded-none/g)).toHaveLength(4)
     expect(html).toContain('animate-pulse motion-reduce:animate-none')
     expect(html.match(/role="status"/g)).toHaveLength(1)
   })

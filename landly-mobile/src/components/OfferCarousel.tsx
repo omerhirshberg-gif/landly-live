@@ -16,8 +16,8 @@ import { isWeb, webOnly } from '../lib/webStyles'
 // scroll-snap, which handles right-to-left on its own. It bleeds through the
 // screen's side padding, whatever the fold makes it (src/lib/layout.ts).
 // Pagination dots underneath (PagerDots) follow the swipe, one per place the
-// row can come to rest.
-export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocument[]; onOpen: (offer: OfferDocument) => void }) {
+// row can come to rest; Home's category rails go without (`showDots`).
+export default function OfferCarousel({ offers, onOpen, showDots = true }: { offers: OfferDocument[]; onOpen: (offer: OfferDocument) => void; showDots?: boolean }) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
   const list = useRef<FlatList<OfferDocument>>(null)
@@ -76,7 +76,7 @@ export default function OfferCarousel({ offers, onOpen }: { offers: OfferDocumen
           </View>
         )}
       />
-      {starts.length > 1 && starts.length <= PAGER_DOTS_MAX && <PagerDots count={starts.length} position={position} onSelect={goTo} />}
+      {showDots && starts.length > 1 && starts.length <= PAGER_DOTS_MAX && <PagerDots count={starts.length} position={position} onSelect={goTo} />}
     </View>
   )
 }

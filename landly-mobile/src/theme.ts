@@ -45,6 +45,8 @@ export const colors = {
   // The discount badge and savings line: emerald-700, so white text on it
   // passes AA (web: components/discover/DiscountBadge.tsx).
   discount: '#047857',
+  // The solid discount ribbon (web: bg-emerald-700).
+  discountBadge: '#047857',
   // A saved (wishlisted) heart (web: bg-red-500).
   heart: '#ef4444',
   // An inactive pagination dot (web: components/ui/SnapDots.tsx, bg-slate-300).

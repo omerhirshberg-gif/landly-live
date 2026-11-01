@@ -47,7 +47,7 @@ export default function ValueProps() {
             keeps the cards' shadow and hover lift clear of the row's clipping.
             Under the row on phones, pagination dots follow the card in view
             (useSnapIndex) and bring a card in when tapped. */}
-        <ul ref={rowRef} className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
+        <ul ref={rowRef} className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
           {PILLARS.map((p) => (
             <li key={p.titleKey} className="flex w-[200px] flex-shrink-0 snap-center sm:w-auto">
               <Link

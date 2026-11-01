@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 // Whether an element is on screen, from one IntersectionObserver. `once`
 // stops watching the first time it shows (a scroll reveal); without it the
-// flag follows the element in and out (pausing the marquee off screen).
+// flag follows the element in and out.
 // Without IntersectionObserver it reports visible, so nothing stays hidden.
 export function useInView<T extends Element>({ once = false, rootMargin = '0px' }: { once?: boolean; rootMargin?: string } = {}) {
   const ref = useRef<T>(null)

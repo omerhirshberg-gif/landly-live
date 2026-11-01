@@ -14,8 +14,8 @@ interface BackButtonProps {
   label?: string
   /** Name the page back returns to ("Back to Home", "Back to Discover"...) instead of `label`. */
   contextLabel?: boolean
-  /** 'pill': arrow and text. 'icon': a round arrow-only button, named by aria-label. */
-  variant?: 'pill' | 'icon'
+  /** 'pill': arrow and text. 'icon': a round arrow-only button, named by aria-label. 'glass': the same over a picture, a frosted circle matching the offer page's heart. */
+  variant?: 'pill' | 'icon' | 'glass'
   /** Always go to `fallback`, never through history (lib/navigation/back.ts). */
   force?: boolean
   className?: string
@@ -48,6 +48,20 @@ export default function BackButton({ fallback, label, contextLabel = false, vari
   }
 
   const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2'
+  if (variant === 'glass') {
+    return (
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label={text}
+        className={`group/back flex h-12 w-12 items-center justify-center rounded-full [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-brand ${className}`}
+      >
+        <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/60 bg-white/80 shadow-[0_3px_10px_rgba(15,23,42,0.16)] backdrop-blur-md backdrop-saturate-150 transition-transform duration-200 ease-out-expo group-active/back:scale-90 motion-reduce:transition-none motion-reduce:group-active/back:scale-100">
+          <ChevronLeft aria-hidden="true" className="h-5 w-5 text-ink rtl:-scale-x-100" strokeWidth={2} />
+        </span>
+      </button>
+    )
+  }
   if (variant === 'icon') {
     return (
       <button

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LangContext } from '@/lib/i18n/LangProvider'
+import { toLandingData } from '@/lib/home/landingData'
 import { RTL_LANGS, translations, Lang, TranslationKey } from '@/lib/i18n/translations'
 
 const authState: { user: { uid: string; displayName: string | null; photoURL: string | null } | null } = { user: null }
@@ -21,10 +22,12 @@ vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ wishlistIds
 // The page's chrome and guest sections render as markers, so the test reads which sections a page composes.
 vi.mock('@/components/layout/Navbar', () => ({ default: () => 'NAVBAR' }))
 vi.mock('@/components/layout/Footer', () => ({ default: () => 'FOOTER' }))
-vi.mock('@/components/home/Hero', () => ({ default: () => 'GUEST_HERO' }))
-vi.mock('@/components/home/ValueProps', () => ({ default: () => 'GUEST_VALUE_PROPS' }))
+vi.mock('@/components/landing/LandingHero', () => ({ default: () => 'GUEST_HERO' }))
+vi.mock('@/components/landing/AudienceCards', () => ({ default: () => 'AUDIENCES' }))
+vi.mock('@/components/landing/LiveDeals', () => ({ default: () => 'LIVE_DEALS' }))
+vi.mock('@/components/landing/BottomCta', () => ({ default: () => 'BOTTOM_CTA' }))
 vi.mock('@/components/home/HowItWorks', () => ({ default: () => 'HOW_IT_WORKS' }))
-vi.mock('@/components/home/HomeFaqPrompt', () => ({ default: () => 'FAQ_PROMPT' }))
+vi.mock('@/components/home/Faq', () => ({ default: () => 'FAQ_SECTION' }))
 
 // The client page; app/page.tsx only wraps it with metadata and structured data.
 const { default: Home } = await import('@/components/home/HomePage')
@@ -40,41 +43,30 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
 const member = { uid: 'u1', displayName: 'Dana Levi', photoURL: null }
 
 describe('home page composition', () => {
-  it('guests get the marketing sections', () => {
-    authState.user = null
-    const html = withLang('en', createElement(Home))
-    for (const marker of ['GUEST_HERO', 'GUEST_VALUE_PROPS', 'HOW_IT_WORKS', 'FAQ_PROMPT', 'FOOTER']) expect(html).toContain(marker)
-  })
+  const landing = toLandingData(['Cafe Nadi', 'Surf Club', 'Spa Yam', 'Bike Hub', 'Book Nook', 'Gym Tov'].map((businessName, i) => ({
+    id: `o${i}`, businessName, title: `Perk ${i}`, description: '', category: 'Restaurants and Cafes', imageUrl: '', originalPrice: 100 + i * 10, offerPrice: 60, createdAt: null, expiryDate: null,
+  })))
 
-  it('guests get the partner marquee under the hero, then the top savings under What\'s inside, not the perk examples or the members\' curated rail', () => {
+  it('guests get the landing in its order, ending on the questions', () => {
     authState.user = null
-    const offers = ['Cafe Nadi', 'Surf Club', 'Spa Yam', 'Bike Hub', 'Book Nook', 'Gym Tov'].map((businessName, i) => ({
-      id: `o${i}`, businessName, title: `Perk ${i}`, category: 'Restaurants and Cafes', originalPrice: 100 + i * 10, offerPrice: 60,
-    }))
-    const html = withLang('en', createElement(Home, { showcase: { offers } }))
+    const html = withLang('en', createElement(Home, { landing }))
+    const order = ['GUEST_HERO', 'LIVE_DEALS', 'AUDIENCES', 'HOW_IT_WORKS', 'id="home-pass-title"', 'BOTTOM_CTA', 'FAQ_SECTION', 'FOOTER'].map((marker) => html.indexOf(marker))
+    expect(order).not.toContain(-1)
+    expect(order).toEqual([...order].sort((x, y) => x - y))
     expect(html).not.toContain(translations.en.home_curated_title)
-    expect(html).not.toContain('id="home-examples-title"')
-    const marquee = html.indexOf('class="marquee ')
-    expect(marquee).toBeGreaterThan(html.indexOf('GUEST_HERO'))
-    expect(marquee).toBeLessThan(html.indexOf('GUEST_VALUE_PROPS'))
-    const savings = html.indexOf('id="home-savings-title"')
-    expect(savings).toBeGreaterThan(html.indexOf('GUEST_VALUE_PROPS'))
-    // How it works, then the member pass it leads to.
-    expect(savings).toBeLessThan(html.indexOf('HOW_IT_WORKS'))
-    expect(html.indexOf('HOW_IT_WORKS')).toBeLessThan(html.indexOf('id="home-pass-title"'))
   })
 
-  it('guests without enough discounted offers get no savings section, no doubled hairline and the category marquee', () => {
+  it('leaves out the partners and deals with nothing live to show', () => {
     authState.user = null
     const html = withLang('en', createElement(Home))
-    expect(html).not.toContain('id="home-savings-title"')
-    expect(html).toContain(translations.en.landing_marquee_categories)
+    expect(html).not.toContain('LIVE_DEALS')
+    for (const marker of ['GUEST_HERO', 'AUDIENCES', 'HOW_IT_WORKS', 'FAQ_SECTION', 'BOTTOM_CTA']) expect(html).toContain(marker)
   })
 
   it('members get only their dashboard: no hero, value props, How it works or Aliyah card', () => {
     authState.user = member
     const html = withLang('en', createElement(Home))
-    for (const marker of ['GUEST_HERO', 'GUEST_VALUE_PROPS', 'HOW_IT_WORKS']) expect(html).not.toContain(marker)
+    for (const marker of ['GUEST_HERO', 'AUDIENCES', 'HOW_IT_WORKS']) expect(html).not.toContain(marker)
     expect(html).not.toContain('href="/olim"')
     expect(html).not.toContain('id="how"')
     expect(html).toContain(translations.en.home_curated_title)
@@ -84,11 +76,11 @@ describe('home page composition', () => {
     authState.user = member
     const html = withLang('en', createElement(Home))
     expect(html).not.toContain('FOOTER')
-    expect(html).not.toContain('FAQ_PROMPT')
+    expect(html).not.toContain('FAQ_SECTION')
     expect(html).toContain('href="/support"')
     expect(html).toContain('pb-[env(safe-area-inset-bottom)]')
     // Support is pinned to the foot of the screen, not floating under short content.
-    expect(html).toContain('<div class="mt-auto pt-10 pb-6"><p class="text-center text-sm text-body">')
+    expect(html).toMatch(/<div class="max-w-member [^"]*mt-auto w-full pt-10 pb-6"><p class="text-center text-sm text-body">/)
     expect(html.indexOf('href="/support"')).toBeGreaterThan(html.indexOf(translations.en.home_curated_title))
   })
 })
@@ -111,9 +103,10 @@ describe('member dashboard', () => {
     profileState.photoURL = null
   })
 
-  it('holds a dash for the active-pass count until the live snapshot arrives', () => {
+  it('holds a dash for the active-pass count until the live snapshot arrives, with no fake 0 in words', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(/aria-live="polite">–</)
+    expect(html).toMatch(/<span class="[^"]*\binvisible\b[^"]*">You have 0 active vouchers/)
   })
 
   it('uses the 1240px member column and toolbar-aware canvas', () => {
@@ -122,37 +115,31 @@ describe('member dashboard', () => {
     expect(html).toContain('max-w-member')
   })
 
-  it('titles the sections and makes the whole pass card the way into My Pass', () => {
+  it('leads with the greeting, then the always-present pass card, the recommended perks and support', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(new RegExp(`<h2 id="home-deals-title" class="text-xl font-bold text-ink[^"]*">${translations.en.home_deals_title}</h2>`))
-    expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
-    expect(html).toMatch(/<span>Open My Pass<\/span><svg [^>]*class="lucide lucide-arrow-right h-3\.5 w-3\.5 rtl:-scale-x-100"/)
-  })
-
-  it('leads with the greeting, then the blue pass card, the curated perks and the categories', () => {
-    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    const order = ['<h1 id="home-welcome"', 'class="segment-badge"', 'href="/member"', 'id="home-curated-title"', 'id="home-deals-title"', 'href="/support"'].map((s) => html.indexOf(s))
+    const order = ['<h1 id="home-welcome"', 'class="segment-badge"', 'href="/member"', 'id="home-curated-title"', 'href="/support"'].map((s) => html.indexOf(s))
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(html).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
+    expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
     const card = html.match(/<a aria-labelledby="home-pass-count home-pass-cta" class="([^"]*)"/)!
-    for (const c of ['bg-brand', 'rounded-2xl', 'overflow-hidden', 'text-white']) expect(card[1].split(' ')).toContain(c)
+    for (const c of ['bg-brand', 'rounded-2xl', 'overflow-hidden', 'text-white', 'md:grid-cols-[minmax(0,1fr)_auto]']) expect(card[1].split(' ')).toContain(c)
     // The Expo card's two background layers, 1:1: the 200px 8% glow disc off the top end corner, then the 88x86 emblem at 15%.
     expect(html).toContain('<span aria-hidden="true" class="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]"></span>')
-    expect(html).toMatch(/<svg viewBox="0 0 526 512" aria-hidden="true" focusable="false" class="pointer-events-none absolute top-3 end-3\.5 z-0 h-\[86px\] w-\[88px\] text-white\/15"/)
-    expect(html).not.toContain('bg-[radial-gradient(')
-    expect(html).not.toContain('rounded-full border border-white/20')
-    // The count line stays clear of the emblem, as on native (paddingEnd 72).
-    expect(html).toContain('id="home-pass-count" class="relative z-10 mt-4 md:mb-5 flex items-center gap-3 sm:gap-4 pe-[72px]"')
-    for (const id of ['home-pass-count', 'home-pass-cta']) expect(html).toMatch(new RegExp(`id="${id}" class="relative z-10 `))
-    expect(html).toContain(translations.en.home_vouchers_message.replace('{count}', '0'))
-    expect(html).not.toContain(translations.en.home_discover_title)
+    expect(html).toMatch(/<svg viewBox="0 0 526 512" aria-hidden="true" focusable="false" class="pointer-events-none absolute top-3 end-3\.5 z-0 h-\[86px\] w-\[88px\] text-white\/15/)
+    expect(html).toMatch(/<span>Open My Pass<\/span><svg [^>]*class="lucide lucide-arrow-right h-3\.5 w-3\.5 rtl:-scale-x-100"/)
+    // A ticket's perforation on phones: two notches around a dashed tear line, gone from 768px.
+    expect(html).toMatch(/<span aria-hidden="true" class="relative z-10 -mx-5 my-4 flex items-center sm:-mx-6 md:hidden">.*border-dashed border-white\/35/)
+    // The clump beside the rail and the fixed category tiles are gone.
+    expect(html).not.toContain('lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')
+    // The curated rail holds its shape on the full-width row while offers load.
+    expect(html).toContain('member-bleed flex gap-3 overflow-hidden')
   })
 
   it('fits phones: dynamic viewport height, no sideways drift, a full-width My Pass button and a tap-target avatar', () => {
     const html = withLang('he', createElement(LoggedInHome, { user: member as never }))
     expect(html).toContain('min-h-[100dvh] overflow-x-clip')
-    expect(html).toMatch(/<span id="home-pass-cta" class="[^"]*\bh-12 w-full sm:w-auto\b/)
+    expect(html).toMatch(/<span id="home-pass-cta" class="[^"]*\bh-12 w-full\b[^"]*md:w-auto/)
     expect(html).toMatch(/<a aria-label="[^"]*" class="tap-target flex-shrink-0 rounded-full" href="\/profile">/)
   })
 
@@ -168,16 +155,6 @@ describe('member dashboard', () => {
 })
 
 describe('member dashboard: category rail and perk cards', () => {
-  it('shows the categories as round icon tiles in an edge-faded rail ending in "View all"', () => {
-    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    expect(html).toMatch(/<ul class="edge-fade [^"]*overflow-x-auto[^"]*">/)
-    expect(html).toMatch(/<a class="rail-tile group" href="\/categories\?cat=Restaurants\+and\+Cafes"><span aria-hidden="true" class="rail-tile-icon"><svg [^>]*class="lucide lucide-utensils[^"]* h-\[22px\] w-\[22px\]"[^>]*>.*?<\/svg><\/span><span class="rail-tile-label">Restaurants/)
-    const rail = html.slice(html.indexOf('<ul class="edge-fade'), html.indexOf('</ul>'))
-    const viewAll = rail.lastIndexOf('href="/categories"')
-    expect(rail.slice(viewAll)).toContain(`<span class="rail-tile-label !text-brand">${translations.en.cats_view_all}</span>`)
-    expect(viewAll).toBeGreaterThan(rail.lastIndexOf('href="/categories/Cars%20and%20Transport"'))
-  })
-
   const offer = {
     id: 'o1',
     businessId: 'b1',
@@ -206,17 +183,23 @@ describe('member dashboard: category rail and perk cards', () => {
     expect(html).toContain('href="/offers/o1"')
     expect(html).toContain('>Cafe Nadi<')
     expect(html).toContain(`>${t.row_restaurants}<`)
-    expect(html).toContain(`>${t.offer_percent_off.replace('{n}', '15')}<`)
+    // A -15% pill on the photo, read out in words, and nothing repeating it by the price.
+    expect(html).toContain('<bdi aria-hidden="true" dir="ltr">-15%</bdi>')
+    expect(html).toContain(`<span class="sr-only">${t.offer_percent_off.replace('{n}', '15')}</span>`)
+    expect(html.match(/-15%/g)).toHaveLength(1)
+    expect(html.indexOf('-15%')).toBeLessThan(html.indexOf('text-price '))
     expect(html).toContain(`<span>${t.offer_view_cta}</span>`)
   })
 
   it('shows how the perk is redeemed, and a branded panel instead of a broken image when there is no photo', () => {
     const html = withLang('he', createElement(OfferCard, { offer: { ...offer, imageUrl: '', redemptionMethod: 'phone_booking' as const } }))
     expect(html).toContain(translations.he.redeem_method_phone_booking)
-    // The category's Lucide glyph in a white frame, never its emoji or a broken-image icon.
-    expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils lucide-fork-knife h-6 w-6"/)
-    expect(html).not.toContain('🍽️')
+    // The category's Lucide glyph in a white frame, never a broken-image icon; the tag line leads with it too.
+    expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-9 w-9"/)
+    expect(html).toMatch(/class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-3\.5 w-3\.5 shrink-0"/)
     expect(html).not.toContain('<img')
+    // The method is text only.
+    expect(html).not.toContain('lucide-phone')
   })
 
   it('drops the banner and the struck-through price when there is no discount', () => {
@@ -228,30 +211,29 @@ describe('member dashboard: category rail and perk cards', () => {
 
 describe('guest home section dividers', () => {
   const divider = '<div aria-hidden="true" class="section-divider max-w-6xl mx-auto px-4 sm:px-6"><div class="h-px w-full bg-gradient-to-r from-transparent via-brand/25 to-transparent"></div></div>'
-  const showcase = {
-    offers: ['Cafe Nadi', 'Surf Club', 'Spa Yam'].map((businessName, i) => ({ id: `o${i}`, businessName, title: `Perk ${i}`, category: 'Beach and Sea', originalPrice: 120, offerPrice: 90 })),
-  }
+  const landing = toLandingData(['Cafe Nadi', 'Surf Club', 'Spa Yam'].map((businessName, i) => ({
+    id: `o${i}`, businessName, title: `Perk ${i}`, description: '', category: 'Beach and Sea', imageUrl: '', originalPrice: 120, offerPrice: 90, createdAt: null, expiryDate: null,
+  })))
 
-  it('puts a soft, symmetrical hairline at each of the five section boundaries', () => {
+  it('marks only the long sections with a hairline, and never two in a row', () => {
     authState.user = null
-    const html = withLang('en', createElement(Home, { showcase }))
-    expect(html.split(divider)).toHaveLength(6)
+    const html = withLang('en', createElement(Home, { landing }))
+    expect(html.split(divider)).toHaveLength(4)
     const at = (marker: string) => html.indexOf(marker)
     const between = (a: string, b: string) => {
       const d = html.indexOf(divider, at(a))
       return d > at(a) && d < at(b)
     }
-    expect(between('class="marquee ', 'GUEST_VALUE_PROPS')).toBe(true)
-    expect(between('GUEST_VALUE_PROPS', 'id="home-savings-title"')).toBe(true)
-    expect(between('id="home-savings-title"', 'HOW_IT_WORKS')).toBe(true)
+    expect(between('LIVE_DEALS', 'HOW_IT_WORKS')).toBe(true)
     expect(between('HOW_IT_WORKS', 'id="home-pass-title"')).toBe(true)
-    expect(between('id="home-pass-title"', 'FOOTER')).toBe(true)
+    expect(between('id="home-pass-title"', 'FAQ_SECTION')).toBe(true)
+    expect(between('GUEST_HERO', 'AUDIENCES')).toBe(false)
   })
 
-  it('drops the savings section with its hairline, so two never meet', () => {
+  it('keeps the same hairlines with no live data', () => {
     authState.user = null
     const html = withLang('en', createElement(Home))
-    expect(html.split(divider)).toHaveLength(5)
+    expect(html.split(divider)).toHaveLength(4)
     expect(html).not.toContain(divider + divider)
   })
 

@@ -214,7 +214,7 @@ export default function OlimPage() {
                 (useSnapIndex), mirroring with the row in Hebrew. From 1024px a
                 four-column grid. The py keeps the cards' shadow and hover lift
                 clear of the row's clipping. */}
-            <ul ref={benefitsRef} className="-mx-4 px-4 scroll-px-4 flex gap-4 overflow-x-auto overscroll-x-contain py-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 sm:scroll-px-6 lg:mx-0 lg:px-0 lg:py-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
+            <ul ref={benefitsRef} className="-mx-4 px-4 scroll-px-4 flex gap-4 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain py-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 sm:scroll-px-6 lg:mx-0 lg:px-0 lg:py-0 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible">
               {BENEFITS.map((b) => (
                 <li key={b.titleKey} id={b.id} className="flex w-[260px] flex-shrink-0 snap-center scroll-mt-24 sm:w-[270px] lg:w-auto">
                   <article aria-labelledby={`${b.titleKey}-title`} className="flex w-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card transition duration-200 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-brand/25 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:transform-none">

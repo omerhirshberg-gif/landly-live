@@ -4,8 +4,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
+import HowToRedeem from '@/components/offers/HowToRedeem'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
-import OfferGuestTeaser from '@/components/offers/OfferGuestTeaser'
 
 const read = (path: string) => readFileSync(path, 'utf8')
 // Text as React writes it into markup.
@@ -19,50 +19,38 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
 const render = (lang: Lang, offerId: string) => withLang(lang, createElement(OfferMemberGate, { offerId }))
 
 describe('offer member gate', () => {
-  it.each(Object.keys(translations) as Lang[])('sends guests to sign in or join, then back to the offer (%s)', (lang) => {
+  it.each(Object.keys(translations) as Lang[])('is one locked card that leads with joining, then back to the offer (%s)', (lang) => {
     const html = render(lang, 'o1')
     const t = translations[lang]
-    expect(html).toContain('href="/login?redirect=%2Foffers%2Fo1"')
-    expect(html).toContain('href="/signup?redirect=%2Foffers%2Fo1"')
-    expect(html).toContain(`<span>${esc(t.offer_gate_signin)}</span>`)
-    expect(html).toContain(`>${esc(t.offer_gate_join)}</a>`)
+    expect(html).toContain('lucide-lock')
+    expect(html).toContain(`>${esc(t.offer_teaser_title)}</h2>`)
+    expect(html).toContain(`>${esc(t.offer_teaser_message)}</p>`)
+    expect(html).toContain(`<span>${esc(t.landing_cta_join)}</span>`)
+    expect(html).toContain(`>${esc(t.nav_login)}</a>`)
+    expect(html.indexOf('href="/signup?redirect=%2Foffers%2Fo1"')).toBeLessThan(html.indexOf('href="/login?redirect=%2Foffers%2Fo1"'))
     expect(html).not.toContain('/checkout')
   })
 
   it('uses the Hebrew copy from the brief', () => {
-    expect(translations.he.offer_gate_signin).toBe('התחברו לקבלת גישה מלאה והטבה')
-    expect(translations.en.offer_gate_signin).toBe('Sign in to claim and access deal')
+    expect(translations.he.landing_cta_join).toBe('הצטרפות חינם')
+    expect(translations.he.nav_login).toBe('התחברות')
     expect(translations.he.offer_teaser_message).toBe('המידע המלא, אופן המימוש והקודים זמינים בלעדית לחברי מועדון Landly רשומים.')
-    expect(translations.he.offer_gate_join).toBe('עדיין אין לכם חשבון? הצטרפו בחינם')
   })
 
   it('encodes the offer id in the return path', () => {
     expect(render('en', 'a b/c')).toContain(`href="/login?redirect=${encodeURIComponent('/offers/a%20b%2Fc')}"`)
   })
 
-  it('is what the offer page shows guests; checkout stays members-only', () => {
+  it('replaces How to redeem and the purchase bar for guests only; checkout stays members-only', () => {
     const page = read('app/offers/[offerId]/page.tsx')
-    expect(page).toContain('{!user && !authLoading && <OfferMemberGate offerId={offer.id} />}')
+    expect(page).toMatch(/\{user && \([\s\S]*?<HowToRedeem/)
+    expect(page).toMatch(/\{guest && \([\s\S]*?<OfferMemberGate offerId=\{offer\.id\} \/>/)
+    expect(page.match(/<HowToRedeem/g)).toHaveLength(1)
+    expect(page.match(/<OfferMemberGate/g)).toHaveLength(1)
+    expect(page).toContain('{!guest && (')
+    expect(page).not.toContain('line-clamp-4')
     expect(page).not.toContain('href="/login"')
     expect(page).toMatch(/\{user && !authLoading && !claimLoading && !alreadyClaimed && \([\s\S]*?\/checkout\?offerId=/)
-  })
-})
-
-describe('offer guest teaser', () => {
-  it.each(Object.keys(translations) as Lang[])('says the full details are for members (%s)', (lang) => {
-    const t = translations[lang]
-    const html = withLang(lang, createElement(OfferGuestTeaser))
-    expect(html).toContain(`>${esc(t.offer_teaser_title)}</h2>`)
-    expect(html).toContain(`>${esc(t.offer_teaser_message)}</p>`)
-    expect(html).toContain('lucide-lock')
-  })
-
-  it('replaces How to redeem for guests only, and shortens the description', () => {
-    const page = read('app/offers/[offerId]/page.tsx')
-    // How to redeem renders only inside the member branch; the teaser only once auth says "guest".
-    expect(page).toMatch(/\{user \? \([\s\S]*?<HowToRedeem[\s\S]*?\) : !authLoading && \([\s\S]*?<OfferGuestTeaser \/>/)
-    expect(page.match(/<HowToRedeem/g)).toHaveLength(1)
-    expect(page).toContain("${user ? '' : 'line-clamp-4'}")
   })
 })
 
@@ -83,15 +71,31 @@ describe('guest home background', () => {
     expect(ambient).not.toContain('radial-gradient(')
     expect(ambient).toContain('min-height:100dvh')
     // Floating cards: near-white glass over it.
-    for (const file of ['ValueProps', 'PerkExampleCard']) expect(read(`components/home/${file}.tsx`)).toContain('bg-white/95 backdrop-blur-sm')
+    expect(read('components/home/ValueProps.tsx')).toContain('bg-white/95 backdrop-blur-sm')
     // How It Works' slate-50 wash is the canvas's own colour, so it draws no edge either.
     expect(read('app/globals.css')).toContain(':root{--canvas:#F8FAFC;')
-    expect(read('components/home/HowItWorks.tsx')).toContain('<section id="how" className="bg-slate-50 py-12 sm:py-14 lg:py-16">')
+    expect(read('components/home/HowItWorks.tsx')).toContain('<section id="how" className="bg-slate-50 py-8 sm:py-10 lg:py-12">')
     // The navbar is translucent, so the sky tone shows through at the top.
     expect(read('components/layout/Navbar.tsx')).toContain('bg-white/70 backdrop-blur-md border-b border-line/60')
     expect(read('components/home/Hero.tsx')).not.toContain('radial-gradient')
     expect(read('components/home/ValueProps.tsx')).toContain('<section id="deals" className="py-12 sm:py-14 lg:py-16">')
     expect(read('components/home/PerkExamples.tsx')).toContain('className="py-12 sm:py-14 lg:py-16"')
     expect(read('components/home/HomeFaqPrompt.tsx')).toContain('py-8 sm:py-10 text-center">')
+  })
+})
+
+describe('the offer page’s folds', () => {
+  const props = { method: 'in_store' as const, instructions: '', variant: 'accordion' as const }
+
+  it('opens How to redeem and keeps the terms closed', () => {
+    const html = withLang('en', createElement(HowToRedeem, { ...props, terms: 'One per member' }))
+    expect(html.match(/aria-expanded="true"/g)).toHaveLength(1)
+    expect(html.match(/aria-expanded="false"/g)).toHaveLength(1)
+    expect(html.indexOf('aria-expanded="true"')).toBeLessThan(html.indexOf('aria-expanded="false"'))
+    expect(html).toContain('One per member')
+  })
+
+  it('leaves out the terms fold when there are none', () => {
+    expect(withLang('en', createElement(HowToRedeem, { ...props, terms: '' })).match(/aria-expanded/g)).toHaveLength(1)
   })
 })

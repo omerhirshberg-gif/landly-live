@@ -20,7 +20,19 @@ export const PAGE_TITLE_GAP = 'mb-6'
 // navbar as a flex column and the footer takes up the slack (mt-auto), so it
 // never floats mid-page. Without one the column is only as tall as its
 // content, so whatever a page renders after it (Support's FAQ) follows on.
-export default function MemberPageShell({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+//
+// `fluid` (Home) lifts the column's width off the page, so its rails can reach
+// the screen's edges: each child brings its own MemberColumn, or starts its row
+// on the column's line with .member-bleed (app/globals.css).
+export default function MemberPageShell({ children, footer, fluid = false }: { children: ReactNode; footer?: ReactNode; fluid?: boolean }) {
+  if (fluid) {
+    return (
+      <div className="pt-8 sm:pt-10 lg:pt-12 pb-[env(safe-area-inset-bottom)] flex min-h-[calc(100dvh-var(--header-offset))] flex-col">
+        <div className="min-w-0 flex-1">{children}</div>
+        {footer && <MemberColumn className="mt-auto w-full pt-10 pb-6">{footer}</MemberColumn>}
+      </div>
+    )
+  }
   if (!footer) {
     return <div className="max-w-member mx-auto px-3 min-[380px]:px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-10 sm:pb-12">{children}</div>
   }
@@ -30,6 +42,11 @@ export default function MemberPageShell({ children, footer }: { children: ReactN
       <div className="mt-auto pt-10 pb-6">{footer}</div>
     </div>
   )
+}
+
+/** The member column on its own, inside a `fluid` shell: the same width and gutters. */
+export function MemberColumn({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`max-w-member mx-auto px-3 min-[380px]:px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>
 }
 
 /** A page's h1, in the shared type with the shared gap under it. */

@@ -1,13 +1,12 @@
 import { StyleSheet, View } from 'react-native'
 import type { CategoryTile } from '@shared/categories'
 import AppText from './AppText'
-import Emoji from './Emoji'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
-import { categoryGlyph } from '../lib/categoryGlyphs'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
+import CategoryIcon from './CategoryIcon'
 
 const GAP = 12
 
@@ -41,7 +40,7 @@ export default function CategoryGrid({
               onPress={() => onSelect(tile.category)}
               style={styles.card}
             >
-              <Emoji glyph={categoryGlyph(tile.category)} size={32} />
+              <CategoryIcon category={tile.category} size={28} color={colors.brand} />
               <View style={styles.titleBox}>
                 <AppText style={styles.title} numberOfLines={2}>
                   {t(tile.labelKey)}

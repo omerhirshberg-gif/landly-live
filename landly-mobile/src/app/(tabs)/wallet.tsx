@@ -10,7 +10,6 @@ import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import DashboardStats from '../../components/DashboardStats'
 import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
-import Emoji from '../../components/Emoji'
 import Notice from '../../components/Notice'
 import RedeemedPass from '../../components/RedeemedPass'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
@@ -19,9 +18,10 @@ import SegmentedControl from '../../components/SegmentedControl'
 import VoucherPass from '../../components/VoucherPass'
 import { PassListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
-import { PASS_GLYPHS } from '../../lib/categoryGlyphs'
+import { PASS_ICONS } from '../../lib/categoryGlyphs'
 import { useLayout } from '../../lib/useLayout'
 import { colors, header } from '../../theme'
+import LineIcon, { type LineIconName } from '../../components/LineIcon'
 
 type Voucher = VoucherDocument & { id: string }
 type PassTab = 'perks' | 'redeemed'
@@ -119,11 +119,11 @@ export default function WalletScreen() {
           list === null ? (
             failed ? null : <PassListSkeleton />
           ) : tab === 'perks' ? (
-            <EmptyState glyph={PASS_GLYPHS.emptyActive} title={t('dash_perks_empty_title')} sub={t('dash_perks_empty_sub')}>
+            <EmptyState icon={PASS_ICONS.emptyActive} title={t('dash_perks_empty_title')} sub={t('dash_perks_empty_sub')}>
               <Button label={t('nav_cta')} onPress={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
             </EmptyState>
           ) : (
-            <EmptyState glyph={PASS_GLYPHS.emptyRedeemed} title={t('dash_redeemed_empty_title')} sub={t('dash_redeemed_empty_sub')} />
+            <EmptyState icon={PASS_ICONS.emptyRedeemed} title={t('dash_redeemed_empty_title')} sub={t('dash_redeemed_empty_sub')} />
           )
         }
       />
@@ -131,11 +131,11 @@ export default function WalletScreen() {
   )
 }
 
-function EmptyState({ glyph, title, sub, children }: { glyph: string; title: string; sub: string; children?: ReactNode }) {
+function EmptyState({ icon, title, sub, children }: { icon: LineIconName; title: string; sub: string; children?: ReactNode }) {
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
-        <Emoji glyph={glyph} size={30} />
+        <LineIcon name={icon} size={30} color={colors.brand} strokeWidth={1.75} />
       </View>
       <AppText style={styles.emptyTitle}>{title}</AppText>
       <AppText style={styles.emptySub}>{sub}</AppText>

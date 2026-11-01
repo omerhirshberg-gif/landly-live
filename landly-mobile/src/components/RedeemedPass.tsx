@@ -6,10 +6,10 @@ import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
 import ContentText from './ContentText'
-import Emoji from './Emoji'
 import VoucherThumb from './VoucherThumb'
 import { useLang } from '../i18n/LangProvider'
-import { PASS_GLYPHS } from '../lib/categoryGlyphs'
+import { PASS_ICONS } from '../lib/categoryGlyphs'
+import LineIcon from './LineIcon'
 import { colors, radius } from '../theme'
 
 // One redeemed voucher in My Pass → Redeemed: no QR (it can't be used again),
@@ -25,7 +25,7 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
       <View>
         <VoucherThumb voucher={voucher} muted />
         <View style={styles.check}>
-          <Emoji glyph={PASS_GLYPHS.redeemedMark} size={14} />
+          <LineIcon name={PASS_ICONS.redeemedMark} size={14} color={colors.success} strokeWidth={2.4} />
         </View>
       </View>
       <View style={styles.text}>

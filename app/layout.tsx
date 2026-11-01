@@ -20,6 +20,7 @@ import { SITE_URL } from '@/lib/config'
 import { MEMBER_HINT_SCRIPT } from '@/lib/auth/memberHint'
 import { CLIENT_ERROR_SCRIPT } from '@/lib/debug/clientErrorScript'
 import { WHATSAPP_HIDDEN_SCRIPT } from '@/lib/support/whatsapp'
+import { LANG_DIRECTION_SCRIPT } from '@/lib/i18n/langDirectionScript'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/jsonLd'
 import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo/site'
 
@@ -97,6 +98,8 @@ export default function RootLayout({
             and a tab that closed the WhatsApp widget keeps it closed (lib/support/whatsapp.ts). */}
         <script dangerouslySetInnerHTML={{ __html: MEMBER_HINT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: WHATSAPP_HIDDEN_SCRIPT }} />
+        {/* A returning Hebrew reader's page is right to left from the first paint (lib/i18n/langDirectionScript.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: LANG_DIRECTION_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossOrigin="" />
@@ -123,7 +126,7 @@ export default function RootLayout({
             <LangProvider>
               <PreferredLanguageSync />
               <SectionBoundary name="session-heartbeat"><SessionHeartbeat /></SectionBoundary>
-              {children}
+              <div className="page-clip">{children}</div>
               <SectionBoundary name="whatsapp-widget"><WhatsAppWidget /></SectionBoundary>
               <SectionBoundary name="cookie-notice"><CookieNotice /></SectionBoundary>
               {/* "Save a passkey" once after a password or Google sign-in (components/auth/PasskeyPrompt.tsx). */}

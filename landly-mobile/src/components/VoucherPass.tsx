@@ -9,11 +9,10 @@ import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
 import ContentText from './ContentText'
-import Emoji from './Emoji'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
 import VoucherThumb from './VoucherThumb'
-import { PASS_GLYPHS } from '../lib/categoryGlyphs'
+import { PASS_ICONS } from '../lib/categoryGlyphs'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -56,7 +55,7 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
           </View>
           {validity && (
             <View style={styles.validityRow}>
-              <Emoji glyph={PASS_GLYPHS.validity} size={13} />
+              <LineIcon name={PASS_ICONS.validity} size={13} color={colors.textMuted} />
               <AppText style={[styles.validity, expired && styles.expired]}>{validity}</AppText>
             </View>
           )}

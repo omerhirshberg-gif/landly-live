@@ -21,14 +21,15 @@ function Loading({ children, className = '' }: { children: React.ReactNode; clas
   )
 }
 
-// OfferCard's grid layout: the 16:9 framed picture, the business, two title
+// OfferCard's layout: the 16:9 edge-to-edge picture, the tag line, the business, two title
 // lines, the place, then the price row.
-function OfferCardSkeleton() {
+function OfferCardSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div aria-hidden="true" className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <Skeleton className="mx-2 mt-2 aspect-video rounded-[14px]" />
+    <div aria-hidden="true" className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card ${className}`}>
+      <Skeleton className="aspect-video !rounded-none" />
       <div className="flex flex-col px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4">
-        <Skeleton className="h-4 w-2/5" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="mt-2.5 h-4 w-2/5" />
         <Skeleton className="mt-2 h-3.5 w-11/12" />
         <Skeleton className="mt-1.5 h-3.5 w-3/5" />
         <Skeleton className="mt-3 h-3 w-1/3" />
@@ -46,6 +47,15 @@ export function OfferGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <Loading className={OFFER_FEED_GRID}>
       {Array.from({ length: count }, (_, i) => <OfferCardSkeleton key={i} />)}
+    </Loading>
+  )
+}
+
+/** Home's rails loading: the rail's cards, the next one peeking in. */
+export function OfferRailSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <Loading className="member-bleed flex gap-3 overflow-hidden pb-3 pt-1 sm:gap-4">
+      {Array.from({ length: count }, (_, i) => <OfferCardSkeleton key={i} className="w-[clamp(240px,72vw,260px)] flex-shrink-0" />)}
     </Loading>
   )
 }

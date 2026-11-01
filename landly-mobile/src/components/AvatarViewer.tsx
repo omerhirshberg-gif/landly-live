@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Image, Modal, PixelRatio, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -58,9 +58,9 @@ function useCircleValues(): CircleValues {
 
 function settleBack({ scale, x, y }: CircleValues) {
   'worklet'
-  scale.value = withTiming(1, SETTLE)
-  x.value = withTiming(0, SETTLE)
-  y.value = withTiming(0, SETTLE)
+  scale.set(withTiming(1, SETTLE))
+  x.set(withTiming(0, SETTLE))
+  y.set(withTiming(0, SETTLE))
 }
 
 function useRestingSide() {
@@ -95,40 +95,40 @@ export default function AvatarViewer({
   // Every open starts at rest.
   useEffect(() => {
     if (!visible) return
-    scale.value = 1
-    x.value = 0
-    y.value = 0
+    scale.set(1)
+    x.set(0)
+    y.set(0)
   }, [visible, scale, x, y])
 
   // Anywhere on screen: two fingers pinch the circle, and the pinch (or one finger) carries it.
   const gesture = useMemo(() => {
     const pinch = Gesture.Pinch()
       .onStart(() => {
-        pinching.value = true
-        pinchFrom.value = scale.value
+        pinching.set(true)
+        pinchFrom.set(scale.get())
       })
       .onUpdate((e) => {
-        scale.value = Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.value * e.scale))
+        scale.set(Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.get() * e.scale)))
       })
       .onFinalize(() => {
-        if (!pinching.value) return
-        pinching.value = false
-        if (!panning.value) settleBack(values)
+        if (!pinching.get()) return
+        pinching.set(false)
+        if (!panning.get()) settleBack(values)
       })
     const pan = Gesture.Pan()
       .averageTouches(true)
       .onStart(() => {
-        panning.value = true
-        panFrom.value = { x: x.value, y: y.value }
+        panning.set(true)
+        panFrom.set({ x: x.get(), y: y.get() })
       })
       .onUpdate((e) => {
-        x.value = panFrom.value.x + e.translationX
-        y.value = panFrom.value.y + e.translationY
+        x.set(panFrom.get().x + e.translationX)
+        y.set(panFrom.get().y + e.translationY)
       })
       .onFinalize(() => {
-        if (!panning.value) return
-        panning.value = false
-        if (!pinching.value) settleBack(values)
+        if (!panning.get()) return
+        panning.set(false)
+        if (!pinching.get()) settleBack(values)
       })
     return Gesture.Simultaneous(pinch, pan)
   }, [values, scale, x, y, pinching, panning, pinchFrom, panFrom])
@@ -177,7 +177,7 @@ export default function AvatarViewer({
 // BlurView falls back to its translucent tint (a true blur there needs the
 // content behind wrapped in a BlurTargetView). `intensity` may be animated.
 function Backdrop({ intensity }: { intensity?: SharedValue<number> }) {
-  const animatedProps = useAnimatedProps(() => ({ intensity: intensity ? intensity.value * BLUR : BLUR }))
+  const animatedProps = useAnimatedProps(() => ({ intensity: intensity ? intensity.get() * BLUR : BLUR }))
   return (
     <>
       <AnimatedBlurView tint="dark" intensity={BLUR} animatedProps={animatedProps} style={StyleSheet.absoluteFill} />
@@ -188,7 +188,7 @@ function Backdrop({ intensity }: { intensity?: SharedValue<number> }) {
 
 // Deepens behind the circle as it grows.
 function ZoomDim({ scale }: { scale: SharedValue<number> }) {
-  const style = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, (scale.value - 1) / (NATIVE_ZOOM_MAX - 1))) }))
+  const style = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, (scale.get() - 1) / (NATIVE_ZOOM_MAX - 1))) }))
   return <Animated.View pointerEvents="none" style={[styles.dim, style]} />
 }
 
@@ -202,7 +202,7 @@ function PhotoCircle({ uri, side, values, label }: { uri: string; side: number; 
   const laidOut = side * render
   const { scale, x, y } = values
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }, { scale: scale.value / render }],
+    transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: scale.get() / render }],
   }))
   return (
     <Animated.View
@@ -249,7 +249,7 @@ export function AvatarPeekProvider({ children }: { children: ReactNode }) {
 
 function PeekOverlay({ peek }: { peek: Peek }) {
   const side = useRestingSide()
-  const style = useAnimatedStyle(() => ({ opacity: peek.fade.value }))
+  const style = useAnimatedStyle(() => ({ opacity: peek.fade.get() }))
   // Decorative: the tap-opened viewer is the accessible way to the photo.
   return (
     <View pointerEvents="none" style={styles.peek} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -266,6 +266,21 @@ function PeekOverlay({ peek }: { peek: Peek }) {
 /** A long press opens the peek after this long… */
 const PEEK_DELAY_MS = 180
 
+// When the avatar was last pressed and when the peek last opened, kept apart
+// from the gestures: they only ever call these from event handlers.
+function usePeekClock() {
+  const pressedAt = useRef(0)
+  const peekedAt = useRef(0)
+  const markPress = useCallback(() => {
+    pressedAt.current = Date.now()
+  }, [])
+  const markPeek = useCallback(() => {
+    peekedAt.current = Date.now()
+  }, [])
+  const wasPeek = useCallback(() => peekedAt.current >= pressedAt.current && pressedAt.current > 0, [])
+  return { markPress, markPeek, wasPeek }
+}
+
 /**
  * Long-press peek for an avatar: wrap it in `<GestureDetector gesture={peek.gesture}>`,
  * call `peek.pressIn()` from its Pressable's onPressIn, and skip its onPress
@@ -281,41 +296,42 @@ export function useAvatarPeek(uri: string | null) {
   const peeking = useSharedValue(false)
   const pinchFrom = useSharedValue(1)
   const panFrom = useSharedValue({ x: 0, y: 0 })
-  const pressedAt = useRef(0)
-  const peekedAt = useRef(0)
+  const { markPress, markPeek, wasPeek } = usePeekClock()
   const source = uri ? fullSizeAvatarUrl(uri) : null
 
   // Plain JS, called from the gesture worklets on the JS thread.
-  const open = () => {
+  const open = useCallback(() => {
     if (!source) return
-    peekedAt.current = Date.now()
+    markPeek()
     show({ uri: source, values, fade })
     tick()
-  }
-  const hide = () => show(null)
+  }, [source, show, values, fade, markPeek])
+  const hide = useCallback(() => show(null), [show])
 
   const gesture = useMemo(() => {
     const { scale, x, y } = values
     const begin = () => {
       'worklet'
-      if (peeking.value) return
-      peeking.value = true
-      scale.value = 1
-      x.value = 0
-      y.value = 0
-      fade.value = withTiming(1, { duration: 150 })
+      if (peeking.get()) return
+      peeking.set(true)
+      scale.set(1)
+      x.set(0)
+      y.set(0)
+      fade.set(withTiming(1, { duration: 150 }))
       scheduleOnRN(open)
     }
     const end = () => {
       'worklet'
-      if (!peeking.value) return
-      peeking.value = false
+      if (!peeking.get()) return
+      peeking.set(false)
       settleBack(values)
-      fade.value = withDelay(
-        120,
-        withTiming(0, { duration: 200 }, (finished) => {
-          if (finished) scheduleOnRN(hide)
-        })
+      fade.set(
+        withDelay(
+          120,
+          withTiming(0, { duration: 200 }, (finished) => {
+            if (finished) scheduleOnRN(hide)
+          })
+        )
       )
     }
 
@@ -327,10 +343,10 @@ export function useAvatarPeek(uri: string | null) {
       .enabled(enabled)
       .onStart(() => {
         begin()
-        pinchFrom.value = scale.value
+        pinchFrom.set(scale.get())
       })
       .onUpdate((e) => {
-        scale.value = Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.value * e.scale))
+        scale.set(Math.min(NATIVE_ZOOM_MAX, Math.max(1, pinchFrom.get() * e.scale)))
       })
     // Only takes over once the peek is open, so a scroll that starts on the avatar still scrolls.
     const pan = Gesture.Pan()
@@ -338,27 +354,23 @@ export function useAvatarPeek(uri: string | null) {
       .averageTouches(true)
       .manualActivation(true)
       .onTouchesMove((_e, manager) => {
-        if (peeking.value) manager.activate()
+        if (peeking.get()) manager.activate()
       })
       .onStart((e) => {
-        panFrom.value = { x: x.value - e.translationX, y: y.value - e.translationY }
+        panFrom.set({ x: x.get() - e.translationX, y: y.get() - e.translationY })
       })
       .onUpdate((e) => {
-        x.value = panFrom.value.x + e.translationX
-        y.value = panFrom.value.y + e.translationY
+        x.set(panFrom.get().x + e.translationX)
+        y.set(panFrom.get().y + e.translationY)
       })
     return Gesture.Simultaneous(touches, hold, pinch, pan)
-    // open and hide only read refs and the context setter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, values, fade, peeking, pinchFrom, panFrom])
+  }, [source, values, fade, peeking, pinchFrom, panFrom, open, hide])
 
   return {
     gesture,
-    pressIn: () => {
-      pressedAt.current = Date.now()
-    },
+    pressIn: markPress,
     /** The press that just ended opened the peek, so it isn't also a tap. */
-    wasPeek: () => peekedAt.current >= pressedAt.current && pressedAt.current > 0,
+    wasPeek,
   }
 }
 

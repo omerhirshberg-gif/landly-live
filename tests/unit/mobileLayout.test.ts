@@ -99,7 +99,7 @@ describe('native screens follow the live window', () => {
   })
 
   // The Perks rails (OfferTileRail.tsx) draw through OfferCarousel, so they bleed with it.
-  it.each(['components/OfferCarousel.tsx', 'components/CategoryRail.tsx', 'components/PerksCategoryChips.tsx'])(
+  it.each(['components/OfferCarousel.tsx', 'components/CategoryPhotoRail.tsx', 'components/PerksCategoryChips.tsx'])(
     '%s bleeds through each side’s live padding (inset plus gutter), not a fixed 16',
     (path) => {
       const source = read(path)
@@ -119,7 +119,7 @@ describe('native screens follow the live window', () => {
     const offer = read('app/offer/[offerId].tsx')
     expect(offer).toContain("cardPanes: { flexDirection: 'row'")
     expect(offer).not.toContain('row-reverse')
-    expect(offer).toContain('marginEnd: PANE_GAP / 2')
+    expect(offer).toContain('marginEnd: PANE_GAP')
   })
 })
 
@@ -188,7 +188,7 @@ describe('native scroll indicators', () => {
 
   it('finds the lists it guards', () => {
     expect(listTags(read('app/(tabs)/wallet.tsx'))).toHaveLength(1)
-    expect(listTags(read('components/CategoryRail.tsx'))).toHaveLength(1)
+    expect(listTags(read('components/CategoryPhotoRail.tsx'))).toHaveLength(1)
     // 27 since the Perks rails draw through OfferCarousel's list rather than their own.
     expect(sources('landly-mobile/src').flatMap((file) => listTags(readFileSync(file, 'utf8'))).length).toBeGreaterThanOrEqual(27)
   })
@@ -208,9 +208,9 @@ describe('section header', () => {
     expect(header).toContain('title: { flex: 1, minWidth: 0 }')
     expect(header).toContain("action: { flexShrink: 0, minHeight: 44, justifyContent: 'center',")
     expect(header).not.toContain('row-reverse')
-    const web = readFileSync('components/home/CuratedOffers.tsx', 'utf8')
-    expect(web).toContain('<div className="flex items-center justify-between gap-3 mb-4">')
-    expect(web).toContain('className="min-w-0 text-xl font-bold text-ink"')
+    const web = readFileSync('components/discover/OfferCardRail.tsx', 'utf8')
+    expect(web).toContain('<MemberColumn className="mb-3 flex items-center justify-between gap-3">')
+    expect(web).toContain('className="flex min-w-0 items-center gap-2 text-xl font-bold text-ink"')
     expect(web).toContain('tap-target inline-flex shrink-0 items-center')
   })
 })

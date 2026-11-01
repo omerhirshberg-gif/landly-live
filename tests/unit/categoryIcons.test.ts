@@ -10,7 +10,7 @@ const read = (path: string) => readFileSync(path, 'utf8')
 const EMOJI = /\p{Extended_Pictographic}/u
 
 describe('category vector icons', () => {
-  it('gives every category a distinct Lucide glyph on the website, keeping the emoji only for the app', () => {
+  it('gives every category a distinct Lucide glyph on the website', () => {
     expect(new Set(CATEGORY_TILES.map((tile) => CATEGORY_ICONS[tile.category])).size).toBe(CATEGORY_TILES.length)
     for (const tile of CATEGORY_TILES) {
       expect(tile).not.toHaveProperty('icon')
@@ -22,12 +22,9 @@ describe('category vector icons', () => {
     for (const file of [
       'components/perks/CategoryGrid.tsx',
       'components/perks/CategoryChipsRail.tsx',
-      'components/perks/CategoryRail.tsx',
       'components/discover/OfferTileRail.tsx',
       'components/discover/OfferListView.tsx',
-      'components/home/PartnerMarquee.tsx',
-      'components/home/SavingsShowcase.tsx',
-      'components/home/PerkExampleCard.tsx',
+      'components/home/PerkExamples.tsx',
       'components/discover/PerkImage.tsx',
       'app/business/dashboard/support/page.tsx',
       'app/categories/page.tsx',
@@ -40,6 +37,19 @@ describe('category vector icons', () => {
       expect(source, file).not.toMatch(/\btile\.emoji\b|option\.emoji/)
     }
     expect(read('app/offers/[offerId]/page.tsx')).not.toContain('tile.emoji')
+  })
+
+  it('leads Home and the perk card with the shared category icon, never an emoji', () => {
+    expect(read('components/discover/OfferTags.tsx')).toContain('<CategoryIcon category={tile.category}')
+    for (const file of ['components/discover/OfferCard.tsx', 'components/discover/OfferTags.tsx', 'components/home/CategoryPhotoRail.tsx', 'components/home/LoggedInHome.tsx']) expect(read(file)).not.toMatch(EMOJI)
+  })
+
+  it('draws the same glyph for every category on the website and in the app', () => {
+    const web = read('components/ui/CategoryIcon.tsx')
+    const app = read('landly-mobile/src/components/CategoryIcon.tsx')
+    const map = (source: string) => [...source.matchAll(/^  '([A-Z][^']+)': (\w+),$/gm)].map((m) => `${m[1]}=${m[2]}`)
+    expect(map(app)).toHaveLength(CATEGORY_TILES.length)
+    expect(map(app)).toEqual(map(web))
   })
 
   it("puts /olim's newcomer categories on vector icons in brand-tint pills", () => {
@@ -58,14 +68,14 @@ describe('category vector icons', () => {
     expect(read('app/categories/new/page.tsx')).toContain('icon={Sparkles}')
     expect(read('app/categories/bestsellers/page.tsx')).toContain('<OfferListView icon={Award}')
     const perks = read('landly-mobile/src/app/(tabs)/perks.tsx')
-    // The app's rails lead with emoji, kept in landly-mobile/src/lib/categoryGlyphs.ts (🆕, 🔥).
+    // The app's rails take the same icons, named in landly-mobile/src/lib/categoryGlyphs.ts.
     expect(perks).toContain('<OfferTileRail glyph="new"')
     expect(perks).toContain('<OfferTileRail glyph="bestsellers"')
     expect(perks).not.toMatch(/[✨🔥🆕]/u)
     const glyphs = read('landly-mobile/src/lib/categoryGlyphs.ts')
-    expect(glyphs).toContain("new: '\\u{1F195}', // 🆕")
-    expect(glyphs).toContain("bestsellers: '\\u{1F525}', // 🔥")
-    expect(read('landly-mobile/src/components/OfferTileRail.tsx')).toContain('<Emoji glyph={RAIL_GLYPHS[glyph]} size={20} />')
+    expect(glyphs).toContain("new: 'sparkles'")
+    expect(glyphs).toContain("bestsellers: 'award'")
+    expect(read('landly-mobile/src/components/OfferTileRail.tsx')).toContain('<LineIcon name={RAIL_ICONS[glyph]}')
     // Their heads use the shared frame: no solid tiles, no Font Awesome.
     for (const file of ['components/discover/OfferTileRail.tsx', 'components/discover/OfferListView.tsx']) {
       expect(read(file)).toContain('<IconFrame icon={icon}')

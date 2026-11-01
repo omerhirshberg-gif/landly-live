@@ -296,6 +296,6 @@ describe('staying clear of bottom bars', () => {
 
   it('is mounted site-wide, under the navbar and drawer', () => {
     // Each in its own SectionBoundary, in this order.
-    expect(read('app/layout.tsx')).toMatch(/\{children\}\s*<SectionBoundary name="whatsapp-widget"><WhatsAppWidget \/><\/SectionBoundary>\s*<SectionBoundary name="cookie-notice"><CookieNotice \/><\/SectionBoundary>/)
+    expect(read('app/layout.tsx')).toMatch(/<div className="page-clip">\{children\}<\/div>\s*<SectionBoundary name="whatsapp-widget"><WhatsAppWidget \/><\/SectionBoundary>\s*<SectionBoundary name="cookie-notice"><CookieNotice \/><\/SectionBoundary>/)
   })
 })

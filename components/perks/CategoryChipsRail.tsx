@@ -106,7 +106,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
         role="radiogroup"
         aria-label={t('cats_category_label')}
         onScroll={measure}
-        className="rail-track chip-rail-fade scrollbar-none -ms-4 flex min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain lg:ms-0"
+        className="rail-track chip-rail-fade scrollbar-none -ms-4 flex min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain lg:ms-0"
       >
         {OPTIONS.map((option) => {
           const selected = option.key === value
