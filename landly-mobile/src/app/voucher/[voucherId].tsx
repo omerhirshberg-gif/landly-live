@@ -9,6 +9,7 @@ import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/re
 import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
 import { offerTextSources } from '@shared/offers/offerText'
 import { localizedBusinessName } from '@shared/business/businessText'
+import AddToAppleWallet from '../../components/AddToAppleWallet'
 import AppText from '../../components/AppText'
 import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
@@ -89,6 +90,7 @@ export default function VoucherScreen() {
                   <QrReveal redeemKey={redeemVoucherKey(voucher)} />
                   <View style={styles.divider} />
                   <CodeReveal code={voucher.redemptionCode} />
+                  <AddToAppleWallet voucher={voucher} />
                 </>
               ) : (
                 <AppText style={styles.redeemed} accessibilityLiveRegion="polite">{t('voucher_already_redeemed')}</AppText>

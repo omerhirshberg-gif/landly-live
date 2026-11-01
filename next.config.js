@@ -30,6 +30,11 @@ const nextConfig = {
       '@eshaz/web-worker': '@eshaz/web-worker/cjs/browser.js',
     },
   },
+  // Read from disk at runtime by lib/wallet/applePass.ts, so the serverless
+  // function must carry them.
+  outputFileTracingIncludes: {
+    '/api/wallet/apple/[voucherId]': ['./lib/wallet/assets/**', './public/categories/**'],
+  },
   // Where this build runs, for lib/firebase/envGuard.ts -- inlined so the
   // browser bundle picks the same Firebase project check as the server.
   // Unset (a local build) becomes '', which the guard treats as local.
