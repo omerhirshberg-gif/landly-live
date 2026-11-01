@@ -6,15 +6,16 @@ import { parseAttribution, type LeadAttribution } from './telemetry'
 // The /join form's rules, run in the browser for instant errors and again on
 // the server, which trusts nothing the browser sent.
 
-export const MAX_FIRST_NAME_LENGTH = 80
+export const MAX_NAME_LENGTH = 50
 const MAX_EMAIL_LENGTH = 254
 export const REFERRAL_CODE_RE = /^[a-z2-7]{10}$/
 
-export type LeadField = 'firstName' | 'phone' | 'email' | 'consent'
+export type LeadField = 'firstName' | 'lastName' | 'phone' | 'email' | 'consent'
 export type LeadErrors = Partial<Record<LeadField, true>>
 
 export interface LeadFormValues {
   firstName: string
+  lastName: string
   phone: string
   email: string
   consent: boolean
@@ -22,6 +23,7 @@ export interface LeadFormValues {
 
 export interface LeadSubmission {
   firstName: string
+  lastName: string
   phone: string
   email: string
   lang: PrelaunchLang
@@ -41,10 +43,26 @@ export function normalizeLeadEmail(input: string): string {
   return singleLine(input).toLowerCase()
 }
 
+// Invisible direction marks and overrides, which can make a name read as
+// something else in the admin and in a campaign.
+const BIDI_CONTROLS = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+
+export function normalizeLeadName(input: string): string {
+  return singleLine(input.replace(BIDI_CONTROLS, ''))
+}
+
+// React escapes names on our pages, but they also go to Rav Messer, whose
+// campaigns can merge them into HTML. Angle brackets are the one thing no name
+// needs; apostrophes, hyphens and geresh all pass.
+function isValidName(input: string): boolean {
+  const name = normalizeLeadName(input)
+  return name.length > 0 && name.length <= MAX_NAME_LENGTH && !/[<>]/.test(name)
+}
+
 export function leadFormErrors(values: LeadFormValues): LeadErrors {
   const errors: LeadErrors = {}
-  const firstName = singleLine(values.firstName)
-  if (!firstName || firstName.length > MAX_FIRST_NAME_LENGTH) errors.firstName = true
+  if (!isValidName(values.firstName)) errors.firstName = true
+  if (!isValidName(values.lastName)) errors.lastName = true
   if (!normalizeLeadPhone(values.phone)) errors.phone = true
   if (!isValidEmail(normalizeLeadEmail(values.email), MAX_EMAIL_LENGTH)) errors.email = true
   if (values.consent !== true) errors.consent = true
@@ -58,13 +76,15 @@ export function parseLeadSubmission(body: unknown): LeadSubmission | null {
   const text = (key: string) => (typeof raw[key] === 'string' ? (raw[key] as string) : '')
   const values: LeadFormValues = {
     firstName: text('firstName'),
+    lastName: text('lastName'),
     phone: text('phone'),
     email: text('email'),
     consent: raw.consent === true,
   }
   if (Object.keys(leadFormErrors(values)).length || !isPrelaunchLang(raw.lang)) return null
   return {
-    firstName: singleLine(values.firstName),
+    firstName: normalizeLeadName(values.firstName),
+    lastName: normalizeLeadName(values.lastName),
     phone: normalizeLeadPhone(values.phone)!,
     email: normalizeLeadEmail(values.email),
     lang: raw.lang,

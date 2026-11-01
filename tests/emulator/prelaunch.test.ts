@@ -16,6 +16,7 @@ connectFirestoreEmulator(client, '127.0.0.1', 8787, { mockUserToken: { sub: 'som
 
 const lead = (i: number, shared: 'phone' | 'email') => parseLeadSubmission({
   firstName: `Lead ${i}`,
+  lastName: 'Cohen',
   phone: shared === 'phone' ? '+972501234567' : `+97250123${String(4000 + i)}`,
   email: shared === 'email' ? 'same@example.com' : `lead${i}@example.com`,
   consent: true,

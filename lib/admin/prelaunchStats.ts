@@ -14,6 +14,8 @@ export function leadSyncStatus(sync: { synced?: unknown; error?: unknown } | nul
 export interface AdminLead {
   id: string
   firstName: string
+  /** Null on leads from before /join asked for it. */
+  lastName: string | null
   phone: string
   email: string
   lang: PrelaunchLang
@@ -38,12 +40,14 @@ export interface LeadFilters {
 
 export const TOP_REFERRERS = 5
 
+export const leadFullName = (lead: Pick<AdminLead, 'firstName' | 'lastName'>) => [lead.firstName, lead.lastName].filter(Boolean).join(' ')
+
 export interface PrelaunchStats {
   total: number
   foundingMembers: number
   byLang: Record<PrelaunchLang, number>
   byPersona: Record<Persona | 'none', number>
-  topReferrers: { id: string; firstName: string; count: number }[]
+  topReferrers: { id: string; name: string; count: number }[]
 }
 
 export function prelaunchStats(leads: readonly AdminLead[]): PrelaunchStats {
@@ -62,7 +66,7 @@ export function prelaunchStats(leads: readonly AdminLead[]): PrelaunchStats {
       .filter((lead) => lead.validReferrals > 0)
       .sort((a, b) => b.validReferrals - a.validReferrals)
       .slice(0, TOP_REFERRERS)
-      .map((lead) => ({ id: lead.id, firstName: lead.firstName, count: lead.validReferrals })),
+      .map((lead) => ({ id: lead.id, name: leadFullName(lead), count: lead.validReferrals })),
   }
 }
 
@@ -78,7 +82,7 @@ export function filterLeads<T extends AdminLead>(leads: readonly T[], { query, l
     if (persona && (lead.persona ?? 'none') !== persona) return false
     if (!needle) return true
     return (
-      lead.firstName.toLowerCase().includes(needle) ||
+      leadFullName(lead).toLowerCase().includes(needle) ||
       lead.email.includes(needle) ||
       (needleDigits.length > 0 && lead.phone.includes(needleDigits))
     )

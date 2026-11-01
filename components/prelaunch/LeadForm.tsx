@@ -6,9 +6,13 @@ import { AlertCircle, ArrowLeft, ArrowRight, ChevronDown, Loader2 } from 'lucide
 import { PERSONAS, PRELAUNCH_COPY, type Persona, type PrelaunchLang } from '@/lib/prelaunch/copy'
 import type { JoinedLead } from '@/lib/prelaunch/share'
 import type { ArrivalTelemetry } from '@/lib/prelaunch/telemetry'
-import { leadFormErrors, type LeadErrors, type LeadField, type LeadFormValues } from '@/lib/prelaunch/validation'
+import { leadFormErrors, MAX_NAME_LENGTH, type LeadErrors, type LeadField, type LeadFormValues } from '@/lib/prelaunch/validation'
 
-const FIELD_ORDER: LeadField[] = ['firstName', 'phone', 'email', 'consent']
+const FIELD_ORDER: LeadField[] = ['firstName', 'lastName', 'phone', 'email', 'consent']
+const NAME_FIELDS = [
+  { field: 'firstName', id: 'join-first-name', autoComplete: 'given-name', label: 'firstName', error: 'errName' },
+  { field: 'lastName', id: 'join-last-name', autoComplete: 'family-name', label: 'lastName', error: 'errLastName' },
+] as const
 // A manual timer, not AbortSignal.timeout: iOS 15 lacks it. Retrying after a
 // timeout is safe, because the server treats a repeat as the same lead.
 const SUBMIT_TIMEOUT_MS = 15000
@@ -57,7 +61,7 @@ export default function LeadForm({
   const copy = PRELAUNCH_COPY[lang]
   const Arrow = lang === 'he' ? ArrowLeft : ArrowRight
   const formRef = useRef<HTMLFormElement>(null)
-  const [values, setValues] = useState<LeadFormValues>({ firstName: '', phone: '', email: '', consent: false })
+  const [values, setValues] = useState<LeadFormValues>({ firstName: '', lastName: '', phone: '', email: '', consent: false })
   const [errors, setErrors] = useState<LeadErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -130,25 +134,30 @@ export default function LeadForm({
       </div>
 
       <div className="grid gap-3">
-        <div>
-          <label htmlFor="join-first-name" className="mb-1.5 block text-sm font-semibold text-ink">{copy.firstName}</label>
-          <input
-            id="join-first-name"
-            data-field="firstName"
-            type="text"
-            name="firstName"
-            autoComplete="given-name"
-            enterKeyHint="next"
-            maxLength={80}
-            required
-            aria-invalid={errors.firstName ? true : undefined}
-            aria-describedby={errors.firstName ? 'join-first-name-error' : undefined}
-            value={values.firstName}
-            onChange={(event) => change({ firstName: event.target.value }, 'firstName')}
-            onBlur={() => checkField('firstName')}
-            className={`${FIELD_CLASS} ${errors.firstName ? INVALID_CLASS : VALID_CLASS}`}
-          />
-          {errors.firstName && <FieldError id="join-first-name-error" message={copy.errName} />}
+        {/* Side by side from 360px, which keeps the form short; a folded cover screen stacks them. */}
+        <div className="grid items-start gap-3 min-[360px]:grid-cols-2">
+          {NAME_FIELDS.map(({ field, id, autoComplete, label, error }) => (
+            <div key={field} className="min-w-0">
+              <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink">{copy[label]}</label>
+              <input
+                id={id}
+                data-field={field}
+                type="text"
+                name={field}
+                autoComplete={autoComplete}
+                enterKeyHint="next"
+                maxLength={MAX_NAME_LENGTH}
+                required
+                aria-invalid={errors[field] ? true : undefined}
+                aria-describedby={errors[field] ? `${id}-error` : undefined}
+                value={values[field]}
+                onChange={(event) => change({ [field]: event.target.value }, field)}
+                onBlur={() => checkField(field)}
+                className={`${FIELD_CLASS} ${errors[field] ? INVALID_CLASS : VALID_CLASS}`}
+              />
+              {errors[field] && <FieldError id={`${id}-error`} message={copy[error]} />}
+            </div>
+          ))}
         </div>
 
         <div>

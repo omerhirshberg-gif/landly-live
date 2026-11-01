@@ -17,10 +17,10 @@ vi.mock('@/lib/firebase/admin', () => ({
 import { GET, POST } from '@/app/api/admin/prelaunch/route'
 import { issueAdminSessionToken } from '@/lib/admin/sessionToken'
 import { ADMIN_ROUTES } from '@/lib/admin/routes'
-import { filterLeads, leadSyncStatus, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
+import { filterLeads, leadFullName, leadSyncStatus, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
 
 const row = (over: Partial<AdminLead>): AdminLead => ({
-  id: 'abcdefgh23', firstName: 'Noa', phone: '+972501234567', email: 'noa@example.com', lang: 'he', persona: null,
+  id: 'abcdefgh23', firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', lang: 'he', persona: null,
   createdAt: null, referredBy: null, validReferrals: 0, foundingMember: true, utmSource: null, utmCampaign: null, syncStatus: 'pending', syncError: null, ...over,
 })
 const stored = (id: string, ms: number, over: object = {}) => ({
@@ -54,7 +54,7 @@ describe('GET /api/admin/prelaunch', () => {
     expect(body.projectId).toBe('landly-dev')
     expect(body.leads.map((lead: AdminLead) => lead.id)).toEqual(['b', 'a'])
     expect(body.leads[1]).toMatchObject({ validReferrals: 1, foundingMember: true, utmSource: 'ig', utmCampaign: 'c1', createdAt: '1970-01-01T00:00:01.000Z' })
-    expect(body.stats).toMatchObject({ total: 2, byLang: { en: 1, he: 1 }, byPersona: { student: 1, none: 1 }, topReferrers: [{ id: 'a', firstName: 'a', count: 1 }] })
+    expect(body.stats).toMatchObject({ total: 2, byLang: { en: 1, he: 1 }, byPersona: { student: 1, none: 1 }, topReferrers: [{ id: 'a', name: 'a', count: 1 }] })
   })
   it('downloads a CSV honoring the filters, uncached, readable by Excel', async () => {
     admin.docs = [stored('a', 1000), stored('b', 2000, { lang: 'he' })]
@@ -73,6 +73,19 @@ describe('GET /api/admin/prelaunch', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect((await GET(request('', signedIn()))).status).toBe(502)
     log.mockRestore()
+  })
+})
+
+describe('the full name', () => {
+  it('joins both names and copes with a lead that has no last name', () => {
+    expect(leadFullName({ firstName: 'Noa', lastName: 'Cohen' })).toBe('Noa Cohen')
+    expect(leadFullName({ firstName: 'Noa', lastName: null })).toBe('Noa')
+  })
+  it('reaches the dashboard, for old leads too', async () => {
+    admin.docs = [stored('a', 1000, { lastName: 'Cohen' }), stored('b', 2000, { firstName: undefined, name: 'Legacy' })]
+    const body = await (await GET(request('', signedIn()))).json()
+    expect(body.leads[1]).toMatchObject({ firstName: 'a', lastName: 'Cohen' })
+    expect(body.leads[0]).toMatchObject({ firstName: 'Legacy', lastName: null })
   })
 })
 
@@ -116,12 +129,14 @@ describe('POST /api/admin/prelaunch', () => {
 describe('the lead filters', () => {
   const leads = [
     row({ id: 'a', firstName: 'Noa', email: 'noa@example.com', phone: '+972501234567', lang: 'he', persona: 'student' }),
-    row({ id: 'b', firstName: 'Сергей', email: 'serg@mail.ru', phone: '+15551234567', lang: 'ru', persona: null }),
+    row({ id: 'b', firstName: 'Сергей', lastName: null, email: 'serg@mail.ru', phone: '+15551234567', lang: 'ru', persona: null }),
   ]
   const ids = (filters: Partial<Parameters<typeof filterLeads>[1]>) => filterLeads(leads, { query: '', lang: null, persona: null, ...filters }).map((lead) => lead.id)
 
   it.each([
     ['a name in any case', 'NOA', ['a']],
+    ['a last name', 'cohen', ['a']],
+    ['a full name', 'noa cohen', ['a']],
     ['a Cyrillic name', 'серг', ['b']],
     ['an email', 'mail.ru', ['b']],
     ['a full phone', '+972501234567', ['a']],

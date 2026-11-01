@@ -22,7 +22,10 @@ function listOptions(): ResponderOptions {
 export const ravMesserConfigured = () => responderConfigured(listOptions())
 
 interface StoredLead {
-  firstName: string
+  firstName?: string
+  /** Absent on leads from before /join asked for it. */
+  lastName?: string
+  name?: string
   email: string
   phone: string
   lang: string
@@ -55,8 +58,9 @@ export async function syncLeadToRavMesser(db: Firestore, leadId: string): Promis
 
     let reason = 'unknown'
     const fields = personalFields(lead)
-    const outcome = await withResponder(leadId, (session) => createSubscriber(session, leadId, lead.email, lead.firstName, {
+    const outcome = await withResponder(leadId, (session) => createSubscriber(session, leadId, lead.email, lead.firstName ?? lead.name ?? '', {
       phone: lead.phone,
+      ...(lead.lastName ? { last: lead.lastName } : {}),
       ...(Object.keys(fields).length ? { personal_fields: fields } : {}),
     }), { ...listOptions(), onFailure: (code) => { reason = code } })
 

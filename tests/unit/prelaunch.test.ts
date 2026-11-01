@@ -29,7 +29,7 @@ import { PRELAUNCH_MAX_PER_IP, reservePrelaunchAttempt } from '@/lib/prelaunch/t
 import { leadFormErrors, normalizeLeadPhone, parseLeadSubmission, type LeadSubmission } from '@/lib/prelaunch/validation'
 import { csvCell, demandSummary, FOUNDING_MEMBER_LIMIT, leadsCsv, withReferrals } from '@/lib/prelaunch/demand.mjs'
 
-const VALID = { firstName: 'Noa', phone: '+972501234567', email: 'Noa@Example.com', consent: true, lang: 'he' }
+const VALID = { firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'Noa@Example.com', consent: true, lang: 'he' }
 const lead = (over: Partial<LeadSubmission> = {}): LeadSubmission => ({ ...parseLeadSubmission(VALID)!, ...over })
 const db = (store: TransactionStore) => store.db as unknown as Firestore
 const join = async (store: TransactionStore, submission: LeadSubmission) => (await joinWaitlist(db(store), submission)).leadId
@@ -42,14 +42,26 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
 
 describe('lead validation', () => {
   it('accepts a clean lead and normalizes it', () => {
-    expect(parseLeadSubmission({ ...VALID, firstName: '  Noa\n ' })).toMatchObject({ firstName: 'Noa', phone: '+972501234567', email: 'noa@example.com', lang: 'he', referredBy: null })
+    expect(parseLeadSubmission({ ...VALID, firstName: '  Noa\n ', lastName: ' Cohen\t' })).toMatchObject({ firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', lang: 'he', referredBy: null })
+  })
+  it.each([['O\'Brien'], ['בן-דוד'], ['ג׳ורג׳'], ['Сергеев'], ['de la Cruz'], ['x'.repeat(50)]])('accepts the name %s', (lastName) => {
+    expect(parseLeadSubmission({ ...VALID, lastName })?.lastName).toBe(lastName)
+  })
+  it('drops invisible direction marks from a name', () => {
+    expect(parseLeadSubmission({ ...VALID, firstName: '\u202eNoa\u200f' })?.firstName).toBe('Noa')
   })
   it('keeps the Israeli habit of typing the leading 0', () => {
     expect(normalizeLeadPhone('+9720501234567')).toBe('+972501234567')
   })
   it.each([
     ['no name', { firstName: '  ' }],
-    ['a long name', { firstName: 'x'.repeat(81) }],
+    ['a long name', { firstName: 'x'.repeat(51) }],
+    ['no last name', { lastName: '  ' }],
+    ['a missing last name', { lastName: undefined }],
+    ['a long last name', { lastName: 'x'.repeat(51) }],
+    ['markup in a name', { firstName: '<script>alert(1)</script>' }],
+    ['markup in a last name', { lastName: '<img src=x onerror=alert(1)>' }],
+    ['a name of nothing but direction marks', { lastName: '\u202e\u200f' }],
     ['a bad phone', { phone: '+97250' }],
     ['a phone without a country code', { phone: '0501234567' }],
     ['a bad email', { email: 'noa@' }],
@@ -60,7 +72,7 @@ describe('lead validation', () => {
     expect(parseLeadSubmission({ ...VALID, ...patch })).toBeNull()
   })
   it('reports each bad field to the form', () => {
-    expect(leadFormErrors({ firstName: '', phone: '', email: '', consent: false })).toEqual({ firstName: true, phone: true, email: true, consent: true })
+    expect(leadFormErrors({ firstName: '', lastName: '', phone: '', email: '', consent: false })).toEqual({ firstName: true, lastName: true, phone: true, email: true, consent: true })
   })
   it.each(PRELAUNCH_LANGS)('accepts a %s lead', (lang) => {
     expect(parseLeadSubmission({ ...VALID, lang })?.lang).toBe(lang)
@@ -106,7 +118,7 @@ describe('joinWaitlist', () => {
     const code = await join(store, lead({ referredBy: 'abcdefgh23' }))
     expect(code).toMatch(/^[a-z2-7]{10}$/)
     expect(store.read(`prelaunch_leads/${code}`)).toMatchObject({
-      firstName: 'Noa', phone: '+972501234567', email: 'noa@example.com', status: 'interested', referredBy: 'abcdefgh23', persona: null,
+      firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', status: 'interested', referredBy: 'abcdefgh23', persona: null,
       ravMesserSync: { synced: false, syncedAt: null, error: null }, ravMesserSyncAttempts: 0,
       consent: { accepted: true, version: PRELAUNCH_CONSENT_VERSION, text: PRELAUNCH_COPY.he.consent },
     })
@@ -293,11 +305,16 @@ describe('the demand numbers', () => {
     expect(leads[1000]).toMatchObject({ id: 'l1000', foundingMember: false })
   })
   it('writes a CSV with every field, keeps the phone’s + and defuses visitor text', () => {
-    const csv = leadsCsv(withReferrals([base('a', 1000, null, { firstName: '=cmd()', phone: '+972501234567', email: 'a@b.co', lang: 'he', persona: 'student', attribution: { utm_source: 'ig' }, consent: { version: 'v1' } })]))
+    const csv = leadsCsv(withReferrals([base('a', 1000, null, { firstName: '=cmd()', lastName: '@sum', phone: '+972501234567', email: 'a@b.co', lang: 'he', persona: 'student', attribution: { utm_source: 'ig' }, consent: { version: 'v1' } })]))
     const [header, row] = csv.trim().split('\n')
-    expect(header).toBe('firstName,phone,email,lang,persona,foundingMember,validReferrals,status,createdAt,referralCode,referredBy,consentVersion,consentAcceptedAt,utm_source,utm_medium,utm_campaign,utm_content,referrer')
-    expect(row.startsWith("'=cmd(),+972501234567,a@b.co,he,student,yes,0,")).toBe(true)
+    expect(header).toBe('firstName,lastName,phone,email,lang,persona,foundingMember,validReferrals,status,createdAt,referralCode,referredBy,consentVersion,consentAcceptedAt,utm_source,utm_medium,utm_campaign,utm_content,referrer')
+    expect(row.startsWith("'=cmd(),'@sum,+972501234567,a@b.co,he,student,yes,0,")).toBe(true)
     expect(row).toContain('v1')
+  })
+  it('leaves the last name blank for a lead from before it was asked, and reads a lead that only has a name', () => {
+    const [row] = withReferrals([base('a', 1000, null, { firstName: undefined, name: 'Noa', lastName: undefined, phone: '+972501234567', email: 'a@b.co' })])
+    expect(row.firstName).toBe('Noa')
+    expect(leadsCsv([row]).trim().split('\n')[1].startsWith('Noa,,+972501234567,')).toBe(true)
   })
   it('totals by language, persona and campaign with no personal data', () => {
     const summary = demandSummary([
