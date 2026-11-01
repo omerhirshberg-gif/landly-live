@@ -16,30 +16,30 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
 
 describe('snap index', () => {
   // A 375px row of 180px cards 12px apart (What's inside on a phone): its visible centre is at 187.5.
-  const row = { clientWidth: 375, scrollWidth: 20 + 4 * 180 + 3 * 12 + 20, viewCentre: 187.5 }
+  const row = { clientWidth: 375, scrollWidth: 20 + 4 * 180 + 3 * 12 + 20, viewAnchor: 187.5 }
 
   it('counts the card centred in the row, not the first of two that both show whole', () => {
     // Card 2 centred: cards 1 and 3 half show, and card 2 is nearest the middle.
-    expect(snapIndex({ ...row, scrolled: 206, itemCentres: [-96, 96, 288, 480] })).toBe(1)
-    expect(snapIndex({ ...row, scrolled: 398, itemCentres: [-288, -96, 96, 288] })).toBe(2)
+    expect(snapIndex({ ...row, scrolled: 206, itemAnchors: [-96, 96, 288, 480] })).toBe(1)
+    expect(snapIndex({ ...row, scrolled: 398, itemAnchors: [-288, -96, 96, 288] })).toBe(2)
   })
 
   it('reads the same in Hebrew, where the row runs right to left and scrollLeft counts negative', () => {
     // The same positions mirrored: the first card on the right. `scrolled` is the absolute scrollLeft.
-    expect(snapIndex({ ...row, scrolled: 206, itemCentres: [471, 279, 87, -105] })).toBe(1)
-    expect(snapIndex({ ...row, scrolled: 398, itemCentres: [663, 471, 279, 87] })).toBe(2)
+    expect(snapIndex({ ...row, scrolled: 206, itemAnchors: [471, 279, 87, -105] })).toBe(1)
+    expect(snapIndex({ ...row, scrolled: 398, itemAnchors: [663, 471, 279, 87] })).toBe(2)
   })
 
   it('lights the last dot at the end of the row and the first at its start, though neither card is centred', () => {
     const end = row.scrollWidth - row.clientWidth
-    expect(snapIndex({ ...row, scrolled: end, itemCentres: [-275, -83, 109, 301] })).toBe(3)
-    expect(snapIndex({ ...row, scrolled: end - 0.5, itemCentres: [-275, -83, 109, 301] })).toBe(3)
-    expect(snapIndex({ ...row, scrolled: 0, itemCentres: [110, 302, 494, 686] })).toBe(0)
+    expect(snapIndex({ ...row, scrolled: end, itemAnchors: [-275, -83, 109, 301] })).toBe(3)
+    expect(snapIndex({ ...row, scrolled: end - 0.5, itemAnchors: [-275, -83, 109, 301] })).toBe(3)
+    expect(snapIndex({ ...row, scrolled: 0, itemAnchors: [110, 302, 494, 686] })).toBe(0)
   })
 
   it('is the first card when the row does not scroll, and none for an empty row', () => {
-    expect(snapIndex({ clientWidth: 900, scrollWidth: 900, viewCentre: 450, scrolled: 0, itemCentres: [100, 400, 700] })).toBe(0)
-    expect(snapIndex({ ...row, scrolled: 0, itemCentres: [] })).toBe(-1)
+    expect(snapIndex({ clientWidth: 900, scrollWidth: 900, viewAnchor: 450, scrolled: 0, itemAnchors: [100, 400, 700] })).toBe(0)
+    expect(snapIndex({ ...row, scrolled: 0, itemAnchors: [] })).toBe(-1)
   })
 
   it('measures once a frame while the row scrolls, and scrolls a card in without moving the page', () => {
@@ -47,7 +47,7 @@ describe('snap index', () => {
     expect(hook).toContain("row.addEventListener('scroll', schedule, { passive: true })")
     expect(hook).toContain('requestAnimationFrame(measure)')
     expect(hook).toContain('Math.abs(row.scrollLeft)')
-    expect(hook).toContain("inline: 'center', block: 'nearest'")
+    expect(hook).toContain("inline: snapAlignOf(row), block: 'nearest'")
     expect(hook).toContain("behavior: reduced ? 'auto' : 'smooth'")
   })
 })

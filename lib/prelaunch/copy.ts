@@ -68,6 +68,7 @@ export interface PrelaunchCopy {
   signupTitle: string
   signupSub: string
   firstName: string
+  lastName: string
   phone: string
   email: string
   emailPlaceholder: string
@@ -82,6 +83,7 @@ export interface PrelaunchCopy {
   submit: string
   submitting: string
   errName: string
+  errLastName: string
   errPhone: string
   errEmail: string
   errConsent: string
@@ -153,6 +155,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     signupTitle: 'Save your spot',
     signupSub: 'Leave your details and you’ll be among the first to hear when Landly launches on January 1, 2027.',
     firstName: 'First name',
+    lastName: 'Last name',
     phone: 'WhatsApp number',
     email: 'Email',
     emailPlaceholder: 'name@email.com',
@@ -167,6 +170,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     submit: 'Reserve my spot',
     submitting: 'Sending…',
     errName: 'Enter your first name.',
+    errLastName: 'Enter your last name.',
     errPhone: 'Enter a valid WhatsApp number.',
     errEmail: 'Enter a valid email address.',
     errConsent: 'To sign up, please agree to receive updates.',
@@ -242,6 +246,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     signupTitle: 'שמרו לעצמכם מקום',
     signupSub: 'השאירו פרטים ותהיו מהראשונים לדעת על השקת Landly ב-1 בינואר 2027.',
     firstName: 'שם פרטי',
+    lastName: 'שם משפחה',
     phone: 'מספר וואטסאפ',
     email: 'אימייל',
     emailPlaceholder: 'name@email.com',
@@ -256,6 +261,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     submit: 'שריינו לי מקום',
     submitting: 'שולחים…',
     errName: 'נא להזין שם פרטי.',
+    errLastName: 'נא להזין שם משפחה.',
     errPhone: 'נא להזין מספר וואטסאפ תקין.',
     errEmail: 'נא להזין כתובת אימייל תקינה.',
     errConsent: 'כדי להירשם צריך לאשר קבלת עדכונים.',
@@ -331,6 +337,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     signupTitle: 'Забронируйте место',
     signupSub: 'Оставьте данные и узнайте одними из первых, когда Landly запустится 1 января 2027 года.',
     firstName: 'Имя',
+    lastName: 'Фамилия',
     phone: 'Номер WhatsApp',
     email: 'Email',
     emailPlaceholder: 'name@email.com',
@@ -345,6 +352,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     submit: 'Забронировать моё место',
     submitting: 'Отправляем…',
     errName: 'Введите имя.',
+    errLastName: 'Введите фамилию.',
     errPhone: 'Введите действительный номер WhatsApp.',
     errEmail: 'Введите действительный email.',
     errConsent: 'Чтобы зарегистрироваться, подтвердите согласие на получение новостей.',
@@ -420,6 +428,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     signupTitle: 'Réservez votre place',
     signupSub: 'Laissez vos coordonnées et soyez parmi les premiers informés du lancement de Landly, le 1er janvier 2027.',
     firstName: 'Prénom',
+    lastName: 'Nom',
     phone: 'Numéro WhatsApp',
     email: 'E-mail',
     emailPlaceholder: 'nom@email.com',
@@ -434,6 +443,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     submit: 'Réserver ma place',
     submitting: 'Envoi…',
     errName: 'Saisissez votre prénom.',
+    errLastName: 'Saisissez votre nom.',
     errPhone: 'Saisissez un numéro WhatsApp valide.',
     errEmail: 'Saisissez une adresse e-mail valide.',
     errConsent: 'Pour vous inscrire, veuillez accepter de recevoir nos actualités.',
@@ -509,6 +519,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     signupTitle: 'Guarda tu lugar',
     signupSub: 'Deja tus datos y sé de los primeros en enterarte cuando Landly se lance el 1 de enero de 2027.',
     firstName: 'Nombre',
+    lastName: 'Apellido',
     phone: 'Número de WhatsApp',
     email: 'Correo electrónico',
     emailPlaceholder: 'nombre@email.com',
@@ -523,6 +534,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     submit: 'Reservar mi lugar',
     submitting: 'Enviando…',
     errName: 'Escribe tu nombre.',
+    errLastName: 'Escribe tu apellido.',
     errPhone: 'Escribe un número de WhatsApp válido.',
     errEmail: 'Escribe un correo electrónico válido.',
     errConsent: 'Para registrarte, acepta recibir novedades.',

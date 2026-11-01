@@ -13,4 +13,5 @@ export function httpsLink(value: string | undefined, fallback: string): string {
 
 export const INSTAGRAM_URL = httpsLink(process.env.NEXT_PUBLIC_INSTAGRAM_URL, 'https://www.instagram.com/golandly/')
 export const FACEBOOK_URL = httpsLink(process.env.NEXT_PUBLIC_FACEBOOK_URL, 'https://www.facebook.com/golandly/')
+export const LINKEDIN_URL = httpsLink(process.env.NEXT_PUBLIC_LINKEDIN_URL, 'https://www.linkedin.com/company/golandly/')
 export const WHATSAPP_COMMUNITY_URL = httpsLink(process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_URL, 'https://chat.whatsapp.com/GC9Ais2kDVYKwRQ9rHVYKM')

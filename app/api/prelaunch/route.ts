@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server'
 import { clientIp } from '@/lib/auth/clientIp'
+import { sendWaitlistWelcomeEmail } from '@/lib/email/sendWaitlistWelcomeEmail'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { syncLeadToRavMesser } from '@/lib/marketing/ravMesser.server'
 import { joinWaitlist, newLeadId } from '@/lib/prelaunch/leads.server'
@@ -10,8 +11,9 @@ import { parseLeadSubmission } from '@/lib/prelaunch/validation'
 // Firestore work, so garbage costs nothing; a sign-up then passes the IP window
 // and is written in one transaction. New and repeat sign-ups answer the same,
 // so this can't be used to learn who is on the list. A new lead goes to the
-// Rav Messer list after the response: that sync can't slow or fail the sign-up,
-// and /api/cron/prelaunch-sync picks up anything it leaves unfinished.
+// Rav Messer list and gets its welcome email after the response, so neither can
+// slow or fail the sign-up. /api/cron/prelaunch-sync picks up any sync left
+// unfinished; a welcome email that fails is logged and not retried.
 const MAX_BODY_BYTES = 4096
 
 // Same-origin only. A request with no Origin is left to the other checks:
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     }
     const { leadId, created } = await joinWaitlist(db, lead)
-    if (created) after(() => syncLeadToRavMesser(db, leadId))
+    if (created) after(() => Promise.all([syncLeadToRavMesser(db, leadId), sendWaitlistWelcomeEmail(db, leadId)]))
     return NextResponse.json({ ok: true, referralCode: leadId })
   } catch (err) {
     // Never the lead's details in the log.

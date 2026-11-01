@@ -150,7 +150,7 @@ export default function PrelaunchLeadsPage() {
                   {data.stats.topReferrers.map((referrer) => (
                     <li key={referrer.id} className="flex items-center justify-between gap-3 text-sm">
                       <span className="min-w-0 text-[#0B1B3D]">
-                        <BidiText>{referrer.firstName}</BidiText>
+                        <BidiText>{referrer.name}</BidiText>
                         <code className="block truncate text-xs text-[#475569]">{referrer.id}</code>
                       </span>
                       <span className="font-semibold tabular-nums text-[#0B1B3D]">{referrer.count}</span>

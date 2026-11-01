@@ -46,6 +46,7 @@ export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise
     const { clientTimestamp, ...attribution } = lead.attribution
     tx.create(db.collection(LEADS_COLLECTION).doc(leadId), {
       firstName: lead.firstName,
+      lastName: lead.lastName,
       phone: lead.phone,
       email: lead.email,
       lang: lead.lang,

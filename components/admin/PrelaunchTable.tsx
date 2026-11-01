@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { displayPhone, whatsappHref } from '@/lib/admin/businessPhone'
 import { formatIsraeliDateTime } from '@/lib/admin/formatDate'
-import type { AdminLead } from '@/lib/admin/prelaunchStats'
+import { leadFullName, type AdminLead } from '@/lib/admin/prelaunchStats'
 import { PRELAUNCH_COPY, type Persona, type PrelaunchLang } from '@/lib/prelaunch/copy'
 import BidiText from './BidiText'
 import DataTable, { type Column } from './DataTable'
@@ -84,7 +84,7 @@ interface SyncProps {
 
 function SyncStatus({ lead, listId, retrying, onRetry, showReason = false }: SyncProps) {
   if (lead.syncStatus === 'synced') {
-    return <StatusBadge tone="emerald" icon="fa-circle-check">Synced (<bdi dir="ltr">{listId}</bdi>)</StatusBadge>
+    return <StatusBadge tone="emerald" icon="fa-circle-check"><span>Synced (<bdi dir="ltr">{listId}</bdi>)</span></StatusBadge>
   }
   if (lead.syncStatus === 'pending') return <StatusBadge tone="amber" icon="fa-clock">Pending</StatusBadge>
   const reason = syncErrorText(lead.syncError)
@@ -113,7 +113,7 @@ function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 font-semibold text-[#0B1B3D]"><BidiText>{lead.firstName}</BidiText></div>
+        <div className="min-w-0 font-semibold text-[#0B1B3D]"><BidiText>{leadFullName(lead)}</BidiText></div>
         <span className="flex shrink-0 items-center gap-1.5"><PersonaBadge persona={lead.persona} /><LangPill lang={lead.lang} /></span>
       </div>
       <div className="mt-1 text-sm text-[#475569]"><PhoneCell phone={lead.phone} /></div>
@@ -167,7 +167,7 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
 
   const columns = useMemo<readonly Column<AdminLead>[]>(() => (
     [
-      { id: 'name', header: 'First name', cell: (lead) => <span title={lead.firstName}><BidiText>{lead.firstName}</BidiText></span>, sortValue: (lead) => lead.firstName },
+      { id: 'name', header: 'Name', cell: (lead) => <span title={leadFullName(lead)}><BidiText>{leadFullName(lead)}</BidiText></span>, sortValue: (lead) => leadFullName(lead) },
       { id: 'phone', header: 'WhatsApp', cell: (lead) => <PhoneCell phone={lead.phone} />, width: 'w-52' },
       { id: 'email', header: 'Email', cell: (lead) => <bdi dir="ltr" className="block truncate">{lead.email}</bdi>, sortValue: (lead) => lead.email, width: 'w-44' },
       { id: 'persona', header: 'Persona', cell: (lead) => <PersonaBadge persona={lead.persona} />, sortValue: (lead) => lead.persona ?? '', width: 'w-36' },
@@ -180,7 +180,7 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
         header: 'Mailing list',
         cell: (lead) => <SyncStatus lead={lead} {...syncProps(lead)} />,
         sortValue: (lead) => lead.syncStatus,
-        width: 'w-44',
+        width: 'w-48',
       },
     ]
   ), [syncProps])
@@ -188,7 +188,7 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
   return (
     // Nine columns need this width: narrower screens beside the sidebar scroll the table, not the page.
     <div className="lg:overflow-x-auto">
-      <div className="lg:min-w-[80rem]">
+      <div className="lg:min-w-[85rem]">
         <DataTable
           label="Pre-launch leads"
           rows={rows}

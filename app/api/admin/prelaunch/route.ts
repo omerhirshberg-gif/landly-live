@@ -23,6 +23,7 @@ type StoredLead = AdminLead & {
 const toAdminLead = (lead: StoredLead & { createdAtMs: number }): AdminLead => ({
   id: lead.id,
   firstName: lead.firstName,
+  lastName: lead.lastName ?? null,
   phone: lead.phone,
   email: lead.email,
   lang: lead.lang,

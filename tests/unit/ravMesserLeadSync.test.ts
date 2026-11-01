@@ -7,7 +7,7 @@ const token = () => json({ token: 'jwt-token' })
 const created = () => json({ status: true, duplicate: false, createdId: 1 })
 const duplicate = () => json({ status: true, duplicate: true, createdId: 1 })
 
-const LEAD = { firstName: 'Noa', email: 'noa@example.com', phone: '+972501234567', lang: 'he', persona: 'student', ravMesserSync: { synced: false, syncedAt: null, error: null }, ravMesserSyncAttempts: 0 }
+const LEAD = { firstName: 'Noa', lastName: 'Cohen', email: 'noa@example.com', phone: '+972501234567', lang: 'he', persona: 'student', ravMesserSync: { synced: false, syncedAt: null, error: null }, ravMesserSyncAttempts: 0 }
 
 // Only what the sync touches: one collection of leads, with the update recorded.
 function fakeDb(leads: Record<string, Record<string, unknown>>) {
@@ -62,10 +62,16 @@ describe('syncLeadToRavMesser', () => {
     fetchMock.mockResolvedValueOnce(token()).mockResolvedValueOnce(created())
     const { db, updates } = fakeDb({ lead1: LEAD })
     expect(await syncLeadToRavMesser(db, 'lead1')).toBe('synced')
-    expect(subscriberBody()).toEqual({ email: 'noa@example.com', first: 'Noa', phone: '+972501234567', list_ids: [127449] })
+    expect(subscriberBody()).toEqual({ email: 'noa@example.com', first: 'Noa', last: 'Cohen', phone: '+972501234567', list_ids: [127449] })
     expect(updates.lead1).toHaveLength(1)
     expect(updates.lead1[0].ravMesserSync).toMatchObject({ synced: true, error: null })
     expect((updates.lead1[0].ravMesserSync as { syncedAt: unknown }).syncedAt).not.toBeNull()
+  })
+
+  it('leaves last out for a lead from before it was asked, and reads a lead that only has a name', async () => {
+    fetchMock.mockResolvedValueOnce(token()).mockResolvedValueOnce(created())
+    await syncLeadToRavMesser(fakeDb({ lead1: { ...LEAD, firstName: undefined, name: 'Legacy', lastName: undefined } }).db, 'lead1')
+    expect(subscriberBody()).toEqual({ email: 'noa@example.com', first: 'Legacy', phone: '+972501234567', list_ids: [127449] })
   })
 
   it('honours RAV_MESSER_LIST_ID and RAV_MESSER_USER_TOKEN', async () => {
