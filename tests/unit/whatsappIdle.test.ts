@@ -239,7 +239,7 @@ describe('GET /api/cron/whatsapp-idle', () => {
 describe('schedule and retention config', () => {
   it('runs the sweep every 5 minutes on Vercel Cron', () => {
     const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'))
-    expect(vercel.crons).toEqual([{ path: '/api/cron/whatsapp-idle', schedule: '*/5 * * * *' }])
+    expect(vercel.crons).toContainEqual({ path: '/api/cron/whatsapp-idle', schedule: '*/5 * * * *' })
   })
 
   it('declares TTL policies on expiresAt for conversations, their messages and seen ids', () => {

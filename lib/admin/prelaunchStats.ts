@@ -3,6 +3,14 @@ import { PERSONAS, PRELAUNCH_LANGS, type Persona, type PrelaunchLang } from '@/l
 // The /join sign-ups as the admin sees them: pure, so the dashboard's totals,
 // its filters and the filtered CSV are one set of rules, tested on their own.
 
+export type LeadSyncStatus = 'synced' | 'pending' | 'failed'
+
+/** A lead's mailing-list state. Leads from before the sync have no record, so they're pending. */
+export function leadSyncStatus(sync: { synced?: unknown; error?: unknown } | null | undefined): LeadSyncStatus {
+  if (sync?.synced === true) return 'synced'
+  return sync?.error ? 'failed' : 'pending'
+}
+
 export interface AdminLead {
   id: string
   firstName: string
@@ -16,6 +24,9 @@ export interface AdminLead {
   foundingMember: boolean
   utmSource: string | null
   utmCampaign: string | null
+  syncStatus: LeadSyncStatus
+  /** The short code from lib/marketing/ravMesser.server, when the sync failed. */
+  syncError: string | null
 }
 
 export interface LeadFilters {

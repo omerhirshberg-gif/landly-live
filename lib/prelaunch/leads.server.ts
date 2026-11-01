@@ -30,8 +30,8 @@ export function leadKeyId(kind: 'phone' | 'email', value: string): string {
   return createHash('sha256').update(`${kind}:${value}`).digest('hex')
 }
 
-/** The referral code of this person's lead, new or existing. Callers can't tell which, so the form never reveals who has joined. */
-export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise<string> {
+/** This person's lead, new or existing. The route answers both alike, so the form never reveals who has joined; `created` only says whether to sync it. */
+export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise<{ leadId: string; created: boolean }> {
   const keys = db.collection(LEAD_KEYS_COLLECTION)
   const phoneKey = keys.doc(leadKeyId('phone', lead.phone))
   const emailKey = keys.doc(leadKeyId('email', lead.email))
@@ -39,7 +39,7 @@ export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise
   return db.runTransaction(async (tx) => {
     const [phoneSnap, emailSnap] = await Promise.all([tx.get(phoneKey), tx.get(emailKey)])
     const existing = phoneSnap.data()?.leadId ?? emailSnap.data()?.leadId
-    if (typeof existing === 'string') return existing
+    if (typeof existing === 'string') return { leadId: existing, created: false }
 
     const leadId = newLeadId()
     const createdAt = FieldValue.serverTimestamp()
@@ -60,9 +60,11 @@ export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise
       referredBy: lead.referredBy,
       attribution: { ...attribution, clientTimestamp: clientTimestamp ? Timestamp.fromDate(clientTimestamp) : null },
       createdAt,
+      ravMesserSync: { synced: false, syncedAt: null, error: null },
+      ravMesserSyncAttempts: 0,
     })
     tx.create(phoneKey, { leadId, createdAt })
     tx.create(emailKey, { leadId, createdAt })
-    return leadId
+    return { leadId, created: true }
   })
 }

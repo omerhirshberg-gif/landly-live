@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const admin = vi.hoisted(() => ({ docs: [] as { id: string; data: () => unknown }[], fail: false }))
+const sync = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/marketing/ravMesser.server', () => ({ ravMesserListId: () => '127449', syncLeadToRavMesser: sync }))
 vi.mock('@/lib/firebase/admin', () => ({
   getAdminProjectId: () => 'landly-dev',
   getAdminDb: () => ({
@@ -12,14 +14,14 @@ vi.mock('@/lib/firebase/admin', () => ({
   }),
 }))
 
-import { GET } from '@/app/api/admin/prelaunch/route'
+import { GET, POST } from '@/app/api/admin/prelaunch/route'
 import { issueAdminSessionToken } from '@/lib/admin/sessionToken'
 import { ADMIN_ROUTES } from '@/lib/admin/routes'
-import { filterLeads, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
+import { filterLeads, leadSyncStatus, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
 
 const row = (over: Partial<AdminLead>): AdminLead => ({
   id: 'abcdefgh23', firstName: 'Noa', phone: '+972501234567', email: 'noa@example.com', lang: 'he', persona: null,
-  createdAt: null, referredBy: null, validReferrals: 0, foundingMember: true, utmSource: null, utmCampaign: null, ...over,
+  createdAt: null, referredBy: null, validReferrals: 0, foundingMember: true, utmSource: null, utmCampaign: null, syncStatus: 'pending', syncError: null, ...over,
 })
 const stored = (id: string, ms: number, over: object = {}) => ({
   id,
@@ -74,6 +76,43 @@ describe('GET /api/admin/prelaunch', () => {
   })
 })
 
+describe('the mailing-list status', () => {
+  it.each([
+    ['a lead from before the sync', undefined, 'pending'],
+    ['a lead waiting for its sync', { synced: false, error: null }, 'pending'],
+    ['a failed sync', { synced: false, error: 'timeout' }, 'failed'],
+    ['a finished sync', { synced: true, error: null }, 'synced'],
+  ])('reads %s', (_, value, expected) => {
+    expect(leadSyncStatus(value)).toBe(expected)
+  })
+  it('reaches the dashboard with the list it went to', async () => {
+    admin.docs = [stored('a', 1000, { ravMesserSync: { synced: false, syncedAt: null, error: 'http_503' } })]
+    const body = await (await GET(request('', signedIn()))).json()
+    expect(body.listId).toBe('127449')
+    expect(body.leads[0]).toMatchObject({ syncStatus: 'failed', syncError: 'http_503' })
+  })
+})
+
+describe('POST /api/admin/prelaunch', () => {
+  const retry = (body: unknown, headers: Record<string, string> = signedIn()) =>
+    POST(new Request('https://www.golandly.com/api/admin/prelaunch', { method: 'POST', headers, body: JSON.stringify(body) }))
+  beforeEach(() => sync.mockReset())
+
+  it('refuses a request with no session and syncs nothing', async () => {
+    expect((await retry({ leadId: 'abcdefgh23' }, {})).status).toBe(401)
+    expect(sync).not.toHaveBeenCalled()
+  })
+  it('refuses a malformed lead id', async () => {
+    expect((await retry({ leadId: '../users/x' })).status).toBe(400)
+    expect(sync).not.toHaveBeenCalled()
+  })
+  it.each([['synced', 200], ['missing', 404], ['skipped', 503], ['failed', 502]])('answers a %s sync with %i', async (result, status) => {
+    sync.mockResolvedValueOnce(result)
+    expect((await retry({ leadId: 'abcdefgh23' })).status).toBe(status)
+    expect(sync.mock.calls[0][1]).toBe('abcdefgh23')
+  })
+})
+
 describe('the lead filters', () => {
   const leads = [
     row({ id: 'a', firstName: 'Noa', email: 'noa@example.com', phone: '+972501234567', lang: 'he', persona: 'student' }),
@@ -122,5 +161,10 @@ describe('the page', () => {
   it('is in the admin navigation and has its title', () => {
     expect(ADMIN_ROUTES.find((route) => route.pattern === '/admin/prelaunch')?.title).toBe('Pre-Launch Leads')
     expect(readFileSync('components/admin/Sidebar.tsx', 'utf8')).toContain("href: '/admin/prelaunch'")
+  })
+  it('keeps numbers and phones left-to-right in the table', () => {
+    const table = readFileSync('components/admin/PrelaunchTable.tsx', 'utf8')
+    expect(table).toContain('Synced (<bdi dir="ltr">{listId}</bdi>)')
+    expect(table).toContain('<bdi dir="ltr" className="whitespace-nowrap tabular-nums">{displayPhone(phone)}</bdi>')
   })
 })
