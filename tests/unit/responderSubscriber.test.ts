@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addSubscriber } from '@/lib/responder/addSubscriber'
+import { createSubscriber, withResponder } from '@/lib/responder/client'
 
 const MEMBER = { uid: 'member-1', email: 'member@landly.test', firstName: ' Dana ' }
 const BASE = 'https://graph.responder.live/v2'
@@ -118,6 +119,26 @@ describe('addSubscriber', () => {
     expect(logged()).toContain('member-1')
     expect(logged()).not.toContain('member@landly.test')
     expect(logged()).not.toContain('Dana')
+  })
+
+  it('sends the extra fields and reports failure codes to a caller that wants them', async () => {
+    const reasons: string[] = []
+    const subscribe = () => withResponder('lead-1', (session) => createSubscriber(session, 'lead-1', 'a@landly.test', 'A', { phone: '+972501234567' }), { listId: '127449', userToken: 'list-token', onFailure: (code) => reasons.push(code) })
+    fetchMock.mockResolvedValueOnce(token()).mockResolvedValueOnce(created())
+    expect(await subscribe()).toBe('created')
+    expect(call(0).body.user_token).toBe('list-token')
+    expect(call(1).body).toEqual({ email: 'a@landly.test', first: 'A', list_ids: [127449], phone: '+972501234567' })
+    expect(reasons).toEqual([])
+
+    fetchMock.mockResolvedValueOnce(token()).mockResolvedValueOnce(json({ status: false }))
+    await subscribe()
+    fetchMock.mockResolvedValueOnce(token()).mockResolvedValueOnce(json({}, 503))
+    await subscribe()
+    fetchMock.mockResolvedValueOnce(json({ error: 'no' }, 401))
+    await subscribe()
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'))
+    await subscribe()
+    expect(reasons).toEqual(['refused', 'http_503', 'token', 'network'])
   })
 
   it('logs a plain-text error body', async () => {

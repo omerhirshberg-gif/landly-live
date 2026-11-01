@@ -34,8 +34,9 @@ afterAll(async () => {
 })
 
 it.each(['phone', 'email'] as const)('parallel sign-ups sharing a %s make one lead', async (shared) => {
-  const codes = await Promise.all(Array.from({ length: 8 }, (_, i) => joinWaitlist(admin, lead(i, shared))))
-  expect(new Set(codes).size).toBe(1)
+  const joined = await Promise.all(Array.from({ length: 8 }, (_, i) => joinWaitlist(admin, lead(i, shared))))
+  expect(new Set(joined.map(({ leadId }) => leadId)).size).toBe(1)
+  expect(joined.filter(({ created }) => created)).toHaveLength(1)
   expect((await admin.collection('prelaunch_leads').get()).size).toBe(1)
 })
 

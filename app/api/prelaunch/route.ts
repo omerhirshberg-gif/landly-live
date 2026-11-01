@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { clientIp } from '@/lib/auth/clientIp'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { syncLeadToRavMesser } from '@/lib/marketing/ravMesser.server'
 import { joinWaitlist, newLeadId } from '@/lib/prelaunch/leads.server'
 import { reservePrelaunchAttempt } from '@/lib/prelaunch/throttle.server'
 import { parseLeadSubmission } from '@/lib/prelaunch/validation'
@@ -8,7 +9,9 @@ import { parseLeadSubmission } from '@/lib/prelaunch/validation'
 // Public: the /join waiting-list form. Bad requests are turned away before any
 // Firestore work, so garbage costs nothing; a sign-up then passes the IP window
 // and is written in one transaction. New and repeat sign-ups answer the same,
-// so this can't be used to learn who is on the list.
+// so this can't be used to learn who is on the list. A new lead goes to the
+// Rav Messer list after the response: that sync can't slow or fail the sign-up,
+// and /api/cron/prelaunch-sync picks up anything it leaves unfinished.
 const MAX_BODY_BYTES = 4096
 
 // Same-origin only. A request with no Origin is left to the other checks:
@@ -49,7 +52,9 @@ export async function POST(request: Request) {
     if (!(await reservePrelaunchAttempt(db, clientIp(request)))) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
     }
-    return NextResponse.json({ ok: true, referralCode: await joinWaitlist(db, lead) })
+    const { leadId, created } = await joinWaitlist(db, lead)
+    if (created) after(() => syncLeadToRavMesser(db, leadId))
+    return NextResponse.json({ ok: true, referralCode: leadId })
   } catch (err) {
     // Never the lead's details in the log.
     console.error('prelaunch join failed', err instanceof Error ? err.message : 'unknown error')

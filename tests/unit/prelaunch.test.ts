@@ -8,6 +8,8 @@ import { TransactionStore } from '../helpers/transactionStore'
 const admin = vi.hoisted(() => ({ db: null as unknown }))
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => admin.db }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/join' }))
+const after = vi.hoisted(() => vi.fn())
+vi.mock('next/server', async (importOriginal) => ({ ...(await importOriginal<typeof import('next/server')>()), after }))
 
 import { POST } from '@/app/api/prelaunch/route'
 import { excludesAccessibilityWidget } from '@/components/layout/AccessibilityWidget'
@@ -30,6 +32,7 @@ import { csvCell, demandSummary, FOUNDING_MEMBER_LIMIT, leadsCsv, withReferrals 
 const VALID = { firstName: 'Noa', phone: '+972501234567', email: 'Noa@Example.com', consent: true, lang: 'he' }
 const lead = (over: Partial<LeadSubmission> = {}): LeadSubmission => ({ ...parseLeadSubmission(VALID)!, ...over })
 const db = (store: TransactionStore) => store.db as unknown as Firestore
+const join = async (store: TransactionStore, submission: LeadSubmission) => (await joinWaitlist(db(store), submission)).leadId
 const post = (body: unknown, headers: Record<string, string> = {}) =>
   POST(new Request('https://www.golandly.com/api/prelaunch', {
     method: 'POST',
@@ -71,7 +74,7 @@ describe('lead validation', () => {
   })
   it('stores each language’s own consent sentence', async () => {
     const store = new TransactionStore()
-    const code = await joinWaitlist(db(store), lead({ lang: 'ru' }))
+    const code = await join(store, lead({ lang: 'ru' }))
     expect(store.read(`prelaunch_leads/${code}`)?.consent.text).toBe(PRELAUNCH_COPY.ru.consent)
   })
   it('drops a malformed referral code without losing the lead', () => {
@@ -100,10 +103,11 @@ describe('attribution', () => {
 describe('joinWaitlist', () => {
   it('writes the lead, proof of consent and both keys, and nothing else', async () => {
     const store = new TransactionStore()
-    const code = await joinWaitlist(db(store), lead({ referredBy: 'abcdefgh23' }))
+    const code = await join(store, lead({ referredBy: 'abcdefgh23' }))
     expect(code).toMatch(/^[a-z2-7]{10}$/)
     expect(store.read(`prelaunch_leads/${code}`)).toMatchObject({
       firstName: 'Noa', phone: '+972501234567', email: 'noa@example.com', status: 'interested', referredBy: 'abcdefgh23', persona: null,
+      ravMesserSync: { synced: false, syncedAt: null, error: null }, ravMesserSyncAttempts: 0,
       consent: { accepted: true, version: PRELAUNCH_CONSENT_VERSION, text: PRELAUNCH_COPY.he.consent },
     })
     expect(store.read(`prelaunch_lead_keys/${leadKeyId('phone', '+972501234567')}`)?.leadId).toBe(code)
@@ -119,8 +123,8 @@ describe('joinWaitlist', () => {
     ['both', {}],
   ])('treats %s as the same person', async (_, over) => {
     const store = new TransactionStore()
-    const first = await joinWaitlist(db(store), lead())
-    const again = await joinWaitlist(db(store), lead({ ...over, firstName: 'Other', referredBy: 'abcdefgh23' }))
+    const first = await join(store, lead())
+    const again = await join(store, lead({ ...over, firstName: 'Other', referredBy: 'abcdefgh23' }))
     expect(again).toBe(first)
     expect(store.count('prelaunch_leads')).toBe(1)
     expect(store.count('prelaunch_lead_keys')).toBe(2)
@@ -129,10 +133,10 @@ describe('joinWaitlist', () => {
   })
   it('answers with the phone’s lead when phone and email belong to different people', async () => {
     const store = new TransactionStore()
-    const a = await joinWaitlist(db(store), lead())
-    const b = await joinWaitlist(db(store), lead({ phone: '+972521234567', email: 'b@example.com' }))
+    const a = await join(store, lead())
+    const b = await join(store, lead({ phone: '+972521234567', email: 'b@example.com' }))
     expect(b).not.toBe(a)
-    expect(await joinWaitlist(db(store), lead({ phone: '+972501234567', email: 'b@example.com' }))).toBe(a)
+    expect(await join(store, lead({ phone: '+972501234567', email: 'b@example.com' }))).toBe(a)
     expect(store.count('prelaunch_leads')).toBe(2)
   })
   it('a racing submission that loses its commit retries into the same lead', async () => {
@@ -142,9 +146,9 @@ describe('joinWaitlist', () => {
       if (raced) return
       raced = true
       store.beforeCommit = undefined
-      await joinWaitlist(db(store), lead())
+      await join(store, lead())
     }
-    const results = await joinWaitlist(db(store), lead())
+    const results = await join(store, lead())
     expect(store.count('prelaunch_leads')).toBe(1)
     expect(store.read(`prelaunch_leads/${results}`)).toBeTruthy()
   })
@@ -167,6 +171,15 @@ describe('the IP window', () => {
 })
 
 describe('POST /api/prelaunch', () => {
+  it('queues the mailing-list sync for a new lead only, after the response, and answers without waiting for it', async () => {
+    admin.db = new TransactionStore().db
+    after.mockClear()
+    await post({ ...VALID, phone: '+972521111111', email: 'queued@example.com' })
+    expect(after).toHaveBeenCalledTimes(1)
+    const repeat = await post({ ...VALID, phone: '+972521111111', email: 'queued@example.com' })
+    expect(repeat.status).toBe(200)
+    expect(after).toHaveBeenCalledTimes(1)
+  })
   it('answers a new and a repeat sign-up identically', async () => {
     const store = new TransactionStore()
     admin.db = store.db

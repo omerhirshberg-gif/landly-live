@@ -1,6 +1,7 @@
 const TONES = {
   emerald: 'bg-[#ECFDF5] text-emerald-700 ring-emerald-600/15',
   amber: 'bg-[#FFFBEB] text-amber-700 ring-amber-600/15',
+  rose: 'bg-[#FFF1F2] text-rose-700 ring-rose-600/15',
   blue: 'bg-[#EFF6FF] text-blue-700 ring-blue-600/15',
   slate: 'bg-[#F1F5F9] text-[#475569] ring-slate-500/15',
 } as const

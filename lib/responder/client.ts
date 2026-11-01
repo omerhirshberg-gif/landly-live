@@ -43,18 +43,38 @@ export interface ResponderSession {
   listId: number
   /** A JSON request to the API with the session's token and deadline. */
   call: (method: 'GET' | 'POST', path: string, body?: unknown) => Promise<Response>
+  /** Reports why this sync failed, for a caller that records it. */
+  fail: (reason: string) => void
 }
+
+/** Where a sync differs from the members list. onFailure hears a short code, never personal data. */
+export interface ResponderOptions {
+  listId?: string
+  userToken?: string
+  onFailure?: (reason: string) => void
+}
+
+const env = (name: string) => process.env[name]?.trim() ?? ''
+
+function responderSettings(options: ResponderOptions) {
+  const listId = options.listId ?? env('RESPONDER_LIST_ID')
+  const clientId = env('RESPONDER_CLIENT_ID') || env('RESPONDER_CLIENT_KEY')
+  const clientSecret = env('RESPONDER_CLIENT_SECRET')
+  const userToken = options.userToken || env('RESPONDER_USER_TOKEN')
+  if (!/^\d+$/.test(listId) || !clientId || !clientSecret || !userToken) return null
+  return { listId: Number(listId), clientId, clientSecret, userToken }
+}
+
+export const responderConfigured = (options: ResponderOptions = {}) => responderSettings(options) !== null
 
 // Runs `task` with a token, under one deadline for all its calls. Never
 // throws: missing settings skip silently, a refused token or a network
 // error or timeout is logged and fails.
-export async function withResponder<T extends string>(uid: string, task: (session: ResponderSession) => Promise<T>): Promise<T | 'skipped' | 'failed'> {
-  const env = (name: string) => process.env[name]?.trim() ?? ''
-  const listId = env('RESPONDER_LIST_ID')
-  const clientId = env('RESPONDER_CLIENT_ID') || env('RESPONDER_CLIENT_KEY')
-  const clientSecret = env('RESPONDER_CLIENT_SECRET')
-  const userToken = env('RESPONDER_USER_TOKEN')
-  if (!/^\d+$/.test(listId) || !clientId || !clientSecret || !userToken) return 'skipped'
+export async function withResponder<T extends string>(uid: string, task: (session: ResponderSession) => Promise<T>, options: ResponderOptions = {}): Promise<T | 'skipped' | 'failed'> {
+  const settings = responderSettings(options)
+  if (!settings) return 'skipped'
+  const { listId, clientId, clientSecret, userToken } = settings
+  const fail = options.onFailure ?? (() => {})
 
   const base = (env('RESPONDER_API_BASE') || DEFAULT_API_BASE).replace(/\/+$/, '')
   const controller = new AbortController()
@@ -77,12 +97,14 @@ export async function withResponder<T extends string>(uid: string, task: (sessio
     const token = (authBody as { token?: unknown } | null)?.token
     if (!auth.ok || typeof token !== 'string' || !token) {
       logFailure('token', uid, { status: auth.status, ...responderError(authBody) })
+      fail('token')
       return 'failed'
     }
-    return await task({ listId: Number(listId), call: (method, path, body) => request(method, path, body, token) })
+    return await task({ listId, call: (method, path, body) => request(method, path, body, token), fail })
   } catch (err) {
     const e = err as { name?: unknown; code?: unknown } | null
     logFailure('request', uid, { code: controller.signal.aborted ? 'timeout' : e?.code ?? e?.name })
+    fail(controller.signal.aborted ? 'timeout' : 'network')
     return 'failed'
   } finally {
     clearTimeout(timer)
@@ -93,11 +115,12 @@ export async function withResponder<T extends string>(uid: string, task: (sessio
 // way: {status: true, duplicate, createdId} on success -- duplicate true for
 // an address already there -- and {status: false} when it refuses (an
 // unknown field, for one).
-export async function createSubscriber(session: ResponderSession, uid: string, email: string, firstName: string): Promise<ResponderOutcome> {
-  const res = await session.call('POST', '/subscribers', { email, first: firstName.trim(), list_ids: [session.listId] })
+export async function createSubscriber(session: ResponderSession, uid: string, email: string, firstName: string, extra: Record<string, unknown> = {}): Promise<ResponderOutcome> {
+  const res = await session.call('POST', '/subscribers', { email, first: firstName.trim(), list_ids: [session.listId], ...extra })
   const body = await readBody(res)
   const result = body as { status?: unknown; duplicate?: unknown } | null
   if (res.ok && result?.status === true) return result.duplicate === true ? 'existing' : 'created'
   logFailure('http', uid, { status: res.status, accepted: result?.status ?? null, ...responderError(body) })
+  session.fail(res.ok ? 'refused' : `http_${res.status}`)
   return 'failed'
 }
