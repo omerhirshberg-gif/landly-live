@@ -15,10 +15,16 @@ import { redemptionSteps } from '@/lib/offers/redemption'
 import type { PassConfig, PassIdentity } from './passConfig'
 import type { PassVoucher } from './passVoucher'
 
-// A voucher as an Apple Wallet coupon. A static pass: it has no webServiceURL,
+// A voucher as an Apple Wallet pass. A static pass: it has no webServiceURL,
 // so it never changes once added, and a redeemed or refunded voucher keeps
 // looking valid until `expirationDate`. Everything on it is the voucher's
-// purchase snapshot, never the live offer, like every other voucher screen.
+// purchase snapshot, never the live offer, like every other voucher screen; the
+// one exception is the member's name, as it was when they added the pass.
+//
+// An event ticket, though a voucher is no event: on a strip pass Wallet draws
+// the primary field over the image, so a clean photo means no primary field, and
+// only this style has two rows under the strip (a coupon has one). Its columns
+// keep natural alignment: an explicit right wouldn't mirror in Hebrew.
 //
 // pass.json itself is written in English. Wallet swaps each string for its
 // entry in <lang>.lproj/pass.strings, picked by the device's language (not the
@@ -28,11 +34,17 @@ export const PKPASS_MIME_TYPE = 'application/vnd.apple.pkpass'
 
 const STATIC_IMAGES = ['icon.png', 'icon@2x.png', 'icon@3x.png', 'logo.png', 'logo@2x.png', 'logo@3x.png'] as const
 const STRIP_WIDTH = 375
-const STRIP_HEIGHT = 144
+const STRIP_HEIGHT = 98
 const STRIP_SCALES = [['strip.png', 1], ['strip@2x.png', 2], ['strip@3x.png', 3]] as const
 const IMAGE_TIMEOUT_MS = 2500
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const MOCK_SIGNATURE = 'LANDLY MOCK PASS: UNSIGNED. WALLET WILL REJECT THIS BUNDLE.\n'
+// Wallet takes opaque colours only, so the labels' soft tint is a solid one. Background: `ink`.
+const PASS_COLORS = {
+  backgroundColor: 'rgb(11,27,61)',
+  foregroundColor: 'rgb(255,255,255)',
+  labelColor: 'rgb(180,194,220)',
+} as const
 
 /** The stable, opaque serial: the voucher id holds the member's uid, so it never leaves in a pass. */
 export function passSerialNumber(passTypeId: string, voucherId: string): string {
@@ -50,14 +62,13 @@ interface PassText {
   terms: string
   address: string
   nearby: string
-  labelOffer: string
-  labelBusiness: string
   labelValidUntil: string
   labelDiscount: string
   labelHow: string
   labelTerms: string
   labelAddress: string
   labelOrder: string
+  labelMember: string
 }
 
 function passText(voucher: PassVoucher, lang: Lang): PassText {
@@ -74,21 +85,27 @@ function passText(voucher: PassVoucher, lang: Lang): PassText {
     terms: localizeText(voucher.redemptionTerms, voucher.translations, lang, 'redemptionTerms').text,
     address: voucher.businessAddress ? localizedName(voucher.businessAddress.formatted, lang) : '',
     nearby: t('wallet_pass_nearby'),
-    labelOffer: t('wallet_pass_offer'),
-    labelBusiness: t('wallet_pass_business'),
     labelValidUntil: t('wallet_pass_valid_until'),
     labelDiscount: t('wallet_pass_discount'),
     labelHow: t('redeem_how_title'),
     labelTerms: t('voucher_redemption_terms_label'),
     labelAddress: t('wallet_pass_address'),
     labelOrder: t('success_order_number_label'),
+    labelMember: t('wallet_pass_member'),
   }
 }
 
 const field = (key: string, label: string, value: string) => ({ key, label, value })
 
-/** pass.json. `discountPercent` is left out when the order can't give one. */
-export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, discountPercent: number | null) {
+/**
+ * pass.json. `discountPercent` and `holderName` are left out when there's none.
+ *   header     valid until, top corner, seen even in a stack of passes
+ *   strip      the photo alone
+ *   secondary  the business over the offer, the row's full width
+ *   auxiliary  order number and member
+ *   barcode    centred by Wallet, the redemption code under it
+ */
+export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, discountPercent: number | null, holderName: string | null = null) {
   const text = passText(voucher, 'en')
   const expires = voucher.expiresAt ? passDate(voucher.expiresAt) : null
   const geo = voucher.businessGeo
@@ -100,9 +117,7 @@ export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, disc
     organizationName: 'Landly',
     description: text.description,
     logoText: 'Landly',
-    backgroundColor: 'rgb(0,56,184)', // brand
-    foregroundColor: 'rgb(255,255,255)',
-    labelColor: 'rgb(224,239,254)', // brandLight
+    ...PASS_COLORS,
     sharingProhibited: true,
     ...(expires ? { expirationDate: expires } : {}),
     // The same payload as the in-app QR, so a cashier sees one code everywhere.
@@ -113,18 +128,21 @@ export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, disc
       altText: voucher.redemptionCode,
     }],
     ...(geo ? { locations: [{ latitude: geo.lat, longitude: geo.lng, relevantText: text.nearby }] } : {}),
-    coupon: {
-      primaryFields: [field('offer', text.labelOffer, text.offer)],
-      secondaryFields: [field('business', text.labelBusiness, text.business)],
+    eventTicket: {
+      headerFields: expires
+        ? [{ ...field('expires', text.labelValidUntil, expires), dateStyle: 'PKDateStyleMedium' as const, timeStyle: 'PKDateStyleNone' as const }]
+        : [],
+      primaryFields: [],
+      secondaryFields: [{ key: 'offer', value: text.offer, ...(text.business ? { label: text.business } : {}) }],
       auxiliaryFields: [
-        ...(expires ? [{ ...field('expires', text.labelValidUntil, expires), dateStyle: 'PKDateStyleMedium' as const, timeStyle: 'PKDateStyleNone' as const }] : []),
-        ...(discountPercent && discountPercent > 0 ? [field('discount', text.labelDiscount, `${discountPercent}%`)] : []),
+        ...(voucher.displayOrderNumber ? [field('order', text.labelOrder, voucher.displayOrderNumber)] : []),
+        ...(holderName ? [field('member', text.labelMember, holderName)] : []),
       ],
       backFields: [
         field('how', text.labelHow, text.how),
+        ...(discountPercent && discountPercent > 0 ? [field('discount', text.labelDiscount, `${discountPercent}%`)] : []),
         ...(text.terms ? [field('terms', text.labelTerms, text.terms)] : []),
         ...(text.address ? [field('address', text.labelAddress, text.address)] : []),
-        ...(voucher.displayOrderNumber ? [field('order', text.labelOrder, voucher.displayOrderNumber)] : []),
       ],
     },
   }
@@ -198,32 +216,49 @@ function mockBundle(files: Record<string, Buffer>, strings: Partial<Record<Lang,
   return doNotZip.toBuffer(Object.entries(all).map(([path, data]) => ({ path, data: [...data] })))
 }
 
+/** Where building a pass failed, for the server log. */
+export class PassBuildError extends Error {
+  constructor(readonly stage: 'assets' | 'sign', cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'unknown error')
+  }
+}
+
+const atStage = async <T>(stage: PassBuildError['stage'], work: () => T | Promise<T>): Promise<T> => {
+  try {
+    return await work()
+  } catch (error) {
+    throw new PassBuildError(stage, error)
+  }
+}
+
 /** The finished .pkpass: signed with the configured certificates, or the unsigned mock. */
 export async function buildPkpass(
   voucher: PassVoucher,
   config: Exclude<PassConfig, { mode: 'unavailable' }>,
-  options: { discountPercent: number | null; imageUrl: string; category: string },
+  options: { discountPercent: number | null; imageUrl: string; category: string; holderName?: string | null },
 ): Promise<Buffer> {
-  const json = buildPassJson(voucher, config, options.discountPercent)
-  const files: Record<string, Buffer> = {
+  const json = buildPassJson(voucher, config, options.discountPercent, options.holderName)
+  const files: Record<string, Buffer> = await atStage('assets', async () => ({
     'pass.json': Buffer.from(JSON.stringify(json)),
     ...(await staticImages()),
     ...(await loadStripImages(options.imageUrl, options.category)),
-  }
+  }))
   const strings = Object.fromEntries(CONTENT_LANGS.map((lang) => [lang, passStrings(voucher, lang)]))
 
   if (config.mode === 'mock') return mockBundle(files, strings)
 
-  const pass = new PKPass(files, {
-    wwdr: config.wwdr,
-    signerCert: config.signerCert,
-    signerKey: config.signerKey,
-    signerKeyPassphrase: config.signerKeyPassphrase,
+  return atStage('sign', () => {
+    const pass = new PKPass(files, {
+      wwdr: config.wwdr,
+      signerCert: config.signerCert,
+      signerKey: config.signerKey,
+      signerKeyPassphrase: config.signerKeyPassphrase,
+    })
+    // These three only reach the bundle through their setters.
+    pass.setBarcodes(...json.barcodes)
+    if (voucher.expiresAt) pass.setExpirationDate(voucher.expiresAt)
+    if (json.locations) pass.setLocations(...json.locations)
+    for (const [lang, entries] of Object.entries(strings)) pass.localize(lang, entries)
+    return pass.getAsBuffer()
   })
-  // These three only reach the bundle through their setters.
-  pass.setBarcodes(...json.barcodes)
-  if (voucher.expiresAt) pass.setExpirationDate(voucher.expiresAt)
-  if (json.locations) pass.setLocations(...json.locations)
-  for (const [lang, entries] of Object.entries(strings)) pass.localize(lang, entries)
-  return pass.getAsBuffer()
 }

@@ -4,7 +4,7 @@ import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { RequestAuthError, requireVerifiedCustomerUid } from '@/lib/firebase/verifyRequestUser'
 import { discountPercent } from '@/lib/perks/perksFilter'
-import { buildPkpass, PKPASS_MIME_TYPE } from '@/lib/wallet/applePass'
+import { buildPkpass, PassBuildError, PKPASS_MIME_TYPE } from '@/lib/wallet/applePass'
 import { getPassConfig } from '@/lib/wallet/passConfig'
 import { createPassTicket, verifyPassTicket } from '@/lib/wallet/passTicket'
 import { isPassEligible, isVoucherId, readPassVoucher, type PassVoucher } from '@/lib/wallet/passVoucher'
@@ -72,7 +72,10 @@ export async function GET(request: Request, { params }: Params) {
 
   const { voucherId } = await params
   const uid = verifyPassTicket(config.ticketSecret, new URL(request.url).searchParams.get('ticket'), voucherId)
-  if (!uid) return NextResponse.json({ error: 'This link has expired.' }, { status: 401 })
+  if (!uid) {
+    console.warn('Apple Wallet: a pass ticket was refused (expired, forged or for another voucher).')
+    return NextResponse.json({ error: 'This link has expired.' }, { status: 401 })
+  }
 
   try {
     const voucher = await loadVoucher(voucherId)
@@ -80,17 +83,21 @@ export async function GET(request: Request, { params }: Params) {
     if (!isPassEligible(voucher)) return NextResponse.json({ error: 'This voucher can\'t be added.' }, { status: 409 })
 
     const db = getAdminDb()
-    // Decoration: the frozen order gives the discount, the offer its photo. A pass works without either.
-    const [order, offer] = await Promise.all([
+    // Decoration: the frozen order gives the discount, the offer its photo, the
+    // member their name. A pass works without any of them.
+    const [order, offer, member] = await Promise.all([
       db.collection('orders').doc(voucher.id).get().catch(() => null),
       db.collection('offers').doc(voucher.offerId).get().catch(() => null),
+      db.collection('users').doc(uid).get().catch(() => null),
     ])
     const original = order?.get('originalPrice')
     const paid = order?.get('amount')
+    const name = member?.get('displayName')
     const pass = await buildPkpass(voucher, config, {
       discountPercent: typeof original === 'number' && typeof paid === 'number' ? discountPercent(original, paid) : null,
       imageUrl: typeof offer?.get('imageUrl') === 'string' ? offer.get('imageUrl') : '',
       category: typeof offer?.get('category') === 'string' ? offer.get('category') : '',
+      holderName: typeof name === 'string' ? name.trim() : null,
     })
 
     return new NextResponse(new Uint8Array(pass), {
@@ -102,7 +109,9 @@ export async function GET(request: Request, { params }: Params) {
       },
     })
   } catch (error) {
-    console.error('Apple Wallet: building a pass failed.', error instanceof Error ? error.message : 'unknown error')
+    // The stage and the library's message only: never the ticket, the voucher id (it holds the uid) or a credential.
+    const stage = error instanceof PassBuildError ? error.stage : 'voucher'
+    console.error(`Apple Wallet: building a pass failed at ${stage}.`, error instanceof Error ? error.message : 'unknown error')
     return NextResponse.json({ error: 'Service unavailable.' }, { status: 503 })
   }
 }

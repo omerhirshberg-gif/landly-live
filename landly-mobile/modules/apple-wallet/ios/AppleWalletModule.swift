@@ -15,15 +15,21 @@ public final class AppleWalletModule: Module {
 
     AsyncFunction("addPass") { (url: URL, promise: Promise) in
       URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-        guard error == nil, let data, (response as? HTTPURLResponse)?.statusCode == 200 else {
-          promise.reject("ERR_PASS_DOWNLOAD", "The pass couldn't be downloaded.")
+        // Codes and numbers only: the URL holds the ticket, and these reach the JS log.
+        if let error {
+          promise.reject("ERR_PASS_NETWORK", "The pass couldn't be downloaded (URL error \((error as NSError).code)).")
+          return
+        }
+        guard let data, let status = (response as? HTTPURLResponse)?.statusCode, status == 200 else {
+          let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+          promise.reject("ERR_PASS_HTTP", "The server answered \(status).")
           return
         }
         let pass: PKPass
         do {
           pass = try PKPass(data: data)
         } catch {
-          promise.reject("ERR_PASS_INVALID", "The pass isn't valid.")
+          promise.reject("ERR_PASS_INVALID", "PassKit refused the pass (error \((error as NSError).code)).")
           return
         }
         DispatchQueue.main.async {

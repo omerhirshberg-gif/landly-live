@@ -1,5 +1,6 @@
 import 'server-only'
 import { currentFirebaseDeployTarget, type FirebaseDeployTarget } from '@/lib/firebase/envGuard'
+import { passCredentialIssue } from './passCredentials'
 
 // Apple Wallet's signing setup for this deployment. Production signs with the
 // production Pass Type ID and everything else with the .dev one, so a pass from
@@ -71,8 +72,10 @@ export function resolvePassConfig(env: Env, target: FirebaseDeployTarget, nodeEn
 }
 
 export function getPassConfig(): PassConfig {
-  const config = resolvePassConfig(process.env, currentFirebaseDeployTarget(), process.env.NODE_ENV)
-  // The reason names env vars, never their values; clients only see a plain 503.
+  const resolved = resolvePassConfig(process.env, currentFirebaseDeployTarget(), process.env.NODE_ENV)
+  const issue = resolved.mode === 'signed' ? passCredentialIssue(resolved) : null
+  const config: PassConfig = issue ? { mode: 'unavailable', reason: `The Apple pass credentials can't sign (${issue}).` } : resolved
+  // The reason names env vars and fixed codes, never their values; clients only see a plain 503.
   if (config.mode === 'unavailable') console.warn(`Apple Wallet is off: ${config.reason}`)
   return config
 }

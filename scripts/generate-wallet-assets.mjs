@@ -1,7 +1,7 @@
 // Regenerates lib/wallet/assets/ (the Apple Wallet pass's icon and logo) from
 // public/icons/icon-512.png: node scripts/generate-wallet-assets.mjs
 //   icon -- 29pt, the mark on white, shown on lock-screen notices
-//   logo -- up to 160x50pt, the mark in white, on the pass's brand-blue front
+//   logo -- up to 160x50pt, the mark in white, on the pass's dark navy front
 import sharp from 'sharp'
 
 const SOURCE = 'public/icons/icon-512.png'
