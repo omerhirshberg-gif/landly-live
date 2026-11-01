@@ -11,6 +11,7 @@ import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import HowToRedeem from '@/components/offers/HowToRedeem'
 import VoucherTerms from '@/components/member/VoucherTerms'
 import { CodeReveal, QrReveal } from '@/components/member/VoucherReveal'
+import AddToAppleWallet from '@/components/member/AddToAppleWallet'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
@@ -114,6 +115,7 @@ export default function VoucherPage() {
                     <div className="mt-6 border-t border-slate-100 pt-6">
                       <CodeReveal code={voucher.redemptionCode} />
                     </div>
+                    <AddToAppleWallet voucher={voucher} />
                   </>
                 ) : (
                   <p role="status" className="mt-6 rounded-2xl bg-slate-50 p-4 text-center text-sm font-semibold text-slate-600">
