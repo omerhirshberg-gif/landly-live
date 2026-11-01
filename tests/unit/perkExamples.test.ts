@@ -4,6 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 
+vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
+vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
 vi.mock('@/lib/firebase/offers', () => ({
   getAllOffers: () => new Promise(() => {}),
   sortFeaturedOffers: (o: unknown[]) => o,
@@ -11,7 +14,6 @@ vi.mock('@/lib/firebase/offers', () => ({
 }))
 
 const { default: PerkExamples } = await import('@/components/home/PerkExamples')
-const { default: PerkExampleCard } = await import('@/components/home/PerkExampleCard')
 
 // Text as React writes it into markup.
 const esc = (text: string) => text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -22,15 +24,13 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
   return renderToStaticMarkup(createElement(LangContext.Provider, { value: { lang, setLang: () => {}, t, isRtl } }, element))
 }
 
-const offer = {
-  id: 'o1', businessId: 'b1', businessName: 'Cafe Nadi', location: 'Tel Aviv', imageUrl: '',
-  title: 'Coffee and pastry for 29', description: '', originalPrice: 45, offerPrice: 29,
-  category: 'Restaurants and Cafes', createdAt: null, isBestseller: false, expiryDate: null,
-  totalQuantity: null, claimedCount: 0, validityDays: 180, redemptionTerms: '',
-  redemptionMethod: 'in_store' as const, redemptionInstructions: '',
-}
-
 describe('real perk examples section', () => {
+  it('draws the canonical OfferCard', async () => {
+    const { readFileSync, existsSync } = await import('node:fs')
+    expect(readFileSync('components/home/PerkExamples.tsx', 'utf8')).toContain('<OfferCard offer={offer} layout="grid" />')
+    expect(existsSync('components/home/PerkExampleCard.tsx')).toBe(false)
+  })
+
   it.each(Object.keys(translations) as Lang[])('has the title, subtitle and All perks link, and no free-joining note (%s)', (lang) => {
     const t = translations[lang]
     const html = withLang(lang, createElement(PerkExamples))
@@ -50,24 +50,6 @@ describe('real perk examples section', () => {
     const html = withLang('en', createElement(PerkExamples))
     expect(html).toMatch(/<ul class="[^"]*overflow-x-auto[^"]*snap-x[^"]*lg:grid lg:grid-cols-4/)
     expect(html).toContain('w-[clamp(240px,72vw,260px)] lg:w-auto')
-  })
-})
-
-describe('perk example card', () => {
-  it.each(['en', 'he'] as const)('opens the offer and shows category pill, business, perk and price pill (%s)', (lang) => {
-    const t = translations[lang]
-    const html = withLang(lang, createElement(PerkExampleCard, { offer }))
-    expect(html).toContain('href="/offers/o1"')
-    expect(html).toMatch(new RegExp(`<span class="truncate">${esc(t.row_restaurants)}</span><svg [^>]*class="lucide lucide-utensils lucide-fork-knife h-3 w-3 flex-shrink-0 text-brand"`))
-    expect(html).toContain('h-[130px]')
-    expect(html).toContain('>Cafe Nadi</div>')
-    expect(html).toContain('>Coffee and pastry for 29</p>')
-    expect(html).toMatch(/dir="ltr"><span[^>]*>₪29<\/span><span[^>]*line-through[^>]*>₪45<\/span>/)
-  })
-
-  it('drops the struck-through price when there is no discount', () => {
-    const html = withLang('en', createElement(PerkExampleCard, { offer: { ...offer, originalPrice: 29 } }))
-    expect(html).not.toContain('line-through')
   })
 })
 

@@ -12,6 +12,8 @@ const authState = { user: null as { uid: string } | null, loading: true }
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ push: () => {}, replace: () => {} }) }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => authState }))
+vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {} }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
 vi.mock('@/components/auth/useOnboardingGuard', () => ({ useOnboardingGuard: () => false }))
 vi.mock('@/components/layout/Navbar', () => ({ default: () => 'NAVBAR' }))
 vi.mock('@/components/layout/Footer', () => ({ default: () => 'FOOTER' }))
@@ -76,10 +78,10 @@ describe('member hint plumbing', () => {
   })
 
   it('wraps every section under the hero, and the floating widgets, in a SectionBoundary', () => {
-    for (const name of ['partner-marquee', 'value-props', 'savings-showcase', 'how-it-works', 'pass-showcase', 'faq-prompt']) {
+    for (const name of ['audience-cards', 'live-deals', 'how-it-works', 'pass-showcase', 'faq', 'bottom-cta']) {
       expect(home).toContain(`<SectionBoundary name="${name}">`)
     }
-    expect(home).toMatch(/<Hero features=\{pickHeroFeatures\(showcase\.offers\)\} \/>\n\s*<SectionBoundary/)
+    expect(home).toMatch(/<LandingHero \/>\n\s*<SectionBoundary/)
     for (const name of ['accessibility-widget', 'route-tracker', 'whatsapp-widget', 'cookie-notice', 'passkey-prompt']) {
       expect(layout).toContain(`<SectionBoundary name="${name}">`)
     }

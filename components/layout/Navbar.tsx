@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useWishlist } from '@/lib/firebase/useWishlist'
 import { isNavLinkActive } from '@/lib/navActive'
 import { useScrollSpy } from '@/lib/useScrollSpy'
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { auth } from '@/lib/firebase/config'
 import { endWebSession } from '@/lib/account/webSession'
 import { updateUserLanguage } from '@/lib/firebase/users'
@@ -49,9 +50,7 @@ export default function Navbar() {
   const accountPillClass = `${pillBase} bg-brand text-white border-transparent [@media(hover:hover)]:hover:bg-brandDark shadow-btn-primary`
   const accountSecondaryPillClass = `${pillBase} bg-white text-ink border-line shadow-btn-secondary [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:text-brand`
 
-  useEffect(() => {
-    document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
-  }, [mobileMenuOpen])
+  useBodyScrollLock(mobileMenuOpen)
 
   useEffect(() => {
     function handleOutsideClick(e: PointerEvent) {

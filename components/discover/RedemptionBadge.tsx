@@ -10,15 +10,15 @@ export const REDEMPTION_METHOD_ICONS: Record<RedemptionMethod, LucideIcon> = {
   phone_booking: Phone,
 }
 
-/** "In store" / "Online" / "By phone" as a small chip. */
-export default function RedemptionBadge({ method, className = '' }: { method: RedemptionMethod; className?: string }) {
+/** "In store" / "Online" / "By phone" as a small chip; text only with `showIcon={false}` (the perk card). */
+export default function RedemptionBadge({ method, showIcon = true, className = '' }: { method: RedemptionMethod; showIcon?: boolean; className?: string }) {
   const { t } = useLang()
   const Icon = REDEMPTION_METHOD_ICONS[method]
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-micro font-semibold leading-none text-body ${className}`}
     >
-      <Icon aria-hidden="true" className="h-3 w-3 text-brand" strokeWidth={2} />
+      {showIcon && <Icon aria-hidden="true" className="h-3 w-3 text-brand" strokeWidth={2} />}
       {t(REDEMPTION_METHOD_LABEL_KEYS[method])}
     </span>
   )

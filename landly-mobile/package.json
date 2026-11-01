@@ -28,6 +28,7 @@
     "expo-web-browser": "~57.0.3",
     "firebase": "^12.19.0",
     "libphonenumber-js": "1.13.13",
+    "lucide-react-native": "1.55.0",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",

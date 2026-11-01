@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
+vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
 
 import { isOfferAvailable, type OfferDocument } from '@/lib/firebase/offers'
 import { Sparkles } from 'lucide-react'
@@ -74,16 +76,14 @@ describe('web OfferTileRail', () => {
     expect(hrefs).toEqual(['1', '2', '3', '4', '5'])
   })
 
-  it('renders compact 140px tiles with a framed picture, both prices and the discount pill after them', () => {
+  it('renders the canonical OfferCard: both prices, the logo box and the discount over the picture', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers: [offer('1')] }))
-    expect(html).toContain('h-[140px]')
-    expect(html).toContain('w-24 flex-shrink-0 overflow-hidden rounded-[14px] border border-line bg-canvas')
-    const pill = html.indexOf(translations.en.offer_percent_off.replace('{n}', '20'))
-    // In the price row after the prices, never over the picture.
-    expect(pill).toBeGreaterThan(html.indexOf('line-through'))
-    expect(html).not.toContain('absolute bottom-2 start-2')
+    expect(html).toContain('aspect-video')
+    expect(html).toContain('h-12 min-w-[56px]')
+    expect(html).toContain('-20%')
     expect(html).toContain('₪80')
     expect(html).toContain('line-through')
+    expect(existsSync('components/discover/OfferTile.tsx')).toBe(false)
   })
 
   it('leaves Hebrew to the page direction, so it fills and starts from the right', () => {

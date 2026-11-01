@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
-import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@shared/brand/emblemPaths'
 import { GestureDetector } from 'react-native-gesture-handler'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
-import { getAllOffers, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
+import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
+import { buildCategoryRails, selectCurated } from '@shared/home/categoryRails'
+import ActivePassCard from '../../components/ActivePassCard'
 import AppText from '../../components/AppText'
 import Avatar from '../../components/Avatar'
 import AvatarViewer, { useAvatarPeek } from '../../components/AvatarViewer'
-import CategoryRail from '../../components/CategoryRail'
+import CategoryOfferRail from '../../components/CategoryOfferRail'
+import CategoryPhotoRail from '../../components/CategoryPhotoRail'
 import Notice from '../../components/Notice'
 import OfferCarousel from '../../components/OfferCarousel'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
@@ -26,28 +27,27 @@ import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
 import { colors, header, radius, type } from '../../theme'
 
-const CURATED_COUNT = 4
-
 // The greeting fades and rises in once the profile is read, so a fallback
 // name never flashes first (web: components/home/LoggedInHome.tsx).
 const GREETING_IN = FadeInDown.duration(ONB.greetingMs)
   .easing(Easing.bezier(...EASE_SILK))
   .withInitialValues({ opacity: 0, transform: [{ translateY: ONB.screenRisePx }] })
 
-// The signed-in dashboard: greeting, the member-pass hero with the live
-// active-pass count, a few curated offers in a horizontal carousel of compact
-// cards (components/OfferCarousel.tsx), then the categories rail.
-const fetchOffers = async () => sortFeaturedOffers(await getAllOffers()).slice(0, CURATED_COUNT)
+// The signed-in dashboard, in the website's order (components/home/LoggedInHome.tsx):
+// greeting, the member-pass card with the live active-pass count, quick
+// category pills, Recommended for you, then a rail for each category with a
+// claimable perk (lib/home/categoryRails.ts), so a category appears by itself
+// with its first offer.
 
 export default function HomeScreen() {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
   // The side padding follows the window: 12 on a folded cover screen, 16 on a
   // phone, 24 unfolded (src/lib/layout.ts); the rails bleed through the same.
   const { paddingLeft, paddingRight } = useLayout()
   const { user } = useAuth()
   const router = useRouter()
   const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
-  // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
+  // null until the first snapshot (or if the read is refused): the card shows "–", never a fake 0.
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -69,7 +69,7 @@ export default function HomeScreen() {
   // Pull-to-refresh reloads; the first load runs in the effect below.
   const load = useCallback(async () => {
     try {
-      setOffers(await fetchOffers())
+      setOffers(await getAllOffers())
       setFailed(false)
     } catch {
       setFailed(true)
@@ -78,7 +78,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let cancelled = false
-    fetchOffers()
+    getAllOffers()
       .then((next) => {
         if (cancelled) return
         setOffers(next)
@@ -99,6 +99,9 @@ export default function HomeScreen() {
   }
 
   const openPass = () => router.navigate('/wallet')
+  const openCategory = (category: string) => router.push({ pathname: '/category/[category]', params: { category } })
+  const curated = useMemo(() => selectCurated(offers ?? []), [offers])
+  const rails = useMemo(() => (offers ? buildCategoryRails(offers) : []), [offers])
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -139,72 +142,27 @@ export default function HomeScreen() {
           )}
         </ScreenTitleRow>
 
-        {/* The hero: a member pass with the live count, the first thing under the greeting. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${t('home_pass_label')}: ${activeCount ?? '–'}. ${t('home_pass_cta')}`}
-          onPress={openPass}
-          style={({ pressed }) => [styles.passCard, pressed && styles.passCardPressed]}
-        >
-          <View style={styles.passGlow} />
-          {/* The Landly emblem as a watermark in the top end corner (web: components/home/LandlyMark.tsx). */}
-          <Svg viewBox={`0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`} width={88} height={86} style={styles.passMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            {[STAR, ARCH, ARROW].flatMap((part) => [part.light, part.dark]).map((d) => (
-              <Path key={d.slice(0, 24)} d={d} fill={colors.white} fillOpacity={0.15} fillRule="evenodd" />
-            ))}
-          </Svg>
-          <View style={styles.passTop}>
-            <View style={styles.iconBox}>
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4zM14 6v2M14 11v2M14 16v2" />
-              </Svg>
-            </View>
-            <AppText style={styles.passLabel} numberOfLines={1}>
-              {t('home_pass_label')}
-            </AppText>
-          </View>
-          <View style={styles.passCount} accessibilityLiveRegion="polite">
-            <AppText ltr style={styles.countText}>
-              {activeCount ?? '–'}
-            </AppText>
-            <AppText style={styles.passMessage} numberOfLines={2}>
-              {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
-            </AppText>
-          </View>
-          {/* A ticket's perforation: notches cut into both edges and a dashed tear line. */}
-          <View style={styles.perforation}>
-            <View style={[styles.notch, styles.notchStart]} />
-            <View style={styles.tearLine} />
-            <View style={[styles.notch, styles.notchEnd]} />
-          </View>
-          <View style={styles.passCta}>
-            <AppText style={styles.passCtaText} numberOfLines={1}>
-              {t('home_pass_cta')}
-            </AppText>
-            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.brand} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={isRtl && styles.flip}>
-              <Path d="M5 12h14M12 5l7 7-7 7" />
-            </Svg>
-          </View>
-        </Pressable>
+        <ActivePassCard count={activeCount} onPress={openPass} />
+
+        <SectionHeader title={t('home_top_categories')} />
+        <CategoryPhotoRail onSelect={openCategory} />
 
         <SectionHeader title={t('home_curated_title')} action={t('home_see_all')} onAction={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })} />
         {failed && <Notice message={t('mobile_load_error')} />}
         {offers === null ? (
           !failed && <OfferCarouselSkeleton />
-        ) : offers.length === 0 ? (
+        ) : curated.length === 0 ? (
           <View style={styles.empty}>
             <AppText style={styles.emptyTitle}>{t('deals_empty_title')}</AppText>
             <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
           </View>
         ) : (
-          <OfferCarousel offers={offers} onOpen={openOffer} />
+          <OfferCarousel offers={curated} onOpen={openOffer} />
         )}
 
-        <SectionHeader title={t('home_deals_title')} />
-        <CategoryRail
-          onSelect={(category) => router.push({ pathname: '/category/[category]', params: { category } })}
-          onViewAll={() => router.navigate({ pathname: '/perks', params: { cat: '', sort: '' } })}
-        />
+        {rails.map((rail) => (
+          <CategoryOfferRail key={rail.category} rail={rail} onSeeAll={rail.tile ? () => openCategory(rail.category) : undefined} />
+        ))}
       </ScrollView>
       {photoURL && <AvatarViewer uri={photoURL} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
     </SafeAreaView>
@@ -222,59 +180,6 @@ const styles = StyleSheet.create({
   avatarButton: { borderRadius: radius.pill, ...webOnly({ cursor: 'zoom-in' }) },
   avatarPressed: { opacity: 0.85 },
   greetingText: { flex: 1, minWidth: 0 },
-  // The member pass: solid brand blue, rounded-2xl, lifted off the canvas.
-  // No wider than 576pt (web: fold:max-w-xl), so on an unfolded screen it
-  // stays a card at the start edge rather than a stretched banner.
-  passCard: {
-    maxWidth: 576,
-    overflow: 'hidden',
-    paddingTop: 18,
-    paddingBottom: 16,
-    paddingHorizontal: 18,
-    backgroundColor: colors.brand,
-    borderRadius: radius.lg,
-    shadowColor: colors.brandDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 6,
-    ...webOnly({ cursor: 'pointer' }),
-  },
-  passCardPressed: { backgroundColor: colors.brandHover },
-  // A soft light disc in the top end corner, for depth without a gradient dependency.
-  passGlow: {
-    position: 'absolute',
-    top: -70,
-    end: -50,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  passMark: { position: 'absolute', top: 12, end: 14 },
-  passTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.16)', alignItems: 'center', justifyContent: 'center' },
-  passLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.85)' },
-  // Clear of the watermark on the end side.
-  passCount: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingEnd: 72 },
-  countText: { fontSize: 44, lineHeight: 50, fontWeight: '800', color: colors.white, fontVariant: ['tabular-nums'] },
-  passMessage: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 21, fontWeight: '600', color: colors.white },
-  perforation: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, marginHorizontal: -18 },
-  notch: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.background },
-  notchStart: { marginStart: -9 },
-  notchEnd: { marginEnd: -9 },
-  tearLine: { flex: 1, marginHorizontal: 6, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.35)' },
-  passCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 46,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-  },
-  passCtaText: { fontSize: 15, fontWeight: '700', color: colors.brand },
-  flip: { transform: [{ scaleX: -1 }] },
   empty: { alignItems: 'center', marginTop: 24, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

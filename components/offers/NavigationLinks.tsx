@@ -5,36 +5,34 @@ import { useLang } from '@/lib/i18n/useLang'
 import { navigationLinks, type NavigationDestination } from '@/lib/maps/navigation'
 
 const BUTTON =
-  'flex h-[46px] min-w-0 items-center justify-center gap-2 rounded-[14px] border border-slate-200 bg-white px-3 shadow-sm text-meta font-semibold text-ink transition-colors [@media(hover:hover)]:hover:border-brand [@media(hover:hover)]:hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
+  'flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-[border-color,filter] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
-// Waze and Google Maps, side by side in equal halves under the address on
-// the offer page (the app: landly-mobile/src/components/NavigationButtons.tsx).
+// Waze and Google Maps as a compact pair of 44px icon links, beside the address
+// on the offer page (the app: landly-mobile/src/components/NavigationButtons.tsx).
 // Universal https links (lib/maps/navigation.ts): a phone with the app
 // installed opens it, anything else the maps website, in a new tab so the
 // perk stays open behind it. Nothing when the business has no address.
-// The official app marks (public/icons, the same files as the app's
-// landly-mobile/assets/icons), drawn at 20px. next/image serves them resized,
-// so the large originals never reach the page. Waze's mark is a square tile,
-// so it's rounded like an app icon; Google Maps' pin is transparent.
-function BrandIcon({ src, rounded = false }: { src: string; rounded?: boolean }) {
-  return <Image src={src} alt="" width={20} height={20} className={`h-5 w-5 shrink-0 object-contain ${rounded ? 'rounded-[5px]' : ''}`} />
-}
-
+// The official app marks (public/icons; the app's landly-mobile/assets/icons are
+// 144px copies), each in its own container. next/image serves them resized, so
+// the large originals never reach the page. Waze's mark is a cyan tile to its
+// corners, so it fills the button with no white around it; Google Maps' pin is
+// transparent and cropped to its own edges, so it stands in a white tile, as
+// tall as its 32px box.
 export default function NavigationLinks({ destination, className = '' }: { destination: NavigationDestination; className?: string }) {
   const { t } = useLang()
   const links = navigationLinks(destination)
   if (!links) return null
   const newTab = <span className="sr-only">{t('offer_nav_opens_new_tab')}</span>
   return (
-    <nav aria-label={t('offer_nav_heading')} className={`grid grid-cols-2 gap-3 ${className}`}>
-      <a href={links.waze} target="_blank" rel="noopener noreferrer" className={BUTTON}>
-        <BrandIcon src="/icons/waze.webp" rounded />
-        <span className="truncate">Waze</span>
+    <nav aria-label={t('offer_nav_heading')} className={`flex shrink-0 gap-2 ${className}`}>
+      <a href={links.waze} target="_blank" rel="noopener noreferrer" className={`${BUTTON} bg-[#33ccff] [@media(hover:hover)]:hover:brightness-95`}>
+        <Image src="/icons/waze.webp" alt="" width={44} height={44} className="h-full w-full object-cover" />
+        <span className="sr-only">{t('offer_nav_waze')}</span>
         {newTab}
       </a>
-      <a href={links.googleMaps} target="_blank" rel="noopener noreferrer" className={BUTTON}>
-        <BrandIcon src="/icons/google-maps.webp" />
-        <span className="truncate">Google Maps</span>
+      <a href={links.googleMaps} target="_blank" rel="noopener noreferrer" className={`${BUTTON} border border-slate-200/90 bg-white [@media(hover:hover)]:hover:border-brand`}>
+        <Image src="/icons/google-maps.webp" alt="" width={32} height={32} className="h-8 w-8 shrink-0 object-contain" />
+        <span className="sr-only">{t('offer_nav_google')}</span>
         {newTab}
       </a>
     </nav>

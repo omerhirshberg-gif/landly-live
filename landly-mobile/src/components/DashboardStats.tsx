@@ -1,17 +1,17 @@
 import { StyleSheet, View } from 'react-native'
 import AppText from './AppText'
-import Emoji from './Emoji'
 import { useLang } from '../i18n/LangProvider'
-import { PASS_GLYPHS } from '../lib/categoryGlyphs'
+import { PASS_ICONS } from '../lib/categoryGlyphs'
 import { formatSavingsSafe } from '../lib/formatSavings'
 import { colors } from '../theme'
+import LineIcon, { type LineIconName } from './LineIcon'
 
 // My Pass snapshot row (web: components/member/DashboardStats.tsx): Active
 // Perks, Perks Redeemed, Total Saved. The row follows the root direction, so
 // Active Perks leads on the right in Hebrew. Each label sits in the same
 // two-line band and the numbers are pinned to the card bottom, so they share
 // a baseline in every language. null shows "–" while a value loads. Each
-// leads with its emoji (PASS_GLYPHS: a ticket, a gift, a money bag) on the
+// leads with its icon (PASS_ICONS: a ticket, a gift, a piggy bank) on the
 // web icon's soft tint.
 export default function DashboardStats({
   activePerks,
@@ -25,25 +25,25 @@ export default function DashboardStats({
   const { t, lang } = useLang()
   return (
     <View style={styles.row}>
-      <StatCard glyph={PASS_GLYPHS.activePerks} tint={TINTS.cyan} label={t('dash_active_perks_label')} value={activePerks === null ? '–' : String(activePerks)} />
-      <StatCard glyph={PASS_GLYPHS.redeemed} tint={TINTS.brand} label={t('dash_perks_redeemed_label')} value={redeemed === null ? '–' : String(redeemed)} />
-      <StatCard glyph={PASS_GLYPHS.saved} tint={TINTS.green} label={t('dash_total_saved')} value={saved === null ? '–' : formatSavingsSafe(saved, lang)} />
+      <StatCard icon={PASS_ICONS.activePerks} tint={TINTS.cyan} label={t('dash_active_perks_label')} value={activePerks === null ? '–' : String(activePerks)} />
+      <StatCard icon={PASS_ICONS.redeemed} tint={TINTS.brand} label={t('dash_perks_redeemed_label')} value={redeemed === null ? '–' : String(redeemed)} />
+      <StatCard icon={PASS_ICONS.saved} tint={TINTS.green} label={t('dash_total_saved')} value={saved === null ? '–' : formatSavingsSafe(saved, lang)} />
     </View>
   )
 }
 
-// The web icons' soft tints (cyan, brand, emerald) behind each emoji.
+// The web icons' soft tints (cyan, brand, emerald) behind each icon.
 const TINTS = {
-  cyan: { bg: '#ecfeff' },
-  brand: { bg: colors.brandLight },
-  green: { bg: '#ecfdf5' },
+  cyan: { bg: '#ecfeff', fg: '#0891b2' },
+  brand: { bg: colors.brandLight, fg: colors.brand },
+  green: { bg: '#ecfdf5', fg: '#059669' },
 }
 
-function StatCard({ glyph, tint, label, value }: { glyph: string; tint: { bg: string }; label: string; value: string }) {
+function StatCard({ icon, tint, label, value }: { icon: LineIconName; tint: { bg: string; fg: string }; label: string; value: string }) {
   return (
     <View style={styles.card} accessible accessibilityLabel={`${label}: ${value}`}>
       <View style={[styles.iconBox, { backgroundColor: tint.bg }]}>
-        <Emoji glyph={glyph} size={18} />
+        <LineIcon name={icon} size={18} color={tint.fg} strokeWidth={1.75} />
       </View>
       <View style={styles.labelBand}>
         <AppText style={styles.label} numberOfLines={2}>

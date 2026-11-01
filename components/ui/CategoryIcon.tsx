@@ -1,4 +1,4 @@
-import { Baby, CarFront, Compass, createLucideIcon, Dumbbell, Plane, ShieldCheck, ShoppingBag, Sofa, Tag, TreePalm, Utensils, Wine, type LucideIcon } from 'lucide-react'
+import { Armchair, Baby, Car, Compass, createLucideIcon, Dumbbell, Plane, ShieldCheck, ShoppingBag, Tag, TreePalm, UtensilsCrossed, Wine, type LucideIcon } from 'lucide-react'
 
 // Beauty and Skincare: a lipstick, since Lucide has no cosmetics glyph (its
 // Sparkles read as "new" or "magic", not makeup). Drawn on Lucide's 24px grid
@@ -15,9 +15,9 @@ export const Lipstick = createLucideIcon('lipstick', [
 // 24px grid, drawn in currentColor, so a tile sets the colour and size and
 // every surface (the category grid, Home's rail, the hero cards) draws the
 // same set. A fine 1.75 stroke by default; nothing here is directional, so no
-// glyph mirrors in Hebrew. The Expo app keeps its emoji for now (💄 for Beauty).
+// glyph mirrors in Hebrew. The Expo app draws the same set (landly-mobile/src/components/CategoryIcon.tsx).
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  'Restaurants and Cafes': Utensils,
+  'Restaurants and Cafes': UtensilsCrossed,
   'Beach and Sea': TreePalm,
   'Attractions and Tours': Compass,
   'Fashion and Shopping': ShoppingBag,
@@ -25,10 +25,10 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'Israel and Global Tourism': Plane,
   'Pampering Bundles': Wine,
   'Beauty and Skincare': Lipstick,
-  'Home and Furnishing': Sofa,
+  'Home and Furnishing': Armchair,
   'Kids and Baby': Baby,
   'Insurance and Savings': ShieldCheck,
-  'Cars and Transport': CarFront,
+  'Cars and Transport': Car,
 }
 
 /** A category's glyph as a component, e.g. for IconFrame; a tag for an unknown category. */

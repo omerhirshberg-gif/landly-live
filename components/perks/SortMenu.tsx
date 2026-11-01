@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, 
 import { createPortal } from 'react-dom'
 import { ArrowDownWideNarrow, Check, ChevronDown } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { DEFAULT_PERK_SORT, PERK_SORTS, PERK_SORT_LABELS, type PerkSort } from '@/lib/perks/perksFilter'
 
 const SHEET_QUERY = '(max-width: 767px)'
@@ -60,14 +61,7 @@ export default function SortMenu({ value, onChange }: { value: PerkSort; onChang
   }, [open, isSheet, close])
 
   // Sheet: the page behind doesn't scroll while it's up.
-  useEffect(() => {
-    if (!open || !isSheet) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [open, isSheet])
+  useBodyScrollLock(open && isSheet)
 
   const pick = (next: PerkSort) => {
     onChange(next)

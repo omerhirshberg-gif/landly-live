@@ -94,8 +94,7 @@ export interface Bounds {
 
 /**
  * The box around every pixel more opaque than `threshold` in RGBA `data` of
- * a width × height image, or null when there's none. A logo's transparent
- * margins are trimmed with it, so its mark fills the badge.
+ * a width × height image, or null when there's none.
  */
 export function alphaBounds(data: ArrayLike<number>, width: number, height: number, threshold = 8): Bounds | null {
   let minX = width
@@ -114,28 +113,65 @@ export function alphaBounds(data: ArrayLike<number>, width: number, height: numb
   return maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
 }
 
+/** Brighter than this in every channel reads as the white around a logo; JPEG noise stays under it. */
+const NEAR_WHITE = 245
+
+/**
+ * The box around a logo's mark: its alpha bounds, then, when those start in
+ * opaque white at all four corners (a logo on a white background), without that
+ * white too. A white mark on transparency keeps its alpha bounds, as does an
+ * all-white image, which has no mark to find.
+ */
+export function logoBounds(data: ArrayLike<number>, width: number, height: number): Bounds | null {
+  const box = alphaBounds(data, width, height)
+  if (!box) return null
+  const white = (x: number, y: number) => {
+    const i = (y * width + x) * 4
+    return data[i + 3]! > 250 && data[i]! > NEAR_WHITE && data[i + 1]! > NEAR_WHITE && data[i + 2]! > NEAR_WHITE
+  }
+  const right = box.x + box.width - 1
+  const bottom = box.y + box.height - 1
+  if (!(white(box.x, box.y) && white(right, box.y) && white(box.x, bottom) && white(right, bottom))) return box
+  let minX = right
+  let minY = bottom
+  let maxX = box.x - 1
+  let maxY = box.y - 1
+  for (let y = box.y; y <= bottom; y++) {
+    for (let x = box.x; x <= right; x++) {
+      if (white(x, y) || data[(y * width + x) * 4 + 3]! <= 8) continue
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+  }
+  return maxX < box.x ? box : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
+}
+
 /**
  * Where to draw a logo, already rendered at `drawn` px (`sourceScale` × its
- * own size), so that its `content` (the trimmed box, in drawn px) sits whole
- * and centred in a square: as large as the source's own pixels allow up to
- * `maxEdge`, or exactly `maxEdge` for a vector. `dx`/`dy`/`dw`/`dh` place the
- * whole drawing; what's outside the square is clipped.
+ * own size), so that only its `content` (the trimmed box, in drawn px) fills
+ * a canvas of the same shape: as large as the source's own pixels allow up to
+ * `maxEdge` on the long side, or exactly `maxEdge` for a vector. A wordmark
+ * stays wide, so the badge can grow with it. `dx`/`dy`/`dw`/`dh` place the
+ * whole drawing; what's outside the canvas is clipped.
  */
-export function trimmedSquare(
+export function trimmedBox(
   drawn: { width: number; height: number },
   content: Bounds,
   sourceScale: number,
   maxEdge: number,
   { vector = false } = {}
-): ContainBox & { sourceEdge: number } {
+): Omit<ContainBox, 'size'> & { width: number; height: number; sourceEdge: number } {
   const contentEdge = Math.max(content.width, content.height)
   const sourceEdge = contentEdge / sourceScale
   const size = vector ? Math.max(1, maxEdge) : Math.max(1, Math.round(Math.min(maxEdge, sourceEdge)))
   const k = size / contentEdge
   return {
-    size,
-    dx: Math.round((size - content.width * k) / 2 - content.x * k),
-    dy: Math.round((size - content.height * k) / 2 - content.y * k),
+    width: Math.max(1, Math.round(content.width * k)),
+    height: Math.max(1, Math.round(content.height * k)),
+    dx: Math.round(-content.x * k),
+    dy: Math.round(-content.y * k),
     dw: Math.max(1, Math.round(drawn.width * k)),
     dh: Math.max(1, Math.round(drawn.height * k)),
     sourceEdge,

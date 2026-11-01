@@ -71,7 +71,8 @@ export default function PerksScreen() {
   // ~1 km for the city name (lib/geo.ts reverseGeocode).
   const [origin, setOrigin] = useState<{ coords: Coordinates; area: Area | null } | null>(null)
   const [geoError, setGeoError] = useState<string | null>(null)
-  const [geocodedPlace, setGeocodedPlace] = useState<string | null>(null)
+  // The city found for one location and language; any other reads as not known yet.
+  const [geocoded, setGeocoded] = useState<{ coords: Coordinates; lang: string; city: string | null } | null>(null)
   const originCoords = origin?.coords ?? null
 
   // Pull-to-refresh reloads; the first load runs in the effect below.
@@ -135,16 +136,16 @@ export default function PerksScreen() {
     [railOffers, originCoords]
   )
   useEffect(() => {
-    setGeocodedPlace(null)
     if (!originCoords || origin?.area) return
     let cancelled = false
     reverseGeocode(originCoords, lang, API_BASE_URL).then((city) => {
-      if (!cancelled) setGeocodedPlace(city)
+      if (!cancelled) setGeocoded({ coords: originCoords, lang, city })
     })
     return () => {
       cancelled = true
     }
   }, [originCoords, origin?.area, lang])
+  const geocodedPlace = geocoded && geocoded.coords === originCoords && geocoded.lang === lang ? geocoded.city : null
   const placeName = origin?.area ? localizedName(origin.area.name, lang) : geocodedPlace
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
   // The screen title names the selected category (web: the /categories h1),

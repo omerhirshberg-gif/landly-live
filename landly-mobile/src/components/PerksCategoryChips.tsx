@@ -3,19 +3,17 @@ import { ScrollView, StyleSheet, View, type LayoutRectangle, type StyleProp, typ
 import { CATEGORY_TILES } from '@shared/categories'
 import type { CategoryFilter } from '@shared/perks/perksFilter'
 import AppText from './AppText'
-import Emoji from './Emoji'
 import ScalePressable from './ScalePressable'
 import { useLang } from '../i18n/LangProvider'
-import { ALL_GLYPH, categoryGlyph } from '../lib/categoryGlyphs'
+import { ALL_ICON } from '../lib/categoryGlyphs'
 import { tick } from '../lib/haptics'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { chipShadow, colors, radius } from '../theme'
+import CategoryIcon from './CategoryIcon'
+import LineIcon from './LineIcon'
 
-const OPTIONS: { key: CategoryFilter; glyph: string }[] = [
-  { key: 'all', glyph: ALL_GLYPH },
-  ...CATEGORY_TILES.map((tile) => ({ key: tile.category, glyph: categoryGlyph(tile.category) })),
-]
+const OPTIONS: { key: CategoryFilter }[] = [{ key: 'all' }, ...CATEGORY_TILES.map((tile) => ({ key: tile.category }))]
 
 // The Perks tab's category filter (web: components/perks/CategoryChipsRail.tsx):
 // "All" plus every category as one horizontally scrolling row of
@@ -101,7 +99,11 @@ export default function PerksCategoryChips({
               onLayout={(e) => layouts.current.set(option.key, e.nativeEvent.layout)}
               style={[styles.chip, selected && styles.chipSelected]}
             >
-              <Emoji glyph={option.glyph} size={15} />
+              {option.key === 'all' ? (
+                <LineIcon name={ALL_ICON} size={15} color={selected ? colors.white : colors.brand} strokeWidth={1.75} />
+              ) : (
+                <CategoryIcon category={option.key} size={15} color={selected ? colors.white : colors.brand} />
+              )}
               {/* No numberOfLines: inside the horizontal scroller the chip is
                   as wide as its text, and a one-line cap made Android clip
                   bold labels short ("Restaurants an"). */}

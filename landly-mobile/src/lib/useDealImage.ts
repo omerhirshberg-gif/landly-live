@@ -39,3 +39,5 @@ export function useDealImage(rawUri: string) {
     },
   }
 }
+
+export type DealImage = ReturnType<typeof useDealImage>

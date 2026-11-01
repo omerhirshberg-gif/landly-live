@@ -35,13 +35,14 @@ function Bone({ width = '100%', height, style }: { width?: DimensionValue; heigh
   return <Animated.View style={[styles.bone, { width, height }, fade, style]} />
 }
 
-// OfferCard: the 16:9 framed picture, the business, two title lines, the price row.
+// OfferCard: the 16:9 edge-to-edge picture, the tag line, the business, two title lines, the price row.
 function OfferCardSkeleton({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.card, style]}>
       <Bone style={styles.media} />
       <View style={styles.body}>
-        <Bone width="45%" height={16} />
+        <Bone width="50%" height={12} />
+        <Bone width="45%" height={16} style={styles.gap8} />
         <Bone width="92%" height={13} style={styles.gap8} />
         <Bone width="60%" height={13} style={styles.gap6} />
         <View style={styles.priceRow}>
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 12,
   },
-  media: { marginHorizontal: 8, marginTop: 8, width: 'auto', aspectRatio: 16 / 9, borderRadius: radius.frame },
+  media: { aspectRatio: 16 / 9, borderRadius: 0, borderTopStartRadius: 15, borderTopEndRadius: 15 },
   body: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
   carousel: { flexDirection: 'row', overflow: 'hidden' },

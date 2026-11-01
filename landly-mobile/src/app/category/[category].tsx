@@ -7,7 +7,6 @@ import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers
 import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
-import Emoji from '../../components/Emoji'
 import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
@@ -16,10 +15,10 @@ import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
 import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
-import { categoryGlyph } from '../../lib/categoryGlyphs'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
 import { colors, radius, type } from '../../theme'
+import CategoryIcon from '../../components/CategoryIcon'
 
 // A category "folder" (web: /categories/[category]), pushed over the tabs
 // from the Perks grid or Home's category rail as a page flip
@@ -117,7 +116,7 @@ export default function CategoryScreen() {
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <View style={styles.emojiBox}>
-                <Emoji glyph={categoryGlyph(category)} size={32} />
+                <CategoryIcon category={category} size={30} color={colors.brand} />
               </View>
               <View style={styles.titleText}>
                 <AppText accessibilityRole="header" style={type.screenTitle}>

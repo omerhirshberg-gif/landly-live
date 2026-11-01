@@ -1,7 +1,9 @@
 import { normalizeImageUrl } from './imageUrl'
 import { parseOfferTranslations, type OfferTranslations } from './offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { normalizeRedemptionMethod, type RedemptionMethod } from './redemption'
 import { localizeText } from '../i18n/contentTranslation'
+import { parseLocalizedName, parsePlaceSnapshot, type LocalizedName, type PlaceSnapshot } from '../geo'
 
 // The public face of an offer for search engines and share cards (sitemap,
 // JSON-LD, the perk page's metadata): only what the perk page itself shows
@@ -20,6 +22,17 @@ export interface PublicOffer {
   createdAt: Date | null
   expiryDate: Date | null
   translations?: OfferTranslations | null
+  // What the guest landing's cards and partner grid show (lib/home/landingData.ts).
+  businessId?: string
+  businessLogoUrl?: string
+  location?: string
+  isBestseller?: boolean
+  /** null or missing = unlimited claims. */
+  totalQuantity?: number | null
+  claimedCount?: number
+  redemptionMethod?: RedemptionMethod
+  city?: LocalizedName
+  address?: PlaceSnapshot | null
 }
 
 const SEO_DESCRIPTION_MAX = 160
@@ -51,7 +64,21 @@ export function toPublicOffer(id: string, data: Record<string, unknown> | undefi
     createdAt: toDate(data.createdAt),
     expiryDate: toDate(data.expiryDate),
     translations: parseOfferTranslations(data.translations),
+    businessId: str(data.businessId),
+    businessLogoUrl: normalizeImageUrl(str(data.businessLogoUrl)),
+    location: str(data.location),
+    isBestseller: !!data.isBestseller,
+    totalQuantity: typeof data.totalQuantity === 'number' ? data.totalQuantity : null,
+    claimedCount: Number(data.claimedCount) || 0,
+    redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
+    city: parseLocalizedName(data.city),
+    address: parsePlaceSnapshot(data.address),
   }
+}
+
+/** Claimable: unlimited, or not every voucher claimed yet (the same rule as isOfferAvailable). */
+export function isOfferClaimable(offer: Pick<PublicOffer, 'totalQuantity' | 'claimedCount'>): boolean {
+  return offer.totalQuantity == null || (offer.claimedCount ?? 0) < offer.totalQuantity
 }
 
 /** Live: no expiry date, or one that hasn't passed (the same rule as the perk feeds). */

@@ -100,7 +100,7 @@ describe('/about', () => {
   ])('links %s to LinkedIn in a new tab, with a translated accessible name', (id, slug, name) => {
     const en = render('en', createElement(AboutPage))
     const card = en.slice(en.indexOf(`id="founder-${id}"`), en.indexOf('</article>', en.indexOf(`id="founder-${id}"`)))
-    expect(card).toMatch(new RegExp(`<a href="https://www\\.linkedin\\.com/in/${slug}" target="_blank" rel="noopener noreferrer" aria-label="${name} LinkedIn profile" class="[^"]*min-h-\\[38px\\][^"]*focus-visible:outline[^"]*"><svg [^>]*stroke-width="1.75"[^>]*class="h-4 w-4"[^>]*>.*?</svg><span>LinkedIn</span></a>`))
+    expect(card).toMatch(new RegExp(`<a href="https://www\\.linkedin\\.com/in/${slug}" target="_blank" rel="noopener noreferrer" aria-label="${name} LinkedIn profile" class="[^"]*min-h-\\[38px\\][^"]*focus-visible:outline[^"]*"><svg [^>]*viewBox="0 0 24 24"[^>]*class="h-4 w-4"[^>]*>.*?</svg><span>LinkedIn</span></a>`))
     const he = render('he', createElement(AboutPage))
     const nameKey = id === 'omer' ? 'about_name_omer' : 'about_name_amit'
     expect(he).toContain(`aria-label="${translations.he.about_linkedin_label.replace('{name}', translations.he[nameKey])}"`)

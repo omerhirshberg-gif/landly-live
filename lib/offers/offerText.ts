@@ -31,3 +31,10 @@ export function offerTextSources(
     redemptionInstructions: item?.redemptionInstructions ?? '',
   }
 }
+
+const comparable = (text: string) => text.toLocaleLowerCase().replace(/[\p{P}\p{S}\s]/gu, '')
+
+/** The description, or '' when it only repeats the title (give or take case, spacing and punctuation). */
+export function distinctDescription(title: string, description: string): string {
+  return comparable(description) === comparable(title) ? '' : description
+}

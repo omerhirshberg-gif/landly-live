@@ -3,10 +3,9 @@ import { Image, StyleSheet, View } from 'react-native'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { perkImageFit } from '@shared/offers/imageFit'
 import AppText from './AppText'
-import Emoji from './Emoji'
-import { categoryGlyph } from '../lib/categoryGlyphs'
 import { businessInitial, secureImageUrl } from '../lib/imageSource'
 import { colors, radius } from '../theme'
+import CategoryIcon from './CategoryIcon'
 
 // An offer's photo, or -- when there is none or it fails to load -- a branded
 // panel: a soft brand gradient, the business's initial as a watermark and the
@@ -80,7 +79,7 @@ export function CategoryPanel({ category, initial, size = 'card' }: { category: 
         </AppText>
       )}
       <View style={[styles.tile, thumb && styles.tileThumb, hero && styles.tileHero]}>
-        <Emoji glyph={categoryGlyph(category)} size={hero ? 56 : thumb ? 17 : 26} />
+        <CategoryIcon category={category} size={hero ? 48 : thumb ? 17 : 26} color={colors.brand} />
       </View>
     </View>
   )

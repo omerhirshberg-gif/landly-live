@@ -46,7 +46,7 @@ export default function FounderCard({ founder }: { founder: Founder }) {
               aria-label={t('about_linkedin_label').replace('{name}', name)}
               className="relative inline-flex min-h-[38px] items-center gap-2 rounded-full border border-linkedin/20 bg-linkedin/[0.06] px-4 py-2 text-sm font-bold leading-none text-linkedin before:absolute before:inset-x-0 before:-inset-y-[3px] before:content-[''] [-webkit-tap-highlight-color:transparent] transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-linkedin/40 [@media(hover:hover)]:hover:bg-linkedin/10 [@media(hover:hover)]:hover:shadow-[0_6px_16px_-8px_rgba(10,102,194,.5)] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-linkedin motion-reduce:transition-none motion-reduce:[@media(hover:hover)]:hover:translate-y-0 motion-reduce:active:scale-100"
             >
-              <LinkedinIcon className="h-4 w-4" strokeWidth={1.75} />
+              <LinkedinIcon className="h-4 w-4" />
               <span>LinkedIn</span>
             </a>
           </div>

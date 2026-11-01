@@ -1,9 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { CATEGORY_TILES } from '@shared/categories'
 import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
-import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import { formatPrice } from '@shared/format'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { localizeText } from '@shared/i18n/contentTranslation'
@@ -11,36 +9,41 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import { formatDistance, offerPlaceLabel } from '@shared/geo'
 import AppText from './AppText'
 import ContentText from './ContentText'
-import DealMedia, { DEAL_BADGE } from './DealMedia'
-import Emoji from './Emoji'
+import DealMedia from './DealMedia'
 import LineIcon from './LineIcon'
+import MerchantBadge from './MerchantBadge'
+import OfferTags from './OfferTags'
 import { useLang } from '../i18n/LangProvider'
-import { categoryGlyph } from '../lib/categoryGlyphs'
 import { impact } from '../lib/haptics'
+import { badgeLogoUri, businessInitial, secureImageUrl } from '../lib/imageSource'
+import { useDealImage } from '../lib/useDealImage'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
 /**
  * 'standard': full width, for the vertical feeds (Perks, a category, the
- * wishlist). 'compact': the same card with a short photo and smaller type.
+ * wishlist). 'compact': the same card and 16:9 photo with smaller type.
  * 'carousel': compact, filling the fixed-width slot its horizontal rail gives
  * it, with two title lines reserved so neighbouring cards line up.
  */
 export type OfferCardVariant = 'standard' | 'compact' | 'carousel'
 
+/** The logo tile's height (web: h-12, on a phone). */
+const LOGO_HEIGHT = 48
+
 // A press settles quickly without bouncing past rest.
 const PRESS_SPRING = { damping: 20, stiffness: 400, mass: 0.6 }
 
-// A perk: a full-width hero picture with the business's badge hanging over
-// its foot (DealMedia.tsx: the deal's photo with the business's initial, or
-// the category's panel with its logo), then the business, the offer, how
-// it's redeemed and where, and the price. Over the hero: the category pill
-// at the top start corner, the discount at the top end and the heart at the
-// bottom end, which saves or un-saves the perk in the member's wishlist,
+// A perk: a full-width hero picture (DealMedia.tsx: the deal's photo, or the
+// category's panel), then a white body with the category and how it's redeemed,
+// the offer and the business, where, and the price. Over the hero: the discount
+// ribbon tied to the top end corner, the business's logo box across the bottom
+// start corner and the heart at the bottom end, which saves
+// or un-saves the perk in the member's wishlist,
 // shared live with the website. The whole card is the button; the CTA line
 // only says what tapping does. The price and the struck-through original
 // share one row with the CTA. A list already scoped to one category passes
-// `showCategoryBadge={false}`, since every card would repeat the same pill.
+// `showCategoryBadge={false}`, since every card would repeat the same tag.
 // Every position is start/end, so Hebrew mirrors the card.
 export default function OfferCard({
   offer,
@@ -63,8 +66,7 @@ export default function OfferCard({
   const distance = typeof distanceKm === 'number' ? formatDistance(distanceKm, lang) : null
   const compact = variant !== 'standard'
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
-  const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
-  const badge = DEAL_BADGE[compact ? 'compact' : 'standard']
+  const image = useDealImage(offer.imageUrl)
   const { isWishlisted, toggleWishlist } = useWishlist()
   const saved = isWishlisted(offer.id)
   const wishlistLabel = saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')
@@ -91,18 +93,10 @@ export default function OfferCard({
       onPressOut={() => pressTo(1)}
     >
       <Animated.View style={[styles.card, variant === 'carousel' && styles.cardCarousel, pressStyle]}>
-        <DealMedia uri={offer.imageUrl} logoUri={offer.businessLogoUrl ?? ''} category={offer.category} businessName={name.text} size={compact ? 'compact' : 'standard'}>
-          {showCategoryBadge && tile && (
-            <View style={[styles.overlayTopStart, styles.pill, styles.category]}>
-              <Emoji glyph={categoryGlyph(tile.category)} size={compact ? 11 : 12} />
-              <AppText style={[styles.categoryText, compact && styles.categoryTextCompact]} numberOfLines={1}>
-                {t(tile.labelKey)}
-              </AppText>
-            </View>
-          )}
+        <DealMedia image={image} category={offer.category}>
           {discount > 0 && (
-            <View style={[styles.overlayTopEnd, styles.pill, styles.discount]}>
-              <AppText style={[styles.discountText, compact && styles.discountTextCompact]}>{t('offer_percent_off').replace('{n}', String(discount))}</AppText>
+            <View style={styles.ribbon}>
+              <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={[styles.ribbonText, compact && styles.ribbonTextCompact]}>{`-${discount}%`}</AppText>
             </View>
           )}
           <Pressable
@@ -125,35 +119,35 @@ export default function OfferCard({
           >
             <LineIcon name="heart" size={compact ? 16 : 18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2} />
           </Pressable>
+          <MerchantBadge
+            logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
+            initial={businessInitial(name.text)}
+            height={LOGO_HEIGHT}
+            style={styles.logo}
+          />
         </DealMedia>
 
         <View style={[styles.body, compact && styles.bodyCompact]}>
-          {/* Clear of the badge hanging over the hero's foot. */}
-          <AppText style={[styles.business, compact && styles.businessCompact, { marginStart: badge + 8 }]} numberOfLines={1}>
-            {name.text}
-          </AppText>
+          <OfferTags category={offer.category} method={offer.redemptionMethod} showCategory={showCategoryBadge} />
           <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact, variant === 'carousel' && styles.titleReserved]} numberOfLines={2}>
             {title.text}
           </ContentText>
+          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
+            {name.text}
+          </AppText>
 
-          {/* Compact: one line, the location giving way to the method. */}
-          <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
-            <View style={styles.methodChip}>
-              <AppText style={[styles.methodText, compact && styles.metaTextCompact]}>{t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
+          {(!!place || !!distance) && (
+            <View style={styles.location}>
+              <LineIcon name="pin" size={13} color={distance ? colors.brand : colors.textFaint} strokeWidth={2} />
+              {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
+              {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
+              {!!place && (
+                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
+                  {distance ? `· ${place}` : place}
+                </AppText>
+              )}
             </View>
-            {(!!place || !!distance) && (
-              <View style={styles.location}>
-                <LineIcon name="pin" size={13} color={distance ? colors.brand : colors.textFaint} strokeWidth={2} />
-                {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
-                {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
-                {!!place && (
-                  <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
-                    {distance ? `· ${place}` : place}
-                  </AppText>
-                )}
-              </View>
-            )}
-          </View>
+          )}
 
           <View style={[styles.footer, compact && styles.footerCompact]}>
             <View style={styles.priceRow}>
@@ -184,35 +178,26 @@ export default function OfferCard({
 }
 
 const styles = StyleSheet.create({
-  // Web: bg-white, border #E2E8F0, rounded-2xl, shadow-sm.
+  // Web: bg-white, border-slate-200/80, rounded-2xl, shadow-[0_4px_20px_-4px_rgba(0,0,0,0.07)].
+  // Not clipped here, which would cut the shadow; DealMedia clips the photo.
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
     marginBottom: 12,
-    shadowColor: colors.textStrong,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
   // The rail spaces its cards itself.
   cardCarousel: { marginBottom: 0 },
-  // Over the hero: the pills at its top corners, the heart at its bottom end
-  // (the badge holds the bottom start).
-  overlayTopStart: { position: 'absolute', top: 10, start: 10 },
-  overlayTopEnd: { position: 'absolute', top: 10, end: 10 },
+  // Over the hero: the heart at its bottom end.
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
-  // A soft drop shadow lifts the pills and the heart off any photo.
-  pill: {
-    borderRadius: radius.pill,
-    shadowColor: colors.textStrong,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
+  // Across the hero's foot: 20pt of it hangs over the body (styles.body's top padding clears it).
+  logo: { position: 'absolute', bottom: -20, start: 12 },
   heart: {
     width: 36,
     height: 36,
@@ -230,54 +215,44 @@ const styles = StyleSheet.create({
   heartCompact: { width: 32, height: 32 },
   heartSaved: { backgroundColor: colors.heart },
   heartPressed: { transform: [{ scale: 0.92 }] },
-  // The emoji and the label are separate views, so the row's direction orders them.
-  category: {
-    maxWidth: '62%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingStart: 6,
-    paddingEnd: 9,
-    paddingVertical: 2,
-  },
-  categoryText: { flexShrink: 1, fontSize: 11, fontWeight: '600', color: colors.heading },
-  categoryTextCompact: { fontSize: 10 },
-  body: { paddingHorizontal: 12, paddingTop: 9, paddingBottom: 12 },
-  bodyCompact: { paddingHorizontal: 10, paddingTop: 9, paddingBottom: 10 },
-  business: { fontSize: 16, fontWeight: '700', color: colors.heading, lineHeight: 22 },
-  businessCompact: { fontSize: 14, lineHeight: 19 },
-  title: { fontSize: 14, lineHeight: 20, color: colors.body, marginTop: 2 },
-  titleCompact: { fontSize: 13, lineHeight: 18, marginTop: 1 },
-  titleReserved: { minHeight: 36 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  metaRowCompact: { flexWrap: 'nowrap', gap: 6, marginTop: 6 },
+  body: { paddingHorizontal: 12, paddingTop: 28, paddingBottom: 12 },
+  bodyCompact: { paddingHorizontal: 10, paddingTop: 28, paddingBottom: 10 },
+  title: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.heading },
+  titleCompact: { fontSize: 14, lineHeight: 19 },
+  titleReserved: { minHeight: 38 },
+  business: { fontSize: 14, lineHeight: 19, color: colors.body, marginTop: 2 },
+  businessCompact: { fontSize: 13, lineHeight: 18, marginTop: 1 },
   metaTextCompact: { fontSize: 11 },
-  methodChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.borderLight,
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  methodText: { fontSize: 12, fontWeight: '600', color: colors.body },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 1 },
   distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // Price at the start, "View deal" at the end, on one row.
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 8 },
   footerCompact: { gap: 8, marginTop: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 6, rowGap: 2, flexShrink: 1 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 6, rowGap: 2, flexShrink: 1 },
   price: { fontSize: 18, fontWeight: '800', color: colors.brand },
   priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },
   originalCompact: { fontSize: 12 },
-  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text (5.5:1).
-  discount: { backgroundColor: colors.discount, paddingHorizontal: 8, paddingVertical: 4 },
-  discountText: { fontSize: 11, fontWeight: '800', color: colors.white, letterSpacing: 0.3, textTransform: 'uppercase' },
-  discountTextCompact: { fontSize: 10 },
+  // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text.
+  // The card doesn't clip (its shadow), so the ribbon rounds the card's corner itself, inside the 1pt border.
+  ribbon: {
+    position: 'absolute',
+    top: 0,
+    end: 0,
+    backgroundColor: colors.discountBadge,
+    borderTopEndRadius: 15,
+    borderBottomStartRadius: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ribbonText: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: colors.white },
+  ribbonTextCompact: { fontSize: 12, lineHeight: 16 },
   cta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
   ctaText: { fontSize: 14, fontWeight: '700', color: colors.brand },
   ctaTextCompact: { fontSize: 13 },

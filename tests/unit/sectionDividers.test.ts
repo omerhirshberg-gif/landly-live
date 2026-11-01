@@ -20,7 +20,7 @@ describe('section divider', () => {
   })
 
   it.each([
-    ['components/home/HomePage.tsx', 5],
+    ['components/home/HomePage.tsx', 3],
     ['components/about/AboutPage.tsx', 3],
     ['app/olim/page.tsx', 6],
     ['app/categories/page.tsx', 3],

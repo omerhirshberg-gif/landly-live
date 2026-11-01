@@ -1,24 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Ticket } from 'lucide-react'
 import type { User } from 'firebase/auth'
 import Avatar from '@/components/ui/Avatar'
 import AvatarLightbox from '@/components/ui/AvatarLightbox'
-import CategoryRail from '@/components/perks/CategoryRail'
+import CategoryIcon from '@/components/ui/CategoryIcon'
+import OfferCardRail from '@/components/discover/OfferCardRail'
+import SectionBoundary from '@/components/errors/SectionBoundary'
+import ActivePassCard from './ActivePassCard'
+import CategoryPhotoRail, { CategoryPhotoTitle } from './CategoryPhotoRail'
 import CuratedOffers from './CuratedOffers'
-import LandlyMark from './LandlyMark'
-import MemberPageShell, { PAGE_TITLE } from '@/components/layout/MemberPageShell'
+import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/MemberPageShell'
 import SegmentBadge from '@/components/member/SegmentBadge'
+import { getAllOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
+import { buildCategoryRails, railLabel, selectCurated } from '@/lib/home/categoryRails'
 import { useLang } from '@/lib/i18n/useLang'
+import { categoryHref } from '@/lib/perks/perksFilter'
 
 // The signed-in home: the member's greeting, the blue member-pass card with
-// their live active-pass count, a row of curated offers, then the categories.
-// Guest marketing (hero, value props, How it works, the Aliyah card) never
-// renders here. Same order as the Expo Home tab
+// their live active-pass count, quick category pills, Recommended for you, then
+// a rail for each category with a claimable perk (lib/home/categoryRails.ts), so
+// a category appears by itself with its first offer. The greeting and card sit
+// on the 1240px column; the rails reach the screen's edges. Guest marketing
+// never renders here. Same order as the Expo Home tab
 // (landly-mobile/src/app/(tabs)/index.tsx).
 //
 // "Welcome, {firstName}" comes from the profile (falling back to the display
@@ -27,8 +34,9 @@ import { useLang } from '@/lib/i18n/useLang'
 export default function LoggedInHome({ user }: { user: User }) {
   const { t } = useLang()
   const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
-  // null until the first snapshot (or if the read is refused): shows "–", never a fake 0.
+  // null until the first snapshot (or if the read is refused): the card shows "–", never a fake 0.
   const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [photoOpen, setPhotoOpen] = useState(false)
 
   // Live, like the Expo wallet: a purchase or a redemption updates the count without a reload.
@@ -43,10 +51,29 @@ export default function LoggedInHome({ user }: { user: User }) {
     [user.uid]
   )
 
+  // One read for the whole page; a failed read shows the empty state.
+  useEffect(() => {
+    let cancelled = false
+    getAllOffers()
+      .then((all) => {
+        if (!cancelled) setOffers(all)
+      })
+      .catch(() => {
+        if (!cancelled) setOffers([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const curated = useMemo(() => (offers ? selectCurated(offers) : null), [offers])
+  const rails = useMemo(() => (offers ? buildCategoryRails(offers) : []), [offers])
+
   return (
     <main className="member-canvas below-header min-h-[100dvh] overflow-x-clip">
       {/* No site footer for members: the support prompt is pinned to the bottom of the screen instead, clear of the iPhone home indicator. */}
       <MemberPageShell
+        fluid
         footer={
           <p className="text-center text-sm text-body">
             {t('home_faq_prompt_pre')}{' '}
@@ -56,77 +83,55 @@ export default function LoggedInHome({ user }: { user: User }) {
           </p>
         }
       >
-        <header className={`flex items-center gap-3 sm:gap-4 min-w-0 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
-          {/* With a photo, the avatar opens it full size; a monogram has nothing to zoom, so it opens /profile. */}
-          {photoURL ? (
-            <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('avatar_view')} aria-haspopup="dialog" className="tap-target flex-shrink-0 rounded-full cursor-zoom-in">
-              <Avatar src={photoURL} initials={initials} size={56} />
-            </button>
-          ) : (
-            <Link href="/profile" aria-label={t('nav_profile')} className="tap-target flex-shrink-0 rounded-full">
-              <Avatar src={photoURL} initials={initials} size={56} />
-            </Link>
-          )}
-          <div className="min-w-0">
-            <h1 id="home-welcome" className={`${PAGE_TITLE} truncate`}>
-              {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
-            </h1>
-            <div className="mt-1.5">
-              <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
+        <MemberColumn>
+          <header className={`flex items-center gap-3 sm:gap-4 min-w-0 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
+            {/* With a photo, the avatar opens it full size; a monogram has nothing to zoom, so it opens /profile. */}
+            {photoURL ? (
+              <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('avatar_view')} aria-haspopup="dialog" className="tap-target flex-shrink-0 rounded-full cursor-zoom-in">
+                <Avatar src={photoURL} initials={initials} size={56} />
+              </button>
+            ) : (
+              <Link href="/profile" aria-label={t('nav_profile')} className="tap-target flex-shrink-0 rounded-full">
+                <Avatar src={photoURL} initials={initials} size={56} />
+              </Link>
+            )}
+            <div className="min-w-0">
+              <h1 id="home-welcome" className={`${PAGE_TITLE} truncate`}>
+                {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+              </h1>
+              <div className="mt-1.5">
+                <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
+              </div>
             </div>
-          </div>
-        </header>
-        {photoURL && <AvatarLightbox src={photoURL} open={photoOpen} onClose={() => setPhotoOpen(false)} />}
+          </header>
+          {photoURL && <AvatarLightbox src={photoURL} open={photoOpen} onClose={() => setPhotoOpen(false)} />}
+          <ActivePassCard count={activeCount} />
+        </MemberColumn>
 
-        {/* The member pass: the page's focal point. Deep brand blue with the Expo
-            card's two background layers (landly-mobile/src/app/(tabs)/index.tsx,
-            passGlow and passMark), copied 1:1; the live count, then the way into
-            My Pass. The whole card is one link. Hebrew mirrors it through the
-            page's dir: `end` puts both layers on the left. Full width on
-            phones; from md it keeps a card's proportions (576px, at least
-            200px tall) at the column's start edge, the button at its foot.
-            From 1024px Curated for you sits beside it (the next thing in
-            the page's order, so reading and tab order still agree) and the
-            card stretches to the rail's height, so the first screen is
-            full instead of a lone card beside empty space. */}
-        <div className="mt-5 sm:mt-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-x-8 lg:items-stretch">
-          <Link
-            href="/member"
-            aria-labelledby="home-pass-count home-pass-cta"
-            className="group relative isolate flex w-full flex-col fold:max-w-xl lg:max-w-none md:min-h-[200px] overflow-hidden rounded-2xl bg-brand p-5 sm:p-6 md:px-8 md:py-7 text-white shadow-[0_12px_32px_-12px_rgba(0,42,138,0.55)] [-webkit-tap-highlight-color:transparent] transition-transform duration-150 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          >
-            {/* passGlow: a 200px disc of 8% white, bleeding off the top end corner
-                (top -70, end -50) and clipped by the card's overflow-hidden. */}
-            <span aria-hidden="true" className="pointer-events-none absolute -top-[70px] -end-[50px] z-0 h-[200px] w-[200px] rounded-full bg-white/[0.08]" />
-            {/* passMark: the emblem, 88x86 at top 12, end 14, every path white at 15%. */}
-            <LandlyMark className="pointer-events-none absolute top-3 end-3.5 z-0 h-[86px] w-[88px] text-white/15" />
-            <span className="relative z-10 flex items-center gap-2.5">
-              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15" aria-hidden="true">
-                <Ticket aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
-              </span>
-              <span className="text-meta font-bold uppercase tracking-wide text-white/85">{t('home_pass_label')}</span>
-            </span>
-            <span id="home-pass-count" className="relative z-10 mt-4 md:mb-5 flex items-center gap-3 sm:gap-4 pe-[72px]">
-              <span className="text-stat sm:text-5xl leading-none font-extrabold tabular-nums" dir="ltr" aria-live="polite">{activeCount ?? '–'}</span>
-              <span className="min-w-0 text-copy sm:text-base font-semibold leading-snug">
-                {t('home_vouchers_message').replace('{count}', String(activeCount ?? 0))}
-              </span>
-            </span>
-            <span id="home-pass-cta" className="relative z-10 mt-5 md:mt-auto flex h-12 w-full sm:w-auto sm:self-start sm:inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 text-copy font-bold text-brand transition-colors [@media(hover:hover)]:group-hover:bg-brandLight">
-              <span>{t('home_pass_cta')}</span>
-              <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 rtl:-scale-x-100" strokeWidth={2} />
-            </span>
-          </Link>
+        <SectionBoundary name="home-category-photos">
+          <section aria-labelledby="home-categories-title" className="mt-6 sm:mt-8">
+            <MemberColumn>
+              <CategoryPhotoTitle id="home-categories-title" className="mb-3 text-xl font-bold text-ink" />
+            </MemberColumn>
+            <CategoryPhotoRail />
+          </section>
+        </SectionBoundary>
 
-          <div className="mt-8 lg:mt-0 min-w-0">
-            <CuratedOffers showWishlistButton />
-          </div>
+        <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-9">
+          <SectionBoundary name="home-curated"><CuratedOffers offers={curated} /></SectionBoundary>
+          {rails.map((rail, index) => (
+            <SectionBoundary key={rail.category} name="home-category-rail">
+              <OfferCardRail
+                id={`home-rail-${index}`}
+                title={railLabel(rail, t)}
+                glyph={<CategoryIcon category={rail.category} className="h-5 w-5 flex-shrink-0 text-brand" />}
+                offers={rail.offers}
+                href={rail.tile ? categoryHref(rail.tile.category) : undefined}
+                seeAll={rail.tile ? t('home_rail_see_all').replace('{count}', String(rail.total)) : undefined}
+              />
+            </SectionBoundary>
+          ))}
         </div>
-
-        <section className="mt-8 lg:mt-10" aria-labelledby="home-deals-title">
-          <h2 id="home-deals-title" className="text-xl font-bold text-ink mb-4">{t('home_deals_title')}</h2>
-          <CategoryRail />
-        </section>
       </MemberPageShell>
     </main>
   )

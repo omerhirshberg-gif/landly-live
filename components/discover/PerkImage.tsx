@@ -48,7 +48,15 @@ export default function PerkImage({ src, alt, category, businessName, size = 'ca
     )
   }
 
-  const initial = Array.from(businessName.trim())[0]?.toUpperCase() ?? ''
+  return <CategoryPanel category={category} initial={Array.from(businessName.trim())[0]?.toUpperCase() ?? ''} size={size} className={className} />
+}
+
+/**
+ * The branded panel on its own: the gradient, the category's glyph and,
+ * unless the card already shows the business elsewhere (the perk card's
+ * badge, DealMedia.tsx), its initial as a watermark.
+ */
+export function CategoryPanel({ category, initial = '', size = 'card', className = '' }: { category: string; initial?: string; size?: 'thumb' | 'card' | 'hero'; className?: string }) {
   const initialSize = { thumb: 'text-monogram-sm', card: 'text-monogram-md', hero: 'text-monogram-lg' }[size]
   const tileSize = { thumb: 'h-9 w-9 rounded-xl', card: 'h-14 w-14 rounded-2xl', hero: 'h-20 w-20 rounded-2xl' }[size]
   const glyphSize = { thumb: 'h-[18px] w-[18px]', card: 'h-6 w-6', hero: 'h-9 w-9' }[size]

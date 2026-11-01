@@ -99,7 +99,7 @@ describe('native back button', () => {
   })
 
   it('backs every settings header and the category screen', () => {
-    expect(read('components/ScreenHeader.tsx')).toContain("<GlassBackButton label={t('settings_back')} onPress={goBack} />")
+    expect(read('components/ScreenHeader.tsx')).toContain("<GlassBackButton label={t('settings_back')} onPress={() => goBack(fallback)} />")
     expect(read('app/category/[category].tsx')).toContain("<GlassBackButton label={t('cats_detail_back')} onPress={goBack} />")
   })
 })
@@ -107,20 +107,28 @@ describe('native back button', () => {
 describe('native Home', () => {
   const home = read('app/(tabs)/index.tsx')
 
-  it('leads with the pass hero card, which opens My Pass as one button', () => {
-    expect(home).toContain('styles.passCard')
-    expect(home).toContain('onPress={openPass}')
-    expect(home).toContain("t('home_pass_cta')")
+  it('always leads with the pass card, which opens My Pass as one button', () => {
+    expect(home).toContain('<ActivePassCard count={activeCount} onPress={openPass} />')
+    const card = read('components/ActivePassCard.tsx')
+    expect(card).toContain('styles.passCard')
+    expect(card).toContain('onPress={onPress}')
+    expect(card).toContain("t('home_pass_cta')")
+    expect(card).toContain('styles.perforation')
+    expect(card).toContain("{count ?? '–'}")
     expect(home).not.toContain('<Button ')
   })
 
-  it('orders the pass, then the curated perks, then the categories rail', () => {
-    const pass = home.indexOf('styles.passCard')
-    const curated = home.indexOf("t('home_curated_title')")
-    const categories = home.indexOf('<CategoryRail')
-    expect(pass).toBeGreaterThan(-1)
-    expect(curated).toBeGreaterThan(pass)
-    expect(categories).toBeGreaterThan(curated)
+  it('orders the pass, the category pills, the curated perks, then the category rails', () => {
+    const at = ['<ActivePassCard', '<CategoryPhotoRail', "t('home_curated_title')", '<CategoryOfferRail'].map((s) => home.indexOf(s))
+    expect(at.every((i) => i > -1)).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
+  })
+
+  it('has one source for its catalog, shared with the website', () => {
+    expect(home).toContain("from '@shared/home/categoryRails'")
+    expect(home).toContain('selectCurated(offers ?? [])')
+    expect(home).toContain('buildCategoryRails(offers)')
+    expect(home).not.toContain('CURATED_COUNT')
   })
 })
 
@@ -148,15 +156,15 @@ describe('native Wishlist tab', () => {
 describe('native navigation buttons', () => {
   const nav = read('components/NavigationButtons.tsx')
 
-  it('sits Waze and Google Maps side by side in equal halves, with the official app marks', () => {
-    expect(nav).toContain("row: { flexDirection: 'row', gap: 12")
-    expect(nav).toContain('borderRadius: 14,')
-    expect(nav).toContain('height: 46,')
-    expect(nav).toContain('flex: 1,')
-    expect(nav).not.toContain('flexWrap')
+  it('draws Waze and Google Maps as a pair of 44pt icon links with their official marks', () => {
+    expect(nav).toContain("row: { flexDirection: 'row', gap: 8")
+    expect(nav).toContain('width: 44,')
+    expect(nav).toContain('height: 44,')
+    expect(nav).toContain("accessibilityLabel={t('offer_nav_waze')}")
+    expect(nav).toContain("accessibilityLabel={t('offer_nav_google')}")
     expect(nav).toContain("require('../../assets/icons/waze.webp')")
     expect(nav).toContain("require('../../assets/icons/google-maps.webp')")
-    expect(nav).toContain('icon: { width: 20, height: 20 }')
+    expect(nav).toContain('icon: { width: 32, height: 32 }')
     for (const file of ['assets/icons/waze.webp', 'assets/icons/google-maps.webp', '../public/icons/waze.webp', '../public/icons/google-maps.webp']) {
       expect(existsSync(join(MOBILE, file))).toBe(true)
     }
@@ -164,7 +172,7 @@ describe('native navigation buttons', () => {
 })
 
 describe('native offer screen heart', () => {
-  it('is the glass heart floating over the framed picture, with no discount pill on the picture', () => {
+  it('is the glass heart floating over the framed picture, with the discount ribbon on the picture and only the saving in the price row', () => {
     const screen = read('app/offer/[offerId].tsx')
     const heart = read('components/GlassHeartButton.tsx')
     expect(screen).toContain('<GlassHeartButton')
@@ -172,7 +180,8 @@ describe('native offer screen heart', () => {
     expect(heart).toContain('borderWidth: hairline')
     expect(heart).toContain("borderColor: 'rgba(255, 255, 255, 0.6)'")
     expect(heart).toContain('color={saved ? colors.heart : colors.heading}')
-    expect(screen.indexOf('styles.discount')).toBeGreaterThan(screen.indexOf('styles.priceRow'))
+    expect(screen.indexOf('styles.ribbon')).toBeLessThan(screen.indexOf('styles.priceRow'))
+    expect(screen).toContain('heart: { position: \'absolute\', bottom: 26, end: 6 }')
   })
 })
 
@@ -181,12 +190,14 @@ describe('native offer card', () => {
 
   it('leads with a full-width hero carrying the badge and the discount, the price row below', () => {
     expect(card).not.toContain('height: 130')
-    // The hero and its merchant badge (components/DealMedia.tsx); the discount pill sits on the hero's top end corner.
-    expect(card).toContain("<DealMedia uri={offer.imageUrl} logoUri={offer.businessLogoUrl ?? ''}")
-    expect(read('components/DealMedia.tsx')).toContain('frame: { aspectRatio: 16 / 10, zIndex: 1 }')
-    expect(card).toContain('<View style={[styles.overlayTopEnd, styles.pill, styles.discount]}>')
+    // The hero (components/DealMedia.tsx); the discount ribbon is tied to the hero's top end corner.
+    expect(card).toContain('<DealMedia image={image} category={offer.category}>')
+    expect(read('components/DealMedia.tsx')).toContain('frame: { aspectRatio: 16 / 9, zIndex: 1 }')
+    expect(card).toContain('<View style={styles.ribbon}>')
+    expect(card).toContain('borderTopEndRadius: 15')
+    expect(card).toContain('{`-${discount}%`}')
     const price = card.indexOf('styles.priceRow')
-    expect(card.indexOf('styles.discount')).toBeLessThan(price)
-    expect(card.slice(price)).not.toContain('styles.discount}')
+    expect(card.indexOf('styles.ribbon')).toBeLessThan(price)
+    expect(card.slice(price)).not.toContain('<View style={styles.ribbon}>')
   })
 })

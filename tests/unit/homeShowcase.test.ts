@@ -8,8 +8,6 @@ import { CATEGORY_TILES } from '@/lib/categories'
 import { MARQUEE_MIN_BUSINESSES, marqueeRepeats, offerSavings, pickMarqueeItems, pickTopSavings, toShowcase, type ShowcaseOffer } from '@/lib/home/showcase'
 import type { PublicOffer } from '@/lib/offers/publicOffer'
 
-const { default: PartnerMarquee } = await import('@/components/home/PartnerMarquee')
-const { default: SavingsShowcase } = await import('@/components/home/SavingsShowcase')
 const { default: PassShowcase, formatValidThru } = await import('@/components/home/PassShowcase')
 
 function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
@@ -71,54 +69,6 @@ describe('showcase data', () => {
     expect(marqueeRepeats(6)).toBe(3)
     expect(marqueeRepeats(20)).toBe(1)
     expect(marqueeRepeats(0)).toBe(0)
-  })
-})
-
-describe('partner ticker', () => {
-  it.each(Object.keys(translations) as Lang[])('is one borderless uppercase stream with Star of David dividers and a hidden second half (%s)', (lang) => {
-    const html = withLang(lang, createElement(PartnerMarquee, { offers: Array.from({ length: 8 }, (_, i) => offer(i)) }))
-    expect(html.match(/class="marquee-row"/g)).toHaveLength(1)
-    expect(html).not.toContain('data-reverse')
-    expect(html.match(/<ul class="marquee-half" aria-hidden="true" inert="">/g)).toHaveLength(1)
-    expect(html).toContain('<bdi>Business 0</bdi>')
-    expect(html).toContain(translations[lang].landing_marquee_label)
-    // Every item carries its divider: a vector star, never the ✡ character.
-    const items = html.match(/<li class="marquee-item"/g)!.length
-    expect(html.match(/<svg aria-hidden="true" viewBox="0 0 24 24" class="mx-4 h-3\.5 w-3\.5 shrink-0 text-brand\/60 sm:mx-6"/g)).toHaveLength(items)
-    expect(html).not.toContain('✡')
-    // Bold uppercase links, no capsule border.
-    expect(html).toMatch(/<a class="inline-flex min-h-\[44px\][^"]*font-display text-sm font-bold uppercase tracking-wider[^"]*rtl:tracking-normal/)
-    expect(html).not.toMatch(/<a class="[^"]*rounded-xl border/)
-    // A sky-blue band in brand blue type, with no pause button.
-    expect(html).toContain('<div class="border-y border-sky-200/70 bg-sky-100"><div class="marquee mx-auto max-w-screen-2xl"')
-    expect(html).toMatch(/<a class="[^"]*text-brand[^"]*"/)
-    expect(html).not.toContain('<button')
-    expect(html).not.toContain('lucide-pause')
-  })
-
-  it('animates transform only, runs with the reading in Hebrew, keeps flowing under the pointer and respects reduced motion', () => {
-    const css = readFileSync('app/globals.css', 'utf8')
-    expect(css).toContain('@keyframes marquee{from{transform:translate3d(0,0,0);}to{transform:translate3d(-50%,0,0);}}')
-    expect(css).toContain('[dir="rtl"] .marquee-track{animation-name:marquee-rtl;}')
-    // Never on hover; only on keyboard focus or off screen.
-    expect(css).not.toMatch(/\.marquee[-a-z]*:hover/)
-    expect(css).toContain('.marquee[data-paused] .marquee-track,.marquee-row:focus-within .marquee-track{animation-play-state:paused;}')
-    expect(css).toMatch(/prefers-reduced-motion:reduce\)\{\s*\.marquee\{[^}]*\}\s*\.marquee-track\{animation:none;/)
-  })
-})
-
-describe('savings showcase', () => {
-  const offers = [offer(1, { originalPrice: 300, offerPrice: 150 }), offer(2), offer(3)]
-
-  it('shows each saving in <bdi>, in the reader\'s currency format', () => {
-    const en = withLang('en', createElement(SavingsShowcase, { offers }))
-    expect(en).toContain('Save <bdi>₪150</bdi>')
-    expect(en).toContain('href="/offers/o1"')
-    expect(en).toContain('href="/categories?sort=savings"')
-    expect(en).toContain('<bdi class="font-extrabold text-success">₪190</bdi>')
-    const he = withLang('he', createElement(SavingsShowcase, { offers }))
-    // Hebrew writes the amount first, with its own direction marks, inside the <bdi>.
-    expect(he).toMatch(/חוסכים <bdi>[^<]*150[^<]*₪<\/bdi>/)
   })
 })
 

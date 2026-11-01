@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { parseLogoUrl } from '@/lib/business/businessLogo'
-import { alphaBounds, containedSquare, fitWithin, isLowResolution, LOGO_MAX_EDGE, trimmedSquare } from '@/lib/images/crop'
+import { alphaBounds, containedSquare, fitWithin, isLowResolution, LOGO_MAX_EDGE, logoBounds, trimmedBox } from '@/lib/images/crop'
 import { bannerPathFromUrl, isPng, logoPathFromUrl, storageDownloadUrl, uploadImageType } from '@/lib/storage/bannerPath'
 
 const read = (path: string) => readFileSync(path, 'utf8')
@@ -62,21 +62,34 @@ describe('trimming a logo’s transparent margins', () => {
     expect(alphaBounds(new Uint8ClampedArray(16), 2, 2)).toBeNull()
   })
 
-  it('fills the square with the mark, never past the source’s own pixels', () => {
-    // A 2000×2000 upload whose wordmark is 1600×400 in the middle: drawn at 1024, trimmed, squared.
+  it('trims a white background too, but never a white mark on transparency', () => {
+    // 6×4, white, a dark 2×1 mark in the middle.
+    const rgba = (fill: (x: number, y: number) => number[]) => Uint8ClampedArray.from(Array.from({ length: 24 }, (_, i) => fill(i % 6, Math.floor(i / 6))).flat())
+    const onWhite = rgba((x, y) => (y === 1 && (x === 2 || x === 3) ? [0, 0, 0, 255] : [255, 255, 255, 255]))
+    expect(logoBounds(onWhite, 6, 4)).toEqual({ x: 2, y: 1, width: 2, height: 1 })
+    const whiteMark = rgba((x, y) => (y === 1 && (x === 2 || x === 3) ? [255, 255, 255, 255] : [0, 0, 0, 0]))
+    expect(logoBounds(whiteMark, 6, 4)).toEqual({ x: 2, y: 1, width: 2, height: 1 })
+    const allWhite = rgba(() => [255, 255, 255, 255])
+    expect(logoBounds(allWhite, 6, 4)).toEqual({ x: 0, y: 0, width: 6, height: 4 })
+    expect(logoBounds(new Uint8ClampedArray(24 * 4), 6, 4)).toBeNull()
+  })
+
+  it('keeps the mark’s own shape, never past the source’s own pixels', () => {
+    // A 2000×2000 upload whose wordmark is 1600×400 in the middle: drawn at 1024, trimmed tight.
     const drawn = fitWithin(2000, 2000, LOGO_MAX_EDGE)
     expect(drawn).toEqual({ width: 1024, height: 1024, scale: 0.512 })
     const content = { x: 102, y: 410, width: 820, height: 205 }
-    const box = trimmedSquare(drawn, content, drawn.scale, LOGO_MAX_EDGE)
-    expect(box.size).toBe(1024)
-    // The mark spans the square's full width, centred vertically.
+    const box = trimmedBox(drawn, content, drawn.scale, LOGO_MAX_EDGE)
+    expect([box.width, box.height]).toEqual([1024, 256])
+    // The mark spans the canvas's full width and height.
     // (to the pixel: the drawing's size and offset are rounded separately)
     expect(Math.abs(content.x * (box.dw / drawn.width) + box.dx)).toBeLessThanOrEqual(1)
     expect(Math.abs((content.x + content.width) * (box.dw / drawn.width) + box.dx - 1024)).toBeLessThanOrEqual(1)
-    // A small bitmap stays its own size; a vector is drawn at the full square.
-    const small = trimmedSquare({ width: 200, height: 100 }, { x: 0, y: 0, width: 200, height: 100 }, 1, LOGO_MAX_EDGE)
-    expect(small.size).toBe(200)
-    expect(trimmedSquare({ width: 1024, height: 512 }, { x: 0, y: 0, width: 1024, height: 512 }, 8, LOGO_MAX_EDGE, { vector: true }).size).toBe(1024)
+    expect(Math.abs((content.y + content.height) * (box.dh / drawn.height) + box.dy - 256)).toBeLessThanOrEqual(1)
+    // A small bitmap stays its own size; a vector is drawn at the full edge.
+    const small = trimmedBox({ width: 200, height: 100 }, { x: 0, y: 0, width: 200, height: 100 }, 1, LOGO_MAX_EDGE)
+    expect([small.width, small.height]).toEqual([200, 100])
+    expect(trimmedBox({ width: 1024, height: 512 }, { x: 0, y: 0, width: 1024, height: 512 }, 8, LOGO_MAX_EDGE, { vector: true }).width).toBe(1024)
   })
 })
 

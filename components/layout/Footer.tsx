@@ -70,9 +70,9 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="tap-target w-9 h-9 rounded-full border border-line bg-white text-body hover:text-slate-900 hover:border-slate-300 flex items-center justify-center transition-colors"
+                className="tap-target w-9 h-9 rounded-full border border-line bg-white hover:border-slate-300 flex items-center justify-center transition-colors"
               >
-                <s.icon className="h-4 w-4" strokeWidth={1.75} />
+                <s.icon className="h-5 w-5" />
               </a>
             ))}
           </div>
