@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native'
+import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import * as WebBrowser from 'expo-web-browser'
 import { useAuth } from '@shared/firebase/useAuth'
-import { fetchWalletAvailability, requestWalletPass } from '@shared/wallet/walletClient'
+import { fetchWalletAvailability, nativePassFailure, requestWalletPass, walletFailureMessage, type WalletFailure } from '@shared/wallet/walletClient'
 import { canOfferWalletPass } from '@shared/wallet/walletSupport'
 import { AppleWallet, AppleWalletButton } from '../../modules/apple-wallet'
 import Button from './Button'
@@ -13,6 +14,12 @@ import { impact, success, warning } from '../lib/haptics'
 import { colors } from '../theme'
 
 type Voucher = { id: string; status: string; redeemToken: string | null; expiresAt: Date | null }
+
+// Reanimated drops this under the system's Reduce Motion.
+const NOTICE_IN = new Keyframe({
+  from: { opacity: 0, transform: [{ translateY: 4 }] },
+  to: { opacity: 1, transform: [{ translateY: 0 }], easing: Easing.out(Easing.cubic) },
+}).duration(180)
 
 // The voucher screen's way into Apple Wallet, under the codes (web:
 // components/member/AddToAppleWallet.tsx). On iPhone it's the system's own
@@ -26,7 +33,7 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
   const [now] = useState(Date.now)
   const [available, setAvailable] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<'error' | 'mock' | null>(null)
+  const [notice, setNotice] = useState<WalletFailure | 'mock' | null>(null)
 
   const supported = Platform.OS === 'ios' && (AppleWallet?.canAddPasses() ?? true)
   const eligible = canOfferWalletPass(voucher, now)
@@ -42,6 +49,13 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
     }
   }, [supported, eligible])
 
+  const fail = (reason: WalletFailure, detail?: string) => {
+    // The one place a developer sees why; the member gets the short version.
+    if (__DEV__) console.warn(`Apple Wallet: ${reason}`, detail ?? '')
+    warning()
+    setNotice(reason)
+  }
+
   const add = async () => {
     if (!user || busy) return
     impact()
@@ -49,20 +63,21 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
     setNotice(null)
     try {
       const link = await requestWalletPass(await user.getIdToken(), voucher.id, API_BASE_URL)
-      if (!link.ok) throw new Error(link.reason)
-      if (link.mock) {
+      if (!link.ok) {
+        fail(link.reason)
+      } else if (link.mock) {
         // Local development with no certificates: Wallet would refuse it.
-        if (!(await fetch(link.url)).ok) throw new Error('mock')
-        setNotice('mock')
+        if ((await fetch(link.url)).ok) setNotice('mock')
+        else fail('passDownload')
       } else if (AppleWallet) {
         await AppleWallet.addPass(link.url)
         success()
       } else {
         await WebBrowser.openBrowserAsync(link.url)
       }
-    } catch {
-      warning()
-      setNotice('error')
+    } catch (error) {
+      const { code, message } = error as { code?: unknown; message?: string }
+      fail(nativePassFailure(code), message)
     } finally {
       setBusy(false)
     }
@@ -82,7 +97,11 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
         ) : (
           <Button label={t('wallet_add_label')} variant="secondary" busy={busy} onPress={add} />
         )}
-        {notice && <Notice tone={notice === 'error' ? 'error' : 'info'} message={t(notice === 'error' ? 'wallet_add_error' : 'wallet_mock_notice')} />}
+        {notice && (
+          <Animated.View entering={NOTICE_IN}>
+            <Notice tone={notice === 'mock' ? 'info' : 'error'} message={t(notice === 'mock' ? 'wallet_mock_notice' : walletFailureMessage(notice))} />
+          </Animated.View>
+        )}
       </View>
     </>
   )

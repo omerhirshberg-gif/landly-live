@@ -407,6 +407,16 @@ html.wa-hidden .wa-widget{display:none;}
 .heart-pop{animation:heart-pop .42s cubic-bezier(.34,1.56,.64,1);}
 @keyframes heart-pop{0%{transform:scale(.6);}60%{transform:scale(1.18);}100%{transform:scale(1);}}
 @media (prefers-reduced-motion: reduce){.heart-pop{animation:none;}}
+/* The Wallet notice under the badge (never the badge itself: Apple's rules). */
+.wallet-notice{animation:wallet-notice .18s cubic-bezier(.215,.61,.355,1);}
+@keyframes wallet-notice{from{opacity:0;transform:translateY(4px);}}
+@media (prefers-reduced-motion: reduce){.wallet-notice{animation:none;}}
+/* The "Add on your iPhone" dialog: a soft scale and fade, its scrim fading with it. */
+.wallet-dialog[open]{animation:wallet-dialog .2s cubic-bezier(.215,.61,.355,1);}
+.wallet-dialog[open]::backdrop{animation:wallet-scrim .2s ease-out;}
+@keyframes wallet-dialog{from{opacity:0;transform:scale(.96);}}
+@keyframes wallet-scrim{from{opacity:0;}}
+@media (prefers-reduced-motion: reduce){.wallet-dialog[open],.wallet-dialog[open]::backdrop{animation:none;}}
 @keyframes perks-pop{from{opacity:0;transform:scale(.96);}}
 @keyframes perks-sheet{from{transform:translateY(100%);}}
 @keyframes perks-scrim{from{opacity:0;}}

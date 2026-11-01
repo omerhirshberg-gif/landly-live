@@ -51,7 +51,7 @@ describe('the Wallet surfaces', () => {
   it('has copy in every language', () => {
     for (const table of Object.values(translations)) {
       expect(table.wallet_add_label).toMatch(/Apple Wallet/)
-      expect(table.wallet_pass_offer.length).toBeGreaterThan(0)
+      expect(table.wallet_pass_member.length).toBeGreaterThan(0)
     }
   })
 

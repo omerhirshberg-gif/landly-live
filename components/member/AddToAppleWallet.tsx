@@ -5,7 +5,7 @@ import { LoaderCircle, Smartphone, Wallet } from 'lucide-react'
 import QRCode from 'qrcode'
 import { auth } from '@/lib/firebase/config'
 import { useLang } from '@/lib/i18n/useLang'
-import { fetchWalletAvailability, requestWalletPass } from '@/lib/wallet/walletClient'
+import { fetchWalletAvailability, requestWalletPass, walletFailureMessage, type WalletFailure } from '@/lib/wallet/walletClient'
 import { canOfferWalletPass, walletBadgePath, walletSupport, type WalletSupport } from '@/lib/wallet/walletSupport'
 
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
@@ -18,7 +18,8 @@ const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outli
 //
 // Apple's rules for the badge: its own artwork only, at its own proportions,
 // with 0.1 of its height clear around it, and no dimming, shadow, hover
-// effect or animation. So it has none of the page's hover lifts, and stays at
+// effect or animation. At 48px high it clears the 44px touch target by itself;
+// the padding is its clear space, inside the button so taps there still count. So it has none of the page's hover lifts, and stays at
 // full strength while the pass loads. Being artwork it never mirrors in
 // Hebrew; it's centred, so nothing around it has to.
 export default function AddToAppleWallet({ voucher }: {
@@ -28,7 +29,7 @@ export default function AddToAppleWallet({ voucher }: {
   // Known only in the browser; null renders nothing, on the server too.
   const [support, setSupport] = useState<WalletSupport | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<'error' | 'mock' | null>(null)
+  const [notice, setNotice] = useState<WalletFailure | 'mock' | null>(null)
 
   const eligible = canOfferWalletPass(voucher, Date.now())
 
@@ -51,17 +52,17 @@ export default function AddToAppleWallet({ voucher }: {
     try {
       const link = await requestWalletPass(await member.getIdToken(), voucher.id, '')
       if (!link.ok) {
-        setNotice('error')
+        setNotice(link.reason)
       } else if (link.mock) {
         // Local development with no certificates: Wallet would refuse it, so
         // this only proves the whole path up to the file works.
-        setNotice((await fetch(link.url)).ok ? 'mock' : 'error')
+        setNotice((await fetch(link.url)).ok ? 'mock' : 'passDownload')
       } else {
         // A plain navigation: iOS turns it into Wallet's preview; a blob wouldn't.
         window.location.assign(link.url)
       }
     } catch {
-      setNotice('error')
+      setNotice('unavailable')
     } finally {
       setBusy(false)
     }
@@ -88,8 +89,8 @@ export default function AddToAppleWallet({ voucher }: {
         </>
       )}
       {notice && (
-        <p role={notice === 'error' ? 'alert' : 'status'} className={`max-w-xs text-xs font-semibold ${notice === 'error' ? 'text-red-600' : 'text-slate-500'}`}>
-          {t(notice === 'error' ? 'wallet_add_error' : 'wallet_mock_notice')}
+        <p role={notice === 'mock' ? 'status' : 'alert'} className={`wallet-notice max-w-xs text-xs font-semibold [text-wrap:balance] ${notice === 'mock' ? 'text-slate-500' : 'text-red-600'}`}>
+          {t(notice === 'mock' ? 'wallet_mock_notice' : walletFailureMessage(notice))}
         </p>
       )}
     </div>
@@ -156,7 +157,7 @@ function IPhoneHandoff({ voucherId }: { voucherId: string }) {
         ref={dialog}
         aria-labelledby="wallet-handoff-title"
         onClick={(event) => { if (event.target === dialog.current) dialog.current?.close() }}
-        className="m-auto w-[calc(100vw-2rem)] max-w-sm rounded-3xl border border-slate-200/80 bg-white p-0 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm"
+        className="wallet-dialog m-auto w-[calc(100vw-2rem)] max-w-sm rounded-3xl border border-slate-200/80 bg-white p-0 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm"
       >
         <div className="flex flex-col items-center gap-3 p-6 text-center">
           <h2 id="wallet-handoff-title" className="text-lg font-bold tracking-tight text-ink">{t('wallet_on_iphone_title')}</h2>

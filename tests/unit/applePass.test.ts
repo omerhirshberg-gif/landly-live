@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import forge from 'node-forge'
-import { buildPassJson, buildPkpass, passSerialNumber, passStrings, PKPASS_MIME_TYPE } from '@/lib/wallet/applePass'
+import { buildPassJson, buildPkpass, PassBuildError, passSerialNumber, passStrings, PKPASS_MIME_TYPE } from '@/lib/wallet/applePass'
 import { DEVELOPMENT_PASS_TYPE_ID, PRODUCTION_PASS_TYPE_ID, resolvePassConfig } from '@/lib/wallet/passConfig'
 import { createPassTicket, TICKET_TTL_SECONDS, verifyPassTicket } from '@/lib/wallet/passTicket'
 import { isPassEligible, type PassVoucher } from '@/lib/wallet/passVoucher'
@@ -67,18 +67,39 @@ async function unzip(zip: Buffer): Promise<Record<string, Buffer>> {
 }
 
 describe('pass.json', () => {
-  const json = buildPassJson(voucher, identity, 25)
+  const json = buildPassJson(voucher, identity, 25, 'Dana Cohen')
 
-  it('is a coupon with Landly brand and sharing off', () => {
+  it('is an event ticket in Landly navy with sharing off', () => {
     expect(json).toMatchObject({
       formatVersion: 1,
       organizationName: 'Landly',
       logoText: 'Landly',
-      backgroundColor: 'rgb(0,56,184)',
+      backgroundColor: 'rgb(11,27,61)',
+      foregroundColor: 'rgb(255,255,255)',
+      labelColor: 'rgb(180,194,220)',
       sharingProhibited: true,
       expirationDate: '2030-01-02T03:04:05Z',
     })
-    expect(json.coupon.primaryFields[0].value).toBe('Dinner for two')
+    expect(json).not.toHaveProperty('coupon')
+  })
+
+  it('keeps the strip clean: Wallet would draw a primary field over the photo', () => {
+    expect(json.eventTicket.primaryFields).toEqual([])
+  })
+
+  it('lays the front out as header, title row and two columns', () => {
+    const { headerFields, secondaryFields, auxiliaryFields } = json.eventTicket
+    expect(headerFields).toEqual([expect.objectContaining({ key: 'expires', label: 'Valid until', value: '2030-01-02T03:04:05Z', dateStyle: 'PKDateStyleMedium', timeStyle: 'PKDateStyleNone' })])
+    expect(secondaryFields).toHaveLength(1)
+    expect(secondaryFields[0]).toMatchObject({ key: 'offer', value: 'Dinner for two' })
+    expect(secondaryFields[0].label).toBeTruthy()
+    expect(auxiliaryFields.map((f) => f.key)).toEqual(['order', 'member'])
+    expect(auxiliaryFields[1]).toMatchObject({ label: 'Member', value: 'Dana Cohen' })
+  })
+
+  it('moves the discount to the back, and never pins an alignment that wouldn\'t mirror in Hebrew', () => {
+    expect(json.eventTicket.backFields.map((f) => f.key)).toEqual(['how', 'discount', 'terms'])
+    expect(JSON.stringify(json)).not.toContain('textAlignment')
   })
 
   it('carries the same QR payload as the app, and the numeric code', () => {
@@ -100,15 +121,18 @@ describe('pass.json', () => {
     const bare = buildPassJson({ ...voucher, expiresAt: null, businessGeo: null, redemptionTerms: '', displayOrderNumber: null }, identity, null)
     expect(bare).not.toHaveProperty('expirationDate')
     expect(bare).not.toHaveProperty('locations')
-    expect(bare.coupon.auxiliaryFields).toEqual([])
-    expect(bare.coupon.backFields.map((f) => f.key)).toEqual(['how'])
+    expect(bare.eventTicket.headerFields).toEqual([])
+    expect(bare.eventTicket.auxiliaryFields).toEqual([])
+    expect(bare.eventTicket.backFields.map((f) => f.key)).toEqual(['how'])
+    const noBusiness = buildPassJson({ ...voucher, businessName: '', businessTranslations: null }, identity, null)
+    expect(noBusiness.eventTicket.secondaryFields[0]).not.toHaveProperty('label')
   })
 })
 
 describe('pass.strings', () => {
   it('translates English keys, and escapes quotes and line breaks', () => {
     const he = passStrings(voucher, 'he')
-    expect(he['Offer']).toBe('הטבה')
+    expect(he['Member']).toBe('על שם')
     expect(he['Dinner for two']).toBe('ארוחה זוגית')
     expect(he['Not on \\"holidays\\"\\nOne per table']).toBe('Not on \\"holidays\\"\\nOne per table')
   })
@@ -187,17 +211,27 @@ describe('the bundle', () => {
     expect(files.signature.toString()).toContain('MOCK')
   })
 
+  it('names the signing stage when a PEM is unusable', async () => {
+    const header = '-----BEGIN CERTIFICATE-----'
+    const failure = await buildPkpass(voucher, { mode: 'signed', ...identity, signerCert: header, signerKey: '-----BEGIN PRIVATE KEY-----', wwdr: header }, options).catch((error) => error)
+    expect(failure).toBeInstanceOf(PassBuildError)
+    expect(failure.stage).toBe('sign')
+  })
+
   it('signs a real PKCS #7 over the manifest with the library, keeping every field', async () => {
     const { cert, key } = selfSigned()
-    const zip = await buildPkpass(voucher, { mode: 'signed', ...identity, signerCert: cert, signerKey: key, wwdr: cert }, options)
+    const zip = await buildPkpass(voucher, { mode: 'signed', ...identity, signerCert: cert, signerKey: key, wwdr: cert }, { ...options, holderName: 'Dana Cohen' })
     const files = await unzip(zip)
     const pass = JSON.parse(files['pass.json'].toString())
     expect(pass.sharingProhibited).toBe(true)
     expect(pass.barcodes[0].altText).toBe('123456')
     expect(pass.expirationDate).toMatch(/^2030-01-02/)
     expect(pass.locations[0].latitude).toBe(32.08)
-    expect(pass.coupon.primaryFields[0].value).toBe('Dinner for two')
-    expect(files['he.lproj/pass.strings'].toString()).toContain('"Offer" = "הטבה";')
+    expect(pass.eventTicket.primaryFields).toEqual([])
+    expect(pass.eventTicket.secondaryFields[0].value).toBe('Dinner for two')
+    expect(pass.eventTicket.headerFields[0].key).toBe('expires')
+    expect(pass.eventTicket.auxiliaryFields.map((f: { key: string }) => f.key)).toEqual(['order', 'member'])
+    expect(files['he.lproj/pass.strings'].toString()).toContain('"Member" = "על שם";')
     expect(files['he.lproj/pass.strings'].toString()).toContain('\\"holidays\\"')
 
     const manifest = JSON.parse(files['manifest.json'].toString())
