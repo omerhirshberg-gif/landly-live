@@ -1,12 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useLang } from '@/lib/i18n/useLang'
 import { CONSENT_PATHS, consentParts } from '@/lib/legal/consentText'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { X } from 'lucide-react'
 
 const STORAGE_KEY = 'landly_cookie_notice_seen'
+
+// The /join campaign page: a bar over the form would greet every first-time ad
+// visitor, and the page carries its own Privacy Policy link.
+export function showsCookieNotice(pathname: string | null): boolean {
+  return !(pathname === '/join' || pathname?.startsWith('/join/'))
+}
 
 // An information notice, not a consent prompt: the site stores only what it
 // needs to work (session, language) and runs no advertising or tracking
@@ -20,6 +27,7 @@ const STORAGE_KEY = 'landly_cookie_notice_seen'
 // The bottom padding clears the iOS home indicator.
 export default function CookieNotice() {
   const { t } = useLang()
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -41,7 +49,7 @@ export default function CookieNotice() {
     }
   }
 
-  if (!visible) return null
+  if (!visible || !showsCookieNotice(pathname)) return null
   return <CookieNoticeBar t={t} onDismiss={dismiss} />
 }
 

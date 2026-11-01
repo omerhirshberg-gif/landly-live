@@ -115,9 +115,11 @@ const EXPECTED: [string, string][] = [
   ['/admin/offers/[offerId]/edit', 'Edit Offer | Landly Admin'],
   ['/admin/orphans', 'Orphaned Accounts | Landly Admin'],
   ['/admin/users', 'Users | Landly Admin'],
+  ['/admin/prelaunch', 'Pre-Launch Leads | Landly Admin'],
   ['/admin/system/costs', 'Usage & Costs | Landly Admin'],
   ['/admin/search', 'Search | Landly Admin'],
   ['/admin/support', 'Support Inbox | Landly Admin'],
+  ['/join', 'Landly | Local deals for people new to Israel'],
 ]
 
 describe('browser tab titles', () => {
@@ -135,7 +137,7 @@ describe('browser tab titles', () => {
       }
     }
     walk('app')
-    const covered = new Set([...EXPECTED.map(([route]) => route), '/offers/[offerId]'])
+    const covered = new Set([...EXPECTED.map(([route]) => route), '/offers/[offerId]', '/join/[lang]'])
     const redirectOnly = new Set(['/categories/[category]'])
     const uncovered = pages.map((p) => (p === '/' ? '/' : p.replace(/\/$/, ''))).filter((p) => !covered.has(p) && !redirectOnly.has(p))
     expect(uncovered).toEqual([])

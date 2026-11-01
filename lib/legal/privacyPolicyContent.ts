@@ -45,7 +45,7 @@ export interface PrivacyPolicyText {
 }
 
 /** When the policy last changed; each language's pp_updated_date spells this date. */
-export const PRIVACY_POLICY_UPDATED_ISO = '2026-10-25'
+export const PRIVACY_POLICY_UPDATED_ISO = '2026-11-01'
 
 const PLACEHOLDERS: Record<string, PolicyInline> = {
   email: { email: true },
@@ -94,7 +94,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
       h3('pp_collect_member_h'),
       ul('pp_collect_member_1', 'pp_collect_member_2', 'pp_collect_member_3', 'pp_collect_member_4', 'pp_collect_member_5', 'pp_collect_member_6'),
       h3('pp_collect_contact_h'),
-      ul('pp_collect_contact_1', 'pp_collect_contact_2', 'pp_collect_contact_3'),
+      ul('pp_collect_contact_1', 'pp_collect_contact_2', 'pp_collect_contact_3', 'pp_collect_contact_4'),
       h3('pp_collect_orders_h'),
       ul('pp_collect_orders_1', 'pp_collect_orders_2'),
       h3('pp_collect_payment_h'),
@@ -149,7 +149,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
     title: 'pp_use_title',
     blocks: [
       p('pp_use_p1'),
-      ul('pp_use_1', 'pp_use_2', 'pp_use_3', 'pp_use_4', 'pp_use_5', 'pp_use_6', 'pp_use_7', 'pp_use_8', 'pp_use_9', 'pp_use_10'),
+      ul('pp_use_1', 'pp_use_2', 'pp_use_3', 'pp_use_4', 'pp_use_5', 'pp_use_6', 'pp_use_7', 'pp_use_8', 'pp_use_9', 'pp_use_10', 'pp_use_11'),
       p('pp_use_p2'),
       p('pp_use_p3'),
     ],

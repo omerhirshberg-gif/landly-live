@@ -27,6 +27,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   { pattern: '/admin/login', title: 'Login', parent: null },
   { pattern: '/admin/support', title: 'WhatsApp Support', parent: '/admin', prefix: true },
   { pattern: '/admin/users', title: 'Users', parent: '/admin' },
+  { pattern: '/admin/prelaunch', title: 'Pre-Launch Leads', parent: '/admin' },
   { pattern: '/admin/search', title: 'Search', parent: '/admin' },
   { pattern: '/admin/businesses', title: 'Businesses', parent: '/admin' },
   { pattern: '/admin/businesses/new', title: 'Add Business', parent: '/admin/businesses' },

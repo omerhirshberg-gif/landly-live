@@ -11,8 +11,8 @@ export function whatsappChatHref(message: string): string {
 }
 
 // Admin and the business dashboard (staff tools), checkout (the payment
-// step needs nothing floating over it), and the sign-in and account-recovery
-// screens. Everywhere else -- public browsing, perks, /support, member pages
+// step needs nothing floating over it), the sign-in and account-recovery
+// screens, and the /join campaign page, whose one action is its form. Everywhere else -- public browsing, perks, /support, member pages
 // -- shows it.
 const HIDDEN_PATHS = [
   '/admin',
@@ -24,6 +24,7 @@ const HIDDEN_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/join',
 ]
 
 export function showsWhatsAppWidget(pathname: string | null): boolean {

@@ -27,6 +27,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin/support', label: 'WhatsApp Support', icon: 'fa-comments', exact: false },
       { href: '/admin/users', label: 'Users', icon: 'fa-users', exact: false },
+      { href: '/admin/prelaunch', label: 'Pre-Launch Leads', icon: 'fa-rocket', exact: false },
       { href: '/admin/search', label: 'Search', icon: 'fa-magnifying-glass', exact: false },
     ],
   },

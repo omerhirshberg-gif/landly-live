@@ -50,6 +50,14 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/account', destination: '/profile', permanent: true },
+      // /join?lang=he and the like, so the language pages stay static and never
+      // flash English. The rest of the query (UTMs, ref) comes along.
+      ...['he', 'ru', 'fr', 'es'].map((lang) => ({
+        source: '/join',
+        has: [{ type: 'query', key: 'lang', value: lang }],
+        destination: `/join/${lang}`,
+        permanent: false,
+      })),
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'golandly.com' }],

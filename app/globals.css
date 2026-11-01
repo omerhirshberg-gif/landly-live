@@ -617,3 +617,14 @@ html.wa-hidden .wa-widget{display:none;}
 @media (prefers-reduced-motion: reduce){.mobile-menu-scrim{transition:none;}}
 /* Phone verification dialog on an unfolded screen: centred like the desktop card, never stretched. */
 @media (min-width:600px) and (max-width:639px){.otp-dialog{margin:auto;max-height:calc(100dvh - 32px);}}
+
+/* The /join form giving way to its success screen. */
+@keyframes prelaunch-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.prelaunch-in{animation:prelaunch-in .32s cubic-bezier(.2,.8,.2,1) both;}
+@media (prefers-reduced-motion:reduce){.prelaunch-in{animation:none;}}
+/* The /join phone field matches the form's other inputs; the picker's shared styles are above. */
+.join-phone .PhoneInput{background:#fff;}
+.join-phone .PhoneInput:focus-within{border-color:#0038b8;}
+.join-phone-invalid .PhoneInput,.join-phone-invalid .PhoneInput:focus-within{border-color:#f87171;}
+.join-phone .PhoneInputCountryIcon{width:auto;height:auto;background:none;box-shadow:none;}
+.join-phone .PhoneInputCountrySelect:focus + .PhoneInputCountryIcon{box-shadow:none;}
