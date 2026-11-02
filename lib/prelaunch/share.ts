@@ -4,8 +4,15 @@ import { PRELAUNCH_COPY, PRELAUNCH_PATHS, type PrelaunchLang } from './copy'
 // sign-up. Sharing to WhatsApp often reloads an in-app browser's page when the
 // visitor comes back, so the joined state is kept to land them on the success
 // screen again rather than on an empty form.
+//
+// That memory is per tab and short-lived: a phone can be shared, and a lead's
+// name must not greet the next person. sessionStorage alone isn't enough, since
+// iOS Safari and a desktop browser's session restore bring it back after a
+// restart, so an entry also expires. A visitor who returns later and signs up
+// again is recognised by the server and gets the same referral code.
 
 export const PRELAUNCH_JOINED_KEY = 'landly_prelaunch_joined'
+export const JOINED_TTL_MS = 30 * 60_000
 
 export interface JoinedLead {
   referralCode: string
@@ -33,18 +40,22 @@ type KeyStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 // Blocked storage (private mode, some webviews) just forgets: the visitor sees
 // the form again, and the server recognises them.
-export function readJoinedLead(storage: () => KeyStore): JoinedLead | null {
+export function readJoinedLead(storage: () => KeyStore, now = Date.now()): JoinedLead | null {
   try {
     const parsed = JSON.parse(storage().getItem(PRELAUNCH_JOINED_KEY) ?? 'null')
-    return typeof parsed?.referralCode === 'string' && typeof parsed?.firstName === 'string' ? parsed : null
+    if (typeof parsed?.referralCode !== 'string' || typeof parsed?.firstName !== 'string') return null
+    const age = now - parsed.savedAt
+    if (age >= 0 && age < JOINED_TTL_MS) return { referralCode: parsed.referralCode, firstName: parsed.firstName }
+    forgetJoinedLead(storage)
+    return null
   } catch {
     return null
   }
 }
 
-export function rememberJoinedLead(storage: () => KeyStore, lead: JoinedLead): void {
+export function rememberJoinedLead(storage: () => KeyStore, lead: JoinedLead, now = Date.now()): void {
   try {
-    storage().setItem(PRELAUNCH_JOINED_KEY, JSON.stringify(lead))
+    storage().setItem(PRELAUNCH_JOINED_KEY, JSON.stringify({ ...lead, savedAt: now }))
   } catch {
     // Storage blocked.
   }

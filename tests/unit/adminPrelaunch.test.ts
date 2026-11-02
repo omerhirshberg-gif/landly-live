@@ -20,7 +20,7 @@ import { ADMIN_ROUTES } from '@/lib/admin/routes'
 import { filterLeads, leadFullName, leadSyncStatus, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
 
 const row = (over: Partial<AdminLead>): AdminLead => ({
-  id: 'abcdefgh23', firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', lang: 'he', persona: null,
+  id: 'abcdefgh23', firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', lang: 'he', preferredLanguage: 'he', persona: null, personaOtherDescription: null, referralSource: null,
   createdAt: null, referredBy: null, validReferrals: 0, foundingMember: true, utmSource: null, utmCampaign: null, syncStatus: 'pending', syncError: null, ...over,
 })
 const stored = (id: string, ms: number, over: object = {}) => ({
@@ -47,14 +47,14 @@ describe('GET /api/admin/prelaunch', () => {
     expect((await GET(request('', { authorization: 'Bearer forged.token' }))).status).toBe(401)
   })
   it('gives the rows newest first with their totals, uncached', async () => {
-    admin.docs = [stored('a', 1000), stored('b', 2000, { referredBy: 'a', lang: 'he', persona: null })]
+    admin.docs = [stored('a', 1000), stored('b', 2000, { referredBy: 'a', lang: 'he', preferredLanguage: 'ru', persona: 'other', personaOtherDescription: 'Here for work', referralSource: 'tiktok' })]
     const response = await GET(request('', signedIn()))
     const body = await response.json()
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(body.projectId).toBe('landly-dev')
     expect(body.leads.map((lead: AdminLead) => lead.id)).toEqual(['b', 'a'])
     expect(body.leads[1]).toMatchObject({ validReferrals: 1, foundingMember: true, utmSource: 'ig', utmCampaign: 'c1', createdAt: '1970-01-01T00:00:01.000Z' })
-    expect(body.stats).toMatchObject({ total: 2, byLang: { en: 1, he: 1 }, byPersona: { student: 1, none: 1 }, topReferrers: [{ id: 'a', name: 'a', count: 1 }] })
+    expect(body.stats).toMatchObject({ total: 2, byLang: { en: 1, he: 1 }, byPersona: { student: 1, other: 1 }, byReferralSource: { tiktok: 1, none: 1 }, topReferrers: [{ id: 'a', name: 'a', count: 1 }] })
   })
   it('downloads a CSV honoring the filters, uncached, readable by Excel', async () => {
     admin.docs = [stored('a', 1000), stored('b', 2000, { lang: 'he' })]
@@ -163,7 +163,7 @@ describe('the totals', () => {
       row({ id: 'a', firstName: 'A', validReferrals: 1, persona: 'local' }),
       row({ id: 'b', firstName: 'B', validReferrals: 3, lang: 'es', foundingMember: false }),
     ])
-    expect(stats).toMatchObject({ total: 2, foundingMembers: 1, byLang: { he: 1, es: 1, en: 0, ru: 0, fr: 0 }, byPersona: { local: 1, none: 1, student: 0 } })
+    expect(stats).toMatchObject({ total: 2, foundingMembers: 1, byLang: { he: 1, es: 1, en: 0, ru: 0, fr: 0 }, byPersona: { local: 1, none: 1, student: 0 }, byReferralSource: { none: 2, tiktok: 0 } })
     expect(stats.topReferrers.map((referrer) => referrer.id)).toEqual(['b', 'a'])
   })
   it('stops at five referrers', () => {

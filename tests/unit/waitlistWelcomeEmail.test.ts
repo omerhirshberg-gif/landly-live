@@ -6,7 +6,7 @@ import { TransactionStore } from '../helpers/transactionStore'
 const mocks = vi.hoisted(() => ({ send: vi.fn(), after: vi.fn(), sync: vi.fn(), db: null as unknown }))
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
 vi.mock('next/server', async (importOriginal) => ({ ...(await importOriginal<typeof import('next/server')>()), after: mocks.after }))
-vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.db }))
+vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.db, getAdminProjectId: () => 'landly-dev' }))
 vi.mock('@/lib/marketing/ravMesser.server', () => ({ syncLeadToRavMesser: mocks.sync }))
 
 import { POST } from '@/app/api/prelaunch/route'
@@ -189,7 +189,8 @@ describe('POST /api/prelaunch', () => {
     expect((await post()).status).toBe(200)
     expect(mocks.send).not.toHaveBeenCalled()
     await mocks.after.mock.calls[0][0]()
-    expect(mocks.send).toHaveBeenCalledTimes(1)
+    // The welcome email first, then the team's alert, never at the same moment.
+    expect(mocks.send.mock.calls.map(([email]) => email.to)).toEqual(['noa@example.com', 'contact@golandly.com'])
     expect(mocks.sync).toHaveBeenCalledTimes(1)
     expect((await post()).status).toBe(200)
     expect(mocks.after).toHaveBeenCalledTimes(1)
@@ -200,7 +201,7 @@ describe('POST /api/prelaunch', () => {
     mocks.send.mockRejectedValue(new Error('down'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect((await post()).status).toBe(200)
-    await expect(mocks.after.mock.calls[0][0]()).resolves.toBeDefined()
+    await expect(mocks.after.mock.calls[0][0]()).resolves.toBeUndefined()
   })
 })
 

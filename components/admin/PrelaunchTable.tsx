@@ -5,12 +5,14 @@ import { adminFetch } from '@/lib/admin/adminSession'
 import { displayPhone, whatsappHref } from '@/lib/admin/businessPhone'
 import { formatIsraeliDateTime } from '@/lib/admin/formatDate'
 import { leadFullName, type AdminLead } from '@/lib/admin/prelaunchStats'
-import { PRELAUNCH_COPY, type Persona, type PrelaunchLang } from '@/lib/prelaunch/copy'
+import { PRELAUNCH_COPY, type Persona, type PrelaunchLang, type ReferralSource } from '@/lib/prelaunch/copy'
 import BidiText from './BidiText'
 import DataTable, { type Column } from './DataTable'
 import StatusBadge from './StatusBadge'
 
 export const PERSONA_NAMES: Record<Persona | 'none', string> = { ...PRELAUNCH_COPY.en.personas, none: 'Not answered' }
+
+export const REFERRAL_SOURCE_NAMES: Record<ReferralSource | 'none', string> = { ...PRELAUNCH_COPY.en.referralSources, none: 'Not answered' }
 
 export const langName = (lang: PrelaunchLang) => lang.toUpperCase()
 
@@ -31,9 +33,37 @@ function LangPill({ lang }: { lang: PrelaunchLang }) {
   return <span className="inline-flex rounded-full bg-[#F0F7FF] px-2.5 py-0.5 text-xs font-bold text-[#0038B8]">{langName(lang)}</span>
 }
 
-function PersonaBadge({ persona }: { persona: Persona | null }) {
-  return persona
-    ? <span className="inline-flex whitespace-nowrap rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">{PERSONA_NAMES[persona]}</span>
+/** The page they signed up on, and their preferred language when it's a different one. */
+function LangCell({ lead }: { lead: AdminLead }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <LangPill lang={lead.lang} />
+      {lead.preferredLanguage !== lead.lang && (
+        <span title={`Prefers ${langName(lead.preferredLanguage)}`} className="inline-flex items-center gap-1">
+          <span aria-hidden="true" className="text-xs text-[#94A3B8]">→</span>
+          <span className="sr-only">prefers</span>
+          <LangPill lang={lead.preferredLanguage} />
+        </span>
+      )}
+    </span>
+  )
+}
+
+function PersonaBadge({ lead }: { lead: AdminLead }) {
+  if (!lead.persona) return <span className="text-sm text-[#94A3B8]">—</span>
+  return (
+    <span className="block min-w-0">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">{PERSONA_NAMES[lead.persona]}</span>
+      {lead.personaOtherDescription && (
+        <span title={lead.personaOtherDescription} className="mt-1 block text-xs text-[#475569] [overflow-wrap:anywhere]"><BidiText>{lead.personaOtherDescription}</BidiText></span>
+      )}
+    </span>
+  )
+}
+
+function ReferralSourceCell({ source }: { source: ReferralSource | null }) {
+  return source
+    ? <span title={REFERRAL_SOURCE_NAMES[source]} className="block truncate text-sm text-[#0B1B3D]">{REFERRAL_SOURCE_NAMES[source]}</span>
     : <span className="text-sm text-[#94A3B8]">—</span>
 }
 
@@ -114,8 +144,14 @@ function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead
     <div className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 font-semibold text-[#0B1B3D]"><BidiText>{leadFullName(lead)}</BidiText></div>
-        <span className="flex shrink-0 items-center gap-1.5"><PersonaBadge persona={lead.persona} /><LangPill lang={lead.lang} /></span>
+        <span className="shrink-0"><LangCell lead={lead} /></span>
       </div>
+      {(lead.persona || lead.referralSource) && (
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <PersonaBadge lead={lead} />
+          {lead.referralSource && <span className="shrink-0"><ReferralSourceCell source={lead.referralSource} /></span>}
+        </div>
+      )}
       <div className="mt-1 text-sm text-[#475569]"><PhoneCell phone={lead.phone} /></div>
       <bdi dir="ltr" className="block truncate text-sm text-[#475569]">{lead.email}</bdi>
       <div className="mt-2 flex items-end justify-between gap-3 text-xs text-[#475569]">
@@ -170,8 +206,9 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
       { id: 'name', header: 'Name', cell: (lead) => <span title={leadFullName(lead)}><BidiText>{leadFullName(lead)}</BidiText></span>, sortValue: (lead) => leadFullName(lead) },
       { id: 'phone', header: 'WhatsApp', cell: (lead) => <PhoneCell phone={lead.phone} />, width: 'w-52' },
       { id: 'email', header: 'Email', cell: (lead) => <bdi dir="ltr" className="block truncate">{lead.email}</bdi>, sortValue: (lead) => lead.email, width: 'w-44' },
-      { id: 'persona', header: 'Persona', cell: (lead) => <PersonaBadge persona={lead.persona} />, sortValue: (lead) => lead.persona ?? '', width: 'w-36' },
-      { id: 'lang', header: 'Lang', cell: (lead) => <LangPill lang={lead.lang} />, sortValue: (lead) => lead.lang, width: 'w-20' },
+      { id: 'persona', header: 'Persona', cell: (lead) => <PersonaBadge lead={lead} />, sortValue: (lead) => lead.persona ?? '', width: 'w-40' },
+      { id: 'source', header: 'Source', cell: (lead) => <ReferralSourceCell source={lead.referralSource} />, sortValue: (lead) => lead.referralSource ?? '', width: 'w-56' },
+      { id: 'lang', header: 'Lang', cell: (lead) => <LangCell lead={lead} />, sortValue: (lead) => lead.lang, width: 'w-32' },
       { id: 'date', header: 'Registered', cell: (lead) => <bdi dir="ltr" className="whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>, sortValue: (lead) => lead.createdAt ?? '', width: 'w-40' },
       { id: 'referral', header: 'Referral', cell: (lead) => <Referral lead={lead} />, width: 'w-32' },
       { id: 'utm', header: 'UTM', cell: (lead) => <Utm lead={lead} />, width: 'w-28' },
@@ -186,9 +223,9 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
   ), [syncProps])
 
   return (
-    // Nine columns need this width: narrower screens beside the sidebar scroll the table, not the page.
+    // Ten columns need this width: narrower screens beside the sidebar scroll the table, not the page.
     <div className="lg:overflow-x-auto">
-      <div className="lg:min-w-[85rem]">
+      <div className="lg:min-w-[104rem]">
         <DataTable
           label="Pre-launch leads"
           rows={rows}

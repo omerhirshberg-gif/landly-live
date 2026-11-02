@@ -7,7 +7,8 @@ import { RTL_LANGS, translations, type Lang } from '@/lib/i18n/translations'
 import { FACEBOOK_URL, INSTAGRAM_URL, LINKEDIN_URL } from '@/lib/prelaunch/links'
 import { LEADS_COLLECTION } from '@/lib/prelaunch/leads.server'
 
-// The one confirmation a new /join lead gets, in the language they signed up in.
+// The one confirmation a new /join lead gets, in the language they chose on the
+// form (older leads: the page they signed up on).
 // It has its own renderer because renderBrandedEmail's shell has no social row.
 // Runs after the response, so it can neither slow nor fail a sign-up.
 // email-templates/waitlist-welcome.html is the English output, kept in step by
@@ -314,7 +315,8 @@ export function renderWaitlistWelcomeEmail(lang: Lang, firstName: string): strin
 </html>`
 }
 
-function leadLang(value: unknown): Lang {
+function leadLang(lead: Record<string, unknown> | undefined): Lang {
+  const value = lead?.preferredLanguage ?? lead?.lang
   return typeof value === 'string' && Object.hasOwn(WAITLIST_WELCOME_COPY, value) ? (value as Lang) : 'en'
 }
 
@@ -331,7 +333,7 @@ export async function sendWaitlistWelcomeEmail(db: Firestore, leadId: string): P
   try {
     const problem = emailConfigProblem()
     if (problem) {
-      const lang = leadLang((await ref.get()).data()?.lang)
+      const lang = leadLang((await ref.get()).data())
       console.warn('[waitlist-welcome] not sent', { leadId, lang, subject: WAITLIST_WELCOME_COPY[lang].subject, reason: problem })
       return 'skipped'
     }
@@ -341,7 +343,7 @@ export async function sendWaitlistWelcomeEmail(db: Firestore, leadId: string): P
       const data = snapshot.data()
       if (!data || data.welcomeEmailSent === true || typeof data.email !== 'string') return null
       tx.update(ref, { welcomeEmailSent: true, welcomeEmailSentAt: FieldValue.serverTimestamp() })
-      return { email: data.email, firstName: typeof data.firstName === 'string' ? data.firstName : '', lang: leadLang(data.lang) }
+      return { email: data.email, firstName: typeof data.firstName === 'string' ? data.firstName : '', lang: leadLang(data) }
     })
     if (!lead) return 'already-sent'
     claimed = true

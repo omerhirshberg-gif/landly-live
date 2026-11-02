@@ -10,7 +10,7 @@ import { FaqSection, GalleryStrip, HeroSection, HowItWorks, JoinFooter, JoinHead
 import LeadForm, { type CountryLabels } from './LeadForm'
 import SuccessScreen from './SuccessScreen'
 
-const storage = () => window.localStorage
+const storage = () => window.sessionStorage
 
 // The /join launch page: nine sections with one action, saving a spot. The
 // server sends each language's finished page, so nothing waits on LangProvider,
@@ -29,7 +29,15 @@ export default function PrelaunchPage({ lang, countryLabels }: { lang: Prelaunch
   // Once, on arrival: the page stays static, and first touch is what counts.
   useEffect(() => {
     setArrival(readArrival(window.location.search, document.referrer, new Date()))
+    // Older visits kept this in localStorage, where it outlived the browser.
+    forgetJoinedLead(() => window.localStorage)
     setJoined(readJoinedLead(storage))
+    // The back-forward cache brings the page back without running this again.
+    const refresh = (event: PageTransitionEvent) => {
+      if (event.persisted) setJoined(readJoinedLead(storage))
+    }
+    window.addEventListener('pageshow', refresh)
+    return () => window.removeEventListener('pageshow', refresh)
   }, [])
 
   const finish = (lead: JoinedLead) => {
@@ -85,7 +93,8 @@ export default function PrelaunchPage({ lang, countryLabels }: { lang: Prelaunch
                   ))}
                 </ul>
               </div>
-              <div>
+              {/* min-w-0: a <select> is as wide as its longest option, which would otherwise stretch the column. */}
+              <div className="min-w-0">
                 <LeadForm lang={lang} arrival={arrival} countryLabels={countryLabels} onJoined={finish} />
                 <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
                   {consentParts(copy.legal).map((part, i) =>

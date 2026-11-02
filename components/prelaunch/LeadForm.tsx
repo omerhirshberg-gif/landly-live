@@ -1,13 +1,15 @@
 'use client'
 
-import { useRef, useState, type ComponentProps, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ComponentProps, type FormEvent, type ReactNode } from 'react'
 import PhoneInput from 'react-phone-number-input'
 import { AlertCircle, ArrowLeft, ArrowRight, ChevronDown, Loader2 } from 'lucide-react'
-import { PERSONAS, PRELAUNCH_COPY, type Persona, type PrelaunchLang } from '@/lib/prelaunch/copy'
+import { LANGUAGES } from '@/lib/i18n/languages'
+import { isPrelaunchLang, PERSONAS, PRELAUNCH_COPY, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from '@/lib/prelaunch/copy'
 import type { JoinedLead } from '@/lib/prelaunch/share'
 import type { ArrivalTelemetry } from '@/lib/prelaunch/telemetry'
-import { leadFormErrors, MAX_NAME_LENGTH, type LeadErrors, type LeadField, type LeadFormValues } from '@/lib/prelaunch/validation'
+import { leadFormErrors, MAX_NAME_LENGTH, MAX_PERSONA_OTHER_LENGTH, type LeadErrors, type LeadField, type LeadFormValues } from '@/lib/prelaunch/validation'
 
+const EMPTY_VALUES: LeadFormValues = { firstName: '', lastName: '', phone: '', email: '', consent: false }
 const FIELD_ORDER: LeadField[] = ['firstName', 'lastName', 'phone', 'email', 'consent']
 const NAME_FIELDS = [
   { field: 'firstName', id: 'join-first-name', autoComplete: 'given-name', label: 'firstName', error: 'errName' },
@@ -41,10 +43,42 @@ function FieldError({ id, message }: { id: string; message: string }) {
   )
 }
 
+// A native <select>, the picker in-app browsers handle best. `empty` is the
+// unanswered state's look, on an optional question.
+function SelectField({ id, name, label, value, empty, onChange, children }: {
+  id: string
+  name: string
+  label: string
+  value: string
+  empty?: boolean
+  onChange: (value: string) => void
+  children: ReactNode
+}) {
+  return (
+    <>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink">{label}</label>
+      <div className="relative">
+        <select
+          id={id}
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${FIELD_CLASS} ${VALID_CLASS} cursor-pointer appearance-none pe-10 ${empty ? 'text-slate-500' : ''}`}
+        >
+          {children}
+        </select>
+        <ChevronDown aria-hidden="true" size={18} strokeWidth={1.75} className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-slate-500" />
+      </div>
+    </>
+  )
+}
+
 // The form: errors appear when a field is left, then clear as it's fixed, and a
 // failed submit moves focus to the first field in need. A server failure keeps
 // everything typed. The phone field stays left to right in both languages, on a
-// <div> because <bdi> can't hold the block it renders.
+// <div> because <bdi> can't hold the block it renders. It starts empty every
+// time, even over what the browser restored from an earlier visit, or the next
+// person on a shared phone would find the last one's details.
 export type CountryLabels = ComponentProps<typeof PhoneInput>['labels']
 
 export default function LeadForm({
@@ -61,11 +95,40 @@ export default function LeadForm({
   const copy = PRELAUNCH_COPY[lang]
   const Arrow = lang === 'he' ? ArrowLeft : ArrowRight
   const formRef = useRef<HTMLFormElement>(null)
-  const [values, setValues] = useState<LeadFormValues>({ firstName: '', lastName: '', phone: '', email: '', consent: false })
+  const [values, setValues] = useState<LeadFormValues>(EMPTY_VALUES)
   const [errors, setErrors] = useState<LeadErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [persona, setPersona] = useState<Persona | ''>('')
+  const [personaOther, setPersonaOther] = useState('')
+  const [preferredLanguage, setPreferredLanguage] = useState<PrelaunchLang>(lang)
+  const [referralSource, setReferralSource] = useState<ReferralSource | ''>('')
+  const otherOpen = persona === 'other'
+
+  useEffect(() => {
+    const clear = () => {
+      formRef.current?.reset()
+      setValues(EMPTY_VALUES)
+      setErrors({})
+      setFormError(null)
+      setPersona('')
+      setPersonaOther('')
+      setPreferredLanguage(lang)
+      setReferralSource('')
+    }
+    clear()
+    // The back-forward cache brings the page back as it was left.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) clear()
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [lang])
+
+  const choosePersona = (next: Persona | '') => {
+    setPersona(next)
+    if (next !== 'other') setPersonaOther('')
+  }
 
   const change = (patch: Partial<LeadFormValues>, field: LeadField) => {
     const next = { ...values, ...patch }
@@ -101,7 +164,7 @@ export default function LeadForm({
       const response = await fetch('/api/prelaunch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, lang, persona: persona || null, website, ref: arrival?.ref ?? undefined, attribution: arrival?.attribution }),
+        body: JSON.stringify({ ...values, lang, preferredLanguage, persona: persona || null, personaOtherDescription: otherOpen ? personaOther : null, referralSource: referralSource || null, website, ref: arrival?.ref ?? undefined, attribution: arrival?.attribution }),
         signal: controller.signal,
       })
       const result = await response.json().catch(() => null)
@@ -133,7 +196,8 @@ export default function LeadForm({
         </label>
       </div>
 
-      <div className="grid gap-3">
+      {/* grid-cols-1, not an auto column: a <select> is as wide as its longest option. */}
+      <div className="grid grid-cols-1 gap-3">
         {/* Side by side from 360px, which keeps the form short; a folded cover screen stacks them. */}
         <div className="grid items-start gap-3 min-[360px]:grid-cols-2">
           {NAME_FIELDS.map(({ field, id, autoComplete, label, error }) => (
@@ -216,22 +280,72 @@ export default function LeadForm({
         </div>
 
         <div>
-          <label htmlFor="join-persona" className="mb-1.5 block text-sm font-semibold text-ink">{copy.personaLabel}</label>
-          <div className="relative">
-            <select
-              id="join-persona"
-              name="persona"
-              value={persona}
-              onChange={(event) => setPersona(event.target.value as Persona | '')}
-              className={`${FIELD_CLASS} ${VALID_CLASS} cursor-pointer appearance-none pe-10 ${persona ? '' : 'text-slate-500'}`}
-            >
-              <option value="">{copy.personaPlaceholder}</option>
-              {PERSONAS.map((key) => (
-                <option key={key} value={key}>{copy.personas[key]}</option>
-              ))}
-            </select>
-            <ChevronDown aria-hidden="true" size={18} strokeWidth={1.75} className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <SelectField
+            id="join-language"
+            name="preferredLanguage"
+            label={copy.preferredLanguageLabel}
+            value={preferredLanguage}
+            onChange={(next) => {
+              if (isPrelaunchLang(next)) setPreferredLanguage(next)
+            }}
+          >
+            {LANGUAGES.map(({ code, label }) => (
+              <option key={code} value={code}>{label}</option>
+            ))}
+          </SelectField>
+        </div>
+
+        <div>
+          <SelectField
+            id="join-persona"
+            name="persona"
+            label={copy.personaLabel}
+            value={persona}
+            empty={!persona}
+            onChange={(next) => choosePersona(next as Persona | '')}
+          >
+            <option value="">{copy.personaPlaceholder}</option>
+            {PERSONAS.map((key) => (
+              <option key={key} value={key}>{copy.personas[key]}</option>
+            ))}
+          </SelectField>
+
+          {/* Always in the page, so it can open and close: `invisible` and `disabled` keep it out of the tab order while shut. */}
+          <div className={`grid grid-cols-1 transition-[grid-template-rows,opacity,margin-top,visibility] duration-300 ease-out motion-reduce:transition-none ${otherOpen ? 'visible mt-3 grid-rows-[1fr] opacity-100' : 'invisible mt-0 grid-rows-[0fr] opacity-0'}`}>
+            {/* The padding gives the focus ring room inside overflow-hidden. */}
+            <div className="-m-1 min-h-0 overflow-hidden p-1">
+              <label htmlFor="join-persona-other" className="mb-1.5 block text-sm font-semibold text-ink">{copy.personaOtherLabel}</label>
+              <input
+                id="join-persona-other"
+                type="text"
+                name="personaOtherDescription"
+                autoComplete="off"
+                enterKeyHint="done"
+                maxLength={MAX_PERSONA_OTHER_LENGTH}
+                disabled={!otherOpen}
+                placeholder={copy.personaOtherPlaceholder}
+                value={personaOther}
+                onChange={(event) => setPersonaOther(event.target.value)}
+                className={`${FIELD_CLASS} ${VALID_CLASS} scroll-mb-28`}
+              />
+            </div>
           </div>
+        </div>
+
+        <div>
+          <SelectField
+            id="join-referral"
+            name="referralSource"
+            label={copy.referralLabel}
+            value={referralSource}
+            empty={!referralSource}
+            onChange={(next) => setReferralSource(next as ReferralSource | '')}
+          >
+            <option value="">{copy.referralPlaceholder}</option>
+            {REFERRAL_SOURCES.map((key) => (
+              <option key={key} value={key}>{copy.referralSources[key]}</option>
+            ))}
+          </SelectField>
         </div>
 
         <div>

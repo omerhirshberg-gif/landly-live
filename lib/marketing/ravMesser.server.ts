@@ -29,6 +29,8 @@ interface StoredLead {
   email: string
   phone: string
   lang: string
+  /** Absent on leads from before /join asked for it. */
+  preferredLanguage?: string
   persona: string | null
   ravMesserSync?: { synced?: unknown } | null
 }
@@ -42,7 +44,7 @@ function personalFields(lead: StoredLead): Record<string, string> {
     if (id && /^\d+$/.test(id) && value) fields[id] = value
   }
   set('RAV_MESSER_FIELD_PERSONA', lead.persona)
-  set('RAV_MESSER_FIELD_LANG', lead.lang)
+  set('RAV_MESSER_FIELD_LANG', lead.preferredLanguage ?? lead.lang)
   return fields
 }
 

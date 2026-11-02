@@ -1,12 +1,13 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { isValidEmail, singleLine } from '@/lib/email/formFields'
-import { isPrelaunchLang, PERSONAS, type Persona, type PrelaunchLang } from './copy'
+import { isPrelaunchLang, PERSONAS, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from './copy'
 import { parseAttribution, type LeadAttribution } from './telemetry'
 
 // The /join form's rules, run in the browser for instant errors and again on
 // the server, which trusts nothing the browser sent.
 
 export const MAX_NAME_LENGTH = 50
+export const MAX_PERSONA_OTHER_LENGTH = 120
 const MAX_EMAIL_LENGTH = 254
 export const REFERRAL_CODE_RE = /^[a-z2-7]{10}$/
 
@@ -26,9 +27,16 @@ export interface LeadSubmission {
   lastName: string
   phone: string
   email: string
+  /** The page they signed up on, which decides the consent text stored with the lead. */
   lang: PrelaunchLang
+  /** The language for the welcome email and every later message. */
+  preferredLanguage: PrelaunchLang
   /** The form's optional "which describes you" answer. */
   persona: Persona | null
+  /** Their own words, kept only when the persona is `other`. */
+  personaOtherDescription: string | null
+  /** The form's optional "where did you hear about us" answer. */
+  referralSource: ReferralSource | null
   referredBy: string | null
   attribution: LeadAttribution
 }
@@ -49,6 +57,11 @@ const BIDI_CONTROLS = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 
 export function normalizeLeadName(input: string): string {
   return singleLine(input.replace(BIDI_CONTROLS, ''))
+}
+
+/** Optional free text: never a reason to lose the lead, so anything too long is cut, not refused. */
+export function normalizePersonaOther(input: string): string {
+  return singleLine(input.replace(BIDI_CONTROLS, '').replace(/[<>]/g, '')).slice(0, MAX_PERSONA_OTHER_LENGTH).trim()
 }
 
 // React escapes names on our pages, but they also go to Rav Messer, whose
@@ -82,14 +95,18 @@ export function parseLeadSubmission(body: unknown): LeadSubmission | null {
     consent: raw.consent === true,
   }
   if (Object.keys(leadFormErrors(values)).length || !isPrelaunchLang(raw.lang)) return null
+  const persona = (PERSONAS as readonly unknown[]).includes(raw.persona) ? (raw.persona as Persona) : null
   return {
     firstName: normalizeLeadName(values.firstName),
     lastName: normalizeLeadName(values.lastName),
     phone: normalizeLeadPhone(values.phone)!,
     email: normalizeLeadEmail(values.email),
     lang: raw.lang,
-    // Optional, so a value we don't know is dropped, never a reason to lose the lead.
-    persona: (PERSONAS as readonly unknown[]).includes(raw.persona) ? (raw.persona as Persona) : null,
+    // The answers below are optional, so a value we don't know is dropped, never a reason to lose the lead.
+    preferredLanguage: isPrelaunchLang(raw.preferredLanguage) ? raw.preferredLanguage : raw.lang,
+    persona,
+    personaOtherDescription: (persona === 'other' && normalizePersonaOther(text('personaOtherDescription'))) || null,
+    referralSource: (REFERRAL_SOURCES as readonly unknown[]).includes(raw.referralSource) ? (raw.referralSource as ReferralSource) : null,
     // A malformed code is dropped, never a reason to lose the lead.
     referredBy: REFERRAL_CODE_RE.test(text('ref')) ? text('ref') : null,
     attribution: parseAttribution(raw.attribution),

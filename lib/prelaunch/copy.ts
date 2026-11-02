@@ -30,6 +30,10 @@ export const PRELAUNCH_PATHS: Record<PrelaunchLang, string> = {
 export const PERSONAS = ['new_immigrant', 'lone_soldier', 'student', 'local', 'other'] as const
 export type Persona = (typeof PERSONAS)[number]
 
+/** The form's optional "where did you hear about us" answer, as stored on a lead. Not the `?ref=` share code. */
+export const REFERRAL_SOURCES = ['instagram', 'facebook', 'friend', 'tiktok', 'google', 'whatsapp', 'other'] as const
+export type ReferralSource = (typeof REFERRAL_SOURCES)[number]
+
 export const PILLARS = ['deals', 'free', 'newcomers'] as const
 export type Pillar = (typeof PILLARS)[number]
 
@@ -76,6 +80,12 @@ export interface PrelaunchCopy {
   personaLabel: string
   personaPlaceholder: string
   personas: Record<Persona, string>
+  personaOtherLabel: string
+  personaOtherPlaceholder: string
+  preferredLanguageLabel: string
+  referralLabel: string
+  referralPlaceholder: string
+  referralSources: Record<ReferralSource, string>
   consent: string
   legal: string
   terms: string
@@ -163,6 +173,12 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     personaLabel: 'Which describes you? (optional)',
     personaPlaceholder: 'Select one',
     personas: { new_immigrant: 'New immigrant', lone_soldier: 'Lone soldier', student: 'Student', local: 'Local', other: 'Other' },
+    personaOtherLabel: 'Tell us more (optional)',
+    personaOtherPlaceholder: 'Tell us what brings you to Israel...',
+    preferredLanguageLabel: 'Preferred language for updates',
+    referralLabel: 'Where did you hear about us? (optional)',
+    referralPlaceholder: 'Select one',
+    referralSources: { instagram: '📸 Instagram', facebook: '📘 Facebook', friend: '👥 Friend / Word of mouth', tiktok: '🎵 TikTok', google: '🔍 Google Search', whatsapp: '💬 WhatsApp community / group', other: '🌐 Other' },
     consent: 'I agree to receive promotional messages from Landly by WhatsApp and email: the launch announcement, new deals and related news. I can opt out at any time.',
     legal: 'By signing up you accept the {terms} and {privacy}.',
     terms: 'Terms of Use',
@@ -254,6 +270,12 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     personaLabel: 'מה מתאר אתכם? (לא חובה)',
     personaPlaceholder: 'בחרו אפשרות',
     personas: { new_immigrant: 'עולה חדש/ה', lone_soldier: 'חייל/ת בודד/ה', student: 'סטודנט/ית', local: 'תושב/ת הארץ', other: 'אחר' },
+    personaOtherLabel: 'ספרו לנו עוד (לא חובה)',
+    personaOtherPlaceholder: 'ספרו לנו מה מביא אתכם לישראל...',
+    preferredLanguageLabel: 'שפה מועדפת לעדכונים',
+    referralLabel: 'איך שמעת עלינו? (לא חובה)',
+    referralPlaceholder: 'בחרו אפשרות',
+    referralSources: { instagram: '📸 Instagram', facebook: '📘 Facebook', friend: '👥 חבר / המלצה', tiktok: '🎵 TikTok', google: '🔍 חיפוש בגוגל', whatsapp: '💬 קהילה / קבוצת וואטסאפ', other: '🌐 אחר' },
     consent: 'אני מסכים/ה לקבל מ-Landly דיוור פרסומי בוואטסאפ ובאימייל: הודעה על ההשקה, הטבות חדשות וחדשות קשורות. אפשר להסיר את עצמי בכל עת.',
     legal: 'בהרשמה אתם מאשרים את {terms} ואת {privacy}.',
     terms: 'תנאי השימוש',
@@ -345,6 +367,12 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     personaLabel: 'Что вам подходит? (необязательно)',
     personaPlaceholder: 'Выберите вариант',
     personas: { new_immigrant: 'Репатриант', lone_soldier: 'Одинокий солдат', student: 'Студент', local: 'Местный житель', other: 'Другое' },
+    personaOtherLabel: 'Расскажите подробнее (необязательно)',
+    personaOtherPlaceholder: 'Что привело вас в Израиль...',
+    preferredLanguageLabel: 'Предпочитаемый язык общения',
+    referralLabel: 'Откуда вы о нас узнали? (необязательно)',
+    referralPlaceholder: 'Выберите вариант',
+    referralSources: { instagram: '📸 Instagram', facebook: '📘 Facebook', friend: '👥 Друг / рекомендация', tiktok: '🎵 TikTok', google: '🔍 Поиск Google', whatsapp: '💬 Сообщество / группа WhatsApp', other: '🌐 Другое' },
     consent: 'Я согласен(на) получать от Landly рекламные сообщения в WhatsApp и по email: объявление о запуске, новые предложения и связанные новости. Я могу отказаться в любой момент.',
     legal: 'Регистрируясь, вы принимаете {terms} и {privacy}.',
     terms: 'Условия использования',
@@ -436,6 +464,12 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     personaLabel: 'Qui êtes-vous ? (facultatif)',
     personaPlaceholder: 'Choisissez',
     personas: { new_immigrant: 'Nouvel immigrant', lone_soldier: 'Soldat isolé', student: 'Étudiant', local: 'Habitant', other: 'Autre' },
+    personaOtherLabel: 'Dites-nous en plus (facultatif)',
+    personaOtherPlaceholder: 'Ce qui vous amène en Israël...',
+    preferredLanguageLabel: 'Langue préférée pour nos messages',
+    referralLabel: 'Comment nous avez-vous connus ? (facultatif)',
+    referralPlaceholder: 'Choisissez',
+    referralSources: { instagram: '📸 Instagram', facebook: '📘 Facebook', friend: '👥 Ami / bouche-à-oreille', tiktok: '🎵 TikTok', google: '🔍 Recherche Google', whatsapp: '💬 Communauté / groupe WhatsApp', other: '🌐 Autre' },
     consent: 'J’accepte de recevoir de Landly des messages promotionnels par WhatsApp et par e-mail : l’annonce du lancement, les nouvelles offres et les actualités associées. Je peux me désinscrire à tout moment.',
     legal: 'En vous inscrivant, vous acceptez les {terms} et la {privacy}.',
     terms: 'Conditions d’utilisation',
@@ -527,6 +561,12 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     personaLabel: '¿Qué te describe? (opcional)',
     personaPlaceholder: 'Elige una opción',
     personas: { new_immigrant: 'Nuevo inmigrante', lone_soldier: 'Soldado solitario', student: 'Estudiante', local: 'Residente', other: 'Otro' },
+    personaOtherLabel: 'Cuéntanos más (opcional)',
+    personaOtherPlaceholder: 'Cuéntanos qué te trae a Israel...',
+    preferredLanguageLabel: 'Idioma preferido para las novedades',
+    referralLabel: '¿Cómo nos conociste? (opcional)',
+    referralPlaceholder: 'Elige una opción',
+    referralSources: { instagram: '📸 Instagram', facebook: '📘 Facebook', friend: '👥 Amigo / recomendación', tiktok: '🎵 TikTok', google: '🔍 Búsqueda en Google', whatsapp: '💬 Comunidad / grupo de WhatsApp', other: '🌐 Otro' },
     consent: 'Acepto recibir de Landly mensajes promocionales por WhatsApp y correo electrónico: el anuncio del lanzamiento, nuevas ofertas y noticias relacionadas. Puedo darme de baja en cualquier momento.',
     legal: 'Al registrarte aceptas los {terms} y la {privacy}.',
     terms: 'Términos de uso',
