@@ -1,4 +1,4 @@
-import { PERSONAS, PRELAUNCH_LANGS, type Persona, type PrelaunchLang } from '@/lib/prelaunch/copy'
+import { PERSONAS, PRELAUNCH_LANGS, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from '@/lib/prelaunch/copy'
 
 // The /join sign-ups as the admin sees them: pure, so the dashboard's totals,
 // its filters and the filtered CSV are one set of rules, tested on their own.
@@ -19,7 +19,11 @@ export interface AdminLead {
   phone: string
   email: string
   lang: PrelaunchLang
+  /** The page language on leads from before /join asked for it. */
+  preferredLanguage: PrelaunchLang
   persona: Persona | null
+  personaOtherDescription: string | null
+  referralSource: ReferralSource | null
   createdAt: string | null
   referredBy: string | null
   validReferrals: number
@@ -47,21 +51,25 @@ export interface PrelaunchStats {
   foundingMembers: number
   byLang: Record<PrelaunchLang, number>
   byPersona: Record<Persona | 'none', number>
+  byReferralSource: Record<ReferralSource | 'none', number>
   topReferrers: { id: string; name: string; count: number }[]
 }
 
 export function prelaunchStats(leads: readonly AdminLead[]): PrelaunchStats {
   const byLang = Object.fromEntries(PRELAUNCH_LANGS.map((lang) => [lang, 0])) as Record<PrelaunchLang, number>
   const byPersona = Object.fromEntries([...PERSONAS, 'none'].map((key) => [key, 0])) as Record<Persona | 'none', number>
+  const byReferralSource = Object.fromEntries([...REFERRAL_SOURCES, 'none'].map((key) => [key, 0])) as Record<ReferralSource | 'none', number>
   for (const lead of leads) {
     byLang[lead.lang] += 1
     byPersona[lead.persona ?? 'none'] += 1
+    byReferralSource[lead.referralSource ?? 'none'] += 1
   }
   return {
     total: leads.length,
     foundingMembers: leads.filter((lead) => lead.foundingMember).length,
     byLang,
     byPersona,
+    byReferralSource,
     topReferrers: leads
       .filter((lead) => lead.validReferrals > 0)
       .sort((a, b) => b.validReferrals - a.validReferrals)

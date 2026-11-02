@@ -17,13 +17,13 @@ import { showsCookieNotice } from '@/components/layout/CookieNotice'
 import LanguageSwitcher from '@/components/prelaunch/LanguageSwitcher'
 import PrelaunchPage from '@/components/prelaunch/PrelaunchPage'
 import { isPasskeyPromptPage } from '@/lib/auth/passkeyPrompt'
-import { LOCALIZED_LANGS, PERSONAS, PILLARS, PRELAUNCH_CONSENT_VERSION, PRELAUNCH_COPY, PRELAUNCH_LANGS, PRELAUNCH_PATHS } from '@/lib/prelaunch/copy'
+import { LOCALIZED_LANGS, PERSONAS, PILLARS, PRELAUNCH_CONSENT_VERSION, PRELAUNCH_COPY, PRELAUNCH_LANGS, PRELAUNCH_PATHS, REFERRAL_SOURCES } from '@/lib/prelaunch/copy'
 import { COLLAGE_PHOTOS, GALLERY_PHOTOS } from '@/lib/prelaunch/images'
 import { countdownTo, LAUNCH_AT } from '@/lib/prelaunch/launch'
 import { FACEBOOK_URL, httpsLink, INSTAGRAM_URL, WHATSAPP_COMMUNITY_URL } from '@/lib/prelaunch/links'
 import { prelaunchLangScript } from '@/lib/prelaunch/langScript'
 import { joinWaitlist, leadKeyId } from '@/lib/prelaunch/leads.server'
-import { languageHref, readJoinedLead, referralLink, rememberJoinedLead, whatsappShareHref } from '@/lib/prelaunch/share'
+import { JOINED_TTL_MS, languageHref, readJoinedLead, referralLink, rememberJoinedLead, whatsappShareHref } from '@/lib/prelaunch/share'
 import { cleanReferrer, parseAttribution, readArrival } from '@/lib/prelaunch/telemetry'
 import { PRELAUNCH_MAX_PER_IP, reservePrelaunchAttempt } from '@/lib/prelaunch/throttle.server'
 import { leadFormErrors, normalizeLeadPhone, parseLeadSubmission, type LeadSubmission } from '@/lib/prelaunch/validation'
@@ -79,6 +79,26 @@ describe('lead validation', () => {
   })
   it.each(PERSONAS)('keeps the persona %s', (persona) => {
     expect(parseLeadSubmission({ ...VALID, persona })?.persona).toBe(persona)
+  })
+  it('takes the preferred language, or the page language when it is missing or unknown', () => {
+    expect(parseLeadSubmission({ ...VALID, preferredLanguage: 'fr' })).toMatchObject({ lang: 'he', preferredLanguage: 'fr' })
+    expect(parseLeadSubmission({ ...VALID, preferredLanguage: 'de' })?.preferredLanguage).toBe('he')
+    expect(parseLeadSubmission(VALID)?.preferredLanguage).toBe('he')
+  })
+  it('keeps the persona description only for Other, cleaned and within 120 characters', () => {
+    const other = (personaOtherDescription: unknown) => parseLeadSubmission({ ...VALID, persona: 'other', personaOtherDescription })?.personaOtherDescription
+    expect(other('  Here\n for <b>work\u202e ')).toBe('Here for bwork')
+    expect(other('x'.repeat(200))).toHaveLength(120)
+    expect(other('   ')).toBeNull()
+    expect(other(7)).toBeNull()
+    expect(parseLeadSubmission({ ...VALID, persona: 'student', personaOtherDescription: 'left over' })?.personaOtherDescription).toBeNull()
+  })
+  it.each(REFERRAL_SOURCES)('keeps the referral source %s', (referralSource) => {
+    expect(parseLeadSubmission({ ...VALID, referralSource })?.referralSource).toBe(referralSource)
+  })
+  it('drops an unknown or missing referral source without losing the lead', () => {
+    expect(parseLeadSubmission({ ...VALID, referralSource: 'admin' })?.referralSource).toBeNull()
+    expect(parseLeadSubmission(VALID)?.referralSource).toBeNull()
   })
   it('drops an unknown or missing persona without losing the lead', () => {
     expect(parseLeadSubmission({ ...VALID, persona: 'admin' })?.persona).toBeNull()
@@ -267,6 +287,20 @@ describe('sharing', () => {
     expect(readJoinedLead(storage)).toBeNull()
     expect(readJoinedLead(() => { throw new Error('blocked') })).toBeNull()
   })
+  it('forgets a finished sign-up after 30 minutes, an undated one and one from the future', () => {
+    const data = new Map<string, string>()
+    const storage = () => ({ getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), removeItem: (k: string) => void data.delete(k) })
+    const lead = { referralCode: 'abcdefgh23', firstName: 'Noa' }
+    rememberJoinedLead(storage, lead, 1000)
+    expect(readJoinedLead(storage, 1000 + JOINED_TTL_MS - 1)).toEqual(lead)
+    expect(readJoinedLead(storage, 1000 + JOINED_TTL_MS)).toBeNull()
+    expect(data.size).toBe(0)
+    data.set('landly_prelaunch_joined', JSON.stringify(lead))
+    expect(readJoinedLead(storage)).toBeNull()
+    expect(data.size).toBe(0)
+    rememberJoinedLead(storage, lead, 5000)
+    expect(readJoinedLead(storage, 4000)).toBeNull()
+  })
 })
 
 describe('the countdown', () => {
@@ -305,10 +339,10 @@ describe('the demand numbers', () => {
     expect(leads[1000]).toMatchObject({ id: 'l1000', foundingMember: false })
   })
   it('writes a CSV with every field, keeps the phone’s + and defuses visitor text', () => {
-    const csv = leadsCsv(withReferrals([base('a', 1000, null, { firstName: '=cmd()', lastName: '@sum', phone: '+972501234567', email: 'a@b.co', lang: 'he', persona: 'student', attribution: { utm_source: 'ig' }, consent: { version: 'v1' } })]))
+    const csv = leadsCsv(withReferrals([base('a', 1000, null, { firstName: '=cmd()', lastName: '@sum', phone: '+972501234567', email: 'a@b.co', lang: 'he', preferredLanguage: 'fr', persona: 'student', personaOtherDescription: '=evil()', referralSource: 'tiktok', attribution: { utm_source: 'ig' }, consent: { version: 'v1' } })]))
     const [header, row] = csv.trim().split('\n')
-    expect(header).toBe('firstName,lastName,phone,email,lang,persona,foundingMember,validReferrals,status,createdAt,referralCode,referredBy,consentVersion,consentAcceptedAt,utm_source,utm_medium,utm_campaign,utm_content,referrer')
-    expect(row.startsWith("'=cmd(),'@sum,+972501234567,a@b.co,he,student,yes,0,")).toBe(true)
+    expect(header).toBe('firstName,lastName,phone,email,lang,preferredLanguage,persona,personaOtherDescription,referralSource,foundingMember,validReferrals,status,createdAt,referralCode,referredBy,consentVersion,consentAcceptedAt,utm_source,utm_medium,utm_campaign,utm_content,referrer')
+    expect(row.startsWith("'=cmd(),'@sum,+972501234567,a@b.co,he,fr,student,'=evil(),tiktok,yes,0,")).toBe(true)
     expect(row).toContain('v1')
   })
   it('leaves the last name blank for a lead from before it was asked, and reads a lead that only has a name', () => {

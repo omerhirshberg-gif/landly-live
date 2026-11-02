@@ -50,7 +50,10 @@ export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise
       phone: lead.phone,
       email: lead.email,
       lang: lead.lang,
+      preferredLanguage: lead.preferredLanguage,
       persona: lead.persona,
+      personaOtherDescription: lead.personaOtherDescription,
+      referralSource: lead.referralSource,
       status: 'interested',
       consent: {
         accepted: true,

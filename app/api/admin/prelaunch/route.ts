@@ -27,7 +27,11 @@ const toAdminLead = (lead: StoredLead & { createdAtMs: number }): AdminLead => (
   phone: lead.phone,
   email: lead.email,
   lang: lead.lang,
+  // Leads from before /join asked for it have none.
+  preferredLanguage: lead.preferredLanguage ?? lead.lang,
   persona: lead.persona ?? null,
+  personaOtherDescription: lead.personaOtherDescription ?? null,
+  referralSource: lead.referralSource ?? null,
   createdAt: lead.createdAtMs ? new Date(lead.createdAtMs).toISOString() : null,
   referredBy: lead.referredBy ?? null,
   validReferrals: lead.validReferrals,

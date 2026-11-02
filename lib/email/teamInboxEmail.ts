@@ -18,8 +18,8 @@ export interface TeamInboxEmail {
   subject: string
   heading: string
   rows: TeamInboxRow[]
-  /** Free text, shown in its own block with line breaks kept. */
-  message: string
+  /** Free text, shown in its own block with line breaks kept. A notification with only rows leaves it out. */
+  message?: string
   /** Who the footer says Reply reaches, e.g. the sender's name. */
   replyName: string
   /** Which form it came from, for the footer ("the Landly support form"). */
@@ -29,7 +29,7 @@ export interface TeamInboxEmail {
 
 export function buildTeamInboxEmail(email: Omit<TeamInboxEmail, 'replyTo'>) {
   const { subject, heading, rows, message, replyName, source } = email
-  const text = [...rows.map((r) => `${r.label}: ${r.value}`), '', 'Message:', message].join('\n')
+  const text = [...rows.map((r) => `${r.label}: ${r.value}`), ...(message === undefined ? [] : ['', 'Message:', message])].join('\n')
   const cell = (r: TeamInboxRow) =>
     r.href ? `<a href="${escapeHtml(r.href)}" style="color:#2563EB;">${escapeHtml(r.value)}</a>` : escapeHtml(r.value)
   // dir="auto" on the values and message so Hebrew text renders right-to-left.
@@ -41,14 +41,14 @@ export function buildTeamInboxEmail(email: Omit<TeamInboxEmail, 'replyTo'>) {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;line-height:20px;">
 ${rows.map((r) => `<tr><td style="padding:2px 16px 2px 0;color:#64748B;font-weight:600;vertical-align:top;white-space:nowrap;">${escapeHtml(r.label)}</td><td dir="auto" style="padding:2px 0;">${cell(r)}</td></tr>`).join('\n')}
 </table>
-<div dir="auto" style="margin-top:20px;padding:16px;background:#F1F5F9;border-radius:8px;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(message)}</div>
+${message === undefined ? '' : `<div dir="auto" style="margin-top:20px;padding:16px;background:#F1F5F9;border-radius:8px;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(message)}</div>`}
 <p style="margin:16px 0 0 0;font-size:12px;color:#94A3B8;">Sent from ${escapeHtml(source)}. Reply to this email to answer ${escapeHtml(replyName)} directly.</p>
 </td></tr></table>
 </body></html>`
   return { subject, text, html }
 }
 
-export async function sendToTeamInbox(email: TeamInboxEmail): Promise<void> {
+export async function sendToTeamInbox(email: TeamInboxEmail, options?: { idempotencyKey: string }): Promise<void> {
   const problem = emailConfigProblem()
   if (problem) throw new Error(problem)
   const { subject, text, html } = buildTeamInboxEmail(email)
@@ -59,6 +59,6 @@ export async function sendToTeamInbox(email: TeamInboxEmail): Promise<void> {
     subject,
     text,
     html,
-  })
+  }, options)
   if (error) throw new EmailProviderError(error.name, error.statusCode, error.message)
 }

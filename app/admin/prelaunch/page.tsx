@@ -4,14 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { formatIsraeliDateTime } from '@/lib/admin/formatDate'
 import { filterLeads, type AdminLead, type LeadFilters, type PrelaunchStats } from '@/lib/admin/prelaunchStats'
-import { PERSONAS, PRELAUNCH_LANGS } from '@/lib/prelaunch/copy'
+import { PERSONAS, PRELAUNCH_LANGS, REFERRAL_SOURCES } from '@/lib/prelaunch/copy'
 import Alert from '@/components/admin/Alert'
 import BidiText from '@/components/admin/BidiText'
 import Card, { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
 import { ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
-import PrelaunchTable, { langName, PERSONA_NAMES } from '@/components/admin/PrelaunchTable'
+import PrelaunchTable, { langName, PERSONA_NAMES, REFERRAL_SOURCE_NAMES } from '@/components/admin/PrelaunchTable'
 import StatCard from '@/components/admin/StatCard'
 import { ADMIN_INPUT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
 
@@ -128,7 +128,7 @@ export default function PrelaunchLeadsPage() {
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
-      <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         <div className="flex flex-col gap-3 sm:gap-4">
           <StatCard label="Total Leads" value={data ? data.stats.total : null} icon="fa-rocket" accent="blue" emptyHint="Leads appear here once someone signs up on /join." />
           <StatCard label="Founding Members" value={data ? data.stats.foundingMembers : null} icon="fa-award" accent="amber" />
@@ -144,6 +144,10 @@ export default function PrelaunchLeadsPage() {
               <Breakdown total={data.stats.total} rows={[...PERSONAS, 'none' as const].map((key) => ({ key, label: PERSONA_NAMES[key], count: data.stats.byPersona[key] }))} />
             </Card>
             <Card className="p-4 sm:p-6">
+              <h2 className={SECTION_HEADING}>Heard About Us</h2>
+              <Breakdown total={data.stats.total} rows={[...REFERRAL_SOURCES, 'none' as const].map((key) => ({ key, label: REFERRAL_SOURCE_NAMES[key], count: data.stats.byReferralSource[key] }))} />
+            </Card>
+            <Card className="p-4 sm:col-span-2 sm:p-6">
               <h2 className={SECTION_HEADING}>Top Referrers</h2>
               {data.stats.topReferrers.length ? (
                 <ol className="mt-3 space-y-2">
@@ -163,7 +167,7 @@ export default function PrelaunchLeadsPage() {
             </Card>
           </>
         ) : (
-          !error && <CardSkeletons count={3} className="h-64" />
+          !error && <CardSkeletons count={4} className="h-64" />
         )}
       </div>
 
