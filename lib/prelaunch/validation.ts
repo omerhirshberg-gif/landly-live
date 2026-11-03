@@ -1,6 +1,6 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { isValidEmail, singleLine } from '@/lib/email/formFields'
-import { isPrelaunchLang, PERSONAS, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from './copy'
+import { isPrelaunchLang, normalizePersona, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from './copy'
 import { parseAttribution, type LeadAttribution } from './telemetry'
 
 // The /join form's rules, run in the browser for instant errors and again on
@@ -95,7 +95,7 @@ export function parseLeadSubmission(body: unknown): LeadSubmission | null {
     consent: raw.consent === true,
   }
   if (Object.keys(leadFormErrors(values)).length || !isPrelaunchLang(raw.lang)) return null
-  const persona = (PERSONAS as readonly unknown[]).includes(raw.persona) ? (raw.persona as Persona) : null
+  const persona = normalizePersona(raw.persona)
   return {
     firstName: normalizeLeadName(values.firstName),
     lastName: normalizeLeadName(values.lastName),

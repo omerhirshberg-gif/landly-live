@@ -13,7 +13,7 @@ import { useLiveUserDocument } from '@shared/firebase/useLiveUserDocument'
 import { updateUserName, updateUserProfileDetails, type UserDocument } from '@shared/firebase/users'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, type ContactChangeResult } from '@shared/account/contactChange'
 import type { OtpTarget } from '@shared/auth/otp'
-import { customerTypeLabel, isCustomerType } from '@shared/customerTypes'
+import { canonicalCustomerType, customerTypeLabel, isCustomerType } from '@shared/customerTypes'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@shared/profile/countryOfOrigin'
 import AppText from '../../components/AppText'
 import AvatarPicker from '../../components/AvatarPicker'
@@ -138,7 +138,7 @@ interface Details {
 
 const detailsOf = (profile: UserDocument | null): Details => ({
   phone: profile?.phone ?? '',
-  customerType: profile?.customerType ?? '',
+  customerType: canonicalCustomerType(profile?.customerType ?? ''),
   customerTypeOther: profile?.customerTypeOther ?? '',
   countryOfOrigin: profile?.countryOfOrigin ?? '',
   israelRegion: profile?.israelRegion ?? '',

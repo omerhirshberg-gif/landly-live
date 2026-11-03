@@ -25,7 +25,7 @@ describe('privacy policy: member types, lone soldiers and mentor requests', () =
 
   it('lists every member type a member can choose, Lone Soldier included', () => {
     for (const option of CUSTOMER_TYPES) expect(policy).toContain(translations.en[option.labelKey].split(' ')[0])
-    expect(policy).toContain('Student, New Immigrant (Oleh Chadash), Lone Soldier, Taglit')
+    expect(policy).toContain('Student, New Oleh (Oleh Chadash), Veteran Oleh, Lone Soldier, Taglit')
   })
 
   it('says no military records or classified information are requested', () => {

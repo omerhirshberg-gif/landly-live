@@ -38,9 +38,9 @@ beforeEach(() => {
 })
 
 describe('Lone Soldier member type', () => {
-  it('is offered right after New Immigrant, with a label in every language', () => {
+  it('is offered right after Veteran Oleh, with a label in every language', () => {
     const values = CUSTOMER_TYPES.map((o) => o.value)
-    expect(values.indexOf('lone_soldier')).toBe(values.indexOf('new_immigrant') + 1)
+    expect(values.indexOf('lone_soldier')).toBe(values.indexOf('veteran_oleh') + 1)
     for (const lang of Object.keys(translations) as Lang[]) expect(translations[lang].signup_customerType_loneSoldier).toBeTruthy()
     expect(translations.en.signup_customerType_loneSoldier).toBe('Lone Soldier')
     expect(translations.he.signup_customerType_loneSoldier).toBe('חייל/ת בודד/ה')
@@ -68,14 +68,14 @@ describe('Lone Soldier member type', () => {
 })
 
 describe('customer type chips', () => {
-  it.each(['en', 'he'] as const)('show every type, with the odd last chip ("Other") across both columns (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('show every type; an odd last chip ("Other") would span both columns (%s)', (lang) => {
     const html = withLang(lang, createElement(PersonaStep, { labelledBy: 'x', value: 'lone_soldier', onChange: () => {}, note: '', onNoteChange: () => {} }))
     const chips = html.match(/<button [^>]*role="radio"[^>]*>[^<]*<\/button>/g) ?? []
     expect(chips).toHaveLength(CUSTOMER_TYPES.length)
     expect(chips.find((c) => c.includes(translations[lang].signup_customerType_loneSoldier))).toContain('aria-checked="true"')
-    expect(CUSTOMER_TYPES.length % 2).toBe(1)
     expect(chips.at(-1)).toContain(translations[lang].signup_customerType_other)
-    expect(chips.at(-1)).toContain('col-span-2')
+    // With the Oleh split there are 8 types, an even grid; an odd count would span the last chip.
+    expect(chips.at(-1)?.includes('col-span-2')).toBe(CUSTOMER_TYPES.length % 2 === 1)
     expect(chips.slice(0, -1).some((c) => c.includes('col-span-2'))).toBe(false)
   })
 

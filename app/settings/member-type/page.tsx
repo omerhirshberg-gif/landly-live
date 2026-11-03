@@ -4,12 +4,12 @@ import { useState } from 'react'
 import SettingsPageShell from '@/components/settings/SettingsPageShell'
 import { useSettingsMember } from '@/components/settings/useSettingsMember'
 import PersonaStep from '@/components/auth/onboarding/PersonaStep'
-import { isCustomerType, personaNote } from '@/lib/customerTypes'
+import { canonicalCustomerType, isCustomerType, personaNote } from '@/lib/customerTypes'
 import { useLang } from '@/lib/i18n/useLang'
 import { invalidateMemberProfile, useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { updateUserCustomerType } from '@/lib/firebase/users'
 
-// The member type (Student, New Immigrant, Lone Soldier, ...), its own page:
+// The member type (Student, New Oleh, Lone Soldier, ...), its own page:
 // opened from the Edit button on /profile (app: settings/member-type). The
 // same chips as onboarding; "Other" keeps its optional note, so unlike
 // Country of origin this saves on Save rather than on each tap. Back
@@ -24,7 +24,7 @@ export default function MemberTypePage() {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<'idle' | 'saved' | 'failed'>('idle')
 
-  const storedType = profile?.customerType ?? ''
+  const storedType = canonicalCustomerType(profile?.customerType ?? '')
   const storedNote = profile?.customerTypeOther ?? ''
   const value = type ?? storedType
   const noteValue = note ?? storedNote

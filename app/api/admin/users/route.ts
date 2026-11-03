@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
-import { CUSTOMER_TYPES } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, LEGACY_CUSTOMER_TYPES } from '@/lib/customerTypes'
+
+/** Stored values that now read as `current` (the pre-split `new_immigrant` for `new_oleh`). */
+const legacyValuesOf = (current: string) => Object.keys(LEGACY_CUSTOMER_TYPES).filter((old) => LEGACY_CUSTOMER_TYPES[old] === current)
 import { USER_FIELDS, countPasses, toAdminUserRow, type AdminUserRow, type AuthFields } from '@/lib/admin/userStats'
 
 // The Users page's data: every member (users/{uid}; business logins live in
@@ -87,7 +90,7 @@ async function loadUsers(): Promise<UsersPayload> {
   if (truncated) {
     const [all, ...perType] = await Promise.all([
       users.count().get(),
-      ...CUSTOMER_TYPES.map((type) => users.where('customerType', '==', type.value).count().get()),
+      ...CUSTOMER_TYPES.map((type) => users.where('customerType', 'in', [type.value, ...legacyValuesOf(type.value)]).count().get()),
     ])
     total = all.data().count
     CUSTOMER_TYPES.forEach((type, i) => (typeCounts[type.value] = perType[i]!.data().count))

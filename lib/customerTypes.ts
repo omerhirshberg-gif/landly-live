@@ -4,7 +4,8 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 // (web and app), in display order, stored as users/{uid}.customerType.
 export const CUSTOMER_TYPES = [
   { value: 'student', labelKey: 'signup_customerType_student', color: '#2563eb' },
-  { value: 'new_immigrant', labelKey: 'signup_customerType_newImmigrant', color: '#059669' },
+  { value: 'new_oleh', labelKey: 'signup_customerType_newOleh', color: '#059669' },
+  { value: 'veteran_oleh', labelKey: 'signup_customerType_veteranOleh', color: '#0d9488' },
   { value: 'lone_soldier', labelKey: 'signup_customerType_loneSoldier', color: '#4d7c0f' },
   { value: 'taglit', labelKey: 'signup_customerType_taglit', color: '#db2777' },
   { value: 'long_term_program', labelKey: 'signup_customerType_longTermProgram', color: '#7c3aed' },
@@ -13,6 +14,14 @@ export const CUSTOMER_TYPES = [
 ] as const satisfies readonly { value: string; labelKey: TranslationKey; color: string }[]
 
 export type CustomerType = (typeof CUSTOMER_TYPES)[number]['value']
+
+/** Stored before the Oleh split: the old single "new immigrant" member type, now `new_oleh`. */
+export const LEGACY_CUSTOMER_TYPES: Readonly<Record<string, CustomerType>> = { new_immigrant: 'new_oleh' }
+
+/** A stored customerType with a legacy value mapped to its current one; anything else is returned unchanged. */
+export function canonicalCustomerType(value: string): string {
+  return LEGACY_CUSTOMER_TYPES[value] ?? value
+}
 
 export const OTHER_CUSTOMER_TYPE = 'other'
 export const MAX_PERSONA_NOTE_LENGTH = 120
@@ -41,7 +50,7 @@ export function customerTypeLabel(
   note: string,
   t: (key: TranslationKey) => string
 ): string | null {
-  const option = CUSTOMER_TYPES.find((o) => o.value === type)
+  const option = CUSTOMER_TYPES.find((o) => o.value === canonicalCustomerType(type))
   if (!option) return null
   const typed = type === OTHER_CUSTOMER_TYPE ? note.trim() : ''
   return typed || t(option.labelKey)

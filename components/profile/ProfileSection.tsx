@@ -10,7 +10,7 @@ import { fullName, MAX_NAME_LENGTH, profileNameErrors, splitDisplayName, type Na
 import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange } from '@/lib/account/contactChange'
 import type { OtpTarget } from '@/lib/auth/otp'
-import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, canonicalCustomerType, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
 import SegmentBadge from '@/components/member/SegmentBadge'
@@ -30,7 +30,7 @@ interface Details {
 
 const detailsOf = (profile: UserDocument | null): Details => ({
   phone: profile?.phone ?? '',
-  customerType: profile?.customerType ?? '',
+  customerType: canonicalCustomerType(profile?.customerType ?? ''),
   customerTypeOther: profile?.customerTypeOther ?? '',
   countryOfOrigin: profile?.countryOfOrigin ?? '',
   israelRegion: profile?.israelRegion ?? '',

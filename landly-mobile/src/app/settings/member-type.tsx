@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { isCustomerType, personaNote } from '@shared/customerTypes'
+import { canonicalCustomerType, isCustomerType, personaNote } from '@shared/customerTypes'
 import { useAuth } from '@shared/firebase/useAuth'
 import { invalidateMemberProfile, useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { updateUserCustomerType } from '@shared/firebase/users'
@@ -13,7 +13,7 @@ import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { colors } from '../../theme'
 
-// The member type (Student, New Immigrant, Lone Soldier, ...) (web:
+// The member type (Student, New Oleh, Lone Soldier, ...) (web:
 // app/settings/member-type/page.tsx), pushed from the Profile tab's Edit
 // button. The onboarding chips; "Other" keeps its optional note, so unlike
 // Country of origin this saves on Save rather than on each tap. Back (the
@@ -28,7 +28,7 @@ export default function MemberTypeScreen() {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<'idle' | 'saved' | 'failed'>('idle')
 
-  const storedType = profile?.customerType ?? ''
+  const storedType = canonicalCustomerType(profile?.customerType ?? '')
   const storedNote = profile?.customerTypeOther ?? ''
   const value = type ?? storedType
   const noteValue = note ?? storedNote

@@ -27,8 +27,18 @@ export const PRELAUNCH_PATHS: Record<PrelaunchLang, string> = {
 }
 
 /** The form's optional "which describes you" answer, as stored on a lead. */
-export const PERSONAS = ['new_immigrant', 'lone_soldier', 'student', 'local', 'other'] as const
+export const PERSONAS = ['new_oleh', 'veteran_oleh', 'lone_soldier', 'student', 'local', 'other'] as const
 export type Persona = (typeof PERSONAS)[number]
+
+/** Leads stored before the Oleh split hold `new_immigrant`; it reads as `new_oleh`. No data migration. */
+const LEGACY_PERSONAS: Readonly<Record<string, Persona>> = { new_immigrant: 'new_oleh' }
+
+/** A stored or submitted persona as a current key, or null when it is not one we know. */
+export function normalizePersona(value: unknown): Persona | null {
+  if (typeof value !== 'string') return null
+  const key = LEGACY_PERSONAS[value] ?? value
+  return (PERSONAS as readonly string[]).includes(key) ? (key as Persona) : null
+}
 
 /** The form's optional "where did you hear about us" answer, as stored on a lead. Not the `?ref=` share code. */
 export const REFERRAL_SOURCES = ['instagram', 'facebook', 'friend', 'tiktok', 'google', 'whatsapp', 'other'] as const
@@ -154,7 +164,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     pillars: {
       deals: { title: 'Deals and vouchers', body: 'Discounts and vouchers at restaurants, gyms, shops and other local businesses.' },
       free: { title: 'Free to join', body: 'Signing up costs nothing. Just save your spot and we’ll take it from there.' },
-      newcomers: { title: 'Built for newcomers', body: 'Made for new immigrants, lone soldiers and students who are finding their feet in Israel.' },
+      newcomers: { title: 'Built for newcomers', body: 'Made for new Olim, lone soldiers and students who are finding their feet in Israel.' },
     },
     stepsTitle: 'How it works',
     steps: [
@@ -172,7 +182,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     countrySelect: 'Choose a country code',
     personaLabel: 'Which describes you? (optional)',
     personaPlaceholder: 'Select one',
-    personas: { new_immigrant: 'New immigrant', lone_soldier: 'Lone soldier', student: 'Student', local: 'Local', other: 'Other' },
+    personas: { new_oleh: 'New Oleh (0–5 years in Israel)', veteran_oleh: 'Veteran Oleh (5+ years in Israel)', lone_soldier: 'Lone soldier', student: 'Student', local: 'Local', other: 'Other' },
     personaOtherLabel: 'Tell us more (optional)',
     personaOtherPlaceholder: 'Tell us what brings you to Israel...',
     preferredLanguageLabel: 'Preferred language for updates',
@@ -205,7 +215,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     faq: [
       { q: 'Is Landly free to join?', a: 'Yes. Joining Landly is free.' },
       { q: 'When does Landly launch?', a: 'Landly launches on January 1, 2027. Everyone who saves a spot gets a message on launch day.' },
-      { q: 'Who is Landly for?', a: 'People new to Israel: new immigrants, lone soldiers and students. Locals are welcome too.' },
+      { q: 'Who is Landly for?', a: 'People new to Israel: new Olim, lone soldiers and students. Locals are welcome too.' },
       { q: 'How do the deals work?', a: 'Local businesses offer deals and vouchers on Landly. You pick one and redeem it at the business.' },
       { q: 'What happens to my details? Can I opt out?', a: 'We use your details to send you launch news and deals, as described in our Privacy Policy. You can opt out at any time by writing to contact@golandly.com.' },
     ],
@@ -269,7 +279,8 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     countrySelect: 'בחירת קידומת מדינה',
     personaLabel: 'מה מתאר אתכם? (לא חובה)',
     personaPlaceholder: 'בחרו אפשרות',
-    personas: { new_immigrant: 'עולה חדש/ה', lone_soldier: 'חייל/ת בודד/ה', student: 'סטודנט/ית', local: 'תושב/ת הארץ', other: 'אחר' },
+    personas: { // The ranges sit in LTR isolates (U+2066–U+2069) so "0–5" and "5+" keep their order inside the RTL label.
+    new_oleh: 'עולה חדש/ה (⁦0–5⁩ שנים בארץ)', veteran_oleh: 'עולה ותיק/ה (⁦5+⁩ שנים בארץ)', lone_soldier: 'חייל/ת בודד/ה', student: 'סטודנט/ית', local: 'תושב/ת הארץ', other: 'אחר' },
     personaOtherLabel: 'ספרו לנו עוד (לא חובה)',
     personaOtherPlaceholder: 'ספרו לנו מה מביא אתכם לישראל...',
     preferredLanguageLabel: 'שפה מועדפת לעדכונים',
@@ -366,7 +377,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     countrySelect: 'Выберите код страны',
     personaLabel: 'Что вам подходит? (необязательно)',
     personaPlaceholder: 'Выберите вариант',
-    personas: { new_immigrant: 'Репатриант', lone_soldier: 'Одинокий солдат', student: 'Студент', local: 'Местный житель', other: 'Другое' },
+    personas: { new_oleh: 'Новый репатриант (0–5 лет)', veteran_oleh: 'Опытный репатриант (5+ лет)', lone_soldier: 'Одинокий солдат', student: 'Студент', local: 'Местный житель', other: 'Другое' },
     personaOtherLabel: 'Расскажите подробнее (необязательно)',
     personaOtherPlaceholder: 'Что привело вас в Израиль...',
     preferredLanguageLabel: 'Предпочитаемый язык общения',
@@ -445,7 +456,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     pillars: {
       deals: { title: 'Bons plans et bons d’achat', body: 'Des réductions et des bons dans les restaurants, salles de sport, boutiques et autres commerces locaux.' },
       free: { title: 'Inscription gratuite', body: 'L’inscription ne coûte rien. Réservez votre place, nous nous occupons du reste.' },
-      newcomers: { title: 'Pensé pour les nouveaux', body: 'Pour les nouveaux immigrants, les soldats isolés et les étudiants qui prennent leurs marques en Israël.' },
+      newcomers: { title: 'Pensé pour les nouveaux', body: 'Pour les nouveaux Olim, les soldats isolés et les étudiants qui prennent leurs marques en Israël.' },
     },
     stepsTitle: 'Comment ça marche',
     steps: [
@@ -463,7 +474,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     countrySelect: 'Choisir un indicatif pays',
     personaLabel: 'Qui êtes-vous ? (facultatif)',
     personaPlaceholder: 'Choisissez',
-    personas: { new_immigrant: 'Nouvel immigrant', lone_soldier: 'Soldat isolé', student: 'Étudiant', local: 'Habitant', other: 'Autre' },
+    personas: { new_oleh: 'Nouvel Oleh (0–5 ans)', veteran_oleh: 'Oleh de longue date (5+ ans)', lone_soldier: 'Soldat isolé', student: 'Étudiant', local: 'Habitant', other: 'Autre' },
     personaOtherLabel: 'Dites-nous en plus (facultatif)',
     personaOtherPlaceholder: 'Ce qui vous amène en Israël...',
     preferredLanguageLabel: 'Langue préférée pour nos messages',
@@ -496,7 +507,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     faq: [
       { q: 'L’inscription à Landly est-elle gratuite ?', a: 'Oui. L’inscription à Landly est gratuite.' },
       { q: 'Quand Landly sera-t-il lancé ?', a: 'Landly sera lancé le 1er janvier 2027. Toutes les personnes qui ont réservé une place recevront un message le jour du lancement.' },
-      { q: 'À qui s’adresse Landly ?', a: 'Aux nouveaux arrivants en Israël : nouveaux immigrants, soldats isolés et étudiants. Les habitants sont aussi les bienvenus.' },
+      { q: 'À qui s’adresse Landly ?', a: 'Aux nouveaux arrivants en Israël : nouveaux Olim, soldats isolés et étudiants. Les habitants sont aussi les bienvenus.' },
       { q: 'Comment fonctionnent les offres ?', a: 'Des commerces locaux proposent des bons plans et des bons d’achat sur Landly. Vous en choisissez un et vous l’utilisez sur place.' },
       { q: 'Que deviennent mes données ? Puis-je me désinscrire ?', a: 'Nous utilisons vos données pour vous envoyer les nouvelles du lancement et les offres, comme le décrit notre Politique de confidentialité. Vous pouvez vous désinscrire à tout moment en écrivant à contact@golandly.com.' },
     ],
@@ -542,7 +553,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     pillars: {
       deals: { title: 'Ofertas y cupones', body: 'Descuentos y cupones en restaurantes, gimnasios, tiendas y otros comercios locales.' },
       free: { title: 'Unirse es gratis', body: 'Registrarte no cuesta nada. Guarda tu lugar y nosotros nos encargamos del resto.' },
-      newcomers: { title: 'Hecho para recién llegados', body: 'Para nuevos inmigrantes, soldados solitarios y estudiantes que están haciendo su vida en Israel.' },
+      newcomers: { title: 'Hecho para recién llegados', body: 'Para nuevos Olim, soldados solitarios y estudiantes que están haciendo su vida en Israel.' },
     },
     stepsTitle: 'Cómo funciona',
     steps: [
@@ -560,7 +571,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     countrySelect: 'Elige un código de país',
     personaLabel: '¿Qué te describe? (opcional)',
     personaPlaceholder: 'Elige una opción',
-    personas: { new_immigrant: 'Nuevo inmigrante', lone_soldier: 'Soldado solitario', student: 'Estudiante', local: 'Residente', other: 'Otro' },
+    personas: { new_oleh: 'Nuevo Olé (0–5 años)', veteran_oleh: 'Olé veterano (5+ años)', lone_soldier: 'Soldado solitario', student: 'Estudiante', local: 'Residente', other: 'Otro' },
     personaOtherLabel: 'Cuéntanos más (opcional)',
     personaOtherPlaceholder: 'Cuéntanos qué te trae a Israel...',
     preferredLanguageLabel: 'Idioma preferido para las novedades',
@@ -593,7 +604,7 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     faq: [
       { q: '¿Unirse a Landly es gratis?', a: 'Sí. Unirse a Landly es gratis.' },
       { q: '¿Cuándo se lanza Landly?', a: 'Landly se lanza el 1 de enero de 2027. Todos los que hayan guardado su lugar recibirán un mensaje el día del lanzamiento.' },
-      { q: '¿Para quién es Landly?', a: 'Para quienes acaban de llegar a Israel: nuevos inmigrantes, soldados solitarios y estudiantes. Los residentes también son bienvenidos.' },
+      { q: '¿Para quién es Landly?', a: 'Para quienes acaban de llegar a Israel: nuevos Olim, soldados solitarios y estudiantes. Los residentes también son bienvenidos.' },
       { q: '¿Cómo funcionan las ofertas?', a: 'Los comercios locales publican ofertas y cupones en Landly. Eliges uno y lo canjeas en el comercio.' },
       { q: '¿Qué pasa con mis datos? ¿Puedo darme de baja?', a: 'Usamos tus datos para enviarte noticias del lanzamiento y ofertas, como se describe en nuestra Política de privacidad. Puedes darte de baja en cualquier momento escribiendo a contact@golandly.com.' },
     ],

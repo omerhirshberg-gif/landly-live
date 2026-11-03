@@ -111,7 +111,7 @@ export function olimServiceJsonLd(): JsonLdNode {
     provider: { '@id': ORGANIZATION_ID },
     areaServed: { '@type': 'Country', name: 'Israel' },
     audience: [
-      { '@type': 'Audience', audienceType: 'New immigrants to Israel (olim chadashim)' },
+      { '@type': 'Audience', audienceType: 'New Olim in Israel (olim chadashim) and veteran Olim' },
       { '@type': 'Audience', audienceType: 'Lone soldiers in the IDF' },
     ],
     offers: { '@type': 'Offer', price: 0, priceCurrency: 'ILS', description: 'Free for Landly club members' },
