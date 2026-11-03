@@ -117,7 +117,7 @@ describe('/business and /support', () => {
     for (const key of ['biz_stats_title', 'biz_stat_perks', 'biz_stat_categories', 'biz_stat_languages', 'biz_stat_segments'] as const) expect(html).toContain(t[key].replace(/'/g, '&#x27;'))
     expect(html).toContain('<span class="sr-only">12</span>')
     expect(html).toContain('<span class="sr-only">5</span>')
-    expect(html).toContain('<span class="sr-only">6</span>')
+    expect(html).toContain('<span class="sr-only">7</span>')
     // The page's mark: a handshake in the shared frame, not a solid blue tile.
     expect(html).toMatch(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-12 w-12 rounded-xl border-sky-200\/60 bg-white text-brand mx-auto mb-5 shadow-card"><svg [^>]*lucide-handshake/)
     expect(html).not.toContain('bg-brand text-white shadow-[0_10px_24px')

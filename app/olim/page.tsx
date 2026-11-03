@@ -61,7 +61,7 @@ const CTA_PRIMARY = 'ds-btn ds-btn-primary ds-btn-wrap shadow-[0_8px_24px_-8px_r
 const CTA_SECONDARY = 'ds-btn ds-btn-secondary ds-btn-wrap'
 
 // /olim: a showcase page for everyone making their life in Israel (new
-// immigrants, lone soldiers, students, travellers), not only olim. An
+// Olim, lone soldiers, students, travellers), not only olim. An
 // editorial hero on the site canvas (the headline first, no pill above it),
 // How It Works, the four benefits (Lone Soldiers the fourth) as one swipe row
 // on phones and tablets and a four-column grid from 1024px, the categories

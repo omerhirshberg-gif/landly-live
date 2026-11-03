@@ -1,5 +1,5 @@
 import { getCountryCallingCode, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
-import { CUSTOMER_TYPES, isCustomerType } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, canonicalCustomerType, isCustomerType } from '@/lib/customerTypes'
 
 // The admin's Users page (/admin/users): one row per member (users/{uid}),
 // merged on the server from the Firestore doc, the Auth record and their
@@ -86,7 +86,7 @@ export function toAdminUserRow(uid: string, doc: UserDocFields, auth: AuthFields
     phone,
     phoneCountry: phoneCountryOf(phone),
     originCountry: /^[A-Z]{2}$/.test(origin) ? origin : '',
-    customerType: isCustomerType(doc.customerType) ? doc.customerType : '',
+    customerType: isCustomerType(canonicalCustomerType(text(doc.customerType))) ? canonicalCustomerType(text(doc.customerType)) : '',
     customerTypeOther: text(doc.customerTypeOther),
     emailVerified: !!auth?.emailVerified,
     phoneVerified: doc.phoneVerified === true,

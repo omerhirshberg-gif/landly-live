@@ -1,7 +1,7 @@
 import { updateProfile, type User } from 'firebase/auth'
 import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc, type DocumentData } from 'firebase/firestore'
 import { fullName, normalizePersonName, splitDisplayName } from '@/lib/auth/names'
-import { personaNote, type CustomerType } from '@/lib/customerTypes'
+import { canonicalCustomerType, personaNote, type CustomerType } from '@/lib/customerTypes'
 import { db } from './config'
 import { recheckSessionIfDenied } from './sessionCheck'
 
@@ -119,7 +119,7 @@ function toUserDocument(data: DocumentData): UserDocument {
     lastName: typeof data.lastName === 'string' ? data.lastName : '',
     displayName: data.displayName ?? '',
     phone: data.phone ?? '',
-    customerType: data.customerType ?? '',
+    customerType: canonicalCustomerType(typeof data.customerType === 'string' ? data.customerType : ''),
     customerTypeOther: typeof data.customerTypeOther === 'string' ? data.customerTypeOther : '',
     wishlistOfferIds: Array.isArray(data.wishlistOfferIds) ? data.wishlistOfferIds : [],
     preferredLanguage: data.preferredLanguage ?? 'en',

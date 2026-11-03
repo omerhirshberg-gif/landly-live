@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { customerTypeLabel } from '@/lib/customerTypes'
+import { canonicalCustomerType, customerTypeLabel } from '@/lib/customerTypes'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { translations, type TranslationKey } from '@/lib/i18n/translations'
 
@@ -68,5 +68,14 @@ describe('web profile section', async () => {
     expect(html).not.toContain('fa-lock')
     expect(html).not.toContain(translations.en.profile_locked_label)
     expect(html).not.toContain(translations.en.profile_change_email_btn)
+  })
+})
+
+describe('legacy new_immigrant member type', () => {
+  it('reads as New Oleh', () => {
+    const t = (key: TranslationKey) => translations.en[key]
+    expect(canonicalCustomerType('new_immigrant')).toBe('new_oleh')
+    expect(customerTypeLabel('new_immigrant', '', t)).toBe('New Oleh')
+    expect(customerTypeLabel('veteran_oleh', '', t)).toBe('Veteran Oleh')
   })
 })

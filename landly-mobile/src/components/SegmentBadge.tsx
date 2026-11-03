@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native'
-import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, customerTypeLabel } from '@shared/customerTypes'
+import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, canonicalCustomerType, customerTypeLabel } from '@shared/customerTypes'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
@@ -9,7 +9,7 @@ import { colors, radius } from '../theme'
 // shows what the member typed for it; no answer yet shows "Member" in grey.
 export default function SegmentBadge({ customerType, customerTypeOther }: { customerType?: string; customerTypeOther?: string }) {
   const { t } = useLang()
-  const type = customerType ?? ''
+  const type = canonicalCustomerType(customerType ?? '')
   const label = customerTypeLabel(type, customerTypeOther ?? '', t) ?? t('dash_segment_value_unset')
   const color = CUSTOMER_TYPES.find((o) => o.value === type)?.color ?? CUSTOMER_TYPE_UNSET_COLOR
 

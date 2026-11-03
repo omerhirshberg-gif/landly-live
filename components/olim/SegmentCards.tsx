@@ -2,9 +2,9 @@
 
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import { CalendarCheck, Check, GraduationCap, Luggage, PlaneLanding, ShieldCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, Check, GraduationCap, Luggage, Home, PlaneLanding, ShieldCheck, Users, type LucideIcon } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
-import { CUSTOMER_TYPES, OTHER_CUSTOMER_TYPE, type CustomerType } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, OTHER_CUSTOMER_TYPE, canonicalCustomerType, type CustomerType } from '@/lib/customerTypes'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
 
@@ -13,7 +13,8 @@ type Segment = Exclude<CustomerType, typeof OTHER_CUSTOMER_TYPE>
 // Each member type's icon and one line on what Landly gives it. "Other" is
 // left out: it's a catch-all at sign-up, not an audience.
 const SEGMENT_DETAILS: Record<Segment, { icon: LucideIcon; descKey: TranslationKey }> = {
-  new_immigrant: { icon: PlaneLanding, descKey: 'olim_seg_new_immigrant_desc' },
+  new_oleh: { icon: PlaneLanding, descKey: 'olim_seg_new_oleh_desc' },
+  veteran_oleh: { icon: Home, descKey: 'olim_seg_veteran_oleh_desc' },
   lone_soldier: { icon: ShieldCheck, descKey: 'olim_seg_lone_soldier_desc' },
   student: { icon: GraduationCap, descKey: 'olim_seg_student_desc' },
   taglit: { icon: Users, descKey: 'olim_seg_taglit_desc' },
@@ -40,7 +41,7 @@ export default function SegmentCards({ member, joinable, currentType }: { member
       <ul className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {segments.map((segment, i) => {
           const { icon: Icon, descKey } = SEGMENT_DETAILS[segment.value]
-          const isYou = member && currentType === segment.value
+          const isYou = member && canonicalCustomerType(currentType ?? '') === segment.value
           // Alpha tints as 8-digit hex, which every supported browser (older iOS Safari too) reads.
           const accent = { '--seg': segment.color, '--seg-tint': `${segment.color}1F`, '--seg-line': `${segment.color}59`, '--seg-ring': `${segment.color}33` } as CSSProperties
           const body = (

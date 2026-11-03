@@ -28,7 +28,7 @@ describe('privacy policy', () => {
   })
 
   it('covers the data the app stores', () => {
-    for (const phrase of ['Student', 'New Immigrant (Oleh Chadash)', 'Taglit', 'Traveler', 'WhatsApp', 'salted, one-way hash', 'QR code', 'Tranzila']) {
+    for (const phrase of ['Student', 'New Oleh (Oleh Chadash)', 'Taglit', 'Traveler', 'WhatsApp', 'salted, one-way hash', 'QR code', 'Tranzila']) {
       expect(text).toContain(phrase)
     }
   })

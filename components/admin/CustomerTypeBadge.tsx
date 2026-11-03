@@ -1,4 +1,4 @@
-import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR } from '@/lib/customerTypes'
+import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, canonicalCustomerType } from '@/lib/customerTypes'
 import { translations } from '@/lib/i18n/translations'
 
 // A member's type as the admin shows it: its emoji, its English label and the
@@ -7,7 +7,8 @@ import { translations } from '@/lib/i18n/translations'
 
 const EMOJI: Record<string, string> = {
   student: '🎓',
-  new_immigrant: '🇮🇱',
+  new_oleh: '🇮🇱',
+  veteran_oleh: '🏡',
   lone_soldier: '🎖️',
   taglit: '🚌',
   long_term_program: '📚',
@@ -16,7 +17,8 @@ const EMOJI: Record<string, string> = {
   '': '❔',
 }
 
-export function customerTypeInfo(type: string): { label: string; emoji: string; color: string } {
+export function customerTypeInfo(rawType: string): { label: string; emoji: string; color: string } {
+  const type = canonicalCustomerType(rawType)
   const option = CUSTOMER_TYPES.find((o) => o.value === type)
   return {
     label: option ? translations.en[option.labelKey] : 'Not set',

@@ -17,7 +17,7 @@ import { showsCookieNotice } from '@/components/layout/CookieNotice'
 import LanguageSwitcher from '@/components/prelaunch/LanguageSwitcher'
 import PrelaunchPage from '@/components/prelaunch/PrelaunchPage'
 import { isPasskeyPromptPage } from '@/lib/auth/passkeyPrompt'
-import { LOCALIZED_LANGS, PERSONAS, PILLARS, PRELAUNCH_CONSENT_VERSION, PRELAUNCH_COPY, PRELAUNCH_LANGS, PRELAUNCH_PATHS, REFERRAL_SOURCES } from '@/lib/prelaunch/copy'
+import { LOCALIZED_LANGS, normalizePersona, PERSONAS, PILLARS, PRELAUNCH_CONSENT_VERSION, PRELAUNCH_COPY, PRELAUNCH_LANGS, PRELAUNCH_PATHS, REFERRAL_SOURCES } from '@/lib/prelaunch/copy'
 import { COLLAGE_PHOTOS, GALLERY_PHOTOS } from '@/lib/prelaunch/images'
 import { countdownTo, LAUNCH_AT } from '@/lib/prelaunch/launch'
 import { FACEBOOK_URL, httpsLink, INSTAGRAM_URL, WHATSAPP_COMMUNITY_URL } from '@/lib/prelaunch/links'
@@ -100,6 +100,13 @@ describe('lead validation', () => {
     expect(parseLeadSubmission({ ...VALID, referralSource: 'admin' })?.referralSource).toBeNull()
     expect(parseLeadSubmission(VALID)?.referralSource).toBeNull()
   })
+  it('reads the legacy new_immigrant persona as new_oleh', () => {
+    expect(parseLeadSubmission({ ...VALID, persona: 'new_immigrant' })?.persona).toBe('new_oleh')
+    expect(normalizePersona('new_immigrant')).toBe('new_oleh')
+    expect(normalizePersona('veteran_oleh')).toBe('veteran_oleh')
+    expect(normalizePersona('admin')).toBeNull()
+  })
+
   it('drops an unknown or missing persona without losing the lead', () => {
     expect(parseLeadSubmission({ ...VALID, persona: 'admin' })?.persona).toBeNull()
     expect(parseLeadSubmission(VALID)?.persona).toBeNull()

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { filterLeads, leadSyncStatus, parseLeadFilters, prelaunchStats, type AdminLead } from '@/lib/admin/prelaunchStats'
+import { normalizePersona } from '@/lib/prelaunch/copy'
 import { getAdminDb, getAdminProjectId } from '@/lib/firebase/admin'
 import { ravMesserListId, syncLeadToRavMesser } from '@/lib/marketing/ravMesser.server'
 import { leadsCsv, withReferrals } from '@/lib/prelaunch/demand.mjs'
@@ -29,7 +30,7 @@ const toAdminLead = (lead: StoredLead & { createdAtMs: number }): AdminLead => (
   lang: lead.lang,
   // Leads from before /join asked for it have none.
   preferredLanguage: lead.preferredLanguage ?? lead.lang,
-  persona: lead.persona ?? null,
+  persona: normalizePersona(lead.persona),
   personaOtherDescription: lead.personaOtherDescription ?? null,
   referralSource: lead.referralSource ?? null,
   createdAt: lead.createdAtMs ? new Date(lead.createdAtMs).toISOString() : null,
