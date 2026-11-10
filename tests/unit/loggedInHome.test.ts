@@ -177,7 +177,7 @@ describe('member dashboard: category rail and perk cards', () => {
     redemptionInstructions: '',
   }
 
-  it.each(['en', 'he'] as const)('a perk card shows merchant, category badge, "% OFF" banner and the CTA line (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('a perk card shows merchant, category badge, "% OFF" banner and one baseline price row, with no CTA line (%s)', (lang) => {
     const t = translations[lang]
     const html = withLang(lang, createElement(OfferCard, { offer }))
     expect(html).toContain('href="/offers/o1"')
@@ -188,7 +188,9 @@ describe('member dashboard: category rail and perk cards', () => {
     expect(html).toContain(`<span class="sr-only">${t.offer_percent_off.replace('{n}', '15')}</span>`)
     expect(html.match(/-15%/g)).toHaveLength(1)
     expect(html.indexOf('-15%')).toBeLessThan(html.indexOf('text-price '))
-    expect(html).toContain(`<span>${t.offer_view_cta}</span>`)
+    // The whole card is the link: no "View deal" text, and the price and its original share one left-to-right row.
+    expect(html).not.toContain(`<span>${t.offer_view_cta}</span>`)
+    expect(html).toContain('<bdi dir="ltr" class="text-price tabular-nums text-brand">')
   })
 
   it('shows how the perk is redeemed, and a branded panel instead of a broken image when there is no photo', () => {

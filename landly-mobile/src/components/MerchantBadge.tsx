@@ -76,6 +76,8 @@ const styles = StyleSheet.create({
   tile: {
     minWidth: BADGE_MIN_WIDTH,
     borderRadius: BADGE_RADIUS,
+    // iOS's continuous-curvature corner (a squircle); Android and web draw a plain arc.
+    borderCurve: 'continuous',
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -88,6 +90,6 @@ const styles = StyleSheet.create({
   // Web: shadow-md.
   tileLarge: { minWidth: LARGE.minWidth, maxWidth: LARGE.maxWidth, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 },
   clipLarge: { paddingHorizontal: LARGE.padding },
-  clip: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', paddingHorizontal: BADGE_PADDING, borderRadius: BADGE_RADIUS - 1, backgroundColor: colors.white },
+  clip: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', paddingHorizontal: BADGE_PADDING, borderRadius: BADGE_RADIUS - 1, borderCurve: 'continuous', backgroundColor: colors.white },
   initial: { fontWeight: '800', color: colors.brand, textAlign: 'center' },
 })

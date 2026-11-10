@@ -14,7 +14,7 @@ interface HowToRedeemProps {
   /** The merchant's conditions (redemptionTerms), shown under the steps. */
   terms?: string
   termsLang?: string | null
-  /** On the offer page the member hasn't bought yet, so step one is buying it. */
+  /** Kept for callers; the "buy it" step is no longer shown. */
   includePurchaseStep?: boolean
   /**
    * 'card': its own bordered card. 'section': a full-size section inside
@@ -28,11 +28,14 @@ interface HowToRedeemProps {
 // merchant's own instructions, or the method's standard steps -- then any
 // conditions. Shared by the offer page and the web wallet; the Expo wallet
 // (landly-mobile VoucherPass) shows the same content.
-export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, includePurchaseStep = false, variant = 'card' }: HowToRedeemProps) {
+export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, variant = 'card' }: HowToRedeemProps) {
   const { t } = useLang()
   const headingId = useId()
   const MethodIcon = REDEMPTION_METHOD_ICONS[method]
-  const steps = [...(includePurchaseStep ? [t('redeem_step_buy')] : []), ...redemptionSteps(method, instructions, t)]
+  const steps = redemptionSteps(method, instructions, t)
+  // Numbers only where order matters: the merchant's own multi-line instructions.
+  // The standard copy reads as plain lines, with no "1, 2" badges.
+  const numbered = instructions.trim() !== '' && steps.length > 1
   // The merchant's own steps are in the content's language; the standard ones in the reader's.
   const stepLang = instructions.trim() ? instructionsLang ?? undefined : undefined
 
@@ -46,13 +49,15 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
     <ol className="space-y-3">
       {steps.map((step, i) => (
         <li key={i} className="flex items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-micro font-bold text-white"
-          >
-            {i + 1}
-          </span>
-          <span className="pt-0.5 text-sm leading-relaxed text-body" lang={includePurchaseStep && i === 0 ? undefined : stepLang} dir="auto">
+          {numbered && (
+            <span
+              aria-hidden="true"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brandTint text-micro font-bold text-brand"
+            >
+              {i + 1}
+            </span>
+          )}
+          <span className="text-sm leading-relaxed text-body" lang={stepLang} dir="auto">
             {step}
           </span>
         </li>

@@ -98,14 +98,21 @@ export default function VoucherScreen() {
 
               <View style={styles.divider} />
               <AppText style={styles.howTitle} accessibilityRole="header">{t('redeem_how_title')}</AppText>
-              {redemptionSteps(voucher.redemptionMethod, instructions.text, t).map((step, i) => (
-                <View key={i} style={styles.step} accessibilityLabel={`${i + 1}. ${step}`} accessible>
-                  <View style={styles.stepNumber}>
-                    <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
-                  </View>
+              {(() => {
+                const steps = redemptionSteps(voucher.redemptionMethod, instructions.text, t)
+                // Numbers only for the merchant's own multi-line instructions, where order matters.
+                const numbered = instructions.text.trim() !== '' && steps.length > 1
+                return steps.map((step, i) => (
+                <View key={i} style={styles.step} accessibilityLabel={numbered ? `${i + 1}. ${step}` : step} accessible>
+                  {numbered && (
+                    <View style={styles.stepNumber}>
+                      <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
+                    </View>
+                  )}
                   <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{step}</ContentText>
                 </View>
-              ))}
+              ))
+              })()}
 
               {(voucher.expiresAt || terms.text) && <View style={styles.divider} />}
               {voucher.expiresAt && (
@@ -167,8 +174,8 @@ const styles = StyleSheet.create({
   redeemed: { marginTop: 24, padding: 16, borderRadius: radius.lg, backgroundColor: colors.background, fontSize: 14, fontWeight: '600', color: colors.body, textAlign: 'center' },
   howTitle: { fontSize: 14, fontWeight: '700', color: colors.heading, marginBottom: 12 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  stepNumber: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  stepNumberText: { fontSize: 11, fontWeight: '700', color: colors.white, textAlign: 'center' },
+  stepNumber: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumberText: { fontSize: 11, fontWeight: '700', color: colors.brand, textAlign: 'center' },
   stepText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
   validity: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   expired: { color: colors.danger },

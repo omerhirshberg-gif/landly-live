@@ -11,7 +11,7 @@ export default function DiscountBadge({ percent, className = '' }: { percent: nu
   const { t } = useLang()
   if (percent <= 0) return null
   return (
-    <span className={`absolute top-0 end-0 rounded-es-2xl bg-emerald-700 px-3 py-1 text-xs font-bold text-white shadow-md sm:text-sm ${className}`}>
+    <span className={`absolute top-0 end-0 rounded-es-2xl [corner-shape:squircle] bg-emerald-700 px-3 py-1 text-xs font-bold text-white shadow-md sm:text-sm ${className}`}>
       <bdi aria-hidden="true" dir="ltr">{`-${percent}%`}</bdi>
       <span className="sr-only">{t('offer_percent_off').replace('{n}', String(percent))}</span>
     </span>

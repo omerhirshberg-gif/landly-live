@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Heart, MapPin } from 'lucide-react'
+import { Heart, MapPin } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useWishlist } from '@/lib/firebase/useWishlist'
@@ -40,8 +40,9 @@ interface OfferCardProps {
 // 16:9 hero (DealMedia.tsx), then a white body with the category and how it's
 // redeemed, the offer and the business, where, and the price. Over the hero: the
 // discount ribbon tied to the top end corner, the heart at the bottom end, and
-// the business's logo box across the bottom start corner. The whole card is the link; the CTA only says
-// what tapping does. The lift on hover is limited to devices that really hover,
+// the business's logo box across the bottom start corner. The whole card is the
+// link, with no "View deal" text: it lifts under a real pointer and presses in
+// under a finger. The lift on hover is limited to devices that really hover,
 // so a tap never leaves a phone's card stuck raised. Prices sit in <bdi> in the
 // body font, "₪" included, so the symbol and digits never mix fonts. Every
 // position is start/end, so Hebrew mirrors the card.
@@ -61,9 +62,9 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
   return (
     <Link
       href={`/offers/${offer.id}`}
-      // A rail scrolls sideways, so it clips anything that rises above it: 2px there, 4px in a grid.
+      // A rail scrolls sideways, so it keeps 4px of room above its cards for the lift.
       className={`group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.07)] transition-[box-shadow,transform,border-color] duration-200 ease-out-expo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98] motion-reduce:transition-none [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0 ${
-        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 [@media(hover:hover)]:hover:-translate-y-0.5' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
+        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
       } ${className}`}
     >
       <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category}>
@@ -93,10 +94,10 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         <span className="absolute -bottom-5 start-3"><MerchantBadge logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={name.text} /></span>
       </DealMedia>
 
-      <div className={`flex flex-1 flex-col ${rail ? 'px-3 pb-3 pt-7' : 'px-3 pb-3 pt-7 sm:px-4 sm:pb-4'}`}>
+      <div className={`flex flex-1 flex-col ${rail ? 'px-3 pb-3 pt-6' : 'px-3 pb-3 pt-6 sm:px-4 sm:pb-4'}`}>
         <OfferTags category={offer.category} method={offer.redemptionMethod} showCategory={showCategoryBadge} className="mb-1" />
-        {/* A rail keeps two lines reserved so neighbouring cards line up; a grid row stretches its cards anyway. */}
-        <p className={`line-clamp-2 text-sm font-bold leading-snug text-ink ${rail ? 'min-h-[2.75em]' : ''}`}>
+        {/* Cards in a row stretch to the tallest, and the price rides the foot (mt-auto), so no title lines are reserved. */}
+        <p className="line-clamp-2 text-sm font-bold leading-snug text-ink">
           <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
         </p>
         <div className="mt-0.5 truncate text-meta leading-snug text-body">
@@ -113,22 +114,12 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
           </span>
         )}
 
-        {/* Price at the start, "View deal" at the end, on one row. */}
-        <div className={`mt-auto flex items-center justify-between pt-2.5 ${rail ? 'gap-2' : 'gap-3'}`}>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-            <bdi className="text-price tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
-            {discount > 0 && (
-              <bdi className="text-price-was tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>
-            )}
-          </div>
-          <span className={`flex flex-shrink-0 items-center gap-1.5 font-semibold text-brand ${rail ? 'text-meta' : 'text-sm'}`}>
-            <span>{t('offer_view_cta')}</span>
-            <ArrowRight
-              aria-hidden="true"
-              className="h-3.5 w-3.5 transition-transform rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5"
-              strokeWidth={2.25}
-            />
-          </span>
+        {/* One baseline at the card's foot: the price, then the struck-through original. Always left to right, "₪" included. */}
+        <div className="mt-auto flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap pt-2">
+          <bdi dir="ltr" className="text-price tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
+          {discount > 0 && (
+            <bdi dir="ltr" className="text-price-was tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>
+          )}
         </div>
       </div>
     </Link>
