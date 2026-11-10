@@ -235,15 +235,22 @@ export default function OfferScreen() {
                     </Accordion>
                   )}
                   <Accordion title={t('offer_how_title')} defaultOpen>
-                    {redemptionSteps(offer.redemptionMethod, instructions.text, t).map((step, i) => (
-                      <View key={i} style={styles.step} accessibilityLabel={`${i + 1}. ${step}`} accessible>
-                        <View style={styles.stepNumber}>
-                          <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
-                        </View>
+                    {(() => {
+                      const steps = redemptionSteps(offer.redemptionMethod, instructions.text, t)
+                      // Numbers only for the merchant's own multi-line instructions, where order matters.
+                      const numbered = instructions.text.trim() !== '' && steps.length > 1
+                      return steps.map((step, i) => (
+                      <View key={i} style={styles.step} accessibilityLabel={numbered ? `${i + 1}. ${step}` : step} accessible>
+                        {numbered && (
+                          <View style={styles.stepNumber}>
+                            <AppText ltr style={styles.stepNumberText}>{i + 1}</AppText>
+                          </View>
+                        )}
                         {/* The merchant's own steps are in the content's language; the standard ones in the app's. */}
                         <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{step}</ContentText>
                       </View>
-                    ))}
+                    ))
+                    })()}
                   </Accordion>
                   {!!terms.text && (
                     <Accordion title={t('offer_fine_print_title')}>
@@ -389,8 +396,8 @@ const styles = StyleSheet.create({
   expired: { color: colors.danger },
   folds: { marginTop: 20 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  stepNumber: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  stepNumberText: { fontSize: 11, fontWeight: '700', color: colors.white, textAlign: 'center' },
+  stepNumber: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumberText: { fontSize: 11, fontWeight: '700', color: colors.brand, textAlign: 'center' },
   stepText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
   terms: { fontSize: 13, lineHeight: 19, color: colors.textMuted },
   actionBar: {

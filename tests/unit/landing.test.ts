@@ -187,7 +187,7 @@ describe('deal images and logos', () => {
 
   it('draws one logo tile on web and native, as wide as its logo needs', () => {
     const web = read('components/discover/MerchantBadge.tsx')
-    expect(web).toContain('flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white')
+    expect(web).toContain('flex shrink-0 items-center justify-center overflow-hidden rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white')
     expect(web).toContain("className={`h-full w-auto object-contain ${size === 'lg' ? 'min-w-0 max-w-full' : 'max-w-[96px]'}`}")
     const native = read('landly-mobile/src/components/MerchantBadge.tsx')
     expect(native).toContain('resizeMode="contain"')

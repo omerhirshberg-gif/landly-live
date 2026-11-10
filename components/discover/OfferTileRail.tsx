@@ -48,8 +48,11 @@ export default function OfferTileRail({
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">
           {href && seeMore && (
-            <Link href={href} className="tap-target inline-flex items-center text-sm font-bold text-brand hover:underline">
-              {seeMore}
+            // 32px to the eye, 44px to the finger: the link is the target, the pill is its look.
+            <Link href={href} className="tap-target group/pill inline-flex items-center">
+              <span className="rounded-full border border-slate-200/70 bg-brandTint px-3.5 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
+                {seeMore}
+              </span>
             </Link>
           )}
           {/* Mouse users have no swipe and no scrollbar: these page the rail. Hidden from AT (the cards are all in the tab order). */}

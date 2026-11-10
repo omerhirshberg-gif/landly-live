@@ -225,6 +225,6 @@ describe('mirroring', () => {
     const carousel = readFileSync('landly-mobile/src/components/OfferCarousel.tsx', 'utf8')
     expect(carousel).toContain('snapToOffsets={snapToOffsets}')
     expect(carousel).not.toContain('snapToInterval')
-    expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).toContain('<OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} />')
+    expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).toContain('<OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} showCategoryBadge={false} />')
   })
 })

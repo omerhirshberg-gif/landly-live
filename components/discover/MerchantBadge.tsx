@@ -11,7 +11,8 @@ interface MerchantBadgeProps {
 }
 
 // The business on a perk card and its offer's page, as the Expo app's
-// MerchantBadge draws it: a white rounded tile (a hairline edge, a soft shadow)
+// MerchantBadge draws it: a white squircle tile (continuous-curvature corners where the
+// browser has corner-shape, a plain arc elsewhere; a hairline edge, a soft shadow)
 // of one height, as wide as its logo needs: a square or round mark sits in the
 // 56px minimum, a wide wordmark grows up to 96px, or its initial shows when
 // there's none or it fails to load. It floats over the picture, so a logo arriving
@@ -26,7 +27,7 @@ export default function MerchantBadge({ logoUrl, businessName, size = 'md' }: Me
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white ${
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white ${
         size === 'lg' ? 'h-14 min-w-[72px] max-w-[160px] px-3 shadow-md sm:h-16' : 'h-12 min-w-[56px] px-2.5 shadow-sm sm:h-14'
       }`}
     >

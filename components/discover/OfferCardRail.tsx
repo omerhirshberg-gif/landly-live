@@ -37,6 +37,8 @@ export default function OfferCardRail({
   offers,
   href,
   seeAll,
+  count,
+  showCategoryBadge = true,
   dots = false,
 }: {
   id: string
@@ -47,6 +49,10 @@ export default function OfferCardRail({
   /** Both or neither: a category without a page has no link. */
   href?: string
   seeAll?: string
+  /** The number of deals behind "See all", beside the title (not inside the link). */
+  count?: number
+  /** Off in a rail already scoped to one category, where every card would repeat it. */
+  showCategoryBadge?: boolean
   dots?: boolean
 }) {
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
@@ -54,14 +60,22 @@ export default function OfferCardRail({
 
   return (
     <section aria-labelledby={id}>
-      <MemberColumn className="mb-3 flex items-center justify-between gap-3">
-        <h2 id={id} className="flex min-w-0 items-center gap-2 text-xl font-bold text-ink">
-          {glyph}
+      <MemberColumn className="mb-1 flex items-center justify-between gap-3">
+        <h2 id={id} className="flex min-w-0 items-center gap-2.5 text-xl font-bold tracking-tight text-ink">
+          {glyph && (
+            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200/70 bg-brandTint">
+              {glyph}
+            </span>
+          )}
           <bdi className="truncate" dir="auto">{title}</bdi>
+          {typeof count === 'number' && <bdi dir="ltr" className="shrink-0 text-sm font-semibold tabular-nums text-muted">{count}</bdi>}
         </h2>
         {href && seeAll && (
-          <Link href={href} className="tap-target inline-flex shrink-0 items-center text-sm font-semibold text-brand hover:underline">
-            {seeAll}
+          // 32px to the eye, 44px to the finger: the link is the target, the pill is its look.
+          <Link href={href} className="tap-target group/pill inline-flex shrink-0 items-center">
+            <span className="rounded-full border border-slate-200/70 bg-brandTint px-3.5 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
+              {seeAll}
+            </span>
           </Link>
         )}
       </MemberColumn>
@@ -73,7 +87,7 @@ export default function OfferCardRail({
         >
           {offers.map((offer) => (
             <div key={offer.id} className="flex shrink-0 snap-start">
-              <OfferCard offer={offer} showWishlistButton />
+              <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} />
             </div>
           ))}
         </div>

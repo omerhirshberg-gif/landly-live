@@ -123,7 +123,7 @@ describe('tab bar boundary', () => {
     const tabs = await read('app/(tabs)/_layout.tsx')
     expect(tabs).toContain("Platform.OS === 'ios' && iosVersion < 26")
     expect(tabs).toContain("{ disableTransparentOnScrollEdge: true, blurEffect: 'systemChromeMaterial' as const, shadowColor: colors.border }")
-    expect(tabs).toContain('<NativeTabs tintColor={colors.brand} {...androidBar} {...iosEdgeBar}>')
+    expect(tabs).toContain('<NativeTabs tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...androidBar} {...iosEdgeBar}>')
   })
 
   it('draws a hairline over the Android bar on its surfaceContainer', async () => {

@@ -40,8 +40,8 @@ describe('the shekel sign in the price font', () => {
     } as never
     for (const lang of ['en', 'he'] as const) {
       const html = withLang(lang, createElement(OfferCard, { offer, layout: 'grid' }))
-      expect(html).toContain('<bdi class="text-price tabular-nums text-brand">₪29</bdi>')
-      expect(html).toContain('<bdi class="text-price-was tabular-nums text-slate-400 line-through decoration-slate-400/70">₪45</bdi>')
+      expect(html).toContain('<bdi dir="ltr" class="text-price tabular-nums text-brand">₪29</bdi>')
+      expect(html).toContain('<bdi dir="ltr" class="text-price-was tabular-nums text-slate-400 line-through decoration-slate-400/70">₪45</bdi>')
       expect(html).not.toContain('font-display')
       expect(html).not.toContain('fa-solid')
     }
@@ -59,7 +59,7 @@ describe('the shekel sign in the price font', () => {
     // The hero fills the card with nothing tinting it; the logo box sits across its bottom start corner, the title and the business under it at full width.
     expect(html).toContain('<div class="relative z-[1] aspect-video "><div class="absolute inset-0 overflow-hidden rounded-[inherit]">')
     expect(html).not.toContain('to-black/')
-    expect(html).toMatch(/<span class="absolute -bottom-5 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-white h-12 min-w-\[56px\] px-2\.5 shadow-sm sm:h-14"/)
+    expect(html).toMatch(/<span class="absolute -bottom-5 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl \[corner-shape:squircle\] border border-slate-100 bg-white h-12 min-w-\[56px\] px-2\.5 shadow-sm sm:h-14"/)
     expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><div class="mt-0\.5 truncate[^"]*"><bdi dir="auto">Cafe Nadi<\/bdi><\/div>/)
     expect(html).toMatch(/text-muted"><svg [^>]*class="lucide lucide-map-pin/)
   })

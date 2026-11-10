@@ -17,7 +17,18 @@ import { isWeb, webOnly } from '../lib/webStyles'
 // screen's side padding, whatever the fold makes it (src/lib/layout.ts).
 // Pagination dots underneath (PagerDots) follow the swipe, one per place the
 // row can come to rest; Home's category rails go without (`showDots`).
-export default function OfferCarousel({ offers, onOpen, showDots = true }: { offers: OfferDocument[]; onOpen: (offer: OfferDocument) => void; showDots?: boolean }) {
+export default function OfferCarousel({
+  offers,
+  onOpen,
+  showDots = true,
+  showCategoryBadge = true,
+}: {
+  offers: OfferDocument[]
+  onOpen: (offer: OfferDocument) => void
+  showDots?: boolean
+  /** Off in a rail already scoped to one category, where every card would repeat it. */
+  showCategoryBadge?: boolean
+}) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
   const list = useRef<FlatList<OfferDocument>>(null)
@@ -72,7 +83,7 @@ export default function OfferCarousel({ offers, onOpen, showDots = true }: { off
         }}
         renderItem={({ item }) => (
           <View style={[styles.slot, { width: cardWidth }]}>
-            <OfferCard offer={item} variant="carousel" onPress={() => onOpen(item)} />
+            <OfferCard offer={item} variant="carousel" onPress={() => onOpen(item)} showCategoryBadge={showCategoryBadge} />
           </View>
         )}
       />
@@ -91,6 +102,8 @@ const styles = StyleSheet.create({
   scroller: { flexGrow: 0, ...(webOnly({ scrollSnapType: 'x mandatory', overscrollBehaviorX: 'contain', scrollPaddingInline: EDGE }) as object) },
   // Vertical room so the cards' shadows aren't clipped by the scroller.
   row: { paddingHorizontal: EDGE, paddingTop: 2, paddingBottom: 10 },
+  // The row stretches its slots to the tallest card, and each card fills its slot (OfferCard's
+  // `fill`), so prices line up along the foot without reserving empty title lines.
   slot: { ...(webOnly({ scrollSnapAlign: 'start' }) as object) },
   separator: { width: GAP },
 })

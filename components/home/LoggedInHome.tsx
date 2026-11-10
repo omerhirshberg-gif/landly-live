@@ -124,10 +124,12 @@ export default function LoggedInHome({ user }: { user: User }) {
               <OfferCardRail
                 id={`home-rail-${index}`}
                 title={railLabel(rail, t)}
-                glyph={<CategoryIcon category={rail.category} className="h-5 w-5 flex-shrink-0 text-brand" />}
+                glyph={<CategoryIcon category={rail.category} className="h-[18px] w-[18px] flex-shrink-0 text-brand" strokeWidth={1.5} />}
                 offers={rail.offers}
                 href={rail.tile ? categoryHref(rail.tile.category) : undefined}
-                seeAll={rail.tile ? t('home_rail_see_all').replace('{count}', String(rail.total)) : undefined}
+                seeAll={rail.tile ? t('home_see_all') : undefined}
+                count={rail.total}
+                showCategoryBadge={false}
               />
             </SectionBoundary>
           ))}

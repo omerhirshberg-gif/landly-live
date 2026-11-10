@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { useLang } from '../../i18n/LangProvider'
 import { colors } from '../../theme'
+import { tick } from '../../lib/haptics'
 
 // Five tabs on the platform's own tab bar (web uses _layout.web.tsx):
 // - iOS: the system UITabBar, so iOS 26 draws it in Liquid Glass with Reduce
@@ -52,7 +53,7 @@ export default function TabsLayout() {
 
   return (
     <View style={styles.root}>
-      <NativeTabs tintColor={colors.brand} {...androidBar} {...iosEdgeBar}>
+      <NativeTabs tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...androidBar} {...iosEdgeBar}>
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
           <NativeTabs.Trigger.Label>{t('mobile_tab_home')}</NativeTabs.Trigger.Label>

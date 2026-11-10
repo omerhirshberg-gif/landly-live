@@ -30,7 +30,7 @@ describe('Our perks', () => {
 describe('the discount ribbon and the navigation tiles', () => {
   it('ties the discount to the photo’s top end corner in emerald-700, on the card and the offer page', () => {
     const badge = read('components/discover/DiscountBadge.tsx')
-    expect(badge).toContain('absolute top-0 end-0 rounded-es-2xl bg-emerald-700')
+    expect(badge).toContain('absolute top-0 end-0 rounded-es-2xl [corner-shape:squircle] bg-emerald-700')
     expect(badge).toContain('<bdi aria-hidden="true" dir="ltr">')
     const page = read('app/offers/[offerId]/page.tsx')
     expect(page).toContain('<DiscountBadge percent={discount} className="fold:rounded-se-2xl" />')
