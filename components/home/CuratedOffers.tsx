@@ -7,13 +7,13 @@ import type { OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
 
 // "Recommended for you" on the members' home: the featured offers (selectCurated,
-// from Home's one fetch) in a rail, with "See all" into /categories. `offers`
+// from Home's one fetch) in a rail that moves on by itself every 5 seconds (lib/useAutoAdvance.ts), with "See all" into /categories. `offers`
 // is null until that fetch answers.
 export default function CuratedOffers({ offers }: { offers: OfferDocument[] | null }) {
   const { t } = useLang()
 
   if (offers && offers.length > 0) {
-    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots />
+    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots autoAdvance />
   }
 
   return (

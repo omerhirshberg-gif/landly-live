@@ -59,9 +59,10 @@ describe('category grid', () => {
     expect(readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')).not.toContain('countOffersByCategory')
   })
 
-  it('puts the vector icon in the shared 40px IconFrame and a decorative arrow that mirrors in Hebrew', () => {
+  it('draws each category as a bare dark-ink 22px line icon (no frame) and a decorative arrow that mirrors in Hebrew', () => {
     const html = withLang('he', createElement(CategoryGrid, { tiles }))
-    expect(html).toMatch(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl border-sky-200\/60 bg-brandTint text-brand [^"]*group-hover:scale-105[^"]*"><svg [^>]*stroke-width="1.75"[^>]*class="lucide lucide-utensils[^"]* h-\[18px\] w-\[18px\]"/)
+    expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils[^"]* h-\[22px\] w-\[22px\] text-ink [^"]*group-hover:scale-105[^"]*"/)
+    expect(html).not.toMatch(/bg-brandTint|border-sky-200/)
     expect(html).not.toContain('fa-solid')
     for (const tile of tiles) expect(html).not.toContain(tile.emoji)
     expect(html.match(/<span aria-hidden="true" class="cat-card-nudge[^"]*"><svg [^>]*class="lucide lucide-arrow-right h-4 w-4 rtl:-scale-x-100"/g)).toHaveLength(3)

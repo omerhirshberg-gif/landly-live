@@ -50,18 +50,18 @@ describe('the shekel sign in the price font', () => {
     expect(page).not.toMatch(/fa-(solid|regular)/)
   })
 
-  it('runs the card photo edge to edge at 16:9, with the merchant over a two-line title and a plain pin for the place', () => {
+  it('runs the card photo edge to edge at 2:1 (capped at 172px), with the merchant over a two-line title and a plain pin for the place', () => {
     const offer = {
       id: 'o1', businessName: 'Cafe Nadi', title: 'Two coffees', category: 'Restaurants and Cafes', location: 'Tel Aviv',
       originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '',
     } as never
     const html = withLang('en', createElement(OfferCard, { offer, layout: 'grid' }))
     // The hero fills the card with nothing tinting it; the logo box sits across its bottom start corner, the title and the business under it at full width.
-    expect(html).toContain('<div class="relative z-[1] aspect-video "><div class="absolute inset-0 overflow-hidden rounded-[inherit]">')
+    expect(html).toContain('<div class="relative z-[1] w-full aspect-[2/1] max-h-[172px] "><div class="absolute inset-0 overflow-hidden rounded-[inherit]">')
     expect(html).not.toContain('to-black/')
-    expect(html).toMatch(/<span class="absolute -bottom-5 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl \[corner-shape:squircle\] border border-slate-100 bg-white h-12 min-w-\[56px\] px-2\.5 shadow-sm sm:h-14"/)
-    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><div class="mt-0\.5 truncate[^"]*"><bdi dir="auto">Cafe Nadi<\/bdi><\/div>/)
-    expect(html).toMatch(/text-muted"><svg [^>]*class="lucide lucide-map-pin/)
+    expect(html).toMatch(/<span class="absolute -bottom-4 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl \[corner-shape:squircle\] border border-slate-100 bg-white h-10 min-w-\[48px\] px-2 shadow-sm"/)
+    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><div class="mt-\[3px\] flex min-w-0[^"]*"><bdi class="min-w-0 truncate" dir="auto">Cafe Nadi<\/bdi>/)
+    expect(html).toMatch(/<svg [^>]*class="lucide lucide-map-pin/)
   })
 })
 
@@ -123,7 +123,7 @@ describe("what's inside: lifestyle lines, no counts", () => {
       expect(html).toContain(`>${esc(t[`vp_${key}_title`])}</h3><p class="mt-1 line-clamp-2 text-meta leading-snug text-slate-500">${esc(t[`vp_${key}_desc`])}</p>`)
     }
     expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl border-sky-200\/60 bg-brandTint text-brand">/g)).toHaveLength(4)
-    for (const icon of ['utensils-crossed', 'sparkles', 'compass', 'heart-handshake']) expect(html).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}`))
+    for (const icon of ['utensils-crossed', 'ticket', 'compass', 'heart-handshake']) expect(html).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}`))
     expect(html.match(/lucide-arrow-right[^"]*rtl:-scale-x-100/g)).toHaveLength(4)
     expect(html).not.toContain('bg-emerald-500')
     // No "14 perks available" line, in whichever order the language puts the number.

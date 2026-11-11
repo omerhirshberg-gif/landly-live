@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     minHeight: 48,
     paddingHorizontal: 24,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,

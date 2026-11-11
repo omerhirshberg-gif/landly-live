@@ -3,6 +3,7 @@
 // failed). role="alert" so a screen reader announces it the moment it appears.
 const TONES = {
   error: { box: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C]', icon: 'fa-circle-exclamation' },
+  success: { box: 'border-[#6EE7B7] bg-[#ECFDF5] text-[#047857]', icon: 'fa-circle-check' },
   warning: { box: 'border-[#FCD34D] bg-[#FFFBEB] text-[#92400E]', icon: 'fa-triangle-exclamation' },
 }
 

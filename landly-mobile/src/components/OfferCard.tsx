@@ -10,8 +10,11 @@ import ContentText from './ContentText'
 import DealMedia from './DealMedia'
 import LineIcon from './LineIcon'
 import MerchantBadge from './MerchantBadge'
-import OfferTags from './OfferTags'
+import CategoryIcon from './CategoryIcon'
+import { CATEGORY_TILES } from '@shared/categories'
+import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import ScalePressable from './ScalePressable'
+import { isMultiChain, PerkReachLine } from './PerkReach'
 import { useLang } from '../i18n/LangProvider'
 import { impact, tick } from '../lib/haptics'
 import { badgeLogoUri, businessInitial, secureImageUrl } from '../lib/imageSource'
@@ -21,18 +24,21 @@ import { colors, radius } from '../theme'
 
 /**
  * 'standard': full width, for the vertical feeds (Perks, a category, the
- * wishlist). 'compact': the same card and 16:9 photo with smaller type.
+ * wishlist). 'compact': the same card with smaller type.
  * 'carousel': compact, filling the fixed-width slot its horizontal rail gives
  * it, with two title lines reserved so neighbouring cards line up.
  */
 export type OfferCardVariant = 'standard' | 'compact' | 'carousel'
 
-/** The logo tile's height (web: h-12, on a phone). */
-const LOGO_HEIGHT = 48
+/** The logo tile's height (web: h-10) and how far it hangs over the body. */
+const LOGO_HEIGHT = 40
+/** The feed cards' picture: 2:1, never taller than 172pt (the carousel's slot keeps 16:9 inside the same cap). */
+const HERO_RATIO = 2
+const HERO_MAX_HEIGHT = 172
 
 // A perk: a full-width hero picture (DealMedia.tsx: the deal's photo, or the
-// category's panel), then a white body with the category and how it's redeemed,
-// the offer and the business, where, and the price. Over the hero: the discount
+// category's panel), then a white body with
+// the offer, the business and where on one line, and the price. Over the hero: the redemption method (and category) tag at the top start, the discount
 // ribbon tied to the top end corner, the business's logo box across the bottom
 // start corner and the heart at the bottom end, which saves
 // or un-saves the perk in the member's wishlist,
@@ -62,6 +68,10 @@ export default function OfferCard({
   const place = offerPlaceLabel(offer, lang)
   const distance = typeof distanceKm === 'number' ? formatDistance(distanceKm, lang) : null
   const compact = variant !== 'standard'
+  const multiChain = isMultiChain(offer)
+  // A Multipass perk has no street address: the chains (or "nationwide") say where it works.
+  const reach = multiChain || (offer.fulfillmentType === 'multipass_pool' && !place)
+  const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const image = useDealImage(offer.imageUrl)
   const { isWishlisted, toggleWishlist } = useWishlist()
@@ -86,7 +96,11 @@ export default function OfferCard({
       }}
     >
       <View style={[styles.card, variant === 'carousel' && styles.cardCarousel]}>
-        <DealMedia image={image} category={offer.category}>
+        <DealMedia image={image} category={offer.category} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>
+          <View style={styles.method}>
+            {showCategoryBadge && tile && <CategoryIcon category={tile.category} size={12} color={colors.body} strokeWidth={1.5} />}
+            <AppText style={styles.methodText} numberOfLines={1}>{multiChain ? t('perk_multi_chain_badge') : t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</AppText>
+          </View>
           {discount > 0 && (
             <View style={styles.ribbon}>
               <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={[styles.ribbonText, compact && styles.ribbonTextCompact]}>{`-${discount}%`}</AppText>
@@ -121,26 +135,34 @@ export default function OfferCard({
         </DealMedia>
 
         <View style={[styles.body, compact && styles.bodyCompact]}>
-          <OfferTags category={offer.category} method={offer.redemptionMethod} showCategory={showCategoryBadge} />
           <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
             {title.text}
           </ContentText>
-          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
-            {name.text}
-          </AppText>
-
-          {(!!place || !!distance) && (
-            <View style={styles.location}>
-              <LineIcon name="pin" size={13} color={distance ? colors.brand : colors.textFaint} strokeWidth={2} />
-              {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
-              {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
-              {!!place && (
-                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
-                  {distance ? `· ${place}` : place}
-                </AppText>
-              )}
-            </View>
-          )}
+          {/* One dense line: the business, then where (or how far). */}
+          <View style={styles.meta}>
+            <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
+              {name.text}
+            </AppText>
+            {reach && (
+              <>
+                <AppText style={styles.dot} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
+                <PerkReachLine offer={offer} hasPlace={!!place} compact={compact} />
+              </>
+            )}
+            {!reach && (!!place || !!distance) && (
+              <>
+                <AppText style={styles.dot} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
+                <LineIcon name="pin" size={12} color={distance ? colors.brand : colors.textFaint} strokeWidth={1.75} />
+                {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
+                {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
+                {!!place && (
+                  <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
+                    {distance ? `· ${place}` : place}
+                  </AppText>
+                )}
+              </>
+            )}
+          </View>
 
           {/* One baseline: the price, then the struck-through original. Digits and "₪" run left to right in Hebrew. */}
           <View style={styles.priceRow}>
@@ -174,8 +196,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   // Over the hero: the heart at its bottom end.
   overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
-  // Across the hero's foot: 20pt of it hangs over the body (styles.body's top padding clears it).
-  logo: { position: 'absolute', bottom: -20, start: 12 },
+  // Across the hero's foot: 16pt of it hangs over the body (styles.body's top padding clears it).
+  logo: { position: 'absolute', bottom: -16, start: 12 },
   heart: {
     width: 36,
     height: 36,
@@ -193,18 +215,34 @@ const styles = StyleSheet.create({
   heartCompact: { width: 32, height: 32 },
   heartSaved: { backgroundColor: colors.heart },
   heartPressed: { transform: [{ scale: 0.92 }] },
-  body: { flexGrow: 1, paddingHorizontal: 12, paddingTop: 26, paddingBottom: 12 },
-  bodyCompact: { flexGrow: 1, paddingHorizontal: 10, paddingTop: 26, paddingBottom: 10 },
-  title: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.heading },
+  body: { flexGrow: 1, padding: 12, paddingTop: 22 },
+  bodyCompact: { flexGrow: 1, padding: 12, paddingTop: 22 },
+  title: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.heading },
   titleCompact: { fontSize: 14, lineHeight: 19 },
-  business: { fontSize: 14, lineHeight: 19, color: colors.body, marginTop: 2 },
-  businessCompact: { fontSize: 13, lineHeight: 18, marginTop: 1 },
+  business: { flexShrink: 1, fontSize: 13, lineHeight: 18, color: colors.body },
+  businessCompact: { fontSize: 12, lineHeight: 17 },
   metaTextCompact: { fontSize: 11 },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 1 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  dot: { fontSize: 12, color: colors.textFaint },
+  // The method (and category) tag over the photo's top start corner.
+  method: {
+    position: 'absolute',
+    top: 10,
+    start: 10,
+    maxWidth: '60%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+  },
+  methodText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '600', color: colors.body },
+  locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 2 },
   distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // The price row rides the card's foot (`marginTop: auto`), on one baseline.
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', columnGap: 8, marginTop: 'auto', paddingTop: 8 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', columnGap: 8, marginTop: 'auto', paddingTop: 6 },
   price: { fontSize: 18, fontWeight: '800', color: colors.brand },
   priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },

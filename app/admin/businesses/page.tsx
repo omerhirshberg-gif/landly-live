@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { useAdminT } from '@/lib/admin/translations'
 import Alert from '@/components/admin/Alert'
 import { CardSkeletons } from '@/components/admin/Card'
 import DataTable from '@/components/admin/DataTable'
@@ -32,6 +33,7 @@ interface Business {
 const ALL = '__all__'
 
 export default function BusinessesListPage() {
+  const { t } = useAdminT()
   const [businesses, setBusinesses] = useState<Business[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -41,13 +43,14 @@ export default function BusinessesListPage() {
     adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
-      .catch(() => setError('Failed to load businesses.'))
+      .catch(() => setError(t('biz.loadFailed')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const categoryOptions = useMemo(() => {
     const categories = [...new Set((businesses ?? []).map((b) => b.category).filter(Boolean))].sort()
-    return [{ value: ALL, label: 'All' }, ...categories.map((c) => ({ value: c, label: c }))]
-  }, [businesses])
+    return [{ value: ALL, label: t('biz.all') }, ...categories.map((c) => ({ value: c, label: c }))]
+  }, [businesses, t])
 
   const filtered = useMemo(() => {
     if (!businesses) return []
@@ -71,22 +74,20 @@ export default function BusinessesListPage() {
   return (
     <div>
       <PageHeader
-        title="Businesses"
-        subtitle="Every partner business with a Landly login."
+        title={t('route.Businesses')}
         actions={
           <>
             <TranslateMissingButton
               className="w-full sm:w-auto"
               endpoint="/api/admin/businesses/refresh"
-              label="Refresh addresses and translate names"
-              runningLabel="Refreshing…"
+              label={t('biz.refresh')}
+              runningLabel={t('biz.refreshing')}
               icon="fa-arrows-rotate"
-              noun={['business', 'businesses']}
-              doneVerb="updated"
+              doneKey="bulk.updated"
             />
             <Link href="/admin/businesses/new" className={`${PRIMARY_BUTTON} w-full sm:w-auto`}>
               <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add new business
+              {t('biz.add')}
             </Link>
           </>
         }
@@ -97,16 +98,16 @@ export default function BusinessesListPage() {
       {businesses !== null && businesses.length > 0 && (
         <div className="mb-6 space-y-3">
           <SearchInput
-            label="Search businesses"
-            placeholder="Search by name, ח.פ or login email…"
+            label={t('biz.search')}
+            placeholder={t('biz.searchPlaceholder')}
             value={query}
             onChange={setQuery}
             className="max-w-xl"
           />
           {categoryOptions.length > 2 && (
-            <FilterChips label="Filter by category" options={categoryOptions} value={category} onChange={setCategory} />
+            <FilterChips label={t('biz.filterCategory')} options={categoryOptions} value={category} onChange={setCategory} />
           )}
-          <ResultCount shown={filtered.length} total={businesses.length} noun="businesses" />
+          <ResultCount shown={filtered.length} total={businesses.length} noun={t('biz.noun')} />
         </div>
       )}
 
@@ -119,12 +120,12 @@ export default function BusinessesListPage() {
       {businesses?.length === 0 && (
         <EmptyState
           icon="fa-store"
-          title="No businesses yet"
-          description="Create a business login and its first offer in one step."
+          title={t('biz.emptyTitle')}
+          description={t('biz.emptyBody')}
           action={
             <Link href="/admin/businesses/new" className={PRIMARY_BUTTON}>
               <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add your first business
+              {t('biz.addFirst')}
             </Link>
           }
         />
@@ -133,11 +134,11 @@ export default function BusinessesListPage() {
       {businesses !== null && businesses.length > 0 && filtered.length === 0 && (
         <EmptyState
           icon="fa-magnifying-glass"
-          title="No matching businesses"
-          description="Try a different search or category."
+          title={t('biz.noMatchTitle')}
+          description={t('biz.noMatchBody')}
           action={
             <button type="button" onClick={clearFilters} className={SECONDARY_BUTTON}>
-              Clear filters
+              {t('list.clearFilters')}
             </button>
           }
         />
@@ -145,7 +146,7 @@ export default function BusinessesListPage() {
 
       {filtered.length > 0 && (
         <DataTable
-          label="Businesses"
+          label={t('route.Businesses')}
           rows={filtered}
           rowKey={(business) => business.uid}
           rowHref={(business) => `/admin/businesses/${business.uid}`}
@@ -153,20 +154,20 @@ export default function BusinessesListPage() {
           columns={[
             {
               id: 'business',
-              header: 'Business',
+              header: t('biz.col.business'),
               sortValue: (business) => business.businessName,
               cell: (business) => <BusinessIdentity business={business} />,
             },
             {
               id: 'category',
-              header: 'Category',
+              header: t('biz.col.category'),
               width: 'w-48',
               sortValue: (business) => business.category,
               cell: (business) => <CategoryBadge category={business.category} />,
             },
             {
               id: 'businessId',
-              header: 'ח.פ',
+              header: t('biz.col.taxId'),
               width: 'w-32',
               className: 'hidden xl:table-cell',
               cell: (business) => (
@@ -177,19 +178,19 @@ export default function BusinessesListPage() {
             },
             {
               id: 'active',
-              header: 'Active offers',
+              header: t('biz.col.active'),
               align: 'end',
               width: 'w-32',
               sortValue: (business) => business.activePerkCount,
               cell: (business) => (
                 <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
-                  {business.activePerkCount} active
+                  {t('biz.activeCount', { n: business.activePerkCount })}
                 </StatusBadge>
               ),
             },
             {
               id: 'redeemed',
-              header: 'Redeemed',
+              header: t('biz.col.redeemed'),
               align: 'end',
               width: 'w-28',
               sortValue: (business) => business.redeemedTotal,
@@ -197,8 +198,8 @@ export default function BusinessesListPage() {
             },
           ]}
           actions={(business) => [
-            { label: 'Open business', icon: 'fa-store', href: `/admin/businesses/${business.uid}` },
-            { label: 'Add offer', icon: 'fa-plus', href: `/admin/offers/new?businessUid=${business.uid}` },
+            { label: t('biz.action.open'), icon: 'fa-store', href: `/admin/businesses/${business.uid}` },
+            { label: t('biz.action.addOffer'), icon: 'fa-plus', href: `/admin/offers/new?businessUid=${business.uid}` },
           ]}
           card={(business) => (
             <>
@@ -206,11 +207,11 @@ export default function BusinessesListPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3 text-sm">
                 <CategoryBadge category={business.category} />
                 <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
-                  {business.activePerkCount} active
+                  {t('biz.activeCount', { n: business.activePerkCount })}
                 </StatusBadge>
                 <span className="ms-auto inline-flex items-center gap-1.5 text-[#475569]">
-                  <i className="fa-solid fa-ticket text-xs text-[#94A3B8]" aria-hidden="true" />
-                  <bdi dir="ltr" className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</bdi> redeemed
+                  <i className="fa-solid fa-ticket text-xs text-[#64748B]" aria-hidden="true" />
+                  <bdi dir="ltr" className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</bdi> {t('biz.redeemedSuffix')}
                 </span>
               </div>
             </>
@@ -230,7 +231,7 @@ function BusinessIdentity({ business }: { business: Business }) {
       <span className="min-w-0 flex-1">
         <BidiText className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{business.businessName}</BidiText>
         {altName && <BidiText className="text-sm text-[#475569]">{altName}</BidiText>}
-        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-[#94A3B8] [text-align:match-parent]">
+        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-[#64748B] [text-align:match-parent]">
           {business.email}
         </bdi>
       </span>

@@ -46,7 +46,7 @@ export default function OfferShowcaseCard({ offer, editHref, actions }: { offer:
         <div className="mt-2">
           <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
         </div>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-[#94A3B8]">
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-[#64748B]">
           <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1">
               <i className="fa-solid fa-ticket text-[10px]" aria-hidden="true" />

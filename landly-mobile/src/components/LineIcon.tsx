@@ -8,6 +8,7 @@ import ChevronDown from 'lucide-react-native/icons/chevron-down'
 import ChevronLeft from 'lucide-react-native/icons/chevron-left'
 import ChevronRight from 'lucide-react-native/icons/chevron-right'
 import CircleCheck from 'lucide-react-native/icons/circle-check'
+import Clock from 'lucide-react-native/icons/clock'
 import Copy from 'lucide-react-native/icons/copy'
 import FileText from 'lucide-react-native/icons/file-text'
 import Fingerprint from 'lucide-react-native/icons/fingerprint-pattern'
@@ -89,6 +90,7 @@ const ICONS = {
   ticket: Ticket,
   piggyBank: PiggyBank,
   circleCheck: CircleCheck,
+  clock: Clock,
 } as const
 
 export type LineIconName = keyof typeof ICONS

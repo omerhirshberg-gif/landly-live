@@ -113,7 +113,7 @@ export default function UsageCostsPage() {
             Live API usage and estimated cost for the month, from Landly&rsquo;s own server counters (UTC months). An
             estimate, not a Google or Meta invoice.
             {report && (
-              <span className="mt-1 block text-xs text-[#94A3B8]">
+              <span className="mt-1 block text-xs text-[#64748B]">
                 Updated <bdi dir="ltr">{UPDATED_LABEL.format(new Date(report.generatedAt))}</bdi> · refreshes every{' '}
                 <bdi dir="ltr" className="tabular-nums">
                   15
@@ -193,13 +193,13 @@ export default function UsageCostsPage() {
                 Platform Database &amp; Storage within standard Firebase Free Tier quotas (
                 <bdi dir="ltr">50k reads / 20k writes / 5GB storage</bdi>).
               </p>
-              <p className="mt-1 text-xs text-[#94A3B8]">
+              <p className="mt-1 text-xs text-[#64748B]">
                 Not metered by this dashboard: the Firebase console&rsquo;s Usage tab has the exact figures.
               </p>
             </div>
           </Card>
 
-          <p className="text-xs text-[#94A3B8]">
+          <p className="text-xs text-[#64748B]">
             {monthLabel(report.month)} · prices checked <bdi dir="ltr">{report.pricesVerifiedAt}</bdi> · USD → ILS at{' '}
             <bdi dir="ltr">{report.fx.usdToIls.toFixed(2)}</bdi>
           </p>

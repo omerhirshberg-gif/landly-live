@@ -1,7 +1,6 @@
 'use client'
 
-import { Gift, PiggyBank, Tags, type LucideIcon } from 'lucide-react'
-import IconFrame, { type IconFrameTone } from '@/components/ui/IconFrame'
+import { Gift, PiggyBank, Ticket, type LucideIcon } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { formatSavings } from '@/lib/format'
 
@@ -25,20 +24,23 @@ export default function DashboardStats({
   const { t, lang } = useLang()
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5 lg:grid-cols-1 lg:gap-3 lg:mb-0">
-      <StatCard icon={Tags} label={t('dash_active_perks_label')} value={activePerks === null ? '–' : String(activePerks)} />
+      <StatCard icon={Ticket} label={t('dash_active_perks_label')} value={activePerks === null ? '–' : String(activePerks)} />
       <StatCard icon={Gift} label={t('dash_perks_redeemed_label')} value={redeemed === null ? '–' : String(redeemed)} />
-      <StatCard icon={PiggyBank} tone="success" label={t('dash_total_saved')} value={saved === null ? '–' : formatSavings(saved, lang)} />
+      <StatCard icon={PiggyBank} label={t('dash_total_saved')} value={saved === null ? '–' : formatSavings(saved, lang)} />
     </div>
   )
 }
 
 // Tighter side padding on phones than .dash-stat-card's 20px, so "₪0" and
-// two-word labels fit a third of a 320px screen. Each icon sits in the shared
-// 36px frame (IconFrame): brand blue, emerald for money saved.
-function StatCard({ icon, tone = 'brand', label, value }: { icon: LucideIcon; tone?: IconFrameTone; label: string; value: string }) {
+// two-word labels fit a third of a 320px screen. Each icon sits in a quiet
+// 36px slate frame with a hairline, one dark ink line glyph at a 1.5 stroke:
+// no tinted discs, no green or cyan.
+function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex h-full min-h-[96px] min-w-0 flex-col items-center rounded-[18px] border border-line bg-white px-2 py-3 text-center sm:min-h-[112px] sm:px-4 sm:py-[18px]">
-      <IconFrame icon={icon} size="sm" tone={tone} />
+    <div className="flex h-full min-h-[96px] min-w-0 flex-col items-center rounded-2xl border border-slate-100 bg-white px-2 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] text-center sm:min-h-[112px] sm:px-4 sm:py-[18px]">
+      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-ink">
+        <Icon aria-hidden="true" focusable="false" className="h-[18px] w-[18px]" strokeWidth={1.5} />
+      </span>
       <div className="mt-1.5 sm:mt-2 flex min-h-[36px] w-full items-center justify-center text-micro sm:text-xs font-semibold leading-tight text-slate-500 break-words">
         {label}
       </div>

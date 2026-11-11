@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { AdminStatus, InboxConversation } from '@/lib/whatsapp/adminInbox'
+import { useAdminT } from '@/lib/admin/translations'
 import BackButton from '@/components/admin/BackButton'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { SECONDARY_BUTTON } from '@/components/admin/formStyles'
@@ -24,6 +25,7 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ conversation, onBack, onStatus, pendingStatus, now }: ChatHeaderProps) {
   const { waId, name, uid, lang, langSelected, status, category, windowOpen, followUp } = conversation
+  const { t, locale } = useAdminT()
   const [copied, setCopied] = useState(false)
 
   const copyUid = () => {
@@ -43,13 +45,13 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E2E8F0] px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 sm:px-4 md:pt-3">
       <div className="basis-full md:hidden">
         <BackButton onClick={onBack} className="-ms-2">
-          All chats
+          {t('support.allChats')}
         </BackButton>
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 truncate text-lg font-bold text-[#0B1B3D]">
+          <h2 className="min-w-0 break-words text-lg font-bold leading-snug text-[#0B1B3D] xl:text-xl">
             {name ? <span dir="auto">{name}</span> : <bdi dir="ltr">{phoneOf(waId)}</bdi>}
           </h2>
           <LanguageBadge lang={lang} selected={langSelected} />
@@ -62,7 +64,7 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center gap-1 hover:text-[#0038B8] active:text-[#0038B8] md:min-h-0"
-            aria-label={`Open ${phoneOf(waId)} in WhatsApp`}
+            aria-label={t('support.openWhatsApp', { phone: phoneOf(waId) })}
           >
             <i className="fa-brands fa-whatsapp" aria-hidden="true" />
             <bdi dir="ltr">{phoneOf(waId)}</bdi>
@@ -71,8 +73,8 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
             <button
               type="button"
               onClick={copyUid}
-              title="Copy member UID"
-              className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-md bg-[#F1F5F9] px-2.5 font-mono text-[11px] text-[#475569] hover:bg-[#E2E8F0] active:bg-[#E2E8F0] md:min-h-0 md:px-1.5 md:py-0.5"
+              title={t('support.copyUid')}
+              className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-md bg-[#F1F5F9] px-2.5 font-mono text-[13px] text-[#475569] hover:bg-[#E2E8F0] active:bg-[#E2E8F0] md:min-h-0 md:px-1.5 md:py-0.5"
             >
               <i className={`fa-solid ${copied ? 'fa-check text-emerald-600' : 'fa-user'}`} aria-hidden="true" />
               <span className="truncate">
@@ -80,40 +82,34 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
               </span>
             </button>
           ) : (
-            <span className="rounded-md border border-dashed border-[#CBD5E1] px-1.5 py-0.5 text-[11px]">Not a member</span>
+            <span className="rounded-md border border-dashed border-[#CBD5E1] px-1.5 py-0.5 text-[13px]">{t('support.notMember')}</span>
           )}
         </div>
         {followUp && status !== 'resolved' && (
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-[#64748B]">
             <i className="fa-regular fa-clock" aria-hidden="true" />
-            {followUp.sentAt ? (
-              <span>
-                Follow-up sent <bdi dir="ltr">{dayTime(followUp.sentAt, now)}</bdi> · auto-resolves ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi>
-              </span>
-            ) : followUp.stage === 'nudge' ? (
-              <span>
-                Follow-up ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi> if no reply
-              </span>
-            ) : (
-              <span>
-                Auto-resolves ~<bdi dir="ltr">{dayTime(followUp.dueAt, now)}</bdi> if no reply
-              </span>
-            )}
+            <span>
+              {followUp.sentAt
+                ? t('support.followSent', { sent: `\u2066${dayTime(followUp.sentAt, now, locale)}\u2069`, due: `\u2066${dayTime(followUp.dueAt, now, locale)}\u2069` })
+                : followUp.stage === 'nudge'
+                  ? t('support.followIf', { due: `\u2066${dayTime(followUp.dueAt, now, locale)}\u2069` })
+                  : t('support.autoIf', { due: `\u2066${dayTime(followUp.dueAt, now, locale)}\u2069` })}
+            </span>
           </p>
         )}
       </div>
 
       <div className="flex w-full gap-2 sm:w-auto">
         {status === 'escalated' && (
-          <button type="button" onClick={() => onStatus('active')} disabled={busy} className={`${SECONDARY_BUTTON} flex-1 px-4 sm:flex-none`} title="Let the bot answer this member again">
+          <button type="button" onClick={() => onStatus('active')} disabled={busy} className={`${SECONDARY_BUTTON} flex-1 px-4 sm:flex-none`} title={t('support.backToBotTitle')}>
             {pendingStatus === 'active' ? <ButtonSpinner /> : <i className="fa-solid fa-robot text-sm" aria-hidden="true" />}
-            Back to bot
+            {t('support.backToBot')}
           </button>
         )}
         {status === 'resolved' ? (
           <button type="button" onClick={() => onStatus('escalated')} disabled={busy} className={`${SECONDARY_BUTTON} flex-1 px-4 sm:flex-none`}>
             {pendingStatus === 'escalated' ? <ButtonSpinner /> : <i className="fa-solid fa-rotate-left text-sm" aria-hidden="true" />}
-            Reopen
+            {t('support.reopen')}
           </button>
         ) : (
           <button
@@ -123,13 +119,11 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
             disabled={busy}
             className={`${RESOLVE_BUTTON} flex-1 sm:flex-none`}
             title={
-              windowOpen
-                ? 'Marks it resolved and thanks the member in their language'
-                : 'Meta’s 24-hour window has closed: marks it resolved without a message to the member'
+              windowOpen ? t('support.resolveTitle') : t('support.resolveSilentTitle')
             }
           >
             {pendingStatus === 'resolved' ? <ButtonSpinner /> : <i className="fa-solid fa-circle-check text-sm" aria-hidden="true" />}
-            {windowOpen ? 'Resolve & thank' : 'Resolve (no message)'}
+            {windowOpen ? t('support.resolveThank') : t('support.resolveSilent')}
           </button>
         )}
       </div>

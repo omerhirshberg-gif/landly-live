@@ -1,5 +1,6 @@
 import { getCountryCallingCode, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 import { CUSTOMER_TYPES, canonicalCustomerType, isCustomerType } from '@/lib/customerTypes'
+import { kycTierOf, parseUserStatus, passIdFor, type KycTier, type UserStatus } from './userStatus'
 
 // The admin's Users page (/admin/users): one row per member (users/{uid}),
 // merged on the server from the Firestore doc, the Auth record and their
@@ -23,6 +24,11 @@ export interface AdminUserRow {
   emailVerified: boolean
   phoneVerified: boolean
   activePasses: number
+  /** Server-managed account state; 'active' unless an admin changed it. */
+  status: UserStatus
+  kycTier: KycTier
+  /** The support-facing pass code derived from the uid (lib/admin/userStatus.ts). */
+  passId: string
   /** ISO 8601, from Auth. */
   createdAt: string | null
   lastSignInAt: string | null
@@ -39,6 +45,7 @@ export interface UserDocFields {
   customerTypeOther?: unknown
   countryOfOrigin?: unknown
   phoneVerified?: unknown
+  status?: unknown
 }
 
 export interface AuthFields {
@@ -50,7 +57,7 @@ export interface AuthFields {
 
 /** The users/{uid} fields the route reads (a `select`, so each member costs one small read). */
 export const USER_FIELDS = [
-  'firstName', 'lastName', 'displayName', 'email', 'photoURL', 'phone', 'customerType', 'customerTypeOther', 'countryOfOrigin', 'phoneVerified',
+  'firstName', 'lastName', 'displayName', 'email', 'photoURL', 'phone', 'customerType', 'customerTypeOther', 'countryOfOrigin', 'phoneVerified', 'status',
 ] as const
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
@@ -91,6 +98,9 @@ export function toAdminUserRow(uid: string, doc: UserDocFields, auth: AuthFields
     emailVerified: !!auth?.emailVerified,
     phoneVerified: doc.phoneVerified === true,
     activePasses,
+    status: parseUserStatus(doc.status),
+    kycTier: kycTierOf(!!auth?.emailVerified, doc.phoneVerified === true),
+    passId: passIdFor(uid),
     createdAt: iso(auth?.creationTime),
     lastSignInAt: iso(auth?.lastSignInTime),
   }
@@ -154,6 +164,8 @@ export interface UserFilters {
   /** An ISO code, '' for not set, or null for every country. */
   originCountry: string | null
   phoneCountry: string | null
+  /** A status, or null for every status. */
+  status?: UserStatus | null
 }
 
 /** Search by name, email or phone (with or without "+", spaces or dashes), then the dropdowns. */
@@ -166,9 +178,11 @@ export function filterUsers(rows: readonly AdminUserRow[], filters: UserFilters)
       (filters.customerType === null || row.customerType === filters.customerType) &&
       (filters.originCountry === null || row.originCountry === filters.originCountry) &&
       (filters.phoneCountry === null || row.phoneCountry === filters.phoneCountry) &&
+      (!filters.status || row.status === filters.status) &&
       (!query ||
         row.name.toLowerCase().includes(query) ||
         row.email.toLowerCase().includes(query) ||
+        row.passId.toLowerCase() === query ||
         (byPhone && (row.phone.includes(digits) || localDigits(row.phone).includes(digits)))),
   )
 }

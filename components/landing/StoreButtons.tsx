@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { APP_STORE_HREF, GOOGLE_PLAY_HREF, STORE_FALLBACK_PATH } from '@/lib/appLinks'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -40,7 +40,7 @@ function StoreBadge({ href, path, small, name, soon }: { href: string; path: str
   return (
     <div className={`${BADGE} cursor-default border-slate-200/80 bg-slate-100 text-slate-500`}>
       {face}
-      <span className="absolute -top-2 -end-2 rounded-full bg-brand px-2 py-1 text-nano font-bold leading-none text-white shadow-sm">{soon}</span>
+      <span className="absolute -top-2 -end-2 rounded-md bg-brand px-2 py-1 text-nano font-bold leading-none text-white shadow-sm">{soon}</span>
     </div>
   )
 }
@@ -55,15 +55,15 @@ export default function StoreButtons() {
   return (
     <div className="flex flex-col items-center gap-5">
       <div className="flex flex-col items-center gap-3">
-        <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-50/90 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-[2px] sm:text-sm">
-          <Sparkles aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+        <p className="inline-flex max-w-full items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 sm:text-sm">
+          <Check aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
           <span>{t('landing_free_badge')}</span>
         </p>
         <div className="flex flex-row flex-wrap items-center justify-center gap-3.5 sm:gap-4">
           <Link href="/signup" className={`${ACTION} bg-brand text-white shadow-sm [@media(hover:hover)]:hover:bg-brandDark`}>
             {t('landing_cta_join')}
           </Link>
-          <Link href="/login" className={`${ACTION} border border-slate-200 bg-white/90 text-slate-800 shadow-[0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-[2px] [@media(hover:hover)]:hover:bg-slate-50`}>
+          <Link href="/login" className={`${ACTION} border border-slate-200 bg-white text-slate-800 shadow-sm [@media(hover:hover)]:hover:bg-slate-50`}>
             {t('nav_login')}
           </Link>
         </div>

@@ -216,7 +216,7 @@ function OfferSection({
     <section>
       <h2 className={SECTION_HEADING}>{title}</h2>
       {offers.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#94A3B8]">None.</p>
+        <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#64748B]">None.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {offers.map((offer) => (

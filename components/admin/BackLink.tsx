@@ -2,6 +2,7 @@
 
 import BackButton from './BackButton'
 import { useAdminParent } from './AdminCrumbContext'
+import { useAdminT } from '@/lib/admin/translations'
 
 // Deliberately NOT router.back()/browser history -- that leaks whatever tab
 // the user happened to be on before jumping to this section via the
@@ -11,11 +12,12 @@ import { useAdminParent } from './AdminCrumbContext'
 // step through history as usual.)
 export default function BackLink() {
   const parent = useAdminParent()
+  const { t, route } = useAdminT()
   if (!parent) return null
   return (
     <BackButton href={parent.href} className="-ms-3 mb-2">
       <span className="max-w-[16rem] truncate" dir="auto">
-        Back to {parent.label === 'Dashboard' ? 'dashboard' : parent.label}
+        {parent.label === 'Dashboard' ? t('common.backToDashboard') : t('common.backTo', { name: route(parent.label) })}
       </span>
     </BackButton>
   )

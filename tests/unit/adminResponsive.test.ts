@@ -130,24 +130,23 @@ describe('admin portal on phones', () => {
     expect(page).toContain('fixed inset-x-0 top-[var(--vv-top,0px)] z-40 flex h-[var(--vv-height,var(--app-dvh))]')
     expect(page).toContain('usePhoneScrollLock(!!selected)')
     // Its own header clears the notch and leads back to the list; the reply box clears the home indicator.
-    expect(read('components/admin/support/ChatHeader.tsx')).toMatch(/pt-\[max\(0\.5rem,env\(safe-area-inset-top\)\)\][\s\S]*All chats/)
+    expect(read('components/admin/support/ChatHeader.tsx')).toMatch(/pt-\[max\(0\.5rem,env\(safe-area-inset-top\)\)\][\s\S]*support\.allChats/)
     expect(read('components/admin/support/ReplyComposer.tsx')).toContain('env(safe-area-inset-bottom)')
   })
 
-  it('keeps the inbox filter tabs in three equal columns that never shift or overflow', () => {
+  it('keeps the inbox filter tabs whole: no label is cut, the row wraps instead', () => {
     const list = read('components/admin/support/ConversationList.tsx')
-    expect(list).toContain('role="tablist" aria-label="Filter conversations" className="grid grid-cols-3 gap-1')
-    // Each tab may shrink below its label (which truncates); the count badge keeps one width from the first paint.
-    expect(list).toMatch(/className=\{`flex min-h-11 min-w-0 items-center justify-center/)
-    expect(list).toContain('<span className="min-w-0 truncate">{label}</span>')
-    expect(list).toContain('min-w-[1.5rem] shrink-0 rounded-full px-1.5 text-center text-[11px] tabular-nums')
+    expect(list).toContain("role=\"tablist\" aria-label={t('support.filter')} className=\"flex flex-wrap gap-1 rounded-xl")
+    // Each tab keeps its full label (Hebrew or English); the count badge keeps one width from the first paint.
+    expect(list).toMatch(/className=\{`flex min-h-11 min-w-fit shrink-0 grow items-center justify-center gap-2 whitespace-nowrap/)
+    expect(list).toContain('<span>{t(label)}</span>')
+    expect(list).toContain('min-w-[1.5rem] shrink-0 rounded-full px-1.5 text-center text-[13px] leading-normal tabular-nums')
     expect(list).toContain("conversations ? conversations.filter((c) => matchesFilter(c, id)).length : '–'")
-    expect(list).not.toMatch(/role="tablist"[^>]*\bflex\b/)
     // The panes never grow past the viewport on a phone: the column is minmax(0,1fr), the list min-w-0.
     const page = read('app/admin/support/page.tsx')
     expect(page).toContain('grid-cols-[minmax(0,1fr)]')
-    expect(page).toContain('md:grid-cols-[22rem_minmax(0,1fr)]')
-    expect(page).toMatch(/aria-label="Conversations" className=\{`min-h-0 min-w-0 flex-col/)
+    expect(page).toContain('md:grid-cols-[minmax(20rem,32%)_minmax(0,1fr)]')
+    expect(page).toMatch(/aria-label=\{t\('support\.conversations'\)\} className=\{`min-h-0 min-w-0 flex-col/)
   })
 
   it('only shows hover styles on devices that can hover', () => {
@@ -252,7 +251,7 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
     expect(html).toMatch(/class="[^"]*h-12 w-12[^"]*"[^>]*aria-label="Close menu"/)
     expect(html).toContain('pt-[env(safe-area-inset-top)]')
     expect(html).toContain('env(safe-area-inset-bottom)')
-    for (const label of ['Dashboard', 'WhatsApp Support', 'Businesses', 'Offers']) expect(html).toContain(label)
+    for (const label of ['Dashboard', 'WhatsApp Support', 'Businesses', 'Perk Management']) expect(html).toContain(label)
   })
 
   it('locks the page, closes on Escape, on growing past md and on navigation', () => {
@@ -269,14 +268,16 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
     expect(shell).not.toContain('md:ps-64')
     expect(shell).toContain('w-full min-w-0 flex-1 flex-col')
     const header = read('components/admin/AdminHeader.tsx')
-    expect(header).toMatch(/h-12 w-12[^"]*md:hidden"\s*aria-label=\{[^\n]*'Open menu'\}\s*aria-controls="admin-drawer"/)
+    expect(header).toMatch(/h-12 w-12[^"]*md:hidden"\s*aria-label=\{[^\n]*t\('nav\.openMenu'\)\}\s*aria-controls="admin-drawer"/)
   })
 })
 
 describe('swipe back', () => {
   it.each(adminFiles)('%s: never contains sideways overscroll or blocks touch, so Chrome\'s back gesture works from any pane', (path) => {
     const source = read(path)
-    expect(source).not.toMatch(/\boverscroll-(?:contain|none|x-contain|x-none)\b/)
+    // The data table is the one exception: it is lg-and-up only (phones get cards), and holding its own
+    // sideways scroll keeps a trackpad swipe at the table's edge from navigating the browser back.
+    if (path !== 'components/admin/DataTable.tsx') expect(source).not.toMatch(/\boverscroll-(?:contain|none|x-contain|x-none)\b/)
     expect(source).not.toMatch(/\btouch-none\b|touch-action:\s*none/)
   })
 
@@ -317,7 +318,7 @@ describe('no duplicate page titles', () => {
 
   it.each(tsxFiles)('%s: shows no visible h1 the header already shows', (path) => {
     // The exceptions say something the header doesn't: a success state, and the login page (no header).
-    const allowed = ['>Offer created</h1>', '>Business created</h1>', '>Sign In</h1>']
+    const allowed = ['>Offer created</h1>', ">{t('wizard.created')}</h1>", '>Business created</h1>', '>Sign In</h1>']
     for (const { attrs, body } of openingTags(read(path), 'h1')) {
       if (allowed.includes(`>${body}</h1>`)) continue
       expect(attrs, `${attrs}${body}`).toContain('sr-only')

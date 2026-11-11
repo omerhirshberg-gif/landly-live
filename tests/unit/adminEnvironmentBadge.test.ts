@@ -34,7 +34,8 @@ describe('admin environment badge', () => {
     const html = render()
     expect(html).toContain('DEV')
     expect(html).toMatch(/class="hidden [^"]*sm:inline">\(landly-dev\)/)
-    // A compact pill on phones, the full one from 640px.
-    for (const token of ['h-7', 'px-2', 'text-[11px]', 'sm:h-8', 'sm:px-2.5', 'sm:text-xs']) expect(html).toContain(token)
+    // A flat label (no pill): tabular figures, and nothing that draws a border or capsule.
+    for (const token of ['h-8', 'text-xs', 'tabular-nums']) expect(html).toContain(token)
+    expect(html).not.toMatch(/rounded-full border/)
   })
 })

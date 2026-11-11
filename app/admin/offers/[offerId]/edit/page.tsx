@@ -172,7 +172,7 @@ function EditOfferForm() {
       <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Business</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Business</dt>
             <dd className="mt-1 font-semibold text-[#0B1B3D]">
               <Link href={`/admin/businesses/${offer.businessId}`} className="hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
                 <bdi dir="auto">{offer.businessName}</bdi>
@@ -180,7 +180,7 @@ function EditOfferForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Category</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Category</dt>
             <dd className="mt-1">
               <StatusBadge tone="blue">
                 <span dir="auto">{offer.category}</span>
@@ -188,11 +188,11 @@ function EditOfferForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">Created</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Created</dt>
             <dd className="mt-1 font-semibold text-[#0B1B3D]"><bdi dir="ltr">{formatIsraeliDate(offer.createdAt)}</bdi></dd>
           </div>
         </dl>
-        <p className="mt-4 text-xs text-[#94A3B8]">
+        <p className="mt-4 text-xs text-[#64748B]">
           Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
         </p>
       </FormSection>

@@ -30,7 +30,7 @@ describe('fewer, clearer buttons', () => {
 describe('text direction', () => {
   it('isolates a name in its own direction but lines it up with the column', () => {
     const html = renderToStaticMarkup(createElement(BidiText, { children: 'קפה נדי' }))
-    expect(html).toBe('<bdi dir="auto" class="block min-w-0 [text-align:match-parent] truncate ">קפה נדי</bdi>')
+    expect(html).toBe('<span class="block min-w-0 text-start truncate "><bdi dir="auto">קפה נדי</bdi></span>')
     expect(renderToStaticMarkup(createElement(BidiText, { lines: 2, children: 'x' }))).toContain('line-clamp-2')
   })
 
@@ -74,18 +74,19 @@ describe('price', () => {
 })
 
 describe('the offers table', () => {
-  it('fixes every column but the first, so the title takes the spare width and no gap opens', () => {
+  it('gives every column but the first a width floor, so the title takes the spare width and nothing is squeezed', () => {
     const table = read('components/admin/DataTable.tsx')
-    expect(table).toContain('const fixed = columns.slice(1).every((column) => column.width)')
-    expect(table).toContain("${fixed ? 'table-fixed' : ''}")
+    expect(table).toContain("${column.width ?? ''} ${i === 0 ? 'w-full min-w-[240px] break-words align-middle'")
+    expect(table).not.toContain('table-fixed')
     const offers = read('app/admin/offers/page.tsx')
-    for (const [id, width] of [['status', 'w-28'], ['price', 'w-32'], ['claimed', 'w-24'], ['expires', 'w-28']]) {
-      expect(offers, id).toMatch(new RegExp(`id: '${id}',[\\s\\S]{0,80}width: '${width}'`))
+    for (const [id, width] of [['status', 'w-[120px]'], ['price', 'w-[120px]'], ['claimed', 'w-[110px]'], ['expires', 'w-[120px]']]) {
+      expect(offers, id).toMatch(new RegExp(`id: '${id}',[\\s\\S]{0,120}width: '${width.replace(/[[\]]/g, '\\$&')}`))
     }
     // The title cell: thumbnail with the logo badge, then title over business.
     expect(offers).toContain('<OfferThumb imageUrl={offer.imageUrl} logoUrl={offer.businessLogoUrl} />')
     // Expires on desktop widths, and always on the phone card.
-    expect(offers).toContain("className: 'hidden xl:table-cell'")
-    expect(offers).toMatch(/expires <bdi dir="ltr"/)
+    // Expires is a real column now (the table scrolls sideways instead of hiding it), and always on the phone card.
+    expect(offers).not.toContain("className: 'hidden xl:table-cell'")
+    expect(offers).toMatch(/expiresPrefix'\)\} <bdi dir="ltr"/)
   })
 })

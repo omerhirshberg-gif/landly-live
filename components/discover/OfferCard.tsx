@@ -10,11 +10,14 @@ import { formatPrice } from '@/lib/format'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { badgeLogoUri } from '@/lib/offers/dealImage'
+import { CATEGORY_TILES } from '@/lib/categories'
+import { REDEMPTION_METHOD_LABEL_KEYS } from '@/lib/offers/redemption'
 import { formatDistance, offerPlaceLabel } from '@/lib/geo'
 import DealMedia from './DealMedia'
+import { isMultiChain, PerkReachLine } from './PerkReach'
 import DiscountBadge from './DiscountBadge'
 import MerchantBadge from './MerchantBadge'
-import OfferTags from './OfferTags'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { useDealImage } from './useDealImage'
 
 // The feeds' grid lives on its own (offerFeedGrid.ts), so a loading skeleton
@@ -37,9 +40,9 @@ interface OfferCardProps {
 }
 
 // A perk, the same card everywhere and as the Expo app's OfferCard: a full-width
-// 16:9 hero (DealMedia.tsx), then a white body with the category and how it's
-// redeemed, the offer and the business, where, and the price. Over the hero: the
-// discount ribbon tied to the top end corner, the heart at the bottom end, and
+// 2:1 hero capped at 172px (DealMedia.tsx), then a white body with the offer, the
+// business and where on one line, and the price. Over the hero: the redemption
+// method tag at the top start corner, the discount ribbon tied to the top end corner, the heart at the bottom end, and
 // the business's logo box across the bottom start corner. The whole card is the
 // link, with no "View deal" text: it lifts under a real pointer and presses in
 // under a finger. The lift on hover is limited to devices that really hover,
@@ -53,11 +56,15 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
   const place = offerPlaceLabel(offer, lang)
   const hasDistance = typeof distanceKm === 'number'
   const rail = layout === 'rail'
+  const multiChain = isMultiChain(offer)
+  // A Multipass perk has no street address: the chains (or "nationwide") say where it works.
+  const reach = multiChain || (offer.fulfillmentType === 'multipass_pool' && !place)
   const image = useDealImage(offer.imageUrl)
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const saved = isWishlisted(offer.id)
+  const categoryTile = CATEGORY_TILES.find((c) => c.category === offer.category)
 
   return (
     <Link
@@ -67,8 +74,19 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
       } ${className}`}
     >
-      <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category}>
+      <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} aspect={rail ? 'aspect-video max-h-[172px]' : 'aspect-[2/1] max-h-[172px]'}>
         <DiscountBadge percent={discount} />
+        {/* How it's redeemed (and, in a mixed feed, a category mark) over the photo's top start corner. */}
+        <span className="absolute start-2.5 top-2.5 flex max-w-[60%] items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-micro font-semibold text-body backdrop-blur-sm">
+          {showCategoryBadge && (
+            <>
+              <CategoryIcon category={offer.category} className="h-3 w-3 shrink-0" strokeWidth={1.5} />
+              {/* The mark is a picture; the name is for screen readers. */}
+              <span className="sr-only">{categoryTile ? t(categoryTile.labelKey) : offer.category}</span>
+            </>
+          )}
+          <span className="truncate">{multiChain ? t('perk_multi_chain_badge') : t(REDEMPTION_METHOD_LABEL_KEYS[offer.redemptionMethod])}</span>
+        </span>
         {showWishlistButton && user && (
           <button
             type="button"
@@ -91,31 +109,37 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
             </span>
           </button>
         )}
-        <span className="absolute -bottom-5 start-3"><MerchantBadge logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={name.text} /></span>
+        <span className="absolute -bottom-4 start-3"><MerchantBadge size="sm" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={name.text} /></span>
       </DealMedia>
 
-      <div className={`flex flex-1 flex-col ${rail ? 'px-3 pb-3 pt-6' : 'px-3 pb-3 pt-6 sm:px-4 sm:pb-4'}`}>
-        <OfferTags category={offer.category} method={offer.redemptionMethod} showCategory={showCategoryBadge} className="mb-1" />
+      <div className="flex flex-1 flex-col p-3 pt-[22px]">
         {/* Cards in a row stretch to the tallest, and the price rides the foot (mt-auto), so no title lines are reserved. */}
-        <p className="line-clamp-2 text-sm font-bold leading-snug text-ink">
+        <p className="line-clamp-2 text-[15px] font-bold leading-tight text-ink">
           <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
         </p>
-        <div className="mt-0.5 truncate text-meta leading-snug text-body">
-          <bdi lang={name.lang ?? undefined} dir="auto">{name.text}</bdi>
+        {/* One dense line: the business, then where (or how far). */}
+        <div className="mt-[3px] flex min-w-0 items-center gap-1 text-meta leading-snug text-body">
+          <bdi className="min-w-0 truncate" lang={name.lang ?? undefined} dir="auto">{name.text}</bdi>
+          {reach && (
+            <>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <PerkReachLine offer={offer} hasPlace={!!place} className="text-micro text-muted" />
+            </>
+          )}
+          {!reach && (place || hasDistance) && (
+            <>
+              <span aria-hidden="true" className="text-slate-400">·</span>
+              <MapPin aria-hidden="true" className={`h-3 w-3 flex-shrink-0 ${hasDistance ? 'text-brand' : 'text-slate-400'}`} strokeWidth={1.75} />
+              {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
+              {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 text-micro font-semibold text-brand">{formatDistance(distanceKm, lang)}</bdi>}
+              {hasDistance && place && <span aria-hidden="true" className="text-micro text-muted">·</span>}
+              {place && <bdi className="min-w-0 flex-shrink-[2] truncate text-micro font-medium text-muted" dir="auto">{place}</bdi>}
+            </>
+          )}
         </div>
 
-        {(place || hasDistance) && (
-          <span className="mt-1.5 flex min-w-0 items-center gap-1 text-micro font-medium text-muted">
-            <MapPin aria-hidden="true" className={`h-3 w-3 flex-shrink-0 ${hasDistance ? 'text-brand' : 'text-slate-400'}`} strokeWidth={2} />
-            {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
-            {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 font-semibold text-brand">{formatDistance(distanceKm, lang)}</bdi>}
-            {hasDistance && place && <span aria-hidden="true">·</span>}
-            {place && <bdi className="truncate" dir="auto">{place}</bdi>}
-          </span>
-        )}
-
         {/* One baseline at the card's foot: the price, then the struck-through original. Always left to right, "₪" included. */}
-        <div className="mt-auto flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap pt-2">
+        <div className="mt-auto flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap pt-1.5">
           <bdi dir="ltr" className="text-price tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
           {discount > 0 && (
             <bdi dir="ltr" className="text-price-was tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>

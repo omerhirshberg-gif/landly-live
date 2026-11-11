@@ -8,7 +8,7 @@ interface Props {
 }
 
 const ICON_BUTTON =
-  'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[#94A3B8] transition-colors hover:bg-[#F0F7FF] hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
+  'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[#64748B] transition-colors hover:bg-[#F0F7FF] hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
 
 // Masks a sensitive value (e.g. a freshly-created login password) behind a
 // reveal toggle instead of printing it to the screen by default.

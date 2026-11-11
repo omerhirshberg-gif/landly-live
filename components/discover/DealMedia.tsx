@@ -19,6 +19,7 @@ export default function DealMedia({
   alt,
   category,
   className = '',
+  aspect = 'aspect-video',
   children,
 }: {
   src: string
@@ -27,12 +28,14 @@ export default function DealMedia({
   category: string
   /** The frame's corners or margins, for a page that doesn't sit it in a card; the picture follows its corners. */
   className?: string
+  /** The frame's shape: 16:9 on the offer page, 2:1 capped at 172px on the feed cards. */
+  aspect?: string
   children?: ReactNode
 }) {
   const { role, imgRef, onLoad, onError } = image
 
   return (
-    <div className={`relative z-[1] aspect-video ${className}`}>
+    <div className={`relative z-[1] w-full ${aspect} ${className}`}>
       <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
         <CategoryPanel category={category} size="hero" />
         {(role === 'pending' || role === 'photo') && (

@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminT } from '@/lib/admin/translations'
 import { useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import Alert from '@/components/admin/Alert'
@@ -37,6 +38,7 @@ interface Offer {
 }
 
 export default function AdminSearchPage() {
+  const { t } = useAdminT()
   const [businesses, setBusinesses] = useState<Business[] | null>(null)
   const [offers, setOffers] = useState<Offer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +53,7 @@ export default function AdminSearchPage() {
         setBusinesses(businessesData.businesses ?? [])
         setOffers(offersData.offers ?? [])
       })
-      .catch(() => setError('Failed to load search data.'))
+      .catch(() => setError(t('search.loadFailed')))
   }, [])
 
   const q = query.trim().toLowerCase()
@@ -77,13 +79,13 @@ export default function AdminSearchPage() {
 
   return (
     <div>
-      <PageHeader title="Search" subtitle="Find any store or perk by name, ID, or category." />
+      <PageHeader title={t('route.Search')} subtitle={t('search.subtitle')} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
       <SearchInput
-        label="Search stores and perks"
-        placeholder="Search stores or perks by name, ID, or category…"
+        label={t('search.label')}
+        placeholder={t('search.placeholder')}
         value={query}
         onChange={setQuery}
         autoFocus
@@ -91,7 +93,7 @@ export default function AdminSearchPage() {
       />
 
       {!hasQuery && (
-        <EmptyState icon="fa-magnifying-glass" title="Start typing to search" description="Results from stores and perks appear as you type." />
+        <EmptyState icon="fa-magnifying-glass" title={t('search.startTitle')} description={t('search.startBody')} />
       )}
       {hasQuery && loading && !error && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -101,12 +103,8 @@ export default function AdminSearchPage() {
       {noResults && (
         <EmptyState
           icon="fa-face-meh"
-          title="No results"
-          description={
-            <>
-              Nothing matches &ldquo;<span dir="auto">{query.trim()}</span>&rdquo;.
-            </>
-          }
+          title={t('search.noResults')}
+          description={t('search.nothingMatches', { q: query.trim() })}
         />
       )}
 
@@ -118,7 +116,7 @@ export default function AdminSearchPage() {
               <Card key={business.uid} href={`/admin/businesses/${business.uid}`} className="flex flex-col gap-3 p-5">
                 <div className="min-w-0">
                   <BidiText className="font-semibold text-[#0B1B3D]">{business.businessName}</BidiText>
-                  <div className="mt-0.5 truncate text-xs text-[#94A3B8]" dir="ltr">{business.email}</div>
+                  <div className="mt-0.5 truncate text-xs text-[#64748B]" dir="ltr">{business.email}</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3">
                   <CategoryBadge category={business.category} />
@@ -141,7 +139,7 @@ export default function AdminSearchPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <BidiText className="font-semibold text-[#0B1B3D]">{offer.title}</BidiText>
-                    <BidiText className="mt-0.5 text-xs text-[#94A3B8]">{offer.businessName}</BidiText>
+                    <BidiText className="mt-0.5 text-xs text-[#64748B]">{offer.businessName}</BidiText>
                   </div>
                   <OfferStatusBadge offer={offer} />
                 </div>

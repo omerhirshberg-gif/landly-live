@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
     borderWidth: 1,
     borderColor: colors.successBorder,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   copy: {
     width: 48,
     height: 48,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.brandTint,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  explore: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, ...webOnly({ cursor: 'pointer' }) },
+  explore: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.action, ...webOnly({ cursor: 'pointer' }) },
   explorePressed: { backgroundColor: colors.borderLight },
   exploreText: { fontSize: 15, fontWeight: '700', color: colors.brand, textAlign: 'center' },
 })

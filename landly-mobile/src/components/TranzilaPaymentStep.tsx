@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 16,
     marginTop: 12,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
     ...webOnly({ cursor: 'pointer' }),
   },
   backPressed: { backgroundColor: colors.borderLight },

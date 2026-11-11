@@ -5,7 +5,7 @@ export default function BusinessPhoneField({ id, value, onChange }: { id: string
   return (
     <div>
       <label htmlFor={id} className={ADMIN_LABEL}>
-        Phone <span className="font-normal text-[#94A3B8]">(optional)</span>
+        Phone <span className="font-normal text-[#64748B]">(optional)</span>
       </label>
       <input
         id={id}

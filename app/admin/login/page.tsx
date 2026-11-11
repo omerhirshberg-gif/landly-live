@@ -1,5 +1,6 @@
 'use client'
 
+import Switch from '@/components/admin/Switch'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { markSignedIn } from '@/lib/admin/adminSession'
@@ -92,23 +93,16 @@ export default function AdminLoginPage() {
 
             <div>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D] select-none [-webkit-tap-highlight-color:transparent]">
-                <input
-                  type="checkbox"
-                  name="remember"
-                  className="h-5 w-5 shrink-0 cursor-pointer accent-[#0038B8]"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  aria-describedby={REMEMBER_HINT_ID}
-                />
+                <Switch name="remember" checked={remember} onChange={setRemember} aria-describedby={REMEMBER_HINT_ID} />
                 <span>
                   Stay logged in
-                  <span className="text-[#94A3B8]"> · </span>
+                  <span className="text-[#64748B]"> · </span>
                   <bdi lang="he" dir="rtl">
                     זכור אותי
                   </bdi>
                 </span>
               </label>
-              <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-[#94A3B8]">
+              <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-[#64748B]">
                 Keeps you signed in on this device for 30 days. Otherwise you&apos;re signed out after 12 hours.
               </p>
             </div>
@@ -128,7 +122,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 flex items-center justify-center gap-2 border-t border-[#E2E8F0] pt-5 text-xs font-medium text-[#94A3B8]">
+          <div className="mt-6 flex items-center justify-center gap-2 border-t border-[#E2E8F0] pt-5 text-xs font-medium text-[#64748B]">
             <i className="fa-solid fa-lock text-[10px]" aria-hidden="true" />
             Restricted area · Authorized administrators only
           </div>

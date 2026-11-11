@@ -91,7 +91,7 @@ describe('how it works carousel', () => {
     // 44px tap targets; icons, not emoji.
     for (const b of buttons) expect(b).toContain('h-11 w-11')
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
-    for (const icon of ['lucide-user-plus', 'lucide-sparkles', 'lucide-qr-code', 'lucide-plane-takeoff']) expect(html).toContain(icon)
+    for (const icon of ['lucide-user-plus', 'lucide-gift', 'lucide-qr-code', 'lucide-plane-takeoff']) expect(html).toContain(icon)
     expect(html).not.toContain('fa-solid')
   })
 })

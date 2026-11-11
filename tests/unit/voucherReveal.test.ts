@@ -36,10 +36,9 @@ function render(lang: Lang, element: ReactElement) {
 }
 
 describe('My Pass card', () => {
-  it('shows business, offer, method and validity, and links to the voucher page', () => {
+  it('shows business, offer and validity, and links to the voucher page', () => {
     const html = render('en', createElement(PerksTab, { vouchers: [voucher] }))
     expect(html).toContain('Café Noir')
-    expect(html).toContain('In store')
     expect(html).toContain('Valid until April 16, 2099')
     expect(html).toContain('href="/member/vouchers/user_offer"')
     expect(html).toContain('View Voucher')
@@ -79,7 +78,9 @@ describe('voucher page reveals', () => {
   it('is a page with the back button, the hero and both reveals, not a popup', () => {
     const page = readFileSync(join(process.cwd(), 'app/member/vouchers/[voucherId]/page.tsx'), 'utf8')
     expect(page).toContain('<BackButton fallback="/member"')
-    expect(page).toContain('<PerkImage')
+    expect(page).toContain('<VoucherCover')
+    expect(page).toContain('<VoucherTicket')
+    expect(page).toContain('<RedemptionBadge')
     expect(page).toContain('<QrReveal')
     expect(page).toContain('<CodeReveal')
     expect(page).not.toMatch(/<dialog|showModal/)

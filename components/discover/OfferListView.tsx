@@ -3,7 +3,6 @@
 import { ReactNode, useEffect, useState } from 'react'
 import BackButton from '@/components/navigation/BackButton'
 import { LoaderCircle, Tags, type LucideIcon } from 'lucide-react'
-import IconFrame from '@/components/ui/IconFrame'
 import { useLang } from '@/lib/i18n/useLang'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import type { OfferDocument } from '@/lib/firebase/offers'
@@ -31,7 +30,7 @@ interface Props {
 // grid, the icon and title with the perk count, then the offers. It enters
 // with a short slide from the reading direction (.folder-in). Vertical panning
 // only on the list, so the browser's own edge swipe-back is never contested.
-export default function OfferListView({ icon, title, depKey, fetchOffers, controls, filterOffers }: Props) {
+export default function OfferListView({ icon: Icon, title, depKey, fetchOffers, controls, filterOffers }: Props) {
   const { t } = useLang()
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
 
@@ -52,7 +51,10 @@ export default function OfferListView({ icon, title, depKey, fetchOffers, contro
       <BackButton fallback="/categories" label={t('cats_detail_back')} className="mb-4" />
 
       <div className="flex items-center gap-3 sm:gap-4 mb-8">
-        <IconFrame icon={icon} size="sm" />
+        {/* Dark ink at a 1.5 stroke in a neutral hairline frame, like the rails' icons: no blue tint. */}
+        <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white/80">
+          <Icon aria-hidden="true" focusable="false" className="h-6 w-6 text-ink" strokeWidth={1.5} />
+        </span>
         <div className="min-w-0">
           <h1 className="text-page sm:text-page-lg lg:text-3xl font-bold text-ink leading-tight break-words">{title}</h1>
           {offers === undefined ? (

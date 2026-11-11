@@ -100,9 +100,9 @@ export default function PerksCategoryChips({
               style={[styles.chip, selected && styles.chipSelected]}
             >
               {option.key === 'all' ? (
-                <LineIcon name={ALL_ICON} size={15} color={selected ? colors.white : colors.brand} strokeWidth={1.75} />
+                <LineIcon name={ALL_ICON} size={18} color={selected ? colors.white : colors.textStrong} strokeWidth={1.5} />
               ) : (
-                <CategoryIcon category={option.key} size={15} color={selected ? colors.white : colors.brand} />
+                <CategoryIcon category={option.key} size={18} color={selected ? colors.white : colors.textStrong} strokeWidth={1.5} />
               )}
               {/* No numberOfLines: inside the horizontal scroller the chip is
                   as wide as its text, and a one-line cap made Android clip
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 38,
     paddingHorizontal: 14,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     backgroundColor: colors.borderLight,
     ...webOnly({ cursor: 'pointer', userSelect: 'none', transitionProperty: 'background-color', transitionDuration: '150ms' }),
   },

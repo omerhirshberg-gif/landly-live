@@ -95,7 +95,7 @@ export default function AudioMessage({ media }: { media: InboxMedia }) {
           {decoded.state === 'failed' ? `This ${noun} couldn't be played here.` : `This browser can't play this ${noun}.`} Download it to listen.
         </p>
       )}
-      <div className="flex items-center gap-2 text-[11px] text-[#94A3B8]">
+      <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
         <i className={`fa-solid ${media.voice ? 'fa-microphone' : 'fa-music'}`} aria-hidden="true" />
         <span>{label}</span>
         {media.size !== undefined && <bdi dir="ltr">{fileSize(media.size)}</bdi>}

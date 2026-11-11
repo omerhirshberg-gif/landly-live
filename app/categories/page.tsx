@@ -188,11 +188,11 @@ function PerksBrowser() {
               {/* The rails pad themselves (py-5), so the hairline between them needs no spacing of its own. */}
               <div className="mb-8">
                 {newOffers.length > 0 && (
-                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} />
+                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} autoAdvance />
                 )}
                 {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                 {bestsellerOffers.length > 0 && (
-                  <OfferTileRail icon={Award} title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} />
+                  <OfferTileRail icon={Award} title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} autoAdvance autoAdvanceOffsetMs={2000} />
                 )}
               </div>
             </>

@@ -12,6 +12,7 @@ import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
 import { navigationLinks } from '@shared/maps/navigation'
 import { distinctDescription, offerTextSources } from '@shared/offers/offerText'
 import { offerFullAddress } from '@shared/geo'
+import { isMultiChain, ParticipatingChains, PerkReachLine } from '../../components/PerkReach'
 import Accordion from '../../components/Accordion'
 import AppText from '../../components/AppText'
 import ContentText from '../../components/ContentText'
@@ -130,6 +131,7 @@ export default function OfferScreen() {
   const terms = content.text('redemptionTerms')
   // The full address as Google writes it in the reader's language.
   const place = offer ? offerFullAddress(offer, lang) : ''
+  const multiChain = !!offer && isMultiChain(offer)
   const destination = offer ? { geo: offer.geo, placeId: offer.address?.placeId, address: place || offer.location } : null
   const logo = offer && (
     <MerchantBadge
@@ -216,7 +218,12 @@ export default function OfferScreen() {
                 {machine && <TranslationNotice showingOriginal={showingOriginal} onToggle={toggleOriginal} />}
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
-                {(!!place || (destination && !!navigationLinks(destination))) && (
+                {(multiChain || (offer.fulfillmentType === 'multipass_pool' && !place)) && (
+                  <View style={styles.location}>
+                    <PerkReachLine offer={offer} hasPlace={!!place} />
+                  </View>
+                )}
+                {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !place) && (!!place || (destination && !!navigationLinks(destination))) && (
                   <View style={styles.location}>
                     {!!place && (
                       <View style={styles.address}>
@@ -229,6 +236,11 @@ export default function OfferScreen() {
                 )}
 
                 <View style={styles.folds}>
+                  {multiChain && (
+                    <Accordion title={t('perk_chains_title')} defaultOpen>
+                      <ParticipatingChains offer={offer} />
+                    </Accordion>
+                  )}
                   {!!descriptionText && (
                     <Accordion title={t('offer_about_title')} defaultOpen>
                       <ContentText contentLang={description.lang} style={styles.description}>{descriptionText}</ContentText>

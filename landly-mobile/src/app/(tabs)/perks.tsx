@@ -248,10 +248,10 @@ export default function PerksScreen() {
                   <>
                     <SectionDivider />
                     <View style={styles.rails}>
-                      {newOffers.length > 0 && <OfferTileRail glyph="new" title={t('row_new')} offers={newOffers} onOpen={openOffer} />}
+                      {newOffers.length > 0 && <OfferTileRail glyph="new" title={t('row_new')} offers={newOffers} onOpen={openOffer} autoAdvance />}
                       {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                       {bestsellerOffers.length > 0 && (
-                        <OfferTileRail glyph="bestsellers" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} />
+                        <OfferTileRail glyph="bestsellers" title={t('row_bestsellers')} offers={bestsellerOffers} onOpen={openOffer} autoAdvance autoAdvanceOffsetMs={2000} />
                       )}
                     </View>
                   </>

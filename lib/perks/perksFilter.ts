@@ -125,7 +125,9 @@ export interface PerkFilters {
 }
 
 /** Kilometres from `origin` to the offer's business, or null when it has no coordinates (online-only, not geocoded). */
-export function offerDistanceKm(offer: Pick<OfferDocument, 'geo'>, origin: Coordinates | null | undefined): number | null {
+export function offerDistanceKm(offer: Pick<OfferDocument, 'geo' | 'perkScope'>, origin: Coordinates | null | undefined): number | null {
+  // A multi-chain voucher has no single place, so it is never ranked by distance.
+  if (offer.perkScope === 'multi_chain') return null
   return origin && offer.geo ? haversineDistanceKm(origin, offer.geo) : null
 }
 

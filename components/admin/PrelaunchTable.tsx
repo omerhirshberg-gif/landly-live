@@ -40,7 +40,7 @@ function LangCell({ lead }: { lead: AdminLead }) {
       <LangPill lang={lead.lang} />
       {lead.preferredLanguage !== lead.lang && (
         <span title={`Prefers ${langName(lead.preferredLanguage)}`} className="inline-flex items-center gap-1">
-          <span aria-hidden="true" className="text-xs text-[#94A3B8]">→</span>
+          <span aria-hidden="true" className="text-xs text-[#64748B]">→</span>
           <span className="sr-only">prefers</span>
           <LangPill lang={lead.preferredLanguage} />
         </span>
@@ -50,7 +50,7 @@ function LangCell({ lead }: { lead: AdminLead }) {
 }
 
 function PersonaBadge({ lead }: { lead: AdminLead }) {
-  if (!lead.persona) return <span className="text-sm text-[#94A3B8]">—</span>
+  if (!lead.persona) return <span className="text-sm text-[#64748B]">—</span>
   return (
     <span className="block min-w-0">
       <span className="inline-flex whitespace-nowrap rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">{PERSONA_NAMES[lead.persona]}</span>
@@ -64,7 +64,7 @@ function PersonaBadge({ lead }: { lead: AdminLead }) {
 function ReferralSourceCell({ source }: { source: ReferralSource | null }) {
   return source
     ? <span title={REFERRAL_SOURCE_NAMES[source]} className="block truncate text-sm text-[#0B1B3D]">{REFERRAL_SOURCE_NAMES[source]}</span>
-    : <span className="text-sm text-[#94A3B8]">—</span>
+    : <span className="text-sm text-[#64748B]">—</span>
 }
 
 function PhoneCell({ phone }: { phone: string }) {
@@ -94,7 +94,7 @@ function Referral({ lead }: { lead: AdminLead }) {
 }
 
 function Utm({ lead }: { lead: AdminLead }) {
-  if (!lead.utmSource && !lead.utmCampaign) return <span className="text-sm text-[#94A3B8]">—</span>
+  if (!lead.utmSource && !lead.utmCampaign) return <span className="text-sm text-[#64748B]">—</span>
   return (
     <span className="block min-w-0 text-sm">
       <BidiText>{lead.utmSource ?? '—'}</BidiText>

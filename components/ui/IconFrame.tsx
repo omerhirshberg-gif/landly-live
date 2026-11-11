@@ -37,16 +37,22 @@ export default function IconFrame({
   tone = 'brand',
   className = '',
   iconClassName = '',
+  glyph,
+  strokeWidth = 1.75,
 }: {
   icon: LucideIcon
   size?: IconFrameSize
   tone?: IconFrameTone
   className?: string
   iconClassName?: string
+  /** A larger glyph than the frame's own (the category grid: 20px in the 40px frame). */
+  glyph?: IconFrameSize
+  /** The line weight; the category glyphs use 1.5, like the rails'. */
+  strokeWidth?: number
 }) {
   return (
     <span aria-hidden="true" className={`flex flex-shrink-0 items-center justify-center border ${SIZE[size]} ${TONE[tone]} ${className}`.trim()}>
-      <Icon aria-hidden="true" focusable="false" className={`${GLYPH[size]} ${iconClassName}`.trim()} strokeWidth={1.75} />
+      <Icon aria-hidden="true" focusable="false" className={`${GLYPH[glyph ?? size]} ${iconClassName}`.trim()} strokeWidth={strokeWidth} />
     </span>
   )
 }

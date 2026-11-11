@@ -34,7 +34,7 @@ export default function StatCard({ label, value, icon, accent = 'blue', emptyHin
           <i className={`fa-solid ${icon}`} aria-hidden="true" />
         </div>
       </div>
-      {value === 0 && emptyHint && <div className="mt-3 text-xs text-[#94A3B8]">{emptyHint}</div>}
+      {value === 0 && emptyHint && <div className="mt-3 text-xs text-[#64748B]">{emptyHint}</div>}
     </Card>
   )
 }

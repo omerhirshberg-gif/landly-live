@@ -23,6 +23,7 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
   const id = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const [place, setPlace] = useState<React.CSSProperties>({})
 
   useEffect(() => {
     if (!open) return
@@ -36,12 +37,31 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close(true)
     }
+    // Fixed to the viewport, measured from the button: a table's sideways-scroll frame would clip an absolute menu.
+    const position = () => {
+      const button = buttonRef.current
+      if (!button) return
+      const rect = button.getBoundingClientRect()
+      const rtl = getComputedStyle(button).direction === 'rtl'
+      const below = window.innerHeight - rect.bottom - 12
+      const flip = below < 220 && rect.top > below
+      setPlace({
+        ...(rtl ? { left: Math.max(8, rect.left) } : { right: Math.max(8, window.innerWidth - rect.right) }),
+        ...(flip ? { bottom: window.innerHeight - rect.top + 4, maxHeight: rect.top - 12 } : { top: rect.bottom + 4, maxHeight: Math.max(160, below) }),
+      })
+    }
+    position()
+    const onScroll = () => close(false)
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
     rootRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
     }
   }, [open])
 
@@ -73,7 +93,8 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
           id={id}
           role="menu"
           aria-label={label}
-          className="absolute end-0 top-full z-30 mt-1 w-56 rounded-xl border border-[#E2E8F0] bg-white p-1 shadow-lg shadow-slate-900/10"
+          style={place}
+          className="fixed z-50 w-56 overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1 shadow-lg shadow-slate-900/10"
         >
           {[safe, danger].map(
             (group, i) =>

@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useLayoutEffect, useMemo, useRef } from 'react'
+import { useAdminT } from '@/lib/admin/translations'
 import MessageBubble, { AutomationRun, SystemNote } from './MessageBubble'
 import { dayLabel, sameDay } from './time'
 import { groupTranscript, itemAt, type TranscriptMessage } from './transcript'
@@ -16,6 +17,7 @@ interface ChatTranscriptProps {
 }
 
 export default function ChatTranscript({ waId, messages, now }: ChatTranscriptProps) {
+  const { t, locale } = useAdminT()
   const scrollRef = useRef<HTMLDivElement>(null)
   const stickRef = useRef(true)
   const shownRef = useRef<string | null>(null)
@@ -42,12 +44,12 @@ export default function ChatTranscript({ waId, messages, now }: ChatTranscriptPr
       ref={scrollRef}
       onScroll={onScroll}
       role="log"
-      aria-label="Conversation"
+      aria-label={t('support.log')}
       aria-live="polite"
       className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[#F8FAFC] px-3 py-4 sm:px-5"
     >
       {messages === null && (
-        <div className="space-y-3" aria-label="Loading messages">
+        <div className="space-y-3" aria-label={t('support.loadingMessages')}>
           {[60, 40, 70, 50].map((width, i) => (
             <div key={i} className={`flex ${i % 2 ? 'justify-end' : 'justify-start'}`}>
               <div className="h-12 rounded-2xl bg-[#E2E8F0] motion-safe:animate-pulse" style={{ width: `${width}%` }} />
@@ -56,12 +58,12 @@ export default function ChatTranscript({ waId, messages, now }: ChatTranscriptPr
         </div>
       )}
       {messages?.length === 0 && (
-        <p className="py-10 text-center text-sm text-[#94A3B8]">No messages saved for this chat yet. New messages will appear here.</p>
+        <p className="py-10 text-center text-sm text-[#64748B]">{t('support.noMessages')}</p>
       )}
       {simulated && (
-        <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-[#94A3B8]">
+        <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-[#64748B]">
           <i className="fa-solid fa-flask" aria-hidden="true" />
-          Test environment: replies are logged here, not sent on WhatsApp.
+          {t('support.testEnv')}
         </p>
       )}
       <ol className="space-y-2">
@@ -71,7 +73,7 @@ export default function ChatTranscript({ waId, messages, now }: ChatTranscriptPr
             <Fragment key={item.type === 'message' ? item.message.id : `run-${item.id}`}>
               {(i === 0 || !sameDay(itemAt(items[i - 1]), at)) && (
                 <li className="flex justify-center py-2" aria-hidden="true">
-                  <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#64748B] ring-1 ring-[#E2E8F0]">{dayLabel(at, now)}</span>
+                  <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#64748B] ring-1 ring-[#E2E8F0]">{dayLabel(at, now, locale)}</span>
                 </li>
               )}
               {item.type === 'message' && item.message.author === 'system' ? (

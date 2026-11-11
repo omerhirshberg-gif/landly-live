@@ -3,15 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { AdminCrumbProvider } from './AdminCrumbContext'
+import AdminDocumentTitle from './AdminDocumentTitle'
 import AdminGate from './AdminGate'
 import AdminHeader from './AdminHeader'
 import { DesktopSidebar, MobileDrawer } from './Sidebar'
 import { logoutAdmin } from '@/lib/admin/adminSession'
 import { useNeedsReplyCount } from '@/lib/admin/needsReply'
+import { type AdminLocale } from '@/lib/admin/adminLocale'
+import { AdminLocaleProvider, useAdminT } from '@/lib/admin/translations'
 
-// The admin UI is English, so the portal is LTR even inside the Hebrew site.
+// The admin has its own language (English or Hebrew, AdminLangSwitch) and
+// its own direction on the shell's wrapper, whatever the public site uses.
 // Layout classes are logical (ps/pe, start/end) and user data carries
-// dir="auto", so Hebrew names render correctly inside it.
+// dir="auto", so names in either script render correctly inside it.
 //
 // From md: a row of the inline sidebar and the page. Below md: the page at
 // full width under the header, whose ☰ opens the drawer (./Sidebar.tsx).
@@ -29,10 +33,20 @@ const SHELL_VARS = {
 // inbox) instead of sitting in the padded, centred column; from md they're
 // like every other page.
 const FULL_BLEED = ['/admin/support']
-const MAIN = 'mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 md:pt-8'
-const MAIN_FULL_BLEED = 'flex w-full flex-1 flex-col md:mx-auto md:block md:max-w-6xl md:px-6 md:pt-8 md:pb-[max(2rem,env(safe-area-inset-bottom))]'
+const MAIN = 'mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-4 pt-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 xl:px-10 md:pt-8'
+const MAIN_FULL_BLEED = 'flex w-full flex-1 flex-col md:mx-auto md:block md:min-w-0 md:max-w-[1600px] md:px-6 xl:px-10 md:pt-8 md:pb-[max(2rem,env(safe-area-inset-bottom))]'
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({ children, initialLocale }: { children: React.ReactNode; initialLocale: AdminLocale }) {
+  return (
+    <AdminLocaleProvider initialLocale={initialLocale}>
+      <AdminDocumentTitle />
+      <AdminShellContent>{children}</AdminShellContent>
+    </AdminLocaleProvider>
+  )
+}
+
+function AdminShellContent({ children }: { children: React.ReactNode }) {
+  const { dir, locale } = useAdminT()
   const router = useRouter()
   const pathname = usePathname()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -64,7 +78,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (pathname === '/admin/login') {
     return (
       <AdminGate>
-        <div className={CANVAS} dir="ltr">
+        <div className={`${CANVAS} admin-scale ${locale === 'he' ? 'admin-he' : ''}`} dir={dir}>
           {children}
         </div>
       </AdminGate>
@@ -74,12 +88,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   return (
     <AdminGate>
       <AdminCrumbProvider>
-        <div className={`${CANVAS} flex`} style={SHELL_VARS} dir="ltr">
+        <div className={`${CANVAS} admin-scale flex ${locale === 'he' ? 'admin-he' : ''}`} style={SHELL_VARS} dir={dir}>
           <DesktopSidebar onLogout={logout} needsReply={needsReply} />
           <MobileDrawer open={isMobileOpen} onClose={closeMenu} onNavigate={dismissMenu} onLogout={logout} needsReply={needsReply} />
           <div className="flex min-h-[var(--app-dvh)] w-full min-w-0 flex-1 flex-col">
             <AdminHeader menuOpen={isMobileOpen} onOpenMenu={() => setIsMobileOpen(true)} menuButtonRef={menuButtonRef} needsReply={needsReply} />
-            {/* Centred in the space beside the sidebar, capped so it doesn't stretch across wide monitors. */}
+            {/* Fills the space beside the sidebar, capped at 1600px so very wide monitors don't stretch it. */}
             <main className={FULL_BLEED.some((path) => pathname.startsWith(path)) ? MAIN_FULL_BLEED : MAIN}>
               {children}
             </main>

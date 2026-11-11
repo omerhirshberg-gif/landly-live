@@ -18,6 +18,7 @@ import MerchantBadge from '@/components/discover/MerchantBadge'
 import OfferTags from '@/components/discover/OfferTags'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem, { Fold } from '@/components/offers/HowToRedeem'
+import { isMultiChain, ParticipatingChains, PerkReachLine } from '@/components/discover/PerkReach'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -133,6 +134,7 @@ export default function OfferDetailPage() {
   const expired = !!offer.expiryDate && offer.expiryDate.getTime() < now
   const saved = isWishlisted(offer.id)
   const guest = !user && !authLoading
+  const multiChain = isMultiChain(offer)
 
   return (
     <>
@@ -240,17 +242,21 @@ export default function OfferDetailPage() {
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
                 <div className="mt-4 flex items-center gap-3 empty:hidden">
-                  {address && (
+                  {(multiChain || (offer.fulfillmentType === 'multipass_pool' && !address)) && (
+                    <PerkReachLine offer={offer} hasPlace={!!address} className="flex-1 text-sm text-muted" />
+                  )}
+                  {!multiChain && address && (
                     <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
                       <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
                       {/* The full address as Google writes it in the reader's language. */}
                       <span className="min-w-0 break-words" dir="auto">{address}</span>
                     </p>
                   )}
-                  <NavigationLinks
+                  {/* A multi-chain voucher has no single store to navigate to; its chains are listed below. */}
+                  {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !address) && <NavigationLinks
                     className="ms-auto"
                     destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }}
-                  />
+                  />}
                 </div>
               </div>
 
@@ -260,9 +266,14 @@ export default function OfferDetailPage() {
                   and no purchase bar. Neither while auth is still being read, so a
                   guest never sees the steps flash in first. Codes live only on the
                   member's own voucher pages. */}
-              {(descriptionText || user) && (
+              {(descriptionText || user || multiChain) && (
                 <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0">
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
+                    {multiChain && (
+                      <Fold title={t('perk_chains_title')} defaultOpen>
+                        <ParticipatingChains offer={offer} />
+                      </Fold>
+                    )}
                     {descriptionText && (
                       <Fold title={t('offer_about_title')} defaultOpen>
                         <p className="whitespace-pre-line text-copy leading-relaxed text-body" lang={description.lang ?? undefined} dir="auto">{descriptionText}</p>

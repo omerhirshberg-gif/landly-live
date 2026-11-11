@@ -5,6 +5,7 @@ import { sendToLogin } from '@/lib/admin/adminSession'
 import { BANNER_ASPECT, BANNER_MAX_EDGE, BANNER_QUALITIES, LOGO_MAX_EDGE, MAX_UPLOAD_BYTES } from '@/lib/images/crop'
 import { compressImage, compressLogo, UnreadableImageError, type PreparedImage } from '@/lib/images/compressImage'
 import { ADMIN_HINT, ADMIN_LABEL, SECONDARY_BUTTON } from './formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 type Tab = 'upload' | 'link'
 type UploadState = { kind: 'idle' } | { kind: 'working'; progress: number | null } | { kind: 'error'; message: string }
@@ -37,6 +38,7 @@ export default function ImageUploadField({
   shape?: 'banner' | 'logo'
 }) {
   const logo = shape === 'logo'
+  const { t } = useAdminT()
   const id = useId()
   const [tab, setTab] = useState<Tab>(() => (value && !isUploadedUrl(value) ? 'link' : 'upload'))
   const [state, setState] = useState<UploadState>({ kind: 'idle' })
@@ -54,11 +56,11 @@ export default function ImageUploadField({
 
   const upload = async (file: File) => {
     if (!file.type.startsWith('image/') && file.type !== '') {
-      setState({ kind: 'error', message: 'That file is not an image.' })
+      setState({ kind: 'error', message: t('img.notImage') })
       return
     }
     if (!logo && file.type === 'image/svg+xml') {
-      setState({ kind: 'error', message: 'Use a photo (JPEG, PNG or WebP) for the offer image.' })
+      setState({ kind: 'error', message: t('img.badType') })
       return
     }
     setState({ kind: 'working', progress: null })
@@ -72,8 +74,8 @@ export default function ImageUploadField({
         kind: 'error',
         message:
           error instanceof UnreadableImageError
-            ? "This browser can't read that image (HEIC photos only open in Safari). Save it as JPEG or PNG and try again."
-            : 'The image could not be prepared. Try another one.',
+            ? t('img.heic')
+            : t('img.prepFailed'),
       })
       return
     }
@@ -101,13 +103,13 @@ export default function ImageUploadField({
         setState({ kind: 'idle' })
       } else {
         setPreview(null)
-        setState({ kind: 'error', message: body?.error ?? 'The upload failed. Try again.' })
+        setState({ kind: 'error', message: body?.error ?? t('img.uploadFailed') })
       }
     }
     xhr.onerror = () => {
       xhrRef.current = null
       setPreview(null)
-      setState({ kind: 'error', message: 'The upload failed. Check the connection and try again.' })
+      setState({ kind: 'error', message: t('img.uploadFailedNet') })
     }
     const body = new FormData()
     body.append('file', blob, logo ? (blob.type === 'image/png' ? 'logo.png' : 'logo.jpg') : 'banner.jpg')
@@ -126,7 +128,7 @@ export default function ImageUploadField({
   return (
     <div>
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-        <span id={`${id}-label`} className={ADMIN_LABEL.replace('mb-1.5 ', '')}>{logo ? 'Logo' : 'Image'}</span>
+        <span id={`${id}-label`} className={ADMIN_LABEL.replace('mb-1.5 ', '')}>{logo ? t('img.logo') : t('img.image')}</span>
         <div role="tablist" aria-labelledby={`${id}-label`} className="inline-flex rounded-xl bg-[#F1F5F9] p-1">
           {(['upload', 'link'] as const).map((option) => (
             <button
@@ -140,7 +142,7 @@ export default function ImageUploadField({
                 tab === option ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
               }`}
             >
-              {option === 'upload' ? 'Upload' : 'Paste link'}
+              {option === 'upload' ? t('img.upload') : t('img.paste')}
             </button>
           ))}
         </div>
@@ -190,11 +192,11 @@ export default function ImageUploadField({
                 ) : (
                   <>
                     <i className="fa-solid fa-cloud-arrow-up text-2xl text-[#0038B8]" aria-hidden="true" />
-                    <span className="text-sm font-semibold text-[#0B1B3D]">{logo ? 'Choose a logo or drop it here' : 'Choose a photo or drop it here'}</span>
-                    <span className="text-xs text-[#94A3B8]">
+                    <span className="text-sm font-semibold text-[#0B1B3D]">{logo ? t('img.chooseLogo') : t('img.choosePhoto')}</span>
+                    <span className="text-xs text-[#64748B]">
                       {logo
-                        ? 'Shown whole, never cropped · 1024px or larger, or SVG · PNG keeps transparency'
-                        : 'Cropped to 16:9 from the centre · 2400px wide or larger looks sharpest'}
+                        ? t('img.logoSpec')
+                        : t('img.photoSpec')}
                     </span>
                   </>
                 )}
@@ -224,7 +226,7 @@ export default function ImageUploadField({
           )}
           {lowResolution && state.kind !== 'error' && (
             <p role="status" className="mt-2 text-xs font-medium text-[#B45309]">
-              This image is low-resolution and may look soft on high-DPI screens. A larger original looks sharper.
+              {t('img.lowRes')}
             </p>
           )}
           {state.kind === 'error' && (
@@ -233,12 +235,12 @@ export default function ImageUploadField({
             </p>
           )}
           {value && !isUploadedUrl(value) && !preview && (
-            <p className={ADMIN_HINT}>This {logo ? 'business' : 'offer'} uses a pasted link (see Paste link). Uploading replaces it.</p>
+            <p className={ADMIN_HINT}>{logo ? t('img.pastedLogo') : t('img.pastedOffer')}</p>
           )}
           <p className={ADMIN_HINT}>
             {logo
-              ? "Saved with the business and shown on all its offers. A replaced upload is deleted when you save."
-              : 'Saved with the offer. A replaced upload is deleted when you save.'}
+              ? t('img.savedLogo')
+              : t('img.savedOffer')}
           </p>
           <input
             ref={inputRef}
@@ -264,6 +266,7 @@ export default function ImageUploadField({
 }
 
 function ProgressOverlay({ progress, inline = false }: { progress: number | null; inline?: boolean }) {
+  const { t } = useAdminT()
   const percent = progress === null ? null : Math.round(progress * 100)
   return (
     <div
@@ -273,7 +276,7 @@ function ProgressOverlay({ progress, inline = false }: { progress: number | null
     >
       <div className="w-full">
         <span className={`mb-1.5 block text-xs font-semibold ${inline ? 'text-[#0B1B3D]' : 'text-white'}`}>
-          {percent === null ? 'Preparing image…' : `Uploading… ${percent}%`}
+          {percent === null ? t('img.preparing') : t('img.uploading', { pct: percent })}
         </span>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/60">
           {/* Fills from the inline start, so it grows right-to-left in Hebrew. */}

@@ -40,6 +40,16 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Merchants' cancelled cheques, signatures and signed contracts (merchantDocs/),
+    // and MASAV payout files (payouts/): written and read only by the Admin SDK,
+    // handed to the admin as a download from an admin-only route. Never a client.
+    match /merchantDocs/{allPaths=**} {
+      allow read, write: if false;
+    }
+    match /payouts/{allPaths=**} {
+      allow read, write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

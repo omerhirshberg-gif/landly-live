@@ -75,7 +75,7 @@ describe('breadcrumbs and back', () => {
 
   it('reads the breadcrumbs, the header title and every Back from the same trail', () => {
     expect(read('components/admin/Breadcrumbs.tsx')).toContain('const crumbs = useAdminTrail()')
-    expect(read('components/admin/AdminHeader.tsx')).toContain('{trail[trail.length - 1]!.label}')
+    expect(read('components/admin/AdminHeader.tsx')).toContain('{route(trail[trail.length - 1]!.label)}')
     expect(read('components/admin/BackLink.tsx')).toContain('const parent = useAdminParent()')
     for (const page of pages('app/admin').map((route) => `app${route}/page.tsx`)) {
       expect(read(page), page).not.toMatch(/<BackLink href=/)
@@ -93,12 +93,17 @@ describe('breadcrumbs and back', () => {
 
 describe('tabbed forms', () => {
   it('splits the long forms into tabs that still submit and validate as one form', () => {
-    for (const page of ['app/admin/businesses/new/page.tsx', 'app/admin/offers/new/page.tsx', 'app/admin/offers/[offerId]/edit/page.tsx']) {
+    for (const page of ['app/admin/businesses/new/page.tsx', 'app/admin/offers/[offerId]/edit/page.tsx']) {
       const source = read(page)
       expect(source, page).toContain('{...tabs.formProps}')
       expect(source, page).toContain('<FormTabs state={tabs}')
       expect(source, page).toContain('<StickyActionBar')
     }
+    // Adding an offer is the four-step wizard: one form, validated step by step, one sticky action bar.
+    const wizard = read('app/admin/offers/new/page.tsx')
+    expect(wizard).toContain('<WizardStepper')
+    expect(wizard).toContain('<StickyActionBar')
+    expect(wizard).toContain('problemWith(n)')
     const tabs = read('components/admin/FormTabs.tsx')
     // Hidden panels stay mounted; an invalid field opens its own tab.
     expect(tabs).toContain("className={selected ? 'space-y-6' : 'hidden'}")

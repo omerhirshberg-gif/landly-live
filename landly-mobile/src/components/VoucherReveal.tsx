@@ -6,7 +6,8 @@ import AppText from './AppText'
 import LineIcon from './LineIcon'
 import VoucherQRCode from './VoucherQRCode'
 import { useLang } from '../i18n/LangProvider'
-import { success, tick } from '../lib/haptics'
+import ScalePressable from './ScalePressable'
+import { impact, success, tick } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -72,7 +73,12 @@ function useFlip() {
   const [shown, setShown] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const toggle = () => {
-    tick()
+    // A firm tap and the success pattern as the code is revealed; a light tick as it is hidden again.
+    if (shown) tick()
+    else {
+      impact()
+      success()
+    }
     setRevealed(true)
     setShown((value) => !value)
   }
@@ -161,15 +167,16 @@ function RevealButton({ label, icon, primary, expanded, onPress }: {
   onPress: () => void
 }) {
   return (
-    <Pressable
+    <ScalePressable
+      pressedScale={primary ? 0.96 : 0.98}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ expanded }}
-      style={({ pressed }) => [styles.button, primary ? styles.buttonPrimary : styles.buttonOutline, pressed && (primary ? styles.buttonPrimaryPressed : styles.buttonOutlinePressed)]}
+      style={[styles.button, primary ? styles.buttonPrimary : styles.buttonOutline]}
     >
-      <LineIcon name={icon} size={16} color={primary ? colors.white : colors.text} strokeWidth={2.2} />
+      <LineIcon name={icon} size={primary ? 20 : 16} color={primary ? colors.white : colors.text} strokeWidth={primary ? 1.75 : 2.2} />
       <AppText style={[styles.buttonText, primary && styles.buttonTextPrimary]}>{label}</AppText>
-    </Pressable>
+    </ScalePressable>
   )
 }
 
@@ -247,13 +254,13 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 20,
     marginTop: 14,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
+    borderCurve: 'continuous',
     ...webOnly({ cursor: 'pointer' }),
   },
-  buttonPrimary: { backgroundColor: colors.brand },
-  buttonPrimaryPressed: { backgroundColor: colors.brandDark },
+  // The reveal: 52pt, full width of its card, with a brand shadow that lifts it off the page.
+  buttonPrimary: { alignSelf: 'stretch', minHeight: 52, backgroundColor: colors.brand, shadowColor: colors.brand, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4 },
   buttonOutline: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
-  buttonOutlinePressed: { backgroundColor: colors.borderLight },
   buttonText: { fontSize: 14, fontWeight: '700', color: colors.text },
   buttonTextPrimary: { color: colors.white },
   copy: { backgroundColor: colors.brandTint },

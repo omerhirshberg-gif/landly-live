@@ -27,7 +27,7 @@ export default function PasswordField({ id, value, onChange, required, minLength
     <div className="relative">
       {icon && (
         <i
-          className={`fa-solid ${icon} pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#94A3B8]`}
+          className={`fa-solid ${icon} pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]`}
           aria-hidden="true"
         />
       )}
@@ -48,7 +48,7 @@ export default function PasswordField({ id, value, onChange, required, minLength
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute inset-y-0 end-0 flex w-12 items-center justify-center rounded-e-xl text-[#94A3B8] transition-colors hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[#0038B8]"
+        className="absolute inset-y-0 end-0 flex w-12 items-center justify-center rounded-e-xl text-[#64748B] transition-colors hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-[#0038B8]"
         aria-label={visible ? 'Hide password' : 'Show password'}
         aria-pressed={visible}
       >

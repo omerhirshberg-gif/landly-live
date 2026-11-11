@@ -164,7 +164,7 @@ export default function AddressAutocomplete({
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           onBlur={() => setOpen(false)}
         />
-        <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" aria-hidden="true">
+        <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-[#64748B]" aria-hidden="true">
           <i className={`fa-solid ${status === 'searching' || status === 'picking' ? 'fa-spinner fa-spin' : value.address ? 'fa-location-dot text-emerald-600' : 'fa-magnifying-glass'} text-sm`} />
         </span>
         {expanded && (
@@ -189,11 +189,11 @@ export default function AddressAutocomplete({
               >
                 <span className="text-sm font-semibold text-[#0B1B3D]" dir="auto">{suggestion.main}</span>
                 {suggestion.secondary && (
-                  <span className="text-xs text-[#94A3B8]" dir="auto">{suggestion.secondary}</span>
+                  <span className="text-xs text-[#64748B]" dir="auto">{suggestion.secondary}</span>
                 )}
               </li>
             ))}
-            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#94A3B8]">Powered by Google</li>
+            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#64748B]">Powered by Google</li>
           </ul>
         )}
       </div>
@@ -221,8 +221,8 @@ export default function AddressAutocomplete({
               const line = value.address?.short?.[lang] || value.address?.formatted[lang]
               return (
                 <div key={lang} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-                  <dt className="shrink-0 font-semibold text-[#94A3B8] sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</dt>
-                  <dd lang={line ? lang : undefined} dir={line ? directionOf(lang) : undefined} className={`min-w-0 break-words ${line ? 'text-[#0F172A]' : 'italic text-[#94A3B8]'}`}>
+                  <dt className="shrink-0 font-semibold text-[#64748B] sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</dt>
+                  <dd lang={line ? lang : undefined} dir={line ? directionOf(lang) : undefined} className={`min-w-0 break-words ${line ? 'text-[#0F172A]' : 'italic text-[#64748B]'}`}>
                     {line || 'Not given by Google; members see another language’s.'}
                   </dd>
                 </div>

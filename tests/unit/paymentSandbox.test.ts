@@ -46,11 +46,28 @@ describe('sandbox gate', () => {
     expect(isPaymentSandboxEnabled()).toBe(false)
     expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
   })
-  it.each(['production', 'preview'])('is off on Vercel %s', (env) => {
+  it('is off on Vercel Preview unless PAYMENT_SANDBOX=1', () => {
+    vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('LANDLY_VERCEL', '1')
-    vi.stubEnv('LANDLY_VERCEL_ENV', env)
+    vi.stubEnv('LANDLY_VERCEL_ENV', 'preview')
     expect(isPaymentSandboxEnabled()).toBe(false)
     expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
+    vi.stubEnv('PAYMENT_SANDBOX', '1')
+    expect(isPaymentSandboxEnabled()).toBe(true)
+    expect(checkoutTerminal()).toBe(DEV_SANDBOX_TERMINAL)
+  })
+  it('is never on in Production, even with PAYMENT_SANDBOX=1', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('LANDLY_VERCEL', '1')
+    vi.stubEnv('LANDLY_VERCEL_ENV', 'production')
+    vi.stubEnv('PAYMENT_SANDBOX', '1')
+    expect(isPaymentSandboxEnabled()).toBe(false)
+    expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
+  })
+  it('PAYMENT_SANDBOX=1 does not enable a local production build', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('PAYMENT_SANDBOX', '1')
+    expect(isPaymentSandboxEnabled()).toBe(false)
   })
   it('steps aside once a real terminal is configured', () => {
     vi.stubEnv('TRANZILA_TERMINAL', 'landly_real')

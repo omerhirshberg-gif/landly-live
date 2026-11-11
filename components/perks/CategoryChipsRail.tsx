@@ -125,7 +125,7 @@ export default function CategoryChipsRail({ value, onChange }: { value: Category
               onKeyDown={onKeyDown}
               className="filter-chip"
             >
-              {option.category && <CategoryIcon category={option.category} className="h-4 w-4" />}
+              {option.category && <CategoryIcon category={option.category} className="h-[18px] w-[18px]" strokeWidth={1.5} />}
               <span>{label(option.key)}</span>
             </button>
           )

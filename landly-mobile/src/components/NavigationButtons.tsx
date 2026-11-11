@@ -1,5 +1,6 @@
 import { Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { nativeNavigationUrls, navigationLinks, type NavigationDestination } from '@shared/maps/navigation'
+import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
@@ -28,11 +29,38 @@ const WAZE_ICON = require('../../assets/icons/waze.webp')
 const GOOGLE_MAPS_ICON = require('../../assets/icons/google-maps.webp')
 const WAZE_CYAN = '#33ccff'
 
-export default function NavigationButtons({ destination }: { destination: NavigationDestination }) {
+export default function NavigationButtons({ destination, wide = false }: { destination: NavigationDestination; wide?: boolean }) {
   const { t } = useLang()
   const links = navigationLinks(destination)
   if (!links) return null
   const apps = nativeNavigationUrls(destination.geo, Platform.OS)
+  // `wide`: two labelled buttons side by side, each half the row (My Pass cards, the voucher screen).
+  if (wide) {
+    return (
+      <View style={styles.wideRow} accessibilityLabel={t('offer_nav_heading')}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={t('offer_nav_waze')}
+          onPress={() => open(apps?.waze, links.waze)}
+          style={({ pressed }) => [styles.wideButton, styles.wideWaze, pressed && styles.wazePressed]}
+        >
+          <View style={styles.wideMark}>
+            <Image source={WAZE_ICON} style={styles.wazeIcon} resizeMode="cover" accessibilityIgnoresInvertColors />
+          </View>
+          <AppText style={styles.wideLabel} numberOfLines={1}>Waze</AppText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={t('offer_nav_google')}
+          onPress={() => open(apps?.googleMaps, links.googleMaps)}
+          style={({ pressed }) => [styles.wideButton, styles.wideGoogle, pressed && styles.pressed]}
+        >
+          <Image source={GOOGLE_MAPS_ICON} style={styles.wideGoogleIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
+          <AppText style={[styles.wideLabel, styles.wideLabelDark]} numberOfLines={1}>Google Maps</AppText>
+        </Pressable>
+      </View>
+    )
+  }
   // The row mirrors on its own in Hebrew.
   return (
     <View style={styles.row} accessibilityLabel={t('offer_nav_heading')}>
@@ -60,6 +88,15 @@ export default function NavigationButtons({ destination }: { destination: Naviga
 }
 
 const styles = StyleSheet.create({
+  wideRow: { flexDirection: 'row', gap: 10, alignSelf: 'stretch' },
+  // Half the row each, 44pt tall at the least; the brand names stay as the apps spell them.
+  wideButton: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8, borderRadius: 12, borderCurve: 'continuous', ...webOnly({ cursor: 'pointer' }) },
+  wideWaze: { backgroundColor: WAZE_CYAN },
+  wideGoogle: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
+  wideMark: { width: 24, height: 24, borderRadius: 6, overflow: 'hidden' },
+  wideGoogleIcon: { width: 22, height: 22 },
+  wideLabel: { flexShrink: 1, fontSize: 13, lineHeight: 18, fontWeight: '700', color: '#04232e' },
+  wideLabelDark: { color: colors.textStrong },
   row: { flexDirection: 'row', gap: 8, flexShrink: 0, marginStart: 'auto' },
   // rounded-xl: a 44pt target around the mark. Not clipped: on iOS that would drop the shadow.
   button: {

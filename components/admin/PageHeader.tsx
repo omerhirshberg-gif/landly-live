@@ -11,7 +11,7 @@ export default function PageHeader({ title, subtitle, actions, className = '' }:
     <div className={`mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between ${className}`}>
       <div className="min-w-0">
         <h1 className="sr-only">{title}</h1>
-        {subtitle && <div className="text-sm text-slate-500">{subtitle}</div>}
+        {subtitle && <div className="mt-1 text-sm text-slate-600 lg:text-[15px]">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
     </div>

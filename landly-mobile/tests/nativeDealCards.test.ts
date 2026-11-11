@@ -81,7 +81,7 @@ describe('native vector icons', () => {
     expect(names.map((m) => m[1]).sort()).toEqual([...BUSINESS_CATEGORIES].sort())
     expect(new Set(names.map((m) => m[2])).size).toBe(BUSINESS_CATEGORIES.length)
     expect(icons).toContain('CATEGORY_ICONS[category] ?? Tag')
-    expect(icons).toContain('strokeWidth = 1.75')
+    expect(icons).toContain('strokeWidth = 1.5')
   })
 
   it('names the Perks rails and My Pass icons in one place', () => {
@@ -94,7 +94,7 @@ describe('native vector icons', () => {
   })
 
   it('shows the redemption method as text only, with no emoji, on every native screen', () => {
-    for (const path of ['components/OfferTags.tsx', 'components/VoucherPass.tsx', 'components/RedeemedPass.tsx', 'app/voucher/[voucherId].tsx']) {
+    for (const path of ['components/OfferTags.tsx', 'components/OfferCard.tsx', 'components/RedeemedPass.tsx', 'app/voucher/[voucherId].tsx']) {
       const source = read(path)
       expect(source, path).toContain('REDEMPTION_METHOD_LABEL_KEYS')
       expect(source, path).not.toMatch(/redemptionGlyph|REDEMPTION_GLYPHS|REDEMPTION_METHOD_ICONS/)
@@ -104,12 +104,15 @@ describe('native vector icons', () => {
 
   it('draws the Perks rails’ headings and the My Pass stats, empty states and pass marks as vectors', () => {
     expect(read('components/OfferTileRail.tsx')).toContain('<LineIcon name={RAIL_ICONS[glyph]}')
+    // A bare 18pt glyph at 1.5 stroke: no badge frame (SectionHeader.tsx, OfferTileRail.tsx).
+    expect(read('components/OfferTileRail.tsx')).toContain('size={18} color={colors.textStrong} strokeWidth={1.5}')
+    expect(read('components/OfferTileRail.tsx')).not.toContain('iconFrame')
     const stats = read('components/DashboardStats.tsx')
     for (const key of ['activePerks', 'redeemed', 'saved']) expect(stats).toContain(`icon={PASS_ICONS.${key}}`)
     const wallet = read('app/(tabs)/wallet.tsx')
     expect(wallet).toContain('<EmptyState icon={PASS_ICONS.emptyActive}')
     expect(wallet).toContain('<EmptyState icon={PASS_ICONS.emptyRedeemed}')
-    expect(read('components/VoucherPass.tsx')).toContain('<LineIcon name={PASS_ICONS.validity}')
+    expect(read('components/VoucherPass.tsx')).toContain('<LineIcon name="clock"')
     expect(read('components/RedeemedPass.tsx')).toContain('<LineIcon name={PASS_ICONS.redeemedMark}')
     // The pass card's chevron stays a directional, mirrored line glyph.
     expect(read('components/VoucherPass.tsx')).toContain('<LineIcon name="chevronEnd"')
@@ -136,8 +139,10 @@ describe('native perk card layout', () => {
     const tags = read('components/OfferTags.tsx')
     expect(tags).toMatch(/<CategoryIcon category=\{tile\.category\}[^>]*\/>\}\s*<AppText style=\{\[styles\.text, styles\.categoryText/)
     const card = read('components/OfferCard.tsx')
-    expect(card.indexOf('<OfferTags')).toBeGreaterThan(card.indexOf('</DealMedia>'))
-    expect(card.indexOf('<OfferTags')).toBeLessThan(card.indexOf('styles.title'))
+    // On the card the method (and category) is a small tag over the photo's top start corner, not a row under it.
+    expect(card).not.toContain('<OfferTags')
+    expect(card.indexOf('styles.method')).toBeLessThan(card.indexOf('</DealMedia>'))
+    expect(card.indexOf('styles.method')).toBeGreaterThan(card.indexOf('<DealMedia'))
     expect(read('app/offer/[offerId].tsx')).toContain('<OfferTags category={offer.category} method={offer.redemptionMethod} />')
   })
 
@@ -150,11 +155,11 @@ describe('native perk card layout', () => {
     expect(card).toContain("logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}")
     expect(card.indexOf('<MerchantBadge')).toBeLessThan(card.indexOf('</DealMedia>'))
     expect(card.indexOf('<MerchantBadge')).toBeGreaterThan(card.indexOf('<DealMedia'))
-    expect(card).toContain("logo: { position: 'absolute', bottom: -20, start: 12 }")
+    expect(card).toContain("logo: { position: 'absolute', bottom: -16, start: 12 }")
   })
 
-  it('fits the business logo whole in a 48pt tall tile on every card', () => {
-    expect(read('components/OfferCard.tsx')).toContain('const LOGO_HEIGHT = 48')
+  it('fits the business logo whole in a 40pt tall tile on every card', () => {
+    expect(read('components/OfferCard.tsx')).toContain('const LOGO_HEIGHT = 40')
     const badge = read('components/MerchantBadge.tsx')
     // A rounded white tile (16pt corners, a hairline edge), the logo fitted whole, 10pt either side.
     expect(badge).toContain('const BADGE_RADIUS = 16')
@@ -165,7 +170,7 @@ describe('native perk card layout', () => {
     expect(badge).not.toContain('borderRadius: size / 2')
     // Home's carousel is the compact card, and the Perks rails draw through it.
     expect(read('components/OfferCarousel.tsx')).toContain('variant="carousel"')
-    expect(read('components/OfferTileRail.tsx')).toContain('<OfferCarousel offers={offers} onOpen={onOpen} />')
+    expect(read('components/OfferTileRail.tsx')).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} />')
   })
 })
 

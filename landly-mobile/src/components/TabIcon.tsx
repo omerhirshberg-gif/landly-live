@@ -5,7 +5,7 @@ import { colors } from '../theme'
 export type TabIconName = 'home' | 'perks' | 'wishlist' | 'pass' | 'profile'
 
 // Lucide-style 24px icons for the web tab bar (_layout.web.tsx; iOS and
-// Android use system symbols): an outline when inactive, a solid brand-blue
+// Android use system symbols): an 1.5-stroke outline when inactive, a solid brand-blue
 // fill when active. Details inside a filled shape (the gift's ribbon, the
 // ticket's perforation) are cut out in white.
 const OUTLINE: Record<TabIconName, string> = {
@@ -42,7 +42,7 @@ export default function TabIcon({
   size: number
   focused?: boolean
 }) {
-  const stroke = { stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  const stroke = { stroke: color, strokeWidth: 1.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   if (!focused) {
     return (
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...stroke}>
@@ -55,7 +55,7 @@ export default function TabIcon({
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d={filled.fill} fill={color} {...stroke} />
       {filled.stroke && <Path d={filled.stroke} fill="none" {...stroke} />}
-      {filled.cut && <Path d={filled.cut} fill="none" stroke={colors.white} strokeWidth={2} strokeLinecap="round" />}
+      {filled.cut && <Path d={filled.cut} fill="none" stroke={colors.white} strokeWidth={1.5} strokeLinecap="round" />}
     </Svg>
   )
 }

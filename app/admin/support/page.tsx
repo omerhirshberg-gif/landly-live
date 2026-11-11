@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { AdminStatus, InboxConversation, InboxMessage } from '@/lib/whatsapp/adminInbox'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { useAdminT } from '@/lib/admin/translations'
 import { announceNeedsReply } from '@/lib/admin/needsReply'
 import { useVisualViewport } from '@/lib/admin/useVisualViewport'
 import Alert from '@/components/admin/Alert'
@@ -115,6 +116,7 @@ export default function SupportInboxPage() {
 }
 
 function SupportInbox() {
+  const { t } = useAdminT()
   const router = useRouter()
   const pathname = usePathname()
   const selected = useSearchParams().get('c')
@@ -184,8 +186,9 @@ function SupportInbox() {
         setNow(Date.now())
       })
       .catch(() => {
-        if (seq === listSeqRef.current) setListError('Failed to load conversations.')
+        if (seq === listSeqRef.current) setListError(t('support.err.list'))
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [withOverride])
 
   const loadChat = useCallback(() => {
@@ -195,7 +198,7 @@ function SupportInbox() {
       .then(async (res) => ({ ok: res.ok, status: res.status, data: await res.json() }))
       .then(({ ok, status, data }) => {
         if (selectedRef.current !== waId) return
-        if (!ok) throw new Error(status === 404 ? 'This conversation no longer exists.' : (data.error ?? 'Failed to load the conversation.'))
+        if (!ok) throw new Error(status === 404 ? t('support.err.gone') : (data.error ?? t('support.err.chat')))
         const conversation = withOverride(data.conversation)
         setChat({ conversation, messages: data.messages })
         setChatError(null)
@@ -203,8 +206,9 @@ function SupportInbox() {
         setConversations((prev) => prev?.map((c) => (c.waId === waId ? conversation : c)) ?? prev)
       })
       .catch((err) => {
-        if (selectedRef.current === waId) setChatError(err instanceof Error ? err.message : 'Failed to load the conversation.')
+        if (selectedRef.current === waId) setChatError(err instanceof Error ? err.message : t('support.err.chat'))
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [withOverride])
 
   usePolling(loadList, LIST_POLL_MS)
@@ -278,13 +282,13 @@ function SupportInbox() {
         sent = true
         appendMessage(waId, data.message)
       } else if (res.status === 409) {
-        setActionError('More than 24 hours have passed since the member last wrote, so WhatsApp no longer accepts free-form replies.')
+        setActionError(t('support.err.window'))
       } else {
         if (data.message) appendMessage(waId, data.message)
-        setActionError(data.error ?? 'Failed to send the reply.')
+        setActionError(data.error ?? t('support.err.send'))
       }
     } catch {
-      setActionError('Failed to send the reply. Check your connection and try again.')
+      setActionError(t('support.err.sendNet'))
     } finally {
       setPending((prev) => ({ ...prev, [waId]: (prev[waId] ?? []).filter((m) => m.id !== placeholder.id) }))
       if (!sent) {
@@ -312,14 +316,14 @@ function SupportInbox() {
         body: JSON.stringify({ waId, status }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to update the status.')
+      if (!res.ok) throw new Error(data.error ?? t('support.err.status'))
       upsertConversation(data.conversation)
       if (status === 'resolved' && !data.notified && data.conversation.windowOpen) {
-        setActionError('Marked resolved, but the sign-off message could not be sent.')
+        setActionError(t('support.err.noSignoff'))
       }
     } catch (err) {
       overridesRef.current.delete(waId)
-      setActionError(err instanceof Error ? err.message : 'Failed to update the status.')
+      setActionError(err instanceof Error ? err.message : t('support.err.status'))
     } finally {
       setPendingStatus(null)
       loadChat()
@@ -345,14 +349,14 @@ function SupportInbox() {
   return (
     <div>
       {/* The admin header names the page (mobile title, desktop breadcrumbs). */}
-      <h1 className="sr-only">WhatsApp Support</h1>
+      <h1 className="sr-only">{t('route.WhatsApp Support')}</h1>
 
       <div
-        className="grid h-[var(--panes-h)] min-h-[20rem] grid-cols-[minmax(0,1fr)] overflow-hidden bg-white md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[22rem_minmax(0,1fr)] md:rounded-2xl md:border md:border-[#E2E8F0] md:shadow-sm"
+        className="grid h-[var(--panes-h)] min-h-[20rem] grid-cols-[minmax(0,1fr)] overflow-hidden bg-white md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[minmax(20rem,32%)_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] md:rounded-2xl md:border md:border-[#E2E8F0] md:shadow-sm"
         style={PANES_VARS}
       >
         {/* minmax(0,1fr) and min-w-0: a long name or snippet truncates instead of widening the column on a phone. */}
-        <section aria-label="Conversations" className={`min-h-0 min-w-0 flex-col border-[#E2E8F0] md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
+        <section aria-label={t('support.conversations')} className={`min-h-0 min-w-0 flex-col border-[#E2E8F0] md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
           <ConversationList
             conversations={conversations}
             error={listError}
@@ -362,14 +366,13 @@ function SupportInbox() {
             onQuery={setQuery}
             selected={selected}
             onSelect={open}
-            awaiting={awaiting}
             now={now}
           />
         </section>
 
         {/* On a phone an open chat covers the visible viewport, header included: its own header has the way back. */}
         <section
-          aria-label="Chat"
+          aria-label={t('support.chat')}
           className={`min-h-0 min-w-0 flex-col bg-white md:static md:z-auto md:flex md:h-auto ${
             selected ? 'fixed inset-x-0 top-[var(--vv-top,0px)] z-40 flex h-[var(--vv-height,var(--app-dvh))]' : 'hidden'
           }`}
@@ -379,21 +382,21 @@ function SupportInbox() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0F7FF] text-xl text-[#0038B8]">
                 <i className="fa-regular fa-comments" aria-hidden="true" />
               </div>
-              <p className="mt-4 text-base font-semibold text-[#0B1B3D]">Choose a conversation</p>
-              <p className="mt-1 max-w-xs text-sm text-[#64748B]">Replies go out on WhatsApp as Landly, in whatever language you write them.</p>
+              <p className="mt-4 text-base font-semibold text-[#0B1B3D]">{t('support.chooseConversation')}</p>
+              <p className="mt-1 max-w-xs text-sm text-[#64748B]">{t('support.chooseHint')}</p>
             </div>
           ) : !conversation ? (
             <div className="flex flex-1 flex-col gap-4 p-4 pt-[max(1rem,env(safe-area-inset-top))] md:pt-4">
               <BackButton onClick={closeChat} className={`-ms-2 self-start ${chatError ? '' : 'md:hidden'}`}>
-                All chats
+                {t('support.allChats')}
               </BackButton>
-              {chatError ? <Alert>{chatError}</Alert> : <div className="h-16 rounded-xl bg-[#F1F5F9] motion-safe:animate-pulse" aria-label="Loading conversation" />}
+              {chatError ? <Alert>{chatError}</Alert> : <div className="h-16 rounded-xl bg-[#F1F5F9] motion-safe:animate-pulse" aria-label={t('support.loadingConversation')} />}
             </div>
           ) : (
             <>
               <ChatHeader conversation={conversation} onBack={closeChat} onStatus={changeStatus} pendingStatus={pendingStatus} now={now} />
               {(actionError || (chatError && chat)) && (
-                <Alert className="mx-3 mt-3 shrink-0" tone={actionError?.startsWith('Marked resolved') ? 'warning' : 'error'}>
+                <Alert className="mx-3 mt-3 shrink-0" tone={actionError === t('support.err.noSignoff') ? 'warning' : 'error'}>
                   {actionError ?? chatError}
                 </Alert>
               )}

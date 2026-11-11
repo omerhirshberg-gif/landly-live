@@ -191,8 +191,11 @@ describe('native offer card', () => {
   it('leads with a full-width hero carrying the badge and the discount, the price row below', () => {
     expect(card).not.toContain('height: 130')
     // The hero (components/DealMedia.tsx); the discount ribbon is tied to the hero's top end corner.
-    expect(card).toContain('<DealMedia image={image} category={offer.category}>')
-    expect(read('components/DealMedia.tsx')).toContain('frame: { aspectRatio: 16 / 9, zIndex: 1 }')
+    expect(card).toContain("<DealMedia image={image} category={offer.category} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>")
+    // 2:1 capped at 172pt on the feeds (16:9 in the carousel's slot, same cap); the offer screen's hero stays 16:9.
+    expect(card).toContain('const HERO_MAX_HEIGHT = 172')
+    expect(read('components/DealMedia.tsx')).toContain('ratio = 16 / 9')
+    expect(read('components/DealMedia.tsx')).toContain("frame: { zIndex: 1, width: '100%', alignSelf: 'stretch' }")
     expect(card).toContain('<View style={styles.ribbon}>')
     expect(card).toContain('borderTopEndRadius: 15')
     expect(card).toContain('{`-${discount}%`}')

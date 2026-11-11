@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminT } from '@/lib/admin/translations'
 import { useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { formatIsraeliDate } from '@/lib/admin/formatDate'
@@ -18,6 +19,7 @@ interface Orphan {
 }
 
 export default function OrphansPage() {
+  const { t } = useAdminT()
   const [orphans, setOrphans] = useState<Orphan[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [deletingUid, setDeletingUid] = useState<string | null>(null)
@@ -30,22 +32,22 @@ export default function OrphansPage() {
         if (data.error) throw new Error(data.error)
         setOrphans(data.orphans ?? [])
       })
-      .catch(() => setError('Failed to load orphaned accounts.'))
+      .catch(() => setError(t('orph.loadFailed')))
   }
 
   useEffect(load, [])
 
   const deleteOrphan = async (orphan: Orphan) => {
-    if (!window.confirm(`Permanently delete the login account for "${orphan.email}"? This cannot be undone.`)) return
+    if (!window.confirm(t('orph.confirm', { email: orphan.email }))) return
     setDeletingUid(orphan.uid)
     setError(null)
     try {
       const res = await adminFetch(`/api/admin/orphans/${orphan.uid}`, { method: 'DELETE' })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to delete.')
+      if (!res.ok) throw new Error(data.error ?? t('orph.deleteFailed'))
       setOrphans((prev) => prev?.filter((o) => o.uid !== orphan.uid) ?? null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete.')
+      setError(err instanceof Error ? err.message : t('orph.deleteFailed'))
     } finally {
       setDeletingUid(null)
     }
@@ -54,13 +56,8 @@ export default function OrphansPage() {
   return (
     <div>
       <PageHeader
-        title="Orphaned login accounts"
-        subtitle={
-          <p className="max-w-3xl">
-            Firebase Auth accounts with no matching business or customer record. Deleting one only removes the login
-            account and frees its email &mdash; there is no Firestore record left to clean up.
-          </p>
-        }
+        title={t('orph.title')}
+        subtitle={<p className="max-w-3xl">{t('orph.subtitle')}</p>}
       />
 
       {error && <Alert className="mb-6">{error}</Alert>}
@@ -71,7 +68,7 @@ export default function OrphansPage() {
         </div>
       )}
       {orphans?.length === 0 && (
-        <EmptyState icon="fa-circle-check" title="No orphaned accounts" description="Every login account has a matching business or customer record." />
+        <EmptyState icon="fa-circle-check" title={t('orph.emptyTitle')} description={t('orph.emptyBody')} />
       )}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -83,8 +80,8 @@ export default function OrphansPage() {
               </div>
               <div className="min-w-0">
                 <div className="truncate font-semibold text-[#0B1B3D]" dir="ltr">{orphan.email}</div>
-                <div className="truncate text-xs text-[#94A3B8]">
-                  {orphan.providerIds.join(', ') || 'no provider'} · created <bdi dir="ltr">{formatIsraeliDate(orphan.createdAt)}</bdi> ·{' '}
+                <div className="truncate text-xs text-[#64748B]">
+                  {orphan.providerIds.join(', ') || t('orph.noProvider')} · {t('orph.created')} <bdi dir="ltr">{formatIsraeliDate(orphan.createdAt)}</bdi> ·{' '}
                   <span className="font-mono">{orphan.uid}</span>
                 </div>
               </div>
@@ -96,7 +93,7 @@ export default function OrphansPage() {
               disabled={deletingUid === orphan.uid}
             >
               {deletingUid === orphan.uid ? <ButtonSpinner /> : <i className="fa-solid fa-trash text-xs" aria-hidden="true" />}
-              {deletingUid === orphan.uid ? 'Deleting…' : 'Delete'}
+              {deletingUid === orphan.uid ? t('orph.deleting') : t('orph.delete')}
             </button>
           </Card>
         ))}

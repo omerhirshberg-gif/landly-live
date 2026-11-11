@@ -16,7 +16,7 @@ export function FormSection({ icon, title, description, children }: FormSectionP
           <i className={`fa-solid ${icon}`} aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-[#0B1B3D]">{title}</h2>
+          <h2 className="text-lg font-bold text-[#0B1B3D] xl:text-xl">{title}</h2>
           {description && <p className="mt-0.5 text-sm text-[#475569]">{description}</p>}
         </div>
       </div>

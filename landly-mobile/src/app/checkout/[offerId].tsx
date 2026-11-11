@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
     borderWidth: 1,
     borderColor: colors.successBorder,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },

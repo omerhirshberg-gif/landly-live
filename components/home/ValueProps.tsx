@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Compass, HeartHandshake, Sparkles, UtensilsCrossed, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Compass, HeartHandshake, Ticket, UtensilsCrossed, type LucideIcon } from 'lucide-react'
 import IconFrame from '@/components/ui/IconFrame'
 import { pillarHref, VALUE_PILLARS, type ValuePillar } from '@/lib/home/showcase'
 import { useLang } from '@/lib/i18n/useLang'
@@ -19,7 +19,7 @@ import SnapDots from '@/components/ui/SnapDots'
 // the catalogue, or /olim for Community.
 const PILLAR_VIEW: Record<ValuePillar['key'], { icon: LucideIcon; titleKey: TranslationKey; tagKey: TranslationKey }> = {
   dining: { icon: UtensilsCrossed, titleKey: 'vp_dining_title', tagKey: 'vp_dining_desc' },
-  lifestyle: { icon: Sparkles, titleKey: 'vp_lifestyle_title', tagKey: 'vp_lifestyle_desc' },
+  lifestyle: { icon: Ticket, titleKey: 'vp_lifestyle_title', tagKey: 'vp_lifestyle_desc' },
   experiences: { icon: Compass, titleKey: 'vp_experiences_title', tagKey: 'vp_experiences_desc' },
   community: { icon: HeartHandshake, titleKey: 'vp_community_title', tagKey: 'vp_community_desc' },
 }

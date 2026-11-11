@@ -628,3 +628,27 @@ html.wa-hidden .wa-widget{display:none;}
 .join-phone-invalid .PhoneInput,.join-phone-invalid .PhoneInput:focus-within{border-color:#f87171;}
 .join-phone .PhoneInputCountryIcon{width:auto;height:auto;background:none;box-shadow:none;}
 .join-phone .PhoneInputCountrySelect:focus + .PhoneInputCountryIcon{box-shadow:none;}
+
+/* The admin tables' own sideways scroll: a slim bar that doesn't dominate the card. */
+.admin-table-scroll{scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent;}
+.admin-table-scroll::-webkit-scrollbar{height:8px;}
+.admin-table-scroll::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:9999px;}
+.admin-table-scroll::-webkit-scrollbar-track{background:transparent;}
+
+/* Hebrew has no capitals, and letter-spacing pulls its letters apart: the admin's small caps labels read plainly in it. */
+.admin-he .uppercase{text-transform:none;}
+.admin-he .tracking-wider,.admin-he .tracking-wide,.admin-he .tracking-widest{letter-spacing:normal;}
+
+/* The admin's type scale and font. One interface family (Inter; Heebo for Hebrew, weights 500-800 are loaded), no Manrope
+   headings, and nothing under 13px: the small utility sizes the admin components use are lifted here, in one place, so a
+   dense table or the support inbox stays readable. Hebrew lines get a roomier line height so ascenders and descenders
+   (ץ ף ל ק) are never cut by a truncated or clamped line. */
+.admin-scale{font-family:var(--font-sans,'Inter'),'Inter','Heebo',sans-serif;font-size:14px;}
+.admin-scale.admin-he{font-family:'Heebo',sans-serif;}
+.admin-scale :where(h1,h2,h3,h4,.font-display){font-family:inherit;letter-spacing:-0.01em;}
+.admin-scale .text-xs,.admin-scale .text-\[11px\],.admin-scale .text-\[12px\]{font-size:13px;line-height:1.45;}
+.admin-scale .text-\[13px\]{font-size:14px;line-height:1.5;}
+.admin-scale .text-\[10px\]{font-size:12px;}
+.admin-scale td{font-weight:500;}
+.admin-he .truncate,.admin-he [class*="line-clamp"]{line-height:1.55;padding-block:0.06em;}
+.admin-he{line-height:1.55;}

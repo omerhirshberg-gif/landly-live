@@ -32,6 +32,8 @@ function useFlip(frontButton: RefObject<HTMLButtonElement | null>, backButton: R
 
   const toggle = () => {
     turned.current = true
+    // A tap of feedback as the code is revealed, where the browser supports it (Android Chrome).
+    if (!shown) navigator.vibrate?.(12)
     setRevealed(true)
     setShown((value) => !value)
   }
@@ -74,9 +76,9 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
               onClick={toggle}
               aria-expanded={false}
               aria-controls={regionId}
-              className={`tap-target mt-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-bold text-white shadow-md transition [@media(hover:hover)]:hover:bg-brandDark ${FOCUS}`}
+              className={`tap-target mt-1 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl [corner-shape:squircle] bg-brand px-6 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(0,56,184,0.4)] transition-[transform,background-color,box-shadow] duration-200 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:bg-brandDark ${FOCUS}`}
             >
-              <QrCode aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
+              <QrCode aria-hidden="true" className="h-5 w-5" strokeWidth={1.75} />
               <span>{t('voucher_show_qr')}</span>
             </button>
           </div>

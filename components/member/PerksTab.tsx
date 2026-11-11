@@ -1,15 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { CalendarCheck, CalendarX, ChevronRight, Gift } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronRight, Clock, Gift, MapPin } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
-import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import { VoucherListSkeleton } from '@/components/ui/Skeleton'
-import VoucherThumb from './VoucherThumb'
+import { voucherDestination } from '@/lib/member/voucherDestination'
+import TicketTear from './TicketTear'
+import VoucherCover from './VoucherCover'
 
 type ActiveVoucher = VoucherDocument & { id: string }
 
@@ -54,41 +56,54 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   )
 }
 
-// The whole card is the link to the voucher page: thumbnail on the start
-// side, then business, offer, method and validity, and a chevron on the end
-// side (pointing left in Hebrew) that says it opens. No separate button. It
-// lifts on hover only on devices that really hover, and presses in slightly
-// on touch.
+// The whole card is the link to the voucher page (the app: VoucherPass.tsx): the
+// offer's cover with the business's squircle logo across its bottom start
+// corner, then the business and the deal and, under a perforated tear-line with
+// a bite out of each side edge, when it runs out (amber under a week, red once
+// it has) and a "View voucher" pill. It lifts on hover only on devices that
+// really hover, and presses in slightly on touch.
+const DAY_MS = 24 * 60 * 60 * 1000
+
 function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
   const { t, lang } = useLang()
-  const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < Date.now()
+  // Read once per mount, since render must stay pure.
+  const [now] = useState(Date.now)
+  const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < now
+  const soon = !!voucher.expiresAt && !expired && voucher.expiresAt.getTime() - now < 7 * DAY_MS
+  const name = localizedBusinessName(voucher, lang).text
+  const { place } = voucherDestination(voucher, lang)
 
   return (
     <Link
       href={`/member/vouchers/${encodeURIComponent(voucher.id)}`}
-      className="group flex min-h-12 items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-card transition-all duration-200 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:gap-4 sm:p-5 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+      className="group block rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.05)] transition-all duration-300 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-slate-200 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
     >
-      <VoucherThumb voucher={voucher} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-base font-bold leading-snug text-ink" dir="auto">{localizedBusinessName(voucher, lang).text}</div>
+      <VoucherCover voucher={voucher} name={name} />
+      <div className="px-3.5 pb-3 pt-6">
+        <div className="truncate text-[17px] font-extrabold leading-snug text-ink" dir="auto">{name}</div>
         <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</h3>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <RedemptionBadge method={voucher.redemptionMethod} />
-          {voucher.expiresAt && (
-            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
-              {expired ? <CalendarX aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} /> : <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />}
-              <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
-            </span>
-          )}
-        </div>
+        {place && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+            <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+            <span className="truncate" dir="auto">{place}</span>
+          </p>
+        )}
       </div>
-      {/* Screen readers hear what the card does; sighted members see the chevron. */}
-      <span className="sr-only">{t('voucher_show_button')}</span>
-      <ChevronRight
-        aria-hidden="true"
-        className="h-4 w-4 flex-shrink-0 text-muted transition-[color,transform] duration-200 rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 [@media(hover:hover)]:group-hover:text-brand rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5 motion-reduce:transition-none"
-        strokeWidth={2}
-      />
+      <TicketTear />
+      <div className="flex items-center justify-between gap-2.5 px-3.5 pb-3.5 pt-2.5">
+        <span className={`inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold ${expired ? 'text-red-600' : soon ? 'text-amber-600' : 'text-slate-500'}`}>
+          {voucher.expiresAt && (
+            <>
+              <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              <span className="truncate">{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
+            </>
+          )}
+        </span>
+        <span className="inline-flex min-h-8 shrink-0 items-center gap-0.5 rounded-full border border-slate-200/70 bg-brandTint py-1 ps-3 pe-2 text-[13px] font-bold text-brand">
+          {t('voucher_show_button')}
+          <ChevronRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 rtl:-scale-x-100 [@media(hover:hover)]:group-hover:translate-x-0.5 rtl:[@media(hover:hover)]:group-hover:-translate-x-0.5 motion-reduce:transition-none" strokeWidth={2.2} />
+        </span>
+      </div>
     </Link>
   )
 }
