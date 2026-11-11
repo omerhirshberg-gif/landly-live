@@ -58,7 +58,7 @@ export default function BusinessHero({ business, actions }: { business: HeroBusi
 
       <div className="mt-5 flex flex-col gap-3 border-t border-[#E2E8F0] pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-2 text-sm text-[#475569]">
-          <i className={`fa-solid fa-location-dot mt-0.5 ${address ? 'text-emerald-600' : 'text-[#94A3B8]'}`} aria-hidden="true" />
+          <i className={`fa-solid fa-location-dot mt-0.5 ${address ? 'text-emerald-600' : 'text-[#64748B]'}`} aria-hidden="true" />
           <bdi dir="auto" className="min-w-0 [text-align:match-parent]">
             {address?.formatted.en || address?.formatted.he || business.location}
           </bdi>

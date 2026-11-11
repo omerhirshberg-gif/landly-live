@@ -204,14 +204,14 @@ describe('native scroll indicators', () => {
 describe('section header', () => {
   it('pins See all to the reading-direction end of the padded row', () => {
     const header = read('components/SectionHeader.tsx')
-    expect(header).toContain("row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', width: '100%', gap: 12, marginTop: 28, marginBottom: 4 }")
-    expect(header).toContain('heading: { flex: 1, minWidth: 0, flexDirection: \'row\', alignItems: \'center\', gap: 10 }')
+    expect(header).toContain("row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', width: '100%', gap: 8, marginTop: 28, marginBottom: 4 }")
+    expect(header).toContain('heading: { flex: 1, minWidth: 0, flexDirection: \'row\', alignItems: \'center\', gap: 6 }')
     expect(header).toContain('title: { flexShrink: 1, minWidth: 0 }')
     expect(header).toContain("action: { flexShrink: 0, minHeight: 44, justifyContent: 'center',")
     expect(header).not.toContain('row-reverse')
     const web = readFileSync('components/discover/OfferCardRail.tsx', 'utf8')
-    expect(web).toContain('<MemberColumn className="mb-1 flex items-center justify-between gap-3">')
-    expect(web).toContain('className="flex min-w-0 items-center gap-2.5 text-xl font-bold tracking-tight text-ink"')
+    expect(web).toContain('<MemberColumn className="mb-1 flex items-center justify-between gap-2">')
+    expect(web).toContain('className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink"')
     expect(web).toContain('tap-target group/pill inline-flex shrink-0 items-center')
   })
 })

@@ -34,7 +34,7 @@ function LineNote({ line, className = '' }: { line: UsageLine; className?: strin
   return (
     <span className={`block text-xs text-[#64748B] ${className}`}>
       {line.note}
-      {line.isUpperBound && <span className="text-[#94A3B8]"> · ≤ upper bound, Google may bill fewer</span>}
+      {line.isUpperBound && <span className="text-[#64748B]"> · ≤ upper bound, Google may bill fewer</span>}
     </span>
   )
 }
@@ -43,7 +43,7 @@ function GroupHeading({ group }: { group: UsageGroup }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#475569]">
-        <i className={`fa-solid ${VENDOR_ICONS[group.vendor]} text-[#94A3B8]`} aria-hidden="true" />
+        <i className={`fa-solid ${VENDOR_ICONS[group.vendor]} text-[#64748B]`} aria-hidden="true" />
         <span className="truncate">{group.label}</span>
       </span>
       <span className="shrink-0 text-xs text-[#64748B]">
@@ -69,7 +69,7 @@ function MobileGroup({ group }: { group: UsageGroup }) {
               </div>
               <div className="shrink-0 text-end">
                 <Num className="block font-bold text-[#0B1B3D]">{formatIls(line.netIls)}</Num>
-                <span className="text-xs text-[#94A3B8]">net</span>
+                <span className="text-xs text-[#64748B]">net</span>
               </div>
             </div>
             {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
@@ -81,7 +81,7 @@ function MobileGroup({ group }: { group: UsageGroup }) {
                 ['Gross', formatIls(line.grossIls)],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-0">
-                  <dt className="text-[#94A3B8]">{label}</dt>
+                  <dt className="text-[#64748B]">{label}</dt>
                   <dd className="font-semibold text-[#0F172A]">
                     <Num>{value}</Num>
                   </dd>
@@ -113,7 +113,7 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#E2E8F0] text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
+            <tr className="border-b border-[#E2E8F0] text-xs font-semibold uppercase tracking-wider text-[#64748B]">
               <th scope="col" className="py-3 ps-6 pe-3 text-start">Service</th>
               <th scope="col" className="px-3 py-3 text-start">Metric</th>
               <th scope="col" className="px-3 py-3 text-end">Used</th>

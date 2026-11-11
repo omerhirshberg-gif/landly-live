@@ -6,6 +6,8 @@ import { normalizeImageUrl } from '../offers/imageUrl'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type PlaceSnapshot } from '../geo'
+import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
+import { readPerkScope, type PerkScope } from '../offers/perkScope'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
 
 export interface OfferDocument {
@@ -38,6 +40,14 @@ export interface OfferDocument {
   geo?: Coordinates | null // denormalized from businesses/{businessId}.address; null = not geocoded
   city?: LocalizedName // denormalized like geo; {} when unknown
   address?: PlaceSnapshot | null // denormalized like geo: the address lines in each language; null = not geocoded
+  // How it's fulfilled and who honours it (lib/offers/perkScope.ts). A Multipass perk has a brand instead of a business;
+  // a multi-chain one lists its chains. Optional only for hand-built fixtures: every offer read from Firestore has them.
+  fulfillmentType?: FulfillmentType
+  perkScope?: PerkScope
+  brandName?: string
+  participatingChains?: string[]
+  chainsCount?: number
+  universalRedemptionGuide?: { he: string; en: string } | null
 }
 
 function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
@@ -68,6 +78,8 @@ function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
     geo: parseCoordinates(data.geo),
     city: parseLocalizedName(data.city),
     address: parsePlaceSnapshot(data.address),
+    fulfillmentType: parseFulfillmentType(data.fulfillmentType),
+    ...readPerkScope(data),
   }
 }
 

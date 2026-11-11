@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, PlaneTakeoff, QrCode, Sparkles, UserPlus } from 'lucide-react'
+import { ArrowRight, PlaneTakeoff, QrCode, Gift, UserPlus } from 'lucide-react'
 import IconFrame from '@/components/ui/IconFrame'
 import SnapDots from '@/components/ui/SnapDots'
 import { useLang } from '@/lib/i18n/useLang'
@@ -26,7 +26,7 @@ import { LANDING_COLUMN, LANDING_RAIL } from '@/components/landing/landingColumn
 // steps say it.
 const STEPS = [
   { icon: UserPlus, titleKey: 'step1_title', descKey: 'step1_desc' },
-  { icon: Sparkles, titleKey: 'step2_title', descKey: 'step2_desc' },
+  { icon: Gift, titleKey: 'step2_title', descKey: 'step2_desc' },
   { icon: QrCode, titleKey: 'step3_title', descKey: 'step3_desc' },
 ] as const
 

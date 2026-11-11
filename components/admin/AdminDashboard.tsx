@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminT } from '@/lib/admin/translations'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
@@ -40,6 +41,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // The sidebar already links every section, so nothing here repeats it as a
 // big card. Only the existing admin APIs are read (no endpoint of its own).
 export default function AdminDashboard() {
+  const { t, tn } = useAdminT()
   const [businesses, setBusinesses] = useState<Business[] | null>(null)
   const [offers, setOffers] = useState<Offer[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -51,11 +53,11 @@ export default function AdminDashboard() {
     adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
-      .catch(() => setError('Failed to load businesses.'))
+      .catch(() => setError(t('dash.loadBiz')))
     adminFetch('/api/admin/offers')
       .then((res) => res.json())
       .then((data) => setOffers(data.offers ?? []))
-      .catch(() => setError('Failed to load offers.'))
+      .catch(() => setError(t('dash.loadOffers')))
   }, [])
 
   const activeOfferCount = businesses?.reduce((sum, b) => sum + b.activePerkCount, 0) ?? null
@@ -72,41 +74,41 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="An overview of Landly's partner businesses and their live offers." />
+      <PageHeader title={t('route.Dashboard')} subtitle={t('dash.subtitle')} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard label="Businesses" value={businesses?.length ?? null} icon="fa-store" accent="blue" emptyHint="Add your first one below." />
-        <StatCard label="Active offers" value={activeOfferCount} icon="fa-tags" accent="emerald" emptyHint="Add one from a business." />
-        <StatCard label="Expiring soon" value={expiring?.length ?? null} icon="fa-hourglass-half" accent="amber" />
-        <StatCard label="Chats to answer" value={needsReply} icon="fa-comments" accent="violet" />
+        <StatCard label={t('dash.stat.businesses')} value={businesses?.length ?? null} icon="fa-store" accent="blue" emptyHint={t('dash.stat.businessesHint')} />
+        <StatCard label={t('dash.stat.active')} value={activeOfferCount} icon="fa-tags" accent="emerald" emptyHint={t('dash.stat.activeHint')} />
+        <StatCard label={t('dash.stat.expiring')} value={expiring?.length ?? null} icon="fa-hourglass-half" accent="amber" />
+        <StatCard label={t('dash.stat.chats')} value={needsReply} icon="fa-comments" accent="violet" />
       </div>
 
       {/* One row of the everyday actions; the sidebar covers the rest. */}
-      <section aria-label="Quick actions" className="mb-10 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <section aria-label={t('dash.quick')} className="mb-10 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Link href="/admin/businesses/new" className={PRIMARY_BUTTON}>
           <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-          Add business
+          {t('dash.addBusiness')}
         </Link>
         <Link href="/admin/offers/new" className={SECONDARY_BUTTON}>
           <i className="fa-solid fa-tags text-xs" aria-hidden="true" />
-          Add offer
+          {t('dash.addOffer')}
         </Link>
         <Link href="/admin/users" className={SECONDARY_BUTTON}>
           <i className="fa-solid fa-users text-xs" aria-hidden="true" />
-          View users
+          {t('dash.viewUsers')}
         </Link>
         <Link href="/admin/support" className={SECONDARY_BUTTON}>
           <i className="fa-solid fa-comments text-xs" aria-hidden="true" />
-          Open inbox
+          {t('dash.openInbox')}
           {needsReply > 0 && <StatusBadge tone="emerald">{needsReply}</StatusBadge>}
         </Link>
       </section>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section>
-          <ListHeading title="Recent businesses" href={recentBusinesses && recentBusinesses.length > 0 ? '/admin/businesses' : null} />
+          <ListHeading title={t('dash.recent')} href={recentBusinesses && recentBusinesses.length > 0 ? '/admin/businesses' : null} />
           {businesses === null && !error && (
             <div className="space-y-2">
               <CardSkeletons count={3} className="h-16" />
@@ -115,12 +117,12 @@ export default function AdminDashboard() {
           {recentBusinesses && recentBusinesses.length === 0 && (
             <EmptyState
               icon="fa-store"
-              title="No businesses yet"
-              description="Businesses you add will show up here."
+              title={t('dash.noBiz')}
+              description={t('dash.noBizBody')}
               action={
                 <Link href="/admin/businesses/new" className={PRIMARY_BUTTON}>
                   <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-                  Add business
+                  {t('dash.addBusiness')}
                 </Link>
               }
             />
@@ -135,12 +137,12 @@ export default function AdminDashboard() {
                   title={business.businessName}
                   meta={
                     <>
-                      <bdi dir="auto">{`${categoryEmoji(business.category)} ${business.category}`.trim()}</bdi> · added <bdi dir="ltr">{formatIsraeliDate(business.createdAt)}</bdi>
+                      <bdi dir="auto">{`${categoryEmoji(business.category)} ${business.category}`.trim()}</bdi> · {t('dash.added')} <bdi dir="ltr">{formatIsraeliDate(business.createdAt)}</bdi>
                     </>
                   }
                   badge={
                     <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
-                      {business.activePerkCount} active
+                      {t('dash.activeN', { n: business.activePerkCount })}
                     </StatusBadge>
                   }
                 />
@@ -150,14 +152,14 @@ export default function AdminDashboard() {
         </section>
 
         <section>
-          <ListHeading title={`Expiring in ${EXPIRING_DAYS} days`} href={expiring && expiring.length > 0 ? '/admin/offers' : null} />
+          <ListHeading title={t('dash.expiringIn', { n: EXPIRING_DAYS })} href={expiring && expiring.length > 0 ? '/admin/offers' : null} />
           {offers === null && !error && (
             <div className="space-y-2">
               <CardSkeletons count={3} className="h-16" />
             </div>
           )}
           {expiring && expiring.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#94A3B8]">No live offer expires in the next {EXPIRING_DAYS} days.</p>
+            <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#64748B]">{t('dash.noneExpiring', { n: EXPIRING_DAYS })}</p>
           )}
           {expiring && expiring.length > 0 && (
             <Card className="divide-y divide-[#E2E8F0] overflow-hidden">
@@ -170,7 +172,7 @@ export default function AdminDashboard() {
                     icon="fa-hourglass-half"
                     title={offer.title}
                     meta={<bdi dir="auto">{offer.businessName}</bdi>}
-                    badge={<StatusBadge tone={days <= 3 ? 'amber' : 'slate'}>{days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`}</StatusBadge>}
+                    badge={<StatusBadge tone={days <= 3 ? 'amber' : 'slate'}>{days === 0 ? t('dash.today') : tn('dash.days', days)}</StatusBadge>}
                   />
                 )
               })}
@@ -183,12 +185,13 @@ export default function AdminDashboard() {
 }
 
 function ListHeading({ title, href }: { title: string; href: string | null }) {
+  const { t } = useAdminT()
   return (
     <div className="mb-3 flex min-h-12 items-center justify-between gap-4">
       <h2 className={`${SECTION_HEADING} !mb-0`}>{title}</h2>
       {href && (
         <Link href={href} className="inline-flex min-h-12 items-center gap-1.5 text-sm font-semibold text-[#0038B8] hover:text-[#002A8A]">
-          View all
+          {t('dash.viewAll')}
           <i className="fa-solid fa-arrow-right text-xs" aria-hidden="true" />
         </Link>
       )}
@@ -208,7 +211,7 @@ function ListRow({ href, icon, title, meta, badge }: { href: string; icon: strin
         </div>
         <div className="min-w-0">
           <BidiText className="font-semibold text-[#0B1B3D]">{title}</BidiText>
-          <div className="mt-0.5 truncate text-xs text-[#94A3B8]">{meta}</div>
+          <div className="mt-0.5 truncate text-xs text-[#64748B]">{meta}</div>
         </div>
       </div>
       <span className="shrink-0">{badge}</span>

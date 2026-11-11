@@ -1,3 +1,7 @@
+'use client'
+
+import { useAdminT } from '@/lib/admin/translations'
+
 const TONES = {
   emerald: 'bg-[#ECFDF5] text-emerald-700 ring-emerald-600/15',
   amber: 'bg-[#FFFBEB] text-amber-700 ring-amber-600/15',
@@ -18,7 +22,7 @@ interface StatusBadgeProps {
 export default function StatusBadge({ tone, icon, children, className = '' }: StatusBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold leading-none ring-1 ring-inset ${TONES[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold leading-snug ring-1 ring-inset ${TONES[tone]} ${className}`}
     >
       {icon && <i className={`fa-solid ${icon} text-[10px]`} aria-hidden="true" />}
       {children}
@@ -43,4 +47,12 @@ export function OfferStatusBadge({ offer }: { offer: OfferStatusInput }) {
     return <StatusBadge tone="amber" icon="fa-clock">Expired</StatusBadge>
   }
   return <StatusBadge tone="slate">Not active</StatusBadge>
+}
+
+/** A member's account state (lib/admin/userStatus.ts); active shows as a quiet dash so suspended and banned stand out. */
+export function UserStatusBadge({ status }: { status: 'active' | 'suspended' | 'banned' }) {
+  const { t } = useAdminT()
+  if (status === 'banned') return <StatusBadge tone="rose" icon="fa-ban">{t('userStatus.banned')}</StatusBadge>
+  if (status === 'suspended') return <StatusBadge tone="amber" icon="fa-pause">{t('userStatus.suspended')}</StatusBadge>
+  return <StatusBadge tone="emerald">{t('userStatus.active')}</StatusBadge>
 }

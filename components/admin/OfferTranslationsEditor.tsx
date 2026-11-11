@@ -6,13 +6,14 @@ import { LANGUAGES } from '@/lib/i18n/languages'
 import type { Lang } from '@/lib/i18n/translations'
 import type { OfferTextField } from '@/lib/offers/offerText'
 import { ADMIN_HINT, ADMIN_INPUT } from './formStyles'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 
-const OFFER_FIELD_LABELS: Record<OfferTextField, string> = {
-  title: 'Title',
-  description: 'Description',
-  redemptionTerms: 'Redemption terms',
-  redemptionInstructions: 'Redemption instructions',
-}
+const OFFER_FIELD_LABEL_KEYS = {
+  title: 'form.title',
+  description: 'form.description',
+  redemptionTerms: 'form.redemptionTerms',
+  redemptionInstructions: 'form.redemptionInstructionsShort',
+} as const satisfies Record<OfferTextField, AdminKey>
 
 const LINK_BUTTON =
   'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#0038B8] transition-colors hover:bg-[#F0F7FF] active:bg-[#E0EFFE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
@@ -30,12 +31,12 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
   stored,
   overrides,
   onChange,
-  labels = OFFER_FIELD_LABELS as Record<string, string> as Record<F, string>,
-  legend = 'Translations',
+  labels: labelsProp,
+  legend: legendProp,
   intro,
   sourceLang: knownSourceLang,
-  pendingText = 'Translated when you save.',
-  emptyText = 'Fill in the offer text above first.',
+  pendingText: pendingProp,
+  emptyText: emptyProp,
   singleLine = ['title' as F],
 }: {
   source: Record<F, string>
@@ -54,6 +55,11 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
   /** Fields edited in a one-line input rather than a textarea. */
   singleLine?: F[]
 }) {
+  const { t } = useAdminT()
+  const labels = labelsProp ?? (Object.fromEntries(Object.entries(OFFER_FIELD_LABEL_KEYS).map(([field, key]) => [field, t(key)])) as Record<string, string> as Record<F, string>)
+  const legend = legendProp ?? t('tr.legend')
+  const pendingText = pendingProp ?? t('tr.pending')
+  const emptyText = emptyProp ?? t('tr.empty')
   const id = useId()
   const sourceLang = knownSourceLang ?? stored?.sourceLang
   const targets = CONTENT_LANGS.filter((lang) => lang !== sourceLang)
@@ -76,18 +82,18 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">{legend}</legend>
+      <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{legend}</legend>
       {intro ? <p className="mb-4 text-sm text-[#475569]">{intro}</p> : <p className="mb-4 text-sm text-[#475569]">
-        Translated automatically by Google when you save
+        {t('tr.intro')}
         {sourceLang ? (
           <>
-            {' '}from <span className="font-semibold">{LANGUAGES.find((l) => l.code === sourceLang)?.label ?? sourceLang}</span>
+            {' '}{t('tr.from', { lang: LANGUAGES.find((l) => l.code === sourceLang)?.label ?? sourceLang })}
           </>
         ) : null}
-        . Write your own wording for any field to replace Google&apos;s; it stays as written even if you edit the source text later.
+        . {t('tr.introEnd')}
       </p>}
 
-      <div role="tablist" aria-label="Translation language" className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-[#F1F5F9] p-1 [scrollbar-width:none]">
+      <div role="tablist" aria-label={t('tr.language')} className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-[#F1F5F9] p-1 [scrollbar-width:none]">
         {targets.map((lang) => {
           const manual = Object.keys(overrides[lang] ?? {}).length
           return (
@@ -105,7 +111,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
             >
               <span lang={lang}>{label(lang)}</span>
               {manual > 0 && (
-                <span className="rounded-full bg-[#0038B8] px-1.5 text-[10px] leading-4 text-white" aria-label={`${manual} written by you`}>
+                <span className="rounded-full bg-[#0038B8] px-1.5 text-[10px] leading-4 text-white" aria-label={t('tr.written', { n: manual })}>
                   {manual}
                 </span>
               )}
@@ -133,7 +139,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
                     manual !== undefined ? 'bg-[#F0F7FF] text-[#0038B8]' : 'bg-[#F1F5F9] text-[#475569]'
                   }`}
                 >
-                  {manual !== undefined ? 'Your wording' : 'Google Translate'}
+                  {manual !== undefined ? t('tr.yours') : t('tr.google')}
                 </span>
               </div>
               {manual !== undefined ? (
@@ -153,12 +159,12 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
                   )}
                   <button type="button" className={`${LINK_BUTTON} mt-1`} onClick={() => setOverride(active, field, null)}>
                     <i className="fa-solid fa-language text-[11px]" aria-hidden="true" />
-                    Use Google&apos;s translation
+                    {t('tr.useGoogle')}
                   </button>
                 </>
               ) : (
                 <>
-                  <p lang={machineText ? active : undefined} dir={machineText ? dir : 'auto'} className={`whitespace-pre-line text-sm ${machineText ? 'text-[#0F172A]' : 'italic text-[#94A3B8]'}`}>
+                  <p lang={machineText ? active : undefined} dir={machineText ? dir : 'auto'} className={`whitespace-pre-line text-sm ${machineText ? 'text-[#0F172A]' : 'italic text-[#64748B]'}`}>
                     {machineText ?? pendingText}
                   </p>
                   <button
@@ -167,7 +173,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
                     onClick={() => setOverride(active, field, machineText ?? source[field])}
                   >
                     <i className="fa-solid fa-pen text-[11px]" aria-hidden="true" />
-                    Write my own
+                    {t('tr.writeOwn')}
                   </button>
                 </>
               )}

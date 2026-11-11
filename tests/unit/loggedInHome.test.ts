@@ -198,7 +198,7 @@ describe('member dashboard: category rail and perk cards', () => {
     expect(html).toContain(translations.he.redeem_method_phone_booking)
     // The category's Lucide glyph in a white frame, never a broken-image icon; the tag line leads with it too.
     expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-9 w-9"/)
-    expect(html).toMatch(/class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-3\.5 w-3\.5 shrink-0"/)
+    expect(html).toMatch(/class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-3 w-3 shrink-0"/)
     expect(html).not.toContain('<img')
     // The method is text only.
     expect(html).not.toContain('lucide-phone')

@@ -1,10 +1,14 @@
 import 'server-only'
+import { frozenPerkScope } from '../offers/perkScope'
 import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 import type { TranzilaNotification } from './parseTranzilaNotification'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { isValidValidityDays, normalizeRedemptionTerms, normalizeValidityDays, voucherExpiresAtMs } from './voucherTerms'
 import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
+import { applyPoolAllocation, planPoolAllocation } from '../inventory/poolAllocation'
+import { parseFulfillmentType } from '../inventory/types'
+import { parseFrozenTerms } from '../merchants/terms'
 import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START } from './orderNumber'
 
 function transactionKey(event: TranzilaNotification): string {
@@ -21,7 +25,9 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const [orderSnap, receiptSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)])
     if (!orderSnap.exists) throw new PaymentError('Order not found.', 404)
     const order = orderSnap.data()!
-    if (!isDocumentId(order.userId) || !isDocumentId(order.offerId) || !isDocumentId(order.businessId)
+    // Only a local-business order names a business; a Multipass order carries its brand instead.
+    const direct = parseFulfillmentType(order.fulfillmentType) === 'direct_merchant'
+    if (!isDocumentId(order.userId) || !isDocumentId(order.offerId) || (direct && !isDocumentId(order.businessId))
       || `${order.userId}_${order.offerId}` !== event.orderId
       || order.terminal !== event.terminal || order.currency !== event.currency
       || order.amountAgorot !== event.amountAgorot || amountInAgorot(order.amount) !== event.amountAgorot) {
@@ -41,7 +47,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       const consistent = event.approved
         ? order.status === 'paid' && order.voucherId === voucherRef.id && order.paidAt instanceof Timestamp
           && voucher?.userId === order.userId && voucher?.offerId === order.offerId
-          && voucher?.businessId === order.businessId && voucher?.paymentTransactionKey === receiptRef.id
+          && (direct ? voucher?.businessId === order.businessId : voucher?.businessId === undefined) && voucher?.paymentTransactionKey === receiptRef.id
         : order.status === 'failed' && !voucherSnap.exists && order.paidAt === null && order.voucherId === null
       if (!consistent || order.tranzilaTxnId !== event.tranzilaTxnId) {
         throw new PaymentError('Inconsistent settled order; reconciliation is required.')
@@ -60,10 +66,10 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       return { alreadyProcessed: false }
     }
     const offerRef = db.collection('offers').doc(order.offerId)
-    const businessRef = db.collection('businesses').doc(order.businessId)
+    const businessRef = direct ? db.collection('businesses').doc(order.businessId) : null
     const counterRef = db.collection(ORDER_COUNTER_PATH.collection).doc(ORDER_COUNTER_PATH.doc)
-    const [offerSnap, businessSnap, counterSnap] = await Promise.all([tx.get(offerRef), tx.get(businessRef), tx.get(counterRef)])
-    if (!offerSnap.exists || !businessSnap.exists) {
+    const [offerSnap, businessSnap, counterSnap] = await Promise.all([tx.get(offerRef), businessRef ? tx.get(businessRef) : Promise.resolve(null), tx.get(counterRef)])
+    if (!offerSnap.exists || (businessRef && !businessSnap?.exists)) {
       throw new PaymentError('Offer or business no longer exists; reconciliation is required.')
     }
     // The counter is read in this transaction, so concurrent settlements
@@ -76,7 +82,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const orderNumber = lastOrderNumber + 1
     const displayOrderNumber = formatOrderNumber(orderNumber)
     const offer = offerSnap.data()!
-    if (offer.businessId !== order.businessId || !Number.isInteger(offer.claimedCount) || offer.claimedCount < 0
+    if ((direct && offer.businessId !== order.businessId) || !Number.isInteger(offer.claimedCount) || offer.claimedCount < 0
       || (offer.totalQuantity !== null && (!Number.isInteger(offer.totalQuantity) || offer.totalQuantity < 1))
       || (offer.expiryDate !== null && !(offer.expiryDate instanceof Timestamp))) {
       throw new PaymentError('Offer is inconsistent; reconciliation is required.')
@@ -86,6 +92,13 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       throw new PaymentError('Offer is unavailable; payment reconciliation is required.')
     }
     const now = Timestamp.now()
+    // Orders from before fulfillment types existed are direct-merchant sales.
+    const fulfillmentType = parseFulfillmentType(order.fulfillmentType ?? offer.fulfillmentType)
+    const poolId = isDocumentId(order.poolId) ? order.poolId : isDocumentId(offer.poolId) ? offer.poolId : null
+    // All reads (the pool and its next code) happen before the first write below.
+    const poolPlan = fulfillmentType === 'multipass_pool'
+      ? await planPoolAllocation(db, tx, poolId ?? '', order.offerId, event.orderId, now) : null
+    const terms = parseFrozenTerms(order) ?? (businessSnap ? parseFrozenTerms(businessSnap.data()) : null)
     // The terms frozen on the order at checkout; orders from before that read the offer's.
     const validityDays = isValidValidityDays(order.validityDays) ? order.validityDays : normalizeValidityDays(offer.validityDays)
     const redemptionTerms = normalizeRedemptionTerms(typeof order.redemptionTerms === 'string' ? order.redemptionTerms : offer.redemptionTerms)
@@ -94,7 +107,8 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       typeof order.redemptionInstructions === 'string' ? order.redemptionInstructions : offer.redemptionInstructions,
     )
     tx.create(voucherRef, {
-      userId: order.userId, offerId: order.offerId, businessId: order.businessId,
+      userId: order.userId, offerId: order.offerId,
+      ...(direct ? { businessId: order.businessId } : frozenPerkScope(order)),
       businessName: order.businessName, offerTitle: order.offerTitle,
       redemptionCode: String(randomInt(0, 100_000_000)).padStart(8, '0'),
       // What the QR code carries (lib/firebase/vouchers.ts redeemVoucherKey):
@@ -110,11 +124,18 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       businessGeo: order.businessGeo ?? null,
       paymentTransactionKey: receiptRef.id,
       orderNumber, displayOrderNumber,
+      // Settlement reads only these: the terms and price as sold, and which batch (if any) paid it out.
+      fulfillmentType, amountAgorot: event.amountAgorot,
+      commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
+      payoutBatchId: null,
+      // A Multipass code is the member's entitlement, so the voucher (owner-readable) carries it.
+      externalCode: poolPlan?.code ?? null,
     })
+    if (poolPlan) applyPoolAllocation(tx, poolPlan, event.orderId, order.userId, now)
     if (counterSnap.exists) tx.update(counterRef, { orderSequence: FieldValue.increment(1) })
     else tx.create(counterRef, { orderSequence: orderNumber })
     tx.update(offerRef, { claimedCount: FieldValue.increment(1) })
-    tx.update(businessRef, { 'voucherStats.active': FieldValue.increment(1) })
+    if (businessRef) tx.update(businessRef, { 'voucherStats.active': FieldValue.increment(1) })
     tx.update(orderRef, {
       status: 'paid', paidAt: now, tranzilaTxnId: event.tranzilaTxnId,
       responseCode: event.responseCode, voucherId: voucherRef.id,

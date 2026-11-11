@@ -29,6 +29,31 @@ mistake outbound API HMAC authentication for an inbound webhook signature.
 
 The payment widget remains a placeholder; this change does not enable charging.
 
+## Payment sandbox (no gateway)
+
+With no `TRANZILA_TERMINAL`, checkout runs against the `landly_sandbox` terminal
+and offers "Simulate success / failure" instead of a card form (web and the Expo
+app). Orders settle through the same `claimOfferForOrder` transaction the webhook
+uses, so vouchers, pool codes and payout fields are real.
+
+- Local `next dev`: on by default.
+- Vercel Preview (`landly-dev`): on only with `PAYMENT_SANDBOX=1`.
+- Vercel Production (`landly-be752`): never, whatever is set.
+- Any environment with `TRANZILA_TERMINAL` set: off.
+
+Setting `TRANZILA_TERMINAL` and `TRANZILA_WEBHOOK_SECRET` later switches to live
+Hosted Fields and the webhook with no code change.
+
+## Other server secrets (both Firebase projects, separate values)
+
+- `POOL_CODES_KEY`: 32 random bytes, base64. Encrypts Multipass pool codes (AES-256-GCM).
+- `BUSINESS_FINANCIALS_KEY`: 32 random bytes, base64. Encrypts merchants' bank details.
+- `MASAV_INSTITUTION_CODE`: the bank-issued institution code. Unset, the payout file
+  uses the fictitious test code `99999999` and is named `MASAV_MOCK_TEST_*`.
+
+Rotation: set `<NAME>_ID` to a new id, put the new key in `<NAME>` and keep each
+retired key in `<NAME>_<oldId>`. Generate with `openssl rand -base64 32`.
+
 ## Supported notification contract
 
 Configure the iframe terminal for **POST** notifications with **QSTR** format

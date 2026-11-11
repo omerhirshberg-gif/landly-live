@@ -6,6 +6,7 @@ import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type Redemp
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { readPerkScope, type PerkScope } from '../offers/perkScope'
 import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
 
 // refunded: cancelled through support after purchase (set by an admin, never
@@ -19,6 +20,8 @@ export interface VoucherDocument {
   businessName: string // denormalized
   offerTitle: string // denormalized
   redemptionCode: string
+  // A Multipass voucher's own code, handed out at checkout (lib/inventory/poolAllocation.ts); null for merchant-honoured vouchers.
+  externalCode?: string | null
   // What the QR code carries (redeemVoucherKey): 128 random bits, set by the
   // payment webhook. null for vouchers issued before it existed, until
   // scripts/backfill-redeem-tokens.mjs gives them one.
@@ -41,6 +44,12 @@ export interface VoucherDocument {
   businessTranslations?: BusinessTranslations | null
   businessAddress?: PlaceSnapshot | null
   businessGeo?: Coordinates | null
+  // A Multipass voucher has no business: its brand and, for a multi-chain one, the chains and shared guide as at purchase.
+  perkScope?: PerkScope
+  brandName?: string
+  participatingChains?: string[]
+  chainsCount?: number
+  universalRedemptionGuide?: { he: string; en: string } | null
 }
 
 export { redeemVoucherKey, voucherRedeemUrl } from '../offers/redeemLink'
@@ -65,6 +74,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessName: (data.businessName as string) ?? '',
     offerTitle: (data.offerTitle as string) ?? '',
     redemptionCode: (data.redemptionCode as string) ?? '',
+    externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
     redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
     status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
     takenAt: data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null,
@@ -79,6 +89,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
+    ...readPerkScope(data),
   }
 }
 

@@ -5,8 +5,9 @@ import type { Coordinates } from '@shared/geo'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
+import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
-import { actionTint, colors, radius } from '../theme'
+import { colors, radius } from '../theme'
 
 type GeoState = 'idle' | 'requesting' | 'denied' | 'unavailable'
 
@@ -16,7 +17,8 @@ const GUARD_MS = 20_000
 const withTimeout = <T,>(promise: Promise<T>): Promise<T> =>
   Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), GUARD_MS))])
 
-const tint = actionTint
+// Dark ink like the rails' and categories' line icons, on white: no blue tint.
+const tint = { bg: colors.white, bgPressed: colors.borderLight, border: colors.border, text: colors.textStrong }
 
 // From this window width the label fits beside the search field (web: the
 // `sm` breakpoint on components/discover/NearMeButton.tsx).
@@ -55,6 +57,7 @@ export default function NearMeButton({
   }
 
   const locate = async () => {
+    impact()
     if (active) {
       setState('idle')
       onError(null)
@@ -104,7 +107,7 @@ export default function NearMeButton({
       {state === 'requesting' ? (
         <ActivityIndicator size="small" color={active ? colors.white : tint.text} style={showLabel ? styles.iconSmall : styles.icon} />
       ) : (
-        <LineIcon name="locate" size={showLabel ? 16 : 20} color={active ? colors.white : tint.text} strokeWidth={2.2} style={showLabel ? styles.iconSmall : styles.icon} />
+        <LineIcon name="locate" size={showLabel ? 16 : 20} color={active ? colors.white : tint.text} strokeWidth={1.75} style={showLabel ? styles.iconSmall : styles.icon} />
       )}
       {showLabel && (
         <AppText style={[styles.label, active && styles.labelActive]} importantForAccessibility="no" accessibilityElementsHidden>

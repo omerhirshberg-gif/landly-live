@@ -47,7 +47,7 @@ function offer(id: string, extra: Partial<OfferDocument> = {}): OfferDocument {
 describe('Expo highlight rails', () => {
   it('draw their perks as Home’s carousel does: the same compact cards, width, snapping and dots', () => {
     const rail = readFileSync('landly-mobile/src/components/OfferTileRail.tsx', 'utf8')
-    expect(rail).toContain('<OfferCarousel offers={offers} onOpen={onOpen} />')
+    expect(rail).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} />')
     expect(readFileSync('landly-mobile/src/components/OfferCarousel.tsx', 'utf8')).toContain('<OfferCard offer={item} variant="carousel"')
     // The small sideways tile and its fixed slot are gone.
     expect(existsSync('landly-mobile/src/components/OfferTile.tsx')).toBe(false)
@@ -78,8 +78,8 @@ describe('web OfferTileRail', () => {
 
   it('renders the canonical OfferCard: both prices, the logo box and the discount over the picture', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers: [offer('1')] }))
-    expect(html).toContain('aspect-video')
-    expect(html).toContain('h-12 min-w-[56px]')
+    expect(html).toContain('aspect-[2/1] max-h-[172px]')
+    expect(html).toContain('h-10 min-w-[48px]')
     expect(html).toContain('-20%')
     expect(html).toContain('₪80')
     expect(html).toContain('line-through')

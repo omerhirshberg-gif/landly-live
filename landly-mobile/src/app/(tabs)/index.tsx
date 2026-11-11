@@ -9,7 +9,7 @@ import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
-import { buildCategoryRails, selectCurated } from '@shared/home/categoryRails'
+import { buildCategoryRails, selectCurated, selectHighlights } from '@shared/home/categoryRails'
 import ActivePassCard from '../../components/ActivePassCard'
 import AppText from '../../components/AppText'
 import Avatar from '../../components/Avatar'
@@ -17,7 +17,9 @@ import AvatarViewer, { useAvatarPeek } from '../../components/AvatarViewer'
 import CategoryOfferRail from '../../components/CategoryOfferRail'
 import CategoryPhotoRail from '../../components/CategoryPhotoRail'
 import Notice from '../../components/Notice'
+import LineIcon from '../../components/LineIcon'
 import OfferCarousel from '../../components/OfferCarousel'
+import { RAIL_ICONS } from '../../lib/categoryGlyphs'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionHeader from '../../components/SectionHeader'
 import { OfferCarouselSkeleton } from '../../components/Skeleton'
@@ -101,6 +103,7 @@ export default function HomeScreen() {
   const openPass = () => router.navigate('/wallet')
   const openCategory = (category: string) => router.push({ pathname: '/category/[category]', params: { category } })
   const curated = useMemo(() => selectCurated(offers ?? []), [offers])
+  const highlights = useMemo(() => selectHighlights(offers ?? []), [offers])
   const rails = useMemo(() => (offers ? buildCategoryRails(offers) : []), [offers])
 
   return (
@@ -157,7 +160,31 @@ export default function HomeScreen() {
             <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
           </View>
         ) : (
-          <OfferCarousel offers={curated} onOpen={openOffer} />
+          <OfferCarousel offers={curated} onOpen={openOffer} autoAdvance />
+        )}
+
+        {/* The Perks tab's two highlight rails, each moving on its own beat (curated 0, New +1.5s, Best Sellers +3s). */}
+        {highlights.newOffers.length > 0 && (
+          <>
+            <SectionHeader
+              leading={<LineIcon name={RAIL_ICONS.new} size={18} color={colors.textStrong} strokeWidth={1.5} />}
+              title={t('row_new')}
+              action={t('home_see_all')}
+              onAction={() => router.navigate('/perks')}
+            />
+            <OfferCarousel offers={highlights.newOffers} onOpen={openOffer} autoAdvance autoAdvanceOffsetMs={1500} />
+          </>
+        )}
+        {highlights.bestsellerOffers.length > 0 && (
+          <>
+            <SectionHeader
+              leading={<LineIcon name={RAIL_ICONS.bestsellers} size={18} color={colors.textStrong} strokeWidth={1.5} />}
+              title={t('row_bestsellers')}
+              action={t('home_see_all')}
+              onAction={() => router.navigate('/perks')}
+            />
+            <OfferCarousel offers={highlights.bestsellerOffers} onOpen={openOffer} autoAdvance autoAdvanceOffsetMs={3000} />
+          </>
         )}
 
         {rails.map((rail) => (

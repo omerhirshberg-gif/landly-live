@@ -66,13 +66,13 @@ export default function NearMeButton({
         className={`tap-target inline-flex h-11 w-11 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:px-3.5 ${
           active
             ? 'border-brand bg-brand text-white shadow-btn-primary [@media(hover:hover)]:hover:bg-brandDark'
-            : 'border-slate-200/80 bg-white text-brand shadow-btn-secondary [@media(hover:hover)]:hover:bg-brandTint'
+            : 'border-slate-200/80 bg-white text-ink shadow-btn-secondary [@media(hover:hover)]:hover:bg-slate-50'
         }`}
       >
         {requesting ? (
           <LoaderCircle aria-hidden="true" className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none sm:h-4 sm:w-4" strokeWidth={2} />
         ) : (
-          <LocateFixed aria-hidden="true" className="h-[18px] w-[18px] sm:h-4 sm:w-4" strokeWidth={1.75} />
+          <LocateFixed aria-hidden="true" className="h-[18px] w-[18px] sm:h-4 sm:w-4" strokeWidth={1.5} />
         )}
         {/* Shown from 640px; the button's aria-label names it on phones. Not
             sr-only/sm:not-sr-only: Font Awesome's CDN stylesheet also defines

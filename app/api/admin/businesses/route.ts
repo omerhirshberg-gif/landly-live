@@ -18,6 +18,7 @@ import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOn
 import { parseBusinessTranslations } from '@/lib/business/businessText'
 import { parseLogoUrl } from '@/lib/business/businessLogo'
 import { parseBusinessPhone } from '@/lib/admin/businessPhone'
+import { isCommissionRate, isPaymentTerms } from '@/lib/merchants/terms'
 
 interface RequestBody {
   business: {
@@ -89,6 +90,9 @@ export async function GET(request: Request) {
     logoUrl: typeof doc.data().logoUrl === 'string' ? doc.data().logoUrl : '',
     phone: typeof doc.data().phone === 'string' ? doc.data().phone : '',
     email: doc.data().email ?? '',
+    // Agreed terms (lib/merchants/terms.ts); null until the merchant has onboarded or an admin sets them.
+    commissionRate: isCommissionRate(doc.data().commissionRate) ? doc.data().commissionRate : null,
+    paymentTerms: isPaymentTerms(doc.data().paymentTerms) ? doc.data().paymentTerms : null,
     activePerkCount: activeCounts.get(doc.id) ?? 0,
     redeemedTotal: Number(doc.data().voucherStats?.redeemedTotal) || 0,
     createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt.toDate().toISOString() : null,

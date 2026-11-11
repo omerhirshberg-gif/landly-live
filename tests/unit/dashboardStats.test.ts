@@ -26,7 +26,7 @@ describe('member dashboard stats', () => {
     const t = translations[lang]
     expect(found.map((m) => m[4].replace(/&quot;/g, '"'))).toEqual([t.dash_active_perks_label, t.dash_perks_redeemed_label, t.dash_total_saved])
     // Each icon in the shared 40px frame: brand blue, emerald for money saved.
-    expect(found.map((m) => m[2].includes('h-10 w-10 rounded-xl') && (m[2].includes('bg-brandTint') ? 'brand' : m[2].includes('bg-emerald-50') ? 'success' : '?'))).toEqual(['brand', 'brand', 'success'])
+    expect(found.map((m) => m[2].includes('h-9 w-9') && m[2].includes('rounded-xl') && m[2].includes('bg-slate-50') && !/emerald|cyan|brandTint/.test(m[2]) ? 'slate' : '?')).toEqual(['slate', 'slate', 'slate'])
     for (const [, shell, , label, , value] of found) {
       for (const c of ['flex', 'flex-col', 'h-full', 'min-h-[96px]', 'min-w-0']) expect(shell.split(' ')).toContain(c)
       // A two-line band, centred, so one- and two-line labels take the same room.

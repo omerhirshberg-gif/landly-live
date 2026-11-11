@@ -1,6 +1,7 @@
 'use client'
 
 import { ADMIN_INPUT } from './formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 interface SearchInputProps {
   value: string
@@ -15,7 +16,7 @@ export function SearchInput({ value, onChange, placeholder, label, autoFocus, cl
   return (
     <div className={`relative ${className}`}>
       <i
-        className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#94A3B8]"
+        className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]"
         aria-hidden="true"
       />
       <input
@@ -57,6 +58,11 @@ export function FilterChips<T extends string>({ label, options, value, onChange 
                 : 'border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1] hover:text-[#0038B8] active:bg-[#F1F5F9]'
             }`}
           >
+            {selected && (
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="me-1.5 shrink-0 text-emerald-300" aria-hidden="true">
+                <path d="m5 12.5 4.5 4.5L19 7.5" />
+              </svg>
+            )}
             <span dir="auto">{option.label}</span>
           </button>
         )
@@ -67,9 +73,10 @@ export function FilterChips<T extends string>({ label, options, value, onChange 
 
 /** "12 of 30 businesses" under a filtered list. */
 export function ResultCount({ shown, total, noun }: { shown: number; total: number; noun: string }) {
+  const { t } = useAdminT()
   return (
-    <p className="text-sm text-[#94A3B8]" aria-live="polite">
-      {shown === total ? `${total} ${noun}` : `${shown} of ${total} ${noun}`}
+    <p className="text-sm text-[#64748B]" aria-live="polite">
+      {shown === total ? t('list.count', { total, noun }) : t('list.of', { shown, total, noun })}
     </p>
   )
 }

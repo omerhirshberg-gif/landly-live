@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useAdminT } from '@/lib/admin/translations'
 
 const TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Jerusalem',
@@ -15,17 +16,14 @@ const SHORT_TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
   minute: '2-digit',
 })
 
-const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Asia/Jerusalem',
-  weekday: 'short',
-  day: '2-digit',
-  month: 'short',
-})
+const dateFormat = (locale: 'en' | 'he') =>
+  new Intl.DateTimeFormat(locale === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'Asia/Jerusalem', weekday: 'short', day: '2-digit', month: 'short' })
 
 /** `compact`: just HH:MM, `muted` for a quiet label beside the header's title. */
 export default function LiveClock({ compact = false, muted = false }: { compact?: boolean; muted?: boolean }) {
   // Starts null so the server-rendered/first-paint markup has nothing
   // time-dependent to mismatch against -- the real value fills in on mount.
+  const { t, locale } = useAdminT()
   const [now, setNow] = useState<Date | null>(null)
 
   useEffect(() => {
@@ -54,7 +52,7 @@ export default function LiveClock({ compact = false, muted = false }: { compact?
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
       </span>
       <span className="text-sm font-semibold text-[#0B1B3D] tabular-nums">{TIME_FORMAT.format(now)}</span>
-      <span className="text-xs font-medium text-[#94A3B8]">{DATE_FORMAT.format(now)} · Jerusalem</span>
+      <span className="text-xs font-medium text-[#64748B]">{dateFormat(locale).format(now)} · {t('header.jerusalem')}</span>
     </div>
   )
 }

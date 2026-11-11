@@ -16,7 +16,7 @@ const read = (path: string) => readFileSync(join(root, path), 'utf8')
 
 const row = (patch: Partial<AdminUserRow>): AdminUserRow => ({
   uid: 'u', name: '', email: '', photoURL: '', phone: '', phoneCountry: '', originCountry: '', customerType: '', customerTypeOther: '',
-  emailVerified: false, phoneVerified: false, activePasses: 0, createdAt: null, lastSignInAt: null, ...patch,
+  emailVerified: false, phoneVerified: false, activePasses: 0, status: 'active', kycTier: 'guest', passId: 'LND-AAAAAA', createdAt: null, lastSignInAt: null, ...patch,
 })
 
 describe('admin dates', () => {

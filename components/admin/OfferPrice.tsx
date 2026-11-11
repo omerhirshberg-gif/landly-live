@@ -16,7 +16,7 @@ export default function OfferPrice({ offerPrice, originalPrice, align = 'start' 
         {percent > 0 && <span className="ms-1 text-xs font-semibold text-emerald-700">(-{percent}%)</span>}
       </bdi>
       {originalPrice > offerPrice && (
-        <bdi dir="ltr" className="whitespace-nowrap text-xs text-[#94A3B8] line-through">
+        <bdi dir="ltr" className="whitespace-nowrap text-xs text-[#64748B] line-through">
           {formatPrice(originalPrice)}
         </bdi>
       )}

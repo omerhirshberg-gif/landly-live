@@ -17,7 +17,7 @@ import { tick } from '../../lib/haptics'
 //   underneath; their scroll views use automatic content insets, so content
 //   scrolls behind the bar and ends clear of it.
 // - Android: the Material 3 navigation bar: solid surfaceContainer, the
-//   brandLight indicator pill behind the active icon, native ripple, laid out
+//   no indicator pill (the active icon and label turn brand blue), native ripple, laid out
 //   above the gesture or 3-button system bar. Material draws no divider, so a
 //   border-coloured hairline is laid over its top edge.
 // The system lays the five out in equal columns at its own bar height.
@@ -29,7 +29,7 @@ import { tick } from '../../lib/haptics'
 const androidBar = Platform.OS === 'android'
   ? {
       backgroundColor: colors.surfaceContainer,
-      indicatorColor: colors.brandLight,
+      indicatorColor: 'transparent',
       rippleColor: colors.border,
       iconColor: { default: colors.body, selected: colors.brand },
       labelStyle: { default: { color: colors.body }, selected: { color: colors.brand } },

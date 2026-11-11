@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { Award, Sparkles } from 'lucide-react'
 import type { User } from 'firebase/auth'
 import Avatar from '@/components/ui/Avatar'
 import AvatarLightbox from '@/components/ui/AvatarLightbox'
@@ -16,7 +17,7 @@ import SegmentBadge from '@/components/member/SegmentBadge'
 import { getAllOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
-import { buildCategoryRails, railLabel, selectCurated } from '@/lib/home/categoryRails'
+import { buildCategoryRails, railLabel, selectCurated, selectHighlights } from '@/lib/home/categoryRails'
 import { useLang } from '@/lib/i18n/useLang'
 import { categoryHref } from '@/lib/perks/perksFilter'
 
@@ -67,6 +68,7 @@ export default function LoggedInHome({ user }: { user: User }) {
   }, [])
 
   const curated = useMemo(() => (offers ? selectCurated(offers) : null), [offers])
+  const highlights = useMemo(() => (offers ? selectHighlights(offers) : null), [offers])
   const rails = useMemo(() => (offers ? buildCategoryRails(offers) : []), [offers])
 
   return (
@@ -119,16 +121,46 @@ export default function LoggedInHome({ user }: { user: User }) {
 
         <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-9">
           <SectionBoundary name="home-curated"><CuratedOffers offers={curated} /></SectionBoundary>
+          {/* The Perks page's two highlight rails, the same offers, each on its own beat. */}
+          {highlights && highlights.newOffers.length > 0 && (
+            <SectionBoundary name="home-new">
+              <OfferCardRail
+                id="home-new-title"
+                title={t('row_new')}
+                glyph={<Sparkles aria-hidden="true" className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
+                offers={highlights.newOffers}
+                href="/categories/new"
+                seeAll={t('home_see_all')}
+                dots
+                autoAdvance
+                autoAdvanceOffsetMs={1500}
+              />
+            </SectionBoundary>
+          )}
+          {highlights && highlights.bestsellerOffers.length > 0 && (
+            <SectionBoundary name="home-bestsellers">
+              <OfferCardRail
+                id="home-bestsellers-title"
+                title={t('row_bestsellers')}
+                glyph={<Award aria-hidden="true" className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
+                offers={highlights.bestsellerOffers}
+                href="/categories/bestsellers"
+                seeAll={t('home_see_all')}
+                dots
+                autoAdvance
+                autoAdvanceOffsetMs={3000}
+              />
+            </SectionBoundary>
+          )}
           {rails.map((rail, index) => (
             <SectionBoundary key={rail.category} name="home-category-rail">
               <OfferCardRail
                 id={`home-rail-${index}`}
                 title={railLabel(rail, t)}
-                glyph={<CategoryIcon category={rail.category} className="h-[18px] w-[18px] flex-shrink-0 text-brand" strokeWidth={1.5} />}
+                glyph={<CategoryIcon category={rail.category} className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
                 offers={rail.offers}
                 href={rail.tile ? categoryHref(rail.tile.category) : undefined}
                 seeAll={rail.tile ? t('home_see_all') : undefined}
-                count={rail.total}
                 showCategoryBadge={false}
               />
             </SectionBoundary>

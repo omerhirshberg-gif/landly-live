@@ -6,15 +6,15 @@ import { Armchair, Baby, Car, Compass, createLucideIcon, Dumbbell, Plane, Shield
 // and frame as the rest: a tube base, its collar, and the bullet cut at an
 // angle. Upright, so it doesn't mirror in Hebrew.
 export const Lipstick = createLucideIcon('lipstick', [
-  ['path', { d: 'M7 14h10v6a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z', key: 'tube' }],
-  ['path', { d: 'M8.5 14v-3h7v3', key: 'collar' }],
-  ['path', { d: 'M10 11V6l4-3v8', key: 'bullet' }],
+  ['path', { d: 'M5.5 22h13v-7.5a1 1 0 0 0-1-1h-11a1 1 0 0 0-1 1z', key: 'tube' }],
+  ['path', { d: 'M7 13.5v-3h10v3', key: 'collar' }],
+  ['path', { d: 'M9 10.5V5l6-3v8.5', key: 'bullet' }],
 ])
 
 // Each business category's glyph (lib/categories.ts): Lucide outlines on a
 // 24px grid, drawn in currentColor, so a tile sets the colour and size and
 // every surface (the category grid, Home's rail, the hero cards) draws the
-// same set. A fine 1.75 stroke by default; nothing here is directional, so no
+// same set. A fine 1.5 stroke by default; nothing here is directional, so no
 // glyph mirrors in Hebrew. The Expo app draws the same set (landly-mobile/src/components/CategoryIcon.tsx).
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'Restaurants and Cafes': UtensilsCrossed,
@@ -34,7 +34,7 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 /** A category's glyph as a component, e.g. for IconFrame; a tag for an unknown category. */
 export const categoryIcon = (category: string): LucideIcon => CATEGORY_ICONS[category] ?? Tag
 
-export default function CategoryIcon({ category, className = 'h-5 w-5', strokeWidth = 1.75 }: { category: string; className?: string; strokeWidth?: number }) {
+export default function CategoryIcon({ category, className = 'h-5 w-5', strokeWidth = 1.5 }: { category: string; className?: string; strokeWidth?: number }) {
   const Icon = categoryIcon(category)
   return <Icon aria-hidden="true" focusable="false" className={className} strokeWidth={strokeWidth} />
 }

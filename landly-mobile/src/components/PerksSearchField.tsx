@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 44,
     paddingHorizontal: 14,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,

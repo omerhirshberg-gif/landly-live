@@ -6,11 +6,11 @@ import { PRODUCTION_FIREBASE_PROJECT_ID, STAGING_FIREBASE_PROJECT_ID } from '@/l
 // one (lib/firebase/envGuard.ts), so live data is never edited by mistake.
 // A Vercel Preview reads DEV, which is right: it runs on staging. Phones show a
 // compact pill with just the word; the project id joins it from 640px, and the
-// full name is in the tooltip.
+// full name is in the tooltip. Always left to right: it is a code, not a sentence.
 const TONES = {
-  prod: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]',
-  dev: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]',
-  other: 'border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]',
+  prod: 'text-[#B91C1C]',
+  dev: 'text-[#92400E]',
+  other: 'text-[#475569]',
 } as const
 
 const DOTS = { prod: 'bg-[#DC2626]', dev: 'bg-[#F59E0B]', other: 'bg-[#94A3B8]' } as const
@@ -28,7 +28,8 @@ export default function AdminEnvironmentBadge() {
   return (
     <span
       title={`Firebase project: ${projectId}`}
-      className={`inline-flex h-7 shrink-0 select-none items-center gap-1 whitespace-nowrap rounded-full border px-2 text-[11px] font-bold tracking-wide sm:h-8 sm:gap-1.5 sm:px-2.5 sm:text-xs ${TONES[tone]}`}
+      dir="ltr"
+      className={`inline-flex h-8 shrink-0 select-none items-center gap-1.5 whitespace-nowrap text-xs font-bold tabular-nums tracking-wide ${TONES[tone]}`}
     >
       <span className={`h-2 w-2 shrink-0 rounded-full ${DOTS[tone]}`} aria-hidden="true"></span>
       {label}

@@ -16,7 +16,7 @@ const GAP = 12
 // so the first card sits on the right in Hebrew. Each card is the category's
 // glyph and name, with no perk count (a young catalogue's small numbers read
 // as empty). Every card is 116pt tall (the web's height on a phone): the glyph
-// at the top, the name held to the foot in a fixed two-line box.
+// (22pt, 1.5 stroke, dark ink like the rails', bare: no frame) at the top, the name held to the foot in a fixed two-line box.
 export default function CategoryGrid({
   tiles,
   onSelect,
@@ -40,7 +40,7 @@ export default function CategoryGrid({
               onPress={() => onSelect(tile.category)}
               style={styles.card}
             >
-              <CategoryIcon category={tile.category} size={28} color={colors.brand} />
+              <CategoryIcon category={tile.category} size={22} color={colors.textStrong} strokeWidth={1.5} />
               <View style={styles.titleBox}>
                 <AppText style={styles.title} numberOfLines={2}>
                   {t(tile.labelKey)}

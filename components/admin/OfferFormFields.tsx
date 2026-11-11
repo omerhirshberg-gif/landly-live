@@ -1,5 +1,6 @@
 'use client'
 
+import Switch from '@/components/admin/Switch'
 import { useEffect, useId, useState } from 'react'
 import { DEFAULT_VOUCHER_VALIDITY_DAYS, MAX_REDEMPTION_TERMS_LENGTH, MAX_VOUCHER_VALIDITY_DAYS } from '@/lib/payments/voucherTerms'
 import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
@@ -12,6 +13,7 @@ import {
 import type { OfferTranslations, TranslationOverrides } from '@/lib/offers/offerText'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
 import ImageUploadField from './ImageUploadField'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import OfferTranslationsEditor from './OfferTranslationsEditor'
 
 export interface OfferFormValue {
@@ -53,18 +55,14 @@ export function voucherTermsPayload(value: OfferFormValue) {
   }
 }
 
-const METHOD_OPTIONS: Record<RedemptionMethod, { label: string; hint: string; icon: string }> = {
-  in_store: { label: 'In store', hint: 'Shown at the counter', icon: 'fa-store' },
-  online: { label: 'Online', hint: 'Code used on their site', icon: 'fa-globe' },
-  phone_booking: { label: 'By phone', hint: 'Booked by phone first', icon: 'fa-phone' },
-}
+const METHOD_ICONS: Record<RedemptionMethod, string> = { in_store: 'fa-store', online: 'fa-globe', phone_booking: 'fa-phone' }
 
 /**
  * The form's parts, one per tab of the offer forms (FormTabs.tsx): the text,
  * the image, prices and availability, how it's redeemed and its terms, and
  * the translations. Without `section`, every part in one column.
  */
-export type OfferFormSection = 'basics' | 'media' | 'pricing' | 'terms' | 'translations'
+export type OfferFormSection = 'basics' | 'media' | 'pricing' | 'commercial' | 'inventory' | 'terms' | 'translations'
 
 /** The offer forms' tabs, in order. */
 export const OFFER_FORM_TABS = [
@@ -81,16 +79,17 @@ interface Props {
   /** The offer's stored translations (edit form), to show Google's wording; none for a new offer. */
   translations?: OfferTranslations | null
   section?: OfferFormSection
+  /** A Multipass offer's stock is its pool, so the quantity fields are left out. */
+  poolManaged?: boolean
 }
 
 const CHECKBOX_ROW =
   'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1B3D] transition-colors hover:bg-[#F8FAFC] has-[:checked]:border-[#0038B8]/40 has-[:checked]:bg-[#F0F7FF]'
-const CHECKBOX = 'h-5 w-5 shrink-0 cursor-pointer accent-[#0038B8]'
 
 function Group({ legend, children }: { legend: string; children: React.ReactNode }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">{legend}</legend>
+      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{legend}</legend>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">{children}</div>
     </fieldset>
   )
@@ -99,7 +98,7 @@ function Group({ legend, children }: { legend: string; children: React.ReactNode
 function PriceInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
   return (
     <div className="relative" dir="ltr">
-      <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#94A3B8]" aria-hidden="true">
+      <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#64748B]" aria-hidden="true">
         ₪
       </span>
       <input
@@ -117,21 +116,25 @@ function PriceInput({ id, value, onChange }: { id: string; value: string; onChan
   )
 }
 
-export default function OfferFormFields({ value, onChange, translations, section }: Props) {
+export default function OfferFormFields({ value, onChange, translations, section, poolManaged = false }: Props) {
+  const { t } = useAdminT()
   const id = useId()
   const field = (name: string) => `${id}-${name}`
   const show = (part: OfferFormSection) => !section || section === part
+  // The edit form's single "pricing" tab holds both halves; the wizard splits them into its steps.
+  const showPrice = show('pricing') || show('commercial')
+  const showAvailability = show('pricing') || show('inventory')
 
   return (
     <div className="space-y-8">
       {show('basics') && (
-        <Group legend="Details">
+        <Group legend={t('form.details')}>
           <div className="sm:col-span-2">
-            <label htmlFor={field('title')} className={ADMIN_LABEL}>Title</label>
+            <label htmlFor={field('title')} className={ADMIN_LABEL}>{t('form.title')}</label>
             <input id={field('title')} required dir="auto" className={ADMIN_INPUT} value={value.title} onChange={(e) => onChange('title', e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor={field('description')} className={ADMIN_LABEL}>Description</label>
+            <label htmlFor={field('description')} className={ADMIN_LABEL}>{t('form.description')}</label>
             <textarea
               id={field('description')}
               dir="auto"
@@ -145,14 +148,14 @@ export default function OfferFormFields({ value, onChange, translations, section
       )}
 
       {show('media') && (
-        <Group legend="Image">
+        <Group legend={t('form.image')}>
           <div className="sm:col-span-2">
             <ImageUploadField
               value={value.imageUrl}
               onChange={(url) => onChange('imageUrl', url)}
               linkInput={
                 <>
-                  <label htmlFor={field('imageUrl')} className={ADMIN_LABEL}>Image URL</label>
+                  <label htmlFor={field('imageUrl')} className={ADMIN_LABEL}>{t('form.imageUrl')}</label>
                   <input
                     id={field('imageUrl')}
                     type="url"
@@ -174,27 +177,35 @@ export default function OfferFormFields({ value, onChange, translations, section
         </Group>
       )}
 
-      {show('pricing') && (
+      {showPrice && (
         <>
-          <Group legend="Pricing">
+          <Group legend={t('form.pricing')}>
             <div>
-              <label htmlFor={field('originalPrice')} className={ADMIN_LABEL}>Original price</label>
+              <label htmlFor={field('originalPrice')} className={ADMIN_LABEL}>{t('form.originalPrice')}</label>
               <PriceInput id={field('originalPrice')} value={value.originalPrice} onChange={(v) => onChange('originalPrice', v)} />
             </div>
             <div>
-              <label htmlFor={field('offerPrice')} className={ADMIN_LABEL}>Offer price (incl. VAT)</label>
+              <label htmlFor={field('offerPrice')} className={ADMIN_LABEL}>{t('form.offerPrice')}</label>
               <PriceInput id={field('offerPrice')} value={value.offerPrice} onChange={(v) => onChange('offerPrice', v)} />
             </div>
           </Group>
+        </>
+      )}
 
-          <Group legend="Availability">
+      {showAvailability && (
+        <>
+          <Group legend={t('form.availability')}>
             <div>
-              <label htmlFor={field('expiryDate')} className={ADMIN_LABEL}>Expiry date</label>
+              <label htmlFor={field('expiryDate')} className={ADMIN_LABEL}>{t('form.expiry')}</label>
               <input id={field('expiryDate')} type="date" className={ADMIN_INPUT} value={value.expiryDate} onChange={(e) => onChange('expiryDate', e.target.value)} />
-              <p className={ADMIN_HINT}>Leave empty for no expiry.</p>
+              <p className={ADMIN_HINT}>{t('form.expiryHint')}</p>
             </div>
+            {poolManaged ? (
+              <p className="sm:col-span-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('form.poolManaged')}</p>
+            ) : (
+              <>
             <div>
-              <label htmlFor={field('totalQuantity')} className={ADMIN_LABEL}>Total quantity</label>
+              <label htmlFor={field('totalQuantity')} className={ADMIN_LABEL}>{t('form.totalQuantity')}</label>
               <input
                 id={field('totalQuantity')}
                 type="number"
@@ -205,16 +216,18 @@ export default function OfferFormFields({ value, onChange, translations, section
                 value={value.totalQuantity}
                 onChange={(e) => onChange('totalQuantity', e.target.value)}
               />
-              <p className={ADMIN_HINT}>Leave blank for unlimited.</p>
+              <p className={ADMIN_HINT}>{t('form.totalQuantityHint')}</p>
             </div>
             <label className={CHECKBOX_ROW}>
-              <input type="checkbox" className={CHECKBOX} checked={value.unlimited} onChange={(e) => onChange('unlimited', e.target.checked)} />
-              Unlimited quantity
+              <Switch checked={value.unlimited} onChange={(v) => onChange('unlimited', v)} />
+              {t('form.unlimited')}
             </label>
+              </>
+            )}
             <label className={CHECKBOX_ROW}>
-              <input type="checkbox" className={CHECKBOX} checked={value.isBestseller} onChange={(e) => onChange('isBestseller', e.target.checked)} />
+              <Switch checked={value.isBestseller} onChange={(v) => onChange('isBestseller', v)} />
               <i className="fa-solid fa-star text-xs text-amber-500" aria-hidden="true" />
-              Bestseller
+              {t('form.bestseller')}
             </label>
           </Group>
         </>
@@ -223,11 +236,10 @@ export default function OfferFormFields({ value, onChange, translations, section
       {show('terms') && (
         <>
           <fieldset className="min-w-0">
-            <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">How members redeem</legend>
-            <div role="radiogroup" aria-label="Redemption method" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('form.redeemHow')}</legend>
+            <div role="radiogroup" aria-label={t('form.redemptionMethod')} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {REDEMPTION_METHODS.map((method) => {
-                const option = METHOD_OPTIONS[method]
-                const selected = value.redemptionMethod === method
+                                const selected = value.redemptionMethod === method
                 return (
                   <label
                     key={method}
@@ -248,11 +260,11 @@ export default function OfferFormFields({ value, onChange, translations, section
                         selected ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'
                       }`}
                     >
-                      <i className={`fa-solid ${option.icon} text-sm`} aria-hidden="true" />
+                      <i className={`fa-solid ${METHOD_ICONS[method]} text-sm`} aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-[#0B1B3D]">{option.label}</span>
-                      <span className="block text-xs text-[#94A3B8]">{option.hint}</span>
+                      <span className="block text-sm font-semibold text-[#0B1B3D]">{t(`form.method.${method}` as AdminKey)}</span>
+                      <span className="block text-xs text-[#64748B]">{t(`form.method.${method}.hint` as AdminKey)}</span>
                     </span>
                   </label>
                 )
@@ -260,7 +272,7 @@ export default function OfferFormFields({ value, onChange, translations, section
             </div>
             <div className="mt-5">
               <label htmlFor={field('redemptionInstructions')} className={ADMIN_LABEL}>
-                Redemption instructions <span className="font-normal text-[#94A3B8]">(optional)</span>
+                {t('form.instructions')} <span className="font-normal text-[#64748B]">{t('form.optional')}</span>
               </label>
               <textarea
                 id={field('redemptionInstructions')}
@@ -268,20 +280,20 @@ export default function OfferFormFields({ value, onChange, translations, section
                 className={`${ADMIN_INPUT} resize-y`}
                 rows={3}
                 maxLength={MAX_REDEMPTION_INSTRUCTIONS_LENGTH}
-                placeholder={'One step per line, e.g.\nCall 03-555-1234 to book a table\nShow the voucher code when you arrive'}
+                placeholder={t('form.instructionsPlaceholder')}
                 aria-describedby={field('redemptionInstructions-hint')}
                 value={value.redemptionInstructions}
                 onChange={(e) => onChange('redemptionInstructions', e.target.value)}
               />
               <p id={field('redemptionInstructions-hint')} className={ADMIN_HINT}>
-                Shown to members as numbered steps. Leave empty to use the standard steps for the chosen method.
+                {t('form.instructionsHint')}
               </p>
             </div>
           </fieldset>
 
-          <Group legend="Voucher terms">
+          <Group legend={t('form.voucherTerms')}>
             <div className="sm:col-span-2 sm:max-w-xs">
-              <label htmlFor={field('validityDays')} className={ADMIN_LABEL}>Voucher valid for</label>
+              <label htmlFor={field('validityDays')} className={ADMIN_LABEL}>{t('form.validFor')}</label>
               <div className="relative" dir="ltr">
                 <input
                   id={field('validityDays')}
@@ -295,21 +307,21 @@ export default function OfferFormFields({ value, onChange, translations, section
                   value={value.validityDays}
                   onChange={(e) => onChange('validityDays', e.target.value)}
                 />
-                <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-sm text-[#94A3B8]" aria-hidden="true">
-                  days
+                <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]" aria-hidden="true">
+                  {t('form.days')}
                 </span>
               </div>
-              <p className={ADMIN_HINT}>Counted from the day of purchase.</p>
+              <p className={ADMIN_HINT}>{t('form.validHint')}</p>
             </div>
             <div className="sm:col-span-2">
-              <label htmlFor={field('redemptionTerms')} className={ADMIN_LABEL}>Redemption terms</label>
+              <label htmlFor={field('redemptionTerms')} className={ADMIN_LABEL}>{t('form.redemptionTerms')}</label>
               <textarea
                 id={field('redemptionTerms')}
                 dir="auto"
                 className={`${ADMIN_INPUT} resize-y`}
                 rows={3}
                 maxLength={MAX_REDEMPTION_TERMS_LENGTH}
-                placeholder="e.g. Dine-in only, Sun–Thu. Book ahead by phone. One voucher per table."
+                placeholder={t('form.termsPlaceholder')}
                 value={value.redemptionTerms}
                 onChange={(e) => onChange('redemptionTerms', e.target.value)}
               />
@@ -376,7 +388,7 @@ export function ImagePreview({ url, shape = 'banner' }: { url: string; shape?: '
           />
         )}
         {(problem || state === 'failed') && (
-          <div className="absolute inset-0 flex items-center justify-center text-[#94A3B8]">
+          <div className="absolute inset-0 flex items-center justify-center text-[#64748B]">
             <i className="fa-solid fa-image" aria-hidden="true" />
           </div>
         )}
@@ -394,10 +406,10 @@ export function ImagePreview({ url, shape = 'banner' }: { url: string; shape?: '
             {logo ? 'Logo' : 'Image'} loads correctly.
           </p>
         ) : (
-          <p className="text-[#94A3B8]">Checking image…</p>
+          <p className="text-[#64748B]">Checking image…</p>
         )}
         {normalized !== url.trim() && (
-          <p className="mt-1 break-all text-[#94A3B8]" dir="ltr">
+          <p className="mt-1 break-all text-[#64748B]" dir="ltr">
             Will be saved as: {normalized}
           </p>
         )}

@@ -7,6 +7,7 @@ import { MemberColumn } from '@/components/layout/MemberPageShell'
 import SnapDots, { SNAP_DOTS_MAX } from '@/components/ui/SnapDots'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import { useRailPaging } from '@/lib/useRailPaging'
+import { useAutoAdvance } from '@/lib/useAutoAdvance'
 import { useSnapIndex } from '@/lib/useSnapIndex'
 import OfferCard from './OfferCard'
 
@@ -37,43 +38,44 @@ export default function OfferCardRail({
   offers,
   href,
   seeAll,
-  count,
   showCategoryBadge = true,
   dots = false,
+  autoAdvance = false,
+  autoAdvanceOffsetMs = 0,
 }: {
   id: string
   title: string
-  /** The heading's leading emoji. */
+  /** The heading's leading line icon (bare, 18px, 1.5 stroke). */
   glyph?: ReactNode
   offers: OfferDocument[]
   /** Both or neither: a category without a page has no link. */
   href?: string
   seeAll?: string
-  /** The number of deals behind "See all", beside the title (not inside the link). */
-  count?: number
   /** Off in a rail already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
   dots?: boolean
+  /** Moves to the next card every 5 seconds (lib/useAutoAdvance.ts); the curated row only. */
+  autoAdvance?: boolean
+  /** Staggers the rail from the others on the page. */
+  autoAdvanceOffsetMs?: number
 }) {
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
   const { edges, measure, page, overflowing } = useRailPaging(railRef, offers.length)
+  useAutoAdvance({ rowRef: railRef, count: offers.length, active, scrollTo, enabled: autoAdvance, offsetMs: autoAdvanceOffsetMs })
 
   return (
     <section aria-labelledby={id}>
-      <MemberColumn className="mb-1 flex items-center justify-between gap-3">
-        <h2 id={id} className="flex min-w-0 items-center gap-2.5 text-xl font-bold tracking-tight text-ink">
-          {glyph && (
-            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200/70 bg-brandTint">
-              {glyph}
-            </span>
-          )}
-          <bdi className="truncate" dir="auto">{title}</bdi>
-          {typeof count === 'number' && <bdi dir="ltr" className="shrink-0 text-sm font-semibold tabular-nums text-muted">{count}</bdi>}
+      <MemberColumn className="mb-1 flex items-center justify-between gap-2">
+        <h2 id={id} className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink">
+          {/* A bare 18px line icon on the title's line: no badge, so the title keeps the width. */}
+          {glyph && <span aria-hidden="true" className="flex shrink-0 items-center">{glyph}</span>}
+          {/* One line, shrunk a little before it clips; a title that still can't fit wraps to a second line instead of cutting mid-word. */}
+          <bdi className="line-clamp-2 min-w-0 text-balance leading-tight max-[420px]:text-[1.125rem]" dir="auto">{title}</bdi>
         </h2>
         {href && seeAll && (
           // 32px to the eye, 44px to the finger: the link is the target, the pill is its look.
           <Link href={href} className="tap-target group/pill inline-flex shrink-0 items-center">
-            <span className="rounded-full border border-slate-200/70 bg-brandTint px-3.5 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
+            <span className="rounded-full border border-slate-200/70 bg-brandTint px-3 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
               {seeAll}
             </span>
           </Link>

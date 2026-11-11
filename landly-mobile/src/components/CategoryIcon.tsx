@@ -21,15 +21,15 @@ type IconProps = { size: number; color: ColorValue; strokeWidth: number }
 function Lipstick({ size, color, strokeWidth }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color as string} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M7 14h10v6a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z" />
-      <Path d="M8.5 14v-3h7v3" />
-      <Path d="M10 11V6l4-3v8" />
+      <Path d="M5.5 22h13v-7.5a1 1 0 0 0-1-1h-11a1 1 0 0 0-1 1z" />
+      <Path d="M7 13.5v-3h10v3" />
+      <Path d="M9 10.5V5l6-3v8.5" />
     </Svg>
   )
 }
 
 // Each category's glyph, the same set as the website's CATEGORY_ICONS, in a
-// fine 1.75 stroke. Nothing here is directional, so no glyph mirrors in Hebrew.
+// fine 1.5 stroke. Nothing here is directional, so no glyph mirrors in Hebrew.
 export const CATEGORY_ICONS: Record<string, (props: IconProps) => ReactNode> = {
   'Restaurants and Cafes': UtensilsCrossed,
   'Beach and Sea': TreePalm,
@@ -46,7 +46,7 @@ export const CATEGORY_ICONS: Record<string, (props: IconProps) => ReactNode> = {
 }
 
 // Decorative: the label beside it carries the meaning. A tag for an unknown category.
-export default function CategoryIcon({ category, size, color, strokeWidth = 1.75 }: { category: string; size: number; color: ColorValue; strokeWidth?: number }) {
+export default function CategoryIcon({ category, size, color, strokeWidth = 1.5 }: { category: string; size: number; color: ColorValue; strokeWidth?: number }) {
   const Icon = CATEGORY_ICONS[category] ?? Tag
   return <Icon size={size} color={color} strokeWidth={strokeWidth} />
 }

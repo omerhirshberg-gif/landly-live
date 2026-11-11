@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { cookies } from 'next/headers'
 import AdminShell from '@/components/admin/AdminShell'
+import { ADMIN_LANG_COOKIE, parseAdminLocale } from '@/lib/admin/adminLocale'
 
 // Admin pages read "<page> | Landly Admin". The default is absolute: a plain
 // default would get the root "%s | Landly" template appended to it.
@@ -21,6 +23,9 @@ export const viewport: Viewport = {
   themeColor: '#F8FAFC',
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminShell>{children}</AdminShell>
+// The admin's language comes from its own cookie (lib/admin/adminLocale.ts), so the
+// first paint already has the right direction.
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const initialLocale = parseAdminLocale((await cookies()).get(ADMIN_LANG_COOKIE)?.value)
+  return <AdminShell initialLocale={initialLocale}>{children}</AdminShell>
 }

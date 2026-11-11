@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
-import { FlatList, StyleSheet, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AppState, FlatList, StyleSheet, View } from 'react-native'
+import { useFocusEffect } from 'expo-router'
 import Animated, { useAnimatedScrollHandler, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import type { OfferDocument } from '@shared/firebase/offers'
+import { AUTO_ADVANCE_MS, nextAutoIndex } from '@shared/carouselAutoplay'
 import OfferCard from './OfferCard'
 import PagerDots from './PagerDots'
 import { useLang } from '../i18n/LangProvider'
@@ -22,12 +24,18 @@ export default function OfferCarousel({
   onOpen,
   showDots = true,
   showCategoryBadge = true,
+  autoAdvance = false,
+  autoAdvanceOffsetMs = 0,
 }: {
   offers: OfferDocument[]
   onOpen: (offer: OfferDocument) => void
   showDots?: boolean
   /** Off in a rail already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
+  /** Moves on to the next card every 5 seconds, then back to the first; Home's curated row only. */
+  autoAdvance?: boolean
+  /** Added to the first wait, so two rails on one screen never move on the same beat. */
+  autoAdvanceOffsetMs?: number
 }) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
@@ -58,6 +66,40 @@ export default function OfferCarousel({
     list.current?.scrollToOffset({ offset, animated: !reduced })
   }
 
+  // Auto-advance (lib/carouselAutoplay.ts): holds still while a finger is on the row
+  // (from the drag's start until its momentum settles), while the screen is blurred or
+  // the app is in the background, and under Reduce Motion; every hold restarts the full 5s.
+  const [dragging, setDragging] = useState(false)
+  const [focused, setFocused] = useState(true)
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active')
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true)
+      return () => setFocused(false)
+    }, [])
+  )
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'))
+    return () => sub.remove()
+  }, [])
+  const count = starts.length
+  const running = autoAdvance && !reduced && !dragging && focused && appActive && count > 1
+  useEffect(() => {
+    if (!running) return
+    // The dots' own position (UI thread value, in resting places) says where the row is, by hand or by timer.
+    const step = () => goTo(nextAutoIndex(position.get(), count))
+    let timer: ReturnType<typeof setInterval> | undefined
+    const first = setTimeout(() => {
+      step()
+      timer = setInterval(step, AUTO_ADVANCE_MS)
+    }, AUTO_ADVANCE_MS + autoAdvanceOffsetMs)
+    return () => {
+      clearTimeout(first)
+      if (timer) clearInterval(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, count, isRtl, maxOffset, autoAdvanceOffsetMs])
+
   return (
     <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
       <Animated.FlatList
@@ -71,6 +113,12 @@ export default function OfferCarousel({
         snapToOffsets={snapToOffsets}
         snapToEnd={false}
         onScroll={onScroll}
+        onScrollBeginDrag={() => setDragging(true)}
+        // A flick carries on to its momentum end, which hands the row back; a drag that stops dead hands it back at its end.
+        onScrollEndDrag={(e) => {
+          if (Math.abs(e.nativeEvent.velocity?.x ?? 0) < 0.05) setDragging(false)
+        }}
+        onMomentumScrollEnd={() => setDragging(false)}
         scrollEventThrottle={16}
         style={[styles.scroller, webOnly({ scrollPaddingLeft: paddingLeft, scrollPaddingRight: paddingRight }) as object]}
         contentContainerStyle={[styles.row, { paddingLeft, paddingRight }]}

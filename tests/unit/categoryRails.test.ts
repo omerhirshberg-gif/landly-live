@@ -148,6 +148,12 @@ describe('Recommended for you', () => {
 })
 
 describe('OfferCardRail', () => {
+  it('shows no deal count beside a title, on the web or in the app', () => {
+    for (const file of ['components/discover/OfferCardRail.tsx', 'landly-mobile/src/components/SectionHeader.tsx', 'landly-mobile/src/components/CategoryOfferRail.tsx', 'components/home/LoggedInHome.tsx']) {
+      expect(readFileSync(file, 'utf8'), file).not.toMatch(/count\?: number|typeof count|rail\.total/)
+    }
+  })
+
   const offers = ['1', '2', '3'].map((id) => offer(id))
 
   it('starts its heading on the member column and bleeds its row, snapping with a hidden scrollbar', () => {
@@ -167,7 +173,7 @@ describe('OfferCardRail', () => {
 
   it('isolates a title’s direction and shows the heart to a signed-in member', () => {
     const html = render('he', createElement(OfferCardRail, { id: 'r', title: 'מסעדות', offers }))
-    expect(html).toContain('<bdi class="truncate" dir="auto">מסעדות</bdi>')
+    expect(html).toContain('<bdi class="line-clamp-2 min-w-0 text-balance leading-tight max-[420px]:text-[1.125rem]" dir="auto">מסעדות</bdi>')
     expect(html).toContain(`aria-label="${translations.he.btn_add_to_wishlist}"`)
   })
 })

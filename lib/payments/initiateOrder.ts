@@ -4,6 +4,9 @@ import { isOfferActive } from '@/lib/admin/offerStatus'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { normalizeRedemptionTerms, normalizeValidityDays } from './voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
+import { frozenPerkScope } from '@/lib/offers/perkScope'
+import { parseFulfillmentType } from '../inventory/types'
+import { parseFrozenTerms } from '../merchants/terms'
 
 // Never paid and never issued a voucher: the only orders a sandbox may replace.
 function isUnpaid(order: DocumentData, uid: string, offerId: string): boolean {
@@ -17,7 +20,7 @@ function isRestartable(order: DocumentData, uid: string, offerId: string, termin
   return order.status === 'pending' && order.userId === uid && order.offerId === offerId
     && order.terminal === terminal && order.currency === 'ILS'
     && order.tranzilaTxnId === null && order.paidAt === null && order.voucherId === null
-    && isDocumentId(order.businessId) && order.createdAt instanceof Timestamp
+    && (order.fulfillmentType === 'multipass_pool' || isDocumentId(order.businessId)) && order.createdAt instanceof Timestamp
 }
 
 // A reload of this exact pending order: same member, offer, terminal, consistent price.
@@ -106,9 +109,18 @@ export async function initiateOrder(
     })) {
       throw new PaymentError('This offer is no longer available.')
     }
-    if (!isDocumentId(offer.businessId)) throw new PaymentError('Offer has no valid business.')
-    const business = await tx.get(db.collection('businesses').doc(offer.businessId))
-    if (!business.exists) throw new PaymentError('Offer business no longer exists.')
+    const fulfillmentType = parseFulfillmentType(offer.fulfillmentType)
+    if (fulfillmentType === 'multipass_pool' && !isDocumentId(offer.poolId)) throw new PaymentError('Offer has no valid inventory pool.')
+    // Only a local-business perk belongs to a business. A Multipass perk carries its brand instead,
+    // so it has no merchant to settle with and never appears in a business's portal or payouts.
+    let terms: ReturnType<typeof parseFrozenTerms> = null
+    if (fulfillmentType === 'direct_merchant') {
+      if (!isDocumentId(offer.businessId)) throw new PaymentError('Offer has no valid business.')
+      const business = await tx.get(db.collection('businesses').doc(offer.businessId))
+      if (!business.exists) throw new PaymentError('Offer business no longer exists.')
+      // Frozen with the order: settlement pays on the terms agreed at purchase, never on later edits.
+      terms = parseFrozenTerms(business.data())
+    }
     const amountAgorot = amountInAgorot(offer.offerPrice)
     const amount = amountAgorot / 100
     const originalPrice = originalPriceOf(offer.originalPrice, amount)
@@ -118,9 +130,12 @@ export async function initiateOrder(
     const redemptionInstructions = normalizeRedemptionInstructions(offer.redemptionInstructions)
     const now = Timestamp.now()
     const newOrder = {
-      userId: uid, offerId, businessId: offer.businessId,
+      userId: uid, offerId,
+      ...(fulfillmentType === 'direct_merchant' ? { businessId: offer.businessId } : frozenPerkScope(offer)),
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
+      fulfillmentType, poolId: fulfillmentType === 'multipass_pool' ? offer.poolId : null,
+      commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
       // Frozen with the terms, so a later edit or re-translation never changes what was bought.
       translations: offer.translations ?? null,

@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 44,
     paddingHorizontal: 14,
-    borderRadius: radius.pill,
+    borderRadius: radius.action,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,

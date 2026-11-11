@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DEFAULT_PERK_SORT, PERK_SORTS, PERK_SORT_LABELS, type PerkSort } from '@shared/perks/perksFilter'
 import AppText from './AppText'
@@ -10,10 +10,9 @@ import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { chipShadow, colors, radius } from '../theme'
 
-// The Perks tab's compact "⇅ Sort" chip (web: components/perks/SortMenu.tsx).
-// iOS opens the system action sheet; Android and the Expo web build get a
-// bottom sheet with a check on the current order (same split as
-// AvatarPicker). Styled like the category chips and pinned at the row's end,
+// The Perks tab's compact "Sort" chip (web: components/perks/SortMenu.tsx).
+// Every platform opens one bottom sheet with a vector check on the current
+// order (the system iOS action sheet can only show plain strings). Styled like the category chips and pinned at the row's end,
 // so it always reads a short "Sort" and never takes width from them; a
 // non-default sort fills it solid brand blue, and its name is in the
 // accessibility label and the sheet.
@@ -22,19 +21,7 @@ export default function SortSheet({ value, onChange }: { value: PerkSort; onChan
   const [open, setOpen] = useState(false)
   const active = value !== DEFAULT_PERK_SORT
 
-  const show = () => {
-    if (Platform.OS === 'ios') {
-      const labels = PERK_SORTS.map((sort) => (sort === value ? `✓ ${t(PERK_SORT_LABELS[sort])}` : t(PERK_SORT_LABELS[sort])))
-      ActionSheetIOS.showActionSheetWithOptions(
-        { title: t('cats_sort_label'), options: [...labels, t('avatar_cancel')], cancelButtonIndex: labels.length },
-        (index) => {
-          if (index < PERK_SORTS.length) onChange(PERK_SORTS[index])
-        }
-      )
-    } else {
-      setOpen(true)
-    }
-  }
+  const show = () => setOpen(true)
 
   return (
     <>
@@ -51,17 +38,15 @@ export default function SortSheet({ value, onChange }: { value: PerkSort; onChan
         <AppText style={[styles.triggerLabel, active && styles.triggerLabelActive]}>{t('cats_sort_trigger')}</AppText>
         <LineIcon name="chevronDown" size={14} color={active ? colors.white : colors.textMuted} />
       </ScalePressable>
-      {Platform.OS !== 'ios' && (
-        <OptionsSheet
-          visible={open}
-          value={value}
-          onPick={(next) => {
-            setOpen(false)
-            onChange(next)
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      <OptionsSheet
+        visible={open}
+        value={value}
+        onPick={(next) => {
+          setOpen(false)
+          onChange(next)
+        }}
+        onClose={() => setOpen(false)}
+      />
     </>
   )
 }
@@ -111,7 +96,7 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 38,
     paddingHorizontal: 12,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     backgroundColor: colors.borderLight,
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },

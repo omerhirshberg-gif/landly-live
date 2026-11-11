@@ -1,5 +1,7 @@
 import { CUSTOMER_TYPES, CUSTOMER_TYPE_UNSET_COLOR, canonicalCustomerType } from '@/lib/customerTypes'
 import { translations } from '@/lib/i18n/translations'
+import { useAdminT } from '@/lib/admin/translations'
+import type { AdminLocale } from '@/lib/admin/adminLocale'
 
 // A member's type as the admin shows it: its emoji, its English label and the
 // type's own colour (lib/customerTypes.ts), the same colours as the business
@@ -17,18 +19,19 @@ const EMOJI: Record<string, string> = {
   '': '❔',
 }
 
-export function customerTypeInfo(rawType: string): { label: string; emoji: string; color: string } {
+export function customerTypeInfo(rawType: string, locale: AdminLocale = 'en'): { label: string; emoji: string; color: string } {
   const type = canonicalCustomerType(rawType)
   const option = CUSTOMER_TYPES.find((o) => o.value === type)
   return {
-    label: option ? translations.en[option.labelKey] : 'Not set',
+    label: option ? translations[locale][option.labelKey] : locale === 'he' ? 'לא צוין' : 'Not set',
     emoji: EMOJI[option ? type : ''] ?? '',
     color: option?.color ?? CUSTOMER_TYPE_UNSET_COLOR,
   }
 }
 
 export default function CustomerTypeBadge({ type, note = '' }: { type: string; note?: string }) {
-  const { label, emoji, color } = customerTypeInfo(type)
+  const { locale } = useAdminT()
+  const { label, emoji, color } = customerTypeInfo(type, locale)
   return (
     <span
       className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold leading-none ring-1 ring-inset"

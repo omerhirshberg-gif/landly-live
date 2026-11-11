@@ -173,7 +173,7 @@ export default function NewBusinessPage() {
             </ResultRow>
             <ResultRow label="First offer">
               <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
-              <div className="font-mono text-xs text-[#94A3B8]">{result.offerId}</div>
+              <div className="font-mono text-xs text-[#64748B]">{result.offerId}</div>
             </ResultRow>
           </dl>
         </Card>
@@ -324,7 +324,7 @@ export default function NewBusinessPage() {
 function ResultRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-5 py-4 sm:px-6">
-      <dt className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{label}</dt>
       <dd className="mt-1">{children}</dd>
     </div>
   )

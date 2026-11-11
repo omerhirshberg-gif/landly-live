@@ -1,5 +1,5 @@
 import { CATEGORY_TILES, type CategoryTile } from '@/lib/categories'
-import { isOfferAvailable, type OfferDocument } from '@/lib/firebase/offers'
+import { isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@/lib/firebase/offers'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { compareFeatured } from '@/lib/perks/perksFilter'
 
@@ -51,6 +51,18 @@ export function buildCategoryRails(offers: readonly OfferDocument[]): CategoryRa
 /** "Recommended for you": the featured claimable offers. */
 export function selectCurated(offers: readonly OfferDocument[]): OfferDocument[] {
   return offers.filter(isOfferAvailable).sort(compareFeatured).slice(0, CURATED_COUNT)
+}
+
+/**
+ * "New on Landly" and "Best Sellers", on Home as on the Perks tab: claimable
+ * offers only, bestsellers then newest first, each capped like a category rail.
+ */
+export function selectHighlights(offers: readonly OfferDocument[]): { newOffers: OfferDocument[]; bestsellerOffers: OfferDocument[] } {
+  const available = sortFeaturedOffers(offers.filter(isOfferAvailable))
+  return {
+    newOffers: available.filter((offer) => isOfferNew(offer.createdAt)).slice(0, RAIL_MAX),
+    bestsellerOffers: available.filter((offer) => offer.isBestseller).slice(0, RAIL_MAX),
+  }
 }
 
 /** The category's translated name, or its stored name outside the official list. */

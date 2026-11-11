@@ -97,12 +97,12 @@ describe('member dashboard live data', () => {
     vi.mocked(getOffer).mockReset()
   })
 
-  it('ends each voucher card with a chevron, not a separate View Voucher button', () => {
+  it('ends each voucher card with a tinted "View voucher" pill and a mirrored chevron, not a solid button', () => {
     vi.mocked(getOffer).mockReturnValue(new Promise(() => {}))
     const html = withLang('he', createElement(PerksTab, { vouchers: [{ ...voucher('u1_o1', 'o1'), status: 'active' as const, redeemedAt: null }] }))
-    // The label is for screen readers only; the chevron (mirrored in Hebrew) is the visible cue.
-    expect(html).toContain(`<span class="sr-only">${translations.he.voucher_show_button}</span>`)
-    expect(html).toMatch(/<svg [^>]*class="lucide lucide-chevron-right [^"]*rtl:-scale-x-100[^"]*"[^>]*>.*?<\/svg><\/a>/)
+    // The label is visible in a pale tinted pill; its chevron mirrors in Hebrew.
+    expect(html).toContain(translations.he.voucher_show_button)
+    expect(html).toMatch(/<svg [^>]*class="lucide lucide-chevron-right [^"]*rtl:-scale-x-100[^"]*"[^>]*>.*?<\/svg><\/span><\/div><\/a>/)
     // No solid blue button (bg-brandTint, a pale tint, is fine).
     expect(html).not.toMatch(/\bbg-brand(?![A-Za-z])/)
     expect(html).not.toContain('<button')

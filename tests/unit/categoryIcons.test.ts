@@ -76,11 +76,12 @@ describe('category vector icons', () => {
     expect(glyphs).toContain("new: 'sparkles'")
     expect(glyphs).toContain("bestsellers: 'award'")
     expect(read('landly-mobile/src/components/OfferTileRail.tsx')).toContain('<LineIcon name={RAIL_ICONS[glyph]}')
-    // Their heads use the shared frame: no solid tiles, no Font Awesome.
-    for (const file of ['components/discover/OfferTileRail.tsx', 'components/discover/OfferListView.tsx']) {
-      expect(read(file)).toContain('<IconFrame icon={icon}')
-      expect(read(file)).not.toContain('fa-solid')
-    }
+    // The rails' heads are a bare 18px line icon (no badge); the list pages' head is dark ink in a neutral hairline frame. No Font Awesome.
+    expect(read('components/discover/OfferTileRail.tsx')).toContain('<Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink" strokeWidth={1.5} />')
+    expect(read('components/discover/OfferTileRail.tsx')).not.toContain('IconFrame')
+    expect(read('components/discover/OfferListView.tsx')).toContain('<Icon aria-hidden="true" focusable="false" className="h-6 w-6 text-ink" strokeWidth={1.5} />')
+    expect(read('components/discover/OfferListView.tsx')).not.toMatch(/IconFrame|brandTint|text-brand/)
+    for (const file of ['components/discover/OfferTileRail.tsx', 'components/discover/OfferListView.tsx']) expect(read(file)).not.toContain('fa-solid')
   })
 
   it('draws Beauty and Skincare as a lipstick, a Lucide-style outline, not the Sparkles of "new"', () => {
@@ -88,7 +89,7 @@ describe('category vector icons', () => {
     expect(Object.values(CATEGORY_ICONS).filter((icon) => icon === Lipstick)).toHaveLength(1)
     const html = renderToStaticMarkup(createElement(CategoryIcon, { category: 'Beauty and Skincare' }))
     // Lucide's own outline attributes, at the shared fine stroke, in currentColor, upright in Hebrew too.
-    expect(html).toMatch(/^<svg [^>]*viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lipstick h-5 w-5" aria-hidden="true"/)
+    expect(html).toMatch(/^<svg [^>]*viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lipstick h-5 w-5" aria-hidden="true"/)
     expect(html).not.toContain('rtl:')
     expect(html.match(/<path /g)).toHaveLength(3)
     expect(CATEGORY_TILES.find((tile) => tile.category === 'Beauty and Skincare')?.emoji).toBe('💄')

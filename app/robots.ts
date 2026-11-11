@@ -14,6 +14,7 @@ const PRIVATE_PATHS = [
   '/wishlist',
   '/business/dashboard',
   '/business/login',
+  '/business/onboard',
   '/login',
   '/signup',
   '/forgot-password',

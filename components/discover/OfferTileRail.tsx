@@ -3,8 +3,8 @@
 import { useId } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
-import IconFrame from '@/components/ui/IconFrame'
 import type { OfferDocument } from '@/lib/firebase/offers'
+import { useAutoAdvance } from '@/lib/useAutoAdvance'
 import { useRailPaging } from '@/lib/useRailPaging'
 import { useSnapIndex } from '@/lib/useSnapIndex'
 import SnapDots, { SNAP_DOTS_MAX } from '@/components/ui/SnapDots'
@@ -22,11 +22,13 @@ import OfferCard from './OfferCard'
 // from the start edge and paging flips its sign. On phones a short rail
 // (SNAP_DOTS_MAX cards or fewer) has pagination dots underneath.
 export default function OfferTileRail({
-  icon,
+  icon: Icon,
   title,
   offers,
   href,
   seeMore,
+  autoAdvance = false,
+  autoAdvanceOffsetMs = 0,
 }: {
   /** The heading's Lucide glyph, e.g. Award for Bestsellers. */
   icon: LucideIcon
@@ -34,17 +36,22 @@ export default function OfferTileRail({
   offers: OfferDocument[]
   href?: string
   seeMore?: string
+  /** Moves to the next card every 5 seconds (lib/useAutoAdvance.ts); the offset staggers it from the rail beside it. */
+  autoAdvance?: boolean
+  autoAdvanceOffsetMs?: number
 }) {
   const headingId = useId()
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
   const { edges, measure, page, overflowing } = useRailPaging(railRef, offers.length)
+  useAutoAdvance({ rowRef: railRef, count: offers.length, active, scrollTo, enabled: autoAdvance, offsetMs: autoAdvanceOffsetMs })
 
   return (
     <section aria-labelledby={headingId} className="py-5 first:pt-0 last:pb-0">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id={headingId} className="flex min-w-0 items-center gap-2 text-base font-bold text-slate-900">
-          <IconFrame icon={icon} size="sm" />
-          <span className="truncate">{title}</span>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 id={headingId} className="flex min-w-0 flex-1 items-center gap-1.5 text-base font-bold text-slate-900">
+          {/* A bare 18px line icon at 1.5 stroke: no frame. */}
+          <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink" strokeWidth={1.5} />
+          <span className="line-clamp-2 min-w-0 leading-tight">{title}</span>
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">
           {href && seeMore && (

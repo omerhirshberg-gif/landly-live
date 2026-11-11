@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Image, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { CategoryPanel } from './PerkImage'
@@ -16,18 +16,33 @@ export default function DealMedia({
   image,
   category,
   corners = 'card',
+  ratio = 16 / 9,
+  maxHeight,
   children,
 }: {
   image: DealImage
   category: string
   /** 'card': the card's top corners. 'all': all four, for a picture that doesn't sit at the top of a card. 'none': square, for one running edge to edge. */
   corners?: 'card' | 'all' | 'none'
+  /** The frame's width-to-height ratio: 16:9 on the offer screen, 2:1 on the feed cards. */
+  ratio?: number
+  /** Caps the frame's height (the feed cards' 172pt), cropping the photo's sides a little more on a wide screen. */
+  maxHeight?: number
   children?: ReactNode
 }) {
   const { uri, role, photoStyle, onLoad, onError } = image
+  // Sized from the measured width (ratio, then the height cap) rather than leaving Yoga to resolve an aspect ratio under a maxHeight, which can narrow the frame and leave white beside the photo.
+  const [width, setWidth] = useState(0)
+  const height = width > 0 ? Math.min(width / ratio, maxHeight ?? Infinity) : undefined
 
   return (
-    <View style={styles.frame}>
+    <View
+      style={[styles.frame, height != null ? { height } : { aspectRatio: ratio }]}
+      onLayout={(e) => {
+        const next = Math.round(e.nativeEvent.layout.width)
+        if (next !== width) setWidth(next)
+      }}
+    >
       <View style={[styles.hero, corners === 'all' && styles.heroRounded, corners === 'none' && styles.heroSquare]}>
         <CategoryPanel category={category} size="hero" />
         {/* Loaded while still unknown, so its size can tell a photo from a logo. */}
@@ -44,7 +59,8 @@ export default function DealMedia({
 
 const styles = StyleSheet.create({
   // Not clipped, so the overlays' shadows are drawn.
-  frame: { aspectRatio: 16 / 9, zIndex: 1 },
+  // Full width whatever the height cap: an aspect ratio under a maxHeight would otherwise narrow the frame and leave white at its sides.
+  frame: { zIndex: 1, width: '100%', alignSelf: 'stretch' },
   // Clipped to the card's top corners (its 16pt radius inside the 1pt border).
   hero: { flex: 1, overflow: 'hidden', borderTopStartRadius: 15, borderTopEndRadius: 15 },
   heroRounded: { borderRadius: radius.lg },

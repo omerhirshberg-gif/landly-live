@@ -6,8 +6,8 @@ interface MerchantBadgeProps {
   /** The business's logo (offer.businessLogoUrl); '' = none, so its initial shows. */
   logoUrl: string
   businessName: string
-  /** 'lg': an offer's own page, where the brand is a headline: a taller tile, and a wide wordmark may run to 160px. */
-  size?: 'md' | 'lg'
+  /** 'sm': the feed cards' 40px tile. 'lg': an offer's own page, where the brand is a headline: a taller tile, and a wide wordmark may run to 160px. */
+  size?: 'sm' | 'md' | 'lg'
 }
 
 // The business on a perk card and its offer's page, as the Expo app's
@@ -28,7 +28,7 @@ export default function MerchantBadge({ logoUrl, businessName, size = 'md' }: Me
     <span
       aria-hidden="true"
       className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white ${
-        size === 'lg' ? 'h-14 min-w-[72px] max-w-[160px] px-3 shadow-md sm:h-16' : 'h-12 min-w-[56px] px-2.5 shadow-sm sm:h-14'
+        size === 'lg' ? 'h-14 min-w-[72px] max-w-[160px] px-3 shadow-md sm:h-16' : size === 'sm' ? 'h-10 min-w-[48px] px-2 shadow-sm' : 'h-12 min-w-[56px] px-2.5 shadow-sm sm:h-14'
       }`}
     >
       {logo ? (

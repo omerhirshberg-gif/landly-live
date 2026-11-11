@@ -3,10 +3,13 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
+import { deriveAreas, type Area, type Coordinates } from '@shared/geo'
 import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers'
-import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
+import { DEFAULT_PERK_SORT, filterAndSortPerks, offerDistanceKm, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
 import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
+import AreaPicker from '../../components/AreaPicker'
+import NearMeButton from '../../components/NearMeButton'
 import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
@@ -46,14 +49,21 @@ export default function CategoryScreen() {
   const debouncedQuery = useDebouncedValue(query, 200)
   const appliedQuery = query ? debouncedQuery : ''
   const [sort, setSort] = useState<PerkSort>(DEFAULT_PERK_SORT)
+  // Near me, within this category only: the member's location (or an area
+  // picked when there is none) orders the list nearest-first and puts a
+  // distance on each card. Same state shape as the Perks tab.
+  const [origin, setOrigin] = useState<{ coords: Coordinates; area: Area | null } | null>(null)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const originCoords = origin?.coords ?? null
+  const areas = useMemo(() => deriveAreas(offers ?? []), [offers])
 
   const fetchOffers = useCallback(() => getOffersByCategory(category), [category])
   // The fetch is already one category, so the pipeline only searches and sorts.
   const visible = useMemo(
-    () => (offers ? filterAndSortPerks(offers, { query: appliedQuery, category: 'all', sort }, t, lang) : []),
+    () => (offers ? filterAndSortPerks(offers, { query: appliedQuery, category: 'all', sort }, t, lang, originCoords) : []),
     // `t` changes identity every render; `lang` covers what it depends on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [offers, appliedQuery, sort, lang]
+    [offers, appliedQuery, sort, lang, originCoords]
   )
 
   useEffect(() => {
@@ -104,7 +114,7 @@ export default function CategoryScreen() {
         columnWrapperStyle={feedColumnWrapper(columns)}
         renderItem={({ item }) => (
           <FeedCell>
-            <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={false} />
+            <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={false} distanceKm={offerDistanceKm(item, originCoords)} />
           </FeedCell>
         )}
         contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
@@ -116,7 +126,7 @@ export default function CategoryScreen() {
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <View style={styles.emojiBox}>
-                <CategoryIcon category={category} size={30} color={colors.brand} />
+                <CategoryIcon category={category} size={24} color={colors.textStrong} strokeWidth={1.5} />
               </View>
               <View style={styles.titleText}>
                 <AppText accessibilityRole="header" style={type.screenTitle}>
@@ -132,7 +142,29 @@ export default function CategoryScreen() {
             {!!offers?.length && (
               <View style={styles.controls}>
                 <PerksSearchField value={query} onChangeText={setQuery} />
+                <NearMeButton
+                  active={!!origin}
+                  onLocate={(coords) => setOrigin({ coords, area: null })}
+                  onClear={() => setOrigin(null)}
+                  onError={setGeoError}
+                />
                 <SortSheet value={sort} onChange={setSort} />
+              </View>
+            )}
+            {geoError && !origin && (
+              <View style={styles.geoNotice}>
+                <AppText accessibilityLiveRegion="polite" style={styles.geoError}>
+                  {geoError}
+                </AppText>
+                {areas.length > 0 && (
+                  <AreaPicker
+                    areas={areas}
+                    onPick={(area) => {
+                      setGeoError(null)
+                      setOrigin({ coords: area.center, area })
+                    }}
+                  />
+                )}
               </View>
             )}
             {failed && <Notice message={t('mobile_load_error')} />}
@@ -164,6 +196,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 16, gap: 14 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  geoNotice: { marginTop: -6, gap: 10 },
+  geoError: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   emojiBox: {
     width: 60,

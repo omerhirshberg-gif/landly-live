@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { ButtonSpinner } from './FormSection'
 import { SECONDARY_BUTTON } from './formStyles'
 
@@ -14,20 +15,21 @@ import { SECONDARY_BUTTON } from './formStyles'
 export default function TranslateMissingButton({
   className = '',
   endpoint = '/api/admin/offers/translate',
-  label = 'Translate missing',
-  runningLabel = 'Translating…',
+  label,
+  runningLabel,
   icon = 'fa-language',
-  noun = ['offer', 'offers'],
-  doneVerb = 'translated',
+  doneKey = 'bulk.translated',
 }: {
   className?: string
   endpoint?: string
-  label?: string
-  runningLabel?: string
+  /** Shown on the button, in the admin's language (the caller passes t(...)). */
+  label: string
+  runningLabel: string
   icon?: string
-  noun?: [singular: string, plural: string]
-  doneVerb?: string
+  /** The result line: "{n} updated" or "{n} translated". */
+  doneKey?: Extract<AdminKey, 'bulk.updated' | 'bulk.translated'>
 }) {
+  const { t } = useAdminT()
   const [state, setState] = useState<{ kind: 'idle' | 'running' | 'done' | 'error'; message?: string }>({ kind: 'idle' })
 
   const run = async () => {
@@ -39,7 +41,7 @@ export default function TranslateMissingButton({
         const res = await adminFetch(endpoint, { method: 'POST' })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          setState({ kind: 'error', message: data.error ?? 'Translating failed.' })
+          setState({ kind: 'error', message: data.error ?? t('bulk.failed') })
           return
         }
         updated += data.updated ?? 0
@@ -48,10 +50,10 @@ export default function TranslateMissingButton({
       }
       setState({
         kind: failed > 0 ? 'error' : 'done',
-        message: `${updated} ${updated === 1 ? noun[0] : noun[1]} ${doneVerb}${failed > 0 ? `, ${failed} with errors (run again to retry)` : ''}.`,
+        message: `${t(doneKey, { n: updated })}${failed > 0 ? `, ${t('bulk.withErrors', { failed })}` : ''}.`,
       })
     } catch {
-      setState({ kind: 'error', message: 'Translating failed. Try again.' })
+      setState({ kind: 'error', message: t('bulk.failed') })
     }
   }
 

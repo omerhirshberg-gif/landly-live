@@ -41,7 +41,10 @@ service cloud.firestore {
     function serverOnlyUserKeys() {
       return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt', 'phoneVerified',
         'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource',
-        'webauthnUserId', 'sessionsValidAfter'];
+        'webauthnUserId', 'sessionsValidAfter',
+        // Admin-managed account state (lib/admin/userActions.ts): a member who could write
+        // these could lift their own suspension or ban.
+        'status', 'statusChangedAt', 'statusReason', 'kycTier', 'passId'];
     }
 
     // "Sign out of all devices" and a verified email change revoke every
@@ -221,6 +224,43 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /prelaunch_throttle/{key} {
+      allow read, write: if false;
+    }
+
+    // Money, contracts and secrets. All of these are read and written only by the
+    // Admin SDK behind the admin session or a one-time invite token; no client
+    // may touch them, so a stolen member or business login can't reach any of it.
+    //  - couponPools (+ items, codeHashes): Multipass codes, encrypted (lib/inventory/)
+    //  - merchantInvites, merchantInviteBatches: onboarding links, stored as hashes (lib/merchants/)
+    //  - businessFinancials: tax ID and bank details, AES-256-GCM (lib/merchants/onboarding.ts)
+    //  - businessContracts: the signed agreement record, write-once
+    //  - payoutBatches (+ lines): settlement batches and MASAV file metadata (lib/finance/)
+    //  - adminAuditLog: append-only record of admin actions (lib/admin/auditLog.ts)
+    match /couponPools/{poolId} {
+      allow read, write: if false;
+    }
+    match /couponPools/{poolId}/{sub=**} {
+      allow read, write: if false;
+    }
+    match /merchantInvites/{hash} {
+      allow read, write: if false;
+    }
+    match /merchantInviteBatches/{batchId} {
+      allow read, write: if false;
+    }
+    match /businessFinancials/{businessId} {
+      allow read, write: if false;
+    }
+    match /businessContracts/{contractId} {
+      allow read, write: if false;
+    }
+    match /payoutBatches/{batchId} {
+      allow read, write: if false;
+    }
+    match /payoutBatches/{batchId}/{sub=**} {
+      allow read, write: if false;
+    }
+    match /adminAuditLog/{entryId} {
       allow read, write: if false;
     }
 

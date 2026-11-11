@@ -25,7 +25,7 @@ function SummaryCard({ label, value, hint, icon, accent }: { label: string; valu
           <i className={`fa-solid ${icon}`} aria-hidden="true" />
         </div>
       </div>
-      <div className="mt-2 text-xs text-[#94A3B8]">{hint}</div>
+      <div className="mt-2 text-xs text-[#64748B]">{hint}</div>
     </Card>
   )
 }

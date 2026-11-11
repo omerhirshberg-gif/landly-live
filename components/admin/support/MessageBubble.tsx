@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminT } from '@/lib/admin/translations'
 import { isAttachmentKind } from '@/lib/whatsapp/attachments'
 import AttachmentContent from './media/AttachmentContent'
 import { clockTime } from './time'
@@ -13,6 +14,7 @@ const CHOICE = 'inline-flex max-w-full items-center rounded-full px-2 py-0.5 tex
 
 /** The member's message (white, start side) or the team's (Landly blue, end side). */
 export default function MessageBubble({ message }: { message: TranscriptMessage }) {
+  const { t, locale } = useAdminT()
   const outgoing = message.direction === 'out'
   const failed = !!message.error
   const attachment = isAttachmentKind(message.kind) && message.media ? { kind: message.kind, media: message.media } : null
@@ -40,18 +42,18 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
           ))}
         </div>
       )}
-      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${attachment ? 'px-2' : ''} ${outgoing && !failed ? 'text-white/70' : 'text-[#94A3B8]'}`}>
+      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${attachment ? 'px-2' : ''} ${outgoing && !failed ? 'text-white/70' : 'text-[#64748B]'}`}>
         <bdi dir="ltr" className="tabular-nums">
-          {clockTime(message.at)}
+          {clockTime(message.at, locale)}
         </bdi>
         {message.pending && (
-          <i className="fa-regular fa-clock" role="img" aria-label="Sending" />
+          <i className="fa-regular fa-clock" role="img" aria-label={t('support.sending')} />
         )}
       </div>
       {failed && (
         <p className="mt-1 text-xs font-semibold text-[#B91C1C]">
           <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
-          Not delivered: <span dir="auto">{message.error}</span>
+          {t('support.notDelivered')} <span dir="auto">{message.error}</span>
         </p>
       )}
     </div>
@@ -60,12 +62,13 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
 
 /** A note for the team about the conversation itself ("Auto-resolved: no reply to the check-in"); never sent to the member. */
 export function SystemNote({ message }: { message: TranscriptMessage }) {
+  const { locale } = useAdminT()
   return (
     <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F1F5F9] px-3 py-1 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
-      <i className="fa-solid fa-circle-check shrink-0 text-[#94A3B8]" aria-hidden="true" />
+      <i className="fa-solid fa-circle-check shrink-0 text-[#64748B]" aria-hidden="true" />
       <span className="min-w-0 truncate">{message.text}</span>
-      <bdi dir="ltr" className="shrink-0 tabular-nums text-[#94A3B8]">
-        {clockTime(message.at)}
+      <bdi dir="ltr" className="shrink-0 tabular-nums text-[#64748B]">
+        {clockTime(message.at, locale)}
       </bdi>
     </p>
   )
@@ -75,17 +78,18 @@ type AutomationItem = Extract<TranscriptItem, { type: 'automation' }>
 
 /** "Bot · 4 automated messages · Chose: 🎁 Browse perks · 10:18", opening onto each step. */
 export function AutomationRun({ run }: { run: AutomationItem }) {
+  const { t, tn, locale } = useAdminT()
   const sent = run.steps.filter((step) => step.direction === 'out').length
   return (
     <details className="group w-full max-w-md rounded-xl border border-dashed border-[#CBD5E1] bg-white/70 text-[#64748B] open:bg-white">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-xs select-none hover:text-[#334155] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent] [&::-webkit-details-marker]:hidden">
-        <i className="fa-solid fa-robot shrink-0 text-[#94A3B8]" aria-hidden="true" />
+        <i className="fa-solid fa-robot shrink-0 text-[#64748B]" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
-          <span className="font-semibold text-[#475569]">Bot</span>
-          {` · ${sent} automated message${sent === 1 ? '' : 's'}`}
+          <span className="font-semibold text-[#475569]">{t('support.bot')}</span>
+          {` · ${tn('support.botMessages', sent)}`}
           {run.lastChoice && (
             <>
-              {' · Chose: '}
+              {` · ${t('support.chose')} `}
               <span dir="auto" className="font-medium text-[#475569]">
                 {run.lastChoice}
               </span>
@@ -95,13 +99,13 @@ export function AutomationRun({ run }: { run: AutomationItem }) {
         {run.failed > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-[#B91C1C]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#DC2626]" aria-hidden="true" />
-            {run.failed} failed
+            {t('support.failed', { n: run.failed })}
           </span>
         )}
-        <bdi dir="ltr" className="shrink-0 tabular-nums text-[11px] text-[#94A3B8]">
-          {clockTime(run.at)}
+        <bdi dir="ltr" className="shrink-0 tabular-nums text-[11px] text-[#64748B]">
+          {clockTime(run.at, locale)}
         </bdi>
-        <i className="fa-solid fa-chevron-down shrink-0 text-[10px] text-[#94A3B8] transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        <i className="fa-solid fa-chevron-down shrink-0 text-[10px] text-[#64748B] transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
       </summary>
       <ol className="space-y-2 border-t border-[#F1F5F9] px-3 py-2.5">
         {run.steps.map((step) => (
@@ -113,11 +117,12 @@ export function AutomationRun({ run }: { run: AutomationItem }) {
 }
 
 function AutomationStep({ step }: { step: TranscriptMessage }) {
+  const { t } = useAdminT()
   // The member's tap: a chip on their side.
   if (step.direction === 'in') {
     return (
       <li className="flex items-center gap-1.5 text-[11px]">
-        <span className="text-[#94A3B8]">Member chose</span>
+        <span className="text-[#64748B]">{t('support.memberChose')}</span>
         <span dir="auto" className={`${CHOICE} border border-[#E2E8F0] bg-white text-[#334155]`}>
           {step.text}
         </span>
@@ -149,7 +154,7 @@ function AutomationStep({ step }: { step: TranscriptMessage }) {
       {step.error && (
         <p className="mt-0.5 font-semibold text-[#B91C1C]">
           <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
-          Not delivered: <span dir="auto">{step.error}</span>
+          {t('support.notDelivered')} <span dir="auto">{step.error}</span>
         </p>
       )}
     </li>

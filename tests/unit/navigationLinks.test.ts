@@ -54,7 +54,8 @@ describe('navigation buttons', () => {
 
   it('open in a new tab on the website, without handing the page over', () => {
     const source = readFileSync('components/offers/NavigationLinks.tsx', 'utf8')
-    expect(source.match(/target="_blank" rel="noopener noreferrer"/g)).toHaveLength(2)
+    // The compact pair and the labelled wide pair.
+    expect(source.match(/target="_blank" rel="noopener noreferrer"/g)).toHaveLength(4)
   })
 
   it('sit on the offer page on the website and in the app', () => {
