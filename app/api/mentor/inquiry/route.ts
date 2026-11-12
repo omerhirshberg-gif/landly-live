@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  if (isMentorRequestRateLimited(request)) {
+  if (await isMentorRequestRateLimited(request)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   }
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     if (err instanceof RequestAuthError) return NextResponse.json({ error: err.message }, { status: err.status })
     throw err
   }
-  if (isMentorRequestUidRateLimited(decoded.uid)) {
+  if (await isMentorRequestUidRateLimited(decoded.uid)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   }
 

@@ -46,6 +46,9 @@ const iosEdgeBar =
 /** Material 3's navigation bar height (labelled items), above the system bar's inset. */
 const ANDROID_BAR_HEIGHT = 80
 
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function TabsLayout() {
   const { t } = useLang()
   const { wishlistCount } = useWishlist()

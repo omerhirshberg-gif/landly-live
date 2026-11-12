@@ -210,7 +210,7 @@ describe('section header', () => {
     expect(header).toContain("action: { flexShrink: 0, minHeight: 44, justifyContent: 'center',")
     expect(header).not.toContain('row-reverse')
     const web = readFileSync('components/discover/OfferCardRail.tsx', 'utf8')
-    expect(web).toContain('<MemberColumn className="mb-1 flex items-center justify-between gap-2">')
+    expect(web).toContain('<MemberColumn wide className="mb-1 flex items-center justify-between gap-2">')
     expect(web).toContain('className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink"')
     expect(web).toContain('tap-target group/pill inline-flex shrink-0 items-center')
   })

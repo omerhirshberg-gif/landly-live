@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  if (isBusinessInquiryRateLimited(request)) {
+  if (await isBusinessInquiryRateLimited(request)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   }
 

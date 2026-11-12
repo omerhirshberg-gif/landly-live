@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (err instanceof RequestAuthError) return json({ error: err.message }, err.status)
     throw err
   }
-  if (checkUidRateLimit('sessions', decoded.uid)) return json({ error: 'rate_limited' }, 429)
+  if (await checkUidRateLimit('sessions', decoded.uid)) return json({ error: 'rate_limited' }, 429)
 
   try {
     await syncSessionCutoff(decoded.uid)

@@ -1,5 +1,6 @@
 import Card from '@/components/admin/Card'
 import { SECTION_HEADING } from '@/components/admin/formStyles'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { formatCount, formatIls } from '@/lib/usage/pricing'
 import type { UsageGroup, UsageLine } from '@/lib/usage/usageReport'
 import FreeTierMeter from './FreeTierMeter'
@@ -9,12 +10,11 @@ import FreeTierMeter from './FreeTierMeter'
 // service below it. Numbers sit in <bdi dir="ltr"> and end-aligned columns,
 // so they read the same whatever the surrounding direction.
 
-const UNIT_LABELS = { characters: 'Characters', requests: 'Requests', messages: 'Messages' } as const
 const VENDOR_ICONS = { google: 'fa-cloud', meta: 'fa-comments' } as const
 
-function freeLabel(line: UsageLine): string {
-  if (line.freeAllowance === null) return 'Always free'
-  if (line.freeAllowance === 0) return 'None'
+function freeLabel(line: UsageLine, t: (key: AdminKey) => string): string {
+  if (line.freeAllowance === null) return t('usage.alwaysFree')
+  if (line.freeAllowance === 0) return t('usage.none')
   return formatCount(line.freeAllowance)
 }
 
@@ -30,16 +30,18 @@ const used = (line: UsageLine) => `${line.isUpperBound ? '≤ ' : ''}${formatCou
 const hasMeter = (line: UsageLine): line is UsageLine & { coverage: number } => line.coverage !== null
 
 function LineNote({ line, className = '' }: { line: UsageLine; className?: string }) {
+  const { t } = useAdminT()
   if (!line.note && !line.isUpperBound) return null
   return (
     <span className={`block text-xs text-[#64748B] ${className}`}>
       {line.note}
-      {line.isUpperBound && <span className="text-[#64748B]"> · ≤ upper bound, Google may bill fewer</span>}
+      {line.isUpperBound && <span className="text-[#64748B]">{t('usage.upperBound')}</span>}
     </span>
   )
 }
 
 function GroupHeading({ group }: { group: UsageGroup }) {
+  const { t } = useAdminT()
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#475569]">
@@ -47,13 +49,14 @@ function GroupHeading({ group }: { group: UsageGroup }) {
         <span className="truncate">{group.label}</span>
       </span>
       <span className="shrink-0 text-xs text-[#64748B]">
-        Subtotal <Num className="font-bold text-[#0B1B3D]">{formatIls(group.netIls)}</Num>
+        {t('usage.subtotal', { amount: '' })}<Num className="font-bold text-[#0B1B3D]">{formatIls(group.netIls)}</Num>
       </span>
     </div>
   )
 }
 
 function MobileGroup({ group }: { group: UsageGroup }) {
+  const { t } = useAdminT()
   return (
     <section aria-label={group.label}>
       <div className="border-y border-[#F1F5F9] bg-[#F8FAFC] px-4 py-2.5">
@@ -69,16 +72,16 @@ function MobileGroup({ group }: { group: UsageGroup }) {
               </div>
               <div className="shrink-0 text-end">
                 <Num className="block font-bold text-[#0B1B3D]">{formatIls(line.netIls)}</Num>
-                <span className="text-xs text-[#64748B]">net</span>
+                <span className="text-xs text-[#64748B]">{t('usage.net')}</span>
               </div>
             </div>
             {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
               {[
-                [UNIT_LABELS[line.unit], used(line)],
-                ['Free tier', freeLabel(line)],
-                ['Billable', formatCount(line.billable)],
-                ['Gross', formatIls(line.grossIls)],
+                [t(`usage.unit.${line.unit}` as AdminKey), used(line)],
+                [t('usage.freeTier'), freeLabel(line, t)],
+                [t('usage.billable'), formatCount(line.billable)],
+                [t('usage.gross'), formatIls(line.grossIls)],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-0">
                   <dt className="text-[#64748B]">{label}</dt>
@@ -96,10 +99,11 @@ function MobileGroup({ group }: { group: UsageGroup }) {
 }
 
 export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
+  const { t } = useAdminT()
   return (
     <Card className="overflow-hidden">
       <div className="px-4 pt-4 sm:px-6 sm:pt-5">
-        <h2 className={SECTION_HEADING}>Breakdown by service</h2>
+        <h2 className={SECTION_HEADING}>{t('usage.breakdown')}</h2>
       </div>
 
       {/* Phones and small tablets */}
@@ -114,13 +118,13 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#E2E8F0] text-xs font-semibold uppercase tracking-wider text-[#64748B]">
-              <th scope="col" className="py-3 ps-6 pe-3 text-start">Service</th>
-              <th scope="col" className="px-3 py-3 text-start">Metric</th>
-              <th scope="col" className="px-3 py-3 text-end">Used</th>
-              <th scope="col" className="px-3 py-3 text-end">Free tier</th>
-              <th scope="col" className="px-3 py-3 text-end">Billable</th>
-              <th scope="col" className="px-3 py-3 text-end">Gross</th>
-              <th scope="col" className="py-3 ps-3 pe-6 text-end">Net payable</th>
+              <th scope="col" className="py-3 ps-6 pe-3 text-start">{t('usage.col.service')}</th>
+              <th scope="col" className="px-3 py-3 text-start">{t('usage.col.metric')}</th>
+              <th scope="col" className="px-3 py-3 text-end">{t('usage.col.used')}</th>
+              <th scope="col" className="px-3 py-3 text-end">{t('usage.freeTier')}</th>
+              <th scope="col" className="px-3 py-3 text-end">{t('usage.billable')}</th>
+              <th scope="col" className="px-3 py-3 text-end">{t('usage.gross')}</th>
+              <th scope="col" className="py-3 ps-3 pe-6 text-end">{t('usage.col.netPayable')}</th>
             </tr>
           </thead>
           {groups.map((group) => (
@@ -137,12 +141,12 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
                     <LineNote line={line} className="mt-0.5" />
                     {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
                   </th>
-                  <td className="px-3 py-4 text-[#64748B]">{UNIT_LABELS[line.unit]}</td>
+                  <td className="px-3 py-4 text-[#64748B]">{t(`usage.unit.${line.unit}` as AdminKey)}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-end text-[#0F172A]">
                     <Num>{used(line)}</Num>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-end text-[#64748B]">
-                    <Num>{freeLabel(line)}</Num>
+                    <Num>{freeLabel(line, t)}</Num>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-end text-[#0F172A]">
                     <Num>{formatCount(line.billable)}</Num>

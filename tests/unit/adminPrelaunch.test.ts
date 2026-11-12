@@ -179,7 +179,8 @@ describe('the page', () => {
   })
   it('keeps numbers and phones left-to-right in the table', () => {
     const table = readFileSync('components/admin/PrelaunchTable.tsx', 'utf8')
-    expect(table).toContain('Synced (<bdi dir="ltr">{listId}</bdi>)')
+    expect(table).toContain('\\u2066${listId}\\u2069')
+    expect(table).toContain("t('leadTable.synced'")
     expect(table).toContain('<bdi dir="ltr" className="whitespace-nowrap tabular-nums">{displayPhone(phone)}</bdi>')
   })
 })

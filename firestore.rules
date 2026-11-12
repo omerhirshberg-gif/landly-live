@@ -213,6 +213,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Fixed-window request counters (lib/auth/durableRateLimit.server.ts) and the
+    // sharded order counters (lib/payments/orderNumber.ts), written by the
+    // servers only. No client may read or write them.
+    match /rateLimits/{key} {
+      allow read, write: if false;
+    }
+    match /orderCounter/{shard} {
+      allow read, write: if false;
+    }
+
     // The /join waiting list: leads, the phone and email keys that keep them
     // unique, and the IP window (lib/prelaunch/). Written by /api/prelaunch and
     // read by the export script, both through the Admin SDK. Names, phone

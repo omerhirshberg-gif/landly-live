@@ -31,6 +31,8 @@ export function useDealImage(rawUri: string) {
   return {
     uri,
     role,
+    /** The loaded bitmap's size, or null until it has loaded (DealMedia reads its shape from it). */
+    size: loaded?.uri === uri ? { width: loaded.width, height: loaded.height } : null,
     photoStyle,
     onError: () => setFailedUri(uri),
     onLoad: (e: NativeSyntheticEvent<ImageLoadEventData>) => {

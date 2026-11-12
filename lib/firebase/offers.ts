@@ -1,87 +1,18 @@
-import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore'
+import { collection, doc, documentId, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
 import { db } from './config'
 import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
-import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/voucherTerms'
-import { normalizeImageUrl } from '../offers/imageUrl'
-import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
-import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
-import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type PlaceSnapshot } from '../geo'
-import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
-import { readPerkScope, type PerkScope } from '../offers/perkScope'
-import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { toOfferDocument, type OfferDocument } from '../offers/offerDocument'
+import { fetchOffersFromApi } from '../offers/offersApi'
 
-export interface OfferDocument {
-  id: string
-  businessId: string
-  businessName: string // denormalized
-  // The name in the other languages (lib/business/businessText.ts), copied from the business; null before its first translation.
-  businessTranslations?: BusinessTranslations | null
-  location: string // denormalized from businesses/{businessId}.location
-  imageUrl: string // externally-hosted image link, admin-pasted; empty = no image
-  // The business's logo (lib/business/businessLogo.ts), copied from businesses/{businessId}.logoUrl; '' = none.
-  // Optional only for hand-built fixtures: every offer read from Firestore has it.
-  businessLogoUrl?: string
-  title: string
-  description: string
-  originalPrice: number
-  offerPrice: number
-  category: string
-  createdAt: Date | null // server-set at creation, immutable; null only for offers that predate this field
-  isBestseller: boolean // manual admin toggle
-  expiryDate: Date | null
-  totalQuantity: number | null // null = unlimited claims
-  claimedCount: number
-  validityDays: number // how long a voucher bought now stays valid; DEFAULT_VOUCHER_VALIDITY_DAYS when unset
-  redemptionTerms: string // the merchant's conditions for using the voucher; '' = none stated
-  redemptionMethod: RedemptionMethod // in store, online or by phone; 'in_store' for offers from before methods existed
-  redemptionInstructions: string // the merchant's own steps, one per line; '' = the method's default steps
-  // The text fields in the other languages (lib/i18n/contentTranslation.ts); null before the first translation.
-  translations?: OfferTranslations | null
-  geo?: Coordinates | null // denormalized from businesses/{businessId}.address; null = not geocoded
-  city?: LocalizedName // denormalized like geo; {} when unknown
-  address?: PlaceSnapshot | null // denormalized like geo: the address lines in each language; null = not geocoded
-  // How it's fulfilled and who honours it (lib/offers/perkScope.ts). A Multipass perk has a brand instead of a business;
-  // a multi-chain one lists its chains. Optional only for hand-built fixtures: every offer read from Firestore has them.
-  fulfillmentType?: FulfillmentType
-  perkScope?: PerkScope
-  brandName?: string
-  participatingChains?: string[]
-  chainsCount?: number
-  universalRedemptionGuide?: { he: string; en: string } | null
-}
+export type { OfferDocument } from '../offers/offerDocument'
 
-function toDoc(id: string, data: Record<string, unknown>): OfferDocument {
-  return {
-    id,
-    businessId: (data.businessId as string) ?? '',
-    businessName: (data.businessName as string) ?? '',
-    businessTranslations: parseBusinessTranslations(data.businessTranslations),
-    location: (data.location as string) ?? '',
-    // Normalized on read too, so links saved before the admin routes did it still render.
-    imageUrl: normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : ''),
-    businessLogoUrl: normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : ''),
-    title: (data.title as string) ?? '',
-    description: (data.description as string) ?? '',
-    originalPrice: Number(data.originalPrice) || 0,
-    offerPrice: Number(data.offerPrice) || 0,
-    category: (data.category as string) ?? '',
-    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
-    isBestseller: !!data.isBestseller,
-    expiryDate: data.expiryDate instanceof Timestamp ? data.expiryDate.toDate() : null,
-    totalQuantity: typeof data.totalQuantity === 'number' ? data.totalQuantity : null,
-    claimedCount: Number(data.claimedCount) || 0,
-    validityDays: normalizeValidityDays(data.validityDays),
-    redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
-    redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
-    redemptionInstructions: normalizeRedemptionInstructions(data.redemptionInstructions),
-    translations: parseOfferTranslations(data.translations),
-    geo: parseCoordinates(data.geo),
-    city: parseLocalizedName(data.city),
-    address: parsePlaceSnapshot(data.address),
-    fulfillmentType: parseFulfillmentType(data.fulfillmentType),
-    ...readPerkScope(data),
-  }
-}
+// Offers are read in one shot and filtered on the device, so the read is
+// capped: hundreds of live offers is the design size (see /api/public/offers).
+export const OFFERS_READ_LIMIT = 500
+// Firestore's `in` takes at most 30 values.
+const IN_CHUNK = 30
+
+const toDoc = toOfferDocument
 
 function isNotExpired(offer: OfferDocument, now: number): boolean {
   return !offer.expiryDate || offer.expiryDate.getTime() >= now
@@ -128,28 +59,63 @@ export async function getOffer(offerId: string): Promise<OfferDocument | null> {
 
 // For a caller-supplied list of ids (e.g. a wishlist) — an id whose offer was
 // deleted since just comes back missing rather than throwing, so callers can
-// render "skip it" behavior for free.
+// render "skip it" behavior for free. Read in chunks of 30 with one `in` query
+// each (not one read per id); the result keeps the order of `ids`.
 export async function getOffersByIds(ids: string[]): Promise<OfferDocument[]> {
-  const offers = await Promise.all(ids.map((id) => getOffer(id)))
-  return offers.filter((offer): offer is OfferDocument => offer !== null)
+  const unique = [...new Set(ids)]
+  const found = new Map<string, OfferDocument>()
+  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+    const snap = await getDocs(query(collection(db, 'offers'), where(documentId(), 'in', unique.slice(i, i + IN_CHUNK))))
+    for (const d of snap.docs) found.set(d.id, toDoc(d.id, d.data()))
+  }
+  return ids.flatMap((id) => {
+    const offer = found.get(id)
+    return offer ? [offer] : []
+  })
+}
+
+// One shared, short-lived copy of the live offers: Home, Perks, categories and
+// the landing all read the same list, so within the TTL they cost one fetch
+// between them, and concurrent callers share one in-flight request.
+export const OFFERS_CACHE_TTL_MS = 60_000
+let offersCache: { at: number; promise: Promise<OfferDocument[]> } | null = null
+
+async function loadOffers(): Promise<OfferDocument[]> {
+  try {
+    return await fetchOffersFromApi()
+  } catch {
+    // The CDN route is an optimization: if it is down or unreachable, read Firestore directly.
+    const snap = await getDocs(query(collection(db, 'offers'), limit(OFFERS_READ_LIMIT)))
+    return snap.docs.map((d) => toDoc(d.id, d.data()))
+  }
+}
+
+/** Drops the shared copy, e.g. after the member signs out or on a pull-to-refresh. */
+export function clearOffersCache() {
+  offersCache = null
+}
+
+// The live offers (not expired). `force` skips the shared copy (pull-to-refresh).
+export async function getAllOffers({ force = false }: { force?: boolean } = {}): Promise<OfferDocument[]> {
+  const now = Date.now()
+  if (force || !offersCache || now - offersCache.at > OFFERS_CACHE_TTL_MS) {
+    const promise = loadOffers()
+    const entry = { at: now, promise }
+    offersCache = entry
+    // A failed load is never kept, so the next caller retries instead of replaying the error.
+    promise.catch(() => {
+      if (offersCache === entry) offersCache = null
+    })
+  }
+  const offers = await offersCache!.promise
+  const current = Date.now()
+  return offers.filter((offer) => isNotExpired(offer, current))
 }
 
 export async function getOffersByCategory(category: string): Promise<OfferDocument[]> {
-  const snap = await getDocs(query(collection(db, 'offers'), where('category', '==', category)))
-  const now = Date.now()
-  return snap.docs.map((d) => toDoc(d.id, d.data())).filter((offer) => isNotExpired(offer, now))
-}
-
-// Single unfiltered fetch for pages that need offers across every category
-// (e.g. the /categories overview) — cheaper than one query per category.
-export async function getAllOffers(): Promise<OfferDocument[]> {
-  const snap = await getDocs(collection(db, 'offers'))
-  const now = Date.now()
-  return snap.docs.map((d) => toDoc(d.id, d.data())).filter((offer) => isNotExpired(offer, now))
+  return (await getAllOffers()).filter((offer) => offer.category === category)
 }
 
 export async function getBestsellerOffers(): Promise<OfferDocument[]> {
-  const snap = await getDocs(query(collection(db, 'offers'), where('isBestseller', '==', true)))
-  const now = Date.now()
-  return snap.docs.map((d) => toDoc(d.id, d.data())).filter((offer) => isNotExpired(offer, now))
+  return (await getAllOffers()).filter((offer) => offer.isBestseller)
 }

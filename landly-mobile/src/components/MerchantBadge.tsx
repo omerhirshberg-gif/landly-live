@@ -9,6 +9,8 @@ const BADGE_MIN_WIDTH = 56
 const LOGO_MAX_WIDTH = 96
 /** An offer's own page (web: size="lg"): the tile's side room, narrowest width and widest. */
 const LARGE = { padding: 12, minWidth: 72, maxWidth: 160 }
+/** A feed card's tile (web: h-[44px] min-w-[64px] max-w-[124px] px-1.5 py-1): its height, side room, widest, and the room left for the mark. */
+const FIXED = { height: 44, minWidth: 64, maxWidth: 124, paddingX: 6, paddingY: 4, innerHeight: 44 - 2 - 8, maxInnerWidth: 124 - 2 - 12 }
 
 // The business on a perk card (OfferCard.tsx) and its page: a white rounded tile
 // with a hairline edge, of one height and as wide as its logo needs: a square or
@@ -25,6 +27,7 @@ export default function MerchantBadge({
   initial,
   height,
   large = false,
+  fixed = false,
   style,
 }: {
   logoUri: string | null
@@ -32,6 +35,8 @@ export default function MerchantBadge({
   height: number
   /** An offer's own page, where the brand is a headline: a wide wordmark may run to 160pt. */
   large?: boolean
+  /** A feed card's badge (OfferCard): one 44pt height for every logo, as wide as its logo needs (64-124pt); the mark fills the height. */
+  fixed?: boolean
   style?: StyleProp<ViewStyle>
 }) {
   // Keyed on the URL, so a changed logo gets a fresh attempt.
@@ -41,6 +46,32 @@ export default function MerchantBadge({
   const inner = height - 2
   const logoMaxWidth = large ? LARGE.maxWidth - LARGE.padding * 2 - 2 : LOGO_MAX_WIDTH
   const aspect = loaded && loaded.uri === logo ? loaded.aspect : 1
+  if (fixed) {
+    // One height for every logo, the width following the mark's proportions inside 64-124pt: a wordmark and a compact
+    // mark both fill the height, and a square one is not lost in a wide box. Web: MerchantBadge size="sm".
+    return (
+      <View style={[styles.fixedTile, style]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        {logo ? (
+          <Image
+            source={{ uri: logo }}
+            style={{ height: FIXED.innerHeight, width: Math.min(FIXED.maxInnerWidth, FIXED.innerHeight * aspect) }}
+            resizeMode="contain"
+            resizeMethod="scale"
+            onLoad={(e) => {
+              const { width, height: natural } = e.nativeEvent.source
+              if (width && natural) setLoaded({ uri: logo, aspect: width / natural })
+            }}
+            onError={() => setFailedUri(logo)}
+            accessibilityIgnoresInvertColors
+          />
+        ) : (
+          <Text style={styles.fixedInitial} maxFontSizeMultiplier={1} numberOfLines={1}>
+            {initial}
+          </Text>
+        )}
+      </View>
+    )
+  }
   return (
     <View
       style={[styles.tile, large && styles.tileLarge, { height }, style]}
@@ -72,6 +103,28 @@ export default function MerchantBadge({
 }
 
 const styles = StyleSheet.create({
+  // The feed cards' tile (web: h-[44px] rounded-xl bg-white border border-slate-200/90).
+  fixedTile: {
+    height: FIXED.height,
+    minWidth: FIXED.minWidth,
+    maxWidth: FIXED.maxWidth,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0B1B3D',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    paddingHorizontal: FIXED.paddingX,
+    paddingVertical: FIXED.paddingY,
+  },
+  fixedInitial: { fontSize: 18, fontWeight: '800', color: colors.brand, textAlign: 'center' },
   // Web: border-slate-100, shadow-sm.
   tile: {
     minWidth: BADGE_MIN_WIDTH,

@@ -7,6 +7,7 @@ import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 import { formatPrice } from '@/lib/format'
 import { getOfferDiscountPercent } from '@/lib/firebase/offers'
 import type { OfferStatus } from '@/lib/admin/offerStatus'
+import { localizedApiError } from '@/lib/api/apiError'
 
 interface BusinessOffer {
   id: string
@@ -40,7 +41,7 @@ export default function BusinessOffersPage() {
       const suffix = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
       const res = await fetch(`/api/business/offers?limit=50${suffix}`, { headers: { Authorization: `Bearer ${idToken}` } })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? t('bizdash_offers_error')); return }
+      if (!res.ok) { setError(localizedApiError(data, t, 'bizdash_offers_error')); return }
       setOffers((current) => append ? [...(current ?? []), ...(data.offers ?? [])] : (data.offers ?? []))
       setNextCursor(data.nextCursor ?? null)
     } catch { setError(t('bizdash_offers_error')) }

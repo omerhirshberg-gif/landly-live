@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Gift, Handshake, Headset, Heart, House, Info, ListChecks, LogOut, PlaneTakeoff, QrCode, Settings, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Gift, Handshake, Headset, House, Info, ListChecks, LogOut, PlaneTakeoff, QrCode, Settings, type LucideIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { isNavLinkActive } from '@/lib/navActive'
@@ -9,11 +9,10 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
-import { useWishlist } from '@/lib/firebase/useWishlist'
 
 // The phone/tablet drawer (below lg), where the bar is only the logo and the
 // hamburger. A member's drawer, top to bottom: who they are (a card that
-// opens /profile), the product links (Home, My Pass, Explore Perks, Wishlist,
+// opens /profile), the product links (Home, My Pass, Explore Perks,
 // Making Aliyah?), a Settings link to /settings (language, Privacy &
 // Security, support, legal and account deletion live there), then Sign Out
 // in a footer that sticks above the safe area. Guests get the same icon rows
@@ -40,7 +39,6 @@ export default function MobileMenu({
   activeAnchorId: string | null
 }) {
   const pathname = usePathname()
-  const { wishlistCount } = useWishlist()
 
   const linkClass = (href: string) =>
     `${rowBase} text-copy font-semibold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-ink'}`
@@ -85,7 +83,6 @@ export default function MobileMenu({
               {/* My Pass opens /member, where the active passes and their QR codes are */}
               <IconLink href="/member" icon={QrCode} label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
               <IconLink href="/categories" icon={Gift} label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
-              <IconLink href="/wishlist" icon={Heart} label={t('nav_wishlist')} onClose={onClose} className={linkClass('/wishlist')} count={wishlistCount} />
               <IconLink href="/olim" icon={PlaneTakeoff} label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
             </div>
 
@@ -161,15 +158,11 @@ function ItemIcon({ icon: Icon }: { icon: LucideIcon }) {
   )
 }
 
-function IconLink({ href, icon, label, onClose, className, count }: { href: string; icon: LucideIcon; label: string; onClose: () => void; className: string; count?: number }) {
+function IconLink({ href, icon, label, onClose, className }: { href: string; icon: LucideIcon; label: string; onClose: () => void; className: string }) {
   return (
     <Link href={href} onClick={onClose} className={className}>
       <ItemIcon icon={icon} />
       <span className="min-w-0 flex-1">{label}</span>
-      {/* The saved count, only when there is one: an empty wishlist shows the plain row. */}
-      {count !== undefined && count > 0 && (
-        <span className="flex-shrink-0 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center rounded-full bg-brand text-white text-xs font-bold tabular-nums">{count > 99 ? '99+' : count}</span>
-      )}
     </Link>
   )
 }

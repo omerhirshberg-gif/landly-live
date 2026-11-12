@@ -4,6 +4,7 @@ import { useId } from 'react'
 import ImageUploadField from './ImageUploadField'
 import { ImagePreview } from './OfferFormFields'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 // The business's logo, on the new-business page and its "Edit details":
 // uploaded (fitted whole into a ≤1024px square, a lossless PNG stored under
@@ -12,6 +13,7 @@ import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
 // (lib/business/businessLogo.ts).
 export default function BusinessLogoField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const id = useId()
+  const { t } = useAdminT()
   return (
     <ImageUploadField
       shape="logo"
@@ -19,7 +21,7 @@ export default function BusinessLogoField({ value, onChange }: { value: string; 
       onChange={onChange}
       linkInput={
         <>
-          <label htmlFor={`${id}-logo-url`} className={ADMIN_LABEL}>Logo URL</label>
+          <label htmlFor={`${id}-logo-url`} className={ADMIN_LABEL}>{t('logoField.url')}</label>
           <input
             id={`${id}-logo-url`}
             type="url"
@@ -31,7 +33,7 @@ export default function BusinessLogoField({ value, onChange }: { value: string; 
             onChange={(e) => onChange(e.target.value)}
           />
           <p id={`${id}-logo-hint`} className={ADMIN_HINT}>
-            A direct link to the logo. A transparent PNG or SVG, 1024px or larger, looks sharpest; it&apos;s shown whole on white, never cropped.
+            {t('logoField.hint')}
           </p>
           <ImagePreview url={value} shape="logo" />
         </>

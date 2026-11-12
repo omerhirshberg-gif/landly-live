@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useBusinessLang } from '@/lib/business/BusinessLangProvider'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { localizedApiError } from '@/lib/api/apiError'
 
 // `id` is an opaque reference (never the voucher id, which names the
 // customer); `orderNumber` is the "#1001" the member sees too, null for
@@ -54,7 +55,7 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
         })
         const data = await res.json()
         if (!res.ok) {
-          setError(data.error ?? t(errorKey))
+          setError(localizedApiError(data, t, errorKey))
           return
         }
         setVouchers((current) => append ? [...(current ?? []), ...(data.vouchers ?? [])] : (data.vouchers ?? []))

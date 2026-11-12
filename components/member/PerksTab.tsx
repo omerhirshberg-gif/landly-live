@@ -46,7 +46,7 @@ export default function PerksTab({ vouchers }: { vouchers: ActiveVoucher[] | nul
   // lib/layout/foldable.ts) up, so neither the inner screen nor the desktop
   // page's main column is a strip of stretched rows beside empty space.
   return (
-    <ul className="grid gap-3 fold:grid-cols-2">
+    <ul className="grid gap-4 fold:grid-cols-2">
       {vouchers.map((voucher) => (
         <li key={voucher.id}>
           <VoucherCard voucher={voucher} />

@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
-import { subscribeToUserVouchers, type VoucherDocument } from '@shared/firebase/vouchers'
+import { useVouchers } from '@shared/firebase/VouchersProvider'
+import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { totalSaved } from '@shared/member/savings'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
@@ -40,32 +41,15 @@ export default function WalletScreen() {
   const router = useRouter()
   const { loaded, profile } = useMemberProfile(user)
   const [tab, setTab] = useState<PassTab>('perks')
-  const [active, setActive] = useState<Voucher[] | null>(null)
-  const [redeemed, setRedeemed] = useState<Voucher[] | null>(null)
   const [saved, setSaved] = useState<number | null>(null)
-  const [failed, setFailed] = useState(false)
-  // Bumped by pull-to-refresh to re-open the listeners after an error.
-  const [attempt, setAttempt] = useState(0)
-
-  useEffect(() => {
-    if (!user) return
-    const onError = () => setFailed(true)
-    const stopActive = subscribeToUserVouchers(user.uid, 'active', (next) => {
-      setActive(next)
-      setFailed(false)
-    }, onError)
-    const stopRedeemed = subscribeToUserVouchers(user.uid, 'redeemed', setRedeemed, onError)
-    return () => {
-      stopActive()
-      stopRedeemed()
-    }
-  }, [user, attempt])
+  // The shared listeners (Home reads the same active list); pull-to-refresh re-opens them after an error.
+  const { active, redeemed, failed, reload } = useVouchers({ redeemed: true })
 
   // Savings count from purchase (lib/member/savings.ts): active and redeemed passes alike.
   useEffect(() => {
-    if (!active || !redeemed) return
+    if (!user || !active || !redeemed) return
     let cancelled = false
-    totalSaved([...active, ...redeemed])
+    totalSaved(user.uid, [...active, ...redeemed])
       .then((amount) => {
         if (!cancelled) setSaved(amount)
       })
@@ -73,7 +57,7 @@ export default function WalletScreen() {
     return () => {
       cancelled = true
     }
-  }, [active, redeemed])
+  }, [user, active, redeemed])
 
   const list = tab === 'perks' ? active : redeemed
 
@@ -90,7 +74,7 @@ export default function WalletScreen() {
         renderItem={({ item }) => <FeedCell>{tab === 'perks' ? <VoucherPass voucher={item} /> : <RedeemedPass voucher={item} />}</FeedCell>}
         contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={false} onRefresh={() => setAttempt((n) => n + 1)} tintColor={colors.brand} />}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={reload} tintColor={colors.brand} />}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.identity}>

@@ -11,9 +11,10 @@ import Card, { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
 import { ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
-import PrelaunchTable, { langName, PERSONA_NAMES, REFERRAL_SOURCE_NAMES } from '@/components/admin/PrelaunchTable'
+import PrelaunchTable, { langName, personaName, referralSourceName } from '@/components/admin/PrelaunchTable'
 import StatCard from '@/components/admin/StatCard'
 import { ADMIN_INPUT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 interface LeadsResponse {
   leads: AdminLead[]
@@ -50,6 +51,7 @@ function Breakdown({ rows, total }: { rows: { key: string; label: string; count:
 // personal data with a marketing consent attached: opt-outs go through
 // scripts/delete-prelaunch-lead.mjs.
 export default function PrelaunchLeadsPage() {
+  const { t } = useAdminT()
   const [data, setData] = useState<LeadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -65,7 +67,7 @@ export default function PrelaunchLeadsPage() {
       if (!res.ok) throw new Error(body.error)
       setData(body)
     } catch {
-      setError('Failed to load the leads.')
+      setError(t('leads.loadFailed'))
     } finally {
       setRefreshing(false)
     }
@@ -93,7 +95,7 @@ export default function PrelaunchLeadsPage() {
       link.click()
       URL.revokeObjectURL(url)
     } catch {
-      setError('Failed to export the leads.')
+      setError(t('leads.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -102,25 +104,23 @@ export default function PrelaunchLeadsPage() {
   return (
     <div>
       <PageHeader
-        title="Pre-Launch Leads"
+        title={t('leads.title')}
         subtitle={
           data ? (
-            <>
-              Sign-ups from /join in <code>{data.projectId}</code>. Updated <bdi dir="ltr">{formatIsraeliDateTime(data.generatedAt)}</bdi>.
-            </>
+            t('leads.subtitleLive', { project: `\u2066${data.projectId}\u2069`, time: `\u2066${formatIsraeliDateTime(data.generatedAt)}\u2069` })
           ) : (
-            'Sign-ups from /join.'
+            t('leads.subtitle')
           )
         }
         actions={
           <div className="flex w-full gap-2 sm:w-auto">
             <button type="button" className={`${SECONDARY_BUTTON} flex-1 sm:flex-none`} onClick={() => void load()} disabled={refreshing} aria-busy={refreshing}>
               <i className={`fa-solid fa-arrows-rotate text-xs ${refreshing ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
-              {refreshing ? 'Refreshing…' : 'Refresh'}
+              {refreshing ? t('leads.refreshing') : t('leads.refresh')}
             </button>
             <button type="button" className={`${SECONDARY_BUTTON} flex-1 sm:flex-none`} onClick={() => void exportCsv()} disabled={exporting || !filtered.length} aria-busy={exporting}>
               <i className="fa-solid fa-file-csv text-sm" aria-hidden="true" />
-              {exporting ? 'Exporting…' : 'Export to CSV'}
+              {exporting ? t('leads.exporting') : t('leads.export')}
             </button>
           </div>
         }
@@ -130,25 +130,25 @@ export default function PrelaunchLeadsPage() {
 
       <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         <div className="flex flex-col gap-3 sm:gap-4">
-          <StatCard label="Total Leads" value={data ? data.stats.total : null} icon="fa-rocket" accent="blue" emptyHint="Leads appear here once someone signs up on /join." />
-          <StatCard label="Founding Members" value={data ? data.stats.foundingMembers : null} icon="fa-award" accent="amber" />
+          <StatCard label={t('leads.statTotal')} value={data ? data.stats.total : null} icon="fa-rocket" accent="blue" emptyHint={t('leads.statTotalHint')} />
+          <StatCard label={t('leads.statFounding')} value={data ? data.stats.foundingMembers : null} icon="fa-award" accent="amber" />
         </div>
         {data ? (
           <>
             <Card className="p-4 sm:p-6">
-              <h2 className={SECTION_HEADING}>Languages</h2>
+              <h2 className={SECTION_HEADING}>{t('leads.languages')}</h2>
               <Breakdown total={data.stats.total} rows={PRELAUNCH_LANGS.map((lang) => ({ key: lang, label: langName(lang), count: data.stats.byLang[lang] }))} />
             </Card>
             <Card className="p-4 sm:p-6">
-              <h2 className={SECTION_HEADING}>Personas</h2>
-              <Breakdown total={data.stats.total} rows={[...PERSONAS, 'none' as const].map((key) => ({ key, label: PERSONA_NAMES[key], count: data.stats.byPersona[key] }))} />
+              <h2 className={SECTION_HEADING}>{t('leads.personas')}</h2>
+              <Breakdown total={data.stats.total} rows={[...PERSONAS, 'none' as const].map((key) => ({ key, label: personaName(key, t), count: data.stats.byPersona[key] }))} />
             </Card>
             <Card className="p-4 sm:p-6">
-              <h2 className={SECTION_HEADING}>Heard About Us</h2>
-              <Breakdown total={data.stats.total} rows={[...REFERRAL_SOURCES, 'none' as const].map((key) => ({ key, label: REFERRAL_SOURCE_NAMES[key], count: data.stats.byReferralSource[key] }))} />
+              <h2 className={SECTION_HEADING}>{t('leads.heard')}</h2>
+              <Breakdown total={data.stats.total} rows={[...REFERRAL_SOURCES, 'none' as const].map((key) => ({ key, label: referralSourceName(key, t), count: data.stats.byReferralSource[key] }))} />
             </Card>
             <Card className="p-4 sm:col-span-2 sm:p-6">
-              <h2 className={SECTION_HEADING}>Top Referrers</h2>
+              <h2 className={SECTION_HEADING}>{t('leads.referrers')}</h2>
               {data.stats.topReferrers.length ? (
                 <ol className="mt-3 space-y-2">
                   {data.stats.topReferrers.map((referrer) => (
@@ -162,7 +162,7 @@ export default function PrelaunchLeadsPage() {
                   ))}
                 </ol>
               ) : (
-                <p className="mt-3 text-sm text-[#475569]">No referred sign-ups yet.</p>
+                <p className="mt-3 text-sm text-[#475569]">{t('leads.noReferred')}</p>
               )}
             </Card>
           </>
@@ -171,32 +171,32 @@ export default function PrelaunchLeadsPage() {
         )}
       </div>
 
-      {data && rows.length === 0 && <EmptyState icon="fa-rocket" title="No leads yet" description="Leads show up here as soon as someone signs up on /join." />}
+      {data && rows.length === 0 && <EmptyState icon="fa-rocket" title={t('leads.emptyTitle')} description={t('leads.emptyDesc')} />}
 
       {rows.length > 0 && (
         <>
           <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem] lg:items-end">
-            <SearchInput value={filters.query} onChange={(query) => set({ query })} label="Search leads" placeholder="Search name, email or phone" />
+            <SearchInput value={filters.query} onChange={(query) => set({ query })} label={t('leads.search')} placeholder={t('leads.searchPlaceholder')} />
             <div>
-              <label htmlFor="lead-lang" className={ADMIN_LABEL}>Language</label>
+              <label htmlFor="lead-lang" className={ADMIN_LABEL}>{t('leads.language')}</label>
               <select id="lead-lang" className={ADMIN_INPUT} value={filters.lang ?? ''} onChange={(event) => set({ lang: (event.target.value || null) as LeadFilters['lang'] })}>
-                <option value="">All languages</option>
+                <option value="">{t('leads.allLanguages')}</option>
                 {PRELAUNCH_LANGS.map((lang) => <option key={lang} value={lang}>{langName(lang)}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="lead-persona" className={ADMIN_LABEL}>Persona</label>
+              <label htmlFor="lead-persona" className={ADMIN_LABEL}>{t('leads.persona')}</label>
               <select id="lead-persona" className={ADMIN_INPUT} value={filters.persona ?? ''} onChange={(event) => set({ persona: (event.target.value || null) as LeadFilters['persona'] })}>
-                <option value="">All personas</option>
-                {[...PERSONAS, 'none' as const].map((key) => <option key={key} value={key}>{PERSONA_NAMES[key]}</option>)}
+                <option value="">{t('leads.allPersonas')}</option>
+                {[...PERSONAS, 'none' as const].map((key) => <option key={key} value={key}>{personaName(key, t)}</option>)}
               </select>
             </div>
           </div>
-          <ResultCount shown={filtered.length} total={rows.length} noun="leads" />
+          <ResultCount shown={filtered.length} total={rows.length} noun={t('leads.noun')} />
           {filtered.length ? (
             <PrelaunchTable rows={filtered} listId={data?.listId ?? ''} onRetried={load} onRetryError={setError} />
           ) : (
-            <EmptyState icon="fa-magnifying-glass" title="No leads match" description="Try a different search or clear the filters." />
+            <EmptyState icon="fa-magnifying-glass" title={t('leads.noMatchTitle')} description={t('leads.noMatchDesc')} />
           )}
         </>
       )}

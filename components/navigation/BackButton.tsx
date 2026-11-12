@@ -18,6 +18,8 @@ interface BackButtonProps {
   variant?: 'pill' | 'icon' | 'glass'
   /** Always go to `fallback`, never through history (lib/navigation/back.ts). */
   force?: boolean
+  /** Replaces the navigation: a back that only clears a filter on the page it's on. */
+  onBack?: () => void
   className?: string
 }
 
@@ -27,7 +29,7 @@ interface BackButtonProps {
 // through the browser's history when there's an in-app page to return to,
 // so it agrees with the browser's back and the iOS/Android edge swipe, which
 // globals.css deliberately leaves free.
-export default function BackButton({ fallback, label, contextLabel = false, variant = 'pill', force = false, className = '' }: BackButtonProps) {
+export default function BackButton({ fallback, label, contextLabel = false, variant = 'pill', force = false, onBack, className = '' }: BackButtonProps) {
   const { t } = useLang()
   const router = useRouter()
   // The in-app history only exists in the browser, so the contextual text is
@@ -39,6 +41,10 @@ export default function BackButton({ fallback, label, contextLabel = false, vari
   const text = contextLabel ? t(contextKey) : (label ?? t('nav_back'))
 
   const goBack = () => {
+    if (onBack) {
+      onBack()
+      return
+    }
     const action = backAction(fallback, previousPath(), force)
     if (action.kind === 'back') router.back()
     else {

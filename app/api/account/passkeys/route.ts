@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     if (err instanceof RequestAuthError) return NextResponse.json({ error: err.message }, { status: err.status })
     throw err
   }
-  if (checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (await checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   if (!webAuthnConfig()) return NextResponse.json({ available: false, passkeys: [] })
 
   try {

@@ -4,6 +4,7 @@ import CategoryBadge from './CategoryBadge'
 import BidiText from './BidiText'
 import LogoTile from './LogoTile'
 import StatusBadge from './StatusBadge'
+import { useAdminT } from '@/lib/admin/translations'
 
 export interface HeroBusiness {
   businessName: string
@@ -24,10 +25,11 @@ const LINK = 'inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm 
 // it: Google Maps and Waze when it's on the map, call and WhatsApp when it
 // has a phone. `actions` is the page's own buttons (Add offer, ⋯).
 export default function BusinessHero({ business, actions }: { business: HeroBusiness; actions: React.ReactNode }) {
+  const { t } = useAdminT()
   const { address } = business
   const place = address ? `${address.lat},${address.lng}` : ''
   return (
-    <section aria-label="Business" className="mb-8 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
+    <section aria-label={t('bizHero.label')} className="mb-8 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-4 sm:gap-5">
           <LogoTile logoUrl={business.logoUrl} name={business.businessName} size="xl" />
@@ -62,7 +64,7 @@ export default function BusinessHero({ business, actions }: { business: HeroBusi
           <bdi dir="auto" className="min-w-0 [text-align:match-parent]">
             {address?.formatted.en || address?.formatted.he || business.location}
           </bdi>
-          {!address && <StatusBadge tone="amber">Not on the map</StatusBadge>}
+          {!address && <StatusBadge tone="amber">{t('bizHero.notOnMap')}</StatusBadge>}
         </div>
         <div className="-mx-3 flex flex-wrap items-center sm:mx-0">
           {address && (

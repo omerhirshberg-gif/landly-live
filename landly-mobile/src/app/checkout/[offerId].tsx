@@ -49,6 +49,9 @@ const FAILURE_KEYS: Record<CheckoutFailure, TranslationKey> = {
 // so back from there lands on the offer, now "claimed", never on checkout.
 // While a payment is in flight the dimmed overlay holds the screen: no swipe
 // back, no Android back, no second tap.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function CheckoutScreen() {
   const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
@@ -211,7 +214,7 @@ export default function CheckoutScreen() {
         </View>
       ) : step === 'payment' ? (
         <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-          <TranzilaPaymentStep offerTitle={order.offerTitle} amount={order.amount} onBack={() => setStep('summary')} />
+          <TranzilaPaymentStep offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
         </ScrollView>
       ) : (
         <>

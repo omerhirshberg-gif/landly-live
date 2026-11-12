@@ -1,4 +1,5 @@
 import Card from './Card'
+import { useAdminT } from '@/lib/admin/translations'
 
 const ACCENT_CLASSES = {
   blue: 'bg-[#F0F7FF] text-[#0038B8]',
@@ -16,6 +17,7 @@ interface StatCardProps {
 }
 
 export default function StatCard({ label, value, icon, accent = 'blue', emptyHint }: StatCardProps) {
+  const { t } = useAdminT()
   return (
     // Two to a row even on a phone, so the padding, number and icon shrink below sm.
     <Card className="p-4 sm:p-6">
@@ -23,7 +25,7 @@ export default function StatCard({ label, value, icon, accent = 'blue', emptyHin
         <div className="min-w-0">
           <div className="text-sm font-medium text-[#475569]">{label}</div>
           {value === null ? (
-            <div aria-label="Loading" className="mt-3 h-8 w-14 rounded-lg bg-[#F1F5F9] motion-safe:animate-pulse sm:h-9 sm:w-16" />
+            <div aria-label={t('stat.loading')} className="mt-3 h-8 w-14 rounded-lg bg-[#F1F5F9] motion-safe:animate-pulse sm:h-9 sm:w-16" />
           ) : (
             <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#0B1B3D] tabular-nums sm:text-4xl">
               <bdi dir="ltr">{value}</bdi>

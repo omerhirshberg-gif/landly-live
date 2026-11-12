@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => {
   return { uid: vi.fn(), db: vi.fn(), AuthError }
 })
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: mocks.db }))
+// The Firestore-backed window (lib/auth/durableRateLimit.server.ts) has its own tests (securityLimits); here only the in-memory budget is under test.
+vi.mock('@/lib/auth/durableRateLimit.server', () => ({ isDurablyLimited: async () => false }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({ requireBusinessUid: mocks.uid, requireVerifiedCustomerUid: mocks.uid, RequestAuthError: mocks.AuthError }))
 beforeEach(() => { vi.resetModules(); vi.resetAllMocks(); vi.useFakeTimers(); mocks.uid.mockResolvedValue('user') })
 afterEach(() => vi.useRealTimers())

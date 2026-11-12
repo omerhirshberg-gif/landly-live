@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import { chunked } from '@/lib/firebase/batching'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { offerPlaceFields, parseGeoAddress } from '@/lib/geo'
@@ -71,7 +72,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
   const logoUrl = business.logoUrl === undefined ? storedLogo : logo.logoUrl
   const translated = await businessTranslationsForSave(fields.businessName, businessSnap.data()?.translations, body?.businessNameOverrides)
   if (!translated.ok) return badRequest(translated.error)
-  const offersSnap = await adminDb.collection('offers').where('businessId', '==', uid).get()
+  const offersSnap = await adminDb.collection('offers').where('businessId', '==', uid).limit(500).get()
   // A batch holds 500 writes; one is the business itself.
   if (offersSnap.size > 499) return NextResponse.json({ error: 'Too many offers to update in one save.' }, { status: 500 })
   const batch = adminDb.batch()
@@ -139,10 +140,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ u
   // they're self-contained via denormalized fields.
   const offersSnap = await adminDb.collection('offers').where('businessId', '==', uid).get()
   try {
-    const batch = adminDb.batch()
-    for (const doc of offersSnap.docs) batch.delete(doc.ref)
-    batch.delete(businessRef)
-    await batch.commit()
+    // Deleted in batches of 400 (a batch holds 500 writes), the business last, so a business
+    // with any number of offers cleans up and a failure part-way leaves the business to retry.
+    for (const docs of chunked(offersSnap.docs, 400)) {
+      const batch = adminDb.batch()
+      for (const doc of docs) batch.delete(doc.ref)
+      await batch.commit()
+    }
+    await businessRef.delete()
   } catch {
     return NextResponse.json({
       error: 'The login account was removed, but deleting the business and offer records failed. They need manual cleanup in Firestore -- the email is already freed for reuse.',

@@ -22,6 +22,8 @@ export interface VoucherDocument {
   redemptionCode: string
   // A Multipass voucher's own code, handed out at checkout (lib/inventory/poolAllocation.ts); null for merchant-honoured vouchers.
   externalCode?: string | null
+  // What the member saved on this purchase, in agorot (set by the payment webhook; lib/member/savings.ts); absent on older vouchers.
+  savingsAgorot?: number | null
   // What the QR code carries (redeemVoucherKey): 128 random bits, set by the
   // payment webhook. null for vouchers issued before it existed, until
   // scripts/backfill-redeem-tokens.mjs gives them one.
@@ -75,6 +77,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     offerTitle: (data.offerTitle as string) ?? '',
     redemptionCode: (data.redemptionCode as string) ?? '',
     externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
+    savingsAgorot: typeof data.savingsAgorot === 'number' && Number.isFinite(data.savingsAgorot) && data.savingsAgorot >= 0 ? data.savingsAgorot : null,
     redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
     status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
     takenAt: data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null,
@@ -116,8 +119,12 @@ export function subscribeToVoucher(voucherId: string, onChange: (voucher: (Vouch
 // automatic single-field indexes, no composite index needed. Filtering by
 // status here (not client-side) keeps redeemed vouchers out of callers like
 // PerksTab that should only ever see active ones.
+// Capped: nobody holds anywhere near this many, but a runaway account can't make
+// every snapshot unbounded.
+export const MEMBER_VOUCHERS_LIMIT = 300
+
 function userVouchersQuery(uid: string, status: VoucherDocument['status']) {
-  return query(collection(db, 'vouchers'), where('userId', '==', uid), where('status', '==', status))
+  return query(collection(db, 'vouchers'), where('userId', '==', uid), where('status', '==', status), limit(MEMBER_VOUCHERS_LIMIT))
 }
 
 function toSortedVouchers(docs: { id: string; data: () => Record<string, unknown> }[]): (VoucherDocument & { id: string })[] {

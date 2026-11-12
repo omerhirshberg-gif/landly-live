@@ -37,6 +37,8 @@ export default function BusinessDashboardPage() {
   const [offersError, setOffersError] = useState<string | null>(null)
   const [redeemed, setRedeemed] = useState<RedeemedVoucher[] | null>(null)
   const [redeemedError, setRedeemedError] = useState<string | null>(null)
+  // Counted on read (checkout no longer keeps a tally on the business document); '–' until it arrives.
+  const [activeCount, setActiveCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -86,6 +88,24 @@ export default function BusinessDashboardPage() {
     }
   }, [user, t])
 
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const idToken = await user.getIdToken()
+        const res = await fetch('/api/business/vouchers?status=active&count=1', { headers: { Authorization: `Bearer ${idToken}` } })
+        const data = await res.json()
+        if (!cancelled && res.ok && typeof data.count === 'number') setActiveCount(data.count)
+      } catch {
+        // The tile keeps its dash.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   return (
     <div>
       <BusinessProfileCard />
@@ -105,7 +125,7 @@ export default function BusinessDashboardPage() {
         <div className="dash-stat-card dash-stat-card-dark text-center min-w-0">
           <IconFrame icon={Tags} size="sm" tone="glass" className="mx-auto mb-1.5 sm:mb-2" />
           <div className="text-nano sm:text-xs text-slate-400 font-semibold leading-tight">{t('bizdash_stat_active')}</div>
-          <div className="text-xs sm:text-base font-black text-white">{business.voucherStats.active}</div>
+          <div className="text-xs sm:text-base font-black text-white">{activeCount ?? '–'}</div>
         </div>
       </div>
 

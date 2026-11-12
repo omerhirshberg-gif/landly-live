@@ -23,7 +23,7 @@ describe('fewer, clearer buttons', () => {
   it("leaves the business ⋯ menu with Delete only: editing is the Details tab", () => {
     const page = read('app/admin/businesses/[uid]/page.tsx')
     expect(page).not.toContain("label: 'Edit details'")
-    expect(page).toContain("actions={[{ label: 'Delete business', icon: 'fa-trash', danger: true, onSelect: () => void deleteBusiness() }]}")
+    expect(page).toContain("actions={[{ label: t('bizDetail.deleteBusiness'), icon: 'fa-trash', danger: true, onSelect: () => void deleteBusiness() }]}")
   })
 })
 

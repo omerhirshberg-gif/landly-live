@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useAdminT } from '@/lib/admin/translations'
 
 const ZOOM_STEPS = [1, 1.5, 2, 3, 4]
 
@@ -13,6 +14,7 @@ const ICON_BUTTON =
  * the photo closes it too; + / - zoom and R rotates from the keyboard.
  */
 export default function MediaLightbox({ src, downloadUrl, alt, onClose }: { src: string; downloadUrl?: string; alt: string; onClose: () => void }) {
+  const { t } = useAdminT()
   const ref = useRef<HTMLDialogElement>(null)
   const [zoom, setZoom] = useState(0)
   const [turns, setTurns] = useState(0)
@@ -27,7 +29,7 @@ export default function MediaLightbox({ src, downloadUrl, alt, onClose }: { src:
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === '+' || event.key === '=') zoomBy(1)
     else if (event.key === '-') zoomBy(-1)
-    else if (event.key === 'r' || event.key === 'R') setTurns((t) => t + 1)
+    else if (event.key === 'r' || event.key === 'R') setTurns((n) => n + 1)
     else return
     event.preventDefault()
   }
@@ -45,21 +47,21 @@ export default function MediaLightbox({ src, downloadUrl, alt, onClose }: { src:
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end gap-1 bg-gradient-to-b from-black/60 to-transparent p-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <div className="pointer-events-auto flex gap-1">
-          <button type="button" className={ICON_BUTTON} onClick={() => zoomBy(-1)} disabled={zoom === 0} aria-label="Zoom out">
+          <button type="button" className={ICON_BUTTON} onClick={() => zoomBy(-1)} disabled={zoom === 0} aria-label={t('media.zoomOut')}>
             <i className="fa-solid fa-magnifying-glass-minus" aria-hidden="true" />
           </button>
-          <button type="button" className={ICON_BUTTON} onClick={() => zoomBy(1)} disabled={zoom === ZOOM_STEPS.length - 1} aria-label="Zoom in">
+          <button type="button" className={ICON_BUTTON} onClick={() => zoomBy(1)} disabled={zoom === ZOOM_STEPS.length - 1} aria-label={t('media.zoomIn')}>
             <i className="fa-solid fa-magnifying-glass-plus" aria-hidden="true" />
           </button>
-          <button type="button" className={ICON_BUTTON} onClick={() => setTurns((t) => t + 1)} aria-label="Rotate">
+          <button type="button" className={ICON_BUTTON} onClick={() => setTurns((n) => n + 1)} aria-label={t('media.rotate')}>
             <i className="fa-solid fa-rotate-right" aria-hidden="true" />
           </button>
           {downloadUrl && (
-            <a href={downloadUrl} className={ICON_BUTTON} aria-label="Download photo">
+            <a href={downloadUrl} className={ICON_BUTTON} aria-label={t('media.download')}>
               <i className="fa-solid fa-download" aria-hidden="true" />
             </a>
           )}
-          <button type="button" className={ICON_BUTTON} onClick={() => ref.current?.close()} aria-label="Close" autoFocus>
+          <button type="button" className={ICON_BUTTON} onClick={() => ref.current?.close()} aria-label={t('common.close')} autoFocus>
             <i className="fa-solid fa-xmark text-lg" aria-hidden="true" />
           </button>
         </div>

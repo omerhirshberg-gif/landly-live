@@ -9,6 +9,16 @@ export function isValidLang(value: unknown): value is Lang {
   return typeof value === 'string' && (KNOWN_LANGS as string[]).includes(value)
 }
 
+/**
+ * The language a signed-in member's mail and codes go out in: the one saved on
+ * their account (set from every device's language picker), else the language the
+ * request says the screen is in, else English. A stored value that isn't a known
+ * language is ignored, never trusted.
+ */
+export function accountLang(stored: unknown, requested: unknown): Lang {
+  return isValidLang(stored) ? stored : isValidLang(requested) ? requested : 'en'
+}
+
 // Private LAN IPv4 ranges (RFC 1918), so in development APP_URL can be this
 // machine's network address and email links open on a phone on the same Wi-Fi.
 const PRIVATE_LAN_IPV4 = [

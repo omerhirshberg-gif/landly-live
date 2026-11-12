@@ -113,25 +113,34 @@ export function alphaBounds(data: ArrayLike<number>, width: number, height: numb
   return maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
 }
 
-/** Brighter than this in every channel reads as the white around a logo; JPEG noise stays under it. */
-const NEAR_WHITE = 245
+/** At least this bright in every channel reads as the white around a logo; JPEG noise stays under it. */
+export const NEAR_WHITE = 242
+/** How many of the four corners of the opaque box must be white for the white around the mark to be trimmed. */
+const WHITE_CORNERS_NEEDED = 3
+/** An edge line whose every opaque pixel is at least this bright (its dimmest channel) and within BAND_SPREAD of the others is blank paper, not mark. */
+const LIGHT_EDGE = 190
+const BAND_SPREAD = 20
+/** Breathing room kept around the trimmed mark, as a share of its long edge, on every side. */
+export const LOGO_INSET = 0.04
 
 /**
- * The box around a logo's mark: its alpha bounds, then, when those start in
- * opaque white at all four corners (a logo on a white background), without that
- * white too. A white mark on transparency keeps its alpha bounds, as does an
- * all-white image, which has no mark to find.
+ * The box around a logo's mark: its alpha bounds, then, when at least three of
+ * the four corners of those are opaque white (a logo on a white background; the
+ * odd corner may carry a shadow, a tint or JPEG noise), without that white too.
+ * A white mark on transparency keeps its alpha bounds, as does an all-white
+ * image, which has no mark to find.
  */
 export function logoBounds(data: ArrayLike<number>, width: number, height: number): Bounds | null {
   const box = alphaBounds(data, width, height)
   if (!box) return null
   const white = (x: number, y: number) => {
     const i = (y * width + x) * 4
-    return data[i + 3]! > 250 && data[i]! > NEAR_WHITE && data[i + 1]! > NEAR_WHITE && data[i + 2]! > NEAR_WHITE
+    return data[i + 3]! > 250 && data[i]! >= NEAR_WHITE && data[i + 1]! >= NEAR_WHITE && data[i + 2]! >= NEAR_WHITE
   }
   const right = box.x + box.width - 1
   const bottom = box.y + box.height - 1
-  if (!(white(box.x, box.y) && white(right, box.y) && white(box.x, bottom) && white(right, bottom))) return box
+  const whiteCorners = [white(box.x, box.y), white(right, box.y), white(box.x, bottom), white(right, bottom)].filter(Boolean).length
+  if (whiteCorners < WHITE_CORNERS_NEEDED) return lightBandBounds(data, width, box)
   let minX = right
   let minY = bottom
   let maxX = box.x - 1
@@ -146,6 +155,62 @@ export function logoBounds(data: ArrayLike<number>, width: number, height: numbe
     }
   }
   return maxX < box.x ? box : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
+}
+
+/**
+ * `box` without the blank light bands along its edges: rows and columns (from
+ * each side in, stopping at the first that isn't) whose opaque pixels are all
+ * light and alike (a flat white or light-grey scanner edge: a logo whose corners
+ * are not all white, so the white rule above does not apply). A pale mark varies
+ * along its line, so it is kept. Nothing left to trim to (a wholly pale image)
+ * gives `box` back unchanged.
+ */
+function lightBandBounds(data: ArrayLike<number>, width: number, box: Bounds): Bounds {
+  const blank = (fixed: number, from: number, to: number, row: boolean): boolean => {
+    let lo = 255
+    let hi = 0
+    for (let k = from; k <= to; k++) {
+      const i = (row ? fixed * width + k : k * width + fixed) * 4
+      if (data[i + 3]! <= 8) continue
+      const m = Math.min(data[i]!, data[i + 1]!, data[i + 2]!)
+      if (m < LIGHT_EDGE) return false
+      if (m < lo) lo = m
+      if (m > hi) hi = m
+      if (hi - lo > BAND_SPREAD) return false
+    }
+    return true
+  }
+  let left = box.x
+  let right = box.x + box.width - 1
+  let top = box.y
+  let bottom = box.y + box.height - 1
+  while (top <= bottom && blank(top, left, right, true)) top++
+  while (bottom >= top && blank(bottom, left, right, true)) bottom--
+  if (top > bottom) return box
+  while (left <= right && blank(left, top, bottom, false)) left++
+  while (right >= left && blank(right, top, bottom, false)) right--
+  if (left > right) return box
+  return { x: left, y: top, width: right - left + 1, height: bottom - top + 1 }
+}
+
+/**
+ * `box` grown by `inset` of its long edge on every side, so the trimmed mark
+ * never touches the badge's edge. It may reach past the image (that part is
+ * transparent, i.e. the badge's white).
+ */
+export function insetBounds(box: Bounds, inset = LOGO_INSET): Bounds {
+  const pad = Math.round(Math.max(box.width, box.height) * inset)
+  return { x: box.x - pad, y: box.y - pad, width: box.width + pad * 2, height: box.height + pad * 2 }
+}
+
+/**
+ * What to keep of a logo (RGBA `data`): its mark with the margins trimmed and
+ * the small breathing inset back, or the whole image when there is no mark to
+ * find. The one rule behind the admin upload and the one-off re-trim script.
+ */
+export function logoContentBox(data: ArrayLike<number>, width: number, height: number): Bounds {
+  const mark = logoBounds(data, width, height)
+  return mark ? insetBounds(mark) : { x: 0, y: 0, width, height }
 }
 
 /**

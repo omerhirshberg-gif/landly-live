@@ -1,7 +1,9 @@
-import { centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALITY, LOGO_SHARP_EDGE, logoBounds, trimmedBox } from './crop'
+import { BANNER_SHARP_WIDTH, centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALITY, LOGO_SHARP_EDGE, logoContentBox, trimmedBox } from './crop'
 
-// Browser-only (desktop and mobile web): crops a picked photo to `aspect`
-// around its centre and re-encodes it as a JPEG no larger than `maxEdge`,
+// Browser-only (desktop and mobile web): re-encodes a picked photo as a JPEG no
+// larger than `maxEdge` on its longest side: whole, in its own shape, when `aspect`
+// is null (the default for an offer's photo, so a portrait shot keeps its head and
+// its feet), or cropped to `aspect` around its centre when the admin chose that,
 // stepping the quality down only if it would be over `maxBytes`. JPEG for
 // photos everywhere: Safari's canvas can't encode WebP (it silently hands
 // back PNG). The browser applies EXIF rotation when it decodes, and iOS
@@ -10,7 +12,7 @@ import { centeredCrop, fitWithin, isLowResolution, LOGO_JPEG_QUALITY, LOGO_SHARP
 //
 // compressLogo keeps a business logo whole rather than cropping it, as a lossless
 // PNG with its transparency (the badge is white on every surface). Its transparent
-// or white margins are trimmed and it keeps its own shape, so a wordmark stays wide
+// or white margins are trimmed (a 4% breathing inset kept) and it keeps its own shape, so a wordmark stays wide
 // and the badge grows with it. An SVG is drawn at the full size, so a vector
 // logo is as sharp as the canvas allows; the SVG itself is never stored.
 
@@ -24,12 +26,13 @@ export interface PreparedImage {
 
 export async function compressImage(
   file: Blob,
-  { aspect, maxEdge, qualities, maxBytes }: { aspect: number; maxEdge: number; qualities: readonly number[]; maxBytes: number }
+  { aspect, maxEdge, qualities, maxBytes }: { aspect: number | null; maxEdge: number; qualities: readonly number[]; maxBytes: number }
 ): Promise<PreparedImage> {
   const url = URL.createObjectURL(file)
   try {
     const image = await loadImage(url)
-    const box = centeredCrop(image.naturalWidth, image.naturalHeight, aspect, maxEdge)
+    // No crop: the picture's own shape, so centeredCrop keeps all of it and only scales it down to maxEdge.
+    const box = centeredCrop(image.naturalWidth, image.naturalHeight, aspect ?? image.naturalWidth / image.naturalHeight, maxEdge)
     const canvas = document.createElement('canvas')
     canvas.width = box.width
     canvas.height = box.height
@@ -46,7 +49,8 @@ export async function compressImage(
       if (blob.size <= maxBytes) break
       blob = await encode(canvas, 'image/jpeg', quality)
     }
-    return { blob, lowResolution: isLowResolution('banner', box.sw, box.sh) }
+    // A whole photo is judged by its longest side (a portrait is narrow by nature); a 16:9 crop by its width.
+    return { blob, lowResolution: aspect === null ? Math.max(box.sw, box.sh) < BANNER_SHARP_WIDTH : isLowResolution('banner', box.sw, box.sh) }
   } finally {
     URL.revokeObjectURL(url)
   }
@@ -68,12 +72,7 @@ export async function compressLogo(file: Blob, { maxEdge, maxBytes }: { maxEdge:
     const probeContext = probe.getContext('2d', { willReadFrequently: true })
     if (!probeContext) throw new Error('Canvas unavailable')
     probeContext.drawImage(image, 0, 0, drawn.width, drawn.height)
-    const content = logoBounds(probeContext.getImageData(0, 0, drawn.width, drawn.height).data, drawn.width, drawn.height) ?? {
-      x: 0,
-      y: 0,
-      width: drawn.width,
-      height: drawn.height,
-    }
+    const content = logoContentBox(probeContext.getImageData(0, 0, drawn.width, drawn.height).data, drawn.width, drawn.height)
     // Then drawn again from the source itself, so the trim never costs sharpness.
     const box = trimmedBox(drawn, content, drawn.scale, maxEdge, { vector })
     const canvas = document.createElement('canvas')

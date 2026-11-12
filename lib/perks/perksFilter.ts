@@ -22,6 +22,22 @@ export const PERK_SORT_LABELS: Record<PerkSort, TranslationKey> = {
 
 export type CategoryFilter = 'all' | CategoryTile['category']
 
+// The Filter menu's two extra narrowings (website only so far): where the perk is
+// redeemed, and the least percentage off. Both default to "no narrowing".
+export const PERK_METHOD_FILTERS = ['all', 'in_store', 'online'] as const
+export type PerkMethodFilter = (typeof PERK_METHOD_FILTERS)[number]
+export const PERK_MIN_DISCOUNTS = [0, 10, 20, 30, 50] as const
+export type PerkMinDiscount = (typeof PERK_MIN_DISCOUNTS)[number]
+
+export function parseMethodFilter(raw: string | null | undefined): PerkMethodFilter {
+  return (PERK_METHOD_FILTERS as readonly string[]).includes(raw ?? '') ? (raw as PerkMethodFilter) : 'all'
+}
+
+export function parseMinDiscount(raw: string | null | undefined): PerkMinDiscount {
+  const n = Number(raw)
+  return (PERK_MIN_DISCOUNTS as readonly number[]).includes(n) ? (n as PerkMinDiscount) : 0
+}
+
 type Translate = (key: TranslationKey) => string
 
 // URL / route params are user-editable: anything unknown falls back to the default.
@@ -122,6 +138,8 @@ export interface PerkFilters {
   query: string
   category: CategoryFilter
   sort: PerkSort
+  method?: PerkMethodFilter
+  minDiscount?: PerkMinDiscount
 }
 
 /** Kilometres from `origin` to the offer's business, or null when it has no coordinates (online-only, not geocoded). */
@@ -145,25 +163,29 @@ export function sortByNearest(offers: readonly OfferDocument[], origin: Coordina
     .map(({ offer }) => offer)
 }
 
-// Category → search → sort, on a copy (the input list is never mutated).
+// Category → type → discount → search → sort, on a copy (the input list is never mutated).
 // With a location (Near me, or an area picked instead), Recommended becomes
 // nearest-first; an explicit sort the member chose still wins.
 export function filterAndSortPerks(
   offers: readonly OfferDocument[],
-  { query, category, sort }: PerkFilters,
+  { query, category, sort, method = 'all', minDiscount = 0 }: PerkFilters,
   t?: Translate,
   locale?: string,
   origin?: Coordinates | null
 ): OfferDocument[] {
   const normalizedQuery = normalizeQuery(query)
   const matched = offers.filter(
-    (offer) => (category === 'all' || offer.category === category) && offerMatchesSearch(offer, normalizedQuery, t, locale)
+    (offer) =>
+      (category === 'all' || offer.category === category) &&
+      (method === 'all' || offer.redemptionMethod === method) &&
+      (minDiscount === 0 || discountPercent(offer.originalPrice, offer.offerPrice) >= minDiscount) &&
+      offerMatchesSearch(offer, normalizedQuery, t, locale)
   )
   const sorted = sortPerks(matched, sort, locale)
   return origin && sort === DEFAULT_PERK_SORT ? sortByNearest(sorted, origin) : sorted
 }
 
 // True once anything moves the view off the resting overview.
-export function hasActivePerkFilters({ query, category, sort }: PerkFilters): boolean {
-  return normalizeQuery(query) !== '' || category !== 'all' || sort !== DEFAULT_PERK_SORT
+export function hasActivePerkFilters({ query, category, sort, method = 'all', minDiscount = 0 }: PerkFilters): boolean {
+  return normalizeQuery(query) !== '' || category !== 'all' || sort !== DEFAULT_PERK_SORT || method !== 'all' || minDiscount !== 0
 }

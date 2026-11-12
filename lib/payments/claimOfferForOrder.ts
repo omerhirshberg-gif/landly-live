@@ -9,7 +9,8 @@ import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptio
 import { applyPoolAllocation, planPoolAllocation } from '../inventory/poolAllocation'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
-import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START } from './orderNumber'
+import { savingsAgorotOf } from '../member/savingsMath'
+import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START, ORDER_SHARD_COLLECTION, orderShardFor, shardedOrderNumber } from './orderNumber'
 
 function transactionKey(event: TranzilaNotification): string {
   return createHash('sha256').update(JSON.stringify([event.terminal, event.tranzilaTxnId])).digest('hex')
@@ -67,19 +68,26 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     }
     const offerRef = db.collection('offers').doc(order.offerId)
     const businessRef = direct ? db.collection('businesses').doc(order.businessId) : null
-    const counterRef = db.collection(ORDER_COUNTER_PATH.collection).doc(ORDER_COUNTER_PATH.doc)
-    const [offerSnap, businessSnap, counterSnap] = await Promise.all([tx.get(offerRef), businessRef ? tx.get(businessRef) : Promise.resolve(null), tx.get(counterRef)])
+    // Legacy counter: read-only base. Shard doc: the only counter write, so
+    // settlements contend one in ten instead of all on a single document.
+    const legacyRef = db.collection(ORDER_COUNTER_PATH.collection).doc(ORDER_COUNTER_PATH.doc)
+    const shard = orderShardFor(event.orderId)
+    const shardRef = db.collection(ORDER_SHARD_COLLECTION).doc(String(shard))
+    const [offerSnap, businessSnap, legacySnap, shardSnap] = await Promise.all([
+      tx.get(offerRef), businessRef ? tx.get(businessRef) : Promise.resolve(null), tx.get(legacyRef), tx.get(shardRef),
+    ])
     if (!offerSnap.exists || (businessRef && !businessSnap?.exists)) {
       throw new PaymentError('Offer or business no longer exists; reconciliation is required.')
     }
-    // The counter is read in this transaction, so concurrent settlements
+    // The shard is read in this transaction, so concurrent settlements on it
     // conflict and retry rather than share a number; a failed or declined
     // payment never consumes one.
-    const lastOrderNumber = counterSnap.exists ? counterSnap.data()!.orderSequence : ORDER_SEQUENCE_START
-    if (!Number.isSafeInteger(lastOrderNumber) || lastOrderNumber < ORDER_SEQUENCE_START) {
+    const legacyLast = legacySnap.exists ? legacySnap.data()!.orderSequence : ORDER_SEQUENCE_START
+    const issued = shardSnap.exists ? shardSnap.data()!.count : 0
+    if (!Number.isSafeInteger(legacyLast) || legacyLast < ORDER_SEQUENCE_START || !Number.isSafeInteger(issued) || issued < 0) {
       throw new PaymentError('Order counter is inconsistent; reconciliation is required.')
     }
-    const orderNumber = lastOrderNumber + 1
+    const orderNumber = shardedOrderNumber(legacyLast, issued, shard)
     const displayOrderNumber = formatOrderNumber(orderNumber)
     const offer = offerSnap.data()!
     if ((direct && offer.businessId !== order.businessId) || !Number.isInteger(offer.claimedCount) || offer.claimedCount < 0
@@ -126,16 +134,19 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       orderNumber, displayOrderNumber,
       // Settlement reads only these: the terms and price as sold, and which batch (if any) paid it out.
       fulfillmentType, amountAgorot: event.amountAgorot,
+      // What the member saved (original price minus paid), so the wallet total needs no order reads.
+      savingsAgorot: savingsAgorotOf(order.originalPrice, event.amountAgorot),
       commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       payoutBatchId: null,
       // A Multipass code is the member's entitlement, so the voucher (owner-readable) carries it.
       externalCode: poolPlan?.code ?? null,
     })
     if (poolPlan) applyPoolAllocation(tx, poolPlan, event.orderId, order.userId, now)
-    if (counterSnap.exists) tx.update(counterRef, { orderSequence: FieldValue.increment(1) })
-    else tx.create(counterRef, { orderSequence: orderNumber })
+    tx.set(shardRef, { count: issued + 1 })
     tx.update(offerRef, { claimedCount: FieldValue.increment(1) })
-    if (businessRef) tx.update(businessRef, { 'voucherStats.active': FieldValue.increment(1) })
+    // No business voucherStats write here: that doc is shared by every perk a
+    // merchant sells, so the active count is counted on read instead
+    // (app/api/business/vouchers?count=1).
     tx.update(orderRef, {
       status: 'paid', paidAt: now, tranzilaTxnId: event.tranzilaTxnId,
       responseCode: event.responseCode, voucherId: voucherRef.id,

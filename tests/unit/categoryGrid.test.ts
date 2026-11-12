@@ -17,9 +17,9 @@ function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
 const tiles = CATEGORY_TILES.slice(0, 3)
 
 describe('category grid', () => {
-  it('keeps the grid: 2 columns, 3 from fold (600px), 4 on desktop, one card per tile', () => {
+  it('keeps the grid: 2 columns, 3 from fold (600px), 4 from md, 6 from lg, 8 from 2xl, one card per tile', () => {
     const html = withLang('en', createElement(CategoryGrid, { tiles: CATEGORY_TILES }))
-    expect(html).toMatch(/^<ul class="grid grid-cols-2 fold:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 touch-pan-y touch-pinch-zoom">/)
+    expect(html).toMatch(/^<ul class="grid grid-cols-2 fold:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3 lg:gap-3.5 touch-pan-y touch-pinch-zoom">/)
     expect(html.match(/<li class="min-w-0">/g)).toHaveLength(CATEGORY_TILES.length)
     expect(html.match(/href="\/categories\?cat=/g)).toHaveLength(CATEGORY_TILES.length)
   })

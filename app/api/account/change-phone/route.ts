@@ -13,7 +13,7 @@ import {
   otpProvider,
   phoneVerificationMode,
 } from '@/lib/auth/phoneVerification'
-import { isValidLang } from '@/lib/auth/requestContext'
+import { accountLang } from '@/lib/auth/requestContext'
 import type { Lang } from '@/lib/i18n/translations'
 
 // A new phone number from the profile screens' "Edit profile" ({ phone,
@@ -44,14 +44,15 @@ export async function POST(request: Request) {
 
   if (phoneVerificationMode() === 'direct') return reply({ ok: true, mode: 'direct' })
 
-  const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
   const channel: OtpChannel = isOtpChannel(body?.channel) ? body.channel : 'whatsapp'
+  let lang: Lang = accountLang(undefined, body?.lang)
   const db = getAdminDb()
   const userRef = db.collection('users').doc(uid)
   const verificationRef = db.collection('phoneVerifications').doc(uid)
 
   try {
     const [user, previous, holders] = await Promise.all([userRef.get(), verificationRef.get(), phoneHoldersQuery(db, phone).get()])
+    lang = accountLang(user.get('preferredLanguage'), body?.lang)
     if (user.get('phone') === phone) return reply({ error: 'Same phone number.', reason: 'samePhone' }, 400)
     if (heldByOther(holders, uid)) return reply({ error: 'Phone number in use.', reason: 'phoneInUse' }, 409)
     const lastSentAt = previous.get('lastSentAt')

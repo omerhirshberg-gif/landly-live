@@ -7,6 +7,7 @@ import { CONTENT_LANGS, directionOf } from '@/lib/i18n/contentTranslation'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 export interface AddressValue {
   /** What the field shows and the business's `location` string. */
@@ -45,6 +46,7 @@ export default function AddressAutocomplete({
   required?: boolean
 }) {
   const listId = useId()
+  const { t } = useAdminT()
   const [open, setOpen] = useState(false)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [active, setActive] = useState(-1)
@@ -101,7 +103,7 @@ export default function AddressAutocomplete({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.address) {
-        setPickError(data.error ?? 'That address could not be loaded. Try again.')
+        setPickError(data.error ?? t('address.loadFailed'))
         setStatus('idle')
         return
       }
@@ -110,7 +112,7 @@ export default function AddressAutocomplete({
       onChange({ text: address.formatted.he ?? address.formatted.en ?? suggestion.main, address })
       setStatus('idle')
     } catch {
-      setPickError('That address could not be loaded. Try again.')
+      setPickError(t('address.loadFailed'))
       setStatus('idle')
     } finally {
       // The pick ends the billing session; the next search starts a new one.
@@ -139,7 +141,7 @@ export default function AddressAutocomplete({
 
   return (
     <div>
-      <label htmlFor={id} className={ADMIN_LABEL}>Address</label>
+      <label htmlFor={id} className={ADMIN_LABEL}>{t('address.label')}</label>
       <div className="relative">
         <input
           id={id}
@@ -153,7 +155,7 @@ export default function AddressAutocomplete({
           aria-describedby={`${id}-status`}
           autoComplete="off"
           className={`${ADMIN_INPUT} pe-11`}
-          placeholder="Start typing the street and city…"
+          placeholder={t('address.placeholder')}
           value={value.text}
           onChange={(e) => {
             typed.current = true
@@ -193,7 +195,7 @@ export default function AddressAutocomplete({
                 )}
               </li>
             ))}
-            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#64748B]">Powered by Google</li>
+            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#64748B]">{t('address.poweredBy')}</li>
           </ul>
         )}
       </div>
@@ -203,19 +205,19 @@ export default function AddressAutocomplete({
         ) : value.address ? (
           <span className="text-emerald-700">
             <i className="fa-solid fa-circle-check me-1" aria-hidden="true" />
-            On the map{city ? <> · <span dir="auto">{city}</span></> : null}. Members can find it with Near me.
+            {t('address.onMap', { city: city ? ` · \u2068${city}\u2069` : '' })}
           </span>
         ) : status === 'unavailable' ? (
-          'Address search isn’t configured, so this saves as typed, without a map position.'
+          t('address.unconfigured')
         ) : status === 'error' ? (
-          'Address search is unavailable right now; this saves as typed, without a map position.'
+          t('address.unavailable')
         ) : (
-          'Pick a suggestion so the business gets a map position for Near me.'
+          t('address.pick')
         )}
       </p>
       {value.address && (
         <details className="mt-2 text-xs text-[#475569]">
-          <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-[#0038B8]">How members see the address</summary>
+          <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-[#0038B8]">{t('address.howSeen')}</summary>
           <dl className="mt-1 space-y-1.5 rounded-xl border border-[#E2E8F0] p-3">
             {CONTENT_LANGS.map((lang) => {
               const line = value.address?.short?.[lang] || value.address?.formatted[lang]
@@ -223,7 +225,7 @@ export default function AddressAutocomplete({
                 <div key={lang} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
                   <dt className="shrink-0 font-semibold text-[#64748B] sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</dt>
                   <dd lang={line ? lang : undefined} dir={line ? directionOf(lang) : undefined} className={`min-w-0 break-words ${line ? 'text-[#0F172A]' : 'italic text-[#64748B]'}`}>
-                    {line || 'Not given by Google; members see another language’s.'}
+                    {line || t('address.notGiven')}
                   </dd>
                 </div>
               )

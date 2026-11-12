@@ -13,7 +13,7 @@ function genericSuccess(): NextResponse {
 }
 
 export async function POST(request: Request) {
-  if (isPasswordResetRateLimited(request)) {
+  if (await isPasswordResetRateLimited(request)) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }
 

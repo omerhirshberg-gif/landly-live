@@ -3,6 +3,8 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { endOfIsraelDay } from '@/lib/admin/expiryDate'
 import { isOfferActive } from '@/lib/admin/offerStatus'
+import { adminListParams, adminNextCursor } from '@/lib/admin/adminList'
+import { chunked, IN_QUERY_LIMIT } from '@/lib/firebase/batching'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -63,13 +65,24 @@ export async function GET(request: Request) {
   if (authError) return authError
 
   const adminDb = getAdminDb()
-  const [businessesSnap, offersSnap] = await Promise.all([
-    adminDb.collection('businesses').orderBy('businessName').get(),
-    adminDb.collection('offers').get(),
-  ])
+  const scope = 'admin:businesses'
+  let page
+  try { page = adminListParams(request, scope) }
+  catch (error) { return badRequest(error instanceof Error ? error.message : 'Invalid pagination.') }
+  // In id order, so a cursor is just the last id; the page is sorted by name below.
+  let query = adminDb.collection('businesses').orderBy('__name__')
+  if (page.cursor) query = query.startAfter(page.cursor.id)
+  const fetched = await query.limit(page.limit + 1).get()
+  const hasMore = fetched.docs.length > page.limit
+  const businessDocs = fetched.docs.slice(0, page.limit)
+  const businessesSnap = { docs: businessDocs.sort((a, b) => String(a.data().businessName ?? '').localeCompare(String(b.data().businessName ?? ''))) }
 
+  // Active perks per business: only this page's businesses' offers, 30 ids per query and only the
+  // four fields the count needs (not every offer in the catalog).
   const activeCounts = new Map<string, number>()
-  for (const doc of offersSnap.docs) {
+  const offerPages = await Promise.all(chunked(businessDocs.map((d) => d.id), IN_QUERY_LIMIT).map((ids) =>
+    adminDb.collection('offers').where('businessId', 'in', ids).select('businessId', 'totalQuantity', 'claimedCount', 'expiryDate').get()))
+  for (const doc of offerPages.flatMap((snap) => snap.docs)) {
     const o = doc.data()
     const active = isOfferActive({
       totalQuantity: typeof o.totalQuantity === 'number' ? o.totalQuantity : null,
@@ -97,7 +110,7 @@ export async function GET(request: Request) {
     redeemedTotal: Number(doc.data().voucherStats?.redeemedTotal) || 0,
     createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt.toDate().toISOString() : null,
   }))
-  return NextResponse.json({ businesses })
+  return NextResponse.json({ businesses, nextCursor: adminNextCursor(hasMore, businessDocs.at(-1)?.id, scope) })
 }
 
 export async function POST(request: Request) {

@@ -7,6 +7,8 @@ import PreferredLanguageSync from '@/lib/i18n/PreferredLanguageSync'
 import { AuthProvider } from '@/lib/firebase/AuthProvider'
 import SessionHeartbeat from '@/components/settings/SessionHeartbeat'
 import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
+import { VouchersProvider } from '@/lib/firebase/VouchersProvider'
+import { PerksSearchProvider } from '@/lib/perks/PerksSearchProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
 import PasskeyPrompt from '@/components/auth/PasskeyPrompt'
 import WhatsAppWidget from '@/components/layout/WhatsAppWidget'
@@ -123,7 +125,9 @@ export default function RootLayout({
         <HydrationMarker />
         <AuthProvider readyTimeoutMs={AUTH_READY_TIMEOUT_MS} memberHint>
           <WishlistProvider>
+            <VouchersProvider>
             <LangProvider>
+              <PerksSearchProvider>
               <PreferredLanguageSync />
               <SectionBoundary name="session-heartbeat"><SessionHeartbeat /></SectionBoundary>
               <div className="page-clip">{children}</div>
@@ -131,7 +135,9 @@ export default function RootLayout({
               <SectionBoundary name="cookie-notice"><CookieNotice /></SectionBoundary>
               {/* "Save a passkey" once after a password or Google sign-in (components/auth/PasskeyPrompt.tsx). */}
               <SectionBoundary name="passkey-prompt"><PasskeyPrompt /></SectionBoundary>
+              </PerksSearchProvider>
             </LangProvider>
+            </VouchersProvider>
           </WishlistProvider>
         </AuthProvider>
       </body>

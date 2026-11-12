@@ -56,13 +56,31 @@ describe('sumSavings', () => {
 })
 
 describe('totalSaved', () => {
-  it("reads each voucher's own order (same id) once and skips the read with no vouchers", async () => {
+  it('reads old vouchers\' orders (same id) once, in one batch, and skips the read with no vouchers', async () => {
     vi.mocked(getOrdersByIds).mockResolvedValue([{ status: 'paid', originalPrice: 24, amount: 15 }] as never)
-    expect(await totalSaved([{ id: 'u1_o1' }, { id: 'u1_o1' }])).toBe(9)
-    expect(getOrdersByIds).toHaveBeenCalledWith(['u1_o1'])
+    expect(await totalSaved('u1', [{ id: 'u1_o1' }, { id: 'u1_o1' }])).toBe(9)
+    expect(getOrdersByIds).toHaveBeenCalledTimes(1)
+    expect(getOrdersByIds).toHaveBeenCalledWith('u1', ['u1_o1'])
     vi.mocked(getOrdersByIds).mockClear()
-    expect(await totalSaved([])).toBe(0)
+    expect(await totalSaved('u1', [])).toBe(0)
     expect(getOrdersByIds).not.toHaveBeenCalled()
+  })
+
+  it('sums stored savings with no order reads at all', async () => {
+    vi.mocked(getOrdersByIds).mockClear()
+    expect(await totalSaved('u1', [{ id: 'a', savingsAgorot: 900 }, { id: 'b', savingsAgorot: 0 }, { id: 'c', savingsAgorot: 250 }])).toBe(11.5)
+    expect(getOrdersByIds).not.toHaveBeenCalled()
+  })
+
+  it('reads only the vouchers without stored savings, and never the same old order twice', async () => {
+    vi.mocked(getOrdersByIds).mockClear()
+    vi.mocked(getOrdersByIds).mockResolvedValue([{ status: 'paid', originalPrice: 30, amount: 20 }] as never)
+    const vouchers = [{ id: 'u2_old', savingsAgorot: null }, { id: 'u2_new', savingsAgorot: 500 }]
+    expect(await totalSaved('u2', vouchers)).toBe(15)
+    expect(getOrdersByIds).toHaveBeenCalledWith('u2', ['u2_old'])
+    // A snapshot refiring with the same vouchers costs nothing.
+    expect(await totalSaved('u2', vouchers)).toBe(15)
+    expect(getOrdersByIds).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -118,7 +136,7 @@ describe('member dashboard live data', () => {
 
   it('shows "–" for stats that are still loading', () => {
     const html = withLang('en', createElement(DashboardStats, { activePerks: 2, redeemed: null, saved: null }))
-    expect(html.match(/>(2|–)<\/div><\/div>/g)).toEqual(['>2</div></div>', '>–</div></div>', '>–</div></div>'])
+    expect(html.match(/>(2|–)<\/bdi><\/div>/g)).toEqual(['>2</bdi></div>', '>–</bdi></div>', '>–</bdi></div>'])
   })
 
   it.each(['en', 'he'] as const)('lists redeemed vouchers with the date and no QR (%s)', (lang) => {

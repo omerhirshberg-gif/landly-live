@@ -1,3 +1,4 @@
+import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { getAdminDb } from '@/lib/firebase/admin'
@@ -50,5 +51,6 @@ export async function POST(request: Request) {
       updated += 1
     }
   }
+  if (updated > 0) revalidateGuestHome()
   return NextResponse.json({ checked, updated, failed, remaining: snap.size - checked })
 }

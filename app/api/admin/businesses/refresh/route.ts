@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
+import type { DocumentReference } from 'firebase-admin/firestore'
+import { ADMIN_LIST_CAP } from '@/lib/admin/adminList'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { isAddressStale, offerPlaceFields, parseGeoAddress, type GeoAddress } from '@/lib/geo'
@@ -28,7 +30,14 @@ export async function POST(request: Request) {
   const translator = activeTranslator()
   const maps = isMapsConfigured()
   const startedAt = Date.now()
-  const snap = await adminDb.collection('businesses').get()
+  const snap = await adminDb.collection('businesses').limit(ADMIN_LIST_CAP).get()
+  // One read of the offers' refs, grouped by business, instead of one offers query per business.
+  const offerRefsByBusiness = new Map<string, DocumentReference[]>()
+  for (const offer of (await adminDb.collection('offers').select('businessId').limit(ADMIN_LIST_CAP).get()).docs) {
+    const list = offerRefsByBusiness.get(offer.get('businessId')) ?? []
+    list.push(offer.ref)
+    offerRefsByBusiness.set(offer.get('businessId'), list)
+  }
   let checked = 0
   let updated = 0
   let failed = 0
@@ -56,16 +65,16 @@ export async function POST(request: Request) {
     const addressChanged = address !== stored
 
     if (!nameChanged && !addressChanged) continue
-    const offersSnap = await adminDb.collection('offers').where('businessId', '==', doc.id).get()
-    if (offersSnap.size > 499) {
+    const offerRefs = offerRefsByBusiness.get(doc.id) ?? []
+    if (offerRefs.length > 499) {
       failed += 1
       continue
     }
     const batch = adminDb.batch()
     batch.update(doc.ref, { translations: named.translations, ...(address ? { address } : {}) })
     const place = offerPlaceFields({ location: data.location, address })
-    for (const offer of offersSnap.docs) {
-      batch.update(offer.ref, { businessTranslations: named.translations, ...place })
+    for (const offerRef of offerRefs) {
+      batch.update(offerRef, { businessTranslations: named.translations, ...place })
     }
     await batch.commit()
     updated += 1

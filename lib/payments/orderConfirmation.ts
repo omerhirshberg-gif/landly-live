@@ -8,7 +8,10 @@ import { getAdminAuth } from '@/lib/firebase/admin'
 import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
 import { EmailProviderError, emailConfigProblem, renderBrandedEmail } from '@/lib/email/brandedEmail'
 import { buildOrderConfirmationEmail, sendOrderConfirmationEmail, type OrderConfirmationDetails } from '@/lib/email/sendOrderConfirmationEmail'
+import { localizedBusinessName, parseBusinessTranslations } from '@/lib/business/businessText'
+import { localizeText } from '@/lib/i18n/contentTranslation'
 import { normalizeImageUrl } from '@/lib/offers/imageUrl'
+import { parseOfferTranslations } from '@/lib/offers/offerText'
 import { normalizeDisplayOrderNumber } from './orderNumber'
 import { isDocumentId } from './paymentValidation'
 
@@ -58,8 +61,12 @@ export async function sendOrderConfirmation(db: Firestore, orderId: string): Pro
       orderId,
       displayOrderNumber: normalizeDisplayOrderNumber(order.displayOrderNumber),
       paidAt: order.paidAt instanceof Timestamp ? order.paidAt.toDate() : new Date(),
-      businessName: typeof order.businessName === 'string' ? order.businessName : '',
-      offerTitle: typeof order.offerTitle === 'string' ? order.offerTitle : '',
+      // The order's frozen copy of the admin's translations, so the email names the perk in the member's language.
+      businessName: localizedBusinessName({
+        businessName: typeof order.businessName === 'string' ? order.businessName : '',
+        businessTranslations: parseBusinessTranslations(order.businessTranslations),
+      }, lang).text,
+      offerTitle: localizeText(typeof order.offerTitle === 'string' ? order.offerTitle : '', parseOfferTranslations(order.translations), lang, 'title').text,
       // Mail clients only load https images; anything else drops the thumbnail.
       imageUrl: imageUrl.startsWith('https://') ? imageUrl : '',
       amount: order.amount,

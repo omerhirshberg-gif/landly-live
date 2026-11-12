@@ -26,11 +26,14 @@ describe('section divider', () => {
     ['app/categories/page.tsx', 3],
     ['app/business/page.tsx', 3],
     ['app/support/page.tsx', 2],
-    ['app/member/page.tsx', 1],
   ] as const)('%s separates its sections with the shared divider', (file, n) => {
     const source = read(file)
     expect(source).toContain("import SectionDivider from '@/components/ui/SectionDivider'")
     expect(count(source)).toBe(n)
+  })
+
+  it('keeps My Pass to its one top-to-bottom flow: no hairline between header, stats and tabs', () => {
+    expect(read('app/member/page.tsx')).not.toContain('SectionDivider')
   })
 
   it('replaces the hard divide-y between the /categories rails', () => {

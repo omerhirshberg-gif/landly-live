@@ -42,7 +42,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
         <button
           onClick={() => setOpen(true)}
           className="w-9 h-9 rounded-lg border border-white/10 flex items-center justify-center text-slate-300 shrink-0"
-          aria-label="Open menu"
+          aria-label={t('bizdash_open_menu')}
         >
           <Menu aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </button>
@@ -80,7 +80,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
         </div>
 
         <div className="px-3 pt-3">
-          <div className="flex rounded-lg border border-white/10 p-0.5 text-xs font-bold" role="group" aria-label="Dashboard language">
+          <div className="flex rounded-lg border border-white/10 p-0.5 text-xs font-bold" role="group" aria-label={t('bizdash_language_group')}>
             <button
               onClick={() => setLang('he')}
               className={`flex-1 rounded-md py-1.5 transition-colors ${

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     if (err instanceof RequestAuthError) return NextResponse.json({ error: err.message }, { status: err.status })
     throw err
   }
-  if (checkUidRateLimit('passkeys', decoded.uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (await checkUidRateLimit('passkeys', decoded.uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   if (!isRecentSignIn(decoded.auth_time)) return NextResponse.json({ error: 'reauth_required' }, { status: 403 })
 
   try {

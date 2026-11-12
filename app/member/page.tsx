@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import MemberPageShell, { PAGE_TITLE, PAGE_TITLE_GAP } from '@/components/layout/MemberPageShell'
+import MemberPageShell, { PAGE_TITLE } from '@/components/layout/MemberPageShell'
 import MemberTabs, { MemberTab } from '@/components/member/MemberTabs'
 import PerksTab from '@/components/member/PerksTab'
 import RedeemedTab from '@/components/member/RedeemedTab'
@@ -12,13 +12,14 @@ import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { getUserDocument } from '@/lib/firebase/users'
-import { subscribeToUserVouchers, type VoucherDocument } from '@/lib/firebase/vouchers'
+import { useVouchers } from '@/lib/firebase/VouchersProvider'
+import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import { totalSaved } from '@/lib/member/savings'
 import { greetingName } from '@/lib/auth/names'
 import SegmentBadge from '@/components/member/SegmentBadge'
-import SectionDivider from '@/components/ui/SectionDivider'
 
 type Voucher = VoucherDocument & { id: string }
+const NO_VOUCHERS: Voucher[] = []
 
 export default function MemberPage() {
   const { t } = useLang()
@@ -33,8 +34,9 @@ export default function MemberPage() {
   // Live, shared by the stats row and both tabs (same listeners as the app's
   // My Pass): a purchase or a redemption shows up without a reload. null
   // while loading; a refused read leaves the lists empty.
-  const [active, setActive] = useState<Voucher[] | null>(null)
-  const [redeemed, setRedeemed] = useState<Voucher[] | null>(null)
+  const vouchers = useVouchers({ redeemed: true })
+  const active = vouchers.active ?? (vouchers.failed ? NO_VOUCHERS : null)
+  const redeemed = vouchers.redeemed ?? (vouchers.failed ? NO_VOUCHERS : null)
   const [saved, setSaved] = useState<number | null>(null)
 
   useEffect(() => {
@@ -53,27 +55,17 @@ export default function MemberPage() {
     return () => { cancelled = true }
   }, [user])
 
-  useEffect(() => {
-    if (!user) return
-    const stopActive = subscribeToUserVouchers(user.uid, 'active', setActive, () => setActive([]))
-    const stopRedeemed = subscribeToUserVouchers(user.uid, 'redeemed', setRedeemed, () => setRedeemed([]))
-    return () => {
-      stopActive()
-      stopRedeemed()
-    }
-  }, [user])
-
   // Savings count from purchase (lib/member/savings.ts): active and redeemed passes alike.
   useEffect(() => {
-    if (!active || !redeemed) return
+    if (!user || !active || !redeemed) return
     let cancelled = false
-    totalSaved([...active, ...redeemed])
+    totalSaved(user.uid, [...active, ...redeemed])
       .then((amount) => {
         if (!cancelled) setSaved(amount)
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [active, redeemed])
+  }, [user, active, redeemed])
 
   // First name from the profile, else the display name — never the email.
   const displayName = greeting ?? greetingName(null, user?.displayName)
@@ -95,14 +87,11 @@ export default function MemberPage() {
       <Navbar />
       <div className="below-header member-canvas">
         <MemberPageShell>
-          {/* Phones and tablets: one column (title, stats, hairline, tabs,
-              passes). From 1024px the stats move into a sticky rail beside
-              the passes, so the full member column is used instead of a
-              narrow strip with empty space beside it. The rail spans all
-              three rows; the last row is 1fr, so the rail's height never
-              pushes the title and the tabs apart. */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10">
-            <div className={`flex items-start justify-between ${PAGE_TITLE_GAP} gap-3 lg:col-start-1 lg:row-start-1`}>
+          {/* One top-to-bottom flow on every screen, as in the app's My Pass: the greeting
+              and persona, the three stats in one row, the tabs, then the passes, centred
+              in a 960px column. */}
+          <div className="mx-auto w-full max-w-[960px] space-y-6">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <h1 className={PAGE_TITLE}>{welcomeMessage}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2.5">
@@ -112,18 +101,12 @@ export default function MemberPage() {
             </div>
 
             {/* Snapshot stats: Active perks / Perks redeemed / Savings */}
-            <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky lg:top-[calc(var(--header-offset)+1.5rem)]">
-              <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
-            </aside>
+            <DashboardStats activePerks={active?.length ?? null} redeemed={redeemed?.length ?? null} saved={saved} />
 
-            {/* A soft hairline between the member's status and their passes, as on the home page; the rail separates them on wide screens. */}
-            <SectionDivider className="mb-6 lg:hidden" />
+            {/* Tabs: My Perks / Redeemed, the full width of the column */}
+            <MemberTabs active={activeTab} onChange={setActiveTab} />
 
-            {/* Tabs: My Perks / Redeemed */}
-            <div className="mb-5 lg:col-start-1 lg:row-start-2">
-              <MemberTabs active={activeTab} onChange={setActiveTab} />
-            </div>
-            <div className="mb-4 lg:col-start-1 lg:row-start-3">
+            <div>
               {activeTab === 'perks' && <PerksTab vouchers={active} />}
               {activeTab === 'redeemed' && <RedeemedTab vouchers={redeemed} />}
             </div>

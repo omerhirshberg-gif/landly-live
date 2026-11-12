@@ -36,7 +36,7 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
   // lib/layout/foldable.ts) up, so neither the inner screen nor the desktop
   // page's main column is a strip of stretched rows beside empty space.
   return (
-    <ul className="grid gap-3 fold:grid-cols-2">
+    <ul className="grid gap-4 fold:grid-cols-2">
       {vouchers.map((voucher) => (
         <li key={voucher.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:gap-4">
           {/* Muted, with a check on its corner: this one's been used. */}

@@ -25,9 +25,16 @@ export function RailArrows({ edges, page }: { edges: { start: boolean; end: bool
   )
 }
 
+// A card's slot from 1024px. A plain rail fills the row with four, growing a short row
+// up to two slots wide. A compact rail (Home) keeps every card at 280px, never growing,
+// so a short row looks like a long one and the fluid row fits five at 1440px, seven at 1920px.
+const FILL_SLOT = 'lg:grow lg:basis-[calc((100%-3*1rem)/4)] lg:max-w-[calc((100%-1rem)/2)]'
+const COMPACT_SLOT = 'lg:grow-0 lg:basis-[280px]'
+
 // One rail of the member home: a heading on the member column, then full perk
 // cards in a row that reaches the screen's edges (.member-bleed) with its first
-// card on the column's line. A swipe settles on a card's start edge and the row
+// card on the column's line; from 1024px it sits inside the page's fluid column and, unless `compact`,
+// four cards fill it edge to edge (fewer grow to fill, up to half the row). A swipe settles on a card's start edge and the row
 // never drags the page sideways; with a real mouse, arrows fade in on hover. On
 // phones `dots` adds pagination dots under a short rail. Hebrew fills the row
 // from the right through the page's direction.
@@ -42,6 +49,7 @@ export default function OfferCardRail({
   dots = false,
   autoAdvance = false,
   autoAdvanceOffsetMs = 0,
+  compact = false,
 }: {
   id: string
   title: string
@@ -54,10 +62,12 @@ export default function OfferCardRail({
   /** Off in a rail already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
   dots?: boolean
-  /** Moves to the next card every 5 seconds (lib/useAutoAdvance.ts); the curated row only. */
+  /** Moves to the next card every 5 seconds (lib/useAutoAdvance.ts): Recommended, New and Best Sellers on Home. */
   autoAdvance?: boolean
   /** Staggers the rail from the others on the page. */
   autoAdvanceOffsetMs?: number
+  /** Home's dense desktop rail: fixed 280px compact cards that never stretch. Off, the rail keeps its four-up fill. */
+  compact?: boolean
 }) {
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
   const { edges, measure, page, overflowing } = useRailPaging(railRef, offers.length)
@@ -65,7 +75,7 @@ export default function OfferCardRail({
 
   return (
     <section aria-labelledby={id}>
-      <MemberColumn className="mb-1 flex items-center justify-between gap-2">
+      <MemberColumn wide className="mb-1 flex items-center justify-between gap-2">
         <h2 id={id} className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink">
           {/* A bare 18px line icon on the title's line: no badge, so the title keeps the width. */}
           {glyph && <span aria-hidden="true" className="flex shrink-0 items-center">{glyph}</span>}
@@ -81,15 +91,15 @@ export default function OfferCardRail({
           </Link>
         )}
       </MemberColumn>
-      <div className="offer-rail relative">
+      <div className="offer-rail relative lg:mx-auto lg:max-w-[2200px]">
         <div
           ref={railRef}
           onScroll={measure}
-          className="member-bleed edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4"
+          className="member-bleed member-bleed-fill edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4"
         >
           {offers.map((offer) => (
-            <div key={offer.id} className="flex shrink-0 snap-start">
-              <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} />
+            <div key={offer.id} className={`flex shrink-0 snap-start lg:min-w-0 ${compact ? COMPACT_SLOT : FILL_SLOT}`}>
+              <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} compact={compact} className="lg:w-full" />
             </div>
           ))}
         </div>

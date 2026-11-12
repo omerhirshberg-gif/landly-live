@@ -60,8 +60,8 @@ describe('foldable web layout', () => {
     expect(read('app/globals.css')).toContain('.below-header,.navbar-safe-top{padding-left:env(safe-area-inset-left, 0px);padding-right:env(safe-area-inset-right, 0px);}')
   })
 
-  it('shows two perks per row from 600px, three on desktop and four from 1280px, one on phones and cover screens', () => {
-    expect(OFFER_FEED_GRID).toBe('grid grid-cols-1 gap-3 fold:grid-cols-2 fold:gap-4 lg:grid-cols-3 xl:grid-cols-4')
+  it('shows two perks per row from 600px, three on desktop, four from 1280px, five from 1536px, six from 1920px, one on phones and cover screens', () => {
+    expect(OFFER_FEED_GRID).toBe('grid grid-cols-1 gap-5 fold:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6')
     expect(OFFER_FEED_GRID).not.toMatch(/\bmd:grid-cols-2\b/)
   })
 
@@ -90,12 +90,12 @@ describe('foldable web layout', () => {
 
   it('splits the offer page into photo and details panes from 600px, desktop included, leaving phones alone', () => {
     const page = read('app/offers/[offerId]/page.tsx')
-    expect(page).toContain('mx-auto max-w-2xl fold:max-w-6xl')
-    expect(page).toContain('fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-[1.6fr_1fr] lg:gap-x-10')
+    expect(page).toContain('mx-auto w-full max-w-2xl fold:max-w-6xl lg:max-w-[1520px]')
+    expect(page).toContain('fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-12 lg:gap-x-10')
   })
 
   it.each(['components/member/PerksTab.tsx', 'components/member/RedeemedTab.tsx'])('%s lists passes one to a row on phones and two from 600px, never a narrow strip on desktop', (path) => {
-    expect(read(path)).toContain('<ul className="grid gap-3 fold:grid-cols-2">')
+    expect(read(path)).toContain('<ul className="grid gap-4 fold:grid-cols-2">')
     expect(read(path)).not.toContain('max-w-xl')
   })
 
@@ -123,7 +123,7 @@ describe('two-pane profile and offer from 600px, desktop included', () => {
     const page = read('app/offers/[offerId]/page.tsx')
     expect(page).not.toContain('fold:max-lg:')
     expect(page).toContain('fold:row-span-3')
-    expect(page.match(/fold:col-start-2/g)).toHaveLength(4)
+    expect(page.match(/fold:col-start-2/g)).toHaveLength(5)
   })
 
   it('keeps the fixed widgets clear of the side safe areas', () => {

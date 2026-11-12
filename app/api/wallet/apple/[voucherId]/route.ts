@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: Params) {
     }
     return reply({ error: 'Authorization service unavailable.', reason: 'unavailable' }, 503)
   }
-  if (checkUidRateLimit('wallet', uid)) return reply({ error: 'Too many requests.', reason: 'rateLimited' }, 429)
+  if (await checkUidRateLimit('wallet', uid)) return reply({ error: 'Too many requests.', reason: 'rateLimited' }, 429)
 
   const { voucherId } = await params
   let voucher: PassVoucher | null

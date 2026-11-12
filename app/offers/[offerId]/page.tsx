@@ -29,6 +29,7 @@ import { badgeLogoUri } from '@/lib/offers/dealImage'
 import { distinctDescription, offerTextSources } from '@/lib/offers/offerText'
 import { offerFullAddress } from '@/lib/geo'
 import NavigationLinks from '@/components/offers/NavigationLinks'
+import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
 
 const DATE_LOCALE: Record<Lang, string> = {
   en: 'en-US',
@@ -140,8 +141,12 @@ export default function OfferDetailPage() {
     <>
       <Navbar />
       <div className="member-canvas below-header">
-        <div className="mx-auto max-w-2xl fold:max-w-6xl pb-[env(safe-area-inset-bottom)] fold:px-6 fold:pt-8 fold:pb-12">
+        <div className="mx-auto w-full max-w-2xl fold:max-w-6xl lg:max-w-[1520px] pb-[env(safe-area-inset-bottom)] fold:px-6 fold:pb-12 lg:px-10">
           <OpenInAppHint className="mx-4 my-3 fold:mx-0 fold:mt-0" />
+          {/* The persistent search row, where it sits on every other page. Not on phones: there the photo runs under the navbar with the back button on it. */}
+          <div className="hidden fold:block fold:pt-8 sm:pt-10 lg:pt-12">
+            <GlobalPerkSearchRow />
+          </div>
           {/* Back names where it returns (Home, Discover, Wishlist); opened directly it says "Back" and goes Home (members) or to Discover (guests). */}
           <div className="hidden fold:block">
             <BackButton fallback={user ? '/' : '/categories'} contextLabel className="mb-4" />
@@ -160,9 +165,9 @@ export default function OfferDetailPage() {
               either side of a fold and about 650px of photo from 1024px. Nothing
               here clips, which would stop the purchase bar from sticking. */}
           <article className="bg-white fold:bg-transparent">
-            <div className="fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-[1.6fr_1fr] lg:gap-x-10">
-              <div className="relative fold:sticky fold:top-[calc(var(--header-offset)+1rem)] fold:row-span-3 fold:rounded-2xl fold:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-                <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} className="rounded-[inherit]">
+            <div className="fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-12 lg:gap-x-10">
+              <div className="relative fold:sticky fold:top-[calc(var(--header-offset)+1rem)] fold:row-span-3 lg:col-span-6 fold:rounded-2xl fold:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+                <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} aspect="aspect-video lg:aspect-[16/10] lg:min-h-[380px]" containAspect="aspect-[4/5] max-h-[380px] lg:aspect-auto lg:h-[480px] lg:max-h-[480px] lg:min-h-0" className="rounded-[inherit]">
                   <BackButton fallback={user ? '/' : '/categories'} contextLabel variant="glass" className="absolute start-1.5 top-1.5 fold:hidden" />
                   {/* The photo isn't clipped from 600px (the shadow, the sticky pane), so the ribbon rounds that corner itself. */}
                   <DiscountBadge percent={discount} className="fold:rounded-se-2xl" />
@@ -197,12 +202,14 @@ export default function OfferDetailPage() {
                 </div>
               </div>
 
+              {/* From 1024px the details are one elevated card beside the photo; below that the wrapper dissolves (contents) and the blocks sit as before. */}
+              <div className="contents fold:block fold:col-start-2 lg:col-start-7 lg:col-span-6 lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-sm">
               {/* Its shadow falls upward only: below the sheet the page runs on in white. */}
-              <div className="relative z-10 -mt-5 rounded-t-3xl bg-white px-5 pb-6 pt-11 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-8 fold:col-start-2 fold:mt-0 fold:rounded-none fold:bg-transparent fold:px-0 fold:pb-5 fold:pt-0 fold:shadow-none">
+              <div className="relative z-10 -mt-5 rounded-t-3xl bg-white px-5 pb-6 pt-11 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-8 fold:col-start-2 fold:mt-0 fold:rounded-none fold:bg-transparent fold:px-0 lg:px-0 fold:pb-5 fold:pt-0 fold:shadow-none">
                 <OfferTags category={offer.category} method={offer.redemptionMethod} className="mb-2" />
                 {/* The deal is the page's heading; the logo already carries the brand, named above it. */}
                 {/* <bdi>: a Latin name keeps its letters in order yet stays on the page's side in Hebrew. */}
-                <p className="break-words text-base font-bold leading-snug text-body">
+                <p className="break-words text-base font-bold leading-snug text-body lg:font-semibold lg:text-slate-500">
                   <bdi lang={businessName.lang ?? undefined} dir="auto">{businessName.text}</bdi>
                 </p>
                 <h1 className="mt-1 break-words text-2xl font-black leading-tight tracking-tight text-ink sm:text-3xl">
@@ -210,13 +217,13 @@ export default function OfferDetailPage() {
                 </h1>
 
                 {/* Prices in <bdi>, in the body font with their "₪" (app/layout.tsx loads its subset). */}
-                <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:rounded-xl lg:bg-slate-50/90 lg:p-4">
                   <bdi className="text-price-lg tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
                   {discount > 0 && (
                     <bdi className="text-price-was sm:text-base tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>
                   )}
                   {discount > 0 && (
-                    <span className="whitespace-nowrap text-sm font-semibold text-emerald-700">{t('offer_you_save').replace('{amount}', formatPrice(offer.originalPrice - offer.offerPrice))}</span>
+                    <span className="whitespace-nowrap text-sm font-semibold text-emerald-700 lg:rounded-full lg:bg-emerald-50 lg:px-3 lg:py-1">{t('offer_you_save').replace('{amount}', formatPrice(offer.originalPrice - offer.offerPrice))}</span>
                   )}
                 </div>
 
@@ -241,7 +248,7 @@ export default function OfferDetailPage() {
                 )}
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
-                <div className="mt-4 flex items-center gap-3 empty:hidden">
+                <div className="mt-4 flex flex-wrap items-center gap-3 empty:hidden lg:mt-5">
                   {(multiChain || (offer.fulfillmentType === 'multipass_pool' && !address)) && (
                     <PerkReachLine offer={offer} hasPlace={!!address} className="flex-1 text-sm text-muted" />
                   )}
@@ -254,9 +261,15 @@ export default function OfferDetailPage() {
                   )}
                   {/* A multi-chain voucher has no single store to navigate to; its chains are listed below. */}
                   {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !address) && <NavigationLinks
-                    className="ms-auto"
+                    className="ms-auto lg:hidden"
                     destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }}
                   />}
+                  {/* From 1024px the two ways to get there are labelled buttons, side by side under the address. */}
+                  {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !address) && (
+                    <div className="hidden lg:block lg:basis-full">
+                      <NavigationLinks wide destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }} />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -267,7 +280,7 @@ export default function OfferDetailPage() {
                   guest never sees the steps flash in first. Codes live only on the
                   member's own voucher pages. */}
               {(descriptionText || user || multiChain) && (
-                <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0">
+                <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0 lg:px-0">
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
                     {multiChain && (
                       <Fold title={t('perk_chains_title')} defaultOpen>
@@ -276,7 +289,7 @@ export default function OfferDetailPage() {
                     )}
                     {descriptionText && (
                       <Fold title={t('offer_about_title')} defaultOpen>
-                        <p className="whitespace-pre-line text-copy leading-relaxed text-body" lang={description.lang ?? undefined} dir="auto">{descriptionText}</p>
+                        <p className="whitespace-pre-line text-copy leading-relaxed text-body lg:text-base lg:text-slate-700" lang={description.lang ?? undefined} dir="auto">{descriptionText}</p>
                       </Fold>
                     )}
                     {user && (
@@ -294,7 +307,7 @@ export default function OfferDetailPage() {
                 </div>
               )}
               {guest && (
-                <div className="border-t border-slate-100 px-5 py-6 sm:px-8 fold:col-start-2 fold:border-0 fold:px-0 fold:pb-0 fold:pt-4">
+                <div className="border-t border-slate-100 px-5 py-6 sm:px-8 fold:col-start-2 fold:border-0 fold:px-0 lg:px-0 fold:pb-0 fold:pt-4">
                   <OfferMemberGate offerId={offer.id} />
                 </div>
               )}
@@ -303,7 +316,7 @@ export default function OfferDetailPage() {
                   above the home indicator, while the offer is in view; floating buttons
                   (the WhatsApp widget) rise above it there (data-floating-clearance). */}
               {!guest && (
-                <div data-floating-clearance="" className="sticky bottom-0 z-10 border-t border-slate-100 bg-white/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-8 fold:static fold:col-start-2 fold:border-0 fold:bg-transparent fold:px-0 fold:pb-0 fold:pt-5 fold:backdrop-blur-none">
+                <div data-floating-clearance="" className="sticky bottom-0 z-10 border-t border-slate-100 bg-white/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-8 fold:static fold:col-start-2 fold:border-0 fold:bg-transparent fold:px-0 lg:px-0 fold:pb-0 fold:pt-5 fold:backdrop-blur-none">
                   {(authLoading || claimLoading) && (
                     <div role="status" className="ds-btn ds-btn-primary w-full opacity-60 pointer-events-none">
                       <span aria-hidden="true">…</span>
@@ -324,18 +337,19 @@ export default function OfferDetailPage() {
 
                   {user && !authLoading && !claimLoading && !alreadyClaimed && (expired ? (
                     // Gone past its date: the button stays in place, unusable, as in the app.
-                    <button type="button" disabled className="ds-btn ds-btn-primary ds-btn-wrap w-full">
+                    <button type="button" disabled className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
                       <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
                     </button>
                   ) : (
                     // A full page load, not a client-side Link: the accessibility widget
                     // script this page ran must not carry over beside the payment iframe.
-                    <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
+                    <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
                       <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
                     </a>
                   ))}
                 </div>
               )}
+              </div>
             </div>
           </article>
         </div>

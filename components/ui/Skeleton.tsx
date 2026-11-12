@@ -43,9 +43,9 @@ function OfferCardSkeleton({ className = '' }: { className?: string }) {
 }
 
 /** A perk feed loading: a screen's worth of OfferCard placeholders in the feed's own grid. */
-export function OfferGridSkeleton({ count = 6 }: { count?: number }) {
+export function OfferGridSkeleton({ count = 6, gridClassName = OFFER_FEED_GRID }: { count?: number; gridClassName?: string }) {
   return (
-    <Loading className={OFFER_FEED_GRID}>
+    <Loading className={gridClassName}>
       {Array.from({ length: count }, (_, i) => <OfferCardSkeleton key={i} />)}
     </Loading>
   )
@@ -54,7 +54,7 @@ export function OfferGridSkeleton({ count = 6 }: { count?: number }) {
 /** Home's rails loading: the rail's cards, the next one peeking in. */
 export function OfferRailSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <Loading className="member-bleed flex gap-3 overflow-hidden pb-3 pt-1 sm:gap-4">
+    <Loading className="member-bleed flex gap-3 overflow-hidden pb-3 pt-1 sm:gap-4 member-bleed-fill lg:mx-auto lg:max-w-[2200px]">
       {Array.from({ length: count }, (_, i) => <OfferCardSkeleton key={i} className="w-[clamp(240px,72vw,260px)] flex-shrink-0" />)}
     </Loading>
   )

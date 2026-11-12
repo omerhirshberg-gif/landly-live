@@ -5,6 +5,7 @@ import { getOfferStatus } from '@/lib/admin/offerStatus'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { requireBusinessUid, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
 import { parsePageParams, pageResponse } from '@/lib/business/pagination'
+import { errorBody } from '@/lib/api/errorCode'
 
 // The business dashboard's read-only offers list. uid comes only from the
 // verified Firebase ID token (see requireBusinessUid) -- there is no
@@ -14,15 +15,15 @@ export async function GET(request: Request) {
   let uid: string
   try { uid = await requireBusinessUid(request) }
   catch (error) {
-    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: error.status })
-    return NextResponse.json({ error: 'Authorization service unavailable.' }, { status: 503 })
+    if (error instanceof RequestAuthError) return NextResponse.json(errorBody(error.message, error.status), { status: error.status })
+    return NextResponse.json(errorBody('Authorization service unavailable.', 503), { status: 503 })
   }
-  const limited = checkUidRateLimit('business', uid)
+  const limited = await checkUidRateLimit('business', uid)
   if (limited) return limited
   let page
   const scope = `${uid}:offers`
   try { page = parsePageParams(request, scope) }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid pagination.' }, { status: 400 }) }
+  catch (error) { return NextResponse.json(errorBody(error instanceof Error ? error.message : 'Invalid pagination.', 400), { status: 400 }) }
 
   // Sorted in-memory (not via orderBy) so this doesn't need a composite
   // Firestore index, same as app/api/admin/offers.

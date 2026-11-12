@@ -1,6 +1,7 @@
 import Card from '@/components/admin/Card'
 import { formatCount, formatIls } from '@/lib/usage/pricing'
 import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
+import { useAdminT } from '@/lib/admin/translations'
 
 const ACCENTS = {
   blue: 'bg-[#F0F7FF] text-[#0038B8]',
@@ -31,24 +32,25 @@ function SummaryCard({ label, value, hint, icon, accent }: { label: string; valu
 }
 
 export default function UsageSummary({ report }: { report: UsageReport }) {
+  const { t } = useAdminT()
   const { netIls, grossIls, freeCoveragePct, otpSent } = report.totals
   const otpPrice = reportLines(report).find((line) => line.skuId === 'waAuth')
   const coverageAccent = freeCoveragePct >= 90 ? 'emerald' : freeCoveragePct >= 50 ? 'amber' : 'red'
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      <SummaryCard label="Estimated payable" value={formatIls(netIls)} hint="This month, after free tiers" icon="fa-shekel-sign" accent="blue" />
+      <SummaryCard label={t('usage.sum.payable')} value={formatIls(netIls)} hint={t('usage.sum.payableHint')} icon="fa-shekel-sign" accent="blue" />
       <SummaryCard
-        label="Free-tier coverage"
+        label={t('usage.sum.coverage')}
         value={`${freeCoveragePct}%`}
-        hint="Of the gross cost the free tiers absorb"
+        hint={t('usage.sum.coverageHint')}
         icon="fa-shield-halved"
         accent={coverageAccent}
       />
-      <SummaryCard label="Gross cost" value={formatIls(grossIls)} hint="The same usage with no free tiers" icon="fa-receipt" accent="violet" />
+      <SummaryCard label={t('usage.sum.gross')} value={formatIls(grossIls)} hint={t('usage.sum.grossHint')} icon="fa-receipt" accent="violet" />
       <SummaryCard
-        label="OTP codes sent"
+        label={t('usage.sum.otp')}
         value={formatCount(otpSent)}
-        hint={otpPrice && otpSent > 0 ? `${formatIls(otpPrice.netIls / otpSent)} each, billed by Meta` : 'Billed by Meta per accepted code'}
+        hint={otpPrice && otpSent > 0 ? t('usage.sum.otpEach', { price: formatIls(otpPrice.netIls / otpSent) }) : t('usage.sum.otpHint')}
         icon="fa-key"
         accent="amber"
       />

@@ -8,11 +8,13 @@ import Alert from '@/components/admin/Alert'
 import PasswordField from '@/components/admin/PasswordField'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { ADMIN_LABEL, PRIMARY_BUTTON } from '@/components/admin/formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 const ERROR_ID = 'admin-login-error'
 const REMEMBER_HINT_ID = 'admin-remember-hint'
 
 export default function AdminLoginPage() {
+  const { t } = useAdminT()
   const router = useRouter()
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
@@ -31,7 +33,7 @@ export default function AdminLoginPage() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.ok) {
-        setError(res.status === 429 ? 'Too many attempts. Try again later.' : res.status === 503 ? 'Sign-in is unavailable right now. Try again later.' : 'Incorrect password.')
+        setError(res.status === 429 ? t('login.tooMany') : res.status === 503 ? t('login.unavailable') : t('login.incorrect'))
         setSubmitting(false)
         return
       }
@@ -39,7 +41,7 @@ export default function AdminLoginPage() {
       markSignedIn()
       router.push('/admin')
     } catch {
-      setError('Something went wrong. Try again.')
+      setError(t('login.error'))
       setSubmitting(false)
     }
   }
@@ -62,10 +64,10 @@ export default function AdminLoginPage() {
             <img src="/logo-mark.png" alt="Landly" className="h-12 w-auto" />
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#F0F7FF] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0038B8]">
               <i className="fa-solid fa-shield-halved text-[10px]" aria-hidden="true" />
-              Admin Portal
+              {t('login.badge')}
             </span>
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#0B1B3D]">Sign In</h1>
-            <p className="mt-1.5 text-sm text-[#475569]">Enter the shared admin password to manage businesses and offers.</p>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#0B1B3D]">{t('login.title')}</h1>
+            <p className="mt-1.5 text-sm text-[#475569]">{t('login.subtitle')}</p>
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -77,7 +79,7 @@ export default function AdminLoginPage() {
 
             <div>
               <label htmlFor="admin-password" className={ADMIN_LABEL}>
-                Password
+                {t('login.password')}
               </label>
               <PasswordField
                 id="admin-password"
@@ -95,7 +97,7 @@ export default function AdminLoginPage() {
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D] select-none [-webkit-tap-highlight-color:transparent]">
                 <Switch name="remember" checked={remember} onChange={setRemember} aria-describedby={REMEMBER_HINT_ID} />
                 <span>
-                  Stay logged in
+                  {t('login.stay')}
                   <span className="text-[#64748B]"> · </span>
                   <bdi lang="he" dir="rtl">
                     זכור אותי
@@ -103,7 +105,7 @@ export default function AdminLoginPage() {
                 </span>
               </label>
               <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-[#64748B]">
-                Keeps you signed in on this device for 30 days. Otherwise you&apos;re signed out after 12 hours.
+                {t('login.stayHint')}
               </p>
             </div>
 
@@ -111,11 +113,11 @@ export default function AdminLoginPage() {
               {submitting ? (
                 <>
                   <ButtonSpinner />
-                  Verifying…
+                  {t('login.verifying')}
                 </>
               ) : (
                 <>
-                  Sign In
+                  {t('login.title')}
                   <i className="fa-solid fa-arrow-right text-sm" aria-hidden="true" />
                 </>
               )}
@@ -124,7 +126,7 @@ export default function AdminLoginPage() {
 
           <div className="mt-6 flex items-center justify-center gap-2 border-t border-[#E2E8F0] pt-5 text-xs font-medium text-[#64748B]">
             <i className="fa-solid fa-lock text-[10px]" aria-hidden="true" />
-            Restricted area · Authorized administrators only
+            {t('login.restricted')}
           </div>
         </div>
       </main>

@@ -16,7 +16,7 @@ import { syncSessionCutoff } from '@/lib/auth/sessionRevocation'
 const MIN_RESPONSE_MS = 1000
 
 export async function POST(request: Request) {
-  if (isPasswordResetRateLimited(request)) {
+  if (await isPasswordResetRateLimited(request)) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }
   const startedAt = performance.now()

@@ -63,10 +63,10 @@ export default function NearMeButton({
         disabled={requesting}
         aria-pressed={active}
         aria-label={t('geo_near_me_btn')}
-        className={`tap-target inline-flex h-11 w-11 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:px-3.5 ${
+        className={`tap-target inline-flex h-12 w-12 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:px-5 ${
           active
             ? 'border-brand bg-brand text-white shadow-btn-primary [@media(hover:hover)]:hover:bg-brandDark'
-            : 'border-slate-200/80 bg-white text-ink shadow-btn-secondary [@media(hover:hover)]:hover:bg-slate-50'
+            : 'border-slate-200/90 bg-white text-ink shadow-sm [@media(hover:hover)]:hover:bg-slate-50'
         }`}
       >
         {requesting ? (

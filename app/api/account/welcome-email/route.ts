@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       }
       tx.update(ref, { welcomeEmailSent: true, welcomeEmailSentAt: FieldValue.serverTimestamp() })
       return {
-        lang: typeof data.preferredLanguage === 'string' ? data.preferredLanguage : 'en',
+        lang: isValidLang(data.preferredLanguage) ? data.preferredLanguage : 'en',
         firstName: typeof data.firstName === 'string' ? data.firstName : '',
         marketingOptIn: data.marketingOptIn === true,
       }

@@ -17,6 +17,7 @@ import RowActionsMenu from '@/components/admin/RowActionsMenu'
 import { PRIMARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
 import type { GeoAddress } from '@/lib/geo'
 import { alternateBusinessName, type BusinessTranslations } from '@/lib/business/businessText'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 
 interface Business {
   uid: string
@@ -32,9 +33,9 @@ interface Business {
   phone: string
 }
 
-const BUSINESS_TABS = [
-  { id: 'offers', label: 'Offers', icon: 'fa-tags' },
-  { id: 'details', label: 'Details', icon: 'fa-pen' },
+const businessTabs = (t: (key: AdminKey) => string) => [
+  { id: 'offers', label: t('bizDetail.tab.offers'), icon: 'fa-tags' },
+  { id: 'details', label: t('bizDetail.tab.details'), icon: 'fa-pen' },
 ] as const
 
 // One business: a hero header (logo, names, category, ח.פ, address with map
@@ -43,6 +44,7 @@ const BUSINESS_TABS = [
 // in the breadcrumbs; deleting it is the ⋯ menu's only action, away from
 // the everyday ones.
 export default function BusinessDetailPage() {
+  const { t } = useAdminT()
   const { uid } = useParams<{ uid: string }>()
   const router = useRouter()
 
@@ -52,31 +54,31 @@ export default function BusinessDetailPage() {
   const [warning, setWarning] = useState<string | null>(null)
   // Bumped on every save, so the Details form starts again from what was saved.
   const [savedVersion, setSavedVersion] = useState(0)
-  const tabs = useFormTabs(BUSINESS_TABS)
+  const tabs = useFormTabs(businessTabs(t))
   useAdminCrumbs(useMemo(() => (business ? { labels: { [`/admin/businesses/${uid}`]: business.businessName } } : null), [business, uid]))
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusiness((data.businesses ?? []).find((b: Business) => b.uid === uid) ?? null))
-      .catch(() => setError('Failed to load business.'))
+      .catch(() => setError(t('bizDetail.loadFailed')))
 
     adminFetch(`/api/admin/offers?businessUid=${uid}`)
       .then((res) => res.json())
       .then((data) => setOffers(data.offers ?? []))
-      .catch(() => setError('Failed to load offers.'))
+      .catch(() => setError(t('bizDetail.offersFailed')))
   }, [uid])
 
   const deleteOffer = async (offer: ShowcaseOffer) => {
     const warning =
       offer.claimedCount > 0
-        ? `${offer.claimedCount} customer(s) have already claimed "${offer.title}". Delete it anyway?`
-        : `Delete "${offer.title}"?`
+        ? t('bizDetail.confirmClaimed', { n: offer.claimedCount, title: offer.title })
+        : t('bizDetail.confirmDeleteOffer', { title: offer.title })
     if (!window.confirm(warning)) return
 
     const res = await adminFetch(`/api/admin/offers/${offer.id}`, { method: 'DELETE' })
     if (!res.ok) {
-      setError((await res.json()).error ?? 'Failed to delete offer.')
+      setError((await res.json()).error ?? t('bizDetail.deleteOfferFailed'))
       return
     }
     setOffers((prev) => prev?.filter((o) => o.id !== offer.id) ?? null)
@@ -85,13 +87,13 @@ export default function BusinessDetailPage() {
   const deleteBusiness = async () => {
     if (!business) return
     const offerCount = offers?.length ?? 0
-    const offerText = offerCount > 0 ? ` and its ${offerCount} offer(s)` : ''
-    if (!window.confirm(`Delete "${business.businessName}"${offerText}? This cannot be undone.`)) return
+    const offerText = offerCount > 0 ? t('bizDetail.andOffers', { n: offerCount }) : ''
+    if (!window.confirm(t('bizDetail.confirmDeleteBiz', { name: business.businessName, offers: offerText }))) return
 
     const res = await adminFetch(`/api/admin/businesses/${uid}`, { method: 'DELETE' })
     const data = await res.json()
     if (!res.ok) {
-      setError(data.error ?? 'Failed to delete business.')
+      setError(data.error ?? t('bizDetail.deleteBizFailed'))
       return
     }
     router.push('/admin/businesses')
@@ -113,7 +115,7 @@ export default function BusinessDetailPage() {
     return (
       <div>
         <BackLink />
-        <EmptyState icon="fa-store-slash" title="Business not found" description="It may have been deleted." />
+        <EmptyState icon="fa-store-slash" title={t('bizDetail.notFound')} description={t('bizDetail.mayBeDeleted')} />
       </div>
     )
   }
@@ -141,18 +143,18 @@ export default function BusinessDetailPage() {
           <>
             <Link href={addHref} className={`${PRIMARY_BUTTON} flex-1 sm:flex-none`}>
               <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-              Add offer for this business
+              {t('bizDetail.addOffer')}
             </Link>
             <RowActionsMenu
-              label="More business actions"
+              label={t('bizDetail.moreActions')}
               // Editing is the Details tab; the menu keeps only what's dangerous.
-              actions={[{ label: 'Delete business', icon: 'fa-trash', danger: true, onSelect: () => void deleteBusiness() }]}
+              actions={[{ label: t('bizDetail.deleteBusiness'), icon: 'fa-trash', danger: true, onSelect: () => void deleteBusiness() }]}
             />
           </>
         }
       />
 
-      <FormTabs state={tabs} label="Business sections" />
+      <FormTabs state={tabs} label={t('bizDetail.sections')} />
 
       <TabPanel state={tabs} tab="details">
         <BusinessEditForm
@@ -177,12 +179,12 @@ export default function BusinessDetailPage() {
         {offers !== null && offers.length === 0 && (
           <EmptyState
             icon="fa-tags"
-            title="No offers yet"
-            description="This business doesn't have any perks. Add one to get it live."
+            title={t('bizDetail.noOffersTitle')}
+            description={t('bizDetail.noOffersDesc')}
             action={
               <Link href={addHref} className={PRIMARY_BUTTON}>
                 <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
-                Add offer
+                {t('bizDetail.addOfferShort')}
               </Link>
             }
           />
@@ -190,9 +192,9 @@ export default function BusinessDetailPage() {
 
         {offers !== null && offers.length > 0 && (
           <div className="space-y-10">
-            <OfferSection title={`Active perks (${activeOffers.length})`} offers={activeOffers} editHref={editHref} onDelete={deleteOffer} />
+            <OfferSection title={t('bizDetail.active', { n: activeOffers.length })} offers={activeOffers} editHref={editHref} onDelete={deleteOffer} />
             {inactiveOffers.length > 0 && (
-              <OfferSection title={`Not active perks (${inactiveOffers.length})`} offers={inactiveOffers} editHref={editHref} onDelete={deleteOffer} />
+              <OfferSection title={t('bizDetail.inactive', { n: inactiveOffers.length })} offers={inactiveOffers} editHref={editHref} onDelete={deleteOffer} />
             )}
           </div>
         )}
@@ -212,11 +214,12 @@ function OfferSection({
   editHref: (offer: ShowcaseOffer) => string
   onDelete: (offer: ShowcaseOffer) => void
 }) {
+  const { t } = useAdminT()
   return (
     <section>
       <h2 className={SECTION_HEADING}>{title}</h2>
       {offers.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#64748B]">None.</p>
+        <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#64748B]">{t('bizDetail.none')}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {offers.map((offer) => (
@@ -225,8 +228,8 @@ function OfferSection({
               offer={offer}
               editHref={editHref(offer)}
               actions={[
-                { label: 'Edit offer', icon: 'fa-pen', href: editHref(offer) },
-                { label: 'Delete offer', icon: 'fa-trash', danger: true, onSelect: () => onDelete(offer) },
+                { label: t('bizDetail.editOffer'), icon: 'fa-pen', href: editHref(offer) },
+                { label: t('bizDetail.deleteOffer'), icon: 'fa-trash', danger: true, onSelect: () => onDelete(offer) },
               ]}
             />
           ))}

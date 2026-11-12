@@ -48,6 +48,9 @@ import { colors, radius } from '../../theme'
 // (app/checkout/[offerId].tsx); a finished purchase replaces it with the new
 // voucher, so coming back here re-runs the claim check on focus, turning the
 // Buy bar into the "already claimed" notice.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function OfferScreen() {
   const { t, lang, isRtl } = useLang()
   const insets = useSafeAreaInsets()
@@ -163,7 +166,7 @@ export default function OfferScreen() {
             <View style={panes ? styles.cardPanes : undefined}>
               <View style={[styles.heroWrap, panes && styles.heroPane, panes && { flex: heroShare }]}>
                 {/* The same picture as the perk card: an offer image that is a logo goes to the badge instead. */}
-                <DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'}>
+                <DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>
                   {!panes && (
                     <View style={styles.back}>
                       <GlassBackButton label={t('settings_back')} onPress={() => goBack('/perks')} />
