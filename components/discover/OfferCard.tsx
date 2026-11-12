@@ -33,6 +33,8 @@ interface OfferCardProps {
    */
   layout?: 'rail' | 'grid'
   className?: string
+  /** Denser on desktop (from 1024px): a shorter photo, tighter body and a 14px title. Phones are unchanged. Home's rails only. */
+  compact?: boolean
   /** The category in the tag line under the photo. Off in a list already scoped to one category, where every card would repeat it. */
   showCategoryBadge?: boolean
   /** Kilometres from the member's location (Near me), shown before the place; undefined without one. */
@@ -49,7 +51,7 @@ interface OfferCardProps {
 // so a tap never leaves a phone's card stuck raised. Prices sit in <bdi> in the
 // body font, "₪" included, so the symbol and digits never mix fonts. Every
 // position is start/end, so Hebrew mirrors the card.
-export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', className = '', showCategoryBadge = true, distanceKm }: OfferCardProps) {
+export default function OfferCard({ offer, showWishlistButton = false, layout = 'rail', className = '', compact = false, showCategoryBadge = true, distanceKm }: OfferCardProps) {
   const { t, lang } = useLang()
   const title = localizeText(offer.title, offer.translations, lang, 'title')
   const name = localizedBusinessName(offer, lang)
@@ -71,10 +73,10 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
       href={`/offers/${offer.id}`}
       // A rail scrolls sideways, so it keeps 4px of room above its cards for the lift.
       className={`group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.07)] transition-[box-shadow,transform,border-color] duration-200 ease-out-expo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98] motion-reduce:transition-none [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0 ${
-        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
+        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 sm:w-[280px] [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
       } ${className}`}
     >
-      <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} aspect={rail ? 'aspect-video max-h-[172px]' : 'aspect-[2/1] max-h-[172px]'}>
+      <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} aspect={rail ? 'aspect-[16/10] max-h-40' : 'aspect-[2/1] max-h-[172px]'}>
         <DiscountBadge percent={discount} />
         {/* How it's redeemed (and, in a mixed feed, a category mark) over the photo's top start corner. */}
         <span className="absolute start-2.5 top-2.5 flex max-w-[60%] items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-micro font-semibold text-body backdrop-blur-sm">
@@ -112,9 +114,9 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         <span className="absolute -bottom-4 start-3"><MerchantBadge size="sm" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={name.text} /></span>
       </DealMedia>
 
-      <div className="flex flex-1 flex-col p-3 pt-[22px]">
+      <div className={`flex flex-1 flex-col p-3 pt-[22px]`}>
         {/* Cards in a row stretch to the tallest, and the price rides the foot (mt-auto), so no title lines are reserved. */}
-        <p className="line-clamp-2 text-[15px] font-bold leading-tight text-ink">
+        <p className={`line-clamp-2 text-[15px] font-bold leading-tight text-ink`}>
           <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
         </p>
         {/* One dense line: the business, then where (or how far). */}

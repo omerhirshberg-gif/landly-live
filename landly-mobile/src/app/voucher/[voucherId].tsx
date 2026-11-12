@@ -32,6 +32,9 @@ type Voucher = VoucherDocument & { id: string }
 // the numeric code -- each on the back of a card that turns over when tapped
 // (components/VoucherReveal.tsx) -- then how to redeem, validity and terms, and the order number. Live from Firestore, so a pass
 // the business redeems turns into the "already redeemed" notice in place.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function VoucherScreen() {
   const { t, lang } = useLang()
   const { voucherId } = useLocalSearchParams<{ voucherId: string }>()

@@ -120,7 +120,7 @@ export async function POST(request: Request) {
   // requests (e.g. a redirect that stripped the header) can't use up the
   // IP's quota. A forged token fails signature verification locally, before
   // any network call; the per-account limit below caps real accounts.
-  if (isVerificationIpRateLimited(request)) {
+  if (await isVerificationIpRateLimited(request)) {
     return reply({ error: 'Too many requests. Try again later.', reason: 'rateLimited' }, 429)
   }
 
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
   }
   if (userRecord.emailVerified || !userRecord.email) return reply({ ok: true })
 
-  if (isVerificationUidRateLimited(decoded.uid)) {
+  if (await isVerificationUidRateLimited(decoded.uid)) {
     return reply({ error: 'Too many requests. Try again later.', reason: 'rateLimited' }, 429)
   }
 

@@ -10,6 +10,9 @@ const iso = (value: unknown) => (value instanceof Timestamp ? value.toDate().toI
 // One member for the admin's detail page: profile, sign-in devices, passes
 // (read-only: never the redemption code or QR token), recent orders and every
 // admin action taken on them.
+// Each history list is capped; a member never has anywhere near this many.
+const HISTORY_LIMIT = 200
+
 export async function GET(request: Request, { params }: { params: Promise<{ uid: string }> }) {
   const authError = requireAdminAuth(request)
   if (authError) return authError
@@ -22,9 +25,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ uid:
   const [authUser, sessions, vouchers, orders, audit] = await Promise.all([
     getAdminAuth().getUser(uid).catch(() => null),
     db.collection('users').doc(uid).collection('sessions').orderBy('lastActiveAt', 'desc').limit(20).get(),
-    db.collection('vouchers').where('userId', '==', uid).get(),
-    db.collection('orders').where('userId', '==', uid).get(),
-    db.collection('adminAuditLog').where('targetId', '==', uid).get(),
+    db.collection('vouchers').where('userId', '==', uid).limit(HISTORY_LIMIT).get(),
+    db.collection('orders').where('userId', '==', uid).limit(HISTORY_LIMIT).get(),
+    db.collection('adminAuditLog').where('targetId', '==', uid).limit(HISTORY_LIMIT).get(),
   ])
   const byDateDesc = <T extends { at: string | null }>(a: T, b: T) => (b.at ?? '').localeCompare(a.at ?? '')
   return NextResponse.json({

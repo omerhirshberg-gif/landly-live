@@ -61,6 +61,8 @@ export class TransactionStore {
 
   readonly db = {
     collection: (name: string) => this.coll(name),
+    // Like the Admin SDK: every ref in one call, snapshots in the order asked.
+    getAll: async (...refs: { path: string }[]) => refs.map((ref) => this.snap(ref.path)),
     batch: () => {
       const deletes: { delete: () => Promise<void> }[] = []
       return { delete: (ref: { delete: () => Promise<void> }) => { deletes.push(ref) }, commit: async () => { for (const ref of deletes) await ref.delete() } }

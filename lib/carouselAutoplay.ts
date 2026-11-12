@@ -1,4 +1,4 @@
-// The auto-advancing "Curated for you" / "Recommended for you" row, shared by
+// The auto-advancing rows (Recommended, New and Best Sellers), shared by
 // the website (lib/useAutoAdvance.ts) and the Expo app (components/OfferCarousel.tsx):
 // one card every 5 seconds, then back to the first. It stops for a finger on
 // the row, a pointer over it, focus inside it, Reduce Motion, a hidden page or

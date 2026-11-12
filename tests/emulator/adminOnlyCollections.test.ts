@@ -17,7 +17,7 @@ connectFirestoreEmulator(client, '127.0.0.1', 8787, { mockUserToken: { sub: 'mem
 const PATHS = [
   'couponPools/pool1', 'couponPools/pool1/items/00000001', 'couponPools/pool1/codeHashes/abc',
   'merchantInvites/hash1', 'merchantInviteBatches/b1', 'businessFinancials/biz1', 'businessContracts/c1',
-  'payoutBatches/p1', 'payoutBatches/p1/lines/biz1', 'adminAuditLog/a1',
+  'payoutBatches/p1', 'payoutBatches/p1/lines/biz1', 'adminAuditLog/a1', 'rateLimits/r1', 'orderCounter/0',
 ]
 
 beforeAll(async () => {

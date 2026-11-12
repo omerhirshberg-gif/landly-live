@@ -8,7 +8,9 @@ import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { getAllOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
-import { subscribeToUserVouchers } from '@shared/firebase/vouchers'
+import { useVouchers } from '@shared/firebase/VouchersProvider'
+import { greetingKey } from '@shared/auth/greeting'
+import { useGreetingPeriod } from '@shared/home/useGreetingPeriod'
 import { buildCategoryRails, selectCurated, selectHighlights } from '@shared/home/categoryRails'
 import ActivePassCard from '../../components/ActivePassCard'
 import AppText from '../../components/AppText'
@@ -49,29 +51,22 @@ export default function HomeScreen() {
   const { user } = useAuth()
   const router = useRouter()
   const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
-  // null until the first snapshot (or if the read is refused): the card shows "–", never a fake 0.
-  const [activeCount, setActiveCount] = useState<number | null>(null)
+  // Live from the shared voucher listener (one for Home and the wallet): a web purchase or a
+  // business redemption updates the badge in moments. null until the first snapshot (or if the
+  // read is refused): the card shows "–", never a fake 0.
+  const activeCount = useVouchers().active?.length ?? null
+  // "Good afternoon, Dana" by the member's own clock, like the website's Home; the plain welcome only until it is read.
+  const period = useGreetingPeriod()
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [photoOpen, setPhotoOpen] = useState(false)
   const peek = useAvatarPeek(photoURL)
 
-  // Live: a web purchase or a business redemption updates the badge in moments.
-  useEffect(() => {
-    if (!user) return
-    return subscribeToUserVouchers(
-      user.uid,
-      'active',
-      (vouchers) => setActiveCount(vouchers.length),
-      () => setActiveCount(null)
-    )
-  }, [user])
-
   // Pull-to-refresh reloads; the first load runs in the effect below.
   const load = useCallback(async () => {
     try {
-      setOffers(await getAllOffers())
+      setOffers(await getAllOffers({ force: true }))
       setFailed(false)
     } catch {
       setFailed(true)
@@ -139,7 +134,9 @@ export default function HomeScreen() {
               )}
               {/* Just the welcome: no tagline under it, so the header stays one compact row. */}
               <AppText accessibilityRole="header" style={[type.greeting, styles.greetingText]} numberOfLines={1}>
-                {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+                {period
+                  ? t(greetingKey(period, !!firstName)).replace('{name}', firstName ?? '')
+                  : firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
               </AppText>
             </Animated.View>
           )}

@@ -6,6 +6,7 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { requireBusinessUid, RequestAuthError } from '@/lib/firebase/verifyRequestUser'
 import { encodeTimeCursor, parseTimePageParams } from '@/lib/business/pagination'
 import { normalizeDisplayOrderNumber } from '@/lib/payments/orderNumber'
+import { errorBody } from '@/lib/api/errorCode'
 
 type VoucherStatus = 'active' | 'redeemed'
 
@@ -36,18 +37,25 @@ export async function GET(request: Request) {
   let uid: string
   try { uid = await requireBusinessUid(request) }
   catch (error) {
-    if (error instanceof RequestAuthError) return NextResponse.json({ error: error.message }, { status: error.status })
-    return NextResponse.json({ error: 'Authorization service unavailable.' }, { status: 503 })
+    if (error instanceof RequestAuthError) return NextResponse.json(errorBody(error.message, error.status), { status: error.status })
+    return NextResponse.json(errorBody('Authorization service unavailable.', 503), { status: 503 })
   }
-  const limited = checkUidRateLimit('business', uid)
+  const limited = await checkUidRateLimit('business', uid)
   if (limited) return limited
 
   const status = parseStatus(request)
-  if (!status) return NextResponse.json({ error: 'status must be "active" or "redeemed".' }, { status: 400 })
+  if (!status) return NextResponse.json(errorBody('status must be "active" or "redeemed".', 400), { status: 400 })
+  // `?count=1`: just how many vouchers have that status, counted by Firestore (one billed read per
+  // 1000 matches) instead of a stored tally. The dashboard's "active" tile uses it; checkout no
+  // longer bumps a counter on the business document, which every sale of that merchant shared.
+  if (new URL(request.url).searchParams.get('count') === '1') {
+    const counted = await getAdminDb().collection('vouchers').where('businessId', '==', uid).where('status', '==', status).count().get()
+    return NextResponse.json({ count: counted.data().count })
+  }
   let page
   const scope = `${uid}:vouchers:${status}`
   try { page = parseTimePageParams(request, scope) }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid pagination.' }, { status: 400 }) }
+  catch (error) { return NextResponse.json(errorBody(error instanceof Error ? error.message : 'Invalid pagination.', 400), { status: 400 }) }
 
   // Two equality (==) filters need no composite index in Firestore -- only
   // combining equality with a range/orderBy on a different field would.

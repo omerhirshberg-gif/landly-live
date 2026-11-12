@@ -136,6 +136,8 @@ export class MemoryFirestore {
 
   readonly db = {
     collection: (name: string) => this.collection(name),
+    // Like the Admin SDK: every ref in one call, snapshots in the order asked.
+    getAll: async (...refs: { path: string }[]) => refs.map((ref) => this.snap(ref.path)),
     /** The doc and everything under it. */
     recursiveDelete: async (ref: { path: string }) => {
       for (const path of [...this.records.keys()]) if (path === ref.path || path.startsWith(`${ref.path}/`)) this.records.delete(path)

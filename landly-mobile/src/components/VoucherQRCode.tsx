@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import QRCode from 'qrcode'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { voucherRedeemUrl } from '@shared/firebase/vouchers'
+import { useLang } from '../i18n/LangProvider'
 
 // Native counterpart of components/member/VoucherQRCode.tsx: same encoded
 // URL, drawn as SVG (there's no <canvas> here). qrcode's matrix builder is
@@ -9,6 +10,7 @@ import { voucherRedeemUrl } from '@shared/firebase/vouchers'
 const MARGIN = 1
 
 export default function VoucherQRCode({ redeemKey, size = 180 }: { redeemKey: string; size?: number }) {
+  const { t } = useLang()
   const { path, dimension } = useMemo(() => {
     const { modules } = QRCode.create(voucherRedeemUrl(redeemKey), {})
     let d = ''
@@ -21,7 +23,7 @@ export default function VoucherQRCode({ redeemKey, size = 180 }: { redeemKey: st
   }, [redeemKey])
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${dimension} ${dimension}`} accessibilityLabel="QR code">
+    <Svg width={size} height={size} viewBox={`0 0 ${dimension} ${dimension}`} accessibilityLabel={t('qr_code_label')}>
       <Rect width={dimension} height={dimension} fill="#ffffff" />
       <Path d={path} fill="#000000" />
     </Svg>

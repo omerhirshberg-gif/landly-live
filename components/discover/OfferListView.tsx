@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react'
 import BackButton from '@/components/navigation/BackButton'
+import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
 import { LoaderCircle, Tags, type LucideIcon } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
@@ -47,7 +48,12 @@ export default function OfferListView({ icon: Icon, title, depKey, fetchOffers, 
   const visibleOffers = offers && filterOffers ? filterOffers(offers) : offers
 
   return (
-    <div className="folder-in max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <>
+    {/* The persistent search row, in the same spot as on every other page. */}
+    <div className="pt-8 sm:pt-10 lg:pt-12">
+      <GlobalPerkSearchRow wide />
+    </div>
+    <div className="folder-in max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-6 sm:pb-10">
       <BackButton fallback="/categories" label={t('cats_detail_back')} className="mb-4" />
 
       <div className="flex items-center gap-3 sm:gap-4 mb-8">
@@ -85,5 +91,6 @@ export default function OfferListView({ icon: Icon, title, depKey, fetchOffers, 
         </div>
       )}
     </div>
+    </>
   )
 }

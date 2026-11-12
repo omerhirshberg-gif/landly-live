@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     throw err
   }
   const uid = decoded.uid
-  if (checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (await checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   if (!isRecentSignIn(decoded.auth_time)) return NextResponse.json({ error: 'reauth_required' }, { status: 403 })
 
   const body = await request.json().catch(() => null)

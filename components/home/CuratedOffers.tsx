@@ -13,18 +13,18 @@ export default function CuratedOffers({ offers }: { offers: OfferDocument[] | nu
   const { t } = useLang()
 
   if (offers && offers.length > 0) {
-    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots autoAdvance />
+    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots autoAdvance compact />
   }
 
   return (
     <section aria-labelledby="home-curated-title">
-      <MemberColumn className="mb-3">
+      <MemberColumn wide className="mb-3">
         <h2 id="home-curated-title" className="text-xl font-bold text-ink">{t('home_curated_title')}</h2>
       </MemberColumn>
       {offers === null ? (
         <OfferRailSkeleton />
       ) : (
-        <MemberColumn>
+        <MemberColumn wide>
           <div className="bg-white border border-line rounded-2xl p-6 text-center">
             <p className="font-bold text-ink mb-1">{t('deals_empty_title')}</p>
             <p className="text-sm text-body">{t('deals_empty_sub')}</p>

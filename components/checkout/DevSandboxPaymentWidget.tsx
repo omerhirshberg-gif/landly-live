@@ -6,6 +6,7 @@ import { ArrowLeft, CircleCheck, CircleX, FlaskConical, LoaderCircle } from 'luc
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { formatPrice } from '@/lib/format'
+import { localizedApiError } from '@/lib/api/apiError'
 
 interface DevSandboxPaymentWidgetProps {
   orderId: string
@@ -40,7 +41,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? t('checkout_error_generic'))
+        setError(localizedApiError(data, t, 'checkout_error_generic'))
         setPending(null)
         return
       }

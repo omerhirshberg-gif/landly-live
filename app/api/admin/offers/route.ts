@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { endOfIsraelDay } from '@/lib/admin/expiryDate'
 import { isOfferActive } from '@/lib/admin/offerStatus'
+import { adminListParams, adminNextCursor } from '@/lib/admin/adminList'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { isValidImageUrl } from '@/lib/admin/validateImageUrl'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -59,12 +60,19 @@ export async function GET(request: Request) {
   if (authError) return authError
 
   const businessUid = new URL(request.url).searchParams.get('businessUid')
+  const scope = `admin:offers:${businessUid ?? '*'}`
+  let page
+  try { page = adminListParams(request, scope) }
+  catch (error) { return badRequest(error instanceof Error ? error.message : 'Invalid pagination.') }
 
-  // Sorted in-memory (not via orderBy) so this doesn't need a composite
-  // Firestore index (where + orderBy on different fields requires one).
-  const snap = businessUid
-    ? await getAdminDb().collection('offers').where('businessId', '==', businessUid).get()
-    : await getAdminDb().collection('offers').get()
+  // Read in id order (an equality filter plus __name__ needs no composite index), at most one
+  // page of it; sorted by title in memory below so the screen's order is unchanged.
+  let query = businessUid ? getAdminDb().collection('offers').where('businessId', '==', businessUid) : getAdminDb().collection('offers')
+  query = query.orderBy('__name__')
+  if (page.cursor) query = query.startAfter(page.cursor.id)
+  const fetched = await query.limit(page.limit + 1).get()
+  const hasMore = fetched.docs.length > page.limit
+  const snap = { docs: fetched.docs.slice(0, page.limit) }
   const offers = snap.docs
     .map((doc) => {
       const data = doc.data()
@@ -90,7 +98,7 @@ export async function GET(request: Request) {
       }
     })
     .sort((a, b) => a.title.localeCompare(b.title))
-  return NextResponse.json({ offers })
+  return NextResponse.json({ offers, nextCursor: adminNextCursor(hasMore, snap.docs.at(-1)?.id, scope) })
 }
 
 export async function POST(request: Request) {

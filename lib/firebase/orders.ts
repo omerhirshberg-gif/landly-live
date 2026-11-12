@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, Timestamp } from 'firebase/firestore'
+import { collection, doc, documentId, getDoc, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore'
 import { db } from './config'
 import { recheckSessionIfDenied } from './sessionCheck'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
@@ -77,17 +77,30 @@ export function subscribeToOrder(orderId: string, onChange: (order: OrderDocumen
   )
 }
 
+// Firestore's `in` takes at most 30 values.
+const IN_CHUNK = 30
+
 /**
- * The member's own orders by id (a voucher's id is its order's id). One that
- * is missing or can't be read comes back null rather than failing the rest.
+ * The member's own orders by id (a voucher's id is its order's id), in the
+ * order of `orderIds`. Read 30 at a time with one `in` query each, filtered to
+ * `uid` so the orders rule can prove every result is theirs; if a chunk's query
+ * is refused it falls back to one read per id. One that is missing or can't be
+ * read comes back null rather than failing the rest.
  */
-export async function getOrdersByIds(orderIds: readonly string[]): Promise<(OrderDocument | null)[]> {
-  return Promise.all(
-    orderIds.map((id) =>
-      getDoc(doc(db, 'orders', id)).then(
-        (snap) => (snap.exists() ? toDoc(snap.data()) : null),
-        () => null
-      )
-    )
-  )
+export async function getOrdersByIds(uid: string, orderIds: readonly string[]): Promise<(OrderDocument | null)[]> {
+  const byId = new Map<string, OrderDocument>()
+  const unique = [...new Set(orderIds)]
+  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+    const chunk = unique.slice(i, i + IN_CHUNK)
+    try {
+      const snap = await getDocs(query(collection(db, 'orders'), where('userId', '==', uid), where(documentId(), 'in', chunk)))
+      for (const d of snap.docs) byId.set(d.id, toDoc(d.data()))
+    } catch {
+      await Promise.all(chunk.map((id) => getDoc(doc(db, 'orders', id)).then(
+        (snap) => { if (snap.exists()) byId.set(id, toDoc(snap.data())) },
+        () => undefined
+      )))
+    }
+  }
+  return orderIds.map((id) => byId.get(id) ?? null)
 }

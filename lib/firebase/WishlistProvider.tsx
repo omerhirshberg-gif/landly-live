@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from './config'
 import { recheckSessionIfDenied } from './sessionCheck'
 import { useAuth } from './useAuth'
-import { getOffer } from './offers'
+import { getOffersByIds } from './offers'
 import { setOfferWishlisted } from './users'
 
 interface WishlistContextValue {
@@ -54,18 +54,23 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return
     const uid = user.uid
-    for (const id of wishlistIds) {
-      if (requested.current.has(id)) continue
-      requested.current.add(id)
-      getOffer(id)
-        .then((offer) => {
-          setExists((prev) => new Map(prev).set(id, !!offer))
-          if (!offer) setOfferWishlisted(uid, id, false).catch(() => {})
+    const fresh = wishlistIds.filter((id) => !requested.current.has(id))
+    if (fresh.length === 0) return
+    fresh.forEach((id) => requested.current.add(id))
+    // One batched read (30 ids per query) for every newly saved id, not one read each.
+    getOffersByIds(fresh)
+      .then((offers) => {
+        const found = new Set(offers.map((offer) => offer.id))
+        setExists((prev) => {
+          const next = new Map(prev)
+          for (const id of fresh) next.set(id, found.has(id))
+          return next
         })
-        .catch(() => {
-          requested.current.delete(id)
-        })
-    }
+        for (const id of fresh) if (!found.has(id)) setOfferWishlisted(uid, id, false).catch(() => {})
+      })
+      .catch(() => {
+        fresh.forEach((id) => requested.current.delete(id))
+      })
   }, [user, wishlistIds])
 
   const toggleWishlist = useCallback((offerId: string) => {

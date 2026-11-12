@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { writeAudit } from '@/lib/admin/auditLog'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { ADMIN_LIST_CAP } from '@/lib/admin/adminList'
 import { createPool } from '@/lib/inventory/poolAdmin'
 import { cipherKeyConfigured } from '@/lib/crypto/fieldCipher'
 import { parseFulfillmentType, POOL_COLLECTION } from '@/lib/inventory/types'
@@ -17,7 +18,11 @@ export async function GET(request: Request) {
   const authError = requireAdminAuth(request)
   if (authError) return authError
   const db = getAdminDb()
-  const [offersSnap, poolsSnap] = await Promise.all([db.collection('offers').get(), db.collection(POOL_COLLECTION).get()])
+  // Bounded, and only the fields shown (not whole offer documents).
+  const [offersSnap, poolsSnap] = await Promise.all([
+    db.collection('offers').select('title', 'businessName', 'fulfillmentType', 'poolId', 'totalQuantity', 'claimedCount').limit(ADMIN_LIST_CAP).get(),
+    db.collection(POOL_COLLECTION).limit(ADMIN_LIST_CAP).get(),
+  ])
   const pools = poolsSnap.docs.map((doc) => {
     const p = doc.data()
     return {

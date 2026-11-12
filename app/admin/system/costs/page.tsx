@@ -10,6 +10,7 @@ import { ButtonSpinner } from '@/components/admin/FormSection'
 import { ADMIN_INPUT, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import UsageBreakdown from '@/components/admin/usage/UsageBreakdown'
 import UsageSummary from '@/components/admin/usage/UsageSummary'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
 
 // Estimated API usage and cost for one UTC month, from the counters this
@@ -20,29 +21,29 @@ import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
 const REFRESH_MS = 15 * 60 * 1000
 const PRODUCTION_DASHBOARD = `${SITE_URL}/admin/system/costs`
 
-const MONTH_LABEL = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const UPDATED_LABEL = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' })
+const intlLocale = (locale: string) => (locale === 'he' ? 'he-IL' : 'en-US')
 
 // Coloured like AdminEnvironmentBadge: red PROD, amber DEV.
 const ENVIRONMENTS = {
-  prod: { label: 'Production', tone: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]', dot: 'bg-[#DC2626]' },
-  dev: { label: 'DEV', tone: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]', dot: 'bg-[#F59E0B]' },
-  other: { label: 'Unknown project', tone: 'border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]', dot: 'bg-[#94A3B8]' },
-} as const
+  prod: { label: 'usage.env.prod', tone: 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]', dot: 'bg-[#DC2626]' },
+  dev: { label: 'usage.env.dev', tone: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]', dot: 'bg-[#F59E0B]' },
+  other: { label: 'usage.env.other', tone: 'border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]', dot: 'bg-[#94A3B8]' },
+} as const satisfies Record<string, { label: AdminKey; tone: string; dot: string }>
 
-function monthLabel(key: string): string {
-  return MONTH_LABEL.format(new Date(`${key}-01T00:00:00Z`))
+function monthLabel(key: string, locale: string): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${key}-01T00:00:00Z`))
 }
 
 function EnvironmentChip({ report }: { report: UsageReport }) {
+  const { t } = useAdminT()
   const env = ENVIRONMENTS[report.environment]
   return (
     <span
-      title={`Counters from Firebase project ${report.projectId}`}
+      title={t('usage.envTitle', { project: report.projectId })}
       className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-bold uppercase tracking-wider ${env.tone}`}
     >
       <span className={`h-2 w-2 rounded-full ${env.dot}`} aria-hidden="true" />
-      {env.label}
+      {t(env.label)}
       <span aria-hidden="true">·</span>
       <bdi dir="ltr" className="font-medium normal-case tracking-normal opacity-80">
         {report.projectId}
@@ -52,6 +53,7 @@ function EnvironmentChip({ report }: { report: UsageReport }) {
 }
 
 export default function UsageCostsPage() {
+  const { t, locale } = useAdminT()
   const [month, setMonth] = useState<string | null>(null)
   const [report, setReport] = useState<UsageReport | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -66,11 +68,11 @@ export default function UsageCostsPage() {
       const res = await adminFetch(`/api/admin/usage${selected ? `?month=${selected}` : ''}`)
       const data = await res.json()
       if (id !== latest.current) return
-      if (!res.ok) throw new Error(data.error ?? 'Failed to load usage.')
+      if (!res.ok) throw new Error(data.error ?? t('usage.page.loadFailed'))
       setReport(data as UsageReport)
       setError(null)
     } catch (err) {
-      if (id === latest.current) setError(err instanceof Error ? err.message : 'Failed to load usage.')
+      if (id === latest.current) setError(err instanceof Error ? err.message : t('usage.page.loadFailed'))
     } finally {
       if (id === latest.current) setLoading(false)
     }
@@ -107,18 +109,16 @@ export default function UsageCostsPage() {
   return (
     <div>
       <PageHeader
-        title="Usage & Costs"
+        title={t('usage.page.title')}
         subtitle={
           <p className="max-w-2xl">
-            Live API usage and estimated cost for the month, from Landly&rsquo;s own server counters (UTC months). An
-            estimate, not a Google or Meta invoice.
+            {t('usage.page.subtitle')}
             {report && (
               <span className="mt-1 block text-xs text-[#64748B]">
-                Updated <bdi dir="ltr">{UPDATED_LABEL.format(new Date(report.generatedAt))}</bdi> · refreshes every{' '}
-                <bdi dir="ltr" className="tabular-nums">
-                  15
-                </bdi>{' '}
-                min
+                {t('usage.page.updated', {
+                  time: `\u2066${new Intl.DateTimeFormat(intlLocale(locale), { hour: '2-digit', minute: '2-digit' }).format(new Date(report.generatedAt))}\u2069`,
+                  min: '\u206615\u2069',
+                })}
               </span>
             )}
           </p>
@@ -128,7 +128,7 @@ export default function UsageCostsPage() {
             {report && <EnvironmentChip report={report} />}
             <div className="flex w-full gap-2 sm:w-auto">
               <label htmlFor="usage-month" className="sr-only">
-                Billing month
+                {t('usage.page.billingMonth')}
               </label>
               <select
                 id="usage-month"
@@ -139,13 +139,13 @@ export default function UsageCostsPage() {
               >
                 {(report?.months ?? []).map((key) => (
                   <option key={key} value={key}>
-                    {monthLabel(key)}
+                    {monthLabel(key, locale)}
                   </option>
                 ))}
               </select>
               <button type="button" className={SECONDARY_BUTTON} onClick={() => void load(month)} disabled={loading}>
                 {loading ? <ButtonSpinner /> : <i className="fa-solid fa-rotate-right" aria-hidden="true" />}
-                Refresh
+                {t('usage.page.refresh')}
               </button>
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function UsageCostsPage() {
             <p className="flex items-start gap-2 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm text-[#92400E]">
               <i className="fa-solid fa-circle-info mt-0.5 shrink-0" aria-hidden="true" />
               <span className="min-w-0">
-                These are this environment&rsquo;s own counters. Production figures are on{' '}
+                {t('usage.notProd')}{' '}
                 <a href={PRODUCTION_DASHBOARD} className="break-all font-semibold underline underline-offset-2 hover:text-[#78350F]">
                   www.golandly.com/admin/system/costs
                 </a>
@@ -175,8 +175,7 @@ export default function UsageCostsPage() {
 
           {over.length > 0 && (
             <Alert tone="warning">
-              Past the free tier this month: {over.map((line) => line.service).join(', ')}. Units beyond it are billed at the
-              rates below.
+              {t('usage.overTier', { services: over.map((line) => line.service).join(', ') })}
             </Alert>
           )}
 
@@ -188,20 +187,18 @@ export default function UsageCostsPage() {
               <i className="fa-solid fa-database" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-[#0B1B3D]">Firestore &amp; Cloud Storage</p>
+              <p className="font-semibold text-[#0B1B3D]">{t('usage.firestoreTitle')}</p>
               <p className="mt-1 text-sm text-[#475569]">
-                Platform Database &amp; Storage within standard Firebase Free Tier quotas (
-                <bdi dir="ltr">50k reads / 20k writes / 5GB storage</bdi>).
+                {t('usage.firestoreBody', { quota: '\u206650k reads / 20k writes / 5GB storage\u2069' })}
               </p>
               <p className="mt-1 text-xs text-[#64748B]">
-                Not metered by this dashboard: the Firebase console&rsquo;s Usage tab has the exact figures.
+                {t('usage.firestoreNote')}
               </p>
             </div>
           </Card>
 
           <p className="text-xs text-[#64748B]">
-            {monthLabel(report.month)} · prices checked <bdi dir="ltr">{report.pricesVerifiedAt}</bdi> · USD → ILS at{' '}
-            <bdi dir="ltr">{report.fx.usdToIls.toFixed(2)}</bdi>
+            {t('usage.footer', { month: monthLabel(report.month, locale), date: `\u2066${report.pricesVerifiedAt}\u2069`, rate: `\u2066${report.fx.usdToIls.toFixed(2)}\u2069` })}
           </p>
         </div>
       )}

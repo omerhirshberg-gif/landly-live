@@ -34,6 +34,9 @@ const CHECK_IN = ZoomIn.springify().damping(12).stiffness(140)
 // with copy, what was bought, paid and saved, and the bar pinned above the
 // home indicator: the voucher (its id is the order's), My Pass, or back to
 // exploring.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function OrderSuccessScreen() {
   const { t, lang } = useLang()
   const insets = useSafeAreaInsets()

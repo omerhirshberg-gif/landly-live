@@ -16,8 +16,8 @@ function render(lang: Lang, props: { activePerks?: number; redeemed?: number; sa
   )
 }
 
-// Each card: <div shell><span frame><svg/></span><div label>…</div><div value>…</div></div>
-const cards = (html: string) => [...html.matchAll(/<div class="([^"]*min-h-\[96px\][^"]*)"><span aria-hidden="true" class="([^"]*)"><svg [^>]*>.*?<\/svg><\/span><div class="([^"]*)">([^<]*)<\/div><div class="([^"]*)">([^<]*)<\/div><\/div>/g)]
+// Each card: <div shell><svg icon/><div label>…</div><bdi value>…</bdi></div>
+const cards = (html: string) => [...html.matchAll(/<div class="([^"]*min-h-\[96px\][^"]*)"><svg ([^>]*)>.*?<\/svg><div class="([^"]*)">([^<]*)<\/div><bdi dir="ltr" class="([^"]*)">([^<]*)<\/bdi><\/div>/g)]
 
 describe('member dashboard stats', () => {
   it.each(LANGS)('gives all three cards the same shell, label band and bottom-pinned number (%s)', (lang) => {
@@ -25,8 +25,8 @@ describe('member dashboard stats', () => {
     expect(found).toHaveLength(3)
     const t = translations[lang]
     expect(found.map((m) => m[4].replace(/&quot;/g, '"'))).toEqual([t.dash_active_perks_label, t.dash_perks_redeemed_label, t.dash_total_saved])
-    // Each icon in the shared 40px frame: brand blue, emerald for money saved.
-    expect(found.map((m) => m[2].includes('h-9 w-9') && m[2].includes('rounded-xl') && m[2].includes('bg-slate-50') && !/emerald|cyan|brandTint/.test(m[2]) ? 'slate' : '?')).toEqual(['slate', 'slate', 'slate'])
+    // Each icon is bare: one ink line glyph at a 1.75 stroke, no frame or tinted disc.
+    expect(found.map((m) => (m[2].includes('h-6 w-6') && m[2].includes('text-ink') && m[2].includes('stroke-width="1.75"') && !/emerald|cyan|brandTint|bg-/.test(m[2]) ? 'bare' : '?'))).toEqual(['bare', 'bare', 'bare'])
     for (const [, shell, , label, , value] of found) {
       for (const c of ['flex', 'flex-col', 'h-full', 'min-h-[96px]', 'min-w-0']) expect(shell.split(' ')).toContain(c)
       // A two-line band, centred, so one- and two-line labels take the same room.

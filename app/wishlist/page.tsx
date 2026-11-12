@@ -5,14 +5,18 @@ import Link from 'next/link'
 import { Heart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
-import MemberPageShell, { PageTitle } from '@/components/layout/MemberPageShell'
-import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
+import MemberPageShell, { MemberColumn, PageTitle } from '@/components/layout/MemberPageShell'
+import OfferCard from '@/components/discover/OfferCard'
 import { OfferGridSkeleton } from '@/components/ui/Skeleton'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useWishlist } from '@/lib/firebase/useWishlist'
 import { getOffersByIds, type OfferDocument } from '@/lib/firebase/offers'
+
+// Saved perks as the same compact cards as Home and Perks: one column on phones, two from an
+// unfolded foldable, then fixed 280px cards that never stretch, packed from the start edge.
+const WISHLIST_GRID = 'grid grid-cols-1 gap-5 fold:grid-cols-2 lg:grid-cols-[repeat(auto-fill,280px)] lg:justify-start'
 
 export default function WishlistPage() {
   const { t } = useLang()
@@ -49,15 +53,15 @@ export default function WishlistPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <MemberPageShell>
-          {/* Narrower than the column below 1024px, at its start edge, so the
-              title lines up with the other tabs; the full column from there,
-              so saved perks fill the feed's three or four columns. */}
+        <MemberPageShell fluid>
+          {/* The wide fluid column of Home and Perks (up to 2200px, the same gutters), so the title and the
+              cards share their start edge. Narrower than it below 1024px, at its start edge. */}
+          <MemberColumn wide className="pb-10 sm:pb-12">
           <div className="max-w-3xl lg:max-w-none">
             <PageTitle>{t('wishlist_title')}</PageTitle>
 
             {offers === undefined ? (
-              <OfferGridSkeleton count={3} />
+              <OfferGridSkeleton count={3} gridClassName={WISHLIST_GRID} />
             ) : offers.length === 0 ? (
               <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
                 <Heart aria-hidden="true" strokeWidth={1.5} />
@@ -68,13 +72,14 @@ export default function WishlistPage() {
                 </Link>
               </div>
             ) : (
-              <div className={OFFER_FEED_GRID}>
+              <div className={WISHLIST_GRID}>
                 {offers.map((offer) => (
-                  <OfferCard key={offer.id} offer={offer} showWishlistButton layout="grid" />
+                  <OfferCard key={offer.id} offer={offer} showWishlistButton layout="grid" compact />
                 ))}
               </div>
             )}
           </div>
+          </MemberColumn>
         </MemberPageShell>
       </div>
     </>

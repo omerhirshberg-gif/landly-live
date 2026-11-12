@@ -1,5 +1,7 @@
 import 'server-only'
 import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { ADMIN_LIST_CAP } from '@/lib/admin/adminList'
+import { getAllById } from '@/lib/firebase/batching'
 import { endOfIsraelDay } from '@/lib/admin/expiryDate'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
@@ -24,15 +26,16 @@ export type PlannedPerk =
 
 /** Every Multipass perk in the store, as the sheet's perks are matched against. */
 export async function loadMultipassPerks(db: Firestore): Promise<ExistingPerk[]> {
-  const snap = await db.collection('offers').where('fulfillmentType', '==', 'multipass_pool').get()
-  const pools = await Promise.all(snap.docs.map((d) => db.collection('couponPools').doc(d.id).get()))
-  return snap.docs.map((d, i) => {
+  const snap = await db.collection('offers').where('fulfillmentType', '==', 'multipass_pool').limit(ADMIN_LIST_CAP).get()
+  // Every perk's pool in one batched read, not one read per perk.
+  const pools = await getAllById(db, snap.docs.map((d) => db.collection('couponPools').doc(d.id)))
+  return snap.docs.map((d) => {
     const data = d.data()
     return {
       offerId: d.id,
       title: String(data.title ?? ''),
       brand: String(data.brandName || data.businessName || ''),
-      remaining: Number(pools[i]!.data()?.remainingCount) || 0,
+      remaining: Number(pools.get(`couponPools/${d.id}`)?.data()?.remainingCount) || 0,
     }
   })
 }

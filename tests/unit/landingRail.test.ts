@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(path, 'utf8')
 
 describe('the landing column', () => {
   it('puts every section on one column, its rails bleeding through the same gutter', () => {
-    expect(LANDING_COLUMN).toBe('mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8')
+    expect(LANDING_COLUMN).toBe('mx-auto w-full max-w-[2200px] px-4 sm:px-6 lg:px-8')
     for (const gutter of ['-mx-4 px-4 scroll-ps-4 scroll-pe-4', 'sm:-mx-6 sm:px-6', 'lg:-mx-8 lg:px-8']) expect(LANDING_RAIL).toContain(gutter)
     for (const path of ['components/home/HomePage.tsx', 'components/home/CategoryPhotoRail.tsx', 'components/landing/LiveDeals.tsx', 'components/landing/AudienceCards.tsx', 'components/home/HowItWorks.tsx', 'components/home/Faq.tsx']) {
       expect(read(path), path).toContain('LANDING_COLUMN')
@@ -52,5 +52,19 @@ describe('the discount ribbon and the navigation tiles', () => {
     const native = read('landly-mobile/src/components/NavigationButtons.tsx')
     expect(native).toContain('resizeMode="cover"')
     expect(native).toContain("wazeClip: { width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }")
+  })
+})
+
+describe('the public landing reaches the screen edges', () => {
+  it('shares the signed-in fluid column (2200px, 16/24/32px gutters), never a 1240px box', () => {
+    expect(LANDING_COLUMN).toContain('max-w-[2200px]')
+    for (const path of ['components/landing/landingColumn.ts', 'components/landing/BottomCta.tsx', 'components/landing/LiveDeals.tsx', 'components/landing/AudienceCards.tsx', 'components/home/HowItWorks.tsx', 'components/home/CategoryPhotoRail.tsx']) {
+      expect(read(path), path).not.toContain('1240px')
+    }
+    expect(read('components/landing/BottomCta.tsx')).toContain('mx-auto w-full max-w-[2200px] rounded-3xl')
+  })
+  it('Our perks uses the 260/280px rail cards', () => {
+    expect(read('components/discover/OfferCard.tsx')).toContain('w-[clamp(240px,72vw,260px)] flex-shrink-0 sm:w-[280px]')
+    expect(read('components/landing/LiveDeals.tsx')).toContain('<OfferCard offer={offer} />')
   })
 })

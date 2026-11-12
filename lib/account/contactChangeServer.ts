@@ -34,7 +34,7 @@ export async function customerOrReply(request: Request, reply: Reply): Promise<D
     }
     return reply({ error: 'Authorization service unavailable.', reason: 'unavailable' }, 503)
   }
-  if (checkUidRateLimit('contact', decoded.uid)) return reply({ error: 'Too many requests.', reason: 'rateLimited' }, 429)
+  if (await checkUidRateLimit('contact', decoded.uid)) return reply({ error: 'Too many requests.', reason: 'rateLimited' }, 429)
   return decoded
 }
 

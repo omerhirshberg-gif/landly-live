@@ -25,6 +25,7 @@ import { categoryEmoji } from '@/components/admin/CategoryBadge'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
+import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 
 interface SuccessResult {
   uid: string
@@ -62,18 +63,19 @@ const emptyForm = {
 
 // The business, its login and its first offer, in tabs rather than one long
 // scroll; the whole form still submits (and validates) as one.
-const NEW_BUSINESS_TABS = [
-  { id: 'basics', label: 'Basic info', icon: 'fa-store' },
-  { id: 'media', label: 'Media & logo', icon: 'fa-image' },
-  { id: 'login', label: 'Login', icon: 'fa-key' },
-  { id: 'offer', label: 'First offer', icon: 'fa-tags' },
-  { id: 'pricing', label: 'Pricing & terms', icon: 'fa-shekel-sign' },
-  { id: 'translations', label: 'Translations', icon: 'fa-language' },
+const newBusinessTabs = (t: (key: AdminKey) => string) => [
+  { id: 'basics', label: t('newBiz.tab.basics'), icon: 'fa-store' },
+  { id: 'media', label: t('newBiz.tab.media'), icon: 'fa-image' },
+  { id: 'login', label: t('newBiz.tab.login'), icon: 'fa-key' },
+  { id: 'offer', label: t('newBiz.tab.offer'), icon: 'fa-tags' },
+  { id: 'pricing', label: t('newBiz.tab.pricing'), icon: 'fa-shekel-sign' },
+  { id: 'translations', label: t('newBiz.tab.translations'), icon: 'fa-language' },
 ] as const
 
 export default function NewBusinessPage() {
   const router = useRouter()
-  const tabs = useFormTabs(NEW_BUSINESS_TABS)
+  const { t } = useAdminT()
+  const tabs = useFormTabs(newBusinessTabs(t))
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -131,13 +133,13 @@ export default function NewBusinessPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'Something went wrong.')
+        setError(data.error ?? t('newBiz.errorGeneric'))
         setSubmitting(false)
         return
       }
       setResult(data)
     } catch {
-      setError('Something went wrong. Try again.')
+      setError(t('newBiz.errorRetry'))
       setSubmitting(false)
     }
   }
@@ -153,25 +155,25 @@ export default function NewBusinessPage() {
               <i className="fa-solid fa-check text-lg" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#0B1B3D]">Business created</h1>
-              <p className="mt-0.5 text-sm text-emerald-800">Relay these login details to the business owner.</p>
+              <h1 className="text-xl font-bold text-[#0B1B3D]">{t('newBiz.created')}</h1>
+              <p className="mt-0.5 text-sm text-emerald-800">{t('newBiz.createdSub')}</p>
             </div>
           </div>
 
           <dl className="divide-y divide-[#E2E8F0]">
-            <ResultRow label="Business">
+            <ResultRow label={t('newBiz.business')}>
               <span className="font-semibold text-[#0B1B3D]" dir="auto">{result.businessName}</span>
             </ResultRow>
-            <ResultRow label="Login email">
+            <ResultRow label={t('newBiz.loginEmail')}>
               <div className="flex items-center gap-1">
                 <span className="min-w-0 break-all font-mono text-[#0B1B3D]" dir="ltr">{result.loginEmail}</span>
-                <CopyButton value={result.loginEmail} label="Copy email" />
+                <CopyButton value={result.loginEmail} label={t('newBiz.copyEmail')} />
               </div>
             </ResultRow>
-            <ResultRow label="Login password">
+            <ResultRow label={t('newBiz.loginPassword')}>
               <RevealableText className="font-mono text-[#0B1B3D]">{result.loginPassword}</RevealableText>
             </ResultRow>
-            <ResultRow label="First offer">
+            <ResultRow label={t('newBiz.firstOffer')}>
               <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
               <div className="font-mono text-xs text-[#64748B]">{result.offerId}</div>
             </ResultRow>
@@ -207,26 +209,26 @@ export default function NewBusinessPage() {
   return (
     <div className="max-w-4xl">
       <BackLink />
-      <PageHeader title="Add new business" subtitle="Creates the business, its login, and its first offer in one step." />
+      <PageHeader title={t('newBiz.title')} subtitle={t('newBiz.subtitle')} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
       <form onSubmit={handleSubmit} {...tabs.formProps}>
-        <FormTabs state={tabs} label="New business sections" />
+        <FormTabs state={tabs} label={t('newBiz.sections')} />
 
         <TabPanel state={tabs} tab="basics">
-          <FormSection icon="fa-store" title="Basic info" description="How the business appears to members.">
+          <FormSection icon="fa-store" title={t('newBiz.basicsTitle')} description={t('newBiz.basicsDesc')}>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label htmlFor="biz-name" className={ADMIN_LABEL}>Business name</label>
+                <label htmlFor="biz-name" className={ADMIN_LABEL}>{t('newBiz.businessName')}</label>
                 <input id="biz-name" required dir="auto" className={ADMIN_INPUT} value={form.businessName} onChange={(e) => update('businessName', e.target.value)} />
               </div>
               <div>
-                <label htmlFor="biz-id" className={ADMIN_LABEL}>Business ID (ח.פ)</label>
+                <label htmlFor="biz-id" className={ADMIN_LABEL}>{t('newBiz.businessId')}</label>
                 <input id="biz-id" required inputMode="numeric" dir="ltr" className={ADMIN_INPUT} value={form.businessId} onChange={(e) => update('businessId', e.target.value)} />
               </div>
               <div>
-                <label htmlFor="biz-category" className={ADMIN_LABEL}>Category</label>
+                <label htmlFor="biz-category" className={ADMIN_LABEL}>{t('newBiz.category')}</label>
                 <select id="biz-category" required className={`${ADMIN_INPUT} cursor-pointer`} value={form.category} onChange={(e) => update('category', e.target.value)}>
                   {BUSINESS_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{`${categoryEmoji(cat)} ${cat}`.trim()}</option>
@@ -247,47 +249,47 @@ export default function NewBusinessPage() {
         </TabPanel>
 
         <TabPanel state={tabs} tab="media">
-          <FormSection icon="fa-image" title="Business logo" description="Shown whole on every offer's card, in high resolution.">
+          <FormSection icon="fa-image" title={t('newBiz.logoTitle')} description={t('newBiz.logoDesc')}>
             <BusinessLogoField value={form.logoUrl} onChange={(url) => update('logoUrl', url)} />
           </FormSection>
-          <FormSection icon="fa-panorama" title="First offer's image" description="The perk's hero picture.">
+          <FormSection icon="fa-panorama" title={t('newBiz.imageTitle')} description={t('newBiz.imageDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="media" />
           </FormSection>
         </TabPanel>
 
         <TabPanel state={tabs} tab="login">
-          <FormSection icon="fa-key" title="Login credentials" description="The business owner signs in to the business dashboard with these.">
+          <FormSection icon="fa-key" title={t('newBiz.loginTitle')} description={t('newBiz.loginDesc')}>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <label htmlFor="biz-email" className={ADMIN_LABEL}>Login email</label>
+                <label htmlFor="biz-email" className={ADMIN_LABEL}>{t('newBiz.loginEmail')}</label>
                 <input id="biz-email" type="email" required dir="ltr" autoComplete="off" className={ADMIN_INPUT} value={form.loginEmail} onChange={(e) => update('loginEmail', e.target.value)} />
               </div>
               <div>
-                <label htmlFor="biz-password" className={ADMIN_LABEL}>Login password</label>
+                <label htmlFor="biz-password" className={ADMIN_LABEL}>{t('newBiz.loginPassword')}</label>
                 <PasswordField id="biz-password" required minLength={6} autoComplete="new-password" value={form.loginPassword} onChange={(value) => update('loginPassword', value)} />
-                <p className={ADMIN_HINT}>At least 6 characters.</p>
+                <p className={ADMIN_HINT}>{t('newBiz.passwordHint')}</p>
               </div>
             </div>
           </FormSection>
         </TabPanel>
 
         <TabPanel state={tabs} tab="offer">
-          <FormSection icon="fa-tags" title="First offer" description="The perk members will see for this business.">
+          <FormSection icon="fa-tags" title={t('newBiz.firstOffer')} description={t('newBiz.offerDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="basics" />
           </FormSection>
         </TabPanel>
 
         <TabPanel state={tabs} tab="pricing">
-          <FormSection icon="fa-shekel-sign" title="Pricing & availability" description="What members pay, and how many there are.">
+          <FormSection icon="fa-shekel-sign" title={t('newBiz.pricingTitle')} description={t('newBiz.pricingDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="pricing" />
           </FormSection>
-          <FormSection icon="fa-ticket" title="Redemption & terms" description="How members use the voucher, and its rules.">
+          <FormSection icon="fa-ticket" title={t('newBiz.redemptionTitle')} description={t('newBiz.redemptionDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="terms" />
           </FormSection>
         </TabPanel>
 
         <TabPanel state={tabs} tab="translations">
-          <FormSection icon="fa-language" title="Business name" description="How the name reads in each language.">
+          <FormSection icon="fa-language" title={t('newBiz.businessName')} description={t('newBiz.nameTransDesc')}>
             <BusinessNameTranslations
               name={form.businessName}
               stored={null}
@@ -295,12 +297,12 @@ export default function NewBusinessPage() {
               onChange={(next) => update('businessNameOverrides', next)}
             />
           </FormSection>
-          <FormSection icon="fa-language" title="First offer" description="The offer's text in each language.">
+          <FormSection icon="fa-language" title={t('newBiz.firstOffer')} description={t('newBiz.offerTransDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="translations" />
           </FormSection>
         </TabPanel>
 
-        <StickyActionBar status={dirty ? 'Not saved yet' : undefined}>
+        <StickyActionBar status={dirty ? t('common.notSavedYet') : undefined}>
           <button
             type="button"
             className={SECONDARY_BUTTON}
@@ -309,11 +311,11 @@ export default function NewBusinessPage() {
               if (confirmLeave(dirty)) router.push(backHref)
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" disabled={submitting} aria-busy={submitting} className={PRIMARY_BUTTON}>
             {submitting && <ButtonSpinner />}
-            {submitting ? 'Creating…' : 'Create business'}
+            {submitting ? t('newBiz.creating') : t('newBiz.create')}
           </button>
         </StickyActionBar>
       </form>

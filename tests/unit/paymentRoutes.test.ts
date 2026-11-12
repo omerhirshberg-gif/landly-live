@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => {
   return { getDb: vi.fn(), verifiedUid: vi.fn(), scheduleConfirmation: vi.fn(), MockRequestAuthError }
 })
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: mocks.getDb }))
+// The Firestore-backed window (lib/auth/durableRateLimit.server.ts) has its own tests (securityLimits); here only the in-memory budget is under test.
+vi.mock('@/lib/auth/durableRateLimit.server', () => ({ isDurablyLimited: async () => false }))
 vi.mock('@/lib/payments/orderConfirmation', () => ({ scheduleOrderConfirmation: mocks.scheduleConfirmation }))
 vi.mock('@/lib/firebase/verifyRequestUser', () => ({ requireVerifiedCustomerUid: mocks.verifiedUid, RequestAuthError: mocks.MockRequestAuthError }))
 import { POST as callback } from '@/app/api/payments/tranzila-webhook/route'

@@ -14,7 +14,7 @@ export async function DELETE(request: Request, ctx: RouteContext<'/api/account/p
     if (err instanceof RequestAuthError) return NextResponse.json({ error: err.message }, { status: err.status })
     throw err
   }
-  if (checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+  if (await checkUidRateLimit('passkeys', uid)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
 
   const { credentialId } = await ctx.params
   if (!isCredentialId(credentialId)) return NextResponse.json({ error: 'not_found' }, { status: 404 })

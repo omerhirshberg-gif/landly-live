@@ -22,7 +22,7 @@ export function parsePageParams(request: Request, scope: string): { limit: numbe
   } catch { throw new Error('cursor is invalid.') }
 }
 
-function encodeCursor(value: string | null, id: string, scope: string): string {
+export function encodeCursor(value: string | null, id: string, scope: string): string {
   return Buffer.from(JSON.stringify({ value, id, scope })).toString('base64url')
 }
 

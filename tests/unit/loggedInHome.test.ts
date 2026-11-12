@@ -12,7 +12,8 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ 
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: authState.user, loading: false }) }))
 vi.mock('@/components/auth/useOnboardingGuard', () => ({ useOnboardingGuard: () => false }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ useMemberProfile: () => profileState }))
-vi.mock('@/lib/firebase/vouchers', () => ({ subscribeToUserVouchers: () => () => {} }))
+// No snapshot yet: the shared voucher listener (lib/firebase/VouchersProvider.tsx) has delivered nothing.
+vi.mock('@/lib/firebase/VouchersProvider', () => ({ useVouchers: () => ({ active: null, redeemed: null, failed: false, reload: () => {} }) }))
 vi.mock('@/lib/firebase/offers', () => ({
   getAllOffers: () => new Promise(() => {}),
   sortFeaturedOffers: (o: unknown[]) => o,
@@ -141,6 +142,38 @@ describe('member dashboard', () => {
     expect(html).toContain('min-h-[100dvh] overflow-x-clip')
     expect(html).toMatch(/<span id="home-pass-cta" class="[^"]*\bh-12 w-full\b[^"]*md:w-auto/)
     expect(html).toMatch(/<a aria-label="[^"]*" class="tap-target flex-shrink-0 rounded-full" href="\/profile">/)
+  })
+
+  it('shows the greeting and pass card below 1024px, and on desktop a text-only welcome with neither', () => {
+    profileState.firstName = 'Dana'
+    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
+    // The whole top hero (greeting, badge, pass card) is its own column, hidden from 1024px.
+    const hero = html.slice(html.indexOf('<div class="mx-auto -mt-2 flex'), html.indexOf('home-welcome-lg'))
+    expect(html).toMatch(/<div class="[^"]*\blg:hidden\b[^"]*"><div class="mx-auto -mt-2 flex w-full max-w-\[760px\]/)
+    expect(hero).toContain('<h1 id="home-welcome"')
+    expect(hero).toContain('class="segment-badge"')
+    expect(hero).toContain('ds-avatar-fallback')
+    expect(hero).toContain('href="/member"')
+    // Desktop: one plain line on the start edge above Top categories; no avatar, badge or card in it.
+    const line = html.match(/<h1 id="home-welcome-lg" class="([^"]*)">([^<]*)<\/h1>/)!
+    expect(line[2]).toBe('Welcome, Dana')
+    for (const c of ['hidden', 'lg:block', 'text-start', 'text-page', 'lg:text-3xl', 'font-bold', 'text-ink']) expect(line[1].split(' ')).toContain(c)
+    // The same page-title type as the other signed-in pages' h1 (the /categories title).
+    expect(html.indexOf('id="home-welcome-lg"')).toBeLessThan(html.indexOf('id="home-categories-title"'))
+    expect(html.indexOf('id="home-welcome-lg"')).toBeGreaterThan(html.indexOf('href="/member"'))
+    expect(html.match(/ds-avatar-fallback/g)).toHaveLength(1)
+    expect(html.match(/class="segment-badge"/g)).toHaveLength(1)
+    expect(html.match(/home-pass-count home-pass-cta/g)).toHaveLength(1)
+    // 24px under the search bar on desktop (the shell's 32 less 8), and the category section adds no extra margin there.
+    expect(line[1]).toContain('lg:-mt-2')
+    expect(html).toContain('class="mt-6 sm:mt-8 lg:mt-0"')
+  })
+
+  it('has no generic welcome for a member without a name on desktop either', () => {
+    profileState.firstName = null
+    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
+    expect(html).toMatch(/<h1 id="home-welcome-lg" class="[^"]*">Welcome!<\/h1>/)
+    profileState.firstName = 'Dana'
   })
 
   it('shows the member’s persona in its colour', async () => {

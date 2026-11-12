@@ -34,8 +34,8 @@ describe('carousel auto-advance', () => {
   })
 
   it('moves the Perks highlight rails too, the second two seconds behind the first, so they never jump together', () => {
-    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Sparkles\}[^\n]*autoAdvance \/>/)
-    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Award\}[^\n]*autoAdvance autoAdvanceOffsetMs=\{2000\}/)
+    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Sparkles\}[^\n]*autoAdvance compact \/>/)
+    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Award\}[^\n]*autoAdvance autoAdvanceOffsetMs=\{2000\} compact/)
     const perks = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
     expect(perks).toMatch(/glyph="new"[^\n]*autoAdvance \/>/)
     expect(perks).toMatch(/glyph="bestsellers"[^\n]*autoAdvance autoAdvanceOffsetMs=\{2000\}/)

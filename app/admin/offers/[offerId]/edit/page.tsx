@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { formatIsraeliDate } from '@/lib/admin/formatDate'
-import OfferFormFields, { OFFER_FORM_TABS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { offerFormTabs, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import { useAdminCrumbs, useAdminParent } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
@@ -20,6 +20,7 @@ import { getOffer, OfferDocument } from '@/lib/firebase/offers'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 import { manualOverridesOf } from '@/lib/offers/offerText'
+import { useAdminT } from '@/lib/admin/translations'
 
 function toFormValue(offer: OfferDocument): OfferFormValue {
   return {
@@ -45,11 +46,12 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
 // confirmed to be its. Back, Cancel and Save all return to that parent, the
 // crumb before this page in the breadcrumbs (lib/admin/routes.ts).
 function EditOfferForm() {
+  const { t } = useAdminT()
   const { offerId } = useParams<{ offerId: string }>()
   const router = useRouter()
   const search = useSearchParams()
   const claimedBusiness = search.get('from') === 'business' ? search.get('businessUid') : null
-  const tabs = useFormTabs(OFFER_FORM_TABS)
+  const tabs = useFormTabs(offerFormTabs(t))
 
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(undefined)
   const [form, setForm] = useState<OfferFormValue | null>(null)
@@ -120,7 +122,7 @@ function EditOfferForm() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'Something went wrong.')
+        setError(data.error ?? t('editOffer.errorGeneric'))
         setSubmitting(false)
         return
       }
@@ -132,7 +134,7 @@ function EditOfferForm() {
       }
       router.push(backHref)
     } catch {
-      setError('Something went wrong. Try again.')
+      setError(t('editOffer.errorRetry'))
       setSubmitting(false)
     }
   }
@@ -149,7 +151,7 @@ function EditOfferForm() {
     return (
       <div className="max-w-3xl">
         <BackLink />
-        <EmptyState icon="fa-tags" title="Offer not found" description="It may have been deleted." />
+        <EmptyState icon="fa-tags" title={t('editOffer.notFound')} description={t('editOffer.mayBeDeleted')} />
       </div>
     )
   }
@@ -157,22 +159,22 @@ function EditOfferForm() {
   return (
     <div className="max-w-4xl">
       <BackLink />
-      <PageHeader title="Edit offer" subtitle={<bdi dir="auto">{offer.title}</bdi>} />
+      <PageHeader title={t('editOffer.title')} subtitle={<bdi dir="auto">{offer.title}</bdi>} />
 
       {error && <Alert className="mb-6">{error}</Alert>}
       {savedWarning && (
         <Alert tone="warning" className="mb-6">
-          <p>Saved. {savedWarning}</p>
+          <p>{t('editOffer.savedWarning', { warning: savedWarning })}</p>
           <Link href={backHref} className={`${SECONDARY_BUTTON} mt-3`}>
-            Done
+            {t('common.done')}
           </Link>
         </Alert>
       )}
 
-      <FormSection icon="fa-store" title="Business" description="Fixed for this offer.">
+      <FormSection icon="fa-store" title={t('editOffer.fixedTitle')} description={t('editOffer.fixedDesc')}>
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Business</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.business')}</dt>
             <dd className="mt-1 font-semibold text-[#0B1B3D]">
               <Link href={`/admin/businesses/${offer.businessId}`} className="hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
                 <bdi dir="auto">{offer.businessName}</bdi>
@@ -180,7 +182,7 @@ function EditOfferForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Category</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.category')}</dt>
             <dd className="mt-1">
               <StatusBadge tone="blue">
                 <span dir="auto">{offer.category}</span>
@@ -188,26 +190,26 @@ function EditOfferForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Created</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.created')}</dt>
             <dd className="mt-1 font-semibold text-[#0B1B3D]"><bdi dir="ltr">{formatIsraeliDate(offer.createdAt)}</bdi></dd>
           </div>
         </dl>
         <p className="mt-4 text-xs text-[#64748B]">
-          Business, category, and claim count aren&apos;t editable here. Reassigning an offer to a different business is a separate operation.
+          {t('editOffer.fixedNote')}
         </p>
       </FormSection>
 
       {form && (
         <form className="mt-6" onSubmit={handleSubmit} {...tabs.formProps}>
-          <FormTabs state={tabs} label="Offer sections" />
-          {OFFER_FORM_TABS.map((tab) => (
+          <FormTabs state={tabs} label={t('editOffer.sections')} />
+          {offerFormTabs(t).map((tab) => (
             <TabPanel key={tab.id} state={tabs} tab={tab.id}>
-              <FormSection icon={tab.icon} title={tab.label} description="Changes apply to new purchases; existing vouchers keep their terms.">
+              <FormSection icon={tab.icon} title={tab.label} description={t('editOffer.tabDesc')}>
                 <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} section={tab.id} />
               </FormSection>
             </TabPanel>
           ))}
-          <StickyActionBar status={dirty ? 'Unsaved changes' : 'No changes yet'}>
+          <StickyActionBar status={dirty ? t('editOffer.unsaved') : t('editOffer.noChanges')}>
             <button
               type="button"
               className={SECONDARY_BUTTON}
@@ -216,11 +218,11 @@ function EditOfferForm() {
                 if (confirmLeave(dirty)) router.push(backHref)
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={submitting} aria-busy={submitting} className={PRIMARY_BUTTON}>
               {submitting && <ButtonSpinner />}
-              {submitting ? 'Saving…' : 'Save changes'}
+              {submitting ? t('editOffer.saving') : t('editOffer.save')}
             </button>
           </StickyActionBar>
         </form>

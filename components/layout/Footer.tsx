@@ -50,7 +50,7 @@ export default function Footer() {
 
           {/* Each separator rides with the link before it, so a wrapped line
               never starts with a dot and the last link has none after it */}
-          <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-y-2 text-sm lg:col-span-2 lg:row-start-2 lg:flex-nowrap lg:justify-start">
+          <nav aria-label={t('footer_nav_label')} className="flex flex-wrap items-center justify-center gap-y-2 text-sm lg:col-span-2 lg:row-start-2 lg:flex-nowrap lg:justify-start">
             {links.map((l, i) => (
               <span key={l.href} className="inline-flex items-center">
                 <Link href={l.href} className={`${linkClass} ${l.biz ? bizLinkClass : 'text-slate-600 font-medium'}`}>

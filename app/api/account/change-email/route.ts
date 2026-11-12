@@ -5,7 +5,7 @@ import { customerOrReply, logContactFailure, preflight, replyFor } from '@/lib/a
 import { normalizeEmail, RECENT_SIGN_IN_SECONDS } from '@/lib/auth/emailChange'
 import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
 import { generateOtp, hashOtp, OTP_RESEND_COOLDOWN_MS, OTP_TTL_MS } from '@/lib/auth/phoneVerification'
-import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
+import { accountLang, applicationOrigin } from '@/lib/auth/requestContext'
 import { emailConfigProblem } from '@/lib/email/brandedEmail'
 import { sendEmailChangeCode } from '@/lib/email/sendEmailChangeEmail'
 import type { Lang } from '@/lib/i18n/translations'
@@ -34,9 +34,10 @@ export async function POST(request: Request) {
   const { uid } = decoded
 
   const body = await request.json().catch(() => null)
-  const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
   const adminAuth = getAdminAuth()
   const db = getAdminDb()
+  const storedLang = await db.collection('users').doc(uid).get().then((snap) => snap.get('preferredLanguage')).catch(() => undefined)
+  const lang: Lang = accountLang(storedLang, body?.lang)
   const requestRef = db.collection('emailChangeRequests').doc(uid)
 
   let userRecord

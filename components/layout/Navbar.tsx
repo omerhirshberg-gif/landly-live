@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
-import { useWishlist } from '@/lib/firebase/useWishlist'
+import WishlistPopover from './WishlistPopover'
 import { isNavLinkActive } from '@/lib/navActive'
 import { useScrollSpy } from '@/lib/useScrollSpy'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
@@ -26,7 +26,6 @@ const HOME_ANCHOR_IDS = ['how'] as const
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLang()
   const { user } = useAuth()
-  const { wishlistCount } = useWishlist()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const langDropdownRef = useRef<HTMLDivElement>(null)
@@ -111,10 +110,11 @@ export default function Navbar() {
             hamburger, so they can switch before signing up). dir="ltr" stops
             Hebrew's html[dir=rtl] from mirroring it; the centre links get the
             page direction back so they still read in the language's order.
-            From lg it's three columns, the outer two equal, so the links sit
+            The bar spans the full width, so the logo sits on the start edge and the account
+            controls on the end edge, on the same gutters as the page's rails. From lg it's three columns, the outer two equal, so the links sit
             in the true centre of the bar rather than of the space between the
             logo and the (wider) account controls. */}
-        <div dir="ltr" className="relative max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,max-content)_1fr] lg:gap-6">
+        <div dir="ltr" className="relative w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,max-content)_1fr] lg:gap-6">
           <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target justify-self-start">
             <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
             <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
@@ -123,11 +123,10 @@ export default function Navbar() {
           <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-meta font-semibold text-slate-600">
             {user ? (
               <>
-                {/* Members get Home, Explore Perks, Wishlist, My Pass,
+                {/* Members get Home, Explore Perks, My Pass,
                     Making Aliyah? and Support; "How it works" is a guest section they never see */}
                 <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
-                <WishlistNavLink count={wishlistCount} active={isActive('/wishlist')} label={t('nav_wishlist')} />
                 <Link href="/member" aria-current={ariaCurrent('/member')} className={navLinkClass('/member')}>{t('nav_my_pass')}</Link>
                 <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
@@ -149,6 +148,8 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">
+            {/* Members' saved perks: the heart beside the avatar at every width (a popover from lg, a bottom sheet below it) */}
+            {user && <WishlistPopover />}
             {/* Account actions (desktop only): the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
             <div className="hidden lg:flex items-center gap-4">
               {user ? (
@@ -206,7 +207,7 @@ export default function Navbar() {
               type="button"
               className="lg:hidden tap-target flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 shadow-btn-secondary backdrop-blur-sm [-webkit-tap-highlight-color:transparent] transition-[background-color,transform] duration-200 [@media(hover:hover)]:hover:bg-slate-50 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
               onClick={() => { setLangMenuOpen(false); setMobileMenuOpen((v) => !v) }}
-              aria-label="Menu"
+              aria-label={t('nav_menu_label')}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
             >
@@ -218,26 +219,5 @@ export default function Navbar() {
 
       <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} onGoHome={goHome} t={t} isLoggedIn={!!user} onSignOut={handleSignOut} activeAnchorId={activeAnchorId} />
     </>
-  )
-}
-
-// The members' Wishlist link: the label truncates on its own so the saved
-// count beside it is never clipped, and the active underline sits on the
-// label only. The badge follows the label in reading order (start/end
-// margins), so in Hebrew it's on the label's left.
-function WishlistNavLink({ count, active, label }: { count: number; active: boolean; label: string }) {
-  return (
-    <Link
-      href="/wishlist"
-      aria-current={active ? 'page' : undefined}
-      className={`inline-flex min-w-0 items-center gap-1.5 py-3 transition ${active ? 'text-brand font-bold' : '[@media(hover:hover)]:hover:text-brand'}`}
-    >
-      <span className={active ? 'truncate underline decoration-2 underline-offset-[9px]' : 'truncate'}>{label}</span>
-      {count > 0 && (
-        <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1.5 inline-flex items-center justify-center rounded-full bg-brand text-white text-nano font-bold leading-none tabular-nums">
-          {count > 99 ? '99+' : count}
-        </span>
-      )}
-    </Link>
   )
 }

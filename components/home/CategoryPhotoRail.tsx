@@ -14,7 +14,7 @@ import { useRailPaging } from '@/lib/useRailPaging'
 // gradient on its lower half only and its name in white at the foot, each opening that category on
 // /categories. One sideways row that snaps to its cards; with a real mouse,
 // arrows page it. It reaches the screen's edges (.member-bleed) like every
-// member rail; `contained` puts it on the landing's column, its first card on
+// member rail (from 1024px it sits in the member column, seven tiles, eight from 1280px, filling it); `contained` puts it on the landing's column, its first card on
 // the headings' line, and it bleeds through the gutter from there. A dark card sits
 // behind each photo, so a photo that fails still carries its white label.
 // Same row as the Expo app's components/CategoryPhotoRail.tsx.
@@ -24,18 +24,18 @@ export default function CategoryPhotoRail({ contained = false }: { contained?: b
   const { edges, measure, page, overflowing } = useRailPaging(railRef, CATEGORY_TILES.length)
 
   return (
-    <nav aria-label={t('cats_category_label')} className={`offer-rail relative ${contained ? LANDING_COLUMN : ''}`}>
-      <ul ref={railRef} onScroll={measure} className={`${contained ? LANDING_RAIL : 'member-bleed'} edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none py-1 [-webkit-overflow-scrolling:touch] sm:gap-4`}>
+    <nav aria-label={t('cats_category_label')} className={`offer-rail relative ${contained ? LANDING_COLUMN : 'lg:mx-auto lg:max-w-[2200px]'}`}>
+      <ul ref={railRef} onScroll={measure} className={`${contained ? LANDING_RAIL : 'member-bleed member-bleed-fill'} edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none py-1 [-webkit-overflow-scrolling:touch] sm:gap-4 ${contained ? '' : 'lg:gap-3'}`}>
         {CATEGORY_TILES.map((tile) => (
-          <li key={tile.category} className="flex-shrink-0 snap-start">
+          <li key={tile.category} className={`flex-shrink-0 snap-start ${contained ? '' : 'lg:basis-[calc((100%-6*0.75rem)/7)] xl:basis-[calc((100%-7*0.75rem)/8)]'}`}>
             <Link
               href={categoryHref(tile.category)}
-              className="relative block h-[110px] w-[176px] overflow-hidden rounded-2xl bg-slate-700 shadow-card transition-transform duration-200 ease-out-expo [-webkit-tap-highlight-color:transparent] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:h-[150px] sm:w-[240px] [@media(hover:hover)]:hover:-translate-y-0.5 motion-reduce:[@media(hover:hover)]:hover:translate-y-0"
+              className={`${contained ? '' : 'lg:h-[112px] lg:w-full '}relative block h-[110px] w-[176px] overflow-hidden rounded-2xl bg-slate-700 shadow-card transition-transform duration-200 ease-out-expo [-webkit-tap-highlight-color:transparent] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:h-[150px] sm:w-[240px] [@media(hover:hover)]:hover:-translate-y-0.5 motion-reduce:[@media(hover:hover)]:hover:translate-y-0`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/categories/${tile.photo}.webp`} alt="" width={960} height={600} loading="lazy" decoding="async" draggable={false} className="absolute inset-0 h-full w-full object-cover object-center" />
               <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              <span className="absolute inset-x-0 bottom-0 line-clamp-2 p-3 text-start text-sm font-bold leading-snug tracking-tight text-white sm:p-4 sm:text-base">{t(tile.labelKey)}</span>
+              <span className={`absolute inset-x-0 bottom-0 line-clamp-2 p-3 text-start text-sm font-bold leading-snug tracking-tight text-white sm:p-4 sm:text-base ${contained ? '' : 'lg:p-2.5 lg:text-[13px] lg:leading-tight xl:text-sm'}`}>{t(tile.labelKey)}</span>
             </Link>
           </li>
         ))}

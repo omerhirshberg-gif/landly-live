@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Navbar from '@/components/layout/Navbar'
-import NearMeButton from '@/components/discover/NearMeButton'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import OfferTileRail from '@/components/discover/OfferTileRail'
 import { Award, MapPin, Search, Sparkles, Tags } from 'lucide-react'
@@ -10,16 +9,14 @@ import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import SectionDivider from '@/components/ui/SectionDivider'
 import { OfferGridSkeleton } from '@/components/ui/Skeleton'
-import MemberPageShell, { PAGE_TITLE_GAP, PageTitle } from '@/components/layout/MemberPageShell'
-import { usePerksUrlState } from '@/components/perks/usePerksUrlState'
+import MemberPageShell, { MemberColumn, PAGE_TITLE_GAP, PageTitle } from '@/components/layout/MemberPageShell'
+import { PerksUrlStateProvider, usePerksUrlContext } from '@/components/perks/PerksUrlStateContext'
+import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
+import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
-import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@/lib/geo'
 import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
 import { getAllOffers, isOfferAvailable, isOfferNew, OfferDocument, sortFeaturedOffers } from '@/lib/firebase/offers'
 import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery, offerDistanceKm, sortByNearest } from '@/lib/perks/perksFilter'
-
-/** The location "Near me" applies: the member's own, or an area they picked instead. */
-type Origin = { coords: Coordinates; area: Area | null }
 
 const NEARBY_MAX = 12
 
@@ -34,28 +31,26 @@ const NEARBY_MAX = 12
 // list (lib/perks/perksFilter.ts, shared with the app's Perks tab).
 function PerksBrowser() {
   const { t, lang } = useLang()
-  const { query, setQuery, appliedQuery, category, setCategory, sort, setSort } = usePerksUrlState()
-  const [origin, setOrigin] = useState<Origin | null>(null)
-  const [geocodedPlace, setGeocodedPlace] = useState<string | null>(null)
+  // Search, Sort and the filters are edited by the persistent bar above (GlobalPerkSearchBar); this reads the same URL state.
+  const { appliedQuery, category, setCategory, sort, method, minDiscount } = usePerksUrlContext()!
+  const { origin, placeName } = usePerksSearch()
   const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
 
   useEffect(() => {
     getAllOffers().then(setOffers)
   }, [])
 
-  const filters = { query: appliedQuery, category, sort }
+  const filters = { query: appliedQuery, category, sort, method, minDiscount }
   const filtering = hasActivePerkFilters(filters)
   const normalizedQuery = normalizeQuery(appliedQuery)
 
   const originCoords = origin?.coords ?? null
   const results = useMemo(
-    () => (offers && filtering ? filterAndSortPerks(offers, { query: appliedQuery, category, sort }, t, lang, originCoords) : []),
+    () => (offers && filtering ? filterAndSortPerks(offers, filters, t, lang, originCoords) : []),
     // `t` changes identity every render; `lang` covers what it depends on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [offers, filtering, appliedQuery, category, sort, lang, originCoords]
+    [offers, filtering, appliedQuery, category, sort, method, minDiscount, lang, originCoords]
   )
-  // "Choose area" when the browser has no location: the cities with perks.
-  const areas = useMemo(() => (offers ? deriveAreas(offers.filter(isOfferAvailable)) : []), [offers])
   // A search across All also surfaces the categories it names.
   const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   // The overview's two rails: one fetch, sold-out offers left out, bestsellers then newest.
@@ -64,17 +59,6 @@ function PerksBrowser() {
   const bestsellerOffers = railOffers.filter((offer) => offer.isBestseller)
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
 
-  // The member's own location gets its city from the cached Geocoding proxy; a picked area names itself.
-  useEffect(() => {
-    setGeocodedPlace(null)
-    if (!originCoords || origin?.area) return
-    let cancelled = false
-    reverseGeocode(originCoords, lang).then((city) => {
-      if (!cancelled) setGeocodedPlace(city)
-    })
-    return () => { cancelled = true }
-  }, [originCoords, origin?.area, lang])
-  const placeName = origin?.area ? localizedName(origin.area.name, lang) : geocodedPlace
   // The overview's Nearby section: claimable perks with a location, nearest first.
   const nearby = useMemo(
     () => (originCoords ? sortByNearest(railOffers.filter((offer) => offer.geo), originCoords).slice(0, NEARBY_MAX) : null),
@@ -93,27 +77,16 @@ function PerksBrowser() {
 
   return (
     <>
+      {selectedTile && (
+        // Clears the category and returns to the overview (the search, sort and filters stay).
+        <BackButton fallback="/categories" label={t('nav_back')} onBack={() => setCategory('all')} className="mb-2" />
+      )}
       <PageHeading title={pageTitle} />
-      <div className="mb-8">
-        <PerksToolbar
-          query={query}
-          onQueryChange={setQuery}
-          category={category}
-          onCategoryChange={setCategory}
-          sort={sort}
-          onSortChange={setSort}
-          showFilters={filtering}
-          action={
-            <NearMeButton
-              active={!!origin}
-              onLocate={(coords) => setOrigin({ coords, area: null })}
-              onClear={() => setOrigin(null)}
-              areas={areas}
-              onChooseArea={(area) => setOrigin({ coords: area.center, area })}
-            />
-          }
-        />
-      </div>
+      {filtering && (
+        <div className="mb-8">
+          <PerksToolbar category={category} onCategoryChange={setCategory} showFilters={filtering} />
+        </div>
+      )}
 
       {filtering ? (
         <div className="mb-10 space-y-8">
@@ -188,11 +161,11 @@ function PerksBrowser() {
               {/* The rails pad themselves (py-5), so the hairline between them needs no spacing of its own. */}
               <div className="mb-8">
                 {newOffers.length > 0 && (
-                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} autoAdvance />
+                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} autoAdvance compact />
                 )}
                 {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                 {bestsellerOffers.length > 0 && (
-                  <OfferTileRail icon={Award} title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} autoAdvance autoAdvanceOffsetMs={2000} />
+                  <OfferTileRail icon={Award} title={t('row_bestsellers')} href="/categories/bestsellers" seeMore={t('cats_see_more')} offers={bestsellerOffers} autoAdvance autoAdvanceOffsetMs={2000} compact />
                 )}
               </div>
             </>
@@ -223,22 +196,27 @@ function PageHeading({ title }: { title?: string }) {
 }
 
 export default function CategoriesPage() {
+  const fallback = (
+    <MemberPageShell fluid globalSearch>
+      <MemberColumn wide className="pb-10 sm:pb-12">
+        <PageHeading />
+        <OfferGridSkeleton />
+      </MemberColumn>
+    </MemberPageShell>
+  )
   return (
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <MemberPageShell>
-          <Suspense
-            fallback={
-              <>
-                <PageHeading />
-                <OfferGridSkeleton />
-              </>
-            }
-          >
-            <PerksBrowser />
-          </Suspense>
-        </MemberPageShell>
+        <Suspense fallback={fallback}>
+          <PerksUrlStateProvider>
+            <MemberPageShell fluid globalSearch>
+              <MemberColumn wide className="pb-10 sm:pb-12">
+                <PerksBrowser />
+              </MemberColumn>
+            </MemberPageShell>
+          </PerksUrlStateProvider>
+        </Suspense>
       </div>
     </>
   )

@@ -1,6 +1,7 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
-import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore'
+import { Timestamp, type DocumentSnapshot, type Firestore, type Transaction } from 'firebase-admin/firestore'
+import { getAllById } from '@/lib/firebase/batching'
 import { decryptField } from '@/lib/crypto/fieldCipher'
 import { auditInTransaction } from '@/lib/admin/auditLog'
 import { commissionAgorot, paymentTermsDays, parseFrozenTerms } from '@/lib/merchants/terms'
@@ -100,12 +101,26 @@ export function planSettlement(
 
 interface Bank { bankCode: string; branchCode: string; accountNumber: string; taxId: string }
 
-async function loadBank(db: Firestore, businessId: string): Promise<Bank | null> {
-  const snap = await db.collection('businessFinancials').doc(businessId).get()
+// The bank details in a businessFinancials snapshot; null when there are none. Throws if they can't be decrypted.
+function bankOf(businessId: string, snap: DocumentSnapshot): Bank | null {
   const d = snap.data()
   if (!d) return null
   const open = (cipher: unknown, field: string) => decryptField('BUSINESS_FINANCIALS_KEY', String(cipher), `businessFinancials/${businessId}:${field}`)
   return { bankCode: open(d.bankCodeCipher, 'bankCode'), branchCode: open(d.branchCipher, 'branch'), accountNumber: open(d.accountCipher, 'account'), taxId: open(d.taxIdCipher, 'taxId') }
+}
+
+// Every business and its financials for a payout, in one batched read (db.getAll),
+// not two reads per business.
+async function loadBusinesses(db: Firestore, ids: readonly string[]) {
+  const unique = [...new Set(ids)]
+  const snaps = await getAllById(db, [
+    ...unique.map((id) => db.collection('businesses').doc(id)),
+    ...unique.map((id) => db.collection('businessFinancials').doc(id)),
+  ])
+  return {
+    business: (id: string) => snaps.get(`businesses/${id}`)!,
+    financials: (id: string) => snaps.get(`businessFinancials/${id}`)!,
+  }
 }
 
 const validBank = (b: Bank) => /^\d{2}$/.test(b.bankCode) && /^\d{3}$/.test(b.branchCode) && /^\d{4,9}$/.test(b.accountNumber) && /^\d{9}$/.test(b.taxId)
@@ -134,11 +149,14 @@ export async function previewSettlement(db: Firestore, valueDate: string): Promi
   const ids = [...new Set(vouchers.map((v) => v.businessId))]
   const names = new Map<string, string>()
   const banks = new Map<string, 'ok' | 'missing' | 'invalid'>()
-  await Promise.all(ids.map(async (id) => {
-    const [biz, bank] = await Promise.all([db.collection('businesses').doc(id).get(), loadBank(db, id).catch(() => 'invalid' as const)])
+  const loaded = await loadBusinesses(db, ids)
+  for (const id of ids) {
+    const biz = loaded.business(id)
+    let bank: Bank | null | 'invalid'
+    try { bank = bankOf(id, loaded.financials(id)) } catch { bank = 'invalid' }
     names.set(id, String(biz.get('legalName') || biz.get('businessName') || id))
     banks.set(id, bank === null ? 'missing' : bank === 'invalid' ? 'invalid' : validBank(bank) ? 'ok' : 'invalid')
-  }))
+  }
   return planSettlement(valueDate, vouchers, names, (id) => banks.get(id) ?? 'missing')
 }
 
@@ -198,10 +216,11 @@ export async function createPayoutBatch(
       locked.push(...chunk.map((c) => c.id))
     }
     const payments: MasavPayment[] = []
+    const loaded = await loadBusinesses(db, payable.map((line) => line.businessId))
     for (const line of payable) {
-      const bank = await loadBank(db, line.businessId)
+      const bank = bankOf(line.businessId, loaded.financials(line.businessId))
       if (!bank || !validBank(bank)) throw new SettlementError(`${line.businessName}'s bank details changed; nothing was paid. Preview again.`)
-      const biz = await db.collection('businesses').doc(line.businessId).get()
+      const biz = loaded.business(line.businessId)
       payments.push({ ...bank, name: String(biz.get('legalName') || biz.get('businessName') || ''), amountAgorot: line.netAgorot })
     }
     const file = buildMasavFile({ config, valueDate, createdAt: now.toISOString().slice(0, 10), payments })

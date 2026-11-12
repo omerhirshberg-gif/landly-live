@@ -318,7 +318,7 @@ describe('no duplicate page titles', () => {
 
   it.each(tsxFiles)('%s: shows no visible h1 the header already shows', (path) => {
     // The exceptions say something the header doesn't: a success state, and the login page (no header).
-    const allowed = ['>Offer created</h1>', ">{t('wizard.created')}</h1>", '>Business created</h1>', '>Sign In</h1>']
+    const allowed = ['>Offer created</h1>', ">{t('wizard.created')}</h1>", ">{t('newBiz.created')}</h1>", ">{t('login.title')}</h1>"]
     for (const { attrs, body } of openingTags(read(path), 'h1')) {
       if (allowed.includes(`>${body}</h1>`)) continue
       expect(attrs, `${attrs}${body}`).toContain('sr-only')

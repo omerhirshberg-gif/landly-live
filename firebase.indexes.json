@@ -44,6 +44,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "rateLimits",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "prelaunch_throttle",
       "fieldPath": "expiresAt",
       "ttl": true,

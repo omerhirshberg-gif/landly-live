@@ -120,7 +120,7 @@ export function Fold({ title, defaultOpen = false, children }: { title: string; 
           aria-expanded={open}
           aria-controls={`${id}-panel`}
           onClick={() => setOpen(!open)}
-          className="flex min-h-12 w-full items-center justify-between gap-4 py-3 text-start text-base font-bold text-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand [@media(hover:hover)]:hover:text-brand"
+          className="flex min-h-12 w-full items-center justify-between gap-4 py-3 text-start lg:py-4 text-base font-bold text-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand [@media(hover:hover)]:hover:text-brand"
         >
           <span>{title}</span>
           <ChevronDown aria-hidden="true" className={`acc-icon h-5 w-5 flex-shrink-0 text-brand ${open ? 'open' : ''}`} strokeWidth={1.75} />

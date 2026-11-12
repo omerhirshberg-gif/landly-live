@@ -32,7 +32,7 @@ describe('footer', () => {
   })
 
   it.each(LANGS)('puts a quiet dot between links only, never before the first or after the last (%s)', (lang) => {
-    const nav = render(lang).match(/<nav aria-label="Footer"[\s\S]*?<\/nav>/)![0]
+    const nav = render(lang).match(new RegExp(`<nav aria-label="${translations[lang].footer_nav_label}"[\\s\\S]*?<\\/nav>`))![0]
     const dot = '<span class="text-slate-300 select-none mx-2 sm:mx-3" aria-hidden="true">·</span>'
     expect(nav.split(dot).length - 1).toBe(4)
     expect(nav).toMatch(/^<nav[^>]*><span[^>]*><a /)

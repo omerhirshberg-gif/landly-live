@@ -8,7 +8,9 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTimi
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB, UNLOCK } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
+import { setOffersApiBase } from '@shared/offers/offersApi'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
+import { VouchersProvider } from '@shared/firebase/VouchersProvider'
 import { useAuth } from '@shared/firebase/useAuth'
 import { AppLockOverlay, AppLockProvider, useAppLock } from '../auth/AppLock'
 import { useDeviceSession } from '../lib/deviceSession'
@@ -17,7 +19,9 @@ import { AvatarPeekProvider } from '../components/AvatarViewer'
 import DevEnvironmentBadge from '../components/DevEnvironmentBadge'
 import { EntranceProvider } from '../components/Entrance'
 import SplashScreen, { type Handoff } from '../components/SplashScreen'
+import RouteErrorBoundary from '../components/RouteErrorBoundary'
 import { LangProvider, useLang } from '../i18n/LangProvider'
+import { API_BASE_URL } from '../lib/env'
 import { clearPendingDeepLink, pendingDeepLink } from '../lib/deepLinks'
 import { pageFlipOptions } from '../lib/pageFlip'
 import { whenIdle } from '../lib/whenIdle'
@@ -28,6 +32,12 @@ import { colors } from '../theme'
 // language: the root view below sets `direction`, which Yoga applies to the
 // whole tree — rows, start/end margins and the tab bar flip together.
 I18nManager.allowRTL(false)
+
+// The live offers come from the CDN-cached /api/public/offers on this origin (Firestore is the fallback).
+setOffersApiBase(API_BASE_URL)
+
+// A render error anywhere below shows the retry card instead of closing the app (each route can also export its own).
+export { RouteErrorBoundary as ErrorBoundary }
 
 // The native launch screen holds, in the canvas colour (app.json), until the
 // branded splash has drawn its first frame (SplashScreen.tsx hides it), then
@@ -48,6 +58,7 @@ export default function RootLayout() {
             {/* The website's wishlist, live from the member's user document, so a
                 perk saved on either side shows up on the other */}
             <WishlistProvider>
+             <VouchersProvider>
               <SignInGateProvider>
                 {/* The Face ID / fingerprint lock over a saved session: on by default, off in Privacy & Security. */}
                 <AppLockProvider>
@@ -59,6 +70,7 @@ export default function RootLayout() {
                   </EntranceProvider>
                 </AppLockProvider>
               </SignInGateProvider>
+             </VouchersProvider>
             </WishlistProvider>
           </AuthProvider>
         </LangProvider>

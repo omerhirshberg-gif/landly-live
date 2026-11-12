@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { dealPhotoFit } from '@/lib/offers/imageFit'
 import { CategoryPanel } from './PerkImage'
 import type { DealImage } from './useDealImage'
 
@@ -11,7 +12,11 @@ import type { DealImage } from './useDealImage'
 // photo fades in over it; no link, or one that fails, keeps the panel. Nothing
 // tints the picture: the overlays (`children`) carry their own solid backgrounds.
 // The card holds the image's state (useDealImage), as its logo box needs the
-// role too. Plain <img> for the same reasons as PerkImage: admin-pasted links on
+// role too. A landscape photo (ratio 1.2 or more) fills the frame (object-cover); a
+// square or portrait one is shown whole (object-contain) in front of a soft blurred
+// copy of itself, so its head and feet are never cut off, and the offer page lets
+// the frame follow it (containAspect). Expo: landly-mobile/src/components/DealMedia.tsx.
+// Plain <img> for the same reasons as PerkImage: admin-pasted links on
 // any host, kept hotlink-safe.
 export default function DealMedia({
   src,
@@ -20,6 +25,7 @@ export default function DealMedia({
   category,
   className = '',
   aspect = 'aspect-video',
+  containAspect,
   children,
 }: {
   src: string
@@ -30,14 +36,24 @@ export default function DealMedia({
   className?: string
   /** The frame's shape: 16:9 on the offer page, 2:1 capped at 172px on the feed cards. */
   aspect?: string
+  /** The frame's shape instead of `aspect` for a square or portrait photo shown whole (the offer page's taller hero). */
+  containAspect?: string
   children?: ReactNode
 }) {
-  const { role, imgRef, onLoad, onError } = image
+  const { role, size, imgRef, onLoad, onError } = image
+  const whole = role === 'photo' && dealPhotoFit(size) === 'contain'
 
   return (
-    <div className={`relative z-[1] w-full ${aspect} ${className}`}>
-      <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
+    <div className={`relative z-[1] w-full ${whole && containAspect ? containAspect : aspect} ${className}`}>
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
         <CategoryPanel category={category} size="hero" />
+        {whole && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 z-0 h-full w-full scale-110 object-cover blur-xl" />
+            <div aria-hidden="true" className="absolute inset-0 z-[1] bg-[#F4F6F9]/50" />
+          </>
+        )}
         {(role === 'pending' || role === 'photo') && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -49,7 +65,7 @@ export default function DealMedia({
             referrerPolicy="no-referrer"
             onError={onError}
             onLoad={(e) => onLoad(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[180ms] ease-out-expo motion-reduce:transition-none ${role === 'photo' ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 z-[2] h-full w-full ${whole ? 'object-contain' : 'object-cover'} transition-opacity duration-[180ms] ease-out-expo motion-reduce:transition-none ${role === 'photo' ? 'opacity-100' : 'opacity-0'}`}
           />
         )}
       </div>

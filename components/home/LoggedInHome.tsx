@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Award, Sparkles } from 'lucide-react'
 import type { User } from 'firebase/auth'
@@ -16,7 +16,9 @@ import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/M
 import SegmentBadge from '@/components/member/SegmentBadge'
 import { getAllOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
-import { subscribeToUserVouchers } from '@/lib/firebase/vouchers'
+import { useVouchers } from '@/lib/firebase/VouchersProvider'
+import { greetingKey } from '@/lib/auth/greeting'
+import { useGreetingPeriod } from '@/lib/home/useGreetingPeriod'
 import { buildCategoryRails, railLabel, selectCurated, selectHighlights } from '@/lib/home/categoryRails'
 import { useLang } from '@/lib/i18n/useLang'
 import { categoryHref } from '@/lib/perks/perksFilter'
@@ -24,8 +26,11 @@ import { categoryHref } from '@/lib/perks/perksFilter'
 // The signed-in home: the member's greeting, the blue member-pass card with
 // their live active-pass count, quick category pills, Recommended for you, then
 // a rail for each category with a claimable perk (lib/home/categoryRails.ts), so
-// a category appears by itself with its first offer. The greeting and card sit
-// on the 1240px column; the rails reach the screen's edges. Guest marketing
+// a category appears by itself with its first offer. The greeting, card and rails
+// share one fluid column up to 2200px (below 1024px the greeting and a card up to
+// 680px wide form one centred hero; from there a text-only welcome on the start
+// edge replaces both, since the navbar has My Pass and the avatar); the rails reach the screen's edges below 1024px and fill the column from
+// there: fixed 280px compact cards and seven or eight category tiles. Guest marketing
 // never renders here. Same order as the Expo Home tab
 // (landly-mobile/src/app/(tabs)/index.tsx).
 //
@@ -35,22 +40,16 @@ import { categoryHref } from '@/lib/perks/perksFilter'
 export default function LoggedInHome({ user }: { user: User }) {
   const { t } = useLang()
   const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
+  // "Good morning, Dana" by the member's own clock; the plain welcome only until that is read (the greeting is hidden until then).
+  const period = useGreetingPeriod()
+  const greeting = period
+    ? t(greetingKey(period, !!firstName)).replace('{name}', firstName ?? '')
+    : firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')
+  // Live from the shared voucher listener: a purchase or a redemption updates the count without a reload.
   // null until the first snapshot (or if the read is refused): the card shows "–", never a fake 0.
-  const [activeCount, setActiveCount] = useState<number | null>(null)
+  const activeCount = useVouchers().active?.length ?? null
   const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [photoOpen, setPhotoOpen] = useState(false)
-
-  // Live, like the Expo wallet: a purchase or a redemption updates the count without a reload.
-  useEffect(
-    () =>
-      subscribeToUserVouchers(
-        user.uid,
-        'active',
-        (vouchers) => setActiveCount(vouchers.length),
-        () => setActiveCount(null)
-      ),
-    [user.uid]
-  )
 
   // One read for the whole page; a failed read shows the empty state.
   useEffect(() => {
@@ -76,6 +75,7 @@ export default function LoggedInHome({ user }: { user: User }) {
       {/* No site footer for members: the support prompt is pinned to the bottom of the screen instead, clear of the iPhone home indicator. */}
       <MemberPageShell
         fluid
+        globalSearch
         footer={
           <p className="text-center text-sm text-body">
             {t('home_faq_prompt_pre')}{' '}
@@ -85,8 +85,10 @@ export default function LoggedInHome({ user }: { user: User }) {
           </p>
         }
       >
-        <MemberColumn>
-          <header className={`flex items-center gap-3 sm:gap-4 min-w-0 min-h-14 ${loaded ? 'greet-in' : 'invisible'}`}>
+        <MemberColumn wide className="lg:hidden">
+          {/* Phones and tablets (under 1024px): one centred hero, 16px (24px from 640px) under the search bar: the greeting, then the pass card (up to 680px). From 1024px both go: My Pass is in the navbar, and a text-only welcome opens the category section below. */}
+          <div className="mx-auto -mt-2 flex w-full max-w-[760px] flex-col items-center gap-5 sm:gap-6">
+          <header className={`flex items-center gap-3 sm:gap-4 min-w-0 max-w-full min-h-14 justify-center ${loaded && period ? 'greet-in' : 'invisible'}`}>
             {/* With a photo, the avatar opens it full size; a monogram has nothing to zoom, so it opens /profile. */}
             {photoURL ? (
               <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('avatar_view')} aria-haspopup="dialog" className="tap-target flex-shrink-0 rounded-full cursor-zoom-in">
@@ -99,7 +101,7 @@ export default function LoggedInHome({ user }: { user: User }) {
             )}
             <div className="min-w-0">
               <h1 id="home-welcome" className={`${PAGE_TITLE} truncate`}>
-                {firstName ? t('home_welcome').replace('{name}', firstName) : t('home_welcome_generic')}
+                {greeting}
               </h1>
               <div className="mt-1.5">
                 <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
@@ -107,22 +109,32 @@ export default function LoggedInHome({ user }: { user: User }) {
             </div>
           </header>
           {photoURL && <AvatarLightbox src={photoURL} open={photoOpen} onClose={() => setPhotoOpen(false)} />}
-          <ActivePassCard count={activeCount} />
+          <div className="mx-auto w-full max-w-[680px] text-start">
+            <ActivePassCard count={activeCount} className="!mt-0" />
+          </div>
+          </div>
         </MemberColumn>
 
         <SectionBoundary name="home-category-photos">
-          <section aria-labelledby="home-categories-title" className="mt-6 sm:mt-8">
-            <MemberColumn>
+          <section aria-labelledby="home-categories-title" className="mt-6 sm:mt-8 lg:mt-0">
+            <MemberColumn wide>
+              {/* Desktop only: a plain text welcome on the start edge, in the page-title type (PAGE_TITLE, the same as /categories), with no avatar, badge or pass card (the navbar has them). */}
+              <h1 id="home-welcome-lg" className={`hidden lg:block lg:-mt-2 lg:mb-6 ${PAGE_TITLE} ${loaded && period ? 'greet-in' : 'invisible'}`}>
+                {greeting}
+              </h1>
               <CategoryPhotoTitle id="home-categories-title" className="mb-3 text-xl font-bold text-ink" />
             </MemberColumn>
             <CategoryPhotoRail />
           </section>
         </SectionBoundary>
 
-        <div className="mt-6 space-y-7 sm:mt-8 sm:space-y-9">
+        <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+          <HomeDivider />
           <SectionBoundary name="home-curated"><CuratedOffers offers={curated} /></SectionBoundary>
           {/* The Perks page's two highlight rails, the same offers, each on its own beat. */}
           {highlights && highlights.newOffers.length > 0 && (
+            <>
+            <HomeDivider />
             <SectionBoundary name="home-new">
               <OfferCardRail
                 id="home-new-title"
@@ -134,10 +146,14 @@ export default function LoggedInHome({ user }: { user: User }) {
                 dots
                 autoAdvance
                 autoAdvanceOffsetMs={1500}
+                compact
               />
             </SectionBoundary>
+            </>
           )}
           {highlights && highlights.bestsellerOffers.length > 0 && (
+            <>
+            <HomeDivider />
             <SectionBoundary name="home-bestsellers">
               <OfferCardRail
                 id="home-bestsellers-title"
@@ -149,11 +165,15 @@ export default function LoggedInHome({ user }: { user: User }) {
                 dots
                 autoAdvance
                 autoAdvanceOffsetMs={3000}
+                compact
               />
             </SectionBoundary>
+            </>
           )}
           {rails.map((rail, index) => (
-            <SectionBoundary key={rail.category} name="home-category-rail">
+            <Fragment key={rail.category}>
+            <HomeDivider />
+            <SectionBoundary name="home-category-rail">
               <OfferCardRail
                 id={`home-rail-${index}`}
                 title={railLabel(rail, t)}
@@ -162,11 +182,22 @@ export default function LoggedInHome({ user }: { user: User }) {
                 href={rail.tile ? categoryHref(rail.tile.category) : undefined}
                 seeAll={rail.tile ? t('home_see_all') : undefined}
                 showCategoryBadge={false}
+                compact
               />
             </SectionBoundary>
+            </Fragment>
           ))}
         </div>
       </MemberPageShell>
     </main>
+  )
+}
+
+/** The hairline between Home's rail blocks, inside the wide column: it fades out at both ends, so it reads the same in English and Hebrew. Decorative. */
+function HomeDivider() {
+  return (
+    <MemberColumn wide>
+      <div aria-hidden="true" data-home-divider="" className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 to-transparent" />
+    </MemberColumn>
   )
 }

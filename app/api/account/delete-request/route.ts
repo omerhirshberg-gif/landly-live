@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   // Honeypot: a hidden field people never fill. Bots get a fake success.
   if (body && typeof body.website === 'string' && body.website.trim()) return json({ ok: true })
-  if (isDeletionRequestRateLimited(request)) return json({ error: 'rate_limited' }, 429)
+  if (await isDeletionRequestRateLimited(request)) return json({ error: 'rate_limited' }, 429)
 
   let decoded
   try {
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     if (err instanceof RequestAuthError) return json({ error: err.message }, err.status)
     throw err
   }
-  if (isDeletionRequestUidRateLimited(decoded.uid)) return json({ error: 'rate_limited' }, 429)
+  if (await isDeletionRequestUidRateLimited(decoded.uid)) return json({ error: 'rate_limited' }, 429)
 
   const parsed = parseDeletionRequest(body)
   const email = decoded.email

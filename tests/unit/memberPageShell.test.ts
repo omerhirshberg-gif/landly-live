@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
+vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {} }))
+
 import MemberPageShell, { PAGE_TITLE, PageTitle } from '@/components/layout/MemberPageShell'
 
 const read = (path: string) => readFileSync(path, 'utf8')
@@ -36,10 +38,13 @@ describe('MemberPageShell', () => {
   it('narrows text-heavy pages from the column’s start edge below 1024px, never re-centring them, and uses the full column from there', () => {
     expect(read('app/wishlist/page.tsx')).toContain('<div className="max-w-3xl lg:max-w-none">')
     expect(read('app/support/page.tsx')).toContain('<div className="max-w-3xl lg:max-w-none lg:grid lg:grid-cols-12 lg:gap-x-8 lg:items-start">')
-    // My Pass: the stats move into a sticky rail beside the passes.
+    // My Pass: one top-to-bottom flow in a centred 960px column, on every screen: no side rail.
     const member = read('app/member/page.tsx')
-    expect(member).toContain('<div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_auto_1fr] lg:gap-x-10">')
-    expect(member).toContain('<aside className="lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky')
+    expect(member).toContain('<div className="mx-auto w-full max-w-[960px] space-y-6">')
+    expect(member).not.toMatch(/<aside|lg:grid-cols-\[minmax\(0,1fr\)_300px\]|lg:sticky/)
+    const order = ['<h1 className={PAGE_TITLE}>', '<SegmentBadge', '<DashboardStats', '<MemberTabs', '<PerksTab'].map((s) => member.indexOf(s))
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(order.every((i) => i > -1)).toBe(true)
   })
 
   it.each(['app/member/page.tsx', 'app/profile/page.tsx', 'app/settings/page.tsx'])('%s has no Member Dashboard eyebrow, so its title sits on the shared baseline', (path) => {

@@ -20,6 +20,7 @@ import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { formatPrice, priceDifference } from '@/lib/format'
 import { cancellationFeeAgorot } from '@/lib/payments/voucherTerms'
+import { localizedApiError } from '@/lib/api/apiError'
 
 type CheckoutStep = 'summary' | 'payment'
 
@@ -96,7 +97,7 @@ function CheckoutContent() {
         const { ok, data } = await initiate(await user.getIdToken(), offerId, false)
         if (cancelled) return
         if (!ok) {
-          setError(data.error ?? t('checkout_error_generic'))
+          setError(localizedApiError(data, t, 'checkout_error_generic'))
           return
         }
         setOrder(data as OrderSummary)
@@ -330,9 +331,9 @@ function CheckoutContent() {
           )}
 
           {order && step === 'payment' && (order.sandbox ? (
-            <DevSandboxPaymentWidget orderId={order.orderId} offerTitle={order.offerTitle} amount={order.amount} onBack={() => setStep('summary')} />
+            <DevSandboxPaymentWidget orderId={order.orderId} offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
           ) : (
-            <TranzilaPaymentWidget offerTitle={order.offerTitle} amount={order.amount} onBack={() => setStep('summary')} />
+            <TranzilaPaymentWidget offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
           ))}
         </div>
       </div>

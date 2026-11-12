@@ -158,7 +158,7 @@ describe('OfferCardRail', () => {
 
   it('starts its heading on the member column and bleeds its row, snapping with a hidden scrollbar', () => {
     const html = render('en', createElement(OfferCardRail, { id: 'r', title: 'Restaurants', offers, href: '/categories?cat=x', seeAll: 'See all (3)' }))
-    expect(html).toContain('max-w-member')
+    expect(html).toContain('max-w-[2200px]')
     const row = html.match(/<div class="(member-bleed[^"]*)">/)![1].split(' ')
     for (const c of ['overflow-x-auto', 'overscroll-x-contain', 'snap-x', 'snap-mandatory', 'scrollbar-none']) expect(row).toContain(c)
     expect(html).toContain('See all (3)')
@@ -195,7 +195,7 @@ describe('CategoryPhotoRail', () => {
   })
 
   it('holds to the landing column when contained, and reaches the screen edges otherwise', () => {
-    expect(render('en', createElement(CategoryPhotoRail, { contained: true }))).toContain('offer-rail relative mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8')
+    expect(render('en', createElement(CategoryPhotoRail, { contained: true }))).toContain('offer-rail relative mx-auto w-full max-w-[2200px] px-4 sm:px-6 lg:px-8')
     expect(render('en', createElement(CategoryPhotoRail, { contained: true }))).not.toContain('member-bleed')
     expect(render('en', createElement(CategoryPhotoRail))).toContain('member-bleed')
   })

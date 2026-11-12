@@ -187,11 +187,20 @@ describe('deal images and logos', () => {
 
   it('draws one logo tile on web and native, as wide as its logo needs', () => {
     const web = read('components/discover/MerchantBadge.tsx')
-    expect(web).toContain('flex shrink-0 items-center justify-center overflow-hidden rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white')
-    expect(web).toContain("className={`h-full w-auto object-contain ${size === 'lg' ? 'min-w-0 max-w-full' : 'max-w-[96px]'}`}")
+    expect(web).toContain('rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white')
+    expect(web).toContain("`h-full w-auto object-contain ${size === 'lg' ? 'min-w-0 max-w-full' : 'max-w-[96px]'}`")
     const native = read('landly-mobile/src/components/MerchantBadge.tsx')
     expect(native).toContain('resizeMode="contain"')
     expect(native).toContain('width: Math.min(logoMaxWidth, inner * aspect)')
+    // A feed card's badge is one fixed tile for every logo (wide, square, round or tall), initial fallback included.
+    expect(web).toContain('h-[44px] min-w-[64px] max-w-[124px] rounded-xl border border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:h-[48px] sm:min-w-[72px] sm:max-w-[140px] sm:px-2')
+    expect(web).toContain("size === 'sm' ? 'h-full w-auto max-w-full object-contain'")
+    expect(native).toContain('const FIXED = { height: 44, minWidth: 64, maxWidth: 124, paddingX: 6, paddingY: 4,')
+    expect(native).toMatch(/fixedTile: \{\s+height: FIXED\.height,\s+minWidth: FIXED\.minWidth,\s+maxWidth: FIXED\.maxWidth,\s+borderRadius: 12,/)
+    for (const c of ["borderColor: '#E2E8F0'", "shadowColor: '#0B1B3D'", 'shadowOpacity: 0.08', 'paddingHorizontal: FIXED.paddingX', 'paddingVertical: FIXED.paddingY', 'overflow: \'hidden\'']) expect(native).toContain(c)
+    expect(native).toContain('width: Math.min(FIXED.maxInnerWidth, FIXED.innerHeight * aspect)')
+    expect(read('landly-mobile/src/components/OfferCard.tsx')).toMatch(/height=\{LOGO_HEIGHT\}\s+fixed/)
+    expect(read('components/discover/OfferCard.tsx')).toContain('<MerchantBadge size="sm"')
   })
 })
 
@@ -298,7 +307,7 @@ describe('the iOS scroll freeze', () => {
 })
 
 describe('direction before the first paint', () => {
-  it('runs from <head>, in plain ES5, for right-to-left languages only', () => {
+  it('runs from <head>, in plain ES5, setting lang for every language and dir for right-to-left ones', () => {
     expect(read('app/layout.tsx')).toContain('__html: LANG_DIRECTION_SCRIPT')
     expect(LANG_DIRECTION_SCRIPT).not.toMatch(/=>|\bconst\b|\blet\b/)
     const run = (stored: string | null) => {
@@ -309,6 +318,13 @@ describe('direction before the first paint', () => {
     expect(run('he').dir).toBe('rtl')
     expect(run('fr').dir).toBe('ltr')
     expect(run(null).dir).toBe('ltr')
+    // The document's language follows the saved one too, before React runs.
+    expect(run('he').lang).toBe('he')
+    expect(run('ru').lang).toBe('ru')
+    expect(run('es').lang).toBe('es')
+    expect(run('fr').lang).toBe('fr')
+    expect(run(null).lang).toBe('en')
+    expect(run('xx').lang).toBe('en')
   })
 })
 

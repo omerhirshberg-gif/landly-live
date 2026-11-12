@@ -65,12 +65,12 @@ const METHOD_ICONS: Record<RedemptionMethod, string> = { in_store: 'fa-store', o
 export type OfferFormSection = 'basics' | 'media' | 'pricing' | 'commercial' | 'inventory' | 'terms' | 'translations'
 
 /** The offer forms' tabs, in order. */
-export const OFFER_FORM_TABS = [
-  { id: 'basics', label: 'Basic info', icon: 'fa-pen' },
-  { id: 'media', label: 'Media', icon: 'fa-image' },
-  { id: 'pricing', label: 'Pricing & availability', icon: 'fa-shekel-sign' },
-  { id: 'terms', label: 'Redemption & terms', icon: 'fa-ticket' },
-  { id: 'translations', label: 'Translations', icon: 'fa-language' },
+export const offerFormTabs = (t: (key: AdminKey) => string) => [
+  { id: 'basics', label: t('form.tab.basics'), icon: 'fa-pen' },
+  { id: 'media', label: t('form.tab.media'), icon: 'fa-image' },
+  { id: 'pricing', label: t('form.tab.pricing'), icon: 'fa-shekel-sign' },
+  { id: 'terms', label: t('form.tab.terms'), icon: 'fa-ticket' },
+  { id: 'translations', label: t('form.tab.translations'), icon: 'fa-language' },
 ] as const satisfies readonly { id: OfferFormSection; label: string; icon: string }[]
 
 interface Props {

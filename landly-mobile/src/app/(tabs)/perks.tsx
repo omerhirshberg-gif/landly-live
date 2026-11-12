@@ -78,7 +78,7 @@ export default function PerksScreen() {
   // Pull-to-refresh reloads; the first load runs in the effect below.
   const load = useCallback(async () => {
     try {
-      setOffers(await getAllOffers())
+      setOffers(await getAllOffers({ force: true }))
       setFailed(false)
     } catch {
       setFailed(true)

@@ -70,7 +70,7 @@ describe('web OfferTileRail', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'New on Landly', offers }))
     const rail = html.match(/<div class="(offer-tile-rail[^"]*)">/)![1].split(' ')
     expect(rail).not.toContain('grid-rows-2')
-    for (const c of ['grid', 'grid-flow-col', 'auto-cols-[256px]', 'sm:auto-cols-[272px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
+    for (const c of ['grid', 'grid-flow-col', 'auto-cols-[260px]', 'sm:auto-cols-[280px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
     // DOM order is the reading order.
     const hrefs = [...html.matchAll(/href="\/offers\/(\d)"/g)].map((m) => m[1])
     expect(hrefs).toEqual(['1', '2', '3', '4', '5'])
@@ -79,7 +79,7 @@ describe('web OfferTileRail', () => {
   it('renders the canonical OfferCard: both prices, the logo box and the discount over the picture', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers: [offer('1')] }))
     expect(html).toContain('aspect-[2/1] max-h-[172px]')
-    expect(html).toContain('h-10 min-w-[48px]')
+    expect(html).toContain('h-[44px] min-w-[64px] max-w-[124px] rounded-xl')
     expect(html).toContain('-20%')
     expect(html).toContain('₪80')
     expect(html).toContain('line-through')
@@ -97,11 +97,13 @@ describe('web OfferTileRail', () => {
 })
 
 describe('PerksToolbar on the overview', () => {
-  it('is the search row alone: no chips or Sort until something is chosen', () => {
-    const props = { query: '', onQueryChange: () => {}, category: 'all' as const, onCategoryChange: () => {}, sort: 'recommended' as const, onSortChange: () => {}, showFilters: false }
-    const html = render('en', createElement(PerksToolbar, props))
-    expect(html).not.toContain('role="radiogroup"')
-    expect(html).not.toContain('aria-haspopup')
+  it('shows nothing: the search, Near Me and Filter live in the persistent bar, and the chips only on a listing', () => {
+    const props = { category: 'all' as const, onCategoryChange: () => {}, showFilters: false }
+    expect(render('en', createElement(PerksToolbar, props))).toBe('')
+    const listing = render('en', createElement(PerksToolbar, { ...props, showFilters: true }))
+    expect(listing).toContain('role="radiogroup"')
+    expect(listing).not.toContain('aria-haspopup')
+    expect(listing).not.toContain('role="search"')
   })
 })
 

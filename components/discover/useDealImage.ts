@@ -28,6 +28,8 @@ export function useDealImage(src: string) {
 
   return {
     role: dealImageRole(src, loaded?.src === src ? loaded : null, failedSrc === src),
+    /** The loaded bitmap's size, or null until it has loaded (DealMedia reads its shape from it). */
+    size: loaded?.src === src ? { width: loaded.width, height: loaded.height } : null,
     imgRef,
     onLoad: (width: number, height: number) => setLoaded({ src, width, height }),
     onError: () => setFailedSrc(src),

@@ -130,6 +130,7 @@ export default function OfferCard({
             logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
             initial={businessInitial(name.text)}
             height={LOGO_HEIGHT}
+            fixed
             style={styles.logo}
           />
         </DealMedia>

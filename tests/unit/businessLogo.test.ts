@@ -151,12 +151,16 @@ vi.mock('@/lib/firebase/admin', () => ({
         path: `${name}/${id}`,
         get: async () => ({ exists: true, data: () => db.business }),
       }),
-      where: () => ({
-        get: async () => ({
-          size: db.offers.length,
-          docs: db.offers.map((offer) => ({ ref: { path: `offers/${offer.id}` }, data: () => offer })),
-        }),
-      }),
+      where: () => {
+        const query = {
+          get: async () => ({
+            size: db.offers.length,
+            docs: db.offers.map((offer) => ({ ref: { path: `offers/${offer.id}` }, data: () => offer })),
+          }),
+          limit: () => query,
+        }
+        return query
+      },
     }),
     batch: () => ({
       update: (ref: { path: string }, data: Record<string, unknown>) => db.updates.push({ path: ref.path, data }),
@@ -250,7 +254,7 @@ describe('logo wiring', () => {
   })
 
   it('reads the logo with every offer, normalized like its image, on web and in the app', () => {
-    expect(read('lib/firebase/offers.ts')).toContain(
+    expect(read('lib/offers/offerDocument.ts')).toContain(
       "businessLogoUrl: normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : ''),"
     )
   })

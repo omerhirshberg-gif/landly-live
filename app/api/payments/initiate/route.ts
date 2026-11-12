@@ -6,6 +6,7 @@ import { requireVerifiedCustomerUid, RequestAuthError } from '@/lib/firebase/ver
 import { DEV_SANDBOX_TERMINAL } from '@/lib/payments/devSandbox'
 import { initiateOrder } from '@/lib/payments/initiateOrder'
 import { checkoutTerminal, isDocumentId, PaymentError } from '@/lib/payments/paymentValidation'
+import { errorBody } from '@/lib/api/errorCode'
 
 // Called same-origin by the website's checkout and cross-origin by the app's
 // native checkout screen; CORS for its Expo web build (lib/auth/cors.ts).
@@ -18,13 +19,13 @@ export async function POST(request: Request) {
   const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: cors })
   try {
     const uid = await requireVerifiedCustomerUid(request)
-    const limited = checkUidRateLimit('payment', uid)
+    const limited = await checkUidRateLimit('payment', uid)
     if (limited) {
       for (const [name, value] of Object.entries(cors)) limited.headers.set(name, value)
       return limited
     }
     const body = await request.json().catch(() => null)
-    if (!isDocumentId(body?.offerId)) return json({ error: 'Invalid offerId.' }, 400)
+    if (!isDocumentId(body?.offerId)) return json(errorBody('Invalid offerId.', 400), 400)
     const terminal = checkoutTerminal()
     const db = getAdminDb()
     if (terminal !== DEV_SANDBOX_TERMINAL) {
@@ -41,8 +42,8 @@ export async function POST(request: Request) {
     const resumed = !restart && previous?.status === 'pending' && previous.terminal === DEV_SANDBOX_TERMINAL
     return json({ ...order, sandbox: true, resumed })
   } catch (err) {
-    if (err instanceof PaymentError || err instanceof RequestAuthError) return json({ error: err.message }, err.status)
+    if (err instanceof PaymentError || err instanceof RequestAuthError) return json(errorBody(err.message, err.status), err.status)
     console.error('Payment initiation failed')
-    return json({ error: 'Could not initiate payment.' }, 503)
+    return json(errorBody('Could not initiate payment.', 503), 503)
   }
 }

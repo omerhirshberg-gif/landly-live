@@ -12,6 +12,9 @@ import { colors } from '../../theme'
 // a viewport-wide mobile tab bar. Same five tabs in equal columns, same physical order: the
 // root view sets direction: rtl for Hebrew, so the bar pins direction: ltr
 // (Home stays far left); the screens themselves still follow the language.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
+
 export default function TabsLayout() {
   const { t } = useLang()
   const { wishlistCount } = useWishlist()

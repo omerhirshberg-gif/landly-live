@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  if (isSupportMessageRateLimited(request)) {
+  if (await isSupportMessageRateLimited(request)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
   }
 

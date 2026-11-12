@@ -183,7 +183,7 @@ describe('the perk page’s logo badge', () => {
     expect(offer).toContain("logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}")
     expect(offer).toContain('initial={businessInitial(businessName.text)}')
     // One picture with the cards: DealMedia draws only a photo, a logo in the offer's image goes to the badge.
-    expect(offer).toContain("<DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'}>")
+    expect(offer).toContain("<DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>")
     expect(offer).not.toContain('<PerkImage')
     expect(offer).not.toContain('resizeMode')
   })

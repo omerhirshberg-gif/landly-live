@@ -39,7 +39,7 @@ describe('navbar layout lock', () => {
 
     const logo = nav.indexOf('alt="Landly"')
     const langSwitch = nav.indexOf('lucide-globe')
-    const hamburger = nav.indexOf('aria-label="Menu"')
+    const hamburger = nav.indexOf(`aria-label="${translations[lang].nav_menu_label}"`)
     expect(logo).toBeGreaterThan(-1)
     expect(logo).toBeLessThan(langSwitch)
     expect(langSwitch).toBeLessThan(hamburger)
@@ -152,14 +152,15 @@ describe('header account actions', () => {
     expect(signIn).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
-  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, Wishlist, My Pass, Making Aliyah? and Support (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, My Pass, Making Aliyah? and Support (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const nav = html.slice(0, html.indexOf('</nav>'))
     const t = translations[lang]
     const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"'))
     const hrefs = [...centre.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
-    expect(hrefs).toEqual(['/', '/categories', '/wishlist', '/member', '/olim', '/support'])
-    for (const label of [t.nav_home, t.nav_cta, t.nav_wishlist, t.nav_my_pass, t.nav_olim, t.nav_support]) expect(centre).toContain(`>${label}<`)
+    expect(hrefs).toEqual(['/', '/categories', '/member', '/olim', '/support'])
+    expect(centre).not.toContain('/wishlist')
+    for (const label of [t.nav_home, t.nav_cta, t.nav_my_pass, t.nav_olim, t.nav_support]) expect(centre).toContain(`>${label}<`)
     // The avatar menu is the account: no Profile text link in the bar.
     expect(centre).not.toContain(`>${t.nav_profile}<`)
     // On / the Home link is the current page.
@@ -199,11 +200,11 @@ describe('header account actions', () => {
     }
   })
 
-  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, Wishlist, Making Aliyah?, then Settings (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, Making Aliyah?, then Settings (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const drawer = html.slice(html.indexOf('</nav>'))
     const t = translations[lang]
-    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/wishlist', '/olim', '/settings'])
+    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/olim', '/settings'])
     expect(drawer).toContain(`>${t.nav_home}<`)
     expect(drawer).not.toContain(`>${t.nav_perks}<`)
     // Preferences live on /settings now: no accordions, language buttons, security or legal links in the drawer.
@@ -263,23 +264,33 @@ describe('header account actions', () => {
     expect(drawer.indexOf('href="/terms"')).toBeLessThan(drawer.indexOf('class="sticky bottom-0'))
   })
 
-  it('signed in: Wishlist is a centre link with no badge while nothing is saved', () => {
+  it('signed in: the heart sits before the avatar menu, with no badge while nothing is saved', () => {
     wishlistState.wishlistIds = []
     const nav = render('en', { loggedIn: true }).split('</nav>')[0]
-    const link = nav.match(/<a [^>]*href="\/wishlist"[^>]*>(.*?)<\/a>/)!
-    expect(link[1]).toBe(`<span class="truncate">${translations.en.nav_wishlist}</span>`)
-    expect(nav).not.toContain('lucide-heart')
+    const heart = nav.match(/<button [^>]*aria-label="Wishlist"[^>]*>(.*?)<\/button>/)!
+    expect(heart).not.toBeNull()
+    expect(heart[0]).toContain('h-10 w-10 ')
+    expect(heart[0]).toContain('aria-haspopup="dialog"')
+    expect(heart[1]).toContain('lucide-heart')
+    expect(heart[1]).not.toContain('bg-brand')
+    expect(nav.indexOf('aria-label="Wishlist"')).toBeLessThan(nav.indexOf(`aria-label="${translations.en.account_menu_label}"`))
+    // Not a link any more: the saved perks open in place.
+    expect(nav).not.toContain('href="/wishlist"')
   })
 
-  it('signed in: the Wishlist badge sits beside the label (outside its truncation) and caps at 99+', () => {
+  it('signed in: the heart badge shows the count in an LTR island and caps at 99+', () => {
     wishlistState.wishlistIds = ['a', 'b', 'c']
-    let link = render('en', { loggedIn: true }).match(/<a [^>]*href="\/wishlist"[^>]*>(.*?)<\/a>/)!
-    expect(link[0]).toMatch(/class="inline-flex min-w-0 items-center gap-1.5 /)
-    expect(link[1]).toMatch(/^<span class="truncate">[^<]*<\/span><span class="flex-shrink-0 [^"]*bg-brand[^"]*">3<\/span>$/)
+    let nav = render('en', { loggedIn: true }).split('</nav>')[0]
+    expect(nav).toMatch(/<span class="absolute -top-1 -end-1 [^"]*bg-brand[^"]*"><bdi dir="ltr" class="tabular-nums">3<\/bdi><\/span>/)
+    expect(nav).toContain('aria-label="Wishlist (3)"')
     wishlistState.wishlistIds = Array.from({ length: 120 }, (_, i) => String(i))
-    link = render('he', { loggedIn: true }).match(/<a [^>]*href="\/wishlist"[^>]*>(.*?)<\/a>/)!
-    expect(link[1]).toContain('>99+</span>')
+    nav = render('he', { loggedIn: true }).split('</nav>')[0]
+    expect(nav).toContain('>99+</bdi>')
     wishlistState.wishlistIds = []
+  })
+
+  it('signed out: no heart in the bar', () => {
+    expect(render('en').split('</nav>')[0]).not.toContain('lucide-heart')
   })
 
   it('signed in: from lg the bar is three columns with equal outer columns, so the links sit in the true centre', () => {
@@ -458,10 +469,10 @@ describe('language picker placement', () => {
     expect(nav).toContain('class="hidden lg:block h-4 w-[1px] bg-slate-200 mx-1"')
     expect(nav).toContain('<div class="hidden lg:flex items-center gap-4">')
     expect(nav).not.toMatch(/class="[^"]*\bsm:(flex|block)\b/)
-    // No heart button in the bar any more: Wishlist is a centre link.
-    expect(nav).not.toContain('lucide-heart')
-    expect(nav).toMatch(/<button type="button" class="lg:hidden [^"]*" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">/)
-    expect(nav.indexOf('lucide-globe')).toBeLessThan(nav.indexOf('aria-label="Menu"'))
+    // Members get the heart (a popover, not a link); guests have none.
+    expect(nav.includes('lucide-heart')).toBe(loggedIn)
+    expect(nav).toMatch(new RegExp(`<button type="button" class="lg:hidden [^"]*" aria-label="${translations.en.nav_menu_label}" aria-expanded="false" aria-controls="mobile-menu">`))
+    expect(nav.indexOf('lucide-globe')).toBeLessThan(nav.indexOf(`aria-label="${translations.en.nav_menu_label}"`))
     expect(nav).toContain('<div class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">')
   })
 

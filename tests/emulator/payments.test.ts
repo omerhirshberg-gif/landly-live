@@ -9,7 +9,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== '127.0.0.1:8787') {
   throw new Error('Run npm run test:emulator; only the isolated loopback emulator is permitted.')
 }
 const db = new Firestore({ projectId: 'demo-landly-payments' })
-const collections = ['orders', 'offers', 'businesses', 'vouchers', 'paymentTransactions', 'metadata']
+const collections = ['orders', 'offers', 'businesses', 'vouchers', 'paymentTransactions', 'metadata', 'orderCounter']
 
 async function snapshot() {
   const entries = await Promise.all(collections.map(async (name) => {
@@ -23,7 +23,8 @@ async function assertFulfilled() {
   expect((await db.collection('vouchers').get()).size).toBe(1)
   expect((await db.collection('paymentTransactions').get()).size).toBe(1)
   expect((await db.doc('offers/offer').get()).get('claimedCount')).toBe(1)
-  expect((await db.doc('businesses/business').get()).get('voucherStats.active')).toBe(1)
+  // Checkout no longer writes the shared business doc; its active count is counted on read.
+  expect((await db.doc('businesses/business').get()).get('voucherStats.active')).toBe(0)
 }
 
 beforeEach(async () => {

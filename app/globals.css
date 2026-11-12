@@ -348,16 +348,10 @@ html.wa-hidden .wa-widget{display:none;}
 /* Section hairlines (components/ui/SectionDivider.tsx): when the section between two
    rendered nothing, the second one goes, so there's never a double line. */
 .section-divider + .section-divider{display:none;}
-/* Account dropdown: same surface as .lang-menu, opened from the avatar pill. */
-.account-menu{position:absolute;top:calc(100% + 8px);right:0;left:auto;background:#fff;border:1px solid #E2E8F0;border-radius:14px;box-shadow:0 12px 36px rgba(15,23,42,.14);min-width:256px;max-width:min(320px,calc(100vw - 32px));padding:6px;z-index:60;}
-.account-item{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;color:#0B1B3D;text-align:start;transition:background .15s;}
-.account-item:focus-visible{background:#F1F5F9;outline:2px solid #0038B8;outline-offset:-2px;}
-.account-item--danger{color:#DC2626;}
-.account-item--danger:focus-visible{background:#FEF2F2;outline-color:#DC2626;}
-/* Hover tints only where there's a real pointer, so a tap never leaves one stuck on */
-@media (hover:hover){.account-item:hover{background:#F1F5F9;}.account-item--danger:hover{background:#FEF2F2;}}
-.account-divider{height:1px;margin:4px 0;background:#E2E8F0;}
-.account-badge{display:inline-flex;align-items:center;margin-top:4px;padding:0 8px;border-radius:999px;background:#EEF3FB;color:#0038b8;font-size:11px;font-weight:700;line-height:18px;}
+/* Navbar dropdown panels (components/layout/AnchoredPanel.tsx): opacity only, so the text stays pixel-aligned while it fades in. */
+@keyframes landly-panel-in{from{opacity:0;}}
+.landly-panel{animation:landly-panel-in .12s ease-out;}
+@media (prefers-reduced-motion:reduce){.landly-panel{animation:none;}}
 /* Hide a scroller's bar on every engine (Firefox, WebKit/Blink, legacy Edge). */
 .scrollbar-none{scrollbar-width:none;-ms-overflow-style:none;}
 .scrollbar-none::-webkit-scrollbar{display:none;}
@@ -365,13 +359,14 @@ html.wa-hidden .wa-widget{display:none;}
    solid brand blue when selected, springing to 95% while pressed. Same 600
    weight both ways so selecting never reflows the rail. 44px touch target;
    40px only with a fine pointer on desktop widths. */
-.filter-chip{display:inline-flex;flex-shrink:0;align-items:center;gap:6px;height:44px;padding:0 16px;border-radius:9999px;border:1px solid transparent;background:#F1F5F9;color:#334155;font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease-out,border-color .15s ease-out,color .15s ease-out,box-shadow .15s ease-out,transform .15s ease-out;}
+.filter-chip{display:inline-flex;flex-shrink:0;align-items:center;gap:6px;height:44px;padding:0 16px;border-radius:9999px;border:1px solid #E2E8F0;background:#fff;color:#334155;box-shadow:0 1px 2px 0 rgb(15 23 42 / .04);font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease-out,border-color .15s ease-out,color .15s ease-out,box-shadow .15s ease-out,transform .15s ease-out;}
 .filter-chip:active{transform:scale(.95);}
 .filter-chip:focus-visible{outline:2px solid #0038B8;outline-offset:2px;}
-.filter-chip[aria-checked="true"],.filter-chip[aria-expanded="true"],.filter-chip[data-active]{background:#0038B8;color:#fff;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05);}
+.filter-chip[aria-checked="true"],.filter-chip[aria-expanded="true"],.filter-chip[data-active]{background:#0038B8;border-color:#0038B8;color:#fff;box-shadow:0 1px 2px 0 rgb(0 0 0 / .08);}
+.filter-chip-sm{height:40px;padding:0 14px;}
 @media (hover:hover){
-  .filter-chip:hover{background:#E2E8F0;}
-  .filter-chip[aria-checked="true"]:hover,.filter-chip[aria-expanded="true"]:hover,.filter-chip[data-active]:hover{background:#002A8A;}
+  .filter-chip:hover{background:#F8FAFC;border-color:#CBD5E1;}
+  .filter-chip[aria-checked="true"]:hover,.filter-chip[aria-expanded="true"]:hover,.filter-chip[data-active]:hover{background:#002A8A;border-color:#002A8A;}
 }
 @media (min-width:1024px) and (pointer:fine){.filter-chip{height:40px;}}
 /* From 1024px Sort stands alone at the end of the search row: the row's 44px
@@ -503,6 +498,8 @@ html.wa-hidden .wa-widget{display:none;}
 @media (min-width:380px){.member-bleed{--bleed-gutter:16px;}}
 @media (min-width:640px){.member-bleed{--bleed-gutter:24px;}}
 @media (min-width:1024px){.member-bleed{--bleed-gutter:32px;}}
+/* From 1024px a rail sits inside the member column instead (cards fill it edge to edge); its snap padding is the wide column's 32px gutter (MemberColumn `wide`). */
+@media (min-width:1024px){.member-bleed-fill{--bleed-inset:32px;}}
 /* Round paging arrows over the row's ends, for real mice only: they fade in on hover. */
 .offer-rail-arrow{display:none;}
 @media (min-width:640px) and (hover:hover) and (pointer:fine){

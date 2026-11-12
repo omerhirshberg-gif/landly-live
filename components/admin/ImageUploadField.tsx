@@ -14,8 +14,9 @@ const isUploadedUrl = (url: string) => /^https:\/\/firebasestorage\.googleapis\.
 
 // The offer's banner. Upload (the default) takes a photo by click, tap or
 // drag and drop: on iOS Safari and Android Chrome the same file input offers
-// the camera and the photo library. The browser crops it to 16:9 around the
-// centre and re-encodes it as a ≤2400px JPEG at quality 90 (~400–900KB) before it's sent to
+// the camera and the photo library. The browser keeps the whole photo, in its
+// own shape (or, if the admin chose "Crop to 16:9", crops it around the centre),
+// and re-encodes it as a ≤2400px JPEG at quality 90 (~400–900KB) before it's sent to
 // /api/admin/uploads, which stores it in Firebase Storage and returns the URL
 // that `onChange` puts in imageUrl. "Paste link" keeps the old way: any image
 // URL, previewed by `linkPreview`. Everything is logical (start/end), so the
@@ -45,6 +46,8 @@ export default function ImageUploadField({
   const [dragging, setDragging] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [lowResolution, setLowResolution] = useState(false)
+  // An offer's photo is kept whole by default; the admin can choose a 16:9 crop (baked into the file) instead.
+  const [crop, setCrop] = useState<'none' | '16:9'>('none')
   const inputRef = useRef<HTMLInputElement>(null)
   const xhrRef = useRef<XMLHttpRequest | null>(null)
 
@@ -68,7 +71,7 @@ export default function ImageUploadField({
     try {
       prepared = logo
         ? await compressLogo(file, { maxEdge: LOGO_MAX_EDGE, maxBytes: MAX_UPLOAD_BYTES })
-        : await compressImage(file, { aspect: BANNER_ASPECT, maxEdge: BANNER_MAX_EDGE, qualities: BANNER_QUALITIES, maxBytes: MAX_UPLOAD_BYTES })
+        : await compressImage(file, { aspect: crop === '16:9' ? BANNER_ASPECT : null, maxEdge: BANNER_MAX_EDGE, qualities: BANNER_QUALITIES, maxBytes: MAX_UPLOAD_BYTES })
     } catch (error) {
       setState({
         kind: 'error',
@@ -150,6 +153,25 @@ export default function ImageUploadField({
 
       {tab === 'upload' ? (
         <div id={`${id}-upload`} role="tabpanel">
+          {!logo && (
+            <div role="radiogroup" aria-label={t('img.image')} className="mb-2 inline-flex rounded-xl bg-[#F1F5F9] p-1">
+              {(['none', '16:9'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={crop === option}
+                  disabled={working}
+                  onClick={() => setCrop(option)}
+                  className={`min-h-11 rounded-lg px-3 text-xs font-semibold transition-colors duration-150 ${
+                    crop === option ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
+                  }`}
+                >
+                  {option === 'none' ? t('img.cropFull') : t('img.cropBanner')}
+                </button>
+              ))}
+            </div>
+          )}
           <div
             onDragOver={(e) => {
               e.preventDefault()
@@ -175,9 +197,10 @@ export default function ImageUploadField({
                 {working && <ProgressOverlay progress={state.progress} />}
               </div>
             ) : shown ? (
-              <div className="relative aspect-[16/9] w-full">
+              <div className="relative aspect-[16/9] w-full bg-[#F4F6F9]">
+                {/* The whole photo, whatever its shape (a portrait is not cut to fit the preview). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={shown} alt="" decoding="async" className="h-full w-full object-cover" />
+                <img src={shown} alt="" decoding="async" className="h-full w-full object-contain" />
                 {working && <ProgressOverlay progress={state.progress} />}
               </div>
             ) : (
@@ -196,7 +219,7 @@ export default function ImageUploadField({
                     <span className="text-xs text-[#64748B]">
                       {logo
                         ? t('img.logoSpec')
-                        : t('img.photoSpec')}
+                        : crop === '16:9' ? t('img.photoSpecCrop') : t('img.photoSpec')}
                     </span>
                   </>
                 )}

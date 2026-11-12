@@ -4,6 +4,18 @@ import { claimOfferForOrder } from '@/lib/payments/claimOfferForOrder'
 import { initiateOrder } from '@/lib/payments/initiateOrder'
 import { TransactionStore, deferred } from '../helpers/transactionStore'
 import { business, event, offer, pending, terminal } from '../helpers/paymentFixtures'
+import { orderShardFor, shardedOrderNumber } from '@/lib/payments/orderNumber'
+
+// user_offer's shard, and the number a shard issues first / next above a legacy counter.
+const SHARD = orderShardFor('user_offer')
+const first = (legacy = 1000) => shardedOrderNumber(legacy, 0, SHARD)
+// Another member's order for the same offer, on the same shard as user_offer or on a different one.
+function orderOn(sameShard: boolean) {
+  for (let n = 0; ; n++) {
+    const user = `other${n}`, id = `${user}_offer`, shard = orderShardFor(id)
+    if ((shard === SHARD) === sameShard) return { user, id, shard }
+  }
+}
 
 function store(withOrder = true) {
   const db = new TransactionStore()
@@ -14,14 +26,16 @@ function store(withOrder = true) {
 }
 function fulfilled(db: TransactionStore) {
   expect(db.read('orders/user_offer')).toMatchObject({
-    status: 'paid', tranzilaTxnId: '123', voucherId: 'user_offer', orderNumber: 1001, displayOrderNumber: '#1001',
+    status: 'paid', tranzilaTxnId: '123', voucherId: 'user_offer', orderNumber: first(), displayOrderNumber: `#${first()}`,
   })
-  expect(db.read('vouchers/user_offer')).toMatchObject({ orderNumber: 1001, displayOrderNumber: '#1001' })
-  expect(db.read('metadata/counters')).toEqual({ orderSequence: 1001 })
+  expect(db.read('vouchers/user_offer')).toMatchObject({ orderNumber: first(), displayOrderNumber: `#${first()}`, savingsAgorot: 0 })
+  expect(db.read(`orderCounter/${SHARD}`)).toEqual({ count: 1 })
+  expect(db.read('metadata/counters')).toBeUndefined()
   expect(db.count('vouchers')).toBe(1)
   expect(db.count('paymentTransactions')).toBe(1)
   expect(db.read('offers/offer')?.claimedCount).toBe(1)
-  expect(db.read('businesses/business')?.voucherStats.active).toBe(1)
+  // The business doc is not written in checkout: the active count is counted on read.
+  expect(db.read('businesses/business')?.voucherStats.active).toBe(0)
 }
 function pauseNextCommit(db: TransactionStore) {
   const entered = deferred(), release = deferred()
@@ -61,14 +75,50 @@ describe('atomic payment settlement', () => {
     expect(db.attempts).toBe(3)
     fulfilled(db)
   })
-  it('numbers orders sequentially from the existing counter, on order and voucher alike', async () => {
+  it('numbers orders from the existing counter, on order and voucher alike, one shard each', async () => {
     const db = store()
-    db.seed('orders/other_offer', { ...pending, userId: 'other' })
+    const other = orderOn(false)
+    db.seed(`orders/${other.id}`, { ...pending, userId: other.user })
     await claimOfferForOrder(db.db, event)
-    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456' })
-    expect(db.read('orders/other_offer')).toMatchObject({ orderNumber: 1002, displayOrderNumber: '#1002' })
-    expect(db.read('vouchers/other_offer')).toMatchObject({ orderNumber: 1002, displayOrderNumber: '#1002' })
-    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1002 })
+    await claimOfferForOrder(db.db, { ...event, orderId: other.id, tranzilaTxnId: '456' })
+    const number = shardedOrderNumber(1000, 0, other.shard)
+    expect(db.read(`orders/${other.id}`)).toMatchObject({ orderNumber: number, displayOrderNumber: `#${number}` })
+    expect(db.read(`vouchers/${other.id}`)).toMatchObject({ orderNumber: number, displayOrderNumber: `#${number}` })
+    expect(db.read(`orderCounter/${other.shard}`)).toEqual({ count: 1 })
+    expect(db.read(`orderCounter/${SHARD}`)).toEqual({ count: 1 })
+    expect(number).not.toBe(first())
+  })
+  it('walks one shard in steps of ten so two orders on it never share a number', async () => {
+    const db = store()
+    const same = orderOn(true)
+    db.seed(`orders/${same.id}`, { ...pending, userId: same.user })
+    await claimOfferForOrder(db.db, event)
+    await claimOfferForOrder(db.db, { ...event, orderId: same.id, tranzilaTxnId: '456' })
+    expect(db.read(`orders/${same.id}`)?.orderNumber).toBe(first() + 10)
+    expect(db.read(`orderCounter/${SHARD}`)).toEqual({ count: 2 })
+  })
+  it('never issues a duplicate or a number at or below the legacy counter across many orders', async () => {
+    const db = store()
+    db.seed('metadata/counters', { orderSequence: 1041 })
+    db.seed('offers/offer', { ...offer, totalQuantity: null })
+    const ids: string[] = []
+    for (let n = 0; n < 40; n++) {
+      const id = `bulk${n}_offer`
+      ids.push(id)
+      db.seed(`orders/${id}`, { ...pending, userId: `bulk${n}` })
+      await claimOfferForOrder(db.db, { ...event, orderId: id, tranzilaTxnId: `t${n}` })
+    }
+    const numbers = ids.map((id) => db.read(`orders/${id}`)?.orderNumber as number)
+    expect(new Set(numbers).size).toBe(40)
+    expect(Math.min(...numbers)).toBeGreaterThan(1041)
+    // Roughly sequential: 40 orders over 10 shards stay close together.
+    expect(Math.max(...numbers) - 1041).toBeLessThan(40 * 10)
+    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1041 })
+  })
+  it('picks the same shard for the same order every time', () => {
+    expect(orderShardFor('user_offer')).toBe(orderShardFor('user_offer'))
+    const shards = new Set(Array.from({ length: 200 }, (_, n) => orderShardFor(`u${n}_offer`)))
+    expect(shards.size).toBe(10)
   })
   it('gives every voucher its own random redeem token, never derived from its id', async () => {
     const db = store()
@@ -82,25 +132,40 @@ describe('atomic payment settlement', () => {
   })
   it('gives concurrent settlements of different orders distinct numbers', async () => {
     const db = store(), gate = pauseNextCommit(db)
-    db.seed('orders/other_offer', { ...pending, userId: 'other' })
-    const first = claimOfferForOrder(db.db, event)
+    const other = orderOn(false)
+    db.seed(`orders/${other.id}`, { ...pending, userId: other.user })
+    const firstClaim = claimOfferForOrder(db.db, event)
     await gate.entered.promise
-    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456' })
+    await claimOfferForOrder(db.db, { ...event, orderId: other.id, tranzilaTxnId: '456' })
     gate.release.resolve()
-    await first
-    expect(db.read('orders/other_offer')?.orderNumber).toBe(1001)
-    expect(db.read('orders/user_offer')?.orderNumber).toBe(1002)
-    expect(db.read('metadata/counters')).toEqual({ orderSequence: 1002 })
+    await firstClaim
+    const a = db.read(`orders/${other.id}`)?.orderNumber, b = db.read('orders/user_offer')?.orderNumber
+    expect(a).not.toBe(b)
+    expect(db.read('offers/offer')?.claimedCount).toBe(2)
+  })
+  it('gives a burst of concurrent settlements exactly one voucher each and never oversells', async () => {
+    const db = store()
+    db.seed('offers/offer', { ...offer, totalQuantity: 3 })
+    const ids = Array.from({ length: 6 }, (_, n) => `burst${n}_offer`)
+    ids.forEach((id, n) => db.seed(`orders/${id}`, { ...pending, userId: `burst${n}` }))
+    const results = await Promise.allSettled(ids.map((id, n) => claimOfferForOrder(db.db, { ...event, orderId: id, tranzilaTxnId: `b${n}` })))
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(3)
+    expect(db.count('vouchers')).toBe(3)
+    expect(db.read('offers/offer')?.claimedCount).toBe(3)
+    const numbers = ids.flatMap((id) => db.read(`vouchers/${id}`)?.orderNumber ?? [])
+    expect(new Set(numbers).size).toBe(3)
   })
   it('continues from a seeded counter and never spends a number on a declined payment', async () => {
     const db = store()
     db.seed('metadata/counters', { orderSequence: 1041 })
-    db.seed('orders/other_offer', { ...pending, userId: 'other' })
-    await claimOfferForOrder(db.db, { ...event, orderId: 'other_offer', tranzilaTxnId: '456', approved: false, responseCode: '005' })
-    expect(db.read('orders/other_offer')?.orderNumber).toBeUndefined()
+    const other = orderOn(false)
+    db.seed(`orders/${other.id}`, { ...pending, userId: other.user })
+    await claimOfferForOrder(db.db, { ...event, orderId: other.id, tranzilaTxnId: '456', approved: false, responseCode: '005' })
+    expect(db.read(`orders/${other.id}`)?.orderNumber).toBeUndefined()
+    expect(db.read(`orderCounter/${other.shard}`)).toBeUndefined()
     expect(db.read('metadata/counters')).toEqual({ orderSequence: 1041 })
     await claimOfferForOrder(db.db, event)
-    expect(db.read('orders/user_offer')).toMatchObject({ orderNumber: 1042, displayOrderNumber: '#1042' })
+    expect(db.read('orders/user_offer')).toMatchObject({ orderNumber: first(1041), displayOrderNumber: `#${first(1041)}` })
   })
   it('leaves everything unchanged when the counter is corrupt', async () => {
     const db = store()

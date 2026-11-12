@@ -29,6 +29,7 @@ export default function OfferTileRail({
   seeMore,
   autoAdvance = false,
   autoAdvanceOffsetMs = 0,
+  compact = false,
 }: {
   /** The heading's Lucide glyph, e.g. Award for Bestsellers. */
   icon: LucideIcon
@@ -39,6 +40,8 @@ export default function OfferTileRail({
   /** Moves to the next card every 5 seconds (lib/useAutoAdvance.ts); the offset staggers it from the rail beside it. */
   autoAdvance?: boolean
   autoAdvanceOffsetMs?: number
+  /** The dense desktop rail (as on Home): from 1024px every card is a fixed 280px that never stretches. */
+  compact?: boolean
 }) {
   const headingId = useId()
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
@@ -78,11 +81,11 @@ export default function OfferTileRail({
       <div
         ref={railRef}
         onScroll={measure}
-        className="offer-tile-rail scrollbar-none edge-fade -mx-4 grid grid-flow-col auto-cols-[256px] gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom snap-x snap-mandatory scroll-px-4 px-4 pb-1 sm:mx-0 sm:auto-cols-[272px] sm:gap-4 sm:scroll-px-0 sm:px-0"
+        className={`offer-tile-rail scrollbar-none edge-fade -mx-4 grid grid-flow-col auto-cols-[260px] gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom snap-x snap-mandatory scroll-px-4 px-4 pb-1 sm:mx-0 sm:auto-cols-[280px] sm:gap-4 sm:scroll-px-0 sm:px-0 ${compact ? 'lg:auto-cols-[280px]' : ''}`}
       >
         {offers.map((offer) => (
           <div key={offer.id} className="flex snap-start">
-            <OfferCard offer={offer} layout="grid" showWishlistButton />
+            <OfferCard offer={offer} layout="grid" showWishlistButton compact={compact} />
           </div>
         ))}
       </div>

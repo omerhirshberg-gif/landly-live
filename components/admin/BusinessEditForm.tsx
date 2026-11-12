@@ -14,6 +14,7 @@ import BusinessNameTranslations from './BusinessNameTranslations'
 import Alert from './Alert'
 import { ButtonSpinner, FormSection, StickyActionBar } from './FormSection'
 import { ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from './formStyles'
+import { useAdminT } from '@/lib/admin/translations'
 
 export interface EditableBusiness {
   businessName: string
@@ -43,6 +44,7 @@ export default function BusinessEditForm({
   onSaved: (next: EditableBusiness, translationWarning: string | null) => void
 }) {
   const [form, setForm] = useState<EditableBusiness>(business)
+  const { t } = useAdminT()
   const [nameOverrides, setNameOverrides] = useState(() => businessNameOverridesOf(business.translations))
   const saved = useMemo(() => JSON.stringify([business, businessNameOverridesOf(business.translations)]), [business])
   const dirty = JSON.stringify([form, nameOverrides]) !== saved
@@ -69,12 +71,12 @@ export default function BusinessEditForm({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data.error ?? 'Saving failed.')
+        setError(data.error ?? t('bizEdit.saveFailed'))
         return
       }
       onSaved({ ...form, translations: data.translations ?? form.translations, logoUrl: data.logoUrl ?? form.logoUrl, phone: data.phone ?? form.phone }, data.translationWarning ?? null)
     } catch {
-      setError('Saving failed. Try again.')
+      setError(t('bizEdit.saveFailedRetry'))
     } finally {
       setSaving(false)
     }
@@ -90,10 +92,10 @@ export default function BusinessEditForm({
   return (
     <form onSubmit={save} className="space-y-6">
       {error && <Alert>{error}</Alert>}
-      <FormSection icon="fa-store" title="Basic info" description="How the business appears to members. Changes also update its offers.">
+      <FormSection icon="fa-store" title={t('newBiz.basicsTitle')} description={t('bizEdit.basicsDesc')}>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
-            <label htmlFor="edit-biz-name" className={ADMIN_LABEL}>Business name</label>
+            <label htmlFor="edit-biz-name" className={ADMIN_LABEL}>{t('newBiz.businessName')}</label>
             <input
               id="edit-biz-name"
               required
@@ -104,7 +106,7 @@ export default function BusinessEditForm({
             />
           </div>
           <div>
-            <label htmlFor="edit-biz-category" className={ADMIN_LABEL}>Category</label>
+            <label htmlFor="edit-biz-category" className={ADMIN_LABEL}>{t('newBiz.category')}</label>
             <select
               id="edit-biz-category"
               required
@@ -124,7 +126,7 @@ export default function BusinessEditForm({
         </div>
       </FormSection>
 
-      <FormSection icon="fa-location-dot" title="Location" description="Where members find it, and what Near me measures from.">
+      <FormSection icon="fa-location-dot" title={t('bizEdit.locationTitle')} description={t('bizEdit.locationDesc')}>
         <AddressAutocomplete
           id="edit-biz-location"
           required
@@ -133,17 +135,17 @@ export default function BusinessEditForm({
         />
       </FormSection>
 
-      <FormSection icon="fa-image" title="Logo" description="Shown whole on every offer's card, in high resolution.">
+      <FormSection icon="fa-image" title={t('bizEdit.logoTitle')} description={t('newBiz.logoDesc')}>
         <BusinessLogoField value={form.logoUrl} onChange={(logoUrl) => setForm((prev) => ({ ...prev, logoUrl }))} />
       </FormSection>
 
-      <StickyActionBar status={dirty ? 'Unsaved changes' : 'All changes saved'}>
+      <StickyActionBar status={dirty ? t('bizEdit.unsaved') : t('bizEdit.saved')}>
         <button type="button" className={SECONDARY_BUTTON} onClick={discard} disabled={saving || !dirty}>
-          Discard
+          {t('bizEdit.discard')}
         </button>
         <button type="submit" className={PRIMARY_BUTTON} disabled={saving || !dirty} aria-busy={saving}>
           {saving && <ButtonSpinner />}
-          {saving ? 'Saving…' : 'Save details'}
+          {saving ? t('editOffer.saving') : t('bizEdit.save')}
         </button>
       </StickyActionBar>
     </form>
