@@ -56,7 +56,9 @@ function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin')
   if (!origin) return false
   try {
-    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host
+    // x-forwarded-host is client-settable anywhere but Vercel's ingress, which overwrites it.
+    const forwarded = process.env.VERCEL === '1' ? request.headers.get('x-forwarded-host') : null
+    const host = forwarded ?? request.headers.get('host') ?? new URL(request.url).host
     return new URL(origin).host === host
   } catch {
     return false
@@ -67,16 +69,22 @@ function isSameOrigin(request: Request): boolean {
 // session token from the httpOnly cookie (lib/admin/sessionToken.ts), or
 // as a Bearer header. Returns the response to send back verbatim, or null
 // if the request is authorized and the route should proceed.
+function hasBearerSession(request: Request): boolean {
+  const authHeader = request.headers.get('authorization') ?? ''
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
+  return !!bearer && verifyAdminSessionToken(bearer)
+}
+
+function hasCookieSession(request: Request): boolean {
+  return verifyAdminSessionToken(adminSessionFromCookies(request.headers.get('cookie')))
+}
+
 export function requireAdminAuth(request: Request): NextResponse | null {
   const ip = clientIp(request)
   if (isOverRequestLimit(ip)) return tooManyRequests()
 
-  const authHeader = request.headers.get('authorization') ?? ''
-  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null
-  if (bearer && verifyAdminSessionToken(bearer)) return null
-
-  const cookie = adminSessionFromCookies(request.headers.get('cookie'))
-  if (!verifyAdminSessionToken(cookie)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (hasBearerSession(request)) return null
+  if (!hasCookieSession(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!SAFE_METHODS.has(request.method.toUpperCase()) && !isSameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   return null
 }
@@ -84,10 +92,18 @@ export function requireAdminAuth(request: Request): NextResponse | null {
 // For /api/admin/verify-password: the actual login attempt, gated by both
 // the generic flood guard and the password-guessing throttle. The attempt is
 // counted before the password is compared; an unreachable throttle refuses
-// the login rather than letting guesses through uncounted.
+// the login rather than letting guesses through uncounted. A request that
+// already carries a valid admin session skips the throttle (it has nothing
+// left to guess), so guessers exhausting the shared buckets can't lock out an
+// admin who is signed in; its password is still checked, and the flood guard
+// still applies.
 export async function checkAdminPasswordWithRateLimit(request: Request, password: string | null): Promise<NextResponse | null> {
   const ip = clientIp(request)
   if (isOverRequestLimit(ip)) return tooManyRequests()
+
+  if (hasBearerSession(request) || hasCookieSession(request)) {
+    return isAdminPassword(password) ? null : NextResponse.json({ ok: false }, { status: 401 })
+  }
 
   let allowed: boolean
   try {

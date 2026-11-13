@@ -84,7 +84,7 @@ describe('lock setting', () => {
 describe('launch wiring', () => {
   it('ends an idle launch session before the tabs, with the email filled in', async () => {
     const lock = await readFile('landly-mobile/src/auth/AppLock.tsx', 'utf8')
-    const launch = lock.slice(lock.indexOf('Promise.all([getAppLockSetting(uid), biometricStatus(), getLastEntry(uid)])'))
+    const launch = lock.slice(lock.indexOf('Promise.all([getAppLockSetting(uid), biometricStatus(), getLastEntry(uid), getAppLockDelay(uid)])'))
     expect(launch.length).toBeLessThan(lock.length)
     const expiry = launch.indexOf('if (launchSession && entryExpired(lastEntry, Date.now())) {')
     expect(expiry).toBeGreaterThan(-1)

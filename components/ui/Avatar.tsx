@@ -12,11 +12,14 @@ export default function Avatar({
   src,
   initials,
   size = 40,
+  lgSize,
   className = '',
 }: {
   src: string | null
   initials: string
   size?: number
+  /** A larger size from 1024px up (the desktop profile card); phones and tablets keep `size`. */
+  lgSize?: number
   className?: string
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
@@ -24,14 +27,14 @@ export default function Avatar({
   return (
     <span
       aria-hidden="true"
-      className={`relative inline-flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full select-none ${showPhoto ? 'bg-slate-100' : 'ds-avatar-fallback text-white'} ${className}`}
-      style={{ width: size, height: size }}
+      className={`relative inline-flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full select-none ${showPhoto ? 'bg-slate-100' : 'ds-avatar-fallback text-white'} ${lgSize ? 'lg:!h-[var(--av-lg)] lg:!w-[var(--av-lg)]' : ''} ${className}`}
+      style={{ width: size, height: size, ...(lgSize ? ({ '--av-lg': `${lgSize}px`, '--av-fs-lg': `${Math.round(lgSize * 0.36)}px` } as React.CSSProperties) : null) }}
     >
       {showPhoto ? (
         // Storage and Google photo URLs, not next/image remote patterns; no-referrer keeps Google's CDN from refusing it.
-        <img src={sizedAvatarUrl(src, size * 3)} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={() => setFailedSrc(src)} />
+        <img src={sizedAvatarUrl(src, Math.max(size, lgSize ?? 0) * 3)} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={() => setFailedSrc(src)} />
       ) : (
-        <span className="font-bold leading-none tracking-wide" style={{ fontSize: Math.round(size * (initials.length > 1 ? 0.36 : 0.42)) }}>
+        <span className={`font-bold leading-none tracking-wide ${lgSize ? 'lg:!text-[length:var(--av-fs-lg)]' : ''}`} style={{ fontSize: Math.round(size * (initials.length > 1 ? 0.36 : 0.42)) }}>
           {initials || <PersonGlyph size={Math.round(size * 0.46)} />}
         </span>
       )}

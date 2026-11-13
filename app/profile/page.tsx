@@ -37,8 +37,8 @@ export default function ProfilePage() {
       <Navbar />
       <div className="below-header member-canvas">
         <MemberPageShell>
-          {/* A form reads better narrow on phones; from 600px the card is two panes and takes a wider column. No auto margins, so it keeps the column's start edge */}
-          <div className="max-w-3xl fold:max-w-5xl">
+          {/* A form reads better narrow on phones and tablets (the card is two panes from 600px). From 1024px two cards fill the member column, on the same rails as the navbar. No auto margins, so it keeps the column's start edge */}
+          <div className="max-w-3xl fold:max-w-5xl lg:max-w-none">
             <PageTitle>{t('nav_profile')}</PageTitle>
             <ProfileSection user={user} />
           </div>

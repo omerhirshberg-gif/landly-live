@@ -1068,7 +1068,7 @@ export const en = {
   'login.subtitle': 'Enter the shared admin password to manage businesses and offers.',
   'login.password': 'Password',
   'login.stay': 'Stay logged in',
-  'login.stayHint': 'Keeps you signed in on this device for 30 days. Otherwise you\'re signed out after 12 hours.',
+  'login.stayHint': 'Keeps you signed in on this device for 7 days. Otherwise you\'re signed out after 12 hours.',
   'login.verifying': 'Verifying…',
   'login.restricted': 'Restricted area · Authorized administrators only',
 } as const

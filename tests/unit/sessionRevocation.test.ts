@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { MemoryFirestore } from '../helpers/memoryFirestore'
 
@@ -24,7 +24,7 @@ vi.mock('@/lib/auth/uidRateLimit', () => ({ checkUidRateLimit: () => null }))
 vi.mock('@/lib/firebase/config', () => ({ auth: { get currentUser() { return mocks.currentUser } }, db: {} }))
 vi.mock('firebase/auth', () => ({ signInWithCustomToken: mocks.signInWithCustomToken }))
 
-import { revokeMemberSessions } from '@/lib/auth/sessionRevocation'
+import { revokeMemberSessions, syncSessionCutoff } from '@/lib/auth/sessionRevocation'
 import { POST as revokeSessions } from '@/app/api/account/revoke-sessions/route'
 import { recheckSessionIfDenied } from '@/lib/firebase/sessionCheck'
 import { finishEmailChange } from '@/lib/account/contactChange'
@@ -80,6 +80,43 @@ describe('revokeMemberSessions', () => {
     mocks.revokeRefreshTokens.mockRejectedValue(new Error('auth down'))
     await expect(revokeMemberSessions(UID)).rejects.toThrow('auth down')
     expect(stamp()).toBeUndefined()
+  })
+})
+
+describe('syncSessionCutoff waiting for Auth', () => {
+  const call = async (wait?: Parameters<typeof syncSessionCutoff>[2]) => {
+    const done = syncSessionCutoff(UID, undefined, wait)
+    await vi.runAllTimersAsync()
+    await done
+  }
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('re-reads until Auth shows the fresh revocation, then stamps it', async () => {
+    const fresh = Date.now() - 1000
+    mocks.getUser
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ tokensValidAfterTime: new Date(fresh - 3_600_000).toUTCString() })
+      .mockResolvedValueOnce({ tokensValidAfterTime: new Date(fresh).toUTCString() })
+    await call({ minCutoffMs: fresh - 5000 })
+    expect(mocks.getUser).toHaveBeenCalledTimes(3)
+    expect(stamp()).toBe(Date.parse(new Date(fresh).toUTCString()))
+  })
+
+  it('is bounded and never fails: after the last attempt it stamps what Auth reports', async () => {
+    const stale = Date.parse(VALID_AFTER)
+    mocks.getUser.mockResolvedValue({ tokensValidAfterTime: VALID_AFTER })
+    await call({ minCutoffMs: Date.now() + 60_000, attempts: 3 })
+    expect(mocks.getUser).toHaveBeenCalledTimes(3)
+    expect(stamp()).toBe(stale)
+  })
+
+  it('does not wait when the cutoff is already fresh, or when no wait is asked for', async () => {
+    await call({ minCutoffMs: Date.parse(VALID_AFTER) - 1 })
+    expect(mocks.getUser).toHaveBeenCalledTimes(1)
+    mocks.getUser.mockClear()
+    await call()
+    expect(mocks.getUser).toHaveBeenCalledTimes(1)
   })
 })
 

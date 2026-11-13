@@ -29,7 +29,8 @@ export async function POST(request: Request) {
   if (await checkUidRateLimit('sessions', decoded.uid)) return json({ error: 'rate_limited' }, 429)
 
   try {
-    await syncSessionCutoff(decoded.uid)
+    // The password change that triggered this call is seconds old; give Auth's write a moment to land.
+    await syncSessionCutoff(decoded.uid, undefined, { minCutoffMs: Date.now() - 60_000 })
   } catch (err) {
     console.error('sync sessions failed', err)
     return json({ error: 'sync_failed' }, 503)

@@ -6,6 +6,7 @@ import { signOut, type User } from 'firebase/auth'
 import { revokeAllSessions, type RevokeSessionsResult } from '@shared/account/revokeSessions'
 import { orderSessions, type UserSession } from '@shared/account/sessionList'
 import { watchSessions } from '@shared/account/sessions'
+import { APP_LOCK_DELAYS, type AppLockDelay } from '@shared/auth/appLockPolicy'
 import { formatLastEntry } from '@shared/auth/greeting'
 import { signInProvider, signInProviderCopy } from '@shared/auth/signInProvider'
 import { auth } from '@shared/firebase/config'
@@ -71,7 +72,7 @@ export default function PrivacySecurityScreen() {
 // (the status is read again when the app comes back to the foreground).
 function AppLockSection() {
   const { t } = useLang()
-  const { status, enabled, setEnabled } = useAppLock()
+  const { status, enabled, setEnabled, delay, setDelay } = useAppLock()
   const [busy, setBusy] = useState(false)
   if (!status?.hardware) return null
 
@@ -80,6 +81,13 @@ function AppLockSection() {
   const toggle = async (on: boolean) => {
     setBusy(true)
     await setEnabled(on)
+    setBusy(false)
+  }
+
+  const chooseDelay = async (next: AppLockDelay) => {
+    if (next === delay) return
+    setBusy(true)
+    await setDelay(next)
     setBusy(false)
   }
 
@@ -105,6 +113,31 @@ function AppLockSection() {
             ios_backgroundColor={colors.border}
           />
         </View>
+        {enabled && (
+          <View style={styles.delayBlock}>
+            <AppText style={styles.delayTitle}>{t('applock_delay_title')}</AppText>
+            <View style={styles.segments} accessibilityRole="radiogroup">
+              {APP_LOCK_DELAYS.map((option) => {
+                const selected = option === delay
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => chooseDelay(option)}
+                    disabled={busy}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected, disabled: busy }}
+                    style={[styles.segment, selected && styles.segmentOn]}
+                  >
+                    <AppText style={[styles.segmentText, selected && styles.segmentTextOn]} numberOfLines={1}>
+                      {t(`applock_delay_${option}` as const)}
+                    </AppText>
+                  </Pressable>
+                )
+              })}
+            </View>
+            <AppText style={styles.sub}>{t('applock_delay_sub')}</AppText>
+          </View>
+        )}
         {!status.enrolled && (
           <View style={styles.enrol}>
             <AppText style={styles.note}>{t('applock_notEnrolled').replace('{method}', method)}</AppText>
@@ -298,6 +331,23 @@ const styles = StyleSheet.create({
   deviceText: { flex: 1, minWidth: 0 },
   sub: { marginTop: 1, fontSize: 13, color: colors.textMuted },
   lockIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },
+  delayBlock: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  delayTitle: { fontSize: 14, fontWeight: '600', color: colors.heading, marginBottom: 10 },
+  segments: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  segment: {
+    flex: 1,
+    minHeight: 40,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentOn: { borderColor: colors.brand, backgroundColor: colors.brandTint },
+  segmentText: { fontSize: 14, fontWeight: '600', color: colors.body, textAlign: 'center' },
+  segmentTextOn: { color: colors.brand },
   enrol: { marginTop: 4 },
   settingsLink: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
   settingsLinkText: { fontSize: 14, fontWeight: '700', color: colors.brand },

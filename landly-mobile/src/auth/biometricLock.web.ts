@@ -1,7 +1,7 @@
 // Browser build (Metro picks this over biometricLock.ts for web): no biometrics or
 // Keychain in a browser, so the app lock never shows. The website offers
 // passkeys instead (lib/auth/passkeyClient.ts).
-import type { AppLockSetting } from '@shared/auth/appLockPolicy'
+import { DEFAULT_APP_LOCK_DELAY, type AppLockDelay, type AppLockSetting } from '../../../lib/auth/appLockPolicy'
 import type { BiometricKind, BiometricStatus, UnlockError } from './biometricLock'
 
 export type { BiometricKind, BiometricStatus, UnlockError }
@@ -25,6 +25,12 @@ export async function getAppLockSetting(): Promise<AppLockSetting> {
 }
 
 export async function setAppLockEnabled(): Promise<void> {}
+
+export async function getAppLockDelay(): Promise<AppLockDelay> {
+  return DEFAULT_APP_LOCK_DELAY
+}
+
+export async function setAppLockDelay(): Promise<void> {}
 
 export async function getLastEntry(): Promise<string | null> {
   return null

@@ -28,3 +28,4 @@ next-env.d.ts
 # local emulator logs
 *-debug.log*
 .vercel
+strix_runs/

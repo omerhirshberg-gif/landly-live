@@ -19,14 +19,8 @@ export const BUSINESS_CATEGORIES = [
   'Cars and Transport',
 ] as const
 
-// The rail's photos, 960×600 crops from Unsplash (https://unsplash.com/license),
-// by images.unsplash.com id: restaurants 1517248135467-4c7edcad34c4, beach
-// 1507525428034-b723cf961d3e, attractions 1513889961551-628c1e5e2ee9, fashion
-// 1441986300917-64674bd600d8, sport 1534438327276-14e5300c3a48, tourism
-// 1533105079780-92b9be482077, pampering 1544161515-4ab6ce6db874, beauty
-// 1596462502278-27bfdc403348, home 1586023492125-27b2c045efd7, kids
-// 1515488042361-ee00e0ddd4e4, insurance 1579621970795-87facc2f976d, cars
-// 1449965408869-eaa3f722e40d.
+// The rail's photos: 960×600 Unsplash WebP files, self-hosted. Their ids, sources and
+// SHA-256 hashes are in docs/CATEGORY_IMAGES_LICENSES.md (https://unsplash.com/license).
 export interface CategoryTile {
   category: (typeof BUSINESS_CATEGORIES)[number]
   labelKey: TranslationKey

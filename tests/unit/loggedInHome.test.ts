@@ -118,10 +118,10 @@ describe('member dashboard', () => {
 
   it('leads with the greeting, then the always-present pass card, the recommended perks and support', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    const order = ['<h1 id="home-welcome"', 'class="segment-badge"', 'href="/member"', 'id="home-curated-title"', 'href="/support"'].map((s) => html.indexOf(s))
+    const order = ['<h1 id="home-welcome"', 'href="/member"', 'id="home-curated-title"', 'href="/support"'].map((s) => html.indexOf(s))
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(html).toContain(`<span>${translations.en.dash_segment_value_unset}</span>`)
+    expect(html).not.toContain('segment-badge')
     expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
     const card = html.match(/<a aria-labelledby="home-pass-count home-pass-cta" class="([^"]*)"/)!
     for (const c of ['bg-brand', 'rounded-2xl', 'overflow-hidden', 'text-white', 'md:grid-cols-[minmax(0,1fr)_auto]']) expect(card[1].split(' ')).toContain(c)
@@ -147,14 +147,14 @@ describe('member dashboard', () => {
   it('shows the greeting and pass card below 1024px, and on desktop a text-only welcome with neither', () => {
     profileState.firstName = 'Dana'
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    // The whole top hero (greeting, badge, pass card) is its own column, hidden from 1024px.
+    // The whole top hero (greeting, pass card) is its own column, hidden from 1024px.
     const hero = html.slice(html.indexOf('<div class="mx-auto -mt-2 flex'), html.indexOf('home-welcome-lg'))
     expect(html).toMatch(/<div class="[^"]*\blg:hidden\b[^"]*"><div class="mx-auto -mt-2 flex w-full max-w-\[760px\]/)
     expect(hero).toContain('<h1 id="home-welcome"')
-    expect(hero).toContain('class="segment-badge"')
+    expect(hero).not.toContain('segment-badge')
     expect(hero).toContain('ds-avatar-fallback')
     expect(hero).toContain('href="/member"')
-    // Desktop: one plain line on the start edge above Top categories; no avatar, badge or card in it.
+    // Desktop: one plain line on the start edge above Top categories; no avatar or card in it.
     const line = html.match(/<h1 id="home-welcome-lg" class="([^"]*)">([^<]*)<\/h1>/)!
     expect(line[2]).toBe('Welcome, Dana')
     for (const c of ['hidden', 'lg:block', 'text-start', 'text-page', 'lg:text-3xl', 'font-bold', 'text-ink']) expect(line[1].split(' ')).toContain(c)
@@ -162,7 +162,7 @@ describe('member dashboard', () => {
     expect(html.indexOf('id="home-welcome-lg"')).toBeLessThan(html.indexOf('id="home-categories-title"'))
     expect(html.indexOf('id="home-welcome-lg"')).toBeGreaterThan(html.indexOf('href="/member"'))
     expect(html.match(/ds-avatar-fallback/g)).toHaveLength(1)
-    expect(html.match(/class="segment-badge"/g)).toHaveLength(1)
+    expect(html).not.toContain('segment-badge')
     expect(html.match(/home-pass-count home-pass-cta/g)).toHaveLength(1)
     // 24px under the search bar on desktop (the shell's 32 less 8), and the category section adds no extra margin there.
     expect(line[1]).toContain('lg:-mt-2')
@@ -174,16 +174,6 @@ describe('member dashboard', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
     expect(html).toMatch(/<h1 id="home-welcome-lg" class="[^"]*">Welcome!<\/h1>/)
     profileState.firstName = 'Dana'
-  })
-
-  it('shows the member’s persona in its colour', async () => {
-    const { CUSTOMER_TYPES } = await import('@/lib/customerTypes')
-    const option = CUSTOMER_TYPES[0]
-    const prev = profileState.profile
-    profileState.profile = { customerType: option.value, customerTypeOther: '' } as never
-    const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    expect(html).toContain(`<span class="segment-badge" style="background:${option.color}"><span>${translations.en[option.labelKey]}</span></span>`)
-    profileState.profile = prev
   })
 })
 
