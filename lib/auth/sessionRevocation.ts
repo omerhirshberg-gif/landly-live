@@ -33,6 +33,26 @@ export async function clearSessionList(uid: string): Promise<void> {
 }
 
 /**
+ * For a caller that has just changed a password: Auth's own write may not be
+ * visible yet, so the cutoff is re-read (bounded, never failing) until it is at
+ * least `minCutoffMs`. Afterwards whatever Auth reports is used as usual.
+ */
+export interface SyncWait { minCutoffMs: number; attempts?: number; delayMs?: number }
+
+async function readAuthCutoff(uid: string, fallbackMs: number | undefined, wait?: SyncWait): Promise<number | undefined> {
+  const attempts = Math.max(1, wait?.attempts ?? 3)
+  let cutoffMs: number | undefined
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, (wait?.delayMs ?? 250) * 2 ** (attempt - 1)))
+    const { tokensValidAfterTime } = await getAdminAuth().getUser(uid)
+    const parsed = tokensValidAfterTime ? Date.parse(tokensValidAfterTime) : NaN
+    cutoffMs = Number.isNaN(parsed) ? fallbackMs : parsed
+    if (!wait || (cutoffMs !== undefined && cutoffMs >= wait.minCutoffMs)) break
+  }
+  return cutoffMs
+}
+
+/**
  * Copies Auth's revocation cutoff into users/{uid}.sessionsValidAfter. For
  * the revocations Firebase makes on its own -- a password reset or change,
  * an account disabled -- which never pass through revokeMemberSessions.
@@ -43,10 +63,8 @@ export async function clearSessionList(uid: string): Promise<void> {
  * `fallbackMs` is used when Auth reports no cutoff at all; without one,
  * nothing was ever revoked and nothing is written.
  */
-export async function syncSessionCutoff(uid: string, fallbackMs?: number): Promise<void> {
-  const { tokensValidAfterTime } = await getAdminAuth().getUser(uid)
-  const parsed = tokensValidAfterTime ? Date.parse(tokensValidAfterTime) : NaN
-  const cutoffMs = Number.isNaN(parsed) ? fallbackMs : parsed
+export async function syncSessionCutoff(uid: string, fallbackMs?: number, wait?: SyncWait): Promise<void> {
+  const cutoffMs = await readAuthCutoff(uid, fallbackMs, wait)
   if (cutoffMs === undefined) return
   const db = getAdminDb()
   const ref = db.collection('users').doc(uid)

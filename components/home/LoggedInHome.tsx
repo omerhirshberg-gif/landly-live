@@ -13,7 +13,6 @@ import ActivePassCard from './ActivePassCard'
 import CategoryPhotoRail, { CategoryPhotoTitle } from './CategoryPhotoRail'
 import CuratedOffers from './CuratedOffers'
 import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/MemberPageShell'
-import SegmentBadge from '@/components/member/SegmentBadge'
 import { getAllOffers, type OfferDocument } from '@/lib/firebase/offers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { useVouchers } from '@/lib/firebase/VouchersProvider'
@@ -39,7 +38,7 @@ import { categoryHref } from '@/lib/perks/perksFilter'
 // is read, then fades and rises in, so a fallback name never flashes first.
 export default function LoggedInHome({ user }: { user: User }) {
   const { t } = useLang()
-  const { loaded, profile, firstName, initials, photoURL } = useMemberProfile(user)
+  const { loaded, firstName, initials, photoURL } = useMemberProfile(user)
   // "Good morning, Dana" by the member's own clock; the plain welcome only until that is read (the greeting is hidden until then).
   const period = useGreetingPeriod()
   const greeting = period
@@ -86,9 +85,9 @@ export default function LoggedInHome({ user }: { user: User }) {
         }
       >
         <MemberColumn wide className="lg:hidden">
-          {/* Phones and tablets (under 1024px): one centred hero, 16px (24px from 640px) under the search bar: the greeting, then the pass card (up to 680px). From 1024px both go: My Pass is in the navbar, and a text-only welcome opens the category section below. */}
+          {/* Phones and tablets (under 1024px): one centred hero, 16px (24px from 640px) under the search bar: the greeting row on the start edge, then the pass card (both up to 680px, so their start edges line up). From 1024px both go: My Pass is in the navbar, and a text-only welcome opens the category section below. */}
           <div className="mx-auto -mt-2 flex w-full max-w-[760px] flex-col items-center gap-5 sm:gap-6">
-          <header className={`flex items-center gap-3 sm:gap-4 min-w-0 max-w-full min-h-14 justify-center ${loaded && period ? 'greet-in' : 'invisible'}`}>
+          <header className={`mx-auto flex w-full max-w-[680px] flex-row items-center justify-start gap-3 sm:gap-3.5 min-w-0 min-h-14 text-start ${loaded && period ? 'greet-in' : 'invisible'}`}>
             {/* With a photo, the avatar opens it full size; a monogram has nothing to zoom, so it opens /profile. */}
             {photoURL ? (
               <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t('avatar_view')} aria-haspopup="dialog" className="tap-target flex-shrink-0 rounded-full cursor-zoom-in">
@@ -99,13 +98,10 @@ export default function LoggedInHome({ user }: { user: User }) {
                 <Avatar src={photoURL} initials={initials} size={56} />
               </Link>
             )}
-            <div className="min-w-0">
-              <h1 id="home-welcome" className={`${PAGE_TITLE} truncate`}>
+            <div className="flex min-w-0 items-center self-center">
+              <h1 id="home-welcome" className={`${PAGE_TITLE} min-w-0 truncate`}>
                 {greeting}
               </h1>
-              <div className="mt-1.5">
-                <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
-              </div>
             </div>
           </header>
           {photoURL && <AvatarLightbox src={photoURL} open={photoOpen} onClose={() => setPhotoOpen(false)} />}

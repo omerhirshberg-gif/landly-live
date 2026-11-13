@@ -2,7 +2,7 @@ import { type Href, router, Stack, usePathname } from 'expo-router'
 import * as NativeSplash from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { I18nManager, StyleSheet, View } from 'react-native'
+import { I18nManager, LogBox, StyleSheet, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -32,6 +32,12 @@ import { colors } from '../theme'
 // language: the root view below sets `direction`, which Yoga applies to the
 // whole tree — rows, start/end margins and the tab bar flip together.
 I18nManager.allowRTL(false)
+
+// Dev-only notice from expo-router's own Linking.createURL('') call, which can't be
+// given a scheme: app.config.js registers the Google sign-in reversed client IDs next to
+// 'landly' (they must stay native URL schemes), and the library then picks 'landly', as
+// intended. Release builds show no LogBox at all.
+LogBox.ignoreLogs(['Linking found multiple possible URI schemes'])
 
 // The live offers come from the CDN-cached /api/public/offers on this origin (Firestore is the fallback).
 setOffersApiBase(API_BASE_URL)

@@ -100,7 +100,7 @@ describe('terms page', () => {
   it('places responsibility for who can unlock the device with the member', () => {
     expect(text).toContain('Your device: If you turn on the app lock, or leave it on, anyone whose fingerprint or face is enrolled on that device, or who knows its passcode, can unlock the app')
     expect(text).toContain('You alone decide who is enrolled on and has access to your device, and you are responsible for activity carried out through it.')
-    expect(text).toContain('The app locks after 60 seconds in the background')
+    expect(text).toContain('The app locks after the delay you choose in the background (60 seconds by default)')
     expect(text).toContain('more than 30 days')
   })
 

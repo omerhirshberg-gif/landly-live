@@ -65,7 +65,7 @@ export default function AvatarUploader({ user }: { user: User }) {
   const peek = useAvatarPeek(photoSrc)
 
   return (
-    <div className="flex items-center gap-4 pb-5 mb-5 border-b border-line">
+    <div className="flex items-center gap-4 pb-5 mb-5 border-b border-line lg:flex-col lg:gap-5 lg:border-b-0 lg:pb-0 lg:mb-5 lg:text-center">
       <div className="relative flex-shrink-0">
         {hasPhoto ? (
           <button
@@ -76,13 +76,13 @@ export default function AvatarUploader({ user }: { user: User }) {
             aria-haspopup="dialog"
             className="avatar-peek-trigger relative block rounded-full cursor-zoom-in"
           >
-            <Avatar src={photoSrc} initials={initials} size={72} />
+            <Avatar src={photoSrc} initials={initials} size={72} lgSize={104} />
             {busy && <BusyOverlay />}
           </button>
         ) : (
           // The labelled button beside it is the accessible control; this is a bigger tap target for the same action.
           <button type="button" tabIndex={-1} aria-hidden="true" onClick={choose} disabled={busy} className="relative block rounded-full">
-            <Avatar src={photoSrc} initials={initials} size={72} />
+            <Avatar src={photoSrc} initials={initials} size={72} lgSize={104} />
             {busy && <BusyOverlay />}
           </button>
         )}
@@ -93,7 +93,7 @@ export default function AvatarUploader({ user }: { user: User }) {
           aria-hidden="true"
           onClick={choose}
           disabled={busy}
-          className="absolute -bottom-0.5 -end-0.5 w-7 h-7 rounded-full bg-white border border-line shadow-sm flex items-center justify-center text-brand"
+          className="absolute -bottom-0.5 -end-0.5 w-7 h-7 lg:w-8 lg:h-8 lg:bottom-0 lg:end-0 rounded-full bg-white border border-line shadow-sm flex items-center justify-center text-brand"
         >
           <Camera aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>

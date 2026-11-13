@@ -153,16 +153,21 @@ html[dir="rtl"] .fa-arrow-right{ transform:scaleX(-1); display:inline-block; }
 .dash-empty-state i{font-size:34px;margin-bottom:14px;color:#cbd5e1;}
 .dash-empty-state > svg{width:34px;height:34px;margin-bottom:14px;color:#cbd5e1;}
 
-/* User segment tag/badge shown next to the member's name in the dashboard */
+/* User segment tag/badge shown next to the member's name: a quiet status pill, a white
+   surface with a hairline border and a micro shadow, the type's icon in its hue (--seg,
+   set inline by components/member/SegmentBadge.tsx) and the label in slate. */
 .segment-badge{
-  display:inline-flex; align-items:center;
-  color:#fff;
-  font-size:11.5px; font-weight:800; padding:5px 13px; border-radius:100px;
-  box-shadow:0 4px 14px rgba(0,0,0,.15); white-space:nowrap;
-  /* A typed "Other" can be long: one line, cut with an ellipsis. */
-  max-width:100%;
+  display:inline-flex; align-items:center; gap:6px; max-width:100%;
+  padding:4px 10px; border-radius:999px; white-space:nowrap;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(15,23,42,.08);
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+  color:#0f172a;
+  font-size:12px; font-weight:600; letter-spacing:-.01em; line-height:1.25;
 }
-.segment-badge > span{min-width:0; overflow:hidden; text-overflow:ellipsis;}
+.segment-badge-icon{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--seg);}
+/* A typed "Other" can be long: one line, cut with an ellipsis. */
+.segment-badge-label{min-width:0; overflow:hidden; text-overflow:ellipsis;}
 
 /* ═══════════════════════════════════════════════════════
    AUTH PAGES — ported verbatim from the legacy login/signup/

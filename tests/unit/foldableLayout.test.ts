@@ -114,7 +114,7 @@ describe('two-pane profile and offer from 600px, desktop included', () => {
   it('splits the profile card about 40 / 60, the panes falling back to the phone order below 600px', () => {
     const section = read('components/profile/ProfileSection.tsx')
     expect(section).toContain('flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6')
-    expect(section).toContain('<div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100">')
+    expect(section).toContain('<div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100 lg:col-span-4 lg:rounded-3xl')
     expect(section).toContain('<SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />')
     expect(section.indexOf('<SegmentBadge')).toBeLessThan(section.indexOf("t('profile_edit_profile_btn')"))
   })

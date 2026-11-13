@@ -16,3 +16,15 @@
 - Micro-Interactions: Subtle hover lifts (`hover:-translate-y-1 transition-all duration-300`), interactive pills with glowing rings on focus, and smooth responsive flow.
 - Typography & Rhythm: Modern typography scales (`tracking-tight`, gradient text accents `bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600`), and zero dead white expanses.
 - Apple Wallet Pass: Keep the existing Apple Wallet pass animations, timing, and physics in `PassShowcase.tsx` 100% intact.
+
+## Security Testing & Strix Pentest Rules
+- NEVER run `strix` against production (`golandly.com` or `landly-be752`). Only target `http://localhost:3000` connected to `landly-dev`.
+- ALWAYS enforce `--max-budget` (default `5`) and `--scan-mode standard` (or `quick`) when invoking `strix`.
+- Never commit or stage anything inside `strix_runs/`.
+- When auditing Strix findings, read the generated reports and PoCs inside `strix_runs/` and follow the mandatory 3-Phase Execution Standard to remediate vulnerabilities.
+
+## Security Testing & Strix Pentest Rules
+- NEVER run `strix` against production (`golandly.com` or `landly-be752`). Only target `http://localhost:3000` connected to `landly-dev`.
+- ALWAYS enforce `--max-budget` (default `5`) and `--scan-mode standard` (or `quick`) when invoking `strix`.
+- Never commit or stage anything inside `strix_runs/`.
+- When auditing Strix findings, read the generated reports and PoCs inside `strix_runs/` and follow the mandatory 3-Phase Execution Standard to remediate vulnerabilities.

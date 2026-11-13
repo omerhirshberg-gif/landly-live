@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { checkAdminPasswordWithRateLimit } from '@/lib/admin/adminAuth'
 import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, issueAdminSessionToken } from '@/lib/admin/sessionToken'
 
-// The admin login: a correct password sets the session cookie, for 30 days
+// The admin login: a correct password sets the session cookie, for 7 days
 // with "Stay logged in" (remember: true), else 12 hours. The token never
 // reaches page scripts.
 export async function POST(request: Request) {

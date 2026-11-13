@@ -1058,7 +1058,7 @@ export const he: Record<AdminKey, string> = {
   'login.subtitle': 'הזינו את סיסמת הניהול המשותפת כדי לנהל עסקים והטבות.',
   'login.password': 'סיסמה',
   'login.stay': 'להישאר מחובר',
-  'login.stayHint': 'משאיר אתכם מחוברים במכשיר הזה ל-30 יום. אחרת תנותקו אחרי 12 שעות.',
+  'login.stayHint': 'משאיר אתכם מחוברים במכשיר הזה ל-7 ימים. אחרת תנותקו אחרי 12 שעות.',
   'login.verifying': 'מאמת…',
   'login.restricted': 'אזור מוגבל · מנהלים מורשים בלבד',
 }

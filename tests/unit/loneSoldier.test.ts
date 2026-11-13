@@ -54,7 +54,7 @@ describe('Lone Soldier member type', () => {
     const colors = CUSTOMER_TYPES.map((o) => o.color)
     expect(new Set(colors).size).toBe(colors.length)
     const html = withLang('he', createElement(SegmentBadge, { customerType: 'lone_soldier' }))
-    expect(html).toContain('background:#4d7c0f')
+    expect(html).toContain('--seg:#4d7c0f')
     expect(html).toContain('חייל/ת בודד/ה')
   })
 

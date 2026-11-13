@@ -12,9 +12,12 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 // The browser holds it in an httpOnly cookie (ADMIN_SESSION_COOKIE), which
 // page scripts can't read and every same-origin admin call carries: "Stay
 // logged in" makes it last REMEMBER_TTL_MS, otherwise SESSION_TTL_MS. The
-// cookie's Max-Age and the token's own exp always match.
+// cookie's Max-Age and the token's own exp always match. Sessions have no
+// server-side store, so the shorter 7-day "remember" window and rotating
+// ADMIN_SESSION_SECRET (which ends every session at once) are the only ways
+// a stolen cookie stops working.
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000
-export const REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000
+export const REMEMBER_TTL_MS = 7 * 24 * 60 * 60 * 1000
 export const ADMIN_SESSION_COOKIE = 'landly_admin_session'
 
 function getSecret(): string | undefined {

@@ -16,6 +16,8 @@ import { useVouchers } from '@/lib/firebase/VouchersProvider'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import { totalSaved } from '@/lib/member/savings'
 import { greetingName } from '@/lib/auth/names'
+import { greetingKey } from '@/lib/auth/greeting'
+import { useGreetingPeriod } from '@/lib/home/useGreetingPeriod'
 import SegmentBadge from '@/components/member/SegmentBadge'
 
 type Voucher = VoucherDocument & { id: string }
@@ -69,9 +71,11 @@ export default function MemberPage() {
 
   // First name from the profile, else the display name — never the email.
   const displayName = greeting ?? greetingName(null, user?.displayName)
-  const welcomeMessage = displayName
-    ? t('dash_welcome').replace('{name}', displayName)
-    : t('dash_welcome_generic')
+  // "Good morning, Dana" by the member's own clock; the greeting row is hidden until it is read.
+  const period = useGreetingPeriod()
+  const welcomeMessage = period
+    ? t(greetingKey(period, !!displayName)).replace('{name}', displayName ?? '')
+    : ''
 
   if (loading || !user || held) {
     return (
@@ -93,7 +97,7 @@ export default function MemberPage() {
           <div className="mx-auto w-full max-w-[960px] space-y-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h1 className={PAGE_TITLE}>{welcomeMessage}</h1>
+                <h1 className={`${PAGE_TITLE} tracking-tight min-h-[1.25em] ${welcomeMessage && greeting !== null ? 'greet-in' : 'invisible'}`}>{welcomeMessage || '\u00a0'}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2.5">
                   <SegmentBadge customerType={customerType} customerTypeOther={customerTypeOther} />
                 </div>

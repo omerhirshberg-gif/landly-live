@@ -194,3 +194,25 @@ describe('passkey and app-lock copy', () => {
     expect(translations.he.login_passkeyBtn).toBe('כניסה עם מפתח גישה (Passkey)')
   })
 })
+
+describe('passkey rate limit per source IP', () => {
+  const req = (ip?: string) => new Request('https://www.golandly.com/api', { headers: ip ? { 'x-real-ip': ip } : {} })
+  const load = async () => { vi.resetModules(); return (await import('@/lib/auth/passkeyRateLimit')).isPasskeyRateLimited }
+
+  it('with TRUSTED_IP_HEADER, one IP exhausting verify does not block another', async () => {
+    vi.stubEnv('VERCEL', '')
+    vi.stubEnv('TRUSTED_IP_HEADER', 'x-real-ip')
+    const limited = await load()
+    for (let i = 0; i < 20; i++) expect(limited('verify', req('192.0.2.1'))).toBe(false)
+    expect(limited('verify', req('192.0.2.1'))).toBe(true)
+    expect(limited('verify', req('198.51.100.2'))).toBe(false)
+  })
+
+  it('without it, callers share one bucket (the documented fallback)', async () => {
+    vi.stubEnv('VERCEL', '')
+    vi.stubEnv('TRUSTED_IP_HEADER', '')
+    const limited = await load()
+    for (let i = 0; i < 20; i++) limited('verify', req(`192.0.2.${i}`))
+    expect(limited('verify', req('198.51.100.2'))).toBe(true)
+  })
+})

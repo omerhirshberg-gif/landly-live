@@ -1,7 +1,7 @@
 import { Platform } from 'react-native'
 import * as LocalAuthentication from 'expo-local-authentication'
 import * as SecureStore from 'expo-secure-store'
-import type { AppLockSetting } from '@shared/auth/appLockPolicy'
+import { parseAppLockDelay, type AppLockDelay, type AppLockSetting } from '../../../lib/auth/appLockPolicy'
 
 // The app lock's device side (iOS/Android; biometricLock.web.ts for the Expo web
 // build). The lock sits in front of the Firebase session already saved on the
@@ -25,6 +25,7 @@ export type UnlockError = LocalAuthentication.LocalAuthenticationError
 
 const { AuthenticationType } = LocalAuthentication
 const flagKey = (uid: string) => `landly.applock.${uid}`
+const delayKey = (uid: string) => `landly.applock.delay.${uid}`
 const lastEntryKey = (uid: string) => `landly.applock.lastEntry.${uid}`
 const STORE_OPTIONS: SecureStore.SecureStoreOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
 
@@ -84,6 +85,19 @@ export async function getAppLockSetting(uid: string): Promise<AppLockSetting> {
 
 export async function setAppLockEnabled(uid: string, on: boolean): Promise<void> {
   await SecureStore.setItemAsync(flagKey(uid), on ? '1' : '0', STORE_OPTIONS)
+}
+
+/** How long the app may stay in the background before it locks again; 1 minute until the member chooses. */
+export async function getAppLockDelay(uid: string): Promise<AppLockDelay> {
+  try {
+    return parseAppLockDelay(await SecureStore.getItemAsync(delayKey(uid), STORE_OPTIONS))
+  } catch {
+    return parseAppLockDelay(null)
+  }
+}
+
+export async function setAppLockDelay(uid: string, delay: AppLockDelay): Promise<void> {
+  await SecureStore.setItemAsync(delayKey(uid), delay, STORE_OPTIONS)
 }
 
 /**

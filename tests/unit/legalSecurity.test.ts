@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import PrivacyPolicy from '@/components/legal/PrivacyPolicy'
 import TermsContent from '@/components/legal/TermsContent'
-import { SESSION_MAX_IDLE_MS } from '@/lib/auth/appLockPolicy'
+import { APP_LOCK_DELAY_MS, DEFAULT_APP_LOCK_DELAY, SESSION_MAX_IDLE_MS } from '@/lib/auth/appLockPolicy'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
@@ -25,7 +25,7 @@ const constant = (path: string, name: string) => {
   if (!m) throw new Error(`${name} not found in ${path}`)
   return Number(m[1].replace(/_/g, ''))
 }
-const GRACE_SECONDS = constant('landly-mobile/src/auth/AppLock.tsx', 'APP_LOCK_GRACE_MS') / 1000
+const GRACE_SECONDS = APP_LOCK_DELAY_MS[DEFAULT_APP_LOCK_DELAY] / 1000
 const IDLE_DAYS = SESSION_MAX_IDLE_MS / 86_400_000
 const GEO_CACHE_DAYS = constant('app/api/geo/reverse/route.ts', 'CACHE_DAYS')
 
@@ -52,12 +52,14 @@ describe('legal text matches the code', () => {
     for (const key of ['pp_signin_how_2', 'pp_protect_5', 'terms_p5b'] as const) expect(tr(lang, key), key).toContain(`60`)
     for (const key of ['pp_signin_how_3', 'pp_protect_5', 'terms_p5b'] as const) expect(tr(lang, key), key).toContain(`${IDLE_DAYS}`)
     expect(tr(lang, 'pp_signin_how_2')).toContain(`${GRACE_SECONDS}`)
+    expect(tr(lang, 'pp_signin_lock_2')).toContain('`landly.applock.delay.<uid>`')
   })
 
   it.each(LANGS)('names the exact secure-storage keys the app writes (%s)', (lang) => {
     const source = read('landly-mobile/src/auth/biometricLock.ts')
     expect(source).toContain('`landly.applock.${uid}`')
     expect(source).toContain('`landly.applock.lastEntry.${uid}`')
+    expect(source).toContain('`landly.applock.delay.${uid}`')
     expect(source).toContain('WHEN_UNLOCKED_THIS_DEVICE_ONLY')
     expect(tr(lang, 'pp_signin_lock_2')).toContain('`landly.applock.<uid>`')
     expect(tr(lang, 'pp_signin_lock_2')).toContain('`landly.applock.lastEntry.<uid>`')

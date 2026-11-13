@@ -45,10 +45,11 @@ describe('admin login cookie', () => {
     expect(Math.abs(expiry - (Date.now() + SESSION_TTL_MS))).toBeLessThan(5000)
   })
 
-  it('lasts 30 days with Stay logged in', async () => {
+  it('lasts 7 days with Stay logged in', async () => {
     const res = await signIn({ password: 'correct horse', remember: true })
-    expect(cookieOf(res)).toContain(`Max-Age=${30 * 24 * HOUR}`)
+    expect(cookieOf(res)).toContain(`Max-Age=${7 * 24 * HOUR}`)
     expect(Math.abs(adminSessionExpiry(tokenOf(res))! - (Date.now() + REMEMBER_TTL_MS))).toBeLessThan(5000)
+    expect(REMEMBER_TTL_MS).toBe(7 * 24 * HOUR * 1000)
     // Only a real true counts.
     expect(cookieOf(await signIn({ password: 'correct horse', remember: 'yes' }))).toContain(`Max-Age=${12 * HOUR}`)
   })

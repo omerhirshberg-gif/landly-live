@@ -183,17 +183,21 @@ export default function ProfileSection({ user }: { user: User }) {
     setStatus(result.ok ? success : { tone: 'error', text: t(contactChangeErrorKey(result.reason)) })
   }
 
-  const dt = 'text-xs font-semibold text-slate-500 mb-0.5'
-  const dd = 'text-sm font-bold text-slate-900 break-words'
-  const label = 'block mb-1.5 text-sm font-bold text-slate-700'
+  const dt = 'text-xs font-semibold text-slate-500 mb-0.5 lg:uppercase lg:tracking-wide lg:mb-1.5'
+  const dd = 'text-sm font-bold text-slate-900 break-words lg:text-base lg:font-semibold'
+  const label = 'block mb-1.5 text-sm font-bold text-slate-700 lg:text-start'
   // 16px text so iOS Safari doesn't zoom the page on focus; 48px tall touch target.
   const field = 'w-full h-12 px-4 rounded-[12px] border-[1.5px] border-slate-200 bg-white text-base text-slate-900 focus:outline-none focus:border-brand'
   const loading = (value: string) => (loadingDoc ? '…' : value)
 
+  // On desktop the identity card centres the name (large) and the address under the photo; the labels stay for screen readers.
+  const ddName = 'lg:text-2xl lg:font-bold lg:tracking-tight lg:leading-tight'
+  const dtHidden = 'lg:sr-only'
+
   const plainRow = (rowLabel: string, value: ReactNode, ltr?: boolean) => (
     <div>
-      <dt className={dt}>{rowLabel}</dt>
-      <dd className={`${dd} ${editing ? 'text-slate-500' : ''}`}>{ltr ? <bdi dir="ltr">{value}</bdi> : value}</dd>
+      <dt className={`${dt} ${dtHidden}`}>{rowLabel}</dt>
+      <dd className={editing ? `${dd} text-slate-500` : `text-sm font-bold text-slate-900 break-words ${ddName}`}>{ltr ? <bdi dir="ltr">{value}</bdi> : value}</dd>
     </div>
   )
 
@@ -226,9 +230,9 @@ export default function ProfileSection({ user }: { user: User }) {
 
   const emailRow = (
     <div>
-      <dt className={editing ? label : dt}>{t('profile_email_label')}</dt>
+      <dt className={editing ? label : `${dt} ${dtHidden}`}>{t('profile_email_label')}</dt>
       <dd>
-        {editing ? emailBox : <div className={dd}><bdi dir="ltr">{email}</bdi></div>}
+        {editing ? emailBox : <div className="text-sm font-bold text-slate-900 break-words lg:text-base lg:font-medium lg:text-slate-600"><bdi dir="ltr">{email}</bdi></div>}
         {editing && !canChangeEmail && (googleAccount || appleAccount) && (
           <p className="mt-1.5 text-xs text-slate-500">{t(googleAccount ? 'profile_email_google_locked' : 'profile_email_apple_locked')}</p>
         )}
@@ -287,12 +291,12 @@ export default function ProfileSection({ user }: { user: User }) {
       plainRow(t('profile_name_label'), displayName || '…')
     ) : (
       <div>
-        <dt className={dt}>{t('profile_name_label')}</dt>
+        <dt className={`${dt} ${dtHidden}`}>{t('profile_name_label')}</dt>
         <dd>
           <button
             type="button"
             onClick={() => startEdit(true)}
-            className="tap-target -ms-2 inline-flex items-center gap-1.5 min-h-11 px-2 rounded-[10px] text-sm font-bold text-brand hover:bg-brandLight transition-colors"
+            className="tap-target -ms-2 lg:ms-0 inline-flex items-center gap-1.5 min-h-11 px-2 rounded-[10px] text-sm font-bold text-brand hover:bg-brandLight transition-colors"
           >
             <Plus aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
             {t('profile_add_name')}
@@ -304,7 +308,7 @@ export default function ProfileSection({ user }: { user: User }) {
   // Name and email stay outside the edit form (see the header comment); while
   // editing, the name moves into the form as its two fields.
   const identity = (
-    <dl className="space-y-4">
+    <dl className={`space-y-4 lg:space-y-3 ${editing ? '' : 'lg:text-center'}`}>
       {!editing && nameRow}
       {emailRow}
     </dl>
@@ -338,11 +342,11 @@ export default function ProfileSection({ user }: { user: User }) {
   }
 
   const details = (
-    <dl className="space-y-4 mt-4">
+    <dl className="space-y-4 mt-4 lg:mt-0 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-6">
       {editing ? (
         <>
           {/* Side by side from sm up, in the reading direction (columns: label over field); stacked on phones. */}
-          <div className="sm:grid sm:grid-flow-col sm:grid-rows-[auto_auto] sm:grid-cols-2 sm:gap-x-4">
+          <div className="sm:grid sm:grid-flow-col sm:grid-rows-[auto_auto] sm:grid-cols-2 sm:gap-x-4 lg:col-span-2 lg:gap-x-8">
             {nameField('firstName', 'given-name', 'onb_firstNameLabel')}
             {nameField('lastName', 'family-name', 'onb_lastNameLabel')}
           </div>
@@ -450,21 +454,21 @@ export default function ProfileSection({ user }: { user: User }) {
   // and the details with the one Edit button trailing. The panes are
   // display:contents on phones, so their blocks keep the phone order above.
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6">
-      <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100">
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6 lg:grid-cols-12 lg:gap-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
+      <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100 lg:col-span-4 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_rgb(15_23_42/0.05)]">
         <div className="order-1">
           <AvatarUploader user={user} />
         </div>
         {/* Waits for the live read, so the "Member" fallback never flashes first. */}
         {loaded && (
-          <div className="order-1 mb-5">
+          <div className="order-1 mb-5 lg:flex lg:justify-center">
             <SegmentBadge customerType={profile?.customerType} customerTypeOther={profile?.customerTypeOther} />
           </div>
         )}
         <div className="order-4">{identity}</div>
       </div>
 
-      <div className="contents fold:block fold:min-w-0">
+      <div className="contents fold:block fold:min-w-0 lg:col-span-8 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_rgb(15_23_42/0.05)]">
         {saveMsg && (
           <div role={saveMsg.type === 'error' ? 'alert' : 'status'} className={`order-2 mb-4 text-sm font-semibold rounded-xl px-4 py-3 border ${saveMsg.type === 'success' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200'}`}>
             {saveMsg.text}
@@ -472,14 +476,14 @@ export default function ProfileSection({ user }: { user: User }) {
         )}
 
         {/* The Edit button sits at the header's end: right in LTR, left in Hebrew. */}
-        <div className="order-3 flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
-          <h3 className="text-base font-bold text-slate-900">{t('dash_tab_profile')}</h3>
+        <div className="order-3 flex items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100 lg:pb-6 lg:mb-6">
+          <h3 className="text-base font-bold text-slate-900 lg:text-xl lg:tracking-tight">{t('dash_tab_profile')}</h3>
           {!editing && (
             <button
               type="button"
               onClick={() => startEdit()}
               disabled={loadingDoc}
-              className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 rounded-[14px] bg-brandLight text-brand text-sm font-semibold hover:bg-brandTint transition-colors disabled:opacity-60"
+              className="tap-target flex-shrink-0 inline-flex items-center gap-2 h-11 px-4 lg:px-5 rounded-[14px] lg:rounded-xl bg-brandLight text-brand text-sm font-semibold hover:bg-brandTint transition-colors disabled:opacity-60"
             >
               <Pencil aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
               {t('profile_edit_profile_btn')}
@@ -491,7 +495,7 @@ export default function ProfileSection({ user }: { user: User }) {
             <form onSubmit={handleSave} noValidate>
               {details}
               {/* Stacked full-width on phones (Save on top), side by side at the end from sm up */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 pb-[env(safe-area-inset-bottom,0px)]">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 lg:mt-8 pb-[env(safe-area-inset-bottom,0px)]">
                 <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
                   {t('profile_cancel_btn')}
                 </button>

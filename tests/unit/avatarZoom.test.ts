@@ -54,7 +54,7 @@ describe('avatar sharpness', () => {
   })
 
   it('uses the sized photo in the small avatars on both platforms', () => {
-    expect(readFileSync('components/ui/Avatar.tsx', 'utf8')).toContain('src={sizedAvatarUrl(src, size * 3)}')
+    expect(readFileSync('components/ui/Avatar.tsx', 'utf8')).toContain('src={sizedAvatarUrl(src, Math.max(size, lgSize ?? 0) * 3)}')
     expect(readFileSync('landly-mobile/src/components/Avatar.tsx', 'utf8')).toContain('sizedAvatarUrl(uri, size * PixelRatio.get())')
   })
 })

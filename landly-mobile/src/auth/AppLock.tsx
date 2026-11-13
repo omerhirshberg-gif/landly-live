@@ -5,7 +5,7 @@ import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { signOut } from 'firebase/auth'
-import { appLockOn, entryExpired } from '@shared/auth/appLockPolicy'
+import { appLockOn, DEFAULT_APP_LOCK_DELAY, entryExpired, isLongerDelay, shouldRelock, type AppLockDelay } from '@shared/auth/appLockPolicy'
 import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '@shared/auth/greeting'
 import { greetingName } from '@shared/auth/names'
 import { LOCK_RISE, UNLOCK } from '@shared/brand/onboardingMotion'
@@ -29,9 +29,11 @@ import {
   APP_LOCK_SUPPORTED,
   authenticate,
   biometricStatus,
+  getAppLockDelay,
   getAppLockSetting,
   getLastEntry,
   recordLastEntry,
+  setAppLockDelay,
   setAppLockEnabled,
   type BiometricKind,
   type BiometricStatus,
@@ -39,8 +41,9 @@ import {
 
 // The app lock (on by default wherever the device has biometrics set up; the
 // member can turn it off in Privacy & Security): with it on, a session
-// restored at launch, or one coming back after more than a minute in the
-// background, waits behind the lock screen until Face ID / Touch ID / the
+// restored at launch, or one coming back after longer in the background than
+// the member's chosen delay (immediately, 1 minute by default, or 5 minutes),
+// waits behind the lock screen until Face ID / Touch ID / the
 // fingerprint (or the device passcode) confirms the member. A saved session
 // unused for more than 30 days (SESSION_MAX_IDLE_MS) ends at launch instead:
 // the login form opens with the email filled in. The tabs stay mounted under
@@ -57,8 +60,6 @@ import {
 // here, and opening of the app unlocked is recorded on the device as the
 // last entry, which restarts the 30-day clock.
 
-/** Background time after which coming back asks again. */
-export const APP_LOCK_GRACE_MS = 60_000
 export const APP_LOCK_MAX_TRIES = 3
 
 interface AppLockContextValue {
@@ -66,6 +67,10 @@ interface AppLockContextValue {
   status: BiometricStatus | null
   /** The lock is on for the signed-in member on this device. */
   enabled: boolean
+  /** How long the app may stay in the background before coming back asks again. */
+  delay: AppLockDelay
+  /** Changes the delay; a longer one asks for a biometric check first (false if the member cancelled). */
+  setDelay: (next: AppLockDelay) => Promise<boolean>
   /** Turns the lock on or off after a successful biometric check; false if the member cancelled. */
   setEnabled: (on: boolean) => Promise<boolean>
   /** Reads hardware and enrolment again (after a visit to the device settings). */
@@ -102,6 +107,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   const uid = user?.emailVerified ? user.uid : null
   const [status, setStatus] = useState<BiometricStatus | null>(null)
   const [enabledFor, setEnabledFor] = useState<{ uid: string; on: boolean } | null>(null)
+  const [delayFor, setDelayFor] = useState<{ uid: string; delay: AppLockDelay } | null>(null)
   const [locked, setLocked] = useState(false)
   const [covered, setCovered] = useState(false)
   const [tries, setTries] = useState(0)
@@ -115,14 +121,17 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   // The system prompt itself makes iOS report "inactive"; that's not leaving the app.
   const prompting = useRef(false)
   const enabled = !!uid && enabledFor?.uid === uid && enabledFor.on
+  const delay = uid && delayFor?.uid === uid ? delayFor.delay : DEFAULT_APP_LOCK_DELAY
   const enabledRef = useRef(enabled)
+  const delayRef = useRef(delay)
   const lockedRef = useRef(locked)
   const uidRef = useRef(uid)
   useEffect(() => {
     enabledRef.current = enabled
+    delayRef.current = delay
     lockedRef.current = locked
     uidRef.current = uid
-  }, [enabled, locked, uid])
+  }, [enabled, delay, locked, uid])
 
   // Declared before the flag read below, so it has run by the time that reads it.
   useEffect(() => {
@@ -170,7 +179,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!uid || !APP_LOCK_SUPPORTED) return
     let cancelled = false
-    Promise.all([getAppLockSetting(uid), biometricStatus(), getLastEntry(uid)]).then(([setting, current, lastEntry]) => {
+    Promise.all([getAppLockSetting(uid), biometricStatus(), getLastEntry(uid), getAppLockDelay(uid)]).then(([setting, current, lastEntry, savedDelay]) => {
       if (cancelled) return
       setStatus(current)
       const launchSession = launchUid.current === uid
@@ -178,6 +187,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
       launchUid.current = null
       const on = appLockOn(setting, current)
       const proceed = () => {
+        setDelayFor({ uid, delay: savedDelay })
         setEnabledFor({ uid, on })
         if (on && launchSession) engageLock()
         else setLocked(false)
@@ -204,7 +214,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
         setCovered(false)
         const away = backgroundedAt.current
         backgroundedAt.current = null
-        if (enabledRef.current && away !== null && Date.now() - away > APP_LOCK_GRACE_MS) {
+        if (enabledRef.current && away !== null && shouldRelock(Date.now() - away, delayRef.current)) {
           setTries(0)
           engageLock()
         } else if (uidRef.current && !lockedRef.current) {
@@ -285,6 +295,28 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
     [uid, prompt, t]
   )
 
+  const setDelay = useCallback(
+    async (next: AppLockDelay) => {
+      if (!uid) return false
+      // A longer delay weakens the lock, so it asks like turning the lock off does.
+      if (isLongerDelay(delay, next)) {
+        const current = await biometricStatus()
+        setStatus(current)
+        const label = t(methodKey(current.kind))
+        const result = await prompt(t('applock_delayPrompt').replace('{method}', label))
+        if (!result.success) return false
+      }
+      try {
+        await setAppLockDelay(uid, next)
+      } catch {
+        return false
+      }
+      setDelayFor({ uid, delay: next })
+      return true
+    },
+    [uid, delay, prompt, t]
+  )
+
   // Recorded as the member's choice, so the next sign-in doesn't turn it back on by default.
   const clearForSignOutEverywhere = useCallback(async () => {
     if (!uid) return
@@ -300,6 +332,8 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
       value={{
         status,
         enabled,
+        delay,
+        setDelay,
         setEnabled,
         refreshStatus,
         clearForSignOutEverywhere,
