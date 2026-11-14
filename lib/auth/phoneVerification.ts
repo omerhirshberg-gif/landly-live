@@ -2,10 +2,8 @@ import 'server-only'
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import type { Lang } from '@/lib/i18n/translations'
 import { recordUsage } from '@/lib/usage/recordUsage'
-import { sendWhatsAppMessage, whatsappConfigProblem, whatsappLive, WhatsAppApiError } from '@/lib/whatsapp/graph'
+import { Gateway019Error, gateway019ConfigProblem, gateway019Live, sendVia019Sms, sendVia019WhatsApp } from '@/lib/otp/gateway019'
 import { OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel } from './otp'
-
-export { whatsappConfigProblem }
 
 // Phone-change verification for the profile screens (web /profile, the app's
 // Profile tab). A changed number waits in users/{uid}.pendingPhone until the
@@ -16,12 +14,14 @@ export { whatsappConfigProblem }
 // website and the app never disagree (/api/account/change-phone tells them):
 //
 // - production: PHONE_VERIFICATION_ENABLED=true (or the older
-//   FIREBASE_PHONE_AUTH_ENABLED) verifies through productionProvider (Meta
-//   WhatsApp Cloud API); anything else saves the number directly, as before --
-//   nobody is blocked or left with a pending banner that can never clear.
+//   FIREBASE_PHONE_AUTH_ENABLED) verifies through gateway019Provider (019
+//   delivers: an SMS to +972 numbers, a WhatsApp template to every other
+//   country, lib/auth/otpChannel.ts); anything else saves the number
+//   directly, as before -- nobody is blocked or left with a pending banner
+//   that can never clear.
 // - development and tests: verified through devProvider, which only logs the
-//   code to the terminal (no WhatsApp credits), unless WHATSAPP_OTP_LIVE=true
-//   and the credentials are set; set the flag to "false" to save directly.
+//   code to the terminal (nothing is sent or billed), unless OTP_019_LIVE=true
+//   and the 019 settings are complete; set the flag to "false" to save directly.
 //
 // Onboarding and sign-up still write the phone directly; this covers edits
 // from the profile screens only.
@@ -41,7 +41,7 @@ export interface OtpDispatch {
 }
 
 export interface OtpProvider {
-  readonly name: 'dev' | 'production'
+  readonly name: 'dev' | 'gateway019'
   send(dispatch: OtpDispatch): Promise<void>
 }
 
@@ -65,7 +65,7 @@ export function phoneVerificationMode(): PhoneVerificationMode {
   if (!isProduction()) return flag === 'false' ? 'direct' : 'otp'
   if (flag !== 'true') return 'direct'
   // Switched on but unable to send: saving directly beats a banner nobody can clear.
-  const problem = whatsappConfigProblem()
+  const problem = gateway019ConfigProblem()
   if (problem) {
     console.error(`[phone-otp] PHONE_VERIFICATION_ENABLED is on but ${problem}; saving phone changes directly.`)
     return 'direct'
@@ -74,7 +74,7 @@ export function phoneVerificationMode(): PhoneVerificationMode {
 }
 
 export function otpProvider(): OtpProvider {
-  return whatsappLive() ? productionProvider : devProvider
+  return gateway019Live() ? gateway019Provider : devProvider
 }
 
 export function generateOtp(): string {
@@ -97,7 +97,7 @@ export function maskPhone(phone: string): string {
   return phone.length > 6 ? `${phone.slice(0, 3)} •••• ${phone.slice(-4)}` : '••••'
 }
 
-// Simulated WhatsApp dispatch: the code goes to the `next dev` terminal only.
+// Simulated SMS / WhatsApp dispatch: the code goes to the `next dev` terminal only.
 export const devProvider: OtpProvider = {
   name: 'dev',
   async send({ phone, code, channel }) {
@@ -106,78 +106,16 @@ export const devProvider: OtpProvider = {
   },
 }
 
-export const productionProvider: OtpProvider = {
-  name: 'production',
-  async send(dispatch) {
-    if (dispatch.channel === 'whatsapp') return sendWhatsAppOtp(dispatch)
-    // The SMS hook: no SMS sender is contracted yet.
-    throw new OtpDeliveryError('sms', 'not_configured', 'no SMS provider is configured')
-  },
-}
-
-// Meta's approved "authentication" templates exist per language, and Meta
-// matches the code exactly: a copy created as en_US (WhatsApp Manager's
-// default English) is not found as "en". The template is created in
-// WhatsApp Manager under WHATSAPP_OTP_TEMPLATE in each of these; a language
-// without an approved copy falls back along otpLanguages().
-// scripts/whatsapp-diagnose-templates.mjs lists the copies a WABA has.
-const WHATSAPP_LANGUAGE: Record<Lang, string> = { en: 'en_US', he: 'he', ru: 'ru', fr: 'fr', es: 'es' }
-const DEFAULT_OTP_TEMPLATE = 'landly_otp_code'
-const MAX_OTP_LANGUAGES = 3
-
-// 132001: no template by that name in that language. Only that one is worth
-// another language; the rest of the 1320xx family (132000 parameter count,
-// 132012 parameter format, 132015/132016 paused or disabled) is the
-// template itself, and every copy would be refused the same way.
-const MISSING_TRANSLATION = '132001'
-
-/** The languages to try, in order: the member's, WHATSAPP_OTP_FALLBACK_LANGUAGE, en_US, en (no repeats, at most 3). */
-export function otpLanguages(lang: Lang): string[] {
-  const configured = process.env.WHATSAPP_OTP_FALLBACK_LANGUAGE?.trim()
-  const chain = [WHATSAPP_LANGUAGE[lang], configured, 'en_US', 'en'].filter((code): code is string => !!code)
-  return [...new Set(chain)].slice(0, MAX_OTP_LANGUAGES)
-}
-
-const otpTemplateName = () => process.env.WHATSAPP_OTP_TEMPLATE || DEFAULT_OTP_TEMPLATE
-
-// WhatsApp Cloud API: an authentication template whose body and copy-code
-// button both carry the code (Meta requires the code in both parameters).
-async function sendWhatsAppOtp({ phone, code, lang }: OtpDispatch): Promise<void> {
-  const languages = otpLanguages(lang)
-  for (const [i, language] of languages.entries()) {
+/** Delivery through 019: an SMS for an Israeli number, a WhatsApp template for any other. */
+export const gateway019Provider: OtpProvider = {
+  name: 'gateway019',
+  async send({ phone, code, channel, lang }) {
     try {
-      // Meta bills an authentication template once it's accepted: HTTP 200 with a wamid.
-      if (await sendOtpTemplate(phone, code, language)) recordUsage('whatsapp.authSent')
-      return
+      await (channel === 'sms' ? sendVia019Sms : sendVia019WhatsApp)({ phone, code, lang })
     } catch (err) {
-      if (!(err instanceof WhatsAppApiError)) throw err
-      const next = languages[i + 1]
-      if (err.code === MISSING_TRANSLATION && next) {
-        console.warn(`[phone-otp] template unavailable in ${language} (${err.code}); retrying in ${next}`)
-        continue
-      }
-      if (err.code === MISSING_TRANSLATION) {
-        console.error(
-          `[phone-otp] template "${otpTemplateName()}" was not found in ${languages.join(', ')} (132001): check the name and its approved ` +
-            `languages in the WhatsApp Business Account that owns number ID ${process.env.WHATSAPP_PHONE_NUMBER_ID} ` +
-            '(node scripts/whatsapp-diagnose-templates.mjs)'
-        )
-      }
-      throw new OtpDeliveryError('whatsapp', err.code, err.message)
+      if (!(err instanceof Gateway019Error)) throw err
+      console.error(`[phone-otp] 019 ${channel} delivery failed (${err.code}): ${err.message}`)
+      throw new OtpDeliveryError(channel, err.code, err.message)
     }
-  }
-}
-
-function sendOtpTemplate(phone: string, code: string, language: string) {
-  return sendWhatsAppMessage(phone, {
-    type: 'template',
-    template: {
-      name: otpTemplateName(),
-      language: { code: language },
-      components: [
-        { type: 'body', parameters: [{ type: 'text', text: code }] },
-        { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
-      ],
-    },
-  })
+  },
 }

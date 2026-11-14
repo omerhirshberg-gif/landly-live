@@ -58,9 +58,9 @@ export default function ChangeEmailForm({
     }
   }
 
-  const label = 'block mb-1.5 text-sm font-bold text-slate-700'
+  const label = 'sr-only'
   // 16px text so iOS Safari doesn't zoom the page on focus; 48px tall touch target.
-  const field = 'w-full h-12 px-4 rounded-[12px] border-[1.5px] border-slate-200 bg-white text-base text-slate-900 focus:outline-none focus:border-brand'
+  const field = 'inp-consumer'
 
   return (
     <form onSubmit={submit} noValidate className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
@@ -78,13 +78,14 @@ export default function ChangeEmailForm({
         <input
           id="profile-new-email"
           type="email"
-          dir="ltr"
+          dir={email ? 'ltr' : undefined}
           inputMode="email"
           autoComplete="email"
           autoCapitalize="none"
           spellCheck={false}
           autoFocus
           required
+          placeholder={t('profile_new_email_label')}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value)
@@ -100,6 +101,7 @@ export default function ChangeEmailForm({
           type="password"
           autoComplete="current-password"
           required
+          placeholder={t('profile_current_password_label')}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value)

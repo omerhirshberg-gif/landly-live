@@ -50,7 +50,7 @@ describe('the shekel sign in the price font', () => {
     expect(page).not.toMatch(/fa-(solid|regular)/)
   })
 
-  it('runs the card photo edge to edge at 2:1 (capped at 172px), with the merchant over a two-line title and a plain pin for the place', () => {
+  it('runs the card photo edge to edge at 2:1 (capped at 172px), with the merchant on its own line under a two-line title and a plain pin for the place on a full-width line below', () => {
     const offer = {
       id: 'o1', businessName: 'Cafe Nadi', title: 'Two coffees', category: 'Restaurants and Cafes', location: 'Tel Aviv',
       originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '',
@@ -60,7 +60,7 @@ describe('the shekel sign in the price font', () => {
     expect(html).toContain('<div class="relative z-[1] w-full aspect-[2/1] max-h-[172px] "><div class="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">')
     expect(html).not.toContain('to-black/')
     expect(html).toMatch(/<span class="absolute -bottom-4 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden h-\[44px\] min-w-\[64px\] max-w-\[124px\] rounded-xl border border-slate-200\/90 bg-white px-1\.5 py-1 shadow-sm sm:h-\[48px\] sm:min-w-\[72px\] sm:max-w-\[140px\] sm:px-2"/)
-    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><div class="mt-\[3px\] flex min-w-0[^"]*"><bdi class="min-w-0 truncate" dir="auto">Cafe Nadi<\/bdi>/)
+    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><bdi class="mt-\[3px\] block min-w-0 truncate[^"]*" dir="auto">Cafe Nadi<\/bdi><div class="mt-0\.5 flex min-w-0 items-start/)
     expect(html).toMatch(/<svg [^>]*class="lucide lucide-map-pin/)
   })
 })
@@ -76,12 +76,8 @@ describe('IconFrame', () => {
     expect(renderToStaticMarkup(createElement(IconFrame, { icon: Gift, tone: 'success' }))).toContain('border-emerald-200/70 bg-emerald-50 text-emerald-600')
   })
 
-  it('has replaced the solid blue tiles on /olim and /business', () => {
-    for (const file of ['app/olim/page.tsx', 'app/business/page.tsx']) {
-      expect(read(file)).not.toMatch(/rounded-(xl|2xl|full) bg-(brand|emerald-600) text-white/)
-    }
-    expect(read('app/olim/page.tsx')).not.toContain('fa-solid')
-    expect(read('app/olim/page.tsx')).not.toContain('olim_free_note')
+  it('has replaced the solid blue tiles on /business', () => {
+    expect(read('app/business/page.tsx')).not.toMatch(/rounded-(xl|2xl|full) bg-(brand|emerald-600) text-white/)
   })
 })
 
@@ -105,10 +101,10 @@ describe('the hamburger', () => {
 })
 
 describe("what's inside: lifestyle lines, no counts", () => {
-  const PILLAR_KEYS = ['dining', 'lifestyle', 'experiences', 'community'] as const
+  const PILLAR_KEYS = ['dining', 'lifestyle', 'experiences'] as const
 
   it('links each pillar to its perks without counting them', () => {
-    expect(VALUE_PILLARS.map(pillarHref)).toEqual([categoryHref('Restaurants and Cafes'), '/categories', '/categories', '/olim'])
+    expect(VALUE_PILLARS.map(pillarHref)).toEqual([categoryHref('Restaurants and Cafes'), '/categories', '/categories'])
     // Only real categories.
     for (const pillar of VALUE_PILLARS) for (const c of pillar.categories) expect(BUSINESS_CATEGORIES).toContain(c)
     // The showcase no longer carries per-category counts.
@@ -122,9 +118,9 @@ describe("what's inside: lifestyle lines, no counts", () => {
     for (const key of PILLAR_KEYS) {
       expect(html).toContain(`>${esc(t[`vp_${key}_title`])}</h3><p class="mt-1 line-clamp-2 text-meta leading-snug text-slate-500">${esc(t[`vp_${key}_desc`])}</p>`)
     }
-    expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl border-sky-200\/60 bg-brandTint text-brand">/g)).toHaveLength(4)
-    for (const icon of ['utensils-crossed', 'ticket', 'compass', 'heart-handshake']) expect(html).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}`))
-    expect(html.match(/lucide-arrow-right[^"]*rtl:-scale-x-100/g)).toHaveLength(4)
+    expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl border-sky-200\/60 bg-brandTint text-brand">/g)).toHaveLength(3)
+    for (const icon of ['utensils-crossed', 'ticket', 'compass']) expect(html).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}`))
+    expect(html.match(/lucide-arrow-right[^"]*rtl:-scale-x-100/g)).toHaveLength(3)
     expect(html).not.toContain('bg-emerald-500')
     // No "14 perks available" line, in whichever order the language puts the number.
     const countWords = t.cats_perks_count.split('{count}').map((part) => part.trim()).sort((a, b) => b.length - a.length)[0]

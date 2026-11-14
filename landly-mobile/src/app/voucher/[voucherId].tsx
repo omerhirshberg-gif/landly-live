@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
 import { formatLongDate } from '@shared/format'
 import { voucherDestination } from '@shared/member/voucherDestination'
+import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
 import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
 import { offerTextSources } from '@shared/offers/offerText'
@@ -15,6 +16,7 @@ import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
 import LineIcon from '../../components/LineIcon'
 import NavigationButtons from '../../components/NavigationButtons'
+import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '../../components/PerkReach'
 import VoucherCover from '../../components/VoucherCover'
 import VoucherTicket from '../../components/VoucherTicket'
 import ScreenHeader from '../../components/ScreenHeader'
@@ -87,6 +89,16 @@ export default function VoucherScreen() {
                       </View>
                     )}
                   </View>
+                  {!destination && !place && locationNoticeKind(voucher) !== null && (
+                    <View style={styles.address}>
+                      <PerkReachLine offer={voucher} />
+                    </View>
+                  )}
+                  {!destination && !place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
+                    <View style={styles.stores}>
+                      <ParticipatingChains offer={voucher} guide={false} />
+                    </View>
+                  )}
                   {!!place && (
                     <View style={styles.address}>
                       <LineIcon name="pin" size={14} color={colors.textFaint} strokeWidth={1.75} />
@@ -126,6 +138,8 @@ export default function VoucherScreen() {
 
           <View style={styles.panel}>
             <AppText style={styles.howTitle} accessibilityRole="header">{t('redeem_how_title')}</AppText>
+            {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
+            {voucher.perkScope === 'multi_chain' && <View style={styles.guideBlock}><RedemptionGuide offer={voucher} /></View>}
             {(() => {
               const steps = redemptionSteps(voucher.redemptionMethod, instructions.text, t)
               // Numbers only for the merchant's own multi-line instructions, where order matters.
@@ -170,6 +184,8 @@ const styles = StyleSheet.create({
   methodChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.brandTint, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 4 },
   methodText: { fontSize: 12, fontWeight: '600', color: colors.brand },
   validityRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stores: { marginTop: 12 },
+  guideBlock: { marginBottom: 14 },
   address: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 14 },
   addressText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.textMuted },
   nav: { marginTop: 12 },

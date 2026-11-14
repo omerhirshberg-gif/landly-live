@@ -43,7 +43,7 @@ describe('time-of-day greeting', () => {
     expect(translations.he.greet_night).toBe('לילה טוב, {name}')
     expect(translations.ru.greet_night).toBe('Доброй ночи, {name}')
     // English says "Good night" from 22:00 (the website's Home greeting asked for it); French keeps "Bonsoir", a goodbye in "Bonne nuit".
-    expect(translations.en.greet_night).toBe('Good night, {name}')
+    expect(translations.en.greet_night).toBe('Good night, {name}!')
     expect(translations.en.greet_night_noName).toBe('Good night')
     expect(translations.fr.greet_night).toBe('Bonsoir, {name}')
     expect(translations.he.applock_unlock).toBe('כניסה')

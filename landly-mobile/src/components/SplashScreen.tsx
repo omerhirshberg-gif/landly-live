@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, {
   cubicBezier,
   Easing,
@@ -140,12 +140,22 @@ export default function SplashScreen({
   // The native launch screen (expo-splash-screen, app.json) stays up until
   // the splash has drawn its first frame on the same canvas colour, then
   // fades: the intro starts from it, never from a blank or white flash.
+  // The intro is held at 0% (`go`) until the native splash has been told to
+  // hide and two frames have passed, so it plays from its first frame on a
+  // visible screen, not while the cold start's first render is still covered.
+  // The web has no native splash: it starts at once.
   const nativeHidden = useRef(false)
+  const [go, setGo] = useState(Platform.OS === 'web')
+  const goFrames = useRef<number[]>([])
   const hideNativeSplash = useCallback(() => {
     if (nativeHidden.current) return
     nativeHidden.current = true
     NativeSplash.hide()
+    goFrames.current[0] = requestAnimationFrame(() => {
+      goFrames.current[1] = requestAnimationFrame(() => setGo(true))
+    })
   }, [])
+  useEffect(() => () => goFrames.current.forEach(cancelAnimationFrame), [])
 
   useEffect(() => {
     if (!ready || !introDone || started.current) return
@@ -261,7 +271,7 @@ export default function SplashScreen({
       pointerEvents={phase === 'splash' ? 'auto' : 'none'}
       onLayout={hideNativeSplash}
       accessibilityRole="progressbar"
-      accessibilityLabel="Landly"
+      accessibilityLabel="GoLandly"
     >
       <Animated.View style={[styles.backdrop, backdropStyle]} />
 
@@ -277,7 +287,7 @@ export default function SplashScreen({
         }
       >
         <Animated.View style={heroStyle}>
-          <BrandHero intro onIntroDone={handleIntroDone} sloganFade={sloganFade} />
+          <BrandHero intro go={go} onIntroDone={handleIntroDone} sloganFade={sloganFade} />
         </Animated.View>
       </View>
 

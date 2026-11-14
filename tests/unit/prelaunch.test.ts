@@ -280,7 +280,7 @@ describe('sharing', () => {
     for (const value of [undefined, '', 'javascript:alert(1)', 'http://chat.whatsapp.com/x', 'not a url']) expect(httpsLink(value, fallback)).toBe(fallback)
     expect(httpsLink('https://chat.whatsapp.com/x', fallback)).toBe('https://chat.whatsapp.com/x')
   })
-  it('points at the Landly accounts by default', () => {
+  it('points at the GoLandly accounts by default', () => {
     expect(INSTAGRAM_URL).toBe('https://www.instagram.com/golandly/')
     expect(FACEBOOK_URL).toBe('https://www.facebook.com/golandly/')
     expect(WHATSAPP_COMMUNITY_URL).toBe('https://chat.whatsapp.com/GC9Ais2kDVYKwRQ9rHVYKM')
@@ -390,7 +390,7 @@ describe('the five languages', () => {
       expect(copy.legal).toContain('{privacy}')
     }
   })
-  it.each(['Landly', 'WhatsApp'])('names %s in every language', (name) => {
+  it.each(['GoLandly', 'WhatsApp'])('names %s in every language', (name) => {
     for (const lang of PRELAUNCH_LANGS) expect(PRELAUNCH_COPY[lang].pillarsTitle + PRELAUNCH_COPY[lang].phone).toContain(name === 'WhatsApp' && lang === 'he' ? 'וואטסאפ' : name)
   })
   it('has the agreed English and Hebrew wording', () => {
@@ -399,12 +399,12 @@ describe('the five languages', () => {
       heroSub: 'Free to join. Launching January 1, 2027',
       dealsBadge: 'Real local deals',
       submit: 'Reserve my spot',
-      storyBody: 'Landly was started by two Israeli reservists who want to help newcomers find their feet and discover great local businesses.',
+      storyBody: 'GoLandly was started by two Israeli reservists who want to help newcomers find their feet and discover great local businesses.',
       foundingBody: 'The first 1,000 members get Founding Member status and first access to every new deal.',
-      communityTitle: 'Join the Landly WhatsApp Community',
+      communityTitle: 'Join the GoLandly WhatsApp Community',
       communityBody: 'Get direct launch announcements, meet other newcomers, and get instant updates.',
     })
-    expect(PRELAUNCH_COPY.he).toMatchObject({ launchDate: 'השקה רשמית: 1 בינואר 2027', dealsBadge: 'הטבות מקומיות בלעדיות', communityTitle: 'הצטרפו לקהילת הוואטסאפ של Landly' })
+    expect(PRELAUNCH_COPY.he).toMatchObject({ launchDate: 'השקה רשמית: 1 בינואר 2027', dealsBadge: 'הטבות מקומיות בלעדיות', communityTitle: 'הצטרפו לקהילת הוואטסאפ של GoLandly' })
   })
   it('gives every language five FAQ items, and the same launch year', () => {
     for (const lang of PRELAUNCH_LANGS) {
@@ -486,7 +486,7 @@ describe('the page', () => {
     expect(html(lang)).toContain(PRELAUNCH_COPY[lang].heroCta)
     expect(html(lang).match(/<h1/g)).toHaveLength(1)
   })
-  it.each(PRELAUNCH_LANGS)('leads nowhere but the form, the legal pages, the Landly accounts and email (%s)', (lang) => {
+  it.each(PRELAUNCH_LANGS)('leads nowhere but the form, the legal pages, the GoLandly accounts and email (%s)', (lang) => {
     const hrefs = [...new Set([...html(lang).matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]))].sort()
     expect(hrefs).toEqual(['#join-form', '/privacy', '/terms', 'https://chat.whatsapp.com/GC9Ais2kDVYKwRQ9rHVYKM', 'https://www.facebook.com/golandly/', 'https://www.instagram.com/golandly/', 'mailto:contact@golandly.com'])
   })

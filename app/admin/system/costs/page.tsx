@@ -7,7 +7,7 @@ import Alert from '@/components/admin/Alert'
 import Card, { CardSkeletons } from '@/components/admin/Card'
 import PageHeader from '@/components/admin/PageHeader'
 import { ButtonSpinner } from '@/components/admin/FormSection'
-import { ADMIN_INPUT, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import { ADMIN_INPUT, ADMIN_SELECT, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import UsageBreakdown from '@/components/admin/usage/UsageBreakdown'
 import UsageSummary from '@/components/admin/usage/UsageSummary'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
@@ -132,7 +132,7 @@ export default function UsageCostsPage() {
               </label>
               <select
                 id="usage-month"
-                className={`${ADMIN_INPUT} min-w-0 flex-1 sm:w-48 sm:flex-none`}
+                className={`${ADMIN_SELECT} min-w-0 flex-1 sm:w-48 sm:flex-none`}
                 value={report?.month ?? ''}
                 disabled={!report}
                 onChange={(event) => setMonth(event.target.value)}

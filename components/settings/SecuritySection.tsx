@@ -59,15 +59,16 @@ export default function SecuritySection({ user }: { user: User }) {
 
       <form className="space-y-4" onSubmit={handleChangePassword}>
         <div>
-          <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_current_password_label')}</label>
-          <input type="password" required className="inp" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+          <label htmlFor="security-current-password" className="mb-1.5 block text-xs font-semibold text-slate-600">{t('profile_current_password_label')}</label>
+          <input id="security-current-password" type="password" required className="inp-consumer" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
         </div>
         <div>
-          <label className="block mb-1.5 text-sm font-bold text-slate-700">{t('profile_new_password_label')}</label>
+          <label htmlFor="security-new-password" className="mb-1.5 block text-xs font-semibold text-slate-600">{t('profile_new_password_label')}</label>
           <input
+            id="security-new-password"
             type="password"
             required
-            className="inp"
+            className="inp-consumer"
             autoComplete="new-password"
             aria-invalid={weak || undefined}
             aria-describedby={weak ? 'new-password-weak' : undefined}

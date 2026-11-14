@@ -104,7 +104,7 @@ export function firstInvalidSignUpField(errors: SignUpFieldErrors): SignUpField 
 // ── Phone ───────────────────────────────────────────────────────────────
 export const DEFAULT_COUNTRY: CountryCode = 'IL'
 
-// Listed first in the picker: where most Landly members come from.
+// Listed first in the picker: where most GoLandly members come from.
 const PINNED: readonly CountryCode[] = ['IL', 'US', 'GB', 'FR', 'RU', 'UA', 'CA', 'AR', 'BR', 'DE', 'ES', 'AU', 'ZA']
 
 export interface Country {

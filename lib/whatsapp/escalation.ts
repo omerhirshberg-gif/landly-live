@@ -32,15 +32,15 @@ export function escalationEmail({ waId, lang, origin, name, uid, email, inquiry,
     rows: [
       { label: 'Topic', value: INQUIRY_CATEGORY_LABELS[category] },
       { label: 'Name', value: name || '(not shared)' },
-      { label: 'Support inbox', value: 'Open the chat in Landly Admin', href: `${origin}/admin/support?c=${waId}` },
+      { label: 'Support inbox', value: 'Open the chat in GoLandly Admin', href: `${origin}/admin/support?c=${waId}` },
       { label: 'WhatsApp', value: `+${waId}`, href: `https://wa.me/${waId}` },
-      { label: 'Member UID', value: uid ?? 'No Landly account matches this number' },
+      { label: 'Member UID', value: uid ?? 'No GoLandly account matches this number' },
       ...(email ? [{ label: 'Email', value: email, href: `mailto:${email}` }] : []),
       { label: 'Language', value: lang },
     ],
     message: inquiry || '(They answered with a photo, voice note or other attachment; open the chat to see it.)',
     replyName: who,
-    source: 'the Landly WhatsApp support bot',
+    source: 'the GoLandly WhatsApp support bot',
     // Without a known email, Reply comes back to the team inbox; the links are the way to answer.
     replyTo: email || SUPPORT_EMAIL,
   }

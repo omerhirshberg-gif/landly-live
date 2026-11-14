@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       return NextResponse.json({ error: 'We could not save this securely right now. Please try again later.' }, { status: 503, headers: NO_STORE })
     }
     if ((err as { code?: string })?.code === 'auth/email-already-exists') {
-      return NextResponse.json({ error: 'An account with this email already exists. Contact Landly to continue.' }, { status: 409, headers: NO_STORE })
+      return NextResponse.json({ error: 'An account with this email already exists. Contact GoLandly to continue.' }, { status: 409, headers: NO_STORE })
     }
     console.error('Onboarding failed', err)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500, headers: NO_STORE })

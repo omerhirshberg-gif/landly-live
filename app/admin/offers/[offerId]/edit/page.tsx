@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { formatIsraeliDate } from '@/lib/admin/formatDate'
-import OfferFormFields, { offerFormTabs, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { offerFormTabs, voucherTermsPayload, type OfferFormValue, type StoresMode } from '@/components/admin/OfferFormFields'
 import { useAdminCrumbs, useAdminParent } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
@@ -22,6 +22,19 @@ import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 import { manualOverridesOf } from '@/lib/offers/offerText'
 import { useAdminT } from '@/lib/admin/translations'
 
+/** Which store list the edit form offers: a multi-chain voucher's chains, a Multipass perk's optional stores, or a nationwide local offer's. */
+function storesModeOf(offer: OfferDocument, form: OfferFormValue): StoresMode | undefined {
+  if (offer.perkScope === 'multi_chain') return 'chains'
+  if (offer.fulfillmentType === 'multipass_pool') return 'multipass'
+  return form.isNationwide ? 'nationwide' : undefined
+}
+
+/** A perk with no business edits its issuer's name; a multi-chain pass its redemption guide too. */
+function issuerFieldsOf(offer: OfferDocument): 'brand' | 'chain' | undefined {
+  if (offer.fulfillmentType !== 'multipass_pool' && offer.perkScope !== 'multi_chain') return undefined
+  return offer.perkScope === 'multi_chain' ? 'chain' : 'brand'
+}
+
 function toFormValue(offer: OfferDocument): OfferFormValue {
   return {
     title: offer.title,
@@ -33,6 +46,12 @@ function toFormValue(offer: OfferDocument): OfferFormValue {
     totalQuantity: offer.totalQuantity !== null ? String(offer.totalQuantity) : '',
     unlimited: offer.totalQuantity === null,
     isBestseller: offer.isBestseller,
+    isNationwide: offer.isNationwide === true,
+    participatingChains: offer.participatingChains ?? [],
+    participatingPlaces: offer.participatingPlaces ?? [],
+    brandName: offer.brandName ?? '',
+    guideHe: offer.universalRedemptionGuide?.he ?? '',
+    guideEn: offer.universalRedemptionGuide?.en ?? '',
     validityDays: String(offer.validityDays),
     redemptionTerms: offer.redemptionTerms,
     redemptionMethod: offer.redemptionMethod,
@@ -90,7 +109,7 @@ function EditOfferForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form) return
+    if (!form || !offer) return
     const originalPrice = Number(form.originalPrice)
     const offerPrice = Number(form.offerPrice)
     const priceError = validateOfferPrices(originalPrice, offerPrice)
@@ -115,8 +134,12 @@ function EditOfferForm() {
             expiryDate: form.expiryDate || null,
             totalQuantity: form.unlimited || !form.totalQuantity ? null : Number(form.totalQuantity),
             isBestseller: form.isBestseller,
+            isNationwide: form.isNationwide,
+            participatingChains: form.participatingChains,
+            participatingPlaces: form.participatingPlaces,
             ...voucherTermsPayload(form),
           },
+          ...(issuerFieldsOf(offer) ? { perk: { brandName: form.brandName, ...(offer.perkScope === 'multi_chain' ? { universalRedemptionGuide: { he: form.guideHe, en: form.guideEn } } : {}) } } : {}),
           translationOverrides: form.translationOverrides,
         }),
       })
@@ -200,12 +223,12 @@ function EditOfferForm() {
       </FormSection>
 
       {form && (
-        <form className="mt-6" onSubmit={handleSubmit} {...tabs.formProps}>
+        <form className="mt-6 pb-28" onSubmit={handleSubmit} {...tabs.formProps}>
           <FormTabs state={tabs} label={t('editOffer.sections')} />
           {offerFormTabs(t).map((tab) => (
             <TabPanel key={tab.id} state={tabs} tab={tab.id}>
               <FormSection icon={tab.icon} title={tab.label} description={t('editOffer.tabDesc')}>
-                <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} section={tab.id} />
+                <OfferFormFields value={form} onChange={updateForm} translations={offer.translations} section={tab.id} showNationwide={offer.fulfillmentType === 'direct_merchant' && offer.perkScope !== 'multi_chain'} storesField={storesModeOf(offer, form)} issuerFields={issuerFieldsOf(offer)} />
               </FormSection>
             </TabPanel>
           ))}

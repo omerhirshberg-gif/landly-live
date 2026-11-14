@@ -57,7 +57,7 @@ describe('consent text templates', () => {
     const he = translations.he
     const render = (s: string) => consentParts(s).map((p) => ('link' in p ? (p.link === 'terms' ? he.legal_terms_link : he.legal_privacy_link) : p.text)).join('')
     expect(render(he.signup_terms_agree)).toBe('אני מאשר/ת שמלאו לי 16 ומעלה ומאשר/ת את תנאי השימוש ומדיניות הפרטיות')
-    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google או Apple, הינך מאשר/ת שמלאו לך 16 ומעלה ואת תנאי השימוש ומדיניות הפרטיות של Landly.')
+    expect(render(he.auth_google_disclosure)).toBe('בהמשך ההרשמה עם Google או Apple, הינך מאשר/ת שמלאו לך 16 ומעלה ואת תנאי השימוש ומדיניות הפרטיות של GoLandly.')
   })
 
   it.each(LANGS)('every sign-up consent sentence states the 16+ age requirement (%s)', (lang) => {

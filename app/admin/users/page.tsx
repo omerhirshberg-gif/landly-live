@@ -28,7 +28,7 @@ import { ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import StatCard from '@/components/admin/StatCard'
 import { UserStatusBadge } from '@/components/admin/StatusBadge'
-import { ADMIN_INPUT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import { ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
 
 interface UsersResponse {
   users: AdminUserRow[]
@@ -248,7 +248,7 @@ function FilterSelect({ id, label, value, onChange, children }: { id: string; la
       <label htmlFor={id} className={ADMIN_LABEL}>
         {label}
       </label>
-      <select id={id} className={`${ADMIN_INPUT} cursor-pointer`} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select id={id} className={`${ADMIN_SELECT}`} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value={ANY}>{t('users.all')}</option>
         {children}
       </select>

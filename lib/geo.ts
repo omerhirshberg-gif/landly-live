@@ -32,6 +32,19 @@ export interface GeoAddress {
   fetchedAt?: string
 }
 
+/**
+ * One branch or mall that honours a perk, picked from Google Places in the admin: its name and short address
+ * in each language as Google writes them (never machine-translated) and its exact position, which the Waze and
+ * Google Maps links use. Stored on offers, copied to orders and vouchers; `participatingChains` keeps the names.
+ */
+export interface ParticipatingPlace {
+  placeId: string
+  names: LocalizedName
+  address?: LocalizedName
+  lat: number
+  lng: number
+}
+
 /** The address lines an offer (and its orders and vouchers) copies from its business. */
 export interface PlaceSnapshot {
   placeId: string
@@ -106,6 +119,31 @@ export function parseGeoAddress(raw: unknown): GeoAddress | null {
     ...(fetchedAt ? { fetchedAt } : {}),
   }
 }
+
+export const MAX_PARTICIPATING_PLACES = 40
+
+/** The stored (or admin-submitted) branches: usable ones only, duplicates by place id dropped, at most 40. */
+export function parseParticipatingPlaces(raw: unknown): ParticipatingPlace[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: ParticipatingPlace[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const data = item as Record<string, unknown>
+    const coords = parseCoordinates(data)
+    const placeId = typeof data.placeId === 'string' ? data.placeId.trim() : ''
+    const names = parseLocalizedName(data.names)
+    if (!coords || !placeId || placeId.length > 512 || seen.has(placeId) || Object.keys(names).length === 0) continue
+    seen.add(placeId)
+    const address = parseLocalizedName(data.address)
+    out.push({ placeId, names, ...(Object.keys(address).length > 0 ? { address } : {}), ...coords })
+    if (out.length >= MAX_PARTICIPATING_PLACES) break
+  }
+  return out
+}
+
+/** The name a branch is listed under in `participatingChains`: Hebrew, the source language of the list, else English, else any. */
+export const placeChainName = (place: Pick<ParticipatingPlace, 'names'>): string => place.names.he || place.names.en || Object.values(place.names).find(Boolean) || ''
 
 /** An offer's (order's, voucher's) copy of its business's address lines, or null. */
 export function parsePlaceSnapshot(raw: unknown): PlaceSnapshot | null {

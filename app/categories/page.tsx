@@ -21,7 +21,7 @@ import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery, offerDistance
 const NEARBY_MAX = 12
 
 // The perks catalog. At rest (All, no search, Recommended) it's the
-// overview: the search row (no chips or Sort), the New on Landly and Best
+// overview: the search row (no chips or Sort), the New on GoLandly and Best
 // Sellers rails (OfferTileRail, real perks still claimable only), then the
 // full category grid, a soft hairline (SectionDivider) between
 // each block, as on the home page. A search, a tapped tile (?cat=) or a

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 
 // A layout with a plain title would clear the template for the pages below
 // it, so it re-declares the namespace's template.
-export const metadata: Metadata = { title: { default: 'Reset Password', template: '%s | Landly' } }
+export const metadata: Metadata = { title: { default: 'Reset Password', template: '%s | GoLandly' } }
 
 // /reset-password and /reset-password/success are client components, so their
 // viewport lives here. Same as

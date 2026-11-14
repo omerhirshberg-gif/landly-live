@@ -13,6 +13,7 @@ export const colors = {
   // Lighter end of the monogram avatar gradient (brand → brandDark after it).
   brandGradientStart: '#3b6fe0',
   white: '#ffffff',
+  badgeRed: '#ff3b30', // the iOS notification badge red (Profile tab "1" on web, avatar badge)
   background: '#f8fafc', // slate-50, the canvas behind cards
   border: '#e2e8f0', // slate-200
   borderLight: '#f1f5f9', // slate-100

@@ -440,7 +440,7 @@ export const LANGUAGE_NAMES: Record<Lang, string> = {
 }
 
 /** The first answer to a chat with no language picked, always in English. */
-export const WELCOME_BODY = 'Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:'
+export const WELCOME_BODY = 'Hi! 👋 Welcome to GoLandly.\nPlease choose your language to continue:'
 export const WELCOME_LIST_BUTTON = 'Choose language'
 
 /**

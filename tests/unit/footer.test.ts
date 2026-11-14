@@ -17,10 +17,10 @@ function render(lang: Lang) {
 const LANGS = ['en', 'ru', 'es', 'fr', 'he'] as const
 
 describe('footer', () => {
-  it.each(LANGS)('names the company plainly as Landly, never Ltd. (%s)', (lang) => {
+  it.each(LANGS)('names the company plainly as GoLandly, never Ltd. (%s)', (lang) => {
     const html = render(lang)
     expect(html).not.toMatch(/Ltd|בע"מ|בע״מ/)
-    expect(html).toContain(`© ${new Date().getFullYear()} <bdi>Landly</bdi>. ${translations[lang].footer_copyright_notice}`)
+    expect(html).toContain(`© ${new Date().getFullYear()} <bdi>GoLandly</bdi>. ${translations[lang].footer_copyright_notice}`)
   })
 
   it.each(LANGS)('links About Us, then what the navbar does not — FAQ, legal and the business portal (%s)', (lang) => {

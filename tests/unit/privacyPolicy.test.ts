@@ -10,7 +10,7 @@ const text = html.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&apos;/g, "'").replac
 
 describe('privacy policy', () => {
   it('identifies the company, contact and date', () => {
-    expect(text).toContain('operated by Landly , Tel Aviv-Yafo')
+    expect(text).toContain('operated by GoLandly , Tel Aviv-Yafo')
     expect(text).not.toContain('Ltd')
     expect(text).toContain('Tel Aviv-Yafo, Israel')
     expect(html).toContain('href="mailto:contact@golandly.com"')
@@ -20,7 +20,7 @@ describe('privacy policy', () => {
   it('discloses Google user data, Limited Use and the no-sale rule', () => {
     expect(text).toMatch(/your name;.*your email address.*your profile picture/)
     expect(text).toContain(
-      "Landly's use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy , including the Limited Use requirements."
+      "GoLandly's use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy , including the Limited Use requirements."
     )
     expect(html).toContain('href="https://developers.google.com/terms/api-services-user-data-policy"')
     expect(text).toMatch(/never sell, rent or trade Google user data/)

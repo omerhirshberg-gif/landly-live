@@ -87,7 +87,7 @@ export default function CountryOfOriginList({
           autoCapitalize="none"
           clearButtonMode="while-editing"
           returnKeyType="search"
-          style={[styles.search, { textAlign: isRtl ? 'right' : 'left' }]}
+          style={[styles.search, { textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' }]}
         />
       </View>
       {!!error && <AppText style={styles.error}>{error}</AppText>}

@@ -14,7 +14,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
     // Android 13+ shows the permission prompt only once a channel exists.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'Landly',
+        name: 'GoLandly',
         importance: Notifications.AndroidImportance.DEFAULT,
       })
     }

@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { adminFetch } from '@/lib/admin/adminSession'
-import OfferFormFields, { EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
+import OfferFormFields, { NationwideField, StoresField, EMPTY_OFFER_TRANSLATIONS, EMPTY_VOUCHER_TERMS, voucherTermsPayload, type OfferFormValue } from '@/components/admin/OfferFormFields'
 import { useAdminCrumbs, useAdminParent } from '@/components/admin/AdminCrumbContext'
 import Alert from '@/components/admin/Alert'
 import BackLink from '@/components/admin/BackLink'
@@ -14,7 +14,7 @@ import BidiText from '@/components/admin/BidiText'
 import { ButtonSpinner, FormSection, StickyActionBar } from '@/components/admin/FormSection'
 import PageHeader from '@/components/admin/PageHeader'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
-import { BusinessPicker, EMPTY_MULTIPASS_SCOPE, FulfillmentPicker, MultipassPerkFields, MultipassScopePicker, TermsFields, WizardStepper, type MultipassScopeValue, Fulfillment, type WizardBusiness } from '@/components/admin/offers/WizardParts'
+import { BusinessPicker, DirectScopePicker, EMPTY_MULTIPASS_SCOPE, FulfillmentPicker, MultipassPerkFields, MultipassScopePicker, TermsFields, WizardStepper, type MultipassScopeValue, Fulfillment, type WizardBusiness } from '@/components/admin/offers/WizardParts'
 import WizardCodeDropzone, { type WizardCodes } from '@/components/admin/offers/WizardCodeDropzone'
 import { useAdminT } from '@/lib/admin/translations'
 import { isCommissionRate, type PaymentTerms } from '@/lib/merchants/terms'
@@ -31,6 +31,12 @@ const emptyOffer: OfferFormValue = {
   totalQuantity: '',
   unlimited: false,
   isBestseller: false,
+  isNationwide: false,
+  participatingChains: [],
+  participatingPlaces: [],
+  brandName: '',
+  guideHe: '',
+  guideEn: '',
   ...EMPTY_VOUCHER_TERMS,
   ...EMPTY_OFFER_TRANSLATIONS,
 }
@@ -51,6 +57,8 @@ function NewOfferForm() {
   const [maxReached, setMaxReached] = useState(1)
   const [selectedUid, setSelectedUid] = useState<string | null>(null)
   const [fulfillment, setFulfillment] = useState<Fulfillment>('direct_merchant')
+  // A local perk that is a multi-chain pass: an issuer and its chains instead of a business.
+  const [chainPass, setChainPass] = useState(false)
   const [scope, setScope] = useState<MultipassScopeValue>(EMPTY_MULTIPASS_SCOPE)
   const [offer, setOffer] = useState<OfferFormValue>(emptyOffer)
   const [commission, setCommission] = useState('')
@@ -60,7 +68,7 @@ function NewOfferForm() {
   const [codes, setCodes] = useState<WizardCodes | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string; translationWarning?: string | null; warnings: string[]; multipass: boolean; codesAdded: number } | null>(null)
+  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string; translationWarning?: string | null; warnings: string[]; multipass: boolean; noBusiness: boolean; codesAdded: number } | null>(null)
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
@@ -101,28 +109,31 @@ function NewOfferForm() {
   const updateOffer = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setOffer((prev) => ({ ...prev, [key]: value }))
 
-  const termsChanged = !!selected && fulfillment === 'direct_merchant' && (
+  const multipass = fulfillment === 'multipass_pool'
+  const manualChain = !multipass && chainPass
+  // A Multipass perk and a manual multi-chain pass have no business: whatever was picked for a local one is ignored.
+  const noBusiness = multipass || manualChain
+  const perkScope = manualChain ? 'multi_chain' : scope.perkScope
+  const termsChanged = !!selected && !noBusiness && (
     (commission === '' ? null : Number((Number(commission) / 100).toFixed(4))) !== selected.commissionRate ||
     (paymentTerms || null) !== selected.paymentTerms
   )
-  const multipass = fulfillment === 'multipass_pool'
-  // A Multipass perk has no business: whatever was picked for a local one is ignored.
-  const business = multipass ? null : selected
+  const business = noBusiness ? null : selected
 
   // What stops a step from being left, or null when it is complete.
   const problemWith = (n: number): string | null => {
     if (n >= 1) {
-      if (multipass) {
+      if (noBusiness) {
         if (!scope.brandName.trim()) return t('wizard.brandNeeded')
         if (!scope.category) return t('wizard.categoryNeeded')
-        if (scope.perkScope === 'multi_chain' && scope.chains.length === 0) return t('wizard.chainsNeeded')
+        if (perkScope === 'multi_chain' && scope.chains.length === 0) return t('wizard.chainsNeeded')
       } else if (!selected) return t('wizard.pickBusiness')
       if (!offer.title.trim()) return t('wizard.fixTitle')
     }
     if (n >= 2) {
       const priceError = validateOfferPrices(Number(offer.originalPrice), Number(offer.offerPrice))
       if (priceError) return priceError
-      if (!multipass && commission !== '' && !isCommissionRate(Number((Number(commission) / 100).toFixed(4)))) return t('wizard.commissionHint')
+      if (!noBusiness && commission !== '' && !isCommissionRate(Number((Number(commission) / 100).toFixed(4)))) return t('wizard.commissionHint')
       if (termsChanged && (commission === '' || !paymentTerms)) return t('wizard.commissionHint')
     }
     if (n >= 3 && multipass) {
@@ -151,7 +162,7 @@ function NewOfferForm() {
 
   const submit = async () => {
     const problem = problemWith(4)
-    if (problem || (!multipass && !selected)) {
+    if (problem || (!noBusiness && !selected)) {
       setError(problem)
       return
     }
@@ -162,8 +173,8 @@ function NewOfferForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(multipass
-            ? { perk: { perkScope: scope.perkScope, brandName: scope.brandName, category: scope.category, ...(scope.perkScope === 'multi_chain' ? { participatingChains: scope.chains, universalRedemptionGuide: { he: scope.guideHe, en: scope.guideEn } } : {}) } }
+          ...(noBusiness
+            ? { perk: { perkScope, brandName: scope.brandName, category: scope.category, participatingChains: scope.chains, participatingPlaces: scope.places, ...(perkScope === 'multi_chain' ? { universalRedemptionGuide: { he: scope.guideHe, en: scope.guideEn } } : {}) } }
             : { businessUid: selected!.uid }),
           offer: {
             title: offer.title,
@@ -174,6 +185,7 @@ function NewOfferForm() {
             expiryDate: offer.expiryDate || null,
             totalQuantity: multipass || offer.unlimited || !offer.totalQuantity ? null : Number(offer.totalQuantity),
             isBestseller: offer.isBestseller,
+            ...(noBusiness ? {} : { isNationwide: offer.isNationwide, participatingChains: offer.isNationwide ? offer.participatingChains : [], participatingPlaces: offer.isNationwide ? offer.participatingPlaces : [] }),
             ...voucherTermsPayload(offer),
           },
           translationOverrides: offer.translationOverrides,
@@ -198,7 +210,7 @@ function NewOfferForm() {
         }).catch(() => null)
         if (!termsRes?.ok) warnings.push(t('wizard.termsFailed', { error: (await termsRes?.json().catch(() => null))?.error ?? t('wizard.somethingWrong') }))
       }
-      setResult({ ...data, warnings, multipass, codesAdded: data.codes?.added ?? 0 })
+      setResult({ ...data, warnings, multipass, noBusiness, codesAdded: data.codes?.added ?? 0 })
     } catch {
       setError(t('wizard.somethingWrong'))
       setSubmitting(false)
@@ -221,7 +233,7 @@ function NewOfferForm() {
           </div>
           <dl className="divide-y divide-[#E2E8F0]">
             <div className="px-5 py-4 sm:px-6">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{result.multipass ? t('wizard.brandName') : t('wizard.business')}</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{result.noBusiness ? t('wizard.brandName') : t('wizard.business')}</dt>
               <dd className="mt-1 font-semibold text-[#0B1B3D]">
                 <BidiText>{result.businessName}</BidiText>
               </dd>
@@ -293,7 +305,7 @@ function NewOfferForm() {
           if (step < 4) go(step + 1)
           else void submit()
         }}
-        className="space-y-6"
+        className="space-y-6 pb-28"
       >
         {step === 1 && (
           <Card>
@@ -304,13 +316,17 @@ function NewOfferForm() {
               <section aria-labelledby="wiz-sec-channel" className="space-y-5">
                 <h3 id="wiz-sec-channel" className="text-sm font-bold text-[#0B1B3D]">{t('wizard.sectionChannel')}</h3>
                 <FulfillmentPicker value={fulfillment} onChange={setFulfillment} />
+                {!multipass && <DirectScopePicker chain={chainPass} onChange={setChainPass} />}
                 {multipass && <MultipassScopePicker value={scope.perkScope} onChange={(perkScope) => setScope((prev) => ({ ...prev, perkScope }))} />}
-                {multipass && <p className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.multipassNoBusiness')}</p>}
+                {multipass && <p className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.multipassNoBusiness')} {t('wizard.multipassNavHidden')}</p>}
+                {manualChain && <p className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.chainNoBusiness')}</p>}
+                {!noBusiness && <NationwideField checked={offer.isNationwide} onChange={(v) => updateOffer('isNationwide', v)} />}
+                {!noBusiness && offer.isNationwide && <StoresField mode="nationwide" chains={offer.participatingChains} places={offer.participatingPlaces} onChange={(next) => { updateOffer('participatingChains', next.chains); updateOffer('participatingPlaces', next.places) }} />}
               </section>
               <section aria-labelledby="wiz-sec-perk" className="space-y-5 border-t border-[#E2E8F0] pt-8">
                 <h3 id="wiz-sec-perk" className="text-sm font-bold text-[#0B1B3D]">{t('wizard.sectionPerk')}</h3>
-                {multipass ? (
-                  <MultipassPerkFields value={scope} onChange={setScope} />
+                {noBusiness ? (
+                  <MultipassPerkFields value={{ ...scope, perkScope }} onChange={setScope} />
                 ) : (
                   <div>
                     <p className={ADMIN_LABEL}>{t('wizard.business')}</p>
@@ -318,7 +334,7 @@ function NewOfferForm() {
                     <BusinessPicker businesses={businesses} selected={selected} onSelect={setSelectedUid} />
                   </div>
                 )}
-                {business || multipass ? <OfferFormFields value={offer} onChange={updateOffer} section="basics" /> : null}
+                {business || noBusiness ? <OfferFormFields value={offer} onChange={updateOffer} section="basics" /> : null}
               </section>
             </div>
           </Card>
@@ -328,7 +344,7 @@ function NewOfferForm() {
           <FormSection icon="fa-shekel-sign" title={t('wizard.step2')}>
             <div className="space-y-8">
               <OfferFormFields value={offer} onChange={updateOffer} section="commercial" />
-              {!multipass && <TermsFields commission={commission} paymentTerms={paymentTerms} onCommission={setCommission} onPaymentTerms={setPaymentTerms} />}
+              {!noBusiness && <TermsFields commission={commission} paymentTerms={paymentTerms} onCommission={setCommission} onPaymentTerms={setPaymentTerms} />}
             </div>
           </FormSection>
         )}
@@ -387,7 +403,7 @@ function NewOfferForm() {
           >
             {step > 1 ? t('wizard.back') : t('common.cancel')}
           </button>
-          <button type="submit" disabled={submitting || (step === 1 && !multipass && !selected)} aria-busy={submitting} className={PRIMARY_BUTTON}>
+          <button type="submit" disabled={submitting || (step === 1 && !noBusiness && !selected)} aria-busy={submitting} className={PRIMARY_BUTTON}>
             {submitting && <ButtonSpinner />}
             {step < 4 ? t('wizard.next') : submitting ? t('wizard.creating') : t('wizard.create')}
           </button>

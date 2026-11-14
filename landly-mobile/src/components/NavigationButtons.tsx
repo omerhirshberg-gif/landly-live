@@ -1,6 +1,7 @@
-import { Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { nativeNavigationUrls, navigationLinks, type NavigationDestination } from '@shared/maps/navigation'
 import AppText from './AppText'
+import { openNavigation as open } from '../lib/openNavigation'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
@@ -11,15 +12,6 @@ import { colors } from '../theme'
 // scheme fails to open) the https link opens instead, which the store app or
 // the browser picks up. The web build opens the https link in a new tab.
 // Nothing when the business has no address.
-async function open(appUrl: string | undefined, webUrl: string) {
-  if (Platform.OS === 'web' || !appUrl) return Linking.openURL(webUrl).catch(() => {})
-  try {
-    await Linking.openURL(appUrl)
-  } catch {
-    await Linking.openURL(webUrl).catch(() => {})
-  }
-}
-
 // The official app marks (assets/icons, 144px copies of the website's
 // public/icons, so nothing is scaled up), each in its own container. Waze's mark
 // is a cyan tile to its corners, so it fills the button with no white around it;

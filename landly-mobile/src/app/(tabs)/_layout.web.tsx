@@ -1,5 +1,7 @@
 import { StyleSheet, View, type ColorValue } from 'react-native'
 import { Tabs } from 'expo-router/js-tabs'
+import { useAuth } from '@shared/firebase/useAuth'
+import { usePhoneVerificationNeeded } from '@shared/firebase/usePhoneVerificationNeeded'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import TabIcon, { type TabIconName } from '../../components/TabIcon'
 import { useLang } from '../../i18n/LangProvider'
@@ -18,6 +20,8 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 export default function TabsLayout() {
   const { t } = useLang()
   const { wishlistCount } = useWishlist()
+  const { user } = useAuth()
+  const needsPhone = usePhoneVerificationNeeded(user?.uid ?? null)
 
   return (
     <View style={styles.frame}>
@@ -46,7 +50,17 @@ export default function TabsLayout() {
             }}
           />
           <Tabs.Screen name="wallet" options={{ title: t('mobile_tab_wallet'), tabBarIcon: (props) => <Glyph name="pass" {...props} /> }} />
-          <Tabs.Screen name="profile" options={{ title: t('nav_profile'), tabBarIcon: (props) => <Glyph name="profile" {...props} /> }} />
+          <Tabs.Screen
+            name="profile"
+            options={{
+              title: t('nav_profile'),
+              // iOS's red "1" until the phone is verified (the card's ✕ doesn't hide it).
+              tabBarBadge: needsPhone ? '1' : undefined,
+              tabBarBadgeStyle: styles.phoneBadge,
+              tabBarAccessibilityLabel: needsPhone ? t('phone_nudge_badge_label') : undefined,
+              tabBarIcon: (props) => <Glyph name="profile" {...props} />,
+            }}
+          />
         </Tabs>
       </View>
     </View>
@@ -72,5 +86,13 @@ const styles = StyleSheet.create({
   icon: { marginBottom: 0 },
   item: { flex: 1, paddingTop: 4 },
   badge: { backgroundColor: colors.heart, color: colors.white, fontSize: 10, fontWeight: '700' },
+  phoneBadge: {
+    backgroundColor: colors.badgeRed,
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '700',
+    borderWidth: 1.5,
+    borderColor: colors.white,
+  },
   bar: { direction: 'ltr', backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border },
 })

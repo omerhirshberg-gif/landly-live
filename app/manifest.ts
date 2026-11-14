@@ -8,7 +8,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '@/lib/config'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: SITE_TITLE,
-    short_name: 'Landly',
+    short_name: 'GoLandly',
     description: SITE_DESCRIPTION,
     start_url: '/',
     scope: '/',

@@ -4,7 +4,7 @@ import { isOfferActive } from '@/lib/admin/offerStatus'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
 import { normalizeRedemptionTerms, normalizeValidityDays } from './voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
-import { frozenPerkScope } from '@/lib/offers/perkScope'
+import { belongsToBusiness, frozenNationwide, frozenPerkScope } from '@/lib/offers/perkScope'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
 
@@ -20,7 +20,7 @@ function isRestartable(order: DocumentData, uid: string, offerId: string, termin
   return order.status === 'pending' && order.userId === uid && order.offerId === offerId
     && order.terminal === terminal && order.currency === 'ILS'
     && order.tranzilaTxnId === null && order.paidAt === null && order.voucherId === null
-    && (order.fulfillmentType === 'multipass_pool' || isDocumentId(order.businessId)) && order.createdAt instanceof Timestamp
+    && (!belongsToBusiness(order) || isDocumentId(order.businessId)) && order.createdAt instanceof Timestamp
 }
 
 // A reload of this exact pending order: same member, offer, terminal, consistent price.
@@ -111,10 +111,11 @@ export async function initiateOrder(
     }
     const fulfillmentType = parseFulfillmentType(offer.fulfillmentType)
     if (fulfillmentType === 'multipass_pool' && !isDocumentId(offer.poolId)) throw new PaymentError('Offer has no valid inventory pool.')
-    // Only a local-business perk belongs to a business. A Multipass perk carries its brand instead,
-    // so it has no merchant to settle with and never appears in a business's portal or payouts.
+    // Only a local-business perk belongs to a business. A Multipass perk and a manual multi-chain pass carry
+    // their brand instead, so they have no merchant to settle with and never appear in a business's portal or payouts.
+    const hasBusiness = belongsToBusiness(offer)
     let terms: ReturnType<typeof parseFrozenTerms> = null
-    if (fulfillmentType === 'direct_merchant') {
+    if (hasBusiness) {
       if (!isDocumentId(offer.businessId)) throw new PaymentError('Offer has no valid business.')
       const business = await tx.get(db.collection('businesses').doc(offer.businessId))
       if (!business.exists) throw new PaymentError('Offer business no longer exists.')
@@ -131,7 +132,7 @@ export async function initiateOrder(
     const now = Timestamp.now()
     const newOrder = {
       userId: uid, offerId,
-      ...(fulfillmentType === 'direct_merchant' ? { businessId: offer.businessId } : frozenPerkScope(offer)),
+      ...(hasBusiness ? { businessId: offer.businessId, ...frozenNationwide(offer) } : frozenPerkScope(offer)),
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
       fulfillmentType, poolId: fulfillmentType === 'multipass_pool' ? offer.poolId : null,

@@ -19,6 +19,7 @@ import { PaymentError } from '@/lib/payments/paymentValidation'
 import { offerPlaceFields } from '@/lib/geo'
 import { parsePerkScopeFields } from '@/lib/offers/perkScope'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
+import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { parseBusinessTranslations } from '@/lib/business/businessText'
 import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 
@@ -26,7 +27,7 @@ interface RequestBody {
   /** A local-business perk's business. Absent for a Multipass perk, which has a brand instead. */
   businessUid?: string
   /** A Multipass perk's brand and scope (lib/offers/perkScope.ts), plus its category. */
-  perk?: { perkScope?: string; brandName?: string; participatingChains?: unknown; universalRedemptionGuide?: unknown; category?: string }
+  perk?: { perkScope?: string; brandName?: string; participatingChains?: unknown; participatingPlaces?: unknown; universalRedemptionGuide?: unknown; category?: string }
   offer: {
     title: string
     description: string
@@ -36,6 +37,9 @@ interface RequestBody {
     expiryDate: string | null
     totalQuantity: number | null
     isBestseller?: boolean
+    isNationwide?: boolean
+    participatingChains?: unknown
+    participatingPlaces?: unknown
     validityDays?: number
     redemptionTerms?: string
     redemptionMethod?: string
@@ -110,14 +114,19 @@ export async function POST(request: Request) {
   if (!body?.offer) return badRequest('Missing offer data.')
   const { offer } = body
   const multipass = !!body.pool
+  // A manual multi-chain pass is a direct perk with no business: its issuer's brand stands in, as for Multipass.
+  const manualChain = !multipass && body.perk?.perkScope === 'multi_chain'
+  const noBusiness = multipass || manualChain
   const scope = parsePerkScopeFields({
     fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
-    businessId: multipass ? undefined : body.businessUid,
-    ...(multipass ? { ...body.perk, businessId: body.businessUid } : {}),
+    businessId: noBusiness ? undefined : body.businessUid,
+    ...(noBusiness ? { ...body.perk, businessId: body.businessUid } : {}),
+    isNationwide: offer.isNationwide === true,
+    ...(noBusiness ? {} : { participatingChains: offer.participatingChains, participatingPlaces: offer.participatingPlaces }),
   })
   if (!scope.ok) return badRequest(scope.error)
   const category = body.perk?.category
-  if (multipass && !(BUSINESS_CATEGORIES as readonly string[]).includes(category ?? '')) return badRequest('Choose a category for a Multipass perk.')
+  if (noBusiness && !(BUSINESS_CATEGORIES as readonly string[]).includes(category ?? '')) return badRequest('Choose a category for this perk.')
 
   if (!offer.title || typeof offer.title !== 'string') return badRequest('Missing offer.title.')
   if (offer.totalQuantity !== null && (!Number.isInteger(offer.totalQuantity) || offer.totalQuantity < 1)) {
@@ -134,18 +143,20 @@ export async function POST(request: Request) {
   const redemption = parseOfferRedemption(offer)
   if (!redemption.ok) return badRequest(redemption.error)
 
-  // A Multipass perk has no business document: its brand name stands in for the business name.
+  // A Multipass perk and a manual multi-chain pass have no business document: the brand name stands in for the business name.
   let business: FirebaseFirestore.DocumentData = {}
-  if (!multipass) {
+  if (!noBusiness) {
     const businessSnap = await adminDb.collection('businesses').doc(scope.fields.businessId!).get()
     if (!businessSnap.exists) {
       return NextResponse.json({ error: 'Business not found.' }, { status: 404 })
     }
     business = businessSnap.data()!
   }
-  const displayName: string = multipass ? scope.fields.brandName! : business.businessName ?? ''
+  const displayName: string = noBusiness ? scope.fields.brandName! : business.businessName ?? ''
   const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), null, body.translationOverrides)
   if (!translated.ok) return badRequest(translated.error)
+  // The brand's name in the other languages, when it is written in Hebrew letters (a Latin-script brand stays as written).
+  const brandTranslations = noBusiness ? await businessTranslationsForSave(displayName, null, undefined) : null
 
   let poolInput: { unitCostAgorot: number; retailPriceAgorot: number; warningThreshold: number } | null = null
   let codeEntries: { code: string; pin: string | null; expiresAt: Date | null }[] = []
@@ -170,7 +181,7 @@ export async function POST(request: Request) {
     ...scope.fields,
     fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
     businessName: displayName,
-    businessTranslations: multipass ? null : parseBusinessTranslations(business.translations),
+    businessTranslations: noBusiness ? (brandTranslations?.ok ? brandTranslations.translations : null) : parseBusinessTranslations(business.translations),
     ...offerPlaceFields(business),
     // The business's logo (lib/business/businessLogo.ts), for the perk card's badge.
     businessLogoUrl: typeof business.logoUrl === 'string' ? business.logoUrl : '',
@@ -179,7 +190,7 @@ export async function POST(request: Request) {
     description: offer.description,
     originalPrice: offer.originalPrice,
     offerPrice: offer.offerPrice,
-    category: multipass ? category : business.category ?? '',
+    category: noBusiness ? category : business.category ?? '',
     createdAt: Timestamp.now(),
     isBestseller: !!offer.isBestseller,
     expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,

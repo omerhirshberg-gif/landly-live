@@ -1,4 +1,4 @@
-// Vector Landly emblem, built from exact geometry by
+// Vector GoLandly emblem, built from exact geometry by
 // scripts/generate-emblem-paths.py (do not edit by hand):
 //  - Star of David: two equilateral triangles about one centre (225.7, 260.5),
 //    circumradius 253.7, each a ring of constant band width 41.6; the darker

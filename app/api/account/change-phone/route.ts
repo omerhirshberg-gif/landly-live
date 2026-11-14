@@ -3,7 +3,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { CLEAR_PENDING_PHONE, customerOrReply, heldByOther, logContactFailure, phoneHoldersQuery, preflight, replyFor } from '@/lib/account/contactChangeServer'
-import { isOtpChannel, OTP_RESEND_SECONDS, type OtpChannel } from '@/lib/auth/otp'
+import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
+import { resolveOtpChannel } from '@/lib/auth/otpChannel'
 import {
   generateOtp,
   hashOtp,
@@ -17,14 +18,14 @@ import { accountLang } from '@/lib/auth/requestContext'
 import type { Lang } from '@/lib/i18n/translations'
 
 // A new phone number from the profile screens' "Edit profile" ({ phone,
-// lang, channel? }), and the "Resend code" in its verification dialog (the
+// lang }), and the "Resend code" in its verification dialog (the
 // same number again). Any country's number is accepted, as E.164.
 //
 // { mode: 'direct' }: verification is off (lib/auth/phoneVerification.ts);
 // the client saves the number itself, as before.
 // { mode: 'otp', channel, resendIn }: the number now waits in
-// users/{uid}.pendingPhone and a 6-digit code is on its way (WhatsApp by
-// default); /api/account/verify-phone-otp applies it.
+// users/{uid}.pendingPhone and a 6-digit code is on its way (SMS to a +972
+// number, WhatsApp to any other); /api/account/verify-phone-otp applies it.
 // A number already on another member's account is refused (phoneInUse):
 // the WhatsApp support bot finds members by their number.
 export function OPTIONS(request: Request) {
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
 
   if (phoneVerificationMode() === 'direct') return reply({ ok: true, mode: 'direct' })
 
-  const channel: OtpChannel = isOtpChannel(body?.channel) ? body.channel : 'whatsapp'
+  // The number decides (+972 is SMS, every other country WhatsApp); a client-sent channel is ignored.
+  const channel = resolveOtpChannel(phone)
   let lang: Lang = accountLang(undefined, body?.lang)
   const db = getAdminDb()
   const userRef = db.collection('users').doc(uid)
@@ -53,7 +55,8 @@ export async function POST(request: Request) {
   try {
     const [user, previous, holders] = await Promise.all([userRef.get(), verificationRef.get(), phoneHoldersQuery(db, phone).get()])
     lang = accountLang(user.get('preferredLanguage'), body?.lang)
-    if (user.get('phone') === phone) return reply({ error: 'Same phone number.', reason: 'samePhone' }, 400)
+    // The saved number may be sent a code while it is still unverified (the Profile card's "Verify now"); a verified one has nothing to change.
+    if (user.get('phone') === phone && user.get('phoneVerified') === true) return reply({ error: 'Same phone number.', reason: 'samePhone' }, 400)
     if (heldByOther(holders, uid)) return reply({ error: 'Phone number in use.', reason: 'phoneInUse' }, 409)
     const lastSentAt = previous.get('lastSentAt')
     const wait = lastSentAt instanceof Timestamp ? lastSentAt.toMillis() + OTP_RESEND_COOLDOWN_MS - Date.now() : 0

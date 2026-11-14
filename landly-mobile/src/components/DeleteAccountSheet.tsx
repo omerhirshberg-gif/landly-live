@@ -26,10 +26,10 @@ import { colors, radius } from '../theme'
 // Android confirm with a native alert that closes the sheet; the Expo web
 // build (where Alert is a no-op) shows the confirmation in the sheet, as the
 // website does. An account with Sign in with Apple confirms with Apple first
-// on iOS and in the browser build, which revokes Landly's Apple tokens
+// on iOS and in the browser build, which revokes GoLandly's Apple tokens
 // (auth/appleRevocation.ts); backing out sends nothing. Android can't confirm
 // with Apple, so its request goes out marked 'unavailable', and any request
-// whose tokens weren't revoked says how to remove Landly in the Apple Account
+// whose tokens weren't revoked says how to remove GoLandly in the Apple Account
 // settings. A page sheet on iOS, full screen on Android; a Modal is its own layout root, so the language's
 // direction is set again on its content.
 export default function DeleteAccountSheet({ user }: { user: User }) {

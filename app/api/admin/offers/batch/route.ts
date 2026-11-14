@@ -7,6 +7,7 @@ import { BATCH_COMMIT_CHUNK, parseOffersSheet, type BatchOffer, type BatchRow } 
 import { getAdminDb } from '@/lib/firebase/admin'
 import { createPool } from '@/lib/inventory/poolAdmin'
 import { offerPlaceFields } from '@/lib/geo'
+import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { parseBusinessTranslations } from '@/lib/business/businessText'
 import { DEFAULT_REDEMPTION_METHOD } from '@/lib/offers/redemption'
 import { DEFAULT_VOUCHER_VALIDITY_DAYS } from '@/lib/payments/voucherTerms'
@@ -66,17 +67,19 @@ export async function POST(request: Request) {
     for (const row of chunk) {
       const offer = row.offer!
       const multipass = offer.fulfillmentType === 'multipass_pool'
-      // A Multipass perk has no business: its brand stands in for the name, and it carries no place or logo.
-      const business = multipass ? {} : businesses.get(offer.businessUid)!
+      // A Multipass perk and a manual multi-chain pass have no business: the brand stands in for the name, and they carry no place or logo.
+      const noBusiness = multipass || offer.perkScope === 'multi_chain'
+      const business = noBusiness ? {} : businesses.get(offer.businessUid)!
       const ref = db.collection('offers').doc()
       const built = await buildOfferTranslations(sourceOf(offer), null, overridesOf(offer), null)
       batch.set(ref, {
-        ...(multipass
-          ? { perkScope: offer.perkScope, brandName: offer.brandName, ...(offer.perkScope === 'multi_chain' ? { participatingChains: offer.participatingChains, chainsCount: offer.participatingChains.length } : {}) }
-          : { perkScope: 'single_business', businessId: offer.businessUid }),
+        ...(noBusiness
+          ? { perkScope: offer.perkScope, brandName: offer.brandName, ...(offer.participatingChains.length > 0 ? { participatingChains: offer.participatingChains, chainsCount: offer.participatingChains.length } : {}) }
+          : { perkScope: 'single_business', businessId: offer.businessUid, ...(offer.participatingChains.length > 0 ? { participatingChains: offer.participatingChains, chainsCount: offer.participatingChains.length } : {}) }),
+        isNationwide: offer.isNationwide,
         fulfillmentType: offer.fulfillmentType,
-        businessName: multipass ? offer.brandName : business.businessName ?? '',
-        businessTranslations: multipass ? null : parseBusinessTranslations(business.translations),
+        businessName: noBusiness ? offer.brandName : business.businessName ?? '',
+        businessTranslations: noBusiness ? null : parseBusinessTranslations(business.translations),
         ...offerPlaceFields(business),
         businessLogoUrl: typeof business.logoUrl === 'string' ? business.logoUrl : '',
         imageUrl: offer.imageUrl,
@@ -135,7 +138,8 @@ export async function POST(request: Request) {
       for (const item of created) {
         try {
           const translated = await translationsForSave(sourceOf(item.offer), null, overridesOf(item.offer))
-          if (translated.ok) await db.collection('offers').doc(item.offerId).update({ translations: translated.translations })
+          const brand = item.offer.brandName ? await businessTranslationsForSave(item.offer.brandName, null, undefined) : null
+          if (translated.ok) await db.collection('offers').doc(item.offerId).update({ translations: translated.translations, ...(brand?.ok && brand.translations ? { businessTranslations: brand.translations } : {}) })
         } catch (err) {
           console.error('Batch offer translation failed', item.offerId, err)
         }

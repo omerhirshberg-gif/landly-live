@@ -4,6 +4,7 @@ import { translations } from '@/lib/i18n/translations'
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({ useMemberProfile: () => ({}) }))
+vi.mock('@/lib/firebase/usePhoneVerificationNeeded', () => ({ usePhoneVerificationNeeded: () => false }))
 
 const { ACCOUNT_MENU_GROUPS } = await import('@/components/layout/AccountMenu')
 

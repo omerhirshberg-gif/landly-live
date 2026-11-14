@@ -122,8 +122,8 @@ describe('legal text matches the code', () => {
 })
 
 describe('legal entity, contact and governing law', () => {
-  // Third parties keep their own legal names (Meta Platforms, Inc.); only Landly's is checked.
-  it.each(LANGS)('names the entity "Landly" with no company suffix (%s)', (lang) => {
+  // Third parties keep their own legal names (Meta Platforms, Inc.); only GoLandly's is checked.
+  it.each(LANGS)('names the entity "GoLandly" with no company suffix (%s)', (lang) => {
     for (const key of legalKeys) expect(tr(lang, key).replace('Meta Platforms, Inc.', ''), `${lang}.${key}`).not.toMatch(/\bLtd\b|בע״מ|בע"מ|Ltée|\bS\.?L\.?\b|\bS\.A\.?\b|\bSARL\b|ООО|\bInc\b/)
   })
 

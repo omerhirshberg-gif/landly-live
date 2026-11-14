@@ -76,9 +76,34 @@ button,a{touch-action:manipulation;}
 
 /* ── Input ─────────────────────────────────────────── */
 .inp{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:13px 16px;font-size:16px;font-family:inherit;outline:none;transition:border-color .2s;background:#fff;color:#0f172a;min-height:48px;}
+.inp{text-align:start;}
 .inp:focus{border-color:#0038b8;}
 .inp:focus-visible{box-shadow:0 0 0 3px rgba(0,56,184,.3);}
 select.inp{cursor:pointer;}
+
+/* Technical values (email, phone, password, url) are typed left-to-right in every language, but while the field is
+   empty the placeholder is a localized word and follows the page direction (start edge: right in Hebrew). */
+.inp-consumer:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown){direction:ltr;text-align:left;}
+.inp:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown){direction:ltr;text-align:left;}
+
+/* Native <select>: one chevron, on the END edge (right in LTR, left in RTL), with the text clearing it
+   (padding-inline-start 14px, padding-inline-end 40px). Shared by .inp, .inp-consumer and the admin's ADMIN_SELECT.
+   The background-color (not the shorthand) is what the focus/disabled rules set, so the chevron image survives. */
+select.inp,select.inp-consumer,select.admin-select{-webkit-appearance:none;appearance:none;padding-inline-start:14px;padding-inline-end:40px;text-overflow:ellipsis;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:16px 16px;background-position:right 14px center;}
+[dir="rtl"] select.inp,[dir="rtl"] select.inp-consumer,[dir="rtl"] select.admin-select{background-position:left 14px center;}
+
+/* Consumer inputs (auth, profile, settings, support, pre-launch): the field's name is the grey hint inside the box,
+   no label above. Separate from .inp, which the business portal keeps. 16px text so iOS Safari never zooms. */
+.inp-consumer{width:100%;height:48px;min-height:48px;border:1px solid #e2e8f0;border-radius:12px;padding:0 16px;font-size:16px;font-family:inherit;outline:none;background:rgba(248,250,252,.8);color:#0f172a;text-align:start;transition:border-color .2s,background-color .2s,box-shadow .2s;}
+.inp-consumer::placeholder{color:#94a3b8;}
+.inp-consumer:focus{background-color:#fff;border-color:#0038b8;box-shadow:0 0 0 2px rgba(0,56,184,.15);}
+.inp-consumer[aria-invalid="true"]{border-color:#dc2626;}
+.inp-consumer[aria-invalid="true"]:focus{box-shadow:0 0 0 2px rgba(220,38,38,.15);}
+.inp-consumer:disabled,.inp-consumer[readonly]{background-color:#f1f5f9;color:#475569;}
+textarea.inp-consumer{height:auto;min-height:96px;padding:12px 16px;line-height:1.5;}
+select.inp-consumer{cursor:pointer;}
+select.inp-consumer.is-empty{color:#94a3b8;}
+select.inp-consumer option{color:#0f172a;}
 
 /* Dark-theme override for the business login/dashboard pages — layered on top of .inp */
 .inp-dark{background:#0f172a;border-color:#334155;color:#f1f5f9;}
@@ -175,8 +200,8 @@ html[dir="rtl"] .fa-arrow-right{ transform:scaleX(-1); display:inline-block; }
 ═══════════════════════════════════════════════════════ */
 /* Phone input (signup + profile) — matches the height/style of the other .inp fields.
    Flex layout auto-mirrors under dir="rtl" so no separate RTL rules are needed. */
-.PhoneInput{width:100%;display:flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:12px;padding:0 16px;min-height:48px;background:#fff;transition:border-color .2s;}
-.PhoneInput:focus-within{border-color:#0038b8;}
+.PhoneInput{width:100%;display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:12px;padding:0 16px;min-height:48px;background:rgba(248,250,252,.8);transition:border-color .2s,background-color .2s,box-shadow .2s;}
+.PhoneInput:focus-within{background:#fff;border-color:#0038b8;box-shadow:0 0 0 2px rgba(0,56,184,.15);}
 .PhoneInputInput{flex:1;min-width:0;border:none;outline:none;background:transparent;padding:13px 0;font-size:16px;font-family:inherit;color:#0f172a;}
 .PhoneInputCountry{display:flex;align-items:center;}
 
@@ -266,7 +291,7 @@ html[dir="rtl"] .fa-arrow-right{ transform:scaleX(-1); display:inline-block; }
    is bold too). The primary sits on a soft brand shadow that a press takes
    away; the secondary on a faint one. Every CTA uses it,
    the guest hero's and the navbar's included. On a dark brand surface (the
-   /olim closing card, the About call to action), .ds-btn-inverse
+   About call to action), .ds-btn-inverse
    is the white button and .ds-btn-outline-inverse the outlined one. */
 .ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 24px;border-radius:12px;border:1px solid transparent;font-size:16px;font-weight:700;letter-spacing:-0.01em;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .16s cubic-bezier(.16,1,.3,1);}
 .ds-btn-md{height:48px;padding:0 20px;}
@@ -625,9 +650,8 @@ html.wa-hidden .wa-widget{display:none;}
 .prelaunch-in{animation:prelaunch-in .32s cubic-bezier(.2,.8,.2,1) both;}
 @media (prefers-reduced-motion:reduce){.prelaunch-in{animation:none;}}
 /* The /join phone field matches the form's other inputs; the picker's shared styles are above. */
-.join-phone .PhoneInput{background:#fff;}
 .join-phone .PhoneInput:focus-within{border-color:#0038b8;}
-.join-phone-invalid .PhoneInput,.join-phone-invalid .PhoneInput:focus-within{border-color:#f87171;}
+.join-phone-invalid .PhoneInput,.join-phone-invalid .PhoneInput:focus-within{border-color:#dc2626;}
 .join-phone .PhoneInputCountryIcon{width:auto;height:auto;background:none;box-shadow:none;}
 .join-phone .PhoneInputCountrySelect:focus + .PhoneInputCountryIcon{box-shadow:none;}
 

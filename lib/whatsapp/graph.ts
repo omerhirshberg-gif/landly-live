@@ -64,7 +64,7 @@ export interface ListRow {
 }
 
 /**
- * The message types Landly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages).
+ * The message types GoLandly sends (https://developers.facebook.com/docs/whatsapp/cloud-api/messages).
  * A choice of up to three is reply buttons in the bubble; more is one list
  * message, whose button opens the choices (a bottom sheet on phones, a
  * dialog on WhatsApp Web and Desktop). lib/whatsapp/supportBot.ts picks.

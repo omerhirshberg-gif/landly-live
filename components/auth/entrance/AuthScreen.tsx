@@ -67,7 +67,7 @@ type Mode = 'signIn' | 'signUp'
 
 const PATHS: Record<Mode, string> = { signIn: '/login', signUp: '/signup' }
 // Where a finished sign-in (or the wizard after it) goes: the page's
-// ?redirect= when it's a same-site path (e.g. the /olim mentor gate, an
+// ?redirect= when it's a same-site path (e.g. an
 // offer's member gate), else home. Read when needed, so it is always the URL
 // the browser is on.
 const redirectParam = () => new URLSearchParams(window.location.search).get('redirect')
@@ -184,7 +184,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // Passkeys (Sign In tab only): the button, shown when the browser supports
   // WebAuthn, and the email field's autofill, armed in the background where
   // the browser offers passkeys among its suggestions. A browser that made or
-  // used a Landly passkey before puts the button above the form.
+  // used a GoLandly passkey before puts the button above the form.
   const [passkey, setPasskey] = useState<PasskeySupport>({ webauthn: false, autofill: false })
   const [passkeyBusy, setPasskeyBusy] = useState(false)
   const [passkeyFailures, setPasskeyFailures] = useState(0)
@@ -687,6 +687,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                   />
                   <TextField
                     label={t('onb_createPasswordLabel')}
+                    showLabel
                     icon="lock"
                     type="password"
                     value={password}
@@ -716,6 +717,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                   <PasswordRequirements password={password} visible={passwordFocused} />
                   <TextField
                     label={t('onb_confirmPasswordLabel')}
+                    showLabel
                     icon="lock"
                     type="password"
                     value={confirm}

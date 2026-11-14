@@ -47,7 +47,7 @@ export function parseBusinessInquiry(body: unknown): BusinessInquiry | null {
 
 function businessEmail(lead: BusinessInquiry) {
   return {
-    subject: `[Landly Business Lead] ${lead.businessName} — ${lead.contactName}`,
+    subject: `[GoLandly Business Lead] ${lead.businessName} — ${lead.contactName}`,
     heading: 'New business partner application',
     rows: [
       { label: 'Business name', value: lead.businessName },
@@ -58,7 +58,7 @@ function businessEmail(lead: BusinessInquiry) {
     ],
     message: lead.message || '(No message)',
     replyName: lead.contactName,
-    source: 'the Landly For Businesses form',
+    source: 'the GoLandly For Businesses form',
   }
 }
 

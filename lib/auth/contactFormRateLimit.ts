@@ -31,9 +31,7 @@ function createLimiter(scope: string): (request: Request) => Promise<boolean> {
 
 export const isSupportMessageRateLimited = createLimiter('support')
 export const isBusinessInquiryRateLimited = createLimiter('business-inquiry')
-export const isMentorRequestRateLimited = createLimiter('mentor-request')
 export const isDeletionRequestRateLimited = createLimiter('deletion-request')
-// The deletion and mentor forms are signed in, so they're also capped per
+// The deletion form is signed in, so it's also capped per
 // account, which an attacker can't rotate the way they can an IP.
 export const isDeletionRequestUidRateLimited = createKeyLimiter('deletion-request-uid', 3)
-export const isMentorRequestUidRateLimited = createKeyLimiter('mentor-request-uid', 3)

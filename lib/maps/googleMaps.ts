@@ -1,5 +1,5 @@
 import 'server-only'
-import type { Coordinates, GeoAddress, LocalizedName } from '@/lib/geo'
+import type { Coordinates, GeoAddress, LocalizedName, ParticipatingPlace } from '@/lib/geo'
 import { CONTENT_LANGS } from '@/lib/i18n/contentTranslation'
 import type { Lang } from '@/lib/i18n/translations'
 import { recordUsage, recordUsageBatch } from '@/lib/usage/recordUsage'
@@ -25,6 +25,8 @@ const PLACES_API = 'https://places.googleapis.com/v1'
 const GEOCODE_API = 'https://maps.googleapis.com/maps/api/geocode/json'
 const TIMEOUT_MS = 6000
 const DETAILS_FIELDS = 'id,formattedAddress,shortFormattedAddress,location,addressComponents'
+// A branch's own name is a Pro-tier field, so it is asked only when the admin picks a branch for a perk.
+const BRANCH_FIELDS = 'id,displayName,shortFormattedAddress,location'
 
 export class MapsUnavailableError extends Error {}
 
@@ -125,6 +127,37 @@ export async function placeAddress(placeId: string, sessionToken?: string): Prom
     lng,
     fetchedAt: new Date().toISOString(),
   }
+}
+
+/**
+ * A branch or mall as Google names it in each of our languages, with its exact position, for a perk's list of
+ * participating stores. Never machine-translated: when Google has no name in a language the reader falls back
+ * to English, then Hebrew. Null when Google has no coordinates for the place.
+ */
+export async function placeBranch(placeId: string, sessionToken?: string): Promise<ParticipatingPlace | null> {
+  const details = async (lang: Lang, token?: string) => {
+    const place = await getJson<{ id?: string; displayName?: { text?: string }; shortFormattedAddress?: string; location?: { latitude?: number; longitude?: number } }>(
+      `${PLACES_API}/places/${encodeURIComponent(placeId)}?languageCode=${lang}${token ? `&sessionToken=${encodeURIComponent(token)}` : ''}`,
+      { headers: { 'X-Goog-Api-Key': apiKey(), 'X-Goog-FieldMask': BRANCH_FIELDS } }
+    )
+    recordUsageBatch({ 'google.places.detailsRequests': 1, 'google.places.sessionsCompleted': token ? 1 : 0 })
+    return place
+  }
+  const langs: Lang[] = ['he', ...CONTENT_LANGS.filter((lang) => lang !== 'he')]
+  const results = await Promise.all(langs.map((lang, i) => details(lang, i === 0 ? sessionToken : undefined)))
+  const lat = results.find((place) => typeof place.location?.latitude === 'number')?.location?.latitude
+  const lng = results.find((place) => typeof place.location?.longitude === 'number')?.location?.longitude
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null
+  const names: LocalizedName = {}
+  const address: LocalizedName = {}
+  langs.forEach((lang, i) => {
+    const name = results[i]!.displayName?.text?.trim()
+    const short = results[i]!.shortFormattedAddress?.trim()
+    if (name) names[lang] = name
+    if (short) address[lang] = short
+  })
+  if (Object.keys(names).length === 0) return null
+  return { placeId: results.find((place) => place.id)?.id ?? placeId, names, ...(Object.keys(address).length > 0 ? { address } : {}), lat, lng }
 }
 
 /** The city at a point, in `lang`, or null when Google names none there. */

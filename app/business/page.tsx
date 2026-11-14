@@ -15,6 +15,7 @@ import { getAllOffers } from '@/lib/firebase/offers'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
+import { directionalProps } from '@/lib/directionalInput'
 
 const EMPTY_FIELDS = { businessName: '', category: '', contactName: '', phone: '', email: '', message: '', website: '' }
 
@@ -24,7 +25,7 @@ const BENEFITS: { icon: LucideIcon; titleKey: TranslationKey; descKey: Translati
   { icon: MessagesSquare, titleKey: 'biz_page_card3_title', descKey: 'biz_page_card3_desc' },
 ]
 
-// Landly today, for a partner deciding: facts about the product only (the
+// GoLandly today, for a partner deciding: facts about the product only (the
 // live perks, its categories, languages and the member types it serves; "Other"
 // isn't one), never revenue or audience figures we don't have.
 const STATIC_STATS: { icon: LucideIcon; value: number; labelKey: TranslationKey }[] = [
@@ -41,11 +42,11 @@ const CATEGORY_LABEL_KEYS = Object.fromEntries(
 ) as Record<BusinessCategory, TranslationKey>
 
 export default function BusinessPage() {
-  const { t } = useLang()
+  const { t, isRtl } = useLang()
   const [fields, setFields] = useState(EMPTY_FIELDS)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<'idle' | 'sent'>('idle')
-  // Live perks on Landly right now: null while loading; the tile steps aside at 0.
+  // Live perks on GoLandly right now: null while loading; the tile steps aside at 0.
   const [livePerks, setLivePerks] = useState<number | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -128,7 +129,7 @@ export default function BusinessPage() {
 
               <SectionDivider className="mb-10 sm:mb-12" />
 
-              {/* Landly today: real product facts, counting up as they're reached. */}
+              {/* GoLandly today: real product facts, counting up as they're reached. */}
               <section aria-labelledby="biz-stats-title" className="mb-10 sm:mb-12 lg:mb-0">
                 <h2 id="biz-stats-title" className="text-center text-xl sm:text-2xl font-bold tracking-tight text-ink mb-5">{t('biz_stats_title')}</h2>
                 <dl className="flex flex-wrap justify-center gap-3 lg:gap-4">
@@ -169,7 +170,7 @@ export default function BusinessPage() {
                 {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
                 <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div><label htmlFor="biz-name" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_business_name')}</label><input id="biz-name" type="text" name="businessName" required maxLength={120} autoComplete="organization" dir="auto" placeholder={t('biz_form_business_name_ph')} className="inp" value={fields.businessName} onChange={update('businessName')} /></div>
+                  <div><label htmlFor="biz-name" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_business_name')}</label><input id="biz-name" type="text" name="businessName" required maxLength={120} autoComplete="organization" {...directionalProps(fields.businessName, t('biz_form_business_name_ph'), isRtl)} placeholder={t('biz_form_business_name_ph')} className="inp" value={fields.businessName} onChange={update('businessName')} /></div>
                   <div>
                     <label htmlFor="biz-category" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_category')}</label>
                     {/* Option values stay the English category names the API accepts; only the labels translate. */}
@@ -178,10 +179,10 @@ export default function BusinessPage() {
                       {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{t(CATEGORY_LABEL_KEYS[c])}</option>)}
                     </select>
                   </div>
-                  <div><label htmlFor="biz-contact" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_contact')}</label><input id="biz-contact" type="text" name="contactName" required maxLength={100} autoComplete="name" dir="auto" placeholder={t('biz_form_contact_ph')} className="inp" value={fields.contactName} onChange={update('contactName')} /></div>
+                  <div><label htmlFor="biz-contact" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_contact')}</label><input id="biz-contact" type="text" name="contactName" required maxLength={100} autoComplete="name" {...directionalProps(fields.contactName, t('biz_form_contact_ph'), isRtl)} placeholder={t('biz_form_contact_ph')} className="inp" value={fields.contactName} onChange={update('contactName')} /></div>
                   <div><label htmlFor="biz-phone" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_phone')}</label><input id="biz-phone" type="tel" name="phone" required maxLength={30} autoComplete="tel" inputMode="tel" dir="ltr" placeholder="+972 50 000 0000" className="inp rtl:text-right" value={fields.phone} onChange={update('phone')} /></div>
                   <div className="sm:col-span-2"><label htmlFor="biz-email" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_email')}</label><input id="biz-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="business@example.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
-                  <div className="sm:col-span-2"><label htmlFor="biz-message" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_message')}</label><textarea id="biz-message" name="message" rows={3} maxLength={3000} dir="auto" placeholder={t('biz_form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
+                  <div className="sm:col-span-2"><label htmlFor="biz-message" className="block text-sm font-semibold text-ink mb-1.5">{t('biz_form_message')}</label><textarea id="biz-message" name="message" rows={3} maxLength={3000} {...directionalProps(fields.message, t('biz_form_message_ph'), isRtl)} placeholder={t('biz_form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
                 </div>
                 <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-primary ds-btn-wrap w-full mt-2">
                   {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}

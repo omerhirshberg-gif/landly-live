@@ -278,7 +278,7 @@ describe('idleDueAt', () => {
     expect(mocks.store.read(path())).not.toHaveProperty('idleDueAt')
 
     seed(now, { inboundAgo: 3 * MINUTE, outboundAgo: 2 * MINUTE }, '972500000020')
-    await replyAsTeam('972500000020', 'Hi, this is Landly', now)
+    await replyAsTeam('972500000020', 'Hi, this is GoLandly', now)
     // Now the team's follow-up is what falls due.
     expect(mocks.store.read(path('972500000020'))!.idleDueAt.toMillis()).toBe(now + 12 * HOUR)
 

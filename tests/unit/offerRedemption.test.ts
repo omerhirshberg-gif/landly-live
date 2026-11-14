@@ -39,7 +39,7 @@ describe('steps', () => {
   const t = (key: TranslationKey) => translations.en[key]
 
   it("splits the merchant's instructions into steps, dropping their own numbering and blank lines", () => {
-    expect(instructionSteps('1. Call to book\n\n2) Mention Landly\n- Show the code ')).toEqual(['Call to book', 'Mention Landly', 'Show the code'])
+    expect(instructionSteps('1. Call to book\n\n2) Mention GoLandly\n- Show the code ')).toEqual(['Call to book', 'Mention GoLandly', 'Show the code'])
   })
   it("uses the merchant's steps when given, else the method's defaults", () => {
     expect(redemptionSteps('online', 'Enter the code at checkout', t)).toEqual(['Enter the code at checkout'])

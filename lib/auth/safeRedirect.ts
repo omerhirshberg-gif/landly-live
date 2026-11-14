@@ -1,5 +1,5 @@
 // Where /login and /signup send a member afterwards, from their ?redirect=
-// parameter (e.g. the /olim mentor card's "Sign in" link). Only same-site
+// parameter (e.g. an offer page's "Sign in" link). Only same-site
 // paths are honoured, so the parameter can't be used to bounce someone to
 // another site; anything else goes home.
 

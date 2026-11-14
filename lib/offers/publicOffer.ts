@@ -88,7 +88,7 @@ export function isOfferLive(offer: PublicOffer, now = Date.now()): boolean {
 
 /** A search-result description: the perk's own text on one line, cut at a word near 160 characters. */
 export function offerSeoDescription(offer: PublicOffer): string {
-  const fallback = `${offer.title}${offer.businessName ? ` at ${offer.businessName}` : ''} — a Landly member perk in Israel for olim, lone soldiers, students and travelers.`
+  const fallback = `${offer.title}${offer.businessName ? ` at ${offer.businessName}` : ''} — a GoLandly member perk in Israel for olim, lone soldiers, students and travelers.`
   const text = (offer.description || fallback).replace(/\s+/g, ' ').trim()
   if (text.length <= SEO_DESCRIPTION_MAX) return text
   const cut = text.slice(0, SEO_DESCRIPTION_MAX - 1)

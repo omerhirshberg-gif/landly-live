@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Gift, Handshake, Headset, House, Info, ListChecks, LogOut, PlaneTakeoff, QrCode, Settings, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Gift, Handshake, Headset, House, Info, ListChecks, LogOut, QrCode, Settings, type LucideIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { isNavLinkActive } from '@/lib/navActive'
@@ -9,14 +9,16 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
+import { usePhoneVerificationNeeded } from '@/lib/firebase/usePhoneVerificationNeeded'
+import { useLang } from '@/lib/i18n/useLang'
+import PhoneBadge from './PhoneBadge'
 
 // The phone/tablet drawer (below lg), where the bar is only the logo and the
 // hamburger. A member's drawer, top to bottom: who they are (a card that
-// opens /profile), the product links (Home, My Pass, Explore Perks,
-// Making Aliyah?), a Settings link to /settings (language, Privacy &
+// opens /profile), the product links (Home, My Pass, Explore Perks), a Settings link to /settings (language, Privacy &
 // Security, support, legal and account deletion live there), then Sign Out
 // in a footer that sticks above the safe area. Guests get the same icon rows
-// for the public pages (Partner with Us among them, after Making Aliyah?), the
+// for the public pages (Partner with Us among them), the
 // same Settings link, then Sign In. Language is switched from the globe in the
 // bar (guests) or on /settings, so the drawer carries no switcher of its own.
 // The drawer's height is set in globals.css (.mobile-menu, 100dvh minus the bar).
@@ -83,7 +85,6 @@ export default function MobileMenu({
               {/* My Pass opens /member, where the active passes and their QR codes are */}
               <IconLink href="/member" icon={QrCode} label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
               <IconLink href="/categories" icon={Gift} label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
-              <IconLink href="/olim" icon={PlaneTakeoff} label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
             </div>
 
             {settingsLink}
@@ -114,7 +115,6 @@ export default function MobileMenu({
               {/* Guests browse the same catalog members do, before signing in */}
               <IconLink href="/categories" icon={Gift} label={t('nav_deals')} onClose={onClose} className={linkClass('/categories')} />
               <IconLink href="/#how" icon={ListChecks} label={t('nav_how')} onClose={onClose} className={linkClass('/#how')} />
-              <IconLink href="/olim" icon={PlaneTakeoff} label={t('nav_olim')} onClose={onClose} className={linkClass('/olim')} />
               {/* B2B onboarding, for guests only: members are consumers and never see it */}
               <IconLink href="/business" icon={Handshake} label={t('nav_partner')} onClose={onClose} className={linkClass('/business')} />
               <IconLink href="/about" icon={Info} label={t('nav_about')} onClose={onClose} className={linkClass('/about')} />
@@ -133,7 +133,7 @@ export default function MobileMenu({
               <p className="mt-3 text-center text-xs text-slate-400">
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-brand"><bdi>{SUPPORT_EMAIL}</bdi></a>
                 <span aria-hidden="true"> · </span>
-                <bdi>Landly</bdi>
+                <bdi>GoLandly</bdi>
               </p>
             </div>
           </div>
@@ -172,9 +172,12 @@ function IconLink({ href, icon, label, onClose, className }: { href: string; ico
 // navbar's avatar pill is hidden. A member with no name on file sees
 // "Profile" in its place.
 function MemberCard({ onClose, active, label }: { onClose: () => void; active: boolean; label: string }) {
+  const { t } = useLang()
   const { user } = useAuth()
   const { firstName, initials, photoURL, profile } = useMemberProfile(user)
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || firstName
+  // Live, so the red "1" clears the moment the phone is verified.
+  const needsPhone = usePhoneVerificationNeeded(user?.uid ?? null)
   return (
     <Link
       href="/profile"
@@ -182,13 +185,17 @@ function MemberCard({ onClose, active, label }: { onClose: () => void; active: b
       aria-current={active ? 'page' : undefined}
       className={`tap-target flex items-center gap-3 rounded-2xl border p-4 transition-colors [@media(hover:hover)]:hover:bg-slate-100/80 active:bg-slate-100 ${active ? 'border-brand/30 bg-brandLight' : 'border-slate-100 bg-slate-50'}`}
     >
-      <Avatar src={photoURL} initials={initials} size={44} className="ring-2 ring-white shadow-[0_0_0_3px_#e2e8f0]" />
+      <span className="relative inline-flex flex-shrink-0">
+        <Avatar src={photoURL} initials={initials} size={44} className="ring-2 ring-white shadow-[0_0_0_3px_#e2e8f0]" />
+        {needsPhone && <PhoneBadge className="-top-1.5 -end-1.5" />}
+      </span>
       <span className="min-w-0 flex-1 truncate text-base font-bold text-ink">
         {fullName ? (
           <>
             {/* Screen readers hear "Profile" first; sighted members see who they are. */}
             <span className="sr-only">{label}: </span>
             {fullName}
+            {needsPhone && <span className="sr-only">. {t('phone_nudge_badge_label')}</span>}
           </>
         ) : (
           label

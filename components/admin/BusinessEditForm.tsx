@@ -13,7 +13,7 @@ import { categoryEmoji } from './CategoryBadge'
 import BusinessNameTranslations from './BusinessNameTranslations'
 import Alert from './Alert'
 import { ButtonSpinner, FormSection, StickyActionBar } from './FormSection'
-import { ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from './formStyles'
+import { ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from './formStyles'
 import { useAdminT } from '@/lib/admin/translations'
 
 export interface EditableBusiness {
@@ -90,7 +90,7 @@ export default function BusinessEditForm({
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
+    <form onSubmit={save} className="space-y-6 pb-28">
       {error && <Alert>{error}</Alert>}
       <FormSection icon="fa-store" title={t('newBiz.basicsTitle')} description={t('bizEdit.basicsDesc')}>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -110,7 +110,7 @@ export default function BusinessEditForm({
             <select
               id="edit-biz-category"
               required
-              className={`${ADMIN_INPUT} cursor-pointer`}
+              className={`${ADMIN_SELECT}`}
               value={form.category}
               onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
             >

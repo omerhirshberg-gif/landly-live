@@ -8,19 +8,15 @@ import { SITE_URL } from '@/lib/config'
 // soldier discounts, lifestyle discounts in Israel -- in plain sentences, not
 // keyword lists (Google ignores <meta name="keywords">).
 
-export const HOME_TITLE = 'Landly — Aliyah Benefits & Perks for Olim and Lone Soldiers'
+export const HOME_TITLE = 'GoLandly — Aliyah Benefits & Perks for Olim and Lone Soldiers'
 export const HOME_DESCRIPTION =
-  'Free club for olim chadashim, lone soldiers, students and travelers: real discounts across Israel, Aliyah benefits and a personal Aliyah mentor.'
-
-export const OLIM_TITLE = 'Making Aliyah: Benefits & Lone Soldier Perks'
-export const OLIM_DESCRIPTION =
-  'Moving to Israel? Landly helps new olim and lone soldiers with Aliyah benefits, perks from day one, a rights checklist and a free personal Aliyah mentor in your language.'
+  'Free club for olim chadashim, lone soldiers, students and travelers: real discounts across Israel and Aliyah benefits.'
 
 export const PERKS_TITLE = 'Perks & Discounts in Israel'
 export const PERKS_DESCRIPTION =
   'Browse lifestyle discounts across Israel: restaurants, cafes, gyms, beauty, attractions and more, for olim, lone soldiers, students and travelers.'
 
-/** An absolute URL on the site for a path such as '/olim'. */
+/** An absolute URL on the site for a path such as '/about'. */
 export function siteUrl(path: string): string {
   return path === '/' ? SITE_URL : `${SITE_URL}${path}`
 }
@@ -41,7 +37,7 @@ export function pageMetadata({
   title: string
   description: string
   path: string
-  /** Use the title as is, without the "| Landly" template (the home page). */
+  /** Use the title as is, without the "| GoLandly" template (the home page). */
   absoluteTitle?: boolean
   image?: string
 }): Metadata {
@@ -50,7 +46,7 @@ export function pageMetadata({
     title: absoluteTitle ? { absolute: title } : title,
     description,
     alternates: { canonical: path },
-    openGraph: { type: 'website', siteName: 'Landly', locale: 'en_US', url: path, title, description, ...(images && { images }) },
+    openGraph: { type: 'website', siteName: 'GoLandly', locale: 'en_US', url: path, title, description, ...(images && { images }) },
     twitter: { card: 'summary_large_image', title, description, ...(images && { images }) },
   }
 }

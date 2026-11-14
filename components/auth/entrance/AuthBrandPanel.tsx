@@ -33,7 +33,7 @@ function copyFor(context: BrandPanelContext): { title: TranslationKey; body: Tra
 // shows it from 1024px, or from 600px wide when wider than tall): the
 // brand side of the split auth screen. The logo (with its staged intro, in
 // place of the hero above the card), a headline for whatever the form side
-// shows, Landly's promises, and where the member is in the journey (states:
+// shows, GoLandly's promises, and where the member is in the journey (states:
 // lib/auth/brandPanelSteps.ts; `via` is how they're signing in). The copy
 // cross-fades when the context changes; the panel itself never moves.
 export default function AuthBrandPanel({

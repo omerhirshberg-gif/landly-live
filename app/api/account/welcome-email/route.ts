@@ -28,7 +28,7 @@ function logFailure(step: Step, uid: string | null, err: unknown) {
   console.error(`[welcome-email] step=${step}`, JSON.stringify(detail))
 }
 
-// The "Welcome to Landly" email, sent once per member right after the
+// The "Welcome to GoLandly" email, sent once per member right after the
 // onboarding wizard stores its answers (website and app, both of which call
 // this fire-and-forget, so nothing here ever holds the celebration card).
 // At most once: users/{uid}.welcomeEmailSent is claimed in a transaction

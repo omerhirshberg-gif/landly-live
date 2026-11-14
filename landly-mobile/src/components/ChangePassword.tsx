@@ -111,6 +111,7 @@ export default function ChangePassword({ user }: { user: User }) {
         <View style={styles.form}>
           <TextField
             label={t('profile_current_password_label')}
+            showLabel
             icon="lock"
             value={current}
             onChangeText={(v) => {
@@ -127,6 +128,7 @@ export default function ChangePassword({ user }: { user: User }) {
           <TextField
             ref={nextRef}
             label={t('profile_new_password_label')}
+            showLabel
             icon="lock"
             value={next}
             onChangeText={(v) => {

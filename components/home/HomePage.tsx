@@ -52,7 +52,7 @@ export default function HomePage({ landing = EMPTY_LANDING }: { landing?: Landin
       <>
         <Navbar />
         {/* Members get their dashboard only, like an app: no hero, value
-            props, How it works, Aliyah card or marketing footer. Support
+            props, How it works or marketing footer. Support
             sits at the end of the dashboard; Terms and Privacy are in the
             account menu and the mobile drawer. */}
         <LoggedInHome user={user} />
@@ -75,7 +75,7 @@ export default function HomePage({ landing = EMPTY_LANDING }: { landing?: Landin
 }
 
 function GuestLanding({ landing }: { landing: LandingData }) {
-  // The hero, the category photos, then real deals and who Landly is for, which
+  // The hero, the category photos, then real deals and who GoLandly is for, which
   // their own card surfaces keep apart; hairlines only mark the longer sections
   // after them: How it works, the member pass those steps lead to, both stores
   // once more, and the questions everyone asks. A section with nothing live to show is left out. The site's one

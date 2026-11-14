@@ -58,7 +58,7 @@ export default function SettingsScreen() {
         )}
 
         <AppText style={styles.version}>
-          Landly · {t('nav_version')} {APP_VERSION}
+          GoLandly · {t('nav_version')} {APP_VERSION}
         </AppText>
       </ScrollView>
     </SafeAreaView>

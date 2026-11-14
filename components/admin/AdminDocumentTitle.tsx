@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 import { matchAdminRoute } from '@/lib/admin/routes'
 import { useAdminT } from '@/lib/admin/translations'
 
-// The browser tab's title in the admin's language, e.g. "בתי עסק | Landly Admin". The
+// The browser tab's title in the admin's language, e.g. "בתי עסק | GoLandly Admin". The
 // server-rendered titles (the layouts' metadata) are English and static, so this sets
 // the title after them, on every page change and every language switch.
-export const ADMIN_TITLE_SUFFIX = 'Landly Admin'
+export const ADMIN_TITLE_SUFFIX = 'GoLandly Admin'
 
 export function adminDocumentTitle(route: (label: string) => string, pathname: string): string {
   const match = matchAdminRoute(pathname)

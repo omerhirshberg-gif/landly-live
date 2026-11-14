@@ -62,12 +62,12 @@ describe('relying party config', () => {
   it('takes the RP ID and origins from the environment', () => {
     expect(parseWebAuthnConfig({ WEBAUTHN_RP_ID: 'GoLandly.com', WEBAUTHN_ORIGINS: 'https://www.golandly.com/, https://golandly.com' })).toEqual({
       rpID: 'golandly.com',
-      rpName: 'Landly',
+      rpName: 'GoLandly',
       origins: ['https://www.golandly.com', 'https://golandly.com'],
     })
   })
   it('falls back to APP_URL for local development and staging', () => {
-    expect(parseWebAuthnConfig({ APP_URL: 'http://localhost:3000' })).toEqual({ rpID: 'localhost', rpName: 'Landly', origins: ['http://localhost:3000'] })
+    expect(parseWebAuthnConfig({ APP_URL: 'http://localhost:3000' })).toEqual({ rpID: 'localhost', rpName: 'GoLandly', origins: ['http://localhost:3000'] })
   })
   it('is off without a host, and refuses origins outside the RP ID', () => {
     expect(parseWebAuthnConfig({})).toBeNull()

@@ -40,7 +40,7 @@ import { colors, header } from '../../theme'
 
 // The searchable catalog: the same offers collection the website reads. With
 // nothing chosen it's the overview (web: the /categories overview): the
-// search row, the New on Landly and Best Sellers rails (OfferTileRail, real
+// search row, the New on GoLandly and Best Sellers rails (OfferTileRail, real
 // perks still claimable only), then the category grid, no filters; a tile
 // pushes that category's folder (app/category/[category].tsx).
 // A search or a non-default sort opens the listing, and only then do the category chips

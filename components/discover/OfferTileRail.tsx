@@ -10,7 +10,7 @@ import { useSnapIndex } from '@/lib/useSnapIndex'
 import SnapDots, { SNAP_DOTS_MAX } from '@/components/ui/SnapDots'
 import OfferCard from './OfferCard'
 
-// One of the /categories highlight rails (New on Landly, Best Sellers, stacked
+// One of the /categories highlight rails (New on GoLandly, Best Sellers, stacked
 // above the category grid): a heading row with "See more", then the perks as
 // full OfferCards in one row that scrolls sideways. Momentum swipe on
 // phones, snapping to a card's start; the rail bleeds through the page's

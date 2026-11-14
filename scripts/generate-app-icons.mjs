@@ -11,24 +11,24 @@
 //   node scripts/generate-app-icons.mjs --check
 //     measures those files against the rules below; exits 1 if any fails
 //
-// Both icons centre the Star of David, not the emblem's box: its vertical
-// axis (EMBLEM_AXIS_X) sits on the canvas centre, and the arrow reaches out
-// to the right as an accent, as in the master logo and the splash hero.
+// Every icon centres the whole emblem (the Star of David and the arrow), so it
+// reads as centred in any launcher mask rather than shifted left by the arrow:
+// iOS and Google Play centre its bounding box, Android its smallest enclosing
+// circle (which is also what fits the largest in the safe circle).
 // iOS: the glyph's box fills ICON_FILL of the canvas width, centred
-// vertically, on an opaque background (iOS rejects transparency); the arrow
+// on an opaque background (iOS rejects transparency); the arrow
 // tip keeps CORNER_CLEARANCE inside the home screen's rounded-square mask.
 // Android: launchers mask the foreground to as little as the central 66 of
 // its 108 units, so every glyph pixel stays inside that circle; the glyph is
-// as large as fits there with the star still centred, on a transparent
+// as large as fits there, centred on its enclosing circle, on a transparent
 // foreground over app.json's adaptiveIcon.backgroundColor.
 // Google Play: 512x512, 32-bit sRGB PNG, every pixel opaque on white; the
-// glyph keeps PLAY_MARGIN of the canvas clear on every side (its narrowest,
-// the arrow's, included), so Play's rounded mask never touches it.
+// glyph keeps PLAY_MARGIN of the canvas clear on every side, so Play's rounded mask never touches it.
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
-import { ARCH, ARROW, EMBLEM_AXIS_X, EMBLEM_VIEWBOX, STAR } from '../lib/brand/emblemPaths.ts'
+import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '../lib/brand/emblemPaths.ts'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SIZE = 1024
@@ -143,35 +143,34 @@ export async function layouts() {
   const points = await outline()
   const box = boxOf(points)
 
-  // iOS: the star's axis on the centre line, the box centred vertically.
-  const ios = { scale: (SIZE * ICON_FILL) / box.width, center: { x: EMBLEM_AXIS_X, y: box.y + box.height / 2 } }
+  const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 
-  // Android: the star's axis on the centre line too; the height that brings
-  // the farthest point closest (a convex function of it, so a ternary search
-  // finds it), then the scale that puts that point on the safe circle, a
-  // pixel inside for anti-aliasing.
-  const reach = (cy) => Math.max(...points.map((p) => Math.hypot(p.x - EMBLEM_AXIS_X, p.y - cy)))
-  let lo = box.y, hi = box.y + box.height
-  for (let i = 0; i < 60; i++) {
-    const a = lo + (hi - lo) / 3
-    const b = hi - (hi - lo) / 3
-    if (reach(a) < reach(b)) hi = b
-    else lo = a
+  // iOS: the box centred on the canvas.
+  const ios = { scale: (SIZE * ICON_FILL) / box.width, center: boxCenter }
+
+  // Android: the glyph's smallest enclosing circle on the canvas centre, then
+  // the scale that puts its radius on the safe circle, a pixel and a half
+  // inside for anti-aliasing. The farthest distance is convex in the centre,
+  // so a nested ternary search finds it.
+  const reach = (cx, cy) => Math.max(...points.map((p) => Math.hypot(p.x - cx, p.y - cy)))
+  const ternary = (lo, hi, f) => {
+    for (let i = 0; i < 40; i++) {
+      const a = lo + (hi - lo) / 3
+      const b = hi - (hi - lo) / 3
+      if (f(a) < f(b)) hi = b
+      else lo = a
+    }
+    return (lo + hi) / 2
   }
-  const cy = (lo + hi) / 2
-  const android = { scale: (SAFE_RADIUS - 1.5) / reach(cy), center: { x: EMBLEM_AXIS_X, y: cy } }
+  const bestY = (cx) => ternary(box.y, box.y + box.height, (cy) => reach(cx, cy))
+  const cx = ternary(box.x, box.x + box.width, (x) => reach(x, bestY(x)))
+  const cy = bestY(cx)
+  const android = { scale: (SAFE_RADIUS - 1.5) / reach(cx, cy), center: { x: cx, y: cy } }
 
-  // Google Play: the star's axis on the centre line, the box centred
-  // vertically, as large as keeps PLAY_MARGIN clear on every side.
-  // (A pixel more, so the anti-aliased edge stays outside the margin too.)
+  // Google Play: the box centred, as large as keeps PLAY_MARGIN clear on
+  // every side. (A pixel more, so the anti-aliased edge stays outside it too.)
   const room = PLAY_SIZE / 2 - Math.ceil(PLAY_SIZE * PLAY_MARGIN) - 1
-  const right = box.x + box.width - EMBLEM_AXIS_X
-  const left = EMBLEM_AXIS_X - box.x
-  const playStore = {
-    size: PLAY_SIZE,
-    scale: room / Math.max(left, right, box.height / 2),
-    center: { x: EMBLEM_AXIS_X, y: box.y + box.height / 2 },
-  }
+  const playStore = { size: PLAY_SIZE, scale: room / Math.max(box.width, box.height) * 2, center: boxCenter }
 
   return { ios, android, playStore }
 }
@@ -188,23 +187,20 @@ async function generate() {
   if (existsSync(path.dirname(FILES.ios))) await sharp(FILES.icon).toFile(FILES.ios)
 }
 
-/** The star alone, laid out as in an icon: its box's horizontal centre on that icon's canvas. */
-async function starCenter(layout) {
-  const { box } = await measure(await render(svg(layout, null, partPaths(STAR))))
-  return box.x + box.width / 2
-}
+/** The whole glyph's box centre, as laid out in an icon, in canvas pixels. */
+const boxCenter = ({ box }) => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 })
 
 /** Each file's failures against the rules; empty when all pass. */
 export async function check() {
   const failures = []
   const { ios, android, playStore } = await layouts()
-  const starCenters = { ios: await starCenter(ios), android: await starCenter(android), playStore: await starCenter(playStore) }
 
   const icon = await measure(FILES.icon)
   if (icon.width !== SIZE || icon.height !== SIZE) failures.push(`icon.png is ${icon.width}x${icon.height}`)
   if (!icon.opaque) failures.push('icon.png has transparency')
   if (icon.fill < 0.64 || icon.fill > 0.68) failures.push(`icon.png glyph fills ${(icon.fill * 100).toFixed(1)}%`)
   if (Math.abs(icon.margins.top - icon.margins.bottom) > 2) failures.push(`icon.png margins ${icon.margins.top}/${icon.margins.bottom}`)
+  if (Math.abs(icon.margins.left - icon.margins.right) > 2) failures.push(`icon.png margins ${icon.margins.left}/${icon.margins.right}`)
   if (icon.cornerClearance < CORNER_CLEARANCE) failures.push(`icon.png keeps only ${icon.cornerClearance.toFixed(0)}px inside the mask`)
 
   const adaptive = await measure(FILES.adaptive)
@@ -224,12 +220,8 @@ export async function check() {
   if (play.background.join() !== '255,255,255,255') failures.push(`play-store-icon.png background is ${play.background}`)
   if (playMargin < PLAY_MARGIN) failures.push(`play-store-icon.png keeps only ${(playMargin * 100).toFixed(1)}% clear`)
   if (Math.abs(play.margins.top - play.margins.bottom) > 2) failures.push(`play-store-icon.png margins ${play.margins.top}/${play.margins.bottom}`)
+  if (Math.abs(play.margins.left - play.margins.right) > 2) failures.push(`play-store-icon.png margins ${play.margins.left}/${play.margins.right}`)
 
-  // The star on the centre line, in the layouts the files were rendered from.
-  for (const [name, x] of Object.entries(starCenters)) {
-    const half = (name === 'playStore' ? PLAY_SIZE : SIZE) / 2
-    if (Math.abs(x - half) > 1.5) failures.push(`${name}: the star is centred at x=${x}, not ${half}`)
-  }
   for (const [file, layout, background] of [[FILES.icon, ios, ICON_BACKGROUND], [FILES.adaptive, android, null]]) {
     let expected = sharp(await render(svg(layout, background)))
     if (background) expected = expected.removeAlpha()
@@ -246,15 +238,15 @@ export async function check() {
     const [a, b] = await Promise.all([sharp(FILES.icon).raw().toBuffer(), sharp(FILES.ios).raw().toBuffer()])
     if (!a.equals(b)) failures.push('the iOS app icon differs from icon.png')
   }
-  return { failures, icon, adaptive, play: { ...play, minMargin: playMargin, meta: playMeta }, starCenters }
+  return { failures, icon, adaptive, play: { ...play, minMargin: playMargin, meta: playMeta } }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (!process.argv.includes('--check')) await generate()
-  const { failures, icon, adaptive, play, starCenters } = await check()
-  console.log(`icon.png          ${(icon.fill * 100).toFixed(1)}% wide, star at x=${starCenters.ios}, margins ${icon.margins.left}/${icon.margins.right} x ${icon.margins.top}/${icon.margins.bottom}, ${icon.cornerClearance.toFixed(0)}px inside the mask, opaque: ${icon.opaque}`)
-  console.log(`adaptive-icon.png ${(adaptive.fill * 100).toFixed(1)}% wide, star at x=${starCenters.android}, furthest pixel ${adaptive.maxRadius.toFixed(0)}px from centre (safe circle ${SAFE_RADIUS}px)`)
-  console.log(`play-store-icon   ${play.width}x${play.height} ${play.meta.channels * 8}-bit ${play.meta.space}${play.meta.icc ? ' (ICC)' : ''}, star at x=${starCenters.playStore}, margins ${play.margins.left}/${play.margins.right} x ${play.margins.top}/${play.margins.bottom} (min ${(play.minMargin * 100).toFixed(1)}%), opaque: ${play.opaque}`)
+  const { failures, icon, adaptive, play } = await check()
+  console.log(`icon.png          ${(icon.fill * 100).toFixed(1)}% wide, margins ${icon.margins.left}/${icon.margins.right} x ${icon.margins.top}/${icon.margins.bottom}, ${icon.cornerClearance.toFixed(0)}px inside the mask, opaque: ${icon.opaque}`)
+  console.log(`adaptive-icon.png ${(adaptive.fill * 100).toFixed(1)}% wide, box centre ${boxCenter(adaptive).x},${boxCenter(adaptive).y}, furthest pixel ${adaptive.maxRadius.toFixed(0)}px from centre (safe circle ${SAFE_RADIUS}px)`)
+  console.log(`play-store-icon   ${play.width}x${play.height} ${play.meta.channels * 8}-bit ${play.meta.space}${play.meta.icc ? ' (ICC)' : ''}, margins ${play.margins.left}/${play.margins.right} x ${play.margins.top}/${play.margins.bottom} (min ${(play.minMargin * 100).toFixed(1)}%), opaque: ${play.opaque}`)
   for (const failure of failures) console.error(`FAIL ${failure}`)
   process.exit(failures.length ? 1 : 0)
 }

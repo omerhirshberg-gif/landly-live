@@ -17,7 +17,7 @@ describe('time-based greeting', () => {
         expect(translations[lang][greetingKey(p, false)], `${lang} ${p}`).toBeTruthy()
       }
     }
-    expect(translations.en.greet_night).toBe('Good night, {name}')
+    expect(translations.en.greet_night).toBe('Good night, {name}!')
   })
   it('Home uses the hook for both headings', () => {
     const src = read('components/home/LoggedInHome.tsx')

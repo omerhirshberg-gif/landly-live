@@ -77,7 +77,7 @@ function render(lang: Lang, firstName = 'Dana') {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('APP_URL', 'https://landly.test/')
-  vi.stubEnv('EMAIL_FROM', 'Landly <noreply@golandly.com>')
+  vi.stubEnv('EMAIL_FROM', 'GoLandly <noreply@golandly.com>')
   vi.stubEnv('RESEND_API_KEY', 'fake-test-key')
   mocks.txFails = false
   mocks.uid.mockResolvedValue('member-1')
@@ -98,11 +98,11 @@ describe('welcome email content', () => {
   })
 
   it('greets by first name, and falls back to the plain heading without one', () => {
-    expect(buildWelcomeEmail('en', 'Dana', ORIGIN).heading).toBe('Welcome to Landly, Dana!')
-    expect(buildWelcomeEmail('en', '  ', ORIGIN).heading).toBe('Welcome to Landly!')
-    expect(buildWelcomeEmail('fr', '', ORIGIN).heading).toBe('Bienvenue sur Landly !')
+    expect(buildWelcomeEmail('en', 'Dana', ORIGIN).heading).toBe('Welcome to GoLandly, Dana!')
+    expect(buildWelcomeEmail('en', '  ', ORIGIN).heading).toBe('Welcome to GoLandly!')
+    expect(buildWelcomeEmail('fr', '', ORIGIN).heading).toBe('Bienvenue sur GoLandly !')
     // A name is inserted literally, never read as a replace() pattern.
-    expect(buildWelcomeEmail('en', '$&', ORIGIN).heading).toBe('Welcome to Landly, $&!')
+    expect(buildWelcomeEmail('en', '$&', ORIGIN).heading).toBe('Welcome to GoLandly, $&!')
   })
 
   it('points the button at the member area', () => {
@@ -135,7 +135,7 @@ describe('welcome email content', () => {
     expect(html).toContain('<html lang="he" dir="rtl"')
     expect(html).toContain('text-align:right')
     expect(html).toContain('border-right:3px solid #2563EB')
-    expect(html).toContain('ברוכים הבאים ל-Landly, Dana!')
+    expect(html).toContain('ברוכים הבאים ל-GoLandly, Dana!')
   })
 
   it('keeps every language in its own copy', () => {
@@ -151,7 +151,7 @@ describe('welcome email route', () => {
     expect(mocks.send).toHaveBeenCalledTimes(1)
     const payload = mocks.send.mock.calls[0][0]
     expect(payload).toMatchObject({
-      from: 'Landly <noreply@golandly.com>',
+      from: 'GoLandly <noreply@golandly.com>',
       to: 'member@landly.test',
       replyTo: 'contact@golandly.com',
       subject: translations.he.welcomeEmail_subject,

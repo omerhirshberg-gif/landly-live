@@ -6,8 +6,10 @@ import type { GeoAddress } from '@/lib/geo'
 import { CONTENT_LANGS, directionOf } from '@/lib/i18n/contentTranslation'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
+import { useDropdownPlacement } from '@/lib/useDropdownPlacement'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
 import { useAdminT } from '@/lib/admin/translations'
+import { directionalProps } from '@/lib/directionalInput'
 
 export interface AddressValue {
   /** What the field shows and the business's `location` string. */
@@ -46,13 +48,14 @@ export default function AddressAutocomplete({
   required?: boolean
 }) {
   const listId = useId()
-  const { t } = useAdminT()
+  const { t, dir: uiDir } = useAdminT()
   const [open, setOpen] = useState(false)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [active, setActive] = useState(-1)
   const [status, setStatus] = useState<'idle' | 'searching' | 'picking' | 'unavailable' | 'error'>('idle')
   const [pickError, setPickError] = useState<string | null>(null)
   const session = useRef<string | null>(null)
+  const anchor = useRef<HTMLDivElement>(null)
   const typed = useRef(false)
   const query = useDebouncedValue(value.text, 250)
 
@@ -137,16 +140,19 @@ export default function AddressAutocomplete({
   }
 
   const expanded = open && suggestions.length > 0
+  const { up, maxHeight } = useDropdownPlacement(anchor, expanded)
+  // The hint's own direction (see lib/directionalInput.ts); the icon and list follow it so padding and icon stay on one edge.
+  const inputDir = directionalProps(value.text, t('address.placeholder'), uiDir === 'rtl')
   const city = value.address ? value.address.city.en ?? value.address.city.he : null
 
   return (
     <div>
       <label htmlFor={id} className={ADMIN_LABEL}>{t('address.label')}</label>
-      <div className="relative">
+      <div ref={anchor} dir={inputDir.dir === 'auto' ? undefined : inputDir.dir} className="relative">
         <input
           id={id}
           required={required}
-          dir="auto"
+          {...inputDir}
           role="combobox"
           aria-expanded={expanded}
           aria-controls={listId}
@@ -173,7 +179,8 @@ export default function AddressAutocomplete({
           <ul
             id={listId}
             role="listbox"
-            className="drop-in absolute inset-x-0 top-full z-20 mt-1.5 max-h-72 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg"
+            style={{ maxHeight }}
+            className={`drop-in absolute inset-x-0 z-30 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
           >
             {suggestions.map((suggestion, i) => (
               <li

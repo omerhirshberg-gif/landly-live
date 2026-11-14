@@ -23,9 +23,10 @@ const COUNTRY_ORDER = ['IL', 'US', 'GB', 'FR', 'RU', 'UA', 'CA', 'AU', 'AR', 'BR
 
 // One border colour or the other, never both: Tailwind's order, not this string's, would pick the winner.
 // focus:outline-none, because the site's :focus-visible outline would otherwise sit around the ring.
-const FIELD_CLASS = 'min-h-[48px] w-full rounded-xl border-[1.5px] bg-white px-4 py-3 text-base text-ink transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-4'
-const VALID_CLASS = 'border-slate-200 focus:border-brand focus:ring-brand/10'
-const INVALID_CLASS = 'border-red-400 focus:border-red-500 focus:ring-red-500/10'
+// The same tokens as .inp-consumer (app/globals.css): the field's name is the hint inside the box, no label above.
+const FIELD_CLASS = 'h-12 min-h-[48px] w-full rounded-xl border bg-slate-50/80 px-4 text-start text-base text-ink transition-[border-color,background-color,box-shadow] placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2'
+const VALID_CLASS = 'border-slate-200 focus:border-[#0038B8] focus:ring-[#0038B8]/15'
+const INVALID_CLASS = 'border-red-600 focus:border-red-600 focus:ring-red-600/15'
 
 // An emoji drawn from the country code. The picker's default loads every flag
 // from an outside host, one more request on a slow in-app connection.
@@ -56,14 +57,14 @@ function SelectField({ id, name, label, value, empty, onChange, children }: {
 }) {
   return (
     <>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink">{label}</label>
+      <label htmlFor={id} className="sr-only">{label}</label>
       <div className="relative">
         <select
           id={id}
           name={name}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={`${FIELD_CLASS} ${VALID_CLASS} cursor-pointer appearance-none pe-10 ${empty ? 'text-slate-500' : ''}`}
+          className={`${FIELD_CLASS} ${VALID_CLASS} cursor-pointer appearance-none pe-10 ${empty ? 'text-slate-400' : ''}`}
         >
           {children}
         </select>
@@ -202,13 +203,14 @@ export default function LeadForm({
         <div className="grid items-start gap-3 min-[360px]:grid-cols-2">
           {NAME_FIELDS.map(({ field, id, autoComplete, label, error }) => (
             <div key={field} className="min-w-0">
-              <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-ink">{copy[label]}</label>
+              <label htmlFor={id} className="sr-only">{copy[label]}</label>
               <input
                 id={id}
                 data-field={field}
                 type="text"
                 name={field}
                 autoComplete={autoComplete}
+                placeholder={copy[label]}
                 enterKeyHint="next"
                 maxLength={MAX_NAME_LENGTH}
                 required
@@ -225,8 +227,8 @@ export default function LeadForm({
         </div>
 
         <div>
-          <label htmlFor="join-phone" className="mb-1.5 block text-sm font-semibold text-ink">{copy.phone}</label>
-          <div dir="ltr" className={`join-phone rounded-xl transition-shadow focus-within:ring-4 ${errors.phone ? 'join-phone-invalid focus-within:ring-red-500/10' : 'focus-within:ring-brand/10'}`}>
+          <label htmlFor="join-phone" className="sr-only">{copy.phone}</label>
+          <div dir="ltr" className={`join-phone rounded-xl transition-shadow focus-within:ring-2 ${errors.phone ? 'join-phone-invalid focus-within:ring-red-600/15' : 'focus-within:ring-[#0038B8]/15'}`}>
             <PhoneInput
               id="join-phone"
               data-field="phone"
@@ -253,13 +255,13 @@ export default function LeadForm({
         </div>
 
         <div>
-          <label htmlFor="join-email" className="mb-1.5 block text-sm font-semibold text-ink">{copy.email}</label>
+          <label htmlFor="join-email" className="sr-only">{copy.email}</label>
           <input
             id="join-email"
             data-field="email"
             type="email"
             name="email"
-            dir="ltr"
+            dir={values.email ? 'ltr' : undefined}
             autoComplete="email"
             autoCapitalize="none"
             autoCorrect="off"
@@ -268,7 +270,7 @@ export default function LeadForm({
             enterKeyHint="done"
             maxLength={254}
             required
-            placeholder={copy.emailPlaceholder}
+            placeholder={copy.email}
             aria-invalid={errors.email ? true : undefined}
             aria-describedby={errors.email ? 'join-email-error' : undefined}
             value={values.email}
@@ -314,7 +316,7 @@ export default function LeadForm({
           <div className={`grid grid-cols-1 transition-[grid-template-rows,opacity,margin-top,visibility] duration-300 ease-out motion-reduce:transition-none ${otherOpen ? 'visible mt-3 grid-rows-[1fr] opacity-100' : 'invisible mt-0 grid-rows-[0fr] opacity-0'}`}>
             {/* The padding gives the focus ring room inside overflow-hidden. */}
             <div className="-m-1 min-h-0 overflow-hidden p-1">
-              <label htmlFor="join-persona-other" className="mb-1.5 block text-sm font-semibold text-ink">{copy.personaOtherLabel}</label>
+              <label htmlFor="join-persona-other" className="sr-only">{copy.personaOtherLabel}</label>
               <input
                 id="join-persona-other"
                 type="text"

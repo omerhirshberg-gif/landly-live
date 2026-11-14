@@ -10,7 +10,7 @@ import Alert from '@/components/admin/Alert'
 import BidiText from '@/components/admin/BidiText'
 import Switch from '@/components/admin/Switch'
 import PoolSheet from '@/components/admin/inventory/PoolSheet'
-import { ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import { ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 
 interface PlanPerk { key: string; title: string; brand: string; category: string | null; retailPrice: number | null; memberPrice: number | null; unitCost: number | null; codes: number; expiresFirst: string | null }
 interface Existing { offerId: string; title: string; brand: string; remaining: number }
@@ -208,7 +208,7 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
                   {r.include && r.ambiguous && (
                     <div className="mt-3">
                       <label htmlFor={`pick-${r.perk.key}`} className={ADMIN_LABEL}>{t('smart.pickPerk')}</label>
-                      <select id={`pick-${r.perk.key}`} className={ADMIN_INPUT} value={edits[r.perk.key]?.choice ?? ''} onChange={(e) => edit(r.perk.key, { choice: e.target.value })}>
+                      <select id={`pick-${r.perk.key}`} className={ADMIN_SELECT} value={edits[r.perk.key]?.choice ?? ''} onChange={(e) => edit(r.perk.key, { choice: e.target.value })}>
                         <option value="">{t('smart.pickPerk')}</option>
                         {(r.planned as Extract<Planned, { status: 'ambiguous' }>).candidates.map((c) => <option key={c.offerId} value={c.offerId}>{`${c.title} · ${c.remaining}`}</option>)}
                         <option value="new">{t('smart.createNew')}</option>
@@ -223,7 +223,7 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
                       <Field id={`cost-${r.perk.key}`} label={t('smart.col.cost')} value={r.cost} invalid={!(num(r.cost) >= 0)} onChange={(cost) => edit(r.perk.key, { cost })} />
                       <div>
                         <label htmlFor={`cat-${r.perk.key}`} className={ADMIN_LABEL}>{t('smart.col.category')}</label>
-                        <select id={`cat-${r.perk.key}`} className={ADMIN_INPUT} value={r.category} onChange={(e) => edit(r.perk.key, { category: e.target.value })}>
+                        <select id={`cat-${r.perk.key}`} className={ADMIN_SELECT} value={r.category} onChange={(e) => edit(r.perk.key, { category: e.target.value })}>
                           <option value="">{t('smart.pickCategory')}</option>
                           {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                         </select>

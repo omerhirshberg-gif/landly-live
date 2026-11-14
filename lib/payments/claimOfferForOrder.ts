@@ -1,5 +1,5 @@
 import 'server-only'
-import { frozenPerkScope } from '../offers/perkScope'
+import { belongsToBusiness, frozenNationwide, frozenPerkScope } from '../offers/perkScope'
 import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 import type { TranzilaNotification } from './parseTranzilaNotification'
@@ -26,8 +26,8 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const [orderSnap, receiptSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)])
     if (!orderSnap.exists) throw new PaymentError('Order not found.', 404)
     const order = orderSnap.data()!
-    // Only a local-business order names a business; a Multipass order carries its brand instead.
-    const direct = parseFulfillmentType(order.fulfillmentType) === 'direct_merchant'
+    // Only a local-business order names a business; a Multipass order and a manual multi-chain pass carry their brand instead.
+    const direct = belongsToBusiness(order)
     if (!isDocumentId(order.userId) || !isDocumentId(order.offerId) || (direct && !isDocumentId(order.businessId))
       || `${order.userId}_${order.offerId}` !== event.orderId
       || order.terminal !== event.terminal || order.currency !== event.currency
@@ -116,7 +116,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     )
     tx.create(voucherRef, {
       userId: order.userId, offerId: order.offerId,
-      ...(direct ? { businessId: order.businessId } : frozenPerkScope(order)),
+      ...(direct ? { businessId: order.businessId, ...frozenNationwide(order) } : frozenPerkScope(order)),
       businessName: order.businessName, offerTitle: order.offerTitle,
       redemptionCode: String(randomInt(0, 100_000_000)).padStart(8, '0'),
       // What the QR code carries (lib/firebase/vouchers.ts redeemVoucherKey):

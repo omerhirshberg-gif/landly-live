@@ -29,7 +29,7 @@ import { colors, radius } from '../../theme'
 // member signs in (password, Apple or Google, from the account's linked
 // providers: lib/auth/signInProvider.ts), the app lock (where the device has
 // biometrics; the website has Passkeys in this spot), Change Password for
-// email/password accounts (an Apple or Google account has no Landly
+// email/password accounts (an Apple or Google account has no GoLandly
 // password, so it gets a note instead), the devices signed in, then the data
 // controls. The account-deletion request itself stays in Settings' Danger zone.
 export default function PrivacySecurityScreen() {

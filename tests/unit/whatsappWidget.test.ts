@@ -45,11 +45,11 @@ function view(lang: Lang, bubbleOpen: boolean, lift = 0, bubbleLeaving = false) 
 describe('WhatsApp chat link', () => {
   it('opens the support line with the greeting pre-filled and URL-encoded', () => {
     expect(whatsappChatHref(translations.en.whatsapp_prefill)).toBe(
-      'https://wa.me/972552889033?text=Hi%20Landly%20team%2C%20I%20would%20like%20some%20assistance%20regarding%20perks%20and%20services%20on%20the%20website%20%3A)'
+      'https://wa.me/972552889033?text=Hi%20GoLandly%20team%2C%20I%20would%20like%20some%20assistance%20regarding%20perks%20and%20services%20on%20the%20website%20%3A)'
     )
     const he = new URL(whatsappChatHref(translations.he.whatsapp_prefill))
     expect(he.origin + he.pathname).toBe('https://wa.me/972552889033')
-    expect(he.searchParams.get('text')).toBe('שלום צוות Landly, אשמח לעזרה בנוגע להטבות ולשירות באתר :)')
+    expect(he.searchParams.get('text')).toBe('שלום צוות GoLandly, אשמח לעזרה בנוגע להטבות ולשירות באתר :)')
     expect(whatsappChatHref('   ')).toBe('https://wa.me/972552889033')
   })
 
@@ -65,7 +65,7 @@ describe('WhatsApp chat link', () => {
 })
 
 describe('where the widget shows', () => {
-  it.each(['/', '/categories', '/offers/abc', '/olim', '/support', '/member', '/profile', '/business'])('shows on %s', (path) => {
+  it.each(['/', '/categories', '/offers/abc', '/support', '/member', '/profile', '/business'])('shows on %s', (path) => {
     expect(showsWhatsAppWidget(path)).toBe(true)
   })
   it.each(['/admin', '/admin/offers', '/business/dashboard', '/business/dashboard/offers', '/business/login', '/checkout', '/checkout/success', '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/join', '/join/he'])(

@@ -81,7 +81,7 @@ const ICONS = {
   // The app lock: Face ID / face unlock, and Touch ID / fingerprint.
   faceId: ScanFace,
   fingerprint: Fingerprint,
-  // The Perks tab's rail headings: Sparkles (New on Landly), Award (Best Sellers).
+  // The Perks tab's rail headings: Sparkles (New on GoLandly), Award (Best Sellers).
   sparkles: Sparkles,
   award: Award,
   heart: Heart,

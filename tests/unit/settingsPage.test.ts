@@ -104,7 +104,7 @@ describe('DeleteAccountForm', () => {
     // The empty choice is selected by default: no reason given.
     expect(html).toContain(`<option value="" selected="">${amp(t.del_reason_placeholder)}</option>`)
     expect([...html.matchAll(/<option value="([a-z_]+)">/g)].map((m) => m[1])).toEqual(['not_using', 'missing_perks', 'privacy', 'moving', 'other'])
-    expect(html).toMatch(/<textarea id="delete-details" rows="3" dir="auto" maxLength="1000"/)
+    expect(html).toMatch(/<textarea id="delete-details" rows="3" dir="(ltr|rtl)"[^>]*maxLength="1000"/)
     expect(html).toMatch(/<input type="checkbox" required=""/)
     expect(html).toContain(amp(t.del_confirm))
   })

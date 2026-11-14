@@ -140,7 +140,7 @@ for (const { label, file } of ENVS) {
 }
 
 const mobile = join(root, 'landly-mobile')
-const entitlementsPath = join(mobile, 'ios', 'Landly', 'Landly.entitlements')
+const entitlementsPath = join(mobile, 'ios', 'GoLandly', 'GoLandly.entitlements')
 const nativeStatus = nativeAppleSignInStatus({
   appJson: JSON.parse(readFileSync(join(mobile, 'app.json'), 'utf8')),
   entitlements: existsSync(entitlementsPath) ? readFileSync(entitlementsPath, 'utf8') : null,
@@ -161,7 +161,7 @@ rows.push({
   note: NATIVE_NOTES[nativeStatus],
 })
 
-const iosApp = join(mobile, 'ios', 'Landly')
+const iosApp = join(mobile, 'ios', 'GoLandly')
 const readIfThere = (path) => (existsSync(path) ? readFileSync(path, 'utf8') : null)
 const sceneStatus = nativeSceneLifecycleStatus({
   infoPlist: readIfThere(join(iosApp, 'Info.plist')),

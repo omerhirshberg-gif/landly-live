@@ -1,6 +1,6 @@
 import type { TranslationKey } from '@/lib/i18n/translations'
 
-// Landly's co-founders, Omer first, for the About page (components/about/AboutPage.tsx)
+// GoLandly's co-founders, Omer first, for the About page (components/about/AboutPage.tsx)
 // and the Organization structured data (lib/seo/jsonLd.ts). `name` is the
 // Latin spelling search engines get; the page shows `nameKey`, which is the
 // same name except in Hebrew. Set `photo` to an image URL once there is one;

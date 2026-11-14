@@ -8,6 +8,8 @@ import SegmentBadge from '@/components/member/SegmentBadge'
 import AnchoredPanel from './AnchoredPanel'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
+import { usePhoneVerificationNeeded } from '@/lib/firebase/usePhoneVerificationNeeded'
+import PhoneBadge from './PhoneBadge'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { ChevronDown, LogOut, QrCode, Settings, User, type LucideIcon } from 'lucide-react'
@@ -38,6 +40,8 @@ export default function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
   const { t, isRtl } = useLang()
   const { user } = useAuth()
   const { profile, firstName, initials, photoURL } = useMemberProfile(user)
+  // Live (not the cached profile above): the red "1" clears the moment the code is accepted.
+  const needsPhone = usePhoneVerificationNeeded(user?.uid ?? null)
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
@@ -67,10 +71,13 @@ export default function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={t('account_menu_label')}
+        aria-label={needsPhone ? `${t('account_menu_label')}, ${t('phone_nudge_badge_label')}` : t('account_menu_label')}
         className="tap-target inline-flex items-center gap-2 h-11 ps-1 pe-3 rounded-full bg-white border border-line [@media(hover:hover)]:hover:border-slate-300 transition-colors"
       >
-        <Avatar src={photoURL} initials={initials} size={34} />
+        <span className="relative inline-flex">
+          <Avatar src={photoURL} initials={initials} size={34} />
+          {needsPhone && <PhoneBadge className="-top-1 -end-1" />}
+        </span>
         {/* The name drops out between lg and xl so the five centre links fit at 1024px */}
         <span dir={contentDir} className="hidden xl:inline max-w-[9rem] truncate text-meta font-semibold text-ink">
           {firstName ?? t('nav_profile')}

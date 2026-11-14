@@ -14,7 +14,7 @@ import { DELETION_DETAILS_MAX, isDeletionReason, type DeletionReason } from '@/l
 // anything else.
 
 const REASON_LABELS: Record<DeletionReason, string> = {
-  not_using: "Doesn't use Landly anymore",
+  not_using: "Doesn't use GoLandly anymore",
   missing_perks: 'Not enough perks',
   privacy: 'Privacy concerns',
   moving: 'Leaving Israel',
@@ -32,7 +32,7 @@ export interface DeletionRequestBody {
 const APPLE_REVOCATION_LABELS: Record<AppleRevocation, string> = {
   revoked: 'Revoked (the member confirmed with Apple)',
   failed: 'NOT revoked: confirming with Apple or revoking failed',
-  unavailable: "NOT revoked: Apple confirmation isn't available on this device (the member was told how to remove Landly in their Apple ID settings)",
+  unavailable: "NOT revoked: Apple confirmation isn't available on this device (the member was told how to remove GoLandly in their Apple ID settings)",
 }
 
 /** Cleans the raw request body, or returns null unless it confirms and every field is valid. */
@@ -74,7 +74,7 @@ function deletionEmail(req: DeletionRequestEmail) {
   const name = singleLine(req.name)
   const email = singleLine(req.email)
   return {
-    subject: `[Landly Account Deletion Request] ${name} (${email})`,
+    subject: `[GoLandly Account Deletion Request] ${name} (${email})`,
     heading: 'Account deletion request',
     rows: [
       { label: 'UID', value: req.uid },
@@ -90,7 +90,7 @@ function deletionEmail(req: DeletionRequestEmail) {
     ],
     message: req.details || '(no details given)',
     replyName: name,
-    source: 'the Landly account deletion form',
+    source: 'the GoLandly account deletion form',
   }
 }
 

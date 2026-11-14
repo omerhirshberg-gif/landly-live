@@ -7,20 +7,20 @@ import { OFFER_TEMPLATE_COLUMNS, type OfferColumn } from './offersBatch'
 const HEBREW_LABELS: Record<OfferColumn, string> = {
   title_he: 'כותרת בעברית', title_en: 'כותרת באנגלית', businessId: 'מזהה בית עסק', category: 'קטגוריה', fulfillmentType: 'ערוץ',
   originalPrice: 'מחיר מקורי', discountedPrice: 'מחיר אחרי הנחה', totalQuantity: 'כמות', commissionRate: 'עמלה', paymentTerms: 'תנאי תשלום',
-  howToRedeem_he: 'הוראות מימוש', imageUrl: 'קישור לתמונה', perkScope: 'סוג הטבת מולטיפאס', brandName: 'שם המותג', participatingChains: 'רשתות מכבדות',
+  howToRedeem_he: 'הוראות מימוש', imageUrl: 'קישור לתמונה', perkScope: 'סוג הטבת מולטיפאס', brandName: 'שם המותג', participatingChains: 'רשתות מכבדות', isNationwide: 'הטבה ארצית',
 }
 
 export const OFFERS_TEMPLATE_FILENAME = 'landly_offers_template.xlsx'
 
 const EXAMPLE_ROW = [
   'ארוחת בוקר זוגית', 'Breakfast for two', '<business id or company number>', 'Restaurants and Cafes', 'direct_merchant',
-  120, 79, 100, 10, 'net_30', 'מציגים את השובר בקופה', 'https://example.com/photo.jpg', '', '', '',
+  120, 79, 100, 10, 'net_30', 'מציגים את השובר בקופה', 'https://example.com/photo.jpg', '', '', '', '',
 ]
 
 // A Multipass perk names its brand (and, for a multi-chain voucher, its chains) instead of a business.
 const MULTIPASS_EXAMPLE_ROW = [
   '<title in Hebrew>', '<title in English>', '', 'Fashion and Shopping', 'multipass_pool',
-  200, 180, '', '', '', 'מציגים את הקוד בקופה', '', 'multi_chain', '<brand name>', '<chain>; <chain>',
+  200, 180, '', '', '', 'מציגים את הקוד בקופה', '', 'multi_chain', '<brand name>', '<chain>; <chain>', '',
 ]
 
 const NOTES: (string | number)[][] = [
@@ -30,7 +30,8 @@ const NOTES: (string | number)[][] = [
   ['category', 'Optional. Defaults to the business’s category.'],
   ['fulfillmentType', 'direct_merchant (default) or multipass_pool. Multipass codes are loaded afterwards on the Stock & Vouchers page.'],
   ['perkScope / brandName', 'Multipass rows only. brandName is required and replaces the business. perkScope is single_business (default) or multi_chain; the category is required too.'],
-  ['participatingChains', 'Multi-chain rows only: the chains that honour the voucher, separated by semicolons.'],
+  ['participatingChains', 'Optional, separated by semicolons: the stores that honour a nationwide local offer (isNationwide = yes) or a Multipass perk, or the chains of a multi-chain voucher (required there). On a Multipass row with no perkScope, a list means multi_chain; set perkScope to single_business for a list of stores. Empty means every store.'],
+  ['isNationwide', 'Optional, local-business rows only: yes/true/1 hides the single address and Waze / Maps buttons for a chain honoured across its branches. Empty means a single location; Multipass rows are always multi-branch.'],
   ['businessId', 'Leave empty on a Multipass row. Local-business rows need it.'],
   ['originalPrice / discountedPrice', 'In shekels. The discounted price must be lower.'],
   ['totalQuantity', 'Direct offers only. Empty means unlimited.'],

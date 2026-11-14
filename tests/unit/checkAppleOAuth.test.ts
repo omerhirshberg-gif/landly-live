@@ -72,7 +72,7 @@ describe('Sign in with Apple key check', () => {
     const ok = { teamId: EXPECTED_APPLE_TEAM_ID, keyId: KEY_ID, privateKeyPem: pem, fileName: `AuthKey_${KEY_ID}.p8` }
     expect(appleKeyProblems(ok)).toEqual([])
     expect(appleKeyProblems({ ...ok, fileName: 'AuthKey_ZZZZZ99999.p8' })[0]).toMatch(/AuthKey_ZZZZZ99999\.p8 but the Key ID is ABCDE12345/)
-    expect(appleKeyProblems({ ...ok, teamId: 'ABCDEFGHIJ' })[0]).toMatch(/not Landly's \(Q9PZPLU6GY\)/)
+    expect(appleKeyProblems({ ...ok, teamId: 'ABCDEFGHIJ' })[0]).toMatch(/not GoLandly's \(Q9PZPLU6GY\)/)
     expect(appleKeyProblems({ ...ok, keyId: 'short' })[0]).toMatch(/Key ID "short"/)
     expect(appleKeyProblems({ ...ok, privateKeyPem: 'not a key' })).toEqual(['the .p8 is not a readable private key'])
     const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()

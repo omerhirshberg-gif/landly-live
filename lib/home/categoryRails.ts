@@ -54,7 +54,7 @@ export function selectCurated(offers: readonly OfferDocument[]): OfferDocument[]
 }
 
 /**
- * "New on Landly" and "Best Sellers", on Home as on the Perks tab: claimable
+ * "New on GoLandly" and "Best Sellers", on Home as on the Perks tab: claimable
  * offers only, bestsellers then newest first, each capped like a category rail.
  */
 export function selectHighlights(offers: readonly OfferDocument[]): { newOffers: OfferDocument[]; bestsellerOffers: OfferDocument[] } {

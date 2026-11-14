@@ -1,6 +1,8 @@
 import { Platform, StyleSheet, View } from 'react-native'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useAuth } from '@shared/firebase/useAuth'
+import { usePhoneVerificationNeeded } from '@shared/firebase/usePhoneVerificationNeeded'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { useLang } from '../../i18n/LangProvider'
 import { colors } from '../../theme'
@@ -23,7 +25,9 @@ import { tick } from '../../lib/haptics'
 // The system lays the five out in equal columns at its own bar height.
 // The order is physical and permanent: Home far left, then Perks, Wishlist,
 // My Pass, Profile far right, in every language. The Wishlist tab carries the
-// live count of saved perks as its badge. Native layout direction stays LTR
+// live count of saved perks as its badge, and the Profile tab a "1" while the
+// member's phone isn't verified (the system draws both badges; the "1" clears
+// the moment the code is accepted, on every device). Native layout direction stays LTR
 // (supportsRTL is off in app.json); Hebrew only flips the JS root view, so
 // the screens follow the language while the bar never mirrors.
 const androidBar = Platform.OS === 'android'
@@ -52,6 +56,8 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 export default function TabsLayout() {
   const { t } = useLang()
   const { wishlistCount } = useWishlist()
+  const { user } = useAuth()
+  const needsPhone = usePhoneVerificationNeeded(user?.uid ?? null)
   const insets = useSafeAreaInsets()
 
   return (
@@ -78,6 +84,7 @@ export default function TabsLayout() {
         <NativeTabs.Trigger name="profile">
           <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} md="account_circle" />
           <NativeTabs.Trigger.Label>{t('nav_profile')}</NativeTabs.Trigger.Label>
+          {needsPhone && <NativeTabs.Trigger.Badge>1</NativeTabs.Trigger.Badge>}
         </NativeTabs.Trigger>
       </NativeTabs>
       {Platform.OS === 'android' && (

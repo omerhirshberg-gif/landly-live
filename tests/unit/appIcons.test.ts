@@ -12,12 +12,15 @@ describe('app icons', async () => {
     expect(result.failures).toEqual([])
   })
 
-  it('centre the Star of David, not the emblem box, with the arrow reaching right', () => {
-    expect(Math.abs(result.starCenters.ios - 512)).toBeLessThanOrEqual(1.5)
-    expect(Math.abs(result.starCenters.android - 512)).toBeLessThanOrEqual(1.5)
-    expect(Math.abs(result.starCenters.playStore - PLAY_SIZE / 2)).toBeLessThanOrEqual(1.5)
-    // The arrow side carries more of the glyph, so the right margin is the narrower one.
-    expect(result.icon.margins.right).toBeLessThan(result.icon.margins.left)
+  it('centre the whole emblem, arrow included, not the Star of David alone', () => {
+    const { icon, play, adaptive } = result
+    // iOS and Google Play centre the glyph's box on both axes.
+    expect(Math.abs(icon.margins.left - icon.margins.right)).toBeLessThanOrEqual(2)
+    expect(Math.abs(play.margins.left - play.margins.right)).toBeLessThanOrEqual(2)
+    expect(Math.abs(play.margins.top - play.margins.bottom)).toBeLessThanOrEqual(2)
+    // Android centres the enclosing circle, so the box sits within a few pixels of the middle.
+    expect(Math.abs(adaptive.margins.left - adaptive.margins.right)).toBeLessThanOrEqual(24)
+    expect(Math.abs(adaptive.margins.top - adaptive.margins.bottom)).toBeLessThanOrEqual(24)
   })
 
   it('fill about two thirds of the iOS icon, on an opaque square, clear of the rounded corners', () => {

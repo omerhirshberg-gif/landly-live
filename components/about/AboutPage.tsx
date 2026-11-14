@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useLang } from '@/lib/i18n/useLang'
 import FounderCard from './FounderCard'
 
-// /about: Landly's story, its co-founders, why it exists, and a way in. On
+// /about: GoLandly's story, its co-founders, why it exists, and a way in. On
 // the site canvas (.home-ambient) with the guest home's hairlines between
 // sections, each rising in as it's reached. The closing call to action invites guests to sign up or sign in;
 // members, already in, get Explore Perks instead.

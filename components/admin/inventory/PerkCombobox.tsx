@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useAdminT } from '@/lib/admin/translations'
 import { ADMIN_INPUT, ADMIN_LABEL } from '@/components/admin/formStyles'
+import { directionalProps } from '@/lib/directionalInput'
 
 export interface PerkOption {
   id: string
@@ -19,7 +20,7 @@ export function filterPerks(options: readonly PerkOption[], query: string): Perk
 
 // A searchable list of perks (a WAI-ARIA combobox): type to narrow it, arrows and Enter or a tap to pick.
 export default function PerkCombobox({ options, value, onChange }: { options: readonly PerkOption[]; value: string; onChange: (id: string) => void }) {
-  const { t } = useAdminT()
+  const { t, dir: uiDir } = useAdminT()
   const uid = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const selected = options.find((o) => o.id === value) ?? null
@@ -48,7 +49,7 @@ export default function PerkCombobox({ options, value, onChange }: { options: re
         id={`${uid}-input`}
         type="text"
         role="combobox"
-        dir="auto"
+        {...directionalProps(open ? query : selected ? selected.title : '', t('inv.pickPerkSearch'), uiDir === 'rtl')}
         aria-expanded={open}
         aria-controls={`${uid}-list`}
         aria-autocomplete="list"

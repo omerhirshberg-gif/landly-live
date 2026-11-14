@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode, type Ref } from 'react'
 import { Platform, Pressable, StyleSheet, TextInput, View, type TextInputProps, type TextStyle } from 'react-native'
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
-import { isWeb, webOnly } from '../lib/webStyles'
+import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
 // Outline icons (Lucide-style 24px paths) shown before the value.
@@ -24,17 +24,24 @@ const EYE_OFF =
 // A `secureTextEntry` field gets an eye button that shows/hides the value.
 // `error` replaces `hint` below the field and turns the border red.
 // `prefix` sits inside the field before the value (the phone country code).
-// On focus the field box (never the text itself, which would blur) grows to
-// FOCUS_SCALE along with the brand border and halo: a spring on native, a
-// CSS transition on web. Reduced motion keeps the colour change only.
+// The field's name is the grey hint inside the box (and its accessibility
+// label); there is no label above it. `showLabel` keeps a small label above
+// instead, for a pair of fields that look alike once typed in (create /
+// confirm password). On focus the box takes the brand border and a soft ring
+// and does not scale. While empty the hint sits at the reading start (right in
+// Hebrew); typed email, password and phone values are left-to-right.
 // `shake` plays a short side-to-side shake each time it goes up while there's
 // an error (a submit that failed validation; web: lib/useShake.ts), skipped
 // under reduced motion.
-const FOCUS_SCALE = 1.025
-const FOCUS_SPRING = { damping: 15, stiffness: 120 }
+const HINT_COLOR = '#94A3B8'
+const BOX_BG = '#F8FAFC'
+const BOX_BORDER = '#E2E8F0'
+const FOCUS_BORDER = '#0038B8'
+const ERROR_BORDER = '#DC2626'
 
 export default function TextField({
   label,
+  showLabel = false,
   icon,
   natural,
   hint,
@@ -47,6 +54,8 @@ export default function TextField({
   ...props
 }: TextInputProps & {
   label: string
+  /** A small label above the box, and no hint inside it. */
+  showLabel?: boolean
   icon?: keyof typeof ICONS
   natural?: boolean
   hint?: string
@@ -57,17 +66,13 @@ export default function TextField({
   ref?: Ref<TextInput>
 }) {
   const { t, isRtl } = useLang()
-  const rtlText = natural && isRtl
+  // Empty: the hint follows the language. Typed: free text follows it too, codes and addresses stay left-to-right.
+  const empty = !props.value && !props.defaultValue
+  const rtlText = isRtl && (natural || empty)
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const reduced = useReducedMotion()
-  const zoom = focused && !reduced
-  const scale = useSharedValue(1)
   const shift = useSharedValue(0)
-
-  useEffect(() => {
-    if (!isWeb) scale.set(withSpring(zoom ? FOCUS_SCALE : 1, FOCUS_SPRING))
-  }, [zoom, scale])
 
   useEffect(() => {
     if (!shake || !error || reduced) return
@@ -76,14 +81,11 @@ export default function TextField({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- plays once per shake
   }, [shake])
 
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shift.get() }, { scale: scale.get() }] }))
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shift.get() }] }))
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.label}>{label}</AppText>
-      <Animated.View
-        style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError, isWeb ? [shakeStyle, zoom && styles.fieldZoomWeb] : scaleStyle]}
-      >
+      {showLabel && <AppText style={styles.label}>{label}</AppText>}
+      <Animated.View style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError, shakeStyle]}>
         {prefix}
         {icon && (
           <Svg
@@ -101,7 +103,9 @@ export default function TextField({
           </Svg>
         )}
         <TextInput
-          placeholderTextColor={colors.textFaint}
+          placeholder={showLabel ? undefined : label}
+          placeholderTextColor={HINT_COLOR}
+          accessibilityLabel={label}
           {...props}
           aria-invalid={!!error || undefined}
           accessibilityHint={error ?? props.accessibilityHint}
@@ -141,50 +145,50 @@ export default function TextField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
-  label: { marginBottom: 8, fontSize: 13, fontWeight: '600', color: colors.text },
+  label: { marginBottom: 6, fontSize: 12, fontWeight: '600', color: colors.textMuted },
   field: {
-    minHeight: 52,
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    backgroundColor: colors.background,
+    borderColor: BOX_BORDER,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingHorizontal: 16,
+    backgroundColor: BOX_BG,
     ...webOnly({
       minHeight: 0,
-      height: 52,
-      paddingHorizontal: 16,
+      height: 50,
       cursor: 'text',
-      // The zoom is a transform only, so it never moves the layout around it.
-      // No will-change: it would pin the box as a bitmap rasterized at 1.0,
-      // and the scaled text would stay soft instead of re-rasterizing crisp.
-      transitionProperty: 'transform, box-shadow, border-color, background-color',
+      transitionProperty: 'box-shadow, border-color, background-color',
       transitionDuration: '200ms',
-      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease, ease, ease',
+      transitionTimingFunction: 'ease',
     }),
   },
-  fieldZoomWeb: webOnly({ transform: [{ scale: FOCUS_SCALE }] }),
-  // Focus ring: brand border plus a soft brand halo (iOS shadow; Android keeps the border).
+  // Focus: brand border and a soft brand ring (iOS shadow; Android keeps the border).
   fieldFocused: {
-    borderColor: colors.brand,
+    borderColor: FOCUS_BORDER,
     backgroundColor: colors.white,
     ...Platform.select({
-      web: { boxShadow: '0 0 0 4px rgba(0, 56, 184, 0.12), 0 8px 20px -8px rgba(0, 56, 184, 0.28)' },
-      default: { shadowColor: colors.brand, shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+      web: { boxShadow: '0 0 0 2px rgba(0, 56, 184, 0.15)' },
+      default: { shadowColor: FOCUS_BORDER, shadowOpacity: 0.15, shadowRadius: 3, shadowOffset: { width: 0, height: 0 } },
     }),
   },
-  fieldError: { borderColor: colors.danger },
+  fieldError: { borderColor: ERROR_BORDER },
   error: { marginTop: 6, fontSize: 12, fontWeight: '600', color: colors.danger },
   hint: { marginTop: 6, fontSize: 12, lineHeight: 17, color: colors.textMuted },
   icon: { marginEnd: 10 },
   eye: { marginStart: 8, padding: 2, ...webOnly({ cursor: 'pointer' }) },
+  // minWidth 0 + paddingEnd keep a long hint from running under the eye button or the field's end edge.
   input: {
     flex: 1,
+    minWidth: 0,
+    paddingStart: 0,
+    paddingEnd: 4,
     minHeight: 50,
     fontSize: 16,
     color: colors.textStrong,
-    // Web: fill the 52px row; the ring on the container replaces the browser outline.
+    // Web: fill the 50px row; the ring on the container replaces the browser outline.
     // (RN's outlineStyle type has no 'none'; react-native-web passes it through to CSS.)
     ...webOnly({ minHeight: 0, height: '100%', outlineWidth: 0, outlineStyle: 'none' as TextStyle['outlineStyle'] }),
   },

@@ -34,7 +34,7 @@ export function newLeadAlertEmail(lead: LeadSubmission, leadId: string, submitte
     heading: 'New waitlist lead',
     rows,
     replyName: fullName,
-    source: 'the Landly waitlist form',
+    source: 'the GoLandly waitlist form',
   }
 }
 

@@ -10,7 +10,7 @@ import LocalizedPrivacyPolicy from '@/components/legal/LocalizedPrivacyPolicy'
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How Landly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google, passkeys and the biometric app lock.',
+    'How GoLandly collects, uses, shares, protects and deletes personal information, including Google user data received through Sign in with Google, passkeys and the biometric app lock.',
   alternates: { canonical: 'https://www.golandly.com/privacy' },
   robots: { index: true, follow: true },
 }

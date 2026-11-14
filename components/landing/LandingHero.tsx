@@ -4,7 +4,7 @@ import StoreButtons from '@/components/landing/StoreButtons'
 import { useLang } from '@/lib/i18n/useLang'
 
 // The guest landing's full-bleed opening on a soft wash: one centred column of
-// the headline, what Landly is, the way in and both stores. The deals have
+// the headline, what GoLandly is, the way in and both stores. The deals have
 // their own section right under it.
 export default function LandingHero() {
   const { t } = useLang()

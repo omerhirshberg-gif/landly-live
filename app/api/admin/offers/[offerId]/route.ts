@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { endOfIsraelDay } from '@/lib/admin/expiryDate'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
@@ -9,6 +9,9 @@ import { parseOfferVoucherTerms } from '@/lib/payments/voucherTerms'
 import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { belongsToBusiness, parsePerkScopeFields } from '@/lib/offers/perkScope'
+import { parseFulfillmentType } from '@/lib/inventory/types'
+import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { deleteBannerByUrl } from '@/lib/storage/banners'
 import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 
@@ -22,11 +25,16 @@ interface PatchBody {
     expiryDate: string | null
     totalQuantity: number | null
     isBestseller?: boolean
+    isNationwide?: boolean
+    participatingChains?: unknown
+    participatingPlaces?: unknown
     validityDays?: number
     redemptionTerms?: string
     redemptionMethod?: string
     redemptionInstructions?: string
   }
+  /** A perk with no business (Multipass or a manual multi-chain pass): its issuer's brand and, for a multi-chain pass, the guide. */
+  perk?: { brandName?: unknown; universalRedemptionGuide?: unknown }
   /** The admin's own translations; a field left out goes back to Cloud Translation. */
   translationOverrides?: unknown
 }
@@ -89,8 +97,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   if (offer.totalQuantity !== null && offer.totalQuantity < claimedCount) {
     return badRequest(`offer.totalQuantity can't be less than the ${claimedCount} claim(s) this offer already has.`)
   }
+  // Which stores honour the offer, and for a perk with no business its brand and guide, are editable; its
+  // fulfillment, scope and business never change here.
+  const stored = snap.data() ?? {}
+  const multipass = parseFulfillmentType(stored.fulfillmentType) === 'multipass_pool'
+  const noBusiness = !belongsToBusiness(stored)
+  const multiChain = stored.perkScope === 'multi_chain'
+  const brandEdited = noBusiness && body.perk?.brandName !== undefined
+  const guideEdited = noBusiness && multiChain && body.perk?.universalRedemptionGuide !== undefined
+  const scope = parsePerkScopeFields({
+    fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
+    perkScope: stored.perkScope,
+    businessId: noBusiness ? undefined : stored.businessId,
+    brandName: noBusiness ? (brandEdited ? body.perk!.brandName : stored.brandName) : undefined,
+    universalRedemptionGuide: noBusiness && multiChain ? (guideEdited ? body.perk!.universalRedemptionGuide : stored.universalRedemptionGuide) : undefined,
+    isNationwide: noBusiness ? true : offer.isNationwide === true,
+    // A request that leaves the list out keeps what is stored.
+    participatingChains: offer.participatingChains === undefined ? stored.participatingChains : offer.participatingChains,
+    participatingPlaces: offer.participatingChains === undefined && offer.participatingPlaces === undefined ? stored.participatingPlaces : offer.participatingPlaces,
+  })
+  if (!scope.ok) return badRequest(scope.error)
   const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), snap.data()?.translations, body.translationOverrides)
   if (!translated.ok) return badRequest(translated.error)
+  // The issuer's name in the other languages (when written in Hebrew letters), kept in step with the name shown on the offer.
+  const brandTranslations = brandEdited ? await businessTranslationsForSave(scope.fields.brandName!, stored.businessTranslations, undefined) : null
 
   await ref.update({
     title: offer.title,
@@ -101,6 +131,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,
     totalQuantity: offer.totalQuantity,
     isBestseller: !!offer.isBestseller,
+    // A Multipass perk is always multi-branch; only a local-business offer takes the switch.
+    ...(noBusiness ? {} : { isNationwide: scope.fields.isNationwide }),
+    ...(brandEdited ? { brandName: scope.fields.brandName, businessName: scope.fields.brandName, businessTranslations: brandTranslations?.ok ? brandTranslations.translations : null } : {}),
+    ...(guideEdited ? { universalRedemptionGuide: scope.fields.universalRedemptionGuide ?? FieldValue.delete() } : {}),
+    ...(offer.participatingChains === undefined && offer.participatingPlaces === undefined ? {} : {
+      participatingChains: scope.fields.participatingChains ?? FieldValue.delete(),
+      participatingPlaces: scope.fields.participatingPlaces ?? FieldValue.delete(),
+      chainsCount: scope.fields.chainsCount ?? FieldValue.delete(),
+    }),
     // Orders already created keep the terms they were shown (see initiateOrder).
     validityDays: voucherTerms.validityDays,
     redemptionTerms: voucherTerms.redemptionTerms,

@@ -13,7 +13,7 @@ import { normalizeChains, parsePerkScopeFields, type PerkScope } from '@/lib/off
 
 export const OFFER_TEMPLATE_COLUMNS = [
   'title_he', 'title_en', 'businessId', 'category', 'fulfillmentType', 'originalPrice', 'discountedPrice',
-  'totalQuantity', 'commissionRate', 'paymentTerms', 'howToRedeem_he', 'imageUrl', 'perkScope', 'brandName', 'participatingChains',
+  'totalQuantity', 'commissionRate', 'paymentTerms', 'howToRedeem_he', 'imageUrl', 'perkScope', 'brandName', 'participatingChains', 'isNationwide',
 ] as const
 export type OfferColumn = (typeof OFFER_TEMPLATE_COLUMNS)[number]
 
@@ -27,7 +27,7 @@ export type BatchErrorCode =
   | 'title_required' | 'title_long' | 'business_required' | 'business_unknown' | 'category_invalid' | 'fulfillment_invalid'
   | 'original_invalid' | 'discounted_invalid' | 'price_order' | 'quantity_invalid' | 'commission_invalid'
   | 'payment_terms_invalid' | 'terms_pair' | 'terms_conflict' | 'redeem_long' | 'image_invalid'
-  | 'brand_required' | 'brand_long' | 'scope_invalid' | 'chains_required' | 'multipass_business' | 'direct_brand' | 'multipass_terms' | 'multipass_category'
+  | 'brand_required' | 'brand_long' | 'scope_invalid' | 'chains_required' | 'multipass_business' | 'direct_brand' | 'multipass_terms' | 'multipass_category' | 'nationwide_invalid' | 'chains_need_nationwide'
 
 export interface BatchCellError {
   column: OfferColumn
@@ -42,6 +42,8 @@ export interface BatchOffer {
   /** The business's document id once resolved (see `lookup`); empty for a Multipass perk, which has a brand instead. */
   businessUid: string
   perkScope: PerkScope
+  /** A direct offer redeemable across its branches (hides the single address); always true for Multipass. */
+  isNationwide: boolean
   brandName: string
   participatingChains: string[]
   category: string | null
@@ -90,6 +92,7 @@ const ALIASES: Record<OfferColumn, string[]> = {
   perkScope: ['perkscope', 'scope', 'סוגהטבה', 'סוגמולטיפאס'],
   brandName: ['brandname', 'brand', 'שםהמותג', 'מותג'],
   participatingChains: ['participatingchains', 'chains', 'רשתותמכבדות', 'רשתות'],
+  isNationwide: ['isnationwide', 'nationwide', 'הטבהארצית', 'ארצי'],
 }
 
 /** "A".."Z", "AA".. for a 0-based column index. */
@@ -120,6 +123,9 @@ const FULFILLMENT_ALIASES: Record<string, FulfillmentType> = {
   directmerchant: 'direct_merchant', direct: 'direct_merchant', עסקמקומיישיר: 'direct_merchant', עסקמקומי: 'direct_merchant', ישיר: 'direct_merchant',
   multipasspool: 'multipass_pool', multipass: 'multipass_pool', מולטיפאס: 'multipass_pool', הטבתמולטיפאס: 'multipass_pool',
 }
+
+const TRUE_WORDS = new Set(['true', 'yes', 'y', '1', 'כן'])
+const FALSE_WORDS = new Set(['false', 'no', 'n', '0', 'לא'])
 
 function parsePaymentTerms(raw: string): PaymentTerms | null {
   const key = norm(raw)
@@ -186,6 +192,10 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const scopeRaw = text(get('perkScope'))
     let perkScope: PerkScope = 'single_business'
     let businessUid = ''
+    // A local-business row may name a scope: single_business is the default, multi_chain makes it a manual pass with no business.
+    const directScope = !multipass && scopeRaw ? SCOPE_ALIASES[norm(scopeRaw)] : undefined
+    if (!multipass && scopeRaw && !directScope) fail('perkScope', 'scope_invalid')
+    let manualChain = false
     if (multipass) {
       // A Multipass perk has a brand (and for a multi-chain voucher, its chains) in place of a business.
       if (scopeRaw && !SCOPE_ALIASES[norm(scopeRaw)]) fail('perkScope', 'scope_invalid')
@@ -194,9 +204,16 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       if (!brandName) fail('brandName', 'brand_required')
       else if (brandName.length > 80) fail('brandName', 'brand_long')
       else if (perkScope === 'multi_chain' && chains.length === 0) fail('participatingChains', 'chains_required')
-      else if (perkScope === 'single_business' && chains.length > 0) fail('participatingChains', 'scope_invalid')
+    } else if (directScope === 'multi_chain') {
+      // A manual multi-chain pass: redeemed with its issuer, so a brand and its chains stand in for the business.
+      perkScope = 'multi_chain'
+      manualChain = true
+      if (businessKey) fail('businessId', 'multipass_business')
+      if (!brandName) fail('brandName', 'brand_required')
+      else if (brandName.length > 80) fail('brandName', 'brand_long')
+      else if (chains.length === 0) fail('participatingChains', 'chains_required')
     } else {
-      if (brandName || chains.length > 0 || scopeRaw) fail(brandName ? 'brandName' : chains.length > 0 ? 'participatingChains' : 'perkScope', 'direct_brand')
+      if (brandName) fail('brandName', 'direct_brand')
       if (!businessKey) fail('businessId', 'business_required')
       else {
         const resolved = lookup(businessKey)
@@ -209,7 +226,8 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const category = categoryRaw ? (BUSINESS_CATEGORIES as readonly string[]).find((c) => norm(c) === norm(categoryRaw)) ?? null : null
     if (categoryRaw && !category) fail('category', 'category_invalid')
     // Nothing to inherit it from: a Multipass perk has no business, so the sheet names its category.
-    if (multipass && !categoryRaw) fail('category', 'multipass_category')
+    const noBusiness = multipass || manualChain
+    if (noBusiness && !categoryRaw) fail('category', 'multipass_category')
 
     const originalPrice = toNumber(get('originalPrice'))
     const offerPrice = toNumber(get('discountedPrice'))
@@ -239,7 +257,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       paymentTerms = parsePaymentTerms(termsRaw)
       if (!paymentTerms) fail('paymentTerms', 'payment_terms_invalid')
     }
-    if (multipass && (commissionRaw || termsRaw)) fail(commissionRaw ? 'commissionRate' : 'paymentTerms', 'multipass_terms')
+    if (noBusiness && (commissionRaw || termsRaw)) fail(commissionRaw ? 'commissionRate' : 'paymentTerms', 'multipass_terms')
     if (!commissionRaw !== !termsRaw && errors.every((e) => e.column !== 'commissionRate' && e.column !== 'paymentTerms')) fail(commissionRaw ? 'paymentTerms' : 'commissionRate', 'terms_pair')
     if (businessUid && commissionRate !== null && paymentTerms) {
       const seen = termsByBusiness.get(businessUid)
@@ -253,9 +271,20 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const imageUrl = normalizeImageUrl(text(get('imageUrl')))
     if (imageUrl && (!isValidImageUrl(imageUrl) || imageUrlProblem(imageUrl))) fail('imageUrl', 'image_invalid')
 
+    // Optional; empty means a single-location offer. A Multipass perk is multi-branch on its own.
+    const nationwideRaw = norm(text(get('isNationwide')))
+    let isNationwide = noBusiness
+    if (nationwideRaw && !noBusiness) {
+      if (TRUE_WORDS.has(nationwideRaw)) isNationwide = true
+      else if (!FALSE_WORDS.has(nationwideRaw)) fail('isNationwide', 'nationwide_invalid')
+    }
+
+    // Participating stores narrow a nationwide local offer; a single-location one has none.
+    if (!noBusiness && chains.length > 0 && !isNationwide && !errors.some((e) => e.column === 'isNationwide')) fail('participatingChains', 'chains_need_nationwide')
+
     if (errors.length === 0) {
-      const check = parsePerkScopeFields({ fulfillmentType: fulfillmentType!, perkScope, businessId: businessUid, brandName, participatingChains: chains })
-      if (!check.ok) fail(multipass ? 'brandName' : 'businessId', 'scope_invalid')
+      const check = parsePerkScopeFields({ fulfillmentType: fulfillmentType!, perkScope: noBusiness ? perkScope : undefined, businessId: businessUid, brandName, participatingChains: chains, isNationwide })
+      if (!check.ok) fail(noBusiness ? 'brandName' : 'businessId', 'scope_invalid')
     }
     result.rows.push({
       row: r + 1,
@@ -263,7 +292,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       businessKey,
       errors,
       offer: errors.length > 0 ? null : {
-        titleHe, titleEn, businessUid, perkScope, brandName: multipass ? brandName : '', participatingChains: multipass && perkScope === 'multi_chain' ? chains : [], category, fulfillmentType: fulfillmentType!, originalPrice, offerPrice,
+        titleHe, titleEn, businessUid, perkScope, isNationwide, brandName: noBusiness ? brandName : '', participatingChains: chains, category, fulfillmentType: fulfillmentType!, originalPrice, offerPrice,
         totalQuantity, commissionRate, paymentTerms, redemptionInstructions, imageUrl,
       },
     })

@@ -30,7 +30,6 @@ describe('category vector icons', () => {
       'app/categories/page.tsx',
       'app/categories/new/page.tsx',
       'app/categories/bestsellers/page.tsx',
-      'app/olim/page.tsx',
     ]) {
       const source = read(file)
       expect(source, file).not.toMatch(EMOJI)
@@ -50,14 +49,6 @@ describe('category vector icons', () => {
     const map = (source: string) => [...source.matchAll(/^  '([A-Z][^']+)': (\w+),$/gm)].map((m) => `${m[1]}=${m[2]}`)
     expect(map(app)).toHaveLength(CATEGORY_TILES.length)
     expect(map(app)).toEqual(map(web))
-  })
-
-  it("puts /olim's newcomer categories on vector icons in brand-tint pills", () => {
-    const olim = read('app/olim/page.tsx')
-    for (const icon of ['Baby', 'Sofa', 'ShieldCheck', 'Stethoscope', 'BookOpen', 'CarFront']) expect(olim).toContain(`{ icon: ${icon}, labelKey:`)
-    expect(olim).not.toContain('fa-solid')
-    expect(olim).toContain('min-h-[44px] items-center gap-2.5 rounded-full border border-slate-200 bg-white')
-    expect(olim).toContain('font-semibold tracking-tight')
   })
 
   it('heads the New and Bestsellers rails and lists with icons (Sparkles, Award), not ✨ and 🔥, on the web and in the app', () => {

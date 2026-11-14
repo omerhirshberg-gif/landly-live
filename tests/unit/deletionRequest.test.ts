@@ -91,7 +91,7 @@ describe('/api/account/delete-request', () => {
     const mail = mocks.send.mock.calls[0][0]
     expect(mail.to).toBe('contact@golandly.com')
     expect(mail.replyTo).toBe('dana@example.com')
-    expect(mail.subject).toBe('[Landly Account Deletion Request] Dana Levi (dana@example.com)')
+    expect(mail.subject).toBe('[GoLandly Account Deletion Request] Dana Levi (dana@example.com)')
     for (const part of ['user-1', 'Dana Levi', 'dana@example.com', 'Privacy concerns', 'google.com', 'he', 'Please remove']) expect(mail.html).toContain(part)
     expect(mail.text).toMatch(/Requested at: \d{4}-\d\d-\d\dT/)
     const record = db.docs.get('accountDeletionRequests/user-1')!
@@ -126,7 +126,7 @@ describe('/api/account/delete-request', () => {
   it('falls back to the token name when there is no profile', async () => {
     db.docs.delete('users/user-1')
     await post(valid)
-    expect(mocks.send.mock.calls[0][0].subject).toBe('[Landly Account Deletion Request] Token Name (dana@example.com)')
+    expect(mocks.send.mock.calls[0][0].subject).toBe('[GoLandly Account Deletion Request] Token Name (dana@example.com)')
   })
 
   it('requires sign-in before reading anything', async () => {
@@ -278,7 +278,7 @@ describe('deletion email', () => {
 
   it('escapes HTML and keeps the subject on one line', () => {
     const mail = buildDeletionRequestEmail({ ...base, name: 'Dana\r\nBcc: x@y.z <b>Levi</b>', details: '<script>alert(1)</script>' })
-    expect(mail.subject).toBe('[Landly Account Deletion Request] Dana Bcc: x@y.z <b>Levi</b> (dana@example.com)')
+    expect(mail.subject).toBe('[GoLandly Account Deletion Request] Dana Bcc: x@y.z <b>Levi</b> (dana@example.com)')
     expect(mail.subject).not.toMatch(/[\r\n]/)
     expect(mail.html).not.toContain('<script>')
     expect(mail.html).toContain('&lt;script&gt;')

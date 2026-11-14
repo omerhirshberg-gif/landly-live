@@ -32,7 +32,7 @@ describe('/api/support', () => {
     expect(email.to).toBe('contact@golandly.com')
     expect(email.replyTo).toBe('dana@example.com')
     expect(email.from).toBe('test@landly.test')
-    expect(email.subject).toBe('[Landly Support] Billing and payments — Dana Levi')
+    expect(email.subject).toBe('[GoLandly Support] Billing and payments — Dana Levi')
     expect(email.text).toContain('Email: dana@example.com')
     expect(email.text).toContain('I was charged twice.')
   })

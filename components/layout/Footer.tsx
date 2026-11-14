@@ -6,7 +6,7 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 import { Store } from 'lucide-react'
 import { FacebookIcon, InstagramIcon, LinkedinIcon } from '@/components/ui/SocialIcon'
 
-// Navigation (Home, Deals, How It Works, Olim, Businesses, Support) and the
+// Navigation (Home, Deals, How It Works, Businesses, Support) and the
 // account actions live in the navbar and mobile drawer; the footer adds
 // About Us (the company link people look for at the bottom of a page, also
 // in the guest navbar), then FAQ, legal and the business portal. Deals
@@ -42,8 +42,8 @@ export default function Footer() {
         <div className="flex flex-col items-center text-center gap-5 lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:text-start lg:gap-x-8 lg:gap-y-3">
           <div className="max-w-xs lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-center lg:justify-start gap-2">
-              <img src="/logo-mark.png" alt="Landly" className="h-8 w-auto" />
-              <span className="font-black text-slate-900 text-lg">Landly</span>
+              <img src="/logo-mark.png" alt="GoLandly" className="h-8 w-auto" />
+              <span className="font-black text-slate-900 text-lg">GoLandly</span>
             </div>
             <p className="text-sm leading-relaxed mt-2">{t('footer_tagline')}</p>
           </div>
@@ -80,7 +80,7 @@ export default function Footer() {
 
         <div className="mt-6 pt-5 border-t border-line flex flex-col items-center gap-1.5 text-xs text-center lg:flex-row lg:justify-between lg:text-start">
           <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-            <span>© {new Date().getFullYear()} <bdi>Landly</bdi>. {t('footer_copyright_notice')}</span>
+            <span>© {new Date().getFullYear()} <bdi>GoLandly</bdi>. {t('footer_copyright_notice')}</span>
             <span aria-hidden="true">·</span>
             <span>{t('footer_location')}</span>
             <span aria-hidden="true">·</span>

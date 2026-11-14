@@ -218,7 +218,7 @@ export default function PasskeysCard({ user }: { user: User }) {
                 <input
                   type="password"
                   required
-                  className="inp mt-3"
+                  className="inp-consumer mt-3"
                   autoComplete="current-password"
                   aria-label={t('profile_current_password_label')}
                   placeholder={t('profile_current_password_label')}

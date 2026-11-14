@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { AUTO_ADVANCE_MS, nextAutoIndex } from '@/lib/carouselAutoplay'
 
 describe('carousel auto-advance', () => {
-  it('puts New on Landly and Best Sellers on Home, on web and native, on staggered beats', () => {
+  it('puts New on GoLandly and Best Sellers on Home, on web and native, on staggered beats', () => {
     const web = readFileSync('components/home/LoggedInHome.tsx', 'utf8')
     expect(web).toContain('selectHighlights')
     expect(web).toContain('href="/categories/new"')

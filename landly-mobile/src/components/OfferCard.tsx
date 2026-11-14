@@ -15,6 +15,7 @@ import { CATEGORY_TILES } from '@shared/categories'
 import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
 import ScalePressable from './ScalePressable'
 import { isMultiChain, PerkReachLine } from './PerkReach'
+import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import { useLang } from '../i18n/LangProvider'
 import { impact, tick } from '../lib/haptics'
 import { badgeLogoUri, businessInitial, secureImageUrl } from '../lib/imageSource'
@@ -69,8 +70,8 @@ export default function OfferCard({
   const distance = typeof distanceKm === 'number' ? formatDistance(distanceKm, lang) : null
   const compact = variant !== 'standard'
   const multiChain = isMultiChain(offer)
-  // A Multipass perk has no street address: the chains (or "nationwide") say where it works.
-  const reach = multiChain || (offer.fulfillmentType === 'multipass_pool' && !place)
+  // A multi-branch perk has no street address: the chains or the branch-validity notice say where it works.
+  const reach = locationNoticeKind(offer) !== null
   const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const image = useDealImage(offer.imageUrl)
@@ -139,31 +140,29 @@ export default function OfferCard({
           <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
             {title.text}
           </ContentText>
-          {/* One dense line: the business, then where (or how far). */}
-          <View style={styles.meta}>
-            <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
-              {name.text}
-            </AppText>
-            {reach && (
-              <>
-                <AppText style={styles.dot} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
-                <PerkReachLine offer={offer} hasPlace={!!place} compact={compact} />
-              </>
-            )}
-            {!reach && (!!place || !!distance) && (
-              <>
-                <AppText style={styles.dot} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
+          {/* The business on its own line, then where (or how far) on a full-width line below, so a long notice wraps whole. */}
+          <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
+            {name.text}
+          </AppText>
+          {reach && (
+            <View style={styles.meta}>
+              <PerkReachLine offer={offer} compact={compact} />
+            </View>
+          )}
+          {!reach && (!!place || !!distance) && (
+            <View style={styles.meta}>
+              <View style={styles.pin}>
                 <LineIcon name="pin" size={12} color={distance ? colors.brand : colors.textFaint} strokeWidth={1.75} />
-                {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
-                {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
-                {!!place && (
-                  <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
-                    {distance ? `· ${place}` : place}
-                  </AppText>
-                )}
-              </>
-            )}
-          </View>
+              </View>
+              {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
+              {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
+              {!!place && (
+                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={2}>
+                  {distance ? `· ${place}` : place}
+                </AppText>
+              )}
+            </View>
+          )}
 
           {/* One baseline: the price, then the struck-through original. Digits and "₪" run left to right in Hebrew. */}
           <View style={styles.priceRow}>
@@ -222,9 +221,9 @@ const styles = StyleSheet.create({
   titleCompact: { fontSize: 14, lineHeight: 19 },
   business: { flexShrink: 1, fontSize: 13, lineHeight: 18, color: colors.body },
   businessCompact: { fontSize: 12, lineHeight: 17 },
-  metaTextCompact: { fontSize: 11 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  dot: { fontSize: 12, color: colors.textFaint },
+  metaTextCompact: { fontSize: 11, lineHeight: 15 },
+  meta: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 },
+  pin: { marginTop: 2 },
   // The method (and category) tag over the photo's top start corner.
   method: {
     position: 'absolute',
@@ -240,7 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
   },
   methodText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '600', color: colors.body },
-  locationText: { fontSize: 12, color: colors.textFaint, flexShrink: 2 },
+  locationText: { fontSize: 12, lineHeight: 16, color: colors.textFaint, flexShrink: 2 },
   distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // The price row rides the card's foot (`marginTop: auto`), on one baseline.
   priceRow: { flexDirection: 'row', alignItems: 'baseline', columnGap: 8, marginTop: 'auto', paddingTop: 6 },

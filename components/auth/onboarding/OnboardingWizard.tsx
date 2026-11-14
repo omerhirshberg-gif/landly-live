@@ -330,7 +330,6 @@ export default function OnboardingWizard({
                 value={data.phone}
                 onChange={(e) => set('phone', e.target.value)}
                 error={fieldErrors.phone}
-                placeholder={data.country === 'IL' ? '50 123 4567' : undefined}
                 inputMode="tel"
                 autoComplete="tel-national"
                 enterKeyHint="next"

@@ -34,7 +34,7 @@ describe('offer member gate', () => {
   it('uses the Hebrew copy from the brief', () => {
     expect(translations.he.landing_cta_join).toBe('הצטרפות חינם')
     expect(translations.he.nav_login).toBe('התחברות')
-    expect(translations.he.offer_teaser_message).toBe('המידע המלא, אופן המימוש והקודים זמינים בלעדית לחברי מועדון Landly רשומים.')
+    expect(translations.he.offer_teaser_message).toBe('המידע המלא, אופן המימוש והקודים זמינים בלעדית לחברי מועדון GoLandly רשומים.')
   })
 
   it('encodes the offer id in the return path', () => {

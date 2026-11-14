@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { Lock, MailCheck, Pencil, Plus } from 'lucide-react'
+import { Lock, MailCheck, MessageSquareText, Pencil, Plus } from 'lucide-react'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
 import { useLang } from '@/lib/i18n/useLang'
 import { updateUserName, updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
@@ -10,6 +10,9 @@ import { fullName, MAX_NAME_LENGTH, profileNameErrors, splitDisplayName, type Na
 import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange } from '@/lib/account/contactChange'
 import type { OtpTarget } from '@/lib/auth/otp'
+import { otpCopyKeys, resolveOtpChannel } from '@/lib/auth/otpChannel'
+import { needsPhoneVerification } from '@/lib/profile/phoneNudge'
+import { usePhoneNudgeSnooze } from '@/lib/profile/usePhoneNudgeSnooze'
 import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, canonicalCustomerType, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
@@ -18,6 +21,7 @@ import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import AvatarUploader from './AvatarUploader'
 import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
+import PhoneVerifyBanner from './PhoneVerifyBanner'
 import PendingChangeNotice from './PendingChangeNotice'
 
 interface Details {
@@ -70,6 +74,10 @@ export default function ProfileSection({ user }: { user: User }) {
   const stored = detailsOf(profile)
   const pendingEmail = profile?.pendingEmail ?? ''
   const pendingPhone = profile?.pendingPhone ?? ''
+  // The notice stays mounted through its fade-out, so its channel (SMS or WhatsApp) outlives the pending number.
+  const lastPendingPhone = useRef('')
+  if (pendingPhone) lastPendingPhone.current = pendingPhone
+  const pendingChannel = resolveOtpChannel(pendingPhone || lastPendingPhone.current)
   const googleAccount = user.providerData.some((p) => p.providerId === 'google.com')
   const appleAccount = user.providerData.some((p) => p.providerId === 'apple.com')
   // Google or Apple linked locks the address, even beside a password (the server refuses it too).
@@ -91,6 +99,9 @@ export default function ProfileSection({ user }: { user: User }) {
   const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
+  const nudge = usePhoneNudgeSnooze(user.uid)
+  const [nudgeBusy, setNudgeBusy] = useState(false)
+  const [nudgeError, setNudgeError] = useState<string | null>(null)
 
   const countries = useMemo(() => listOriginCountries(lang), [lang])
 
@@ -111,6 +122,31 @@ export default function ProfileSection({ user }: { user: User }) {
     setEmailFormOpen(false)
     setEditing(true)
   }
+
+  // The card's "Verify now": a code already waiting for the pending number is
+  // entered as it is; a saved but unverified number is sent a code now (SMS
+  // for +972, WhatsApp elsewhere); with no number yet, the editor opens on it.
+  const verifyNow = async () => {
+    setNudgeError(null)
+    if (pendingPhone) {
+      setPhoneStatus(null)
+      setOtp({ target: { kind: 'phone', phone: pendingPhone }, resendIn: 0 })
+      return
+    }
+    if (!stored.phone) {
+      startEdit()
+      return
+    }
+    setNudgeBusy(true)
+    const idToken = await user.getIdToken().catch(() => null)
+    const start = idToken ? await requestPhoneChange(idToken, { phone: stored.phone, lang }).catch(() => CONTACT_CHANGE_FAILED) : CONTACT_CHANGE_FAILED
+    setNudgeBusy(false)
+    if (start.ok && start.mode === 'otp') setOtp({ target: { kind: 'phone', phone: stored.phone }, resendIn: start.resendIn })
+    else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter) setOtp({ target: { kind: 'phone', phone: stored.phone }, resendIn: start.retryAfter })
+    else setNudgeError(t(contactChangeErrorKey(start.ok ? 'failed' : start.reason)))
+  }
+
+  const showNudge = !loadingDoc && needsPhoneVerification(profile) && nudge.ready && !nudge.snoozed && !editing && !otp
 
   const cancelEdit = () => {
     setEditing(false)
@@ -139,7 +175,7 @@ export default function ProfileSection({ user }: { user: User }) {
       let savedPhone = phone
       let verify: { target: OtpTarget; resendIn: number } | null = null
       if (phone && phone !== stored.phone) {
-        const start = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' })
+        const start = await requestPhoneChange(await user.getIdToken(), { phone, lang })
         if (start.ok && start.mode === 'otp') {
           verify = { target: { kind: 'phone', phone }, resendIn: start.resendIn }
         } else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter && phone === pendingPhone) {
@@ -185,9 +221,10 @@ export default function ProfileSection({ user }: { user: User }) {
 
   const dt = 'text-xs font-semibold text-slate-500 mb-0.5 lg:uppercase lg:tracking-wide lg:mb-1.5'
   const dd = 'text-sm font-bold text-slate-900 break-words lg:text-base lg:font-semibold'
-  const label = 'block mb-1.5 text-sm font-bold text-slate-700 lg:text-start'
+  // The field's name is its hint inside the box (and the select's first option); the label stays for screen readers only.
+  const label = 'sr-only'
   // 16px text so iOS Safari doesn't zoom the page on focus; 48px tall touch target.
-  const field = 'w-full h-12 px-4 rounded-[12px] border-[1.5px] border-slate-200 bg-white text-base text-slate-900 focus:outline-none focus:border-brand'
+  const field = 'inp-consumer'
   const loading = (value: string) => (loadingDoc ? '…' : value)
 
   // On desktop the identity card centres the name (large) and the address under the photo; the labels stay for screen readers.
@@ -270,10 +307,10 @@ export default function ProfileSection({ user }: { user: User }) {
   const phoneNotice = (
     <PendingChangeNotice
       show={!!pendingPhone}
-      message={t('pending_phone_body')}
+      message={t(otpCopyKeys(pendingChannel).pendingBody)}
       placeholder="{phone}"
       value={pendingPhone ? formatPhoneNumberIntl(pendingPhone) || pendingPhone : ''}
-      icon={WhatsAppIcon}
+      icon={pendingChannel === 'sms' ? MessageSquareText : WhatsAppIcon}
       actionLabel={t('pending_phone_enter')}
       onAction={() => {
         setPhoneStatus(null)
@@ -329,11 +366,12 @@ export default function ProfileSection({ user }: { user: User }) {
             onChange={(e) => changeName({ [part]: e.target.value })}
             maxLength={MAX_NAME_LENGTH}
             autoComplete={autoComplete}
+            placeholder={t(labelKey)}
             autoCapitalize="words"
             autoFocus={part === 'firstName' && focusName}
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : undefined}
-            className={`${field} ${error ? 'border-red-500 focus:border-red-500' : ''}`}
+            className={field}
           />
           {error && <p id={`${id}-error`} role="alert" className="text-xs text-red-600 font-semibold mt-1.5">{t(error)}</p>}
         </dd>
@@ -346,12 +384,12 @@ export default function ProfileSection({ user }: { user: User }) {
       {editing ? (
         <>
           {/* Side by side from sm up, in the reading direction (columns: label over field); stacked on phones. */}
-          <div className="sm:grid sm:grid-flow-col sm:grid-rows-[auto_auto] sm:grid-cols-2 sm:gap-x-4 lg:col-span-2 lg:gap-x-8">
+          <div className="sm:grid sm:grid-cols-2 sm:gap-x-4 lg:col-span-2 lg:gap-x-8">
             {nameField('firstName', 'given-name', 'onb_firstNameLabel')}
             {nameField('lastName', 'family-name', 'onb_lastNameLabel')}
           </div>
           <div>
-            <dt><label htmlFor="profile-phone" className={label}>{t('profile_phone_label')}</label></dt>
+            <dt><label htmlFor="profile-phone" className={label}>{t('onb_phoneLabel')}</label></dt>
             <dd>
               <PhoneInput
                 id="profile-phone"
@@ -373,8 +411,8 @@ export default function ProfileSection({ user }: { user: User }) {
           <div>
             <dt><label htmlFor="profile-customer-type" className={label}>{t('signup_customerTypeLabel')}</label></dt>
             <dd>
-              <select id="profile-customer-type" value={draft.customerType} onChange={(e) => change({ customerType: e.target.value })} className={field}>
-                {!isCustomerType(draft.customerType) && <option value="">{t('signup_customerType_placeholder')}</option>}
+              <select id="profile-customer-type" value={draft.customerType} onChange={(e) => change({ customerType: e.target.value })} className={`${field} ${isCustomerType(draft.customerType) ? '' : 'is-empty'}`}>
+                {!isCustomerType(draft.customerType) && <option value="" disabled>{t('signup_customerType_placeholder')}</option>}
                 {CUSTOMER_TYPES.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
               </select>
               {draft.customerType === OTHER_CUSTOMER_TYPE && (
@@ -397,8 +435,8 @@ export default function ProfileSection({ user }: { user: User }) {
           <div>
             <dt><label htmlFor="profile-origin" className={label}>{t('profile_origin_label')}</label></dt>
             <dd>
-              <select id="profile-origin" value={draft.countryOfOrigin} onChange={(e) => change({ countryOfOrigin: e.target.value })} className={field}>
-                <option value="">{t('profile_origin_unset')}</option>
+              <select id="profile-origin" value={draft.countryOfOrigin} onChange={(e) => change({ countryOfOrigin: e.target.value })} className={`${field} ${draft.countryOfOrigin ? '' : 'is-empty'}`}>
+                <option value="">{t('profile_origin_label')}</option>
                 <optgroup label={t('origin_common')}>
                   {countries.pinned.map((c) => <option key={c.code} value={c.code}>{`${c.flag} ${c.name}`}</option>)}
                 </optgroup>
@@ -411,8 +449,8 @@ export default function ProfileSection({ user }: { user: User }) {
           <div>
             <dt><label htmlFor="profile-region" className={label}>{t('profile_region_label')}</label></dt>
             <dd>
-              <select id="profile-region" value={draft.israelRegion} onChange={(e) => change({ israelRegion: e.target.value })} className={field}>
-                <option value="">{t('profile_origin_unset')}</option>
+              <select id="profile-region" value={draft.israelRegion} onChange={(e) => change({ israelRegion: e.target.value })} className={`${field} ${draft.israelRegion ? '' : 'is-empty'}`}>
+                <option value="">{t('profile_region_label')}</option>
                 {ISRAEL_REGIONS.map((r) => <option key={r} value={r}>{t(ISRAEL_REGION_KEYS[r])}</option>)}
               </select>
             </dd>
@@ -454,6 +492,8 @@ export default function ProfileSection({ user }: { user: User }) {
   // and the details with the one Edit button trailing. The panes are
   // display:contents on phones, so their blocks keep the phone order above.
   return (
+    <>
+    {showNudge && <PhoneVerifyBanner onVerify={verifyNow} onDismiss={nudge.snooze} busy={nudgeBusy} error={nudgeError} />}
     <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6 lg:grid-cols-12 lg:gap-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
       <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100 lg:col-span-4 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_rgb(15_23_42/0.05)]">
         <div className="order-1">
@@ -530,5 +570,6 @@ export default function ProfileSection({ user }: { user: User }) {
         />
       )}
     </div>
+    </>
   )
 }

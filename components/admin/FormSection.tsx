@@ -32,7 +32,7 @@ export function FormSection({ icon, title, description, children }: FormSectionP
  */
 export function StickyActionBar({ status, children }: { status?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-[#E2E8F0] bg-white/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 md:bottom-4 md:mx-0 md:rounded-2xl md:border md:px-5 md:pb-3 md:shadow-lg md:shadow-slate-900/5">
+    <div data-sticky-actions className="sticky bottom-0 z-20 -mx-4 mt-6 border-t border-[#E2E8F0] bg-white/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6 md:bottom-4 md:mx-0 md:rounded-2xl md:border md:px-5 md:pb-3 md:shadow-lg md:shadow-slate-900/5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {status ? (
           <p className="text-sm text-[#475569]" role="status">

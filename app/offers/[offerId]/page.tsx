@@ -18,7 +18,7 @@ import MerchantBadge from '@/components/discover/MerchantBadge'
 import OfferTags from '@/components/discover/OfferTags'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem, { Fold } from '@/components/offers/HowToRedeem'
-import { isMultiChain, ParticipatingChains, PerkReachLine } from '@/components/discover/PerkReach'
+import { ParticipatingChains, PerkReachLine } from '@/components/discover/PerkReach'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -28,6 +28,7 @@ import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { badgeLogoUri } from '@/lib/offers/dealImage'
 import { distinctDescription, offerTextSources } from '@/lib/offers/offerText'
 import { offerFullAddress } from '@/lib/geo'
+import { locationNoticeKind, shouldShowLocationNavigation } from '@/lib/offers/locationVisibility'
 import NavigationLinks from '@/components/offers/NavigationLinks'
 import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
 
@@ -124,7 +125,9 @@ export default function OfferDetailPage() {
   const instructions = content.text('redemptionInstructions')
   const terms = content.text('redemptionTerms')
   const businessName = nameContent.text('businessName')
-  const address = offerFullAddress(offer, lang)
+  // Only a single-location perk shows its address and navigation; a multi-branch one shows a notice instead.
+  const showLocation = shouldShowLocationNavigation(offer)
+  const address = showLocation ? offerFullAddress(offer, lang) : ''
   const machine = content.machine || nameContent.machine
   const showingOriginal = content.showingOriginal || nameContent.showingOriginal
   const toggleOriginal = () => {
@@ -135,7 +138,9 @@ export default function OfferDetailPage() {
   const expired = !!offer.expiryDate && offer.expiryDate.getTime() < now
   const saved = isWishlisted(offer.id)
   const guest = !user && !authLoading
-  const multiChain = isMultiChain(offer)
+  const noticeKind = locationNoticeKind(offer)
+  // The stores or chains that honour the perk, when the admin listed any.
+  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores'
 
   return (
     <>
@@ -249,23 +254,23 @@ export default function OfferDetailPage() {
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
                 <div className="mt-4 flex flex-wrap items-center gap-3 empty:hidden lg:mt-5">
-                  {(multiChain || (offer.fulfillmentType === 'multipass_pool' && !address)) && (
-                    <PerkReachLine offer={offer} hasPlace={!!address} className="flex-1 text-sm text-muted" />
+                  {!showLocation && locationNoticeKind(offer) !== null && (
+                    <PerkReachLine offer={offer} className="flex-1 text-sm text-muted" />
                   )}
-                  {!multiChain && address && (
+                  {showLocation && address && (
                     <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
                       <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
                       {/* The full address as Google writes it in the reader's language. */}
                       <span className="min-w-0 break-words" dir="auto">{address}</span>
                     </p>
                   )}
-                  {/* A multi-chain voucher has no single store to navigate to; its chains are listed below. */}
-                  {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !address) && <NavigationLinks
+                  {/* A multi-branch perk has no single store to navigate to; a multi-chain voucher lists its chains below. */}
+                  {showLocation && <NavigationLinks
                     className="ms-auto lg:hidden"
                     destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }}
                   />}
                   {/* From 1024px the two ways to get there are labelled buttons, side by side under the address. */}
-                  {!multiChain && !(offer.fulfillmentType === 'multipass_pool' && !address) && (
+                  {showLocation && (
                     <div className="hidden lg:block lg:basis-full">
                       <NavigationLinks wide destination={{ geo: offer.geo, placeId: offer.address?.placeId, address: address || offer.location }} />
                     </div>
@@ -279,11 +284,11 @@ export default function OfferDetailPage() {
                   and no purchase bar. Neither while auth is still being read, so a
                   guest never sees the steps flash in first. Codes live only on the
                   member's own voucher pages. */}
-              {(descriptionText || user || multiChain) && (
+              {(descriptionText || user || hasStoreList) && (
                 <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0 lg:px-0">
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
-                    {multiChain && (
-                      <Fold title={t('perk_chains_title')} defaultOpen>
+                    {hasStoreList && (
+                      <Fold title={t(noticeKind === 'chains' ? 'perk_chains_title' : 'perk_stores_title')} defaultOpen>
                         <ParticipatingChains offer={offer} />
                       </Fold>
                     )}

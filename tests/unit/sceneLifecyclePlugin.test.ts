@@ -67,8 +67,8 @@ describe('withSceneLifecycle plugin', () => {
   })
 
   it('declares one scene, delegated to SceneDelegate, and keeps the other keys', () => {
-    const plist = plugin.applySceneManifest({ CFBundleDisplayName: 'Landly' })
-    expect(plist.CFBundleDisplayName).toBe('Landly')
+    const plist = plugin.applySceneManifest({ CFBundleDisplayName: 'GoLandly' })
+    expect(plist.CFBundleDisplayName).toBe('GoLandly')
     expect(plist.UIApplicationSceneManifest).toEqual({
       UIApplicationSupportsMultipleScenes: false,
       UISceneConfigurations: {

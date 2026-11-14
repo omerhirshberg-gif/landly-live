@@ -21,7 +21,7 @@
 //        code-spent  -- the code was used or is over 5 minutes old: step 1 again
 //
 // APPLE_KEY_ID defaults to the one in the file name, APPLE_TEAM_ID to
-// Landly's. The key never leaves this machine (only a signature goes to
+// GoLandly's. The key never leaves this machine (only a signature goes to
 // Apple) and is never printed; neither are the tokens Apple returns: the
 // refresh token is revoked at once. Nothing in Firebase or Apple's settings
 // changes. Exits 1 if anything fails.

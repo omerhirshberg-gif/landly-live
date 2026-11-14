@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Compass, HeartHandshake, Ticket, UtensilsCrossed, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Compass, Ticket, UtensilsCrossed, type LucideIcon } from 'lucide-react'
 import IconFrame from '@/components/ui/IconFrame'
 import { pillarHref, VALUE_PILLARS, type ValuePillar } from '@/lib/home/showcase'
 import { useLang } from '@/lib/i18n/useLang'
@@ -9,19 +9,18 @@ import { TranslationKey } from '@/lib/i18n/translations'
 import { useSnapIndex } from '@/lib/useSnapIndex'
 import SnapDots from '@/components/ui/SnapDots'
 
-// What Landly covers, grouped from the real business categories
+// What GoLandly covers, grouped from the real business categories
 // (lib/categories.ts) — no placeholder merchants, and no sign-up button: the
 // hero and navbar carry the one sign-up path. Each pillar's glyph is a fine
 // Lucide outline in the shared 40px frame (IconFrame).
 // Each card is its glyph, its name and a short lifestyle line under it (no
 // perk counts: a young catalogue reads as empty, not exclusive), with an
 // arrow into its perks (lib/home/showcase.ts VALUE_PILLARS): the category,
-// the catalogue, or /olim for Community.
+// or the catalogue.
 const PILLAR_VIEW: Record<ValuePillar['key'], { icon: LucideIcon; titleKey: TranslationKey; tagKey: TranslationKey }> = {
   dining: { icon: UtensilsCrossed, titleKey: 'vp_dining_title', tagKey: 'vp_dining_desc' },
   lifestyle: { icon: Ticket, titleKey: 'vp_lifestyle_title', tagKey: 'vp_lifestyle_desc' },
   experiences: { icon: Compass, titleKey: 'vp_experiences_title', tagKey: 'vp_experiences_desc' },
-  community: { icon: HeartHandshake, titleKey: 'vp_community_title', tagKey: 'vp_community_desc' },
 }
 const PILLARS = VALUE_PILLARS.map((pillar) => ({ pillar, ...PILLAR_VIEW[pillar.key] }))
 
@@ -43,11 +42,11 @@ export default function ValueProps() {
         {/* Phones: one swipeable row of compact cards (the next one peeks in, a
             swipe settles on a card's centre, the page never drags sideways), so
             the perk examples below are a short scroll away instead of four
-            stacked screens. From sm: the grid, two columns then four. The py
+            stacked screens. From sm: a three-column grid. The py
             keeps the cards' shadow and hover lift clear of the row's clipping.
             Under the row on phones, pagination dots follow the card in view
             (useSnapIndex) and bring a card in when tapped. */}
-        <ul ref={rowRef} className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-5 sm:overflow-visible">
+        <ul ref={rowRef} className="-mx-5 px-5 scroll-px-5 flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain py-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:py-0 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible">
           {PILLARS.map((p) => (
             <li key={p.titleKey} className="flex w-[200px] flex-shrink-0 snap-center sm:w-auto">
               <Link

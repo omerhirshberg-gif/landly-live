@@ -10,7 +10,7 @@ const MESSAGES: Record<string, string> = {
   'auth/wrong-password': 'Incorrect email or password.',
   'auth/too-many-requests': 'Too many attempts. Please try again later.',
   'auth/popup-closed-by-user': 'Sign-in was cancelled.',
-  // Apple or Google with an email that already has a Landly account made another way.
+  // Apple or Google with an email that already has a GoLandly account made another way.
   // A Google or Apple session Firebase didn't mark verified (signInCustomer.ts signs it out).
   'auth/unverified-provider-email': "We couldn't confirm your email with that account. Please try again or sign in with your email.",
   'auth/account-exists-with-different-credential': 'An account with this email already exists. Sign in the way you first signed up.',
@@ -53,6 +53,8 @@ const CODE_KEYS: Record<string, TranslationKey> = {
   'auth/unverified-provider-email': 'autherr_unverifiedEmail',
   'auth/user-disabled': 'autherr_userDisabled',
   'auth/operation-not-allowed': 'autherr_methodUnavailable',
+  // Android's native Google sheet needs Google Play services (googleSignIn.android.ts).
+  'auth/google-play-services-unavailable': 'autherr_playServices',
   'auth/web-storage-unsupported': 'autherr_storage',
   'auth/operation-not-supported-in-this-environment': 'autherr_storage',
   // expo-apple-authentication (the app's native Apple sheet).

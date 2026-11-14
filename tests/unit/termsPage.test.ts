@@ -59,7 +59,7 @@ describe('terms page', () => {
   it('identifies the title, date, seller and contact', () => {
     expect(text).toContain('Terms and Conditions')
     expect(text).toContain('Last updated: October 2026')
-    expect(text).toContain('Landly operates from Tel Aviv-Yafo, Israel')
+    expect(text).toContain('GoLandly operates from Tel Aviv-Yafo, Israel')
     expect(text).toContain('contact@golandly.com')
   })
 
@@ -68,7 +68,7 @@ describe('terms page', () => {
     expect(text).toMatch(/no subscription or recurring billing/)
     expect(text).toContain('include VAT')
     expect(text).toContain("PCI-DSS-compliant hosted payment page of our payment provider, Tranzila")
-    expect(text).toContain('Landly never receives or stores your full card number or security code (CVV)')
+    expect(text).toContain('GoLandly never receives or stores your full card number or security code (CVV)')
   })
 
   it('states the 14-day cancellation policy, its fee and how to cancel', () => {
@@ -90,7 +90,7 @@ describe('terms page', () => {
   })
 
   it('explains account closure: where to ask, the 30-day turnaround and unredeemed vouchers', () => {
-    expect(text).toContain('How to close: You can ask us to close your Landly account')
+    expect(text).toContain('How to close: You can ask us to close your GoLandly account')
     expect(text).toContain('Settings → Delete Account')
     expect(text).toContain('Within 30 days: We delete your account and personal data')
     expect(text).toContain('Unredeemed vouchers: Closing your account cancels any vouchers you have not redeemed')

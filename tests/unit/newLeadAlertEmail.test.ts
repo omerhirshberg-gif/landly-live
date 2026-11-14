@@ -25,7 +25,7 @@ const AT = new Date('2026-11-02T10:30:00Z')
 
 beforeEach(() => {
   vi.stubEnv('RESEND_API_KEY', 're_test')
-  vi.stubEnv('EMAIL_FROM', 'Landly <noreply@golandly.com>')
+  vi.stubEnv('EMAIL_FROM', 'GoLandly <noreply@golandly.com>')
   mocks.send.mockReset().mockResolvedValue({ data: { id: 'm1' }, error: null })
 })
 afterEach(() => {
@@ -66,7 +66,7 @@ describe('the new lead alert', () => {
   it('goes to the team inbox from EMAIL_FROM, answers to the lead, and can only send once', async () => {
     expect(await sendNewLeadAlertEmail(LEAD, 'abcdefgh23', AT)).toBe('sent')
     const [email, options] = mocks.send.mock.calls[0]
-    expect(email).toMatchObject({ from: 'Landly <noreply@golandly.com>', to: 'contact@golandly.com', replyTo: 'noa@example.com', subject: '🚀 New Waitlist Lead: Noa Cohen' })
+    expect(email).toMatchObject({ from: 'GoLandly <noreply@golandly.com>', to: 'contact@golandly.com', replyTo: 'noa@example.com', subject: '🚀 New Waitlist Lead: Noa Cohen' })
     expect(options).toEqual({ idempotencyKey: 'new-lead-alert/abcdefgh23' })
   })
   it.each([

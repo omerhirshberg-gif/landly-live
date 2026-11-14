@@ -1,6 +1,6 @@
 import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@/lib/brand/emblemPaths'
 
-// The Landly emblem as one flat silhouette in the current text colour, for a
+// The GoLandly emblem as one flat silhouette in the current text colour, for a
 // brand surface (the watermark on the members' pass card). Both tones of every
 // part fill alike, so the mark reads as a single shape.
 export default function LandlyMark({ className = '' }: { className?: string }) {

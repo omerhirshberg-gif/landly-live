@@ -7,7 +7,9 @@ import { voucherDestination } from '@shared/member/voucherDestination'
 import { useLang } from '../i18n/LangProvider'
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
+import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import AppText from './AppText'
+import { PerkReachLine } from './PerkReach'
 import ContentText from './ContentText'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
@@ -60,6 +62,11 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
       <View style={styles.body}>
         <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
         <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>
+        {!place && locationNoticeKind(voucher) !== null && (
+          <View style={styles.address}>
+            <PerkReachLine offer={voucher} compact />
+          </View>
+        )}
         {!!place && (
           <View style={styles.address}>
             <LineIcon name="pin" size={13} color={colors.textFaint} strokeWidth={1.75} />

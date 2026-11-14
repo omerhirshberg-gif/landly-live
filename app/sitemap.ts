@@ -14,7 +14,6 @@ export const revalidate = 3600
 const ROUTES: { path: string; changeFrequency: ChangeFrequency; priority: number }[] = [
   { path: '/', changeFrequency: 'weekly', priority: 1 },
   { path: '/categories', changeFrequency: 'daily', priority: 0.9 },
-  { path: '/olim', changeFrequency: 'monthly', priority: 0.9 },
   { path: '/categories/new', changeFrequency: 'daily', priority: 0.8 },
   { path: '/categories/bestsellers', changeFrequency: 'daily', priority: 0.8 },
   { path: '/business', changeFrequency: 'monthly', priority: 0.7 },

@@ -105,9 +105,9 @@ describe('admin Hebrew coverage', () => {
   it('titles the tab in the admin language', async () => {
     const { adminDocumentTitle } = await import('@/components/admin/AdminDocumentTitle')
     const heRoute = (label: string) => routeLabel('he', label)
-    expect(adminDocumentTitle(heRoute, '/admin/businesses')).toBe('בתי עסק | Landly Admin')
-    expect(adminDocumentTitle((l) => routeLabel('en', l), '/admin/businesses')).toBe('Businesses | Landly Admin')
-    expect(adminDocumentTitle(heRoute, '/admin/inventory')).toBe('מעקב מלאי וקופונים | Landly Admin')
+    expect(adminDocumentTitle(heRoute, '/admin/businesses')).toBe('בתי עסק | GoLandly Admin')
+    expect(adminDocumentTitle((l) => routeLabel('en', l), '/admin/businesses')).toBe('Businesses | GoLandly Admin')
+    expect(adminDocumentTitle(heRoute, '/admin/inventory')).toBe('מעקב מלאי וקופונים | GoLandly Admin')
   })
 
   it('names the two catalog tabs', () => {

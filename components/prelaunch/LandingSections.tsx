@@ -21,7 +21,7 @@ const PILLAR_ICONS: Record<Pillar, typeof Gift> = { deals: BadgePercent, free: G
 export function JoinHeader({ lang }: { lang: PrelaunchLang }) {
   return (
     <header className="flex items-center justify-between">
-      <img src="/logo-mark.png" alt="Landly" width={117} height={112} className="h-9 w-auto" />
+      <img src="/logo-mark.png" alt="GoLandly" width={117} height={112} className="h-9 w-auto" />
       <LanguageSwitcher lang={lang} />
     </header>
   )
@@ -197,7 +197,7 @@ export function SocialSection({ lang }: { lang: PrelaunchLang }) {
   const cards = [
     { key: 'instagram', href: INSTAGRAM_URL, label: copy.followLabels.instagram, detail: '@golandly', icon: <InstagramIcon width={28} height={28} />, badge: 'bg-rose-50' },
     { key: 'facebook', href: FACEBOOK_URL, label: copy.followLabels.facebook, detail: '@golandly', icon: <FacebookIcon width={28} height={28} />, badge: 'bg-blue-50' },
-    { key: 'whatsapp', href: WHATSAPP_COMMUNITY_URL, label: copy.followLabels.whatsapp, detail: 'Landly Community', icon: <WhatsAppIcon width={28} height={28} fill="currentColor" />, badge: 'bg-[#25D366] text-ink' },
+    { key: 'whatsapp', href: WHATSAPP_COMMUNITY_URL, label: copy.followLabels.whatsapp, detail: 'GoLandly Community', icon: <WhatsAppIcon width={28} height={28} fill="currentColor" />, badge: 'bg-[#25D366] text-ink' },
   ]
   return (
     <section className="mt-14 lg:mt-20">
@@ -272,7 +272,7 @@ export function JoinFooter({ lang }: { lang: PrelaunchLang }) {
   return (
     <footer className="mt-14 flex flex-col items-center gap-2 border-t border-slate-200/80 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-sm text-slate-500 lg:mt-20 lg:flex-row lg:justify-between lg:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
       <p>
-        <bdi dir="ltr">© 2026 Landly.</bdi> {copy.rights}
+        <bdi dir="ltr">© 2026 GoLandly.</bdi> {copy.rights}
       </p>
       <nav className="flex flex-wrap items-center justify-center">
         <a href={CONSENT_PATHS.terms} target="_blank" rel="noopener noreferrer" className={legalLink}>{copy.terms}</a>

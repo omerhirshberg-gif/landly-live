@@ -13,6 +13,7 @@ import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import { useLang } from '@/lib/i18n/useLang'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK } from '@/lib/config'
+import { directionalProps } from '@/lib/directionalInput'
 
 // Values match SUPPORT_SUBJECTS in lib/email/sendSupportMessage.ts, so the
 // team inbox always gets the English topic whatever the site language.
@@ -32,7 +33,7 @@ const CHANNELS: { href: string; external: boolean; display: string; dir?: 'ltr';
 ]
 
 export default function SupportPage() {
-  const { t, lang } = useLang()
+  const { t, lang, isRtl } = useLang()
   const [fields, setFields] = useState(EMPTY_FIELDS)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [status, setStatus] = useState<'idle' | 'sent'>('idle')
@@ -131,16 +132,16 @@ export default function SupportPage() {
                 {/* Honeypot: hidden from people and assistive tech; bots that fill it are dropped server-side. */}
                 <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={fields.website} onChange={update('website')} />
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div><label htmlFor="support-name" className="block text-sm font-semibold text-ink mb-1.5">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp" value={fields.name} onChange={update('name')} /></div>
-                  <div><label htmlFor="support-email" className="block text-sm font-semibold text-ink mb-1.5">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir="ltr" placeholder="your@email.com" className="inp rtl:text-right" value={fields.email} onChange={update('email')} /></div>
+                  <div><label htmlFor="support-name" className="sr-only">{t('form_name')}</label><input id="support-name" type="text" name="name" required maxLength={100} autoComplete="name" placeholder={t('form_name_ph')} className="inp-consumer" value={fields.name} onChange={update('name')} /></div>
+                  <div><label htmlFor="support-email" className="sr-only">{t('form_email')}</label><input id="support-email" type="email" name="email" required maxLength={254} autoComplete="email" inputMode="email" dir={fields.email ? 'ltr' : undefined} placeholder={t('form_email')} className="inp-consumer" value={fields.email} onChange={update('email')} /></div>
                 </div>
                 <div>
-                  <label htmlFor="support-subject" className="block text-sm font-semibold text-ink mb-1.5">{t('form_subject')}</label>
-                  <select id="support-subject" name="subject" className="inp" value={fields.subject} onChange={update('subject')}>
+                  <label htmlFor="support-subject" className="sr-only">{t('form_subject')}</label>
+                  <select id="support-subject" name="subject" className="inp-consumer" value={fields.subject} onChange={update('subject')}>
                     {SUBJECT_OPTIONS.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
                   </select>
                 </div>
-                <div><label htmlFor="support-message" className="block text-sm font-semibold text-ink mb-1.5">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} dir="auto" placeholder={t('form_message_ph')} className="inp resize-none" value={fields.message} onChange={update('message')}></textarea></div>
+                <div><label htmlFor="support-message" className="sr-only">{t('form_message')}</label><textarea id="support-message" name="message" rows={4} required maxLength={5000} {...directionalProps(fields.message, t('form_message_ph'), isRtl)} placeholder={t('form_message_ph')} className="inp-consumer resize-none" value={fields.message} onChange={update('message')}></textarea></div>
                 <button type="submit" disabled={isSubmitting} aria-busy={isSubmitting || undefined} className="ds-btn ds-btn-primary ds-btn-wrap w-full">
                   {isSubmitting && <span aria-hidden="true" className="me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin" />}
                   {t(isSubmitting ? 'support_form_sending' : 'btn_send_message')}

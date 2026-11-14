@@ -14,7 +14,7 @@ const ref = admin.doc('prelaunch_leads/welcome-lead')
 
 beforeEach(async () => {
   vi.stubEnv('RESEND_API_KEY', 're_test')
-  vi.stubEnv('EMAIL_FROM', 'Landly <noreply@golandly.com>')
+  vi.stubEnv('EMAIL_FROM', 'GoLandly <noreply@golandly.com>')
   send.mockReset().mockResolvedValue({ data: { id: 'm1' }, error: null })
   await ref.set({ firstName: 'Noa', email: 'noa@example.com', lang: 'he' })
 })

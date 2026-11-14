@@ -1,4 +1,4 @@
-"""Builds the "Landly" wordmark as one vector path and writes
+"""Builds the "GoLandly" wordmark as one vector path and writes
 lib/brand/wordmarkPath.ts.
 
 The wordmark is Montserrat Bold (SIL Open Font License 1.1, which allows
@@ -22,7 +22,7 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
 
-TEXT = 'Landly'
+TEXT = 'GoLandly'
 WEIGHT = 700
 # The old raster's ink (#000f3a at ~90% alpha) composited on white, the same
 # ink the live slogan uses.

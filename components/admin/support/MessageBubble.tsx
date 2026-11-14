@@ -12,7 +12,7 @@ import { parseInteractive, type TranscriptItem, type TranscriptMessage } from '.
 
 const CHOICE = 'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-medium'
 
-/** The member's message (white, start side) or the team's (Landly blue, end side). */
+/** The member's message (white, start side) or the team's (GoLandly blue, end side). */
 export default function MessageBubble({ message }: { message: TranscriptMessage }) {
   const { t, locale } = useAdminT()
   const outgoing = message.direction === 'out'

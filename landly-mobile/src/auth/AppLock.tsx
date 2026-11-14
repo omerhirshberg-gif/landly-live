@@ -464,7 +464,7 @@ export function AppLockOverlay({ settled }: { settled: boolean }) {
             style={styles.brand}
             accessible
             accessibilityRole="image"
-            accessibilityLabel="Landly"
+            accessibilityLabel="GoLandly"
           >
             <Animated.View style={lockupStyle}>
               <BrandLockup scale={LOCKUP_SCALE} />

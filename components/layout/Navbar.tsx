@@ -116,19 +116,18 @@ export default function Navbar() {
             logo and the (wider) account controls. */}
         <div dir="ltr" className="relative w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,max-content)_1fr] lg:gap-6">
           <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target justify-self-start">
-            <img src="/logo-mark.png" alt="Landly" className="h-9 sm:h-10 w-auto" />
-            <span className="font-black text-lg sm:text-xl text-brand tracking-tight">Landly</span>
+            <img src="/logo-mark.png" alt="GoLandly" className="h-9 sm:h-10 w-auto" />
+            <span className="font-black text-lg sm:text-xl text-brand tracking-tight">GoLandly</span>
           </a>
 
           <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-meta font-semibold text-slate-600">
             {user ? (
               <>
-                {/* Members get Home, Explore Perks, My Pass,
-                    Making Aliyah? and Support; "How it works" is a guest section they never see */}
+                {/* Members get Home, Explore Perks, My Pass and Support;
+                    "How it works" is a guest section they never see */}
                 <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
                 <Link href="/member" aria-current={ariaCurrent('/member')} className={navLinkClass('/member')}>{t('nav_my_pass')}</Link>
-                <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
             ) : (
@@ -136,7 +135,6 @@ export default function Navbar() {
                 <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_deals')}</Link>
                 <Link href="/#how" aria-current={ariaCurrent('/#how')} className={navLinkClass('/#how')}>{t('nav_how')}</Link>
-                <Link href="/olim" aria-current={ariaCurrent('/olim')} className={navLinkClass('/olim')}>{t('nav_olim')}</Link>
                 {/* From 1280px: below that, the guest bar has no room for a seventh
                     link in Russian, Spanish or French, so About is in the footer
                     (and, under 1024px, the drawer). */}

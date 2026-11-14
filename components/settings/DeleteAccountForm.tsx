@@ -10,6 +10,7 @@ import { DELETION_DETAILS_MAX, DELETION_REASONS, DELETION_REASON_KEYS, isDeletio
 import { hasAppleSignIn, type AppleRevocation } from '@/lib/account/appleRevocation'
 import { requestAccountDeletion, type DeletionRequestResult } from '@/lib/account/requestAccountDeletion'
 import { confirmAndRevokeAppleOnWeb } from '@/lib/auth/appleWebRevocation'
+import { directionalProps } from '@/lib/directionalInput'
 
 // The Delete Account request form on /settings/delete-account (app:
 // DeleteAccountSheet): the account email (read-only), an optional reason and
@@ -17,12 +18,12 @@ import { confirmAndRevokeAppleOnWeb } from '@/lib/auth/appleWebRevocation'
 // delete the account. Once sent the form gives way to a confirmation. It
 // sits on its own page, never in a dialog; Cancel and Done leave it.
 // An account with Sign in with Apple confirms with Apple first (its popup
-// opens on the submit tap), which revokes Landly's Apple tokens
+// opens on the submit tap), which revokes GoLandly's Apple tokens
 // (lib/auth/appleWebRevocation.ts); backing out sends nothing, and when the
-// tokens couldn't be revoked the confirmation says how to remove Landly in
+// tokens couldn't be revoked the confirmation says how to remove GoLandly in
 // the Apple Account settings.
 export default function DeleteAccountForm({ user, onLeave }: { user: User; onLeave: () => void }) {
-  const { t, lang } = useLang()
+  const { t, lang, isRtl } = useLang()
   const [reason, setReason] = useState('')
   const [details, setDetails] = useState('')
   const [confirmed, setConfirmed] = useState(false)
@@ -92,26 +93,27 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
           {appleAccount && <p className="text-copy text-body">{t('del_apple_note')}</p>}
 
           <div>
-            <label htmlFor="delete-email" className="block mb-1.5 text-sm font-semibold text-slate-700">{t('del_email_label')}</label>
-            <input id="delete-email" type="email" readOnly dir="ltr" value={user.email ?? ''} className="inp bg-slate-100 text-slate-600 cursor-default" />
+            <label htmlFor="delete-email" className="sr-only">{t('del_email_label')}</label>
+            <input id="delete-email" type="email" readOnly dir="ltr" value={user.email ?? ''} className="inp-consumer cursor-default" />
           </div>
 
           <div>
-            <label htmlFor="delete-reason" className="block mb-1.5 text-sm font-semibold text-slate-700">{t('del_reason_label')}</label>
-            <select id="delete-reason" className="inp" value={reason} onChange={(e) => setReason(e.target.value)} disabled={sending}>
+            <label htmlFor="delete-reason" className="sr-only">{t('del_reason_label')}</label>
+            <select id="delete-reason" className={`inp-consumer ${reason ? '' : 'is-empty'}`} value={reason} onChange={(e) => setReason(e.target.value)} disabled={sending}>
               <option value="">{t('del_reason_placeholder')}</option>
               {DELETION_REASONS.map((r) => <option key={r} value={r}>{t(DELETION_REASON_KEYS[r])}</option>)}
             </select>
           </div>
 
           <div>
-            <label htmlFor="delete-details" className="block mb-1.5 text-sm font-semibold text-slate-700">{t('del_details_label')}</label>
+            <label htmlFor="delete-details" className="sr-only">{t('del_details_label')}</label>
             <textarea
               id="delete-details"
               rows={3}
-              dir="auto"
+              {...directionalProps(details, t('del_details_label'), isRtl)}
               maxLength={DELETION_DETAILS_MAX}
-              className="inp resize-none"
+              className="inp-consumer resize-none"
+              placeholder={t('del_details_label')}
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               disabled={sending}

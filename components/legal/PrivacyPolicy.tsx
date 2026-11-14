@@ -103,7 +103,7 @@ export default function PrivacyPolicy({ lang = 'en' }: { lang?: Lang }) {
   return (
     <article lang={lang} dir={isRtl ? 'rtl' : 'ltr'} className="text-slate-700 text-base leading-[1.7] break-words">
       <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0066FF] mb-2">Landly</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0066FF] mb-2">GoLandly</p>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight mb-3">{policy.title}</h1>
         <p className="text-sm text-slate-500">
           {policy.updatedLabel} <time dateTime={PRIVACY_POLICY_UPDATED_ISO}>{policy.updatedDate}</time>

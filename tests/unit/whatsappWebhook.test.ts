@@ -646,7 +646,7 @@ describe('support bot decisions', () => {
   it('offers the five languages in one list under the English welcome, with no footer', () => {
     const picker = languagePickerMessage('welcome')
     if (picker.type !== 'interactive' || picker.interactive.type !== 'list') throw new Error('expected a list message')
-    expect(WELCOME_BODY).toBe('Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:')
+    expect(WELCOME_BODY).toBe('Hi! 👋 Welcome to GoLandly.\nPlease choose your language to continue:')
     expect(picker.interactive.body.text).toBe(WELCOME_BODY)
     expect(picker.interactive.action.button).toBe('Choose language')
     expect(picker.interactive).not.toHaveProperty('footer')
@@ -1230,7 +1230,7 @@ describe('escalation email', () => {
     const mail = escalationEmail({ waId: '12025550123', lang: 'en', origin: 'https://landly.test' })
     expect(mail.replyTo).toBe('contact@golandly.com')
     expect(mail.rows.find((r) => r.label === 'WhatsApp')).toEqual({ label: 'WhatsApp', value: '+12025550123', href: 'https://wa.me/12025550123' })
-    expect(mail.rows.find((r) => r.label === 'Member UID')?.value).toMatch(/No Landly account/)
+    expect(mail.rows.find((r) => r.label === 'Member UID')?.value).toMatch(/No GoLandly account/)
     expect(mail.rows.find((r) => r.label === 'Support inbox')?.href).toBe('https://landly.test/admin/support?c=12025550123')
   })
 

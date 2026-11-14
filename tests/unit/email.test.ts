@@ -154,7 +154,7 @@ describe('branded email layout', () => {
     expect(html).toContain('border:1px solid #E2E8F0;border-radius:16px')
     expect(html).toContain('bgcolor="#0066FF"')
     expect(html).toContain('fillcolor="#0066FF"')
-    expect(html).toContain('color:#0038B8;letter-spacing:-0.5px;">Landly<')
+    expect(html).toContain('color:#0038B8;letter-spacing:-0.5px;">GoLandly<')
     expect(html).toMatch(/background-color:#F1F5F9;border:1px solid #E2E8F0;border-left:3px solid #2563EB/)
     // #0F172A survives only as heading text colour, never as a background.
     expect(html).not.toMatch(/(background-color:|bgcolor=")#(0F172A|1E293B|334155)/i)

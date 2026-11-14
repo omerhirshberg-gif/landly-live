@@ -61,7 +61,7 @@ export default function AdminLoginPage() {
       <main className="w-full max-w-md">
         <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
           <div className="flex flex-col items-center text-center">
-            <img src="/logo-mark.png" alt="Landly" className="h-12 w-auto" />
+            <img src="/logo-mark.png" alt="GoLandly" className="h-12 w-auto" />
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#F0F7FF] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0038B8]">
               <i className="fa-solid fa-shield-halved text-[10px]" aria-hidden="true" />
               {t('login.badge')}

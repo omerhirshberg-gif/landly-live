@@ -57,16 +57,16 @@ describe("what's inside", () => {
   it('swipes as one compact row on phones and is the grid from sm', async () => {
     const { default: ValueProps } = await import('@/components/home/ValueProps')
     const html = withLang('he', createElement(ValueProps))
-    expect(html).toMatch(/<ul class="[^"]*flex[^"]*overflow-x-auto[^"]*snap-x snap-mandatory[^"]*sm:grid sm:grid-cols-2 lg:grid-cols-4[^"]*sm:overflow-visible"/)
+    expect(html).toMatch(/<ul class="[^"]*flex[^"]*overflow-x-auto[^"]*snap-x snap-mandatory[^"]*sm:grid sm:grid-cols-3[^"]*sm:overflow-visible"/)
     const cards = html.match(/<li class="[^"]*"/g) ?? []
-    expect(cards).toHaveLength(4)
+    expect(cards).toHaveLength(3)
     for (const card of cards) expect(card).toContain('w-[200px] flex-shrink-0 snap-center sm:w-auto')
     // Each card is its glyph in the shared 40px frame, its name and one short lifestyle line; no intro under the heading.
     const t = translations.he
     expect(html).not.toContain(t.vp_sub)
-    for (const key of ['vp_dining_desc', 'vp_lifestyle_desc', 'vp_experiences_desc', 'vp_community_desc'] as const) expect(html).toContain(t[key])
-    expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl /g)).toHaveLength(4)
-    expect(html.match(/<p[ >]/g)).toHaveLength(4)
+    for (const key of ['vp_dining_desc', 'vp_lifestyle_desc', 'vp_experiences_desc'] as const) expect(html).toContain(t[key])
+    expect(html.match(/<span aria-hidden="true" class="flex flex-shrink-0 items-center justify-center border h-10 w-10 rounded-xl /g)).toHaveLength(3)
+    expect(html.match(/<p[ >]/g)).toHaveLength(3)
     // No background of its own: the page gradient shows through.
     expect(html).toMatch(/<section id="deals" class="py-12 sm:py-14 lg:py-16">/)
   })
