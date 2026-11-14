@@ -12,7 +12,7 @@ import styles from './entrance.module.css'
 export type EntranceMode = 'pending' | 'intro' | 'settled'
 
 // Web counterpart of landly-mobile/src/components/BrandHero.tsx: the vector
-// emblem, the vector "Landly" wordmark and the slogan as live text, at the
+// emblem, the vector "GoLandly" wordmark and the slogan as live text, at the
 // same sizes. The staged timings come from
 // lib/brand/entranceTimeline.ts via entranceVars.ts.
 
@@ -27,7 +27,7 @@ export default function BrandHero({ mode }: { mode: EntranceMode }) {
   return (
     <div
       role="img"
-      aria-label="Landly — Lifestyle & Growth"
+      aria-label="GoLandly — Lifestyle & Growth"
       className={[styles.hero, intro && styles.intro, mode === 'pending' && styles.pending].filter(Boolean).join(' ')}
     >
       <div className={styles.emblem} style={{ left: EMBLEM_SHIFT }}>

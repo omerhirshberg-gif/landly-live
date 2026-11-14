@@ -1,4 +1,3 @@
-import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 import * as AuthSession from 'expo-auth-session'
 import * as WebBrowser from 'expo-web-browser'
@@ -8,25 +7,23 @@ import { finishCustomerGoogleSignIn, type CustomerSignInResult } from '@shared/a
 import { auth } from '@shared/firebase/config'
 import type { Lang } from '@shared/i18n/translations'
 
-// Native "Continue with Google" (the browser build, googleSignIn.web.ts, uses
-// the Firebase popup instead). Google's OAuth page opens in the system
+// iOS "Continue with Google" (Android is googleSignIn.android.ts, the native
+// Google sheet; the browser build, googleSignIn.web.ts, uses the Firebase
+// popup). Google's OAuth page opens in the system
 // browser sheet (PKCE code flow), the returned ID token becomes a Firebase
 // credential, and from there it's the same shared customer rules the web
 // /login page runs (business rejection, customer doc, preferred language).
 //
-// Needs, per platform, an OAuth client in the same Google Cloud project as
-// the Firebase app: EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID and
-// EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID (Android: enable "custom URI scheme"
-// on the client). app.config.js registers each client's reversed ID as a URL
-// scheme, so the redirect only reaches a development or store build — not
-// Expo Go.
+// Needs an iOS OAuth client in the same Google Cloud project as the Firebase
+// app: EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID. app.config.js registers its reversed
+// ID as a URL scheme, so the redirect only reaches a development or store
+// build — not Expo Go.
 
 WebBrowser.maybeCompleteAuthSession()
 
-const clientIds: { ios?: string; android?: string } = Constants.expoConfig?.extra?.googleClientIds ?? {}
-const clientId = Platform.OS === 'ios' ? clientIds.ios : Platform.OS === 'android' ? clientIds.android : undefined
+const clientId: string | undefined = Constants.expoConfig?.extra?.googleClientIds?.ios
 
-/** The button always shows; this says whether tapping it can work (false until this platform's client ID is set). */
+/** The button always shows; this says whether tapping it can work (false until the iOS client ID is set). */
 export const GOOGLE_SIGN_IN_CONFIGURED = !!clientId
 
 const discovery = {

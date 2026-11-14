@@ -22,7 +22,7 @@ import { useAdminParent } from '@/components/admin/AdminCrumbContext'
 import PageHeader from '@/components/admin/PageHeader'
 import BusinessPhoneField from '@/components/admin/BusinessPhoneField'
 import { categoryEmoji } from '@/components/admin/CategoryBadge'
-import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
@@ -57,6 +57,12 @@ const emptyForm = {
   totalQuantity: '',
   unlimited: false,
   isBestseller: false,
+  isNationwide: false,
+  participatingChains: [],
+  participatingPlaces: [],
+  brandName: '',
+  guideHe: '',
+  guideEn: '',
   ...EMPTY_VOUCHER_TERMS,
   ...EMPTY_OFFER_TRANSLATIONS,
 }
@@ -213,7 +219,7 @@ export default function NewBusinessPage() {
 
       {error && <Alert className="mb-6">{error}</Alert>}
 
-      <form onSubmit={handleSubmit} {...tabs.formProps}>
+      <form className="pb-28" onSubmit={handleSubmit} {...tabs.formProps}>
         <FormTabs state={tabs} label={t('newBiz.sections')} />
 
         <TabPanel state={tabs} tab="basics">
@@ -229,7 +235,7 @@ export default function NewBusinessPage() {
               </div>
               <div>
                 <label htmlFor="biz-category" className={ADMIN_LABEL}>{t('newBiz.category')}</label>
-                <select id="biz-category" required className={`${ADMIN_INPUT} cursor-pointer`} value={form.category} onChange={(e) => update('category', e.target.value)}>
+                <select id="biz-category" required className={`${ADMIN_SELECT}`} value={form.category} onChange={(e) => update('category', e.target.value)}>
                   {BUSINESS_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{`${categoryEmoji(cat)} ${cat}`.trim()}</option>
                   ))}

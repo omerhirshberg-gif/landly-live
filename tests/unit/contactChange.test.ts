@@ -34,6 +34,12 @@ vi.mock('@/lib/firebase/verifyRequestUser', () => ({
     constructor(message: string, public readonly status: number) { super(message) }
   },
 }))
+// Endpoints that 019's docs will supply; set here so the gateway can be exercised.
+vi.mock('@/lib/otp/gateway019Contract', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/otp/gateway019Contract')>()),
+  SMS_ENDPOINT: 'https://019.test/sms',
+  WHATSAPP_ENDPOINT: 'https://019.test/whatsapp',
+}))
 vi.mock('@/lib/auth/uidRateLimit', () => ({ checkUidRateLimit: () => null }))
 
 import { POST as changeEmail } from '@/app/api/account/change-email/route'
@@ -54,7 +60,6 @@ import {
   OtpDeliveryError,
   otpMatches,
   phoneVerificationMode,
-  productionProvider,
 } from '@/lib/auth/phoneVerification'
 import { translations } from '@/lib/i18n/translations'
 
@@ -102,7 +107,7 @@ afterEach(() => {
 describe('OTP helpers', () => {
   it('keeps only the digits of a typed, pasted or autofilled code', () => {
     expect(normalizeOtpInput('123 456')).toBe('123456')
-    expect(normalizeOtpInput('Your Landly code is 987-654.')).toBe('987654')
+    expect(normalizeOtpInput('Your GoLandly code is 987-654.')).toBe('987654')
     expect(normalizeOtpInput('12345678')).toBe('123456')
     expect(isOtpCode('012345')).toBe(true)
     expect(isOtpCode('12345')).toBe(false)
@@ -129,14 +134,15 @@ describe('phoneVerificationMode', () => {
     expect(phoneVerificationMode()).toBe('direct')
   })
 
-  it('saves directly in production until the flag is on and WhatsApp is configured', () => {
+  it('saves directly in production until the flag is on and 019 is configured', () => {
     vi.stubEnv('NODE_ENV', 'production')
     expect(phoneVerificationMode()).toBe('direct')
     vi.stubEnv('FIREBASE_PHONE_AUTH_ENABLED', 'true')
     expect(phoneVerificationMode()).toBe('direct')
-    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'token')
-    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '123')
-    vi.stubEnv('WHATSAPP_OTP_TEMPLATE', 'landly_code')
+    vi.stubEnv('SMS_019_USERNAME', 'landly')
+    vi.stubEnv('SMS_019_TOKEN', 'tok')
+    expect(phoneVerificationMode()).toBe('direct')
+    vi.stubEnv('SMS_019_SENDER', 'GoLandly')
     expect(phoneVerificationMode()).toBe('otp')
   })
 })
@@ -145,32 +151,6 @@ describe('OTP providers', () => {
   it('devProvider simulates WhatsApp by logging the code', async () => {
     await devProvider.send({ phone: '+33612345678', code: '424242', channel: 'whatsapp', lang: 'fr' })
     expect(info.mock.calls.at(-1)?.[0]).toBe('[phone-otp] simulated WhatsApp to +33 •••• 5678: code 424242')
-  })
-
-  it('productionProvider sends a WhatsApp authentication template with the code', async () => {
-    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'secret')
-    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '555')
-    vi.stubEnv('WHATSAPP_OTP_TEMPLATE', 'landly_code')
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
-    vi.stubGlobal('fetch', fetchMock)
-    await productionProvider.send({ phone: '+79161234567', code: '111222', channel: 'whatsapp', lang: 'ru' })
-    const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('https://graph.facebook.com/v21.0/555/messages')
-    expect(init.headers.Authorization).toBe('Bearer secret')
-    const body = JSON.parse(init.body)
-    expect(body).toMatchObject({ messaging_product: 'whatsapp', to: '79161234567', type: 'template', template: { name: 'landly_code', language: { code: 'ru' } } })
-    expect(JSON.stringify(body.template.components)).toContain('111222')
-    vi.unstubAllGlobals()
-  })
-
-  it('productionProvider reports a refused send and the unconfigured SMS channel', async () => {
-    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'secret')
-    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '555')
-    vi.stubEnv('WHATSAPP_OTP_TEMPLATE', 'landly_code')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 131026, message: 'undeliverable' } }), { status: 400 })))
-    await expect(productionProvider.send({ phone: '+12025550123', code: '1', channel: 'whatsapp', lang: 'en' })).rejects.toMatchObject({ code: '131026' })
-    await expect(productionProvider.send({ phone: '+12025550123', code: '1', channel: 'sms', lang: 'en' })).rejects.toBeInstanceOf(OtpDeliveryError)
-    vi.unstubAllGlobals()
   })
 })
 
@@ -188,6 +168,24 @@ describe('/api/account/change-phone', () => {
     const verification = mocks.store.read(`phoneVerifications/${UID}`)!
     expect(verification).toMatchObject({ phone: e164, channel: 'whatsapp', attempts: 0 })
     expect(verification.codeHash).toBe(hashOtp(UID, lastLoggedCode()))
+  })
+
+  it('sends a code to the saved number while it is unverified (the Profile card\'s "Verify now")', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', phone: '+972501234567', phoneVerified: false })
+    const res = await changePhone(post({ phone: '+972501234567', lang: 'en' }))
+    expect(await res.json()).toEqual({ ok: true, mode: 'otp', channel: 'sms', resendIn: 60 })
+    expect(mocks.store.read(`users/${UID}`)).toMatchObject({ phone: '+972501234567', pendingPhone: '+972501234567' })
+    const verified = await verifyPhoneOtp(post({ code: lastLoggedCode() }))
+    expect(verified.status).toBe(200)
+    expect(mocks.store.read(`users/${UID}`)).toMatchObject({ phone: '+972501234567', phoneVerified: true })
+  })
+
+  it('still refuses the saved number once it is verified', async () => {
+    mocks.store.seed(`users/${UID}`, { email: 'old@landly.test', phone: '+972501234567', phoneVerified: true })
+    const res = await changePhone(post({ phone: '+972501234567', lang: 'en' }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).reason).toBe('samePhone')
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
   })
 
   it('refuses invalid or national-only numbers', async () => {
@@ -232,21 +230,32 @@ describe('/api/account/change-phone', () => {
     expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
   })
 
-  it('answers delivery, not a server error, when Meta has the template in no language (132001)', async () => {
-    vi.stubEnv('WHATSAPP_OTP_LIVE', 'true')
-    vi.stubEnv('WHATSAPP_ACCESS_TOKEN', 'secret')
-    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID', '555')
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const meta = () => new Response(JSON.stringify({ error: { code: 132001, message: 'Template name does not exist in the translation' } }), { status: 400 })
-    const fetchMock = vi.fn().mockImplementation(async () => meta())
+  it('answers delivery, not a server error, when 019 refuses the send', async () => {
+    vi.stubEnv('OTP_019_LIVE', 'true')
+    vi.stubEnv('SMS_019_USERNAME', 'landly')
+    vi.stubEnv('SMS_019_PASSWORD', 'hunter2-secret')
+    vi.stubEnv('SMS_019_SENDER', 'GoLandly')
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"error":"bad"}', { status: 400 }))
     vi.stubGlobal('fetch', fetchMock)
     const res = await changePhone(post({ phone: '+12025550123', lang: 'he' }))
     expect(res.status).toBe(502)
     expect(await res.json()).toMatchObject({ reason: 'delivery', channel: 'whatsapp' })
-    expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).template.language.code)).toEqual(['he', 'en_US', 'en'])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://019.test/whatsapp')
     expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
     expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
     vi.unstubAllGlobals()
+  })
+
+  it.each([
+    ['+972 52-123-4567', '+972521234567', 'sms'],
+    ['+1 202 555 0123', '+12025550123', 'whatsapp'],
+  ])('decides the channel from the number and ignores a client-sent one (%s)', async (input, e164, channel) => {
+    const wrong = channel === 'sms' ? 'whatsapp' : 'sms'
+    const res = await changePhone(post({ phone: input, lang: 'en', channel: wrong }))
+    expect(await res.json()).toEqual({ ok: true, mode: 'otp', channel, resendIn: 60 })
+    expect(mocks.store.read(`phoneVerifications/${UID}`)).toMatchObject({ phone: e164, channel })
+    expect(info.mock.calls.at(-1)?.[0]).toContain(`simulated ${channel === 'sms' ? 'SMS' : 'WhatsApp'}`)
   })
 
   it('a resend that could not be delivered drops the code sent before, so the dialog closes', async () => {
@@ -674,10 +683,12 @@ describe('copy', () => {
     for (const lang of Object.keys(translations) as (keyof typeof translations)[]) {
       const t = translations[lang]
       expect(t.pending_email_body, lang).toContain('{email}')
-      expect(t.pending_phone_body, lang).toContain('{phone}')
+      expect(t.pending_phone_body_sms, lang).toContain('{phone}')
+      expect(t.pending_phone_body_whatsapp, lang).toContain('{phone}')
       expect(t.emailChanged_body, lang).toContain('{email}')
       expect(t.otp_resend_in, lang).toContain('{seconds}')
-      expect(t.otp_title, lang).toContain('💬')
+      expect(t.otp_title_sms, lang).toContain('💬')
+      expect(t.otp_title_whatsapp, lang).toContain('💬')
       for (const key of ['otp_email_title', 'otp_email_subtitle', 'otp_email_success', 'pending_email_enter', 'emailChange_codeLabel'] as const) {
         expect(t[key], `${lang}.${key}`).toBeTruthy()
       }

@@ -2,6 +2,7 @@
 
 import { ADMIN_INPUT } from './formStyles'
 import { useAdminT } from '@/lib/admin/translations'
+import { directionalProps } from '@/lib/directionalInput'
 
 interface SearchInputProps {
   value: string
@@ -13,15 +14,17 @@ interface SearchInputProps {
 }
 
 export function SearchInput({ value, onChange, placeholder, label, autoFocus, className = '' }: SearchInputProps) {
+  const { dir } = useAdminT()
+  const inputDir = directionalProps(value, placeholder, dir === 'rtl')
   return (
-    <div className={`relative ${className}`}>
+    <div dir={inputDir.dir === 'auto' ? undefined : inputDir.dir} className={`relative ${className}`}>
       <i
         className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]"
         aria-hidden="true"
       />
       <input
         type="search"
-        dir="auto"
+        {...inputDir}
         aria-label={label}
         placeholder={placeholder}
         autoFocus={autoFocus}

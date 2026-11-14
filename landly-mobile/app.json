@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Landly",
+    "name": "GoLandly",
     "slug": "landly-live",
     "scheme": "landly",
     "version": "1.0.0",
@@ -16,7 +16,7 @@
           "en",
           "he"
         ],
-        "NSLocalNetworkUsageDescription": "Landly connects to the development server on your local network while the app is being developed."
+        "NSLocalNetworkUsageDescription": "GoLandly connects to the development server on your local network while the app is being developed."
       },
       "bundleIdentifier": "com.amitbd.landlyapp",
       "usesAppleSignIn": true
@@ -41,7 +41,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#f8fafc"
+          "backgroundColor": "#f8fafc",
+          "android": {
+            "image": "./assets/splash-android-transparent.png",
+            "imageWidth": 200
+          }
         }
       ],
       "expo-notifications",
@@ -51,13 +55,13 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Landly uses Face ID so you can unlock the app quickly and keep your passes private."
+          "faceIDPermission": "GoLandly uses Face ID so you can unlock the app quickly and keep your passes private."
         }
       ],
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Landly uses Face ID so you can unlock the app quickly and keep your passes private.",
+          "faceIDPermission": "GoLandly uses Face ID so you can unlock the app quickly and keep your passes private.",
           "configureAndroidBackup": true
         }
       ],
@@ -71,15 +75,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Landly uses your photos so you can choose a profile picture.",
-          "cameraPermission": "Landly uses the camera so you can take a profile picture.",
+          "photosPermission": "GoLandly uses your photos so you can choose a profile picture.",
+          "cameraPermission": "GoLandly uses the camera so you can take a profile picture.",
           "microphonePermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Landly uses your location to show perks near you.",
+          "locationWhenInUsePermission": "GoLandly uses your location to show perks near you.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false,
           "isIosBackgroundLocationEnabled": false,

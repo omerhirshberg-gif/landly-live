@@ -6,7 +6,7 @@ import { RAIL_ICONS, type RailGlyph } from '../lib/categoryGlyphs'
 import { colors } from '../theme'
 import LineIcon from './LineIcon'
 
-// One of the Perks tab's highlight rails (New on Landly, Best Sellers,
+// One of the Perks tab's highlight rails (New on GoLandly, Best Sellers,
 // stacked above the category grid; web: components/discover/OfferTileRail.tsx):
 // a heading led by a bare 18pt line icon at 1.5 stroke, no frame (RAIL_ICONS:
 // Sparkles for New, Award for Best Sellers), then the perks as Home's carousel

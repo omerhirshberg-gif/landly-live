@@ -3,10 +3,10 @@ import { cookies } from 'next/headers'
 import AdminShell from '@/components/admin/AdminShell'
 import { ADMIN_LANG_COOKIE, parseAdminLocale } from '@/lib/admin/adminLocale'
 
-// Admin pages read "<page> | Landly Admin". The default is absolute: a plain
-// default would get the root "%s | Landly" template appended to it.
+// Admin pages read "<page> | GoLandly Admin". The default is absolute: a plain
+// default would get the root "%s | GoLandly" template appended to it.
 export const metadata: Metadata = {
-  title: { absolute: 'Admin Portal | Landly', template: '%s | Landly Admin' },
+  title: { absolute: 'Admin Portal | GoLandly', template: '%s | GoLandly Admin' },
 }
 
 // viewport-fit=cover makes env(safe-area-inset-*) report the notch and home

@@ -1,8 +1,9 @@
 // The phone-change code shared by the website, the app and the API routes
 // (the server side lives in ./phoneVerification.ts, which is server-only).
-// WhatsApp is the primary channel: most members (olim, tourists, Taglit and
-// Masa participants, lone soldiers) keep a non-Israeli number, and WhatsApp
-// reaches every country without SMS routing or per-country pricing.
+// The channel follows the number (lib/auth/otpChannel.ts): SMS for Israeli
+// (+972) numbers, WhatsApp for every other country -- most members (olim,
+// tourists, Taglit and Masa participants, lone soldiers) keep a non-Israeli
+// number, and WhatsApp reaches them without per-country SMS routing.
 
 export type OtpChannel = 'whatsapp' | 'sms'
 

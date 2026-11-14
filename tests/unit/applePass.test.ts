@@ -36,7 +36,7 @@ function selfSigned() {
   cert.serialNumber = '01'
   cert.validity.notBefore = new Date(Date.now() - 86_400_000)
   cert.validity.notAfter = new Date(Date.now() + 86_400_000)
-  const attrs = [{ name: 'commonName', value: 'Landly Test' }]
+  const attrs = [{ name: 'commonName', value: 'GoLandly Test' }]
   cert.setSubject(attrs)
   cert.setIssuer(attrs)
   cert.sign(keys.privateKey, forge.md.sha256.create())
@@ -69,11 +69,11 @@ async function unzip(zip: Buffer): Promise<Record<string, Buffer>> {
 describe('pass.json', () => {
   const json = buildPassJson(voucher, identity, 25, 'Dana Cohen')
 
-  it('is an event ticket in Landly navy with sharing off', () => {
+  it('is an event ticket in GoLandly navy with sharing off', () => {
     expect(json).toMatchObject({
       formatVersion: 1,
-      organizationName: 'Landly',
-      logoText: 'Landly',
+      organizationName: 'GoLandly',
+      logoText: 'GoLandly',
       backgroundColor: 'rgb(11,27,61)',
       foregroundColor: 'rgb(255,255,255)',
       labelColor: 'rgb(180,194,220)',

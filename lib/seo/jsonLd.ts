@@ -26,13 +26,13 @@ export function organizationJsonLd(): JsonLdNode {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': ORGANIZATION_ID,
-    name: 'Landly',
+    name: 'GoLandly',
     url: SITE_URL,
     logo: siteUrl('/logo-mark.png'),
     email: SUPPORT_EMAIL,
     areaServed: { '@type': 'Country', name: 'Israel' },
     founder: FOUNDERS.map((f) => ({ '@type': 'Person', name: f.name })),
-    description: 'A free member club for olim chadashim, lone soldiers, students and travelers in Israel: lifestyle discounts, Aliyah benefits and personal Aliyah mentors.',
+    description: 'A free member club for olim chadashim, lone soldiers, students and travelers in Israel: lifestyle discounts and Aliyah benefits.',
   }
 }
 
@@ -42,7 +42,7 @@ export function websiteJsonLd(): JsonLdNode {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     '@id': WEBSITE_ID,
-    name: 'Landly',
+    name: 'GoLandly',
     url: SITE_URL,
     inLanguage: ['en', 'he', 'fr', 'ru', 'es'],
     publisher: { '@id': ORGANIZATION_ID },
@@ -75,7 +75,7 @@ export function perksAggregateOfferJsonLd(offers: PublicOffer[]): JsonLdNode | n
   return {
     '@context': 'https://schema.org',
     '@type': 'AggregateOffer',
-    name: 'Landly member perks in Israel',
+    name: 'GoLandly member perks in Israel',
     url: siteUrl('/categories'),
     priceCurrency: 'ILS',
     lowPrice: Math.min(...prices),
@@ -97,23 +97,5 @@ export function offerJsonLd(offer: PublicOffer): JsonLdNode {
     brand: offer.businessName ? { '@type': 'Brand', name: offer.businessName } : undefined,
     category: offer.category || undefined,
     offers: offerNode(offer),
-  }
-}
-
-/** /olim: the Aliyah and lone soldier help, as a free Service from Landly. */
-export function olimServiceJsonLd(): JsonLdNode {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    name: 'Aliyah benefits and personal Aliyah mentor',
-    serviceType: 'Aliyah and lone soldier support',
-    url: siteUrl('/olim'),
-    provider: { '@id': ORGANIZATION_ID },
-    areaServed: { '@type': 'Country', name: 'Israel' },
-    audience: [
-      { '@type': 'Audience', audienceType: 'New Olim in Israel (olim chadashim) and veteran Olim' },
-      { '@type': 'Audience', audienceType: 'Lone soldiers in the IDF' },
-    ],
-    offers: { '@type': 'Offer', price: 0, priceCurrency: 'ILS', description: 'Free for Landly club members' },
   }
 }

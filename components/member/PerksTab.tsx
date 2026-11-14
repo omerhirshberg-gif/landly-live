@@ -10,6 +10,8 @@ import { formatLongDate } from '@/lib/format'
 import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import { VoucherListSkeleton } from '@/components/ui/Skeleton'
 import { voucherDestination } from '@/lib/member/voucherDestination'
+import { locationNoticeKind } from '@/lib/offers/locationVisibility'
+import { PerkReachLine } from '@/components/discover/PerkReach'
 import TicketTear from './TicketTear'
 import VoucherCover from './VoucherCover'
 
@@ -82,6 +84,7 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
       <div className="px-3.5 pb-3 pt-6">
         <div className="truncate text-[17px] font-extrabold leading-snug text-ink" dir="auto">{name}</div>
         <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</h3>
+        {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-2 text-xs text-muted" />}
         {place && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
             <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />

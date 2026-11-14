@@ -69,8 +69,8 @@ describe('parseInteractive', () => {
   })
 
   it('splits a list with a multi-line body into the whole body and its rows', () => {
-    expect(parseInteractive('Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:\n[English] [עברית] [Русский] [Français] [Español]')).toEqual({
-      body: 'Hi! 👋 Welcome to Landly.\nPlease choose your language to continue:',
+    expect(parseInteractive('Hi! 👋 Welcome to GoLandly.\nPlease choose your language to continue:\n[English] [עברית] [Русский] [Français] [Español]')).toEqual({
+      body: 'Hi! 👋 Welcome to GoLandly.\nPlease choose your language to continue:',
       choices: ['English', 'עברית', 'Русский', 'Français', 'Español'],
       link: null,
     })
@@ -90,7 +90,7 @@ describe('parseInteractive', () => {
 describe('ChatTranscript', () => {
   const render = (messages: TranscriptMessage[]) => renderToStaticMarkup(createElement(ChatTranscript, { waId: '972501234567', messages, now: Date.parse(at(59)) }))
 
-  it('draws the member in a white card, the team in Landly blue, and the bot as one native <details> summary', () => {
+  it('draws the member in a white card, the team in GoLandly blue, and the bot as one native <details> summary', () => {
     const html = render([member('hi'), bot('Menu\n[A] [B]'), tap('A'), bot('Answer\n[All set]'), team('Hello from the team')])
     expect(html).toContain('border border-[#E2E8F0] bg-white text-[#0F172A]')
     expect(html).toContain('bg-[#0038B8] text-white')

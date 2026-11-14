@@ -14,7 +14,7 @@ import { PROVIDER_ICONS } from '@/components/auth/entrance/ProviderTile'
 // Privacy & Security, its own page under /settings (the avatar menu links
 // here too): how the member signs in (password, Apple or Google:
 // lib/auth/signInProvider.ts), Passkeys, Change Password for email/password
-// accounts (an Apple or Google account has no Landly password, so it gets a
+// accounts (an Apple or Google account has no GoLandly password, so it gets a
 // note instead), the devices signed in (Sessions), then the data controls.
 export default function PrivacySecurityPage() {
   const { t } = useLang()

@@ -18,8 +18,8 @@ export function onboardingLink(token: string): string {
 // The same words for the email and the manual WhatsApp message.
 export function inviteMessage(input: Pick<InviteInput, 'businessName' | 'lang'>, link: string): string {
   return input.lang === 'he'
-    ? `שלום, הוזמנתם להצטרף ל-Landly בתור ${input.businessName}. כדי להשלים את ההרשמה ולחתום על ההסכם (כ-5 דקות), היכנסו לקישור האישי: ${link}\nהקישור תקף 7 ימים וניתן לשימוש פעם אחת.`
-    : `Hi, you've been invited to join Landly as ${input.businessName}. To finish setting up and sign the agreement (about 5 minutes), use your personal link: ${link}\nIt is valid for 7 days and can be used once.`
+    ? `שלום, הוזמנתם להצטרף ל-GoLandly בתור ${input.businessName}. כדי להשלים את ההרשמה ולחתום על ההסכם (כ-5 דקות), היכנסו לקישור האישי: ${link}\nהקישור תקף 7 ימים וניתן לשימוש פעם אחת.`
+    : `Hi, you've been invited to join GoLandly as ${input.businessName}. To finish setting up and sign the agreement (about 5 minutes), use your personal link: ${link}\nIt is valid for 7 days and can be used once.`
 }
 
 /** wa.me link with the message prefilled, for sending from the admin's own WhatsApp (no template needed). */
@@ -66,8 +66,8 @@ export async function emailInvite(input: InviteInput, link: string): Promise<{ s
   try {
     await sendBrandedEmail({
       to: input.contactEmail, lang: input.lang, origin: applicationOrigin(),
-      subject: he ? `${input.businessName}: ההזמנה שלכם ל-Landly` : `${input.businessName}: your invitation to Landly`,
-      heading: he ? 'הוזמנתם להצטרף ל-Landly' : 'You are invited to join Landly',
+      subject: he ? `${input.businessName}: ההזמנה שלכם ל-GoLandly` : `${input.businessName}: your invitation to GoLandly`,
+      heading: he ? 'הוזמנתם להצטרף ל-GoLandly' : 'You are invited to join GoLandly',
       body: he
         ? `השלימו את פרטי העסק, פרטי הבנק והחתימה על ההסכם עבור ${input.businessName}. זה לוקח כ-5 דקות.`
         : `Complete the business details, bank details and agreement signature for ${input.businessName}. It takes about 5 minutes.`,

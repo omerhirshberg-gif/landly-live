@@ -2,7 +2,7 @@ import type { TranslationKey } from '../i18n/translations'
 
 // How a member signs in, for Privacy & Security on the website and in the
 // app: what the "Sign-in method" card names, and whether it offers Change
-// Password. Read from the Firebase user's linked providers. A Landly password
+// Password. Read from the Firebase user's linked providers. A GoLandly password
 // wins (it's the one thing the card can manage); then Apple, also recognised
 // by an Apple private-relay address when the provider list doesn't say;
 // then Google. Anything else gets a neutral label, never a guessed one.

@@ -26,7 +26,7 @@ vi.mock('next/server', async (importOriginal) => ({
 import { cloudTranslator } from '@/lib/translate/cloudTranslate'
 import { autocompleteAddress, placeAddress, reverseGeocodeCity } from '@/lib/maps/googleMaps'
 import { sendWhatsAppMessage } from '@/lib/whatsapp/graph'
-import { devProvider, productionProvider } from '@/lib/auth/phoneVerification'
+import { devProvider } from '@/lib/auth/phoneVerification'
 import { POST as whatsappWebhook } from '@/app/api/webhooks/whatsapp/route'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -114,21 +114,6 @@ describe('WhatsApp', () => {
   it('counts nothing when Meta refuses a reply', async () => {
     fetchMock.mockResolvedValue(json({ error: { code: 131047, message: 'Re-engagement message' } }, 400))
     await expect(sendWhatsAppMessage('972501234567', { type: 'text', text: { body: 'Hi' } })).rejects.toThrow()
-    expect(mocks.recordUsage).not.toHaveBeenCalled()
-  })
-
-  it('counts an OTP once Meta accepts it, after a missing-language retry, and never as a service message', async () => {
-    fetchMock
-      .mockResolvedValueOnce(json({ error: { code: 132001, message: 'Template name does not exist in the translation' } }, 404))
-      .mockResolvedValueOnce(accepted())
-    await productionProvider.send({ phone: '+972501234567', code: '123456', channel: 'whatsapp', lang: 'he' })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(mocks.recordUsage.mock.calls).toEqual([['whatsapp.authSent']])
-  })
-
-  it('does not count an OTP Meta answered without a wamid', async () => {
-    fetchMock.mockResolvedValue(json({}))
-    await productionProvider.send({ phone: '+972501234567', code: '123456', channel: 'whatsapp', lang: 'en' })
     expect(mocks.recordUsage).not.toHaveBeenCalled()
   })
 

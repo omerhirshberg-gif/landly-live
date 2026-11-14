@@ -58,10 +58,10 @@ describe('no payment data for free membership in the Privacy Policy', () => {
     expect(payment).toContain('no membership or subscription charges')
   })
 
-  it('takes card details only at a voucher checkout, on Tranzila, never stored by Landly', () => {
+  it('takes card details only at a voucher checkout, on Tranzila, never stored by GoLandly', () => {
     expect(payment).toContain('You enter card details only when you choose to buy an individual paid offer')
     expect(payment).toContain('Tranzila, a PCI-DSS-compliant payment gateway')
-    expect(payment).toContain('Landly never receives or stores your full card number or security code')
+    expect(payment).toContain('GoLandly never receives or stores your full card number or security code')
   })
 
   it('shows the same on the website', () => {

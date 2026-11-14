@@ -65,7 +65,7 @@ export default function SettingsPage() {
       {(loading || held) && <div className="h-24" aria-hidden="true" />}
 
       <p className="mt-2 text-center text-xs text-slate-400">
-        <bdi>Landly</bdi> · {t('nav_version')} <bdi>{APP_VERSION}</bdi>
+        <bdi>GoLandly</bdi> · {t('nav_version')} <bdi>{APP_VERSION}</bdi>
       </p>
     </SettingsPageShell>
   )

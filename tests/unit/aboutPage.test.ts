@@ -52,10 +52,10 @@ describe('/about', () => {
     expect(FOUNDERS.map((f) => f.name)).toEqual(['Omer Hirshberg', 'Amit Bar-David'])
     expect(translations.he.about_name_amit).toBe('עמית בר-דוד')
     expect(translations.he.about_name_omer).toBe('עומר הירשברג')
-    expect(translations.en.about_bio_amit).toBe('Former IDF Armored Corps tank commander and Computer Science student. Co-founded Landly as CTO to ease the financial landing for Olim and empower Olim-owned businesses through accessible digital commerce.')
-    expect(translations.en.about_bio_omer).toBe('Former Israeli Navy officer and Economics student. Co-founded Landly to ease the financial landing for Olim and empower Olim-owned businesses through accessible digital commerce.')
-    expect(translations.he.about_bio_amit).toBe('סטודנט למדעי המחשב ומפקד טנק בחיל השריון לשעבר. שותף-מייסד ו-CTO ב-Landly מתוך מטרה להקל על הנחיתה הכלכלית של עולים חדשים ולהעצים עסקים בבעלות עולים באמצעות מסחר דיגיטלי נגיש.')
-    expect(translations.he.about_bio_omer).toBe('קצין חיל הים לשעבר וסטודנט לכלכלה. שותף-מייסד ב-Landly מתוך מטרה להקל על הנחיתה הכלכלית של עולים חדשים ולהעצים עסקים בבעלות עולים באמצעות מסחר דיגיטלי נגיש.')
+    expect(translations.en.about_bio_amit).toBe('Former IDF Armored Corps tank commander and Computer Science student. Co-founded GoLandly as CTO to ease the financial landing for Olim and empower Olim-owned businesses through accessible digital commerce.')
+    expect(translations.en.about_bio_omer).toBe('Former Israeli Navy officer and Economics student. Co-founded GoLandly to ease the financial landing for Olim and empower Olim-owned businesses through accessible digital commerce.')
+    expect(translations.he.about_bio_amit).toBe('סטודנט למדעי המחשב ומפקד טנק בחיל השריון לשעבר. שותף-מייסד ו-CTO ב-GoLandly מתוך מטרה להקל על הנחיתה הכלכלית של עולים חדשים ולהעצים עסקים בבעלות עולים באמצעות מסחר דיגיטלי נגיש.')
+    expect(translations.he.about_bio_omer).toBe('קצין חיל הים לשעבר וסטודנט לכלכלה. שותף-מייסד ב-GoLandly מתוך מטרה להקל על הנחיתה הכלכלית של עולים חדשים ולהעצים עסקים בבעלות עולים באמצעות מסחר דיגיטלי נגיש.')
     expect(translations.he.footer_about).toBe('אודות')
     expect(translations.he.nav_about).toBe('אודות')
     expect(translations.en.about_title).toBe('Our Story')
@@ -159,19 +159,19 @@ describe('About in the navigation', () => {
   const desktop = (html: string) => html.slice(html.indexOf('class="hidden lg:flex'), html.indexOf('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"'))
   const drawer = (html: string) => html.slice(html.indexOf('</nav>'))
 
-  it.each(['en', 'he'] as const)('guests see About after Making Aliyah? in the bar and the drawer (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('guests see About after How It Works in the bar and the drawer (%s)', (lang) => {
     const t = translations[lang]
     const html = render(lang, createElement(Navbar))
     const bar = desktop(html)
     expect(bar).toContain(`href="/about"`)
-    expect(bar.indexOf('href="/about"')).toBeGreaterThan(bar.indexOf('href="/olim"'))
+    expect(bar.indexOf('href="/about"')).toBeGreaterThan(bar.indexOf('href="/#how"'))
     expect(bar.indexOf('href="/about"')).toBeLessThan(bar.indexOf('href="/business"'))
     expect(bar).toMatch(new RegExp(`href="/about"[^>]*>${t.nav_about}</a>`))
     // Desktop bar from 1280px only, so it never crowds the account buttons at 1024px.
     const tag = bar.match(/<a [^>]*href="\/about"[^>]*>/)?.[0] ?? ''
     expect(tag).toMatch(/class="[^"]*\bhidden xl:inline"/)
     const d = drawer(html)
-    expect(d.indexOf('href="/about"')).toBeGreaterThan(d.indexOf('href="/olim"'))
+    expect(d.indexOf('href="/about"')).toBeGreaterThan(d.indexOf('href="/#how"'))
     expect(d.indexOf('href="/about"')).toBeLessThan(d.indexOf('href="/support"'))
   })
 

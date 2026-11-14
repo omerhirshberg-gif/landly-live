@@ -74,8 +74,8 @@ describe('terms and invite input', () => {
 describe('PDF text order', () => {
   it('reverses Hebrew runs and keeps numbers and Latin in reading order', () => {
     expect(visualRuns('שלום', true)).toEqual([{ kind: 'he', text: 'םולש' }])
-    const runs = visualRuns('עמלה 10% מ-Landly', true).map((r) => r.text).join('|')
-    expect(runs.startsWith('Landly')).toBe(true)
+    const runs = visualRuns('עמלה 10% מ-GoLandly', true).map((r) => r.text).join('|')
+    expect(runs.startsWith('GoLandly')).toBe(true)
     expect(runs).toContain('10')
     expect(visualRuns('Pay Net 30', false).map((r) => r.text).join('')).toBe('Pay Net 30')
   })

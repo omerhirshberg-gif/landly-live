@@ -674,7 +674,7 @@ li[data-state='done'] > .brandStepDot {
 
 /* ── Brand hero (sizes match BrandHero.tsx on mobile) ───────────────────
    emblem 112 x 109 (shifted right so the star's axis is centred), 10px gap,
-   wordmark 100 x 28, 8px gap, slogan 14 — whole pixels throughout, so nothing
+   wordmark 146 x 28, 8px gap, slogan 14 — whole pixels throughout, so nothing
    lands on a half-pixel row. */
 .hero {
   position: relative;
@@ -740,7 +740,7 @@ li[data-state='done'] > .brandStepDot {
   position: relative;
   display: block;
   flex-shrink: 0;
-  width: 100px;
+  width: 146px;
   height: 28px;
   margin-top: 10px;
   overflow: visible;

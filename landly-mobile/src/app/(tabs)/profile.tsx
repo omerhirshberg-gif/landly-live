@@ -13,6 +13,8 @@ import { useLiveUserDocument } from '@shared/firebase/useLiveUserDocument'
 import { updateUserName, updateUserProfileDetails, type UserDocument } from '@shared/firebase/users'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange, type ContactChangeResult } from '@shared/account/contactChange'
 import type { OtpTarget } from '@shared/auth/otp'
+import { otpCopyKeys, resolveOtpChannel } from '@shared/auth/otpChannel'
+import { needsPhoneVerification } from '@shared/profile/phoneNudge'
 import { canonicalCustomerType, customerTypeLabel, isCustomerType } from '@shared/customerTypes'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@shared/profile/countryOfOrigin'
 import AppText from '../../components/AppText'
@@ -23,6 +25,7 @@ import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import LineIcon from '../../components/LineIcon'
 import OtpSheet from '../../components/OtpSheet'
+import PhoneVerifyBanner from '../../components/PhoneVerifyBanner'
 import PendingChangeNotice from '../../components/PendingChangeNotice'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SegmentBadge from '../../components/SegmentBadge'
@@ -34,6 +37,7 @@ import { API_BASE_URL } from '../../lib/env'
 import { PANE_GAP } from '../../lib/layout'
 import { useLayout } from '../../lib/useLayout'
 import { endDeviceSession } from '../../lib/deviceSession'
+import { usePhoneNudgeSnooze } from '../../lib/usePhoneNudgeSnooze'
 import { webOnly } from '../../lib/webStyles'
 import { colors, header, radius } from '../../theme'
 
@@ -209,6 +213,9 @@ function ProfileDetails({
   const [nameErrors, setNameErrors] = useState<NameFieldErrors>({})
   const [nameShake, setNameShake] = useState(0)
   const [focusName, setFocusName] = useState(false)
+  const nudge = usePhoneNudgeSnooze(user.uid)
+  const [nudgeBusy, setNudgeBusy] = useState(false)
+  const [nudgeError, setNudgeError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!notice) return
@@ -243,6 +250,33 @@ function ProfileDetails({
     setEditing(true)
   }
 
+  // The card's "Verify now": a code already waiting for the pending number is
+  // entered as it is; a saved but unverified number is sent a code now (SMS
+  // for +972, WhatsApp elsewhere); with no number yet, the editor opens on it.
+  const verifyNow = async () => {
+    setNudgeError(null)
+    if (pendingPhone) {
+      setPhoneStatus(null)
+      setOtp({ target: { kind: 'phone', phone: pendingPhone }, resendIn: 0 })
+      return
+    }
+    if (!current.phone) {
+      startEdit()
+      return
+    }
+    setNudgeBusy(true)
+    const start = await user
+      .getIdToken()
+      .then((idToken) => requestPhoneChange(idToken, { phone: current.phone, lang }, API_BASE_URL))
+      .catch(() => CONTACT_CHANGE_FAILED)
+    setNudgeBusy(false)
+    if (start.ok && start.mode === 'otp') setOtp({ target: { kind: 'phone', phone: current.phone }, resendIn: start.resendIn })
+    else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter) setOtp({ target: { kind: 'phone', phone: current.phone }, resendIn: start.retryAfter })
+    else setNudgeError(t(contactChangeErrorKey(start.ok ? 'failed' : start.reason)))
+  }
+
+  const showNudge = loaded && needsPhoneVerification(profile) && nudge.ready && !nudge.snoozed && !editing && !otp
+
   const save = async () => {
     const errors = profileNameErrors(names, { hadName: !!name })
     if (errors.firstName || errors.lastName) {
@@ -266,7 +300,7 @@ function ProfileDetails({
       let savedPhone = phone
       let verify: { target: OtpTarget; resendIn: number } | null = null
       if (phone && phone !== current.phone) {
-        const start = await requestPhoneChange(await user.getIdToken(), { phone, lang, channel: 'whatsapp' }, API_BASE_URL)
+        const start = await requestPhoneChange(await user.getIdToken(), { phone, lang }, API_BASE_URL)
         if (start.ok && start.mode === 'otp') {
           verify = { target: { kind: 'phone', phone }, resendIn: start.resendIn }
         } else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter && phone === pendingPhone) {
@@ -314,7 +348,7 @@ function ProfileDetails({
 
   const phoneNotice = !!pendingPhone && (
     <PendingChangeNotice
-      message={t('pending_phone_body')}
+      message={t(otpCopyKeys(resolveOtpChannel(pendingPhone)).pendingBody)}
       placeholder="{phone}"
       value={formatPhone(pendingPhone)}
       icon="chat"
@@ -330,6 +364,8 @@ function ProfileDetails({
   )
 
   return (
+    <>
+    {showNudge && <PhoneVerifyBanner onVerify={verifyNow} onDismiss={nudge.snooze} busy={nudgeBusy} error={nudgeError} />}
     <View style={styles.card}>
       <View style={[styles.cardHeader, styles.rowBorder]}>
         <AppText accessibilityRole="header" style={styles.cardTitle}>{t('dash_tab_profile')}</AppText>
@@ -459,12 +495,11 @@ function ProfileDetails({
         <>
           <View style={[styles.row, styles.rowBorder]}>
             <TextField
-              label={t('profile_phone_label')}
+              label={t('onb_phoneLabel')}
               prefix={<CountryCodePicker value={country} onChange={(code) => { setCountry(code); setPhoneError(null) }} />}
               value={national}
               onChangeText={(value) => { setNational(value); setPhoneError(null) }}
               error={phoneError}
-              placeholder={country === 'IL' ? '50 123 4567' : undefined}
               keyboardType="phone-pad"
               autoComplete="tel"
               textContentType="telephoneNumber"
@@ -575,6 +610,7 @@ function ProfileDetails({
         />
       )}
     </View>
+    </>
   )
 }
 

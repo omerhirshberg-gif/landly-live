@@ -5,7 +5,7 @@ import type { TranslationKey } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
 import { LANDING_COLUMN } from '@/components/landing/landingColumn'
 
-// Who Landly is for, as a Bento grid of soft pastel cards. The two wide cards
+// Who GoLandly is for, as a Bento grid of soft pastel cards. The two wide cards
 // (`wide`) open and close it, so six cards fill both rows on a desktop and
 // four on a phone, with no hole. Informational: nothing here is a link or
 // reacts to a pointer.

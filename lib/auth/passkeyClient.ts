@@ -35,7 +35,7 @@ export type PasskeySignInOutcome =
   | { kind: 'expired' }
   | { kind: 'error'; code: PasskeyErrorCode }
 
-// This browser has created or used a Landly passkey, so the sign-in screen
+// This browser has created or used a GoLandly passkey, so the sign-in screen
 // leads with the passkey button. A hint only: the passkey itself lives in the
 // member's password manager, and clearing site data just demotes the button.
 const HINT_KEY = 'landly.passkeyHint'

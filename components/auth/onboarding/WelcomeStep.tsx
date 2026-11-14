@@ -7,7 +7,7 @@ import Button from '../entrance/Button'
 import PointList from './PointList'
 import StepIntro from './StepIntro'
 
-// Card 1: a personal welcome and what Landly brings, then "Get Started".
+// Card 1: a personal welcome and what GoLandly brings, then "Get Started".
 // Rendered as the wizard's step root, so its children stagger in.
 export function welcomeTitle(t: (key: 'onb_welcome_title' | 'onb_welcome_title_generic') => string, name: string | null): string {
   return name ? t('onb_welcome_title').replace('{name}', name) : t('onb_welcome_title_generic')

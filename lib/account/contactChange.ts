@@ -121,7 +121,7 @@ export async function finishEmailChange(auth: Auth, user: User, customToken: str
 export type PhoneChangeStart = { mode: 'direct' } | { mode: 'otp'; channel: OtpChannel; resendIn: number }
 
 /** Starts (or resends the code for) a phone change; 'direct' means save the number as before. */
-export function requestPhoneChange(idToken: string, params: { phone: string; lang: Lang; channel?: OtpChannel }, apiBaseUrl = '') {
+export function requestPhoneChange(idToken: string, params: { phone: string; lang: Lang }, apiBaseUrl = '') {
   return post<PhoneChangeStart>('/api/account/change-phone', idToken, params, apiBaseUrl)
 }
 

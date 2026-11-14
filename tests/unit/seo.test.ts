@@ -7,7 +7,6 @@ vi.mock('@/lib/firebase/publicOffers', () => ({ getLivePublicOffers: offers.live
 
 import {
   offerJsonLd,
-  olimServiceJsonLd,
   organizationJsonLd,
   perksAggregateOfferJsonLd,
   serializeJsonLd,
@@ -48,8 +47,8 @@ describe('JSON-LD', () => {
     expect(JSON.parse(json).name).toBe('</script><script>alert(1)</script> & co')
   })
 
-  it('describes Landly and its perk search', () => {
-    expect(organizationJsonLd()).toMatchObject({ '@type': 'Organization', name: 'Landly', url: 'https://www.golandly.com', logo: 'https://www.golandly.com/logo-mark.png' })
+  it('describes GoLandly and its perk search', () => {
+    expect(organizationJsonLd()).toMatchObject({ '@type': 'Organization', name: 'GoLandly', url: 'https://www.golandly.com', logo: 'https://www.golandly.com/logo-mark.png' })
     const site = websiteJsonLd()
     expect(site.potentialAction).toMatchObject({ '@type': 'SearchAction', target: { urlTemplate: 'https://www.golandly.com/categories?q={search_term_string}' } })
     expect(site.publisher).toEqual({ '@id': organizationJsonLd()['@id'] })
@@ -76,10 +75,8 @@ describe('JSON-LD', () => {
     })
   })
 
-  it('presents /olim as a free service for olim and lone soldiers', () => {
-    const service = olimServiceJsonLd()
-    expect(service).toMatchObject({ '@type': 'Service', offers: { price: 0 } })
-    expect(JSON.stringify(service.audience)).toContain('Lone soldiers')
+  it('makes no mentor claim in the organization description', () => {
+    expect(JSON.stringify(organizationJsonLd())).not.toMatch(/mentor/i)
   })
 })
 
@@ -109,11 +106,11 @@ describe('public offers', () => {
 
 describe('page metadata', () => {
   it('gives each public page its own canonical URL and share text', () => {
-    expect(pageMetadata({ title: 'X', description: 'Y', path: '/olim' })).toMatchObject({
+    expect(pageMetadata({ title: 'X', description: 'Y', path: '/about' })).toMatchObject({
       title: 'X',
       description: 'Y',
-      alternates: { canonical: '/olim' },
-      openGraph: { url: '/olim', title: 'X', locale: 'en_US' },
+      alternates: { canonical: '/about' },
+      openGraph: { url: '/about', title: 'X', locale: 'en_US' },
       twitter: { card: 'summary_large_image' },
     })
     expect(pageMetadata({ title: 'Home', description: 'Y', path: '/', absoluteTitle: true }).title).toEqual({ absolute: 'Home' })
@@ -127,9 +124,9 @@ describe('page metadata', () => {
 
   it('targets Aliyah, olim and lone soldier searches on the key pages', () => {
     const site = read('lib/seo/site.ts')
-    for (const phrase of ['Aliyah Benefits', 'Lone Soldiers', 'olim chadashim', 'personal Aliyah mentor', 'lifestyle discounts across Israel']) expect(site).toContain(phrase)
+    for (const phrase of ['Aliyah Benefits', 'Lone Soldiers', 'olim chadashim', 'lifestyle discounts across Israel']) expect(site).toContain(phrase)
     expect(read('app/page.tsx')).toContain("path: '/', absoluteTitle: true")
-    expect(read('app/olim/layout.tsx')).toContain("path: '/olim'")
+    expect(site).not.toMatch(/mentor/i)
     expect(read('app/categories/layout.tsx')).toContain("path: '/categories'")
   })
 
@@ -151,7 +148,7 @@ describe('sitemap and robots', () => {
   it('lists the public pages, then every live perk', async () => {
     offers.live.mockResolvedValue([aroma, gym])
     const urls = (await sitemap()).map((e) => e.url)
-    expect(urls.slice(0, 3)).toEqual(['https://www.golandly.com', 'https://www.golandly.com/categories', 'https://www.golandly.com/olim'])
+    expect(urls.slice(0, 3)).toEqual(['https://www.golandly.com', 'https://www.golandly.com/categories', 'https://www.golandly.com/categories/new'])
     expect(urls).toContain('https://www.golandly.com/offers/o1')
     expect(urls).toContain('https://www.golandly.com/offers/o%202')
     expect(urls.some((u) => /\/categories\/(?!new$|bestsellers$)/.test(u))).toBe(false)
@@ -159,7 +156,7 @@ describe('sitemap and robots', () => {
 
   it('falls back to the static pages without Firestore', async () => {
     const entries = await sitemap()
-    expect(entries).toHaveLength(10)
+    expect(entries).toHaveLength(9)
     expect(entries.map((e) => e.url)).toContain('https://www.golandly.com/about')
     expect(entries.every((e) => !e.url.includes('/offers/'))).toBe(true)
   })

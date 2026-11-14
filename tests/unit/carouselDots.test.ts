@@ -58,12 +58,12 @@ describe("what's inside dots", () => {
     const html = withLang(lang, createElement(ValueProps))
     const dots = html.slice(html.indexOf('<div class="flex justify-center sm:hidden">'))
     const buttons = dots.match(/<button type="button"[^>]*>/g) ?? []
-    expect(buttons).toHaveLength(4)
-    for (let i = 0; i < 4; i++) expect(buttons[i]).toContain(`aria-label="${t.landing_dots_label.replace('{n}', String(i + 1)).replace('{total}', '4')}"`)
+    expect(buttons).toHaveLength(3)
+    for (let i = 0; i < 3; i++) expect(buttons[i]).toContain(`aria-label="${t.landing_dots_label.replace('{n}', String(i + 1)).replace('{total}', '3')}"`)
     expect(buttons[0]).toContain('aria-current="true"')
     for (const b of buttons.slice(1)) expect(b).not.toContain('aria-current')
     expect(dots).toContain('w-6 bg-brand')
-    expect(dots.match(/w-1\.5 bg-slate-300/g)).toHaveLength(3)
+    expect(dots.match(/w-1\.5 bg-slate-300/g)).toHaveLength(2)
     expect(dots).toContain('motion-reduce:transition-none')
   })
 
@@ -75,23 +75,22 @@ describe("what's inside dots", () => {
 })
 
 describe('how it works carousel', () => {
-  it.each(['en', 'he'] as const)('swipes on phones (steps and the /olim card), with a dot per slide, and is a three-column grid from md (%s)', async (lang) => {
+  it.each(['en', 'he'] as const)('swipes on phones (the three steps), with a dot per slide, and is a three-column grid from md (%s)', async (lang) => {
     const { default: HowItWorks } = await import('@/components/home/HowItWorks')
     const t = translations[lang]
     const html = withLang(lang, createElement(HowItWorks))
     expect(html).toMatch(/<div class="[^"]*flex gap-4 overflow-x-auto[^"]*snap-x snap-mandatory[^"]*\[-webkit-overflow-scrolling:touch\][^"]*md:grid md:grid-cols-3[^"]*md:overflow-visible">/)
-    expect(html.match(/min-w-\[82vw\] max-w-\[340px\] sm:min-w-\[320px\] flex-shrink-0 snap-center md:min-w-0 md:max-w-none/g)).toHaveLength(4)
-    // The /olim card spans the grid from md, as a banner under the steps.
-    expect(html).toMatch(/<a class="[^"]*md:col-span-3[^"]*" href="\/olim">/)
+    expect(html.match(/min-w-\[82vw\] max-w-\[340px\] sm:min-w-\[320px\] flex-shrink-0 snap-center md:min-w-0 md:max-w-none/g)).toHaveLength(3)
+    expect(html).not.toContain('/olim')
     const dots = html.slice(html.indexOf('<div class="flex justify-center md:hidden">'))
     const buttons = dots.match(/<button type="button"[^>]*>/g) ?? []
-    expect(buttons).toHaveLength(4)
-    expect(buttons[0]).toContain(`aria-label="${t.landing_dots_label.replace('{n}', '1').replace('{total}', '4')}"`)
+    expect(buttons).toHaveLength(3)
+    expect(buttons[0]).toContain(`aria-label="${t.landing_dots_label.replace('{n}', '1').replace('{total}', '3')}"`)
     expect(buttons[0]).toContain('aria-current="true"')
     // 44px tap targets; icons, not emoji.
     for (const b of buttons) expect(b).toContain('h-11 w-11')
     expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
-    for (const icon of ['lucide-user-plus', 'lucide-gift', 'lucide-qr-code', 'lucide-plane-takeoff']) expect(html).toContain(icon)
+    for (const icon of ['lucide-user-plus', 'lucide-gift', 'lucide-qr-code']) expect(html).toContain(icon)
     expect(html).not.toContain('fa-solid')
   })
 })

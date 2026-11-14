@@ -28,7 +28,7 @@ export function parseFrozenTerms(source: { commissionRate?: unknown; paymentTerm
   return { commissionRate: source.commissionRate, paymentTerms: source.paymentTerms }
 }
 
-/** What Landly keeps of a sale, in agorot, rounded per voucher so file totals always add up. */
+/** What GoLandly keeps of a sale, in agorot, rounded per voucher so file totals always add up. */
 export function commissionAgorot(amountAgorot: number, commissionRate: number): number {
   return Math.round(amountAgorot * Math.round(commissionRate * 10000) / 10000)
 }

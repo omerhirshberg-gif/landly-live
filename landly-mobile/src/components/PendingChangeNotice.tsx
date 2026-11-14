@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { splitAtPlaceholder } from '@shared/auth/otpChannel'
 import AppText from './AppText'
 import LineIcon, { type LineIconName } from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
@@ -42,7 +43,7 @@ export default function PendingChangeNotice({
 }) {
   const { t } = useLang()
   const busy = actionBusy || cancelBusy
-  const text = message.replace(placeholder, `⁦${value}⁩`)
+  const [before, after] = splitAtPlaceholder(message, placeholder)
 
   return (
     <Animated.View
@@ -58,7 +59,9 @@ export default function PendingChangeNotice({
           </View>
           <AppText style={styles.text}>
             <AppText style={styles.title}>{`${t('pending_title')}: `}</AppText>
-            {text}
+            {before}
+            <AppText ltr>{`⁦${value}⁩`}</AppText>
+            {after}
           </AppText>
         </View>
         <View style={styles.actions}>

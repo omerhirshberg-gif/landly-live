@@ -74,7 +74,7 @@ export default function CountryCodePicker({ value, onChange }: { value: CountryC
             autoCorrect={false}
             autoCapitalize="none"
             clearButtonMode="while-editing"
-            style={[styles.search, { textAlign: isRtl ? 'right' : 'left' }]}
+            style={[styles.search, { textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' }]}
           />
           <FlatList
             showsVerticalScrollIndicator={false}

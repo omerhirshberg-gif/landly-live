@@ -64,7 +64,7 @@ describe('home page composition', () => {
     for (const marker of ['GUEST_HERO', 'AUDIENCES', 'HOW_IT_WORKS', 'FAQ_SECTION', 'BOTTOM_CTA']) expect(html).toContain(marker)
   })
 
-  it('members get only their dashboard: no hero, value props, How it works or Aliyah card', () => {
+  it('members get only their dashboard: no hero, value props, How it works', () => {
     authState.user = member
     const html = withLang('en', createElement(Home))
     for (const marker of ['GUEST_HERO', 'AUDIENCES', 'HOW_IT_WORKS']) expect(html).not.toContain(marker)

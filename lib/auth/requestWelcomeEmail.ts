@@ -4,7 +4,7 @@ export const WELCOME_EMAIL_TIMEOUT_MS = 15_000
 
 const PATH = '/api/account/welcome-email'
 
-// Asks the server for the "Welcome to Landly" email once the onboarding
+// Asks the server for the "Welcome to GoLandly" email once the onboarding
 // wizard has stored its answers. Shared by the website (same origin, base '')
 // and the app (passes API_BASE_URL). Fire-and-forget: callers don't await
 // it, and it never throws, so a slow or failed send can't hold up or break

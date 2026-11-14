@@ -10,7 +10,6 @@ import { CUSTOMER_TYPES } from '@/lib/customerTypes'
 vi.mock('@/components/layout/Navbar', () => ({ default: () => null }))
 vi.mock('@/lib/firebase/offers', () => ({ getAllOffers: () => new Promise(() => {}) }))
 
-const { default: SegmentCards } = await import('@/components/olim/SegmentCards')
 const { default: BusinessPage } = await import('@/app/business/page')
 const { default: SupportPage } = await import('@/app/support/page')
 
@@ -50,9 +49,6 @@ describe('one site canvas', () => {
   })
 
   it('keeps every public page on the canvas', () => {
-    expect(read('app/olim/page.tsx')).toContain('<main className="below-header member-canvas overflow-x-hidden">')
-    expect(read('app/olim/page.tsx')).not.toContain('bg-[linear-gradient(135deg,#0B1B3D_0%,#002A8A_45%,#0038B8_100%)]')
-    expect(read('app/olim/page.tsx')).not.toContain('bg-white border-y')
     expect(read('components/about/AboutPage.tsx')).toContain('<main className="home-ambient below-header">')
     for (const page of ['app/business/page.tsx', 'app/support/page.tsx', 'app/categories/page.tsx']) expect(read(page)).toContain('below-header member-canvas')
   })
@@ -83,30 +79,6 @@ describe('typography and buttons', () => {
     expect(btn).toContain('border-radius:12px;')
     expect(btn).toContain('letter-spacing:-0.01em;')
     expect(read('components/about/AboutPage.tsx')).not.toContain('rounded-full bg-white px-8')
-  })
-})
-
-describe('/olim segment cards', () => {
-  const segments = CUSTOMER_TYPES.filter((c) => c.value !== 'other')
-
-  it.each(Object.keys(translations) as Lang[])('shows every real member type but Other, each with its accent and copy (%s)', (lang) => {
-    const t = translations[lang]
-    const html = withLang(lang, createElement(SegmentCards, { member: false, joinable: true, currentType: null }))
-    expect(html.match(/<li class="min-w-0"/g)).toHaveLength(segments.length)
-    for (const s of segments) {
-      expect(html).toContain(`--seg:${s.color}`)
-      expect(html).toContain(`>${t[s.labelKey]}</span>`)
-    }
-    expect(html).not.toContain(`>${t.signup_customerType_other}<`)
-    expect(html.match(/href="\/signup"/g)).toHaveLength(segments.length)
-  })
-
-  it('marks a member\'s own type "You" and links nowhere, nor while auth loads', () => {
-    const html = withLang('en', createElement(SegmentCards, { member: true, joinable: false, currentType: 'lone_soldier' }))
-    expect(html).not.toContain('href=')
-    expect(html.match(/>You</g)).toHaveLength(1)
-    expect(html).toMatch(/--seg:#4d7c0f[^"]*"><div[^>]*><div class="[^"]*ring-2 ring-\[color:var\(--seg-ring\)\]/)
-    expect(withLang('en', createElement(SegmentCards, { member: false, joinable: false, currentType: null }))).not.toContain('href=')
   })
 })
 

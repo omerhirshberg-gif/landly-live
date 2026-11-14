@@ -63,8 +63,8 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
     expect(src).toContain('verifyEmailCode(idToken, value')
     expect(src).toContain('resendEmailChange(idToken, lang')
     expect(src).toContain("contactChangeErrorKey(result.reason, target.kind)")
-    expect(src).toContain("isEmail ? 'otp_email_title' : 'otp_title'")
-    expect(src).toContain("isEmail ? 'otp_email_subtitle' : 'otp_subtitle'")
+    expect(src).toContain("isEmail ? 'otp_email_title' : copy.title")
+    expect(src).toContain("t('otp_email_subtitle')")
   })
 })
 

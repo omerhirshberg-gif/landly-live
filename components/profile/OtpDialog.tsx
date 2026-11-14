@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatPhoneNumberIntl } from 'react-phone-number-input'
 import type { User } from 'firebase/auth'
-import { Mail, X } from 'lucide-react'
+import { Mail, MessageSquareText, X } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import {
   CONTACT_CHANGE_FAILED,
@@ -17,12 +17,13 @@ import {
   type ContactChangeFailure,
 } from '@/lib/account/contactChange'
 import { auth } from '@/lib/firebase/config'
-import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@/lib/auth/otp'
+import { normalizeOtpInput, OTP_LENGTH, type OtpChannel, type OtpTarget } from '@/lib/auth/otp'
+import { otpCopyKeys, resolveOtpChannel, splitAtPlaceholder } from '@/lib/auth/otpChannel'
 import { useResendCountdown } from '@/lib/auth/useResendCountdown'
 import { useLang } from '@/lib/i18n/useLang'
 
 // The 6-digit code for a pending change on /profile (app:
-// components/OtpSheet.tsx): "Verify via WhatsApp" for a new phone number, or
+// components/OtpSheet.tsx): "Verify via SMS" (Israeli numbers) or "Verify via WhatsApp" for a new phone number, or
 // the code emailed to a new address. A native <dialog> opened with
 // showModal() (top layer, focus kept inside, Esc closes), centred from
 // 640px and near the top on phones so the keyboard never covers it.
@@ -58,6 +59,9 @@ export default function OtpDialog({
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // SMS for an Israeli number, WhatsApp elsewhere: decided by the number, confirmed by the server's answer on a resend.
+  const [channel, setChannel] = useState<OtpChannel>(() => (target.kind === 'phone' ? resolveOtpChannel(target.phone) : 'whatsapp'))
+  const copy = otpCopyKeys(channel)
   const { secondsLeft, restart } = useResendCountdown(resendIn)
 
   useEffect(() => {
@@ -118,7 +122,7 @@ export default function OtpDialog({
       ? CONTACT_CHANGE_FAILED
       : await (target.kind === 'email'
           ? resendEmailChange(idToken, lang)
-          : requestPhoneChange(idToken, { phone: target.phone, lang, channel: 'whatsapp' })
+          : requestPhoneChange(idToken, { phone: target.phone, lang })
         ).catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
     if (result.ok) {
@@ -127,9 +131,11 @@ export default function OtpDialog({
         return
       }
       restart('resendIn' in result ? result.resendIn : 0)
+      const sentVia = 'channel' in result ? result.channel : channel
+      setChannel(sentVia)
       setCode('')
       // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
-      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t('pending_phone_body').replace('{phone}', `⁦${display}⁩`))
+      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t(otpCopyKeys(sentVia).pendingBody).replace('{phone}', `⁦${display}⁩`))
       inputRef.current?.focus()
       return
     }
@@ -171,16 +177,18 @@ export default function OtpDialog({
         </button>
 
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-xl border ${isEmail ? 'border-sky-200/60 bg-brandTint text-brand' : 'border-emerald-200/70 bg-[#E7F8EE] text-[#128C4B]'}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-xl border ${isEmail || channel === 'sms' ? 'border-sky-200/60 bg-brandTint text-brand' : 'border-emerald-200/70 bg-[#E7F8EE] text-[#128C4B]'}`}
           aria-hidden="true"
         >
-          {isEmail ? <Mail aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : <WhatsAppIcon className="h-6 w-6" />}
+          {isEmail ? <Mail aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : channel === 'sms' ? <MessageSquareText aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : <WhatsAppIcon className="h-6 w-6" />}
         </div>
-        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(isEmail ? 'otp_email_title' : 'otp_title')}</h2>
+        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(isEmail ? 'otp_email_title' : copy.title)}</h2>
         <p id="otp-dialog-subtitle" className="mt-1 text-sm text-slate-500">
-          {t(isEmail ? 'otp_email_subtitle' : 'otp_subtitle')}{' '}
+          {isEmail ? t('otp_email_subtitle') : splitAtPlaceholder(t(copy.subtitle), '{phone}')[0]}
+          {isEmail && ' '}
           {/* An address may be long: it wraps anywhere; a number never breaks. */}
           <bdi dir="ltr" className={`font-semibold text-slate-700 ${isEmail ? '[overflow-wrap:anywhere]' : 'whitespace-nowrap'}`}>{display}</bdi>
+          {!isEmail && splitAtPlaceholder(t(copy.subtitle), '{phone}')[1]}
         </p>
 
         <form

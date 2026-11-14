@@ -12,7 +12,7 @@ import { buildMasavFile, encodeWindows1255, masavConfig, masavFileName, type Mas
 // What gets paid: vouchers with status 'redeemed', fulfillmentType
 // 'direct_merchant' and no payoutBatchId, once the merchant's payment terms
 // (frozen on the voucher at purchase) have run since redemption. The merchant
-// receives the price paid minus Landly's commission, rounded per voucher in
+// receives the price paid minus GoLandly's commission, rounded per voucher in
 // whole agorot so the file total always equals the sum of its lines.
 //
 // Money moves in two steps an admin confirms: a preview that writes nothing,
@@ -136,7 +136,9 @@ export function assertValueDate(valueDate: unknown, now = new Date()): asserts v
 async function dueVouchers(db: Firestore) {
   const snap = await db.collection('vouchers')
     .where('status', '==', 'redeemed').where('fulfillmentType', '==', 'direct_merchant').where('payoutBatchId', '==', null).get()
-  return snap.docs.map((d) => ({
+  // A manual multi-chain pass belongs to no business (it is redeemed with its issuer), so there is no merchant to pay.
+  // No flow marks one redeemed; this keeps one from ever reaching a payout line should that change.
+  return snap.docs.filter((d) => d.get('perkScope') !== 'multi_chain' && String(d.get('businessId') ?? '') !== '').map((d) => ({
     id: d.id, businessId: String(d.get('businessId') ?? ''), amountAgorot: d.get('amountAgorot'),
     commissionRate: d.get('commissionRate'), paymentTerms: d.get('paymentTerms'),
     redeemedAt: d.get('redeemedAt') instanceof Timestamp ? (d.get('redeemedAt') as Timestamp) : null,

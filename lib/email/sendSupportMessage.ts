@@ -45,7 +45,7 @@ export function parseSupportMessage(body: unknown): SupportMessage | null {
 function supportEmail(msg: SupportMessage) {
   const topic = SUPPORT_SUBJECTS[msg.subject]
   return {
-    subject: `[Landly Support] ${topic} — ${msg.name}`,
+    subject: `[GoLandly Support] ${topic} — ${msg.name}`,
     heading: 'New support message',
     rows: [
       { label: 'Name', value: msg.name },
@@ -55,7 +55,7 @@ function supportEmail(msg: SupportMessage) {
     ],
     message: msg.message,
     replyName: msg.name,
-    source: 'the Landly support form',
+    source: 'the GoLandly support form',
   }
 }
 

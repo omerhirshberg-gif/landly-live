@@ -13,7 +13,7 @@ import { webOnly } from '../../lib/webStyles'
 import { colors, radius } from '../../theme'
 
 // The team inbox gets the same English subject whatever the app language.
-const EMAIL_SUBJECT = 'Landly Support'
+const EMAIL_SUBJECT = 'GoLandly Support'
 const WHATSAPP_GREEN = '#25D366'
 // WhatsApp's logo, the same path as the website's floating badge
 // (components/layout/WhatsAppWidget.tsx), on a 32px grid.

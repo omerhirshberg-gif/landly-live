@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase-admin/firestore'
 
 // How an offer's vouchers are fulfilled.
-//  - direct_merchant: the merchant honours the voucher; Landly settles with them
+//  - direct_merchant: the merchant honours the voucher; GoLandly settles with them
 //    (lib/finance/settlement.ts).
 //  - multipass_pool: a pre-bought Multipass code is handed out at checkout
 //    (lib/inventory/poolAllocation.ts); no merchant payout.

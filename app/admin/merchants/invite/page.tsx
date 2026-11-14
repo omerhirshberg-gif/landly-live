@@ -6,7 +6,7 @@ import { adminFetch } from '@/lib/admin/adminSession'
 import Alert from '@/components/admin/Alert'
 import Card from '@/components/admin/Card'
 import PageHeader from '@/components/admin/PageHeader'
-import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { CATEGORY_TILES } from '@/lib/categories'
 import { COMMISSION_PRESETS, PAYMENT_TERMS } from '@/lib/merchants/terms'
 import { useAdminT } from '@/lib/admin/translations'
@@ -81,7 +81,7 @@ export default function InviteMerchantPage() {
           {error && <Alert>{error}</Alert>}
           <div>
             <label htmlFor="existing" className={ADMIN_LABEL}>{t('invite.existing')}</label>
-            <select id="existing" value={f.existingBusinessUid} onChange={(e) => { const b = businesses.find((x) => x.id === e.target.value); setF((v) => ({ ...v, existingBusinessUid: e.target.value, businessName: b ? b.name : v.businessName })) }} className={ADMIN_INPUT}>
+            <select id="existing" value={f.existingBusinessUid} onChange={(e) => { const b = businesses.find((x) => x.id === e.target.value); setF((v) => ({ ...v, existingBusinessUid: e.target.value, businessName: b ? b.name : v.businessName })) }} className={ADMIN_SELECT}>
               <option value="">{t('invite.newBusiness')}</option>
               {businesses.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
@@ -105,11 +105,11 @@ export default function InviteMerchantPage() {
             <p className={ADMIN_HINT}>{t('invite.commissionHint')}</p>
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div><label htmlFor="pt" className={ADMIN_LABEL}>{t('invite.paymentTerms')}</label><select id="pt" value={f.paymentTerms} onChange={set('paymentTerms')} className={ADMIN_INPUT}>{PAYMENT_TERMS.map((term) => <option key={term} value={term}>{termLabel(term)}</option>)}</select></div>
-            <div><label htmlFor="lg" className={ADMIN_LABEL}>{t('invite.pageLang')}</label><select id="lg" value={f.lang} onChange={set('lang')} className={ADMIN_INPUT}><option value="he">עברית</option><option value="en">English</option></select></div>
+            <div><label htmlFor="pt" className={ADMIN_LABEL}>{t('invite.paymentTerms')}</label><select id="pt" value={f.paymentTerms} onChange={set('paymentTerms')} className={ADMIN_SELECT}>{PAYMENT_TERMS.map((term) => <option key={term} value={term}>{termLabel(term)}</option>)}</select></div>
+            <div><label htmlFor="lg" className={ADMIN_LABEL}>{t('invite.pageLang')}</label><select id="lg" value={f.lang} onChange={set('lang')} className={ADMIN_SELECT}><option value="he">עברית</option><option value="en">English</option></select></div>
           </div>
           {!f.existingBusinessUid && (
-            <div><label htmlFor="cat" className={ADMIN_LABEL}>{t('invite.category')}</label><select id="cat" value={f.category} onChange={set('category')} className={ADMIN_INPUT}><option value="">{t('invite.setLater')}</option>{CATEGORY_TILES.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}</select></div>
+            <div><label htmlFor="cat" className={ADMIN_LABEL}>{t('invite.category')}</label><select id="cat" value={f.category} onChange={set('category')} className={ADMIN_SELECT}><option value="">{t('invite.setLater')}</option>{CATEGORY_TILES.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}</select></div>
           )}
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D]">
             <Switch checked={f.sendEmail} onChange={(sendEmail) => setF((v) => ({ ...v, sendEmail }))} />

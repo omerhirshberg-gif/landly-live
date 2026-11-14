@@ -5,6 +5,7 @@ import { REPLY_MAX } from '@/lib/whatsapp/replyLimits'
 import { useAdminT } from '@/lib/admin/translations'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { relativeTime } from './time'
+import { directionalProps } from '@/lib/directionalInput'
 
 const MAX_HEIGHT = 160
 
@@ -49,7 +50,7 @@ interface ReplyComposerProps {
 }
 
 export default function ReplyComposer({ value, onChange, onSend, sending, windowOpen, lastInboundAt, now }: ReplyComposerProps) {
-  const { t, locale } = useAdminT()
+  const { t, locale, dir: uiDir } = useAdminT()
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const touchFirst = useTouchFirst()
   const canSend = windowOpen && !sending && value.trim().length > 0 && value.trim().length <= REPLY_MAX
@@ -90,7 +91,7 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
             if (canSend) onSend()
           }}
           rows={1}
-          dir="auto"
+          {...directionalProps(value, t('support.replyPlaceholder'), uiDir === 'rtl')}
           enterKeyHint={touchFirst ? 'enter' : 'send'}
           maxLength={REPLY_MAX}
           // Read-only rather than disabled while sending, so focus stays for the next reply.

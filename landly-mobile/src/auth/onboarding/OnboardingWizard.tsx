@@ -315,7 +315,6 @@ export default function OnboardingWizard({
           value={data.phone}
           onChangeText={(v) => set('phone', v)}
           error={fieldErrors.phone}
-          placeholder={data.country === 'IL' ? '50 123 4567' : undefined}
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"

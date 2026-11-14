@@ -533,6 +533,7 @@ export default function LoginScreen() {
                         />
                         <TextField
                           label={t('onb_createPasswordLabel')}
+                          showLabel
                           icon="lock"
                           value={password}
                           onChangeText={(v) => {
@@ -562,6 +563,7 @@ export default function LoginScreen() {
                         <PasswordRequirements password={password} visible={passwordFocused} />
                         <TextField
                           label={t('onb_confirmPasswordLabel')}
+                          showLabel
                           icon="lock"
                           value={confirm}
                           onChangeText={(v) => {

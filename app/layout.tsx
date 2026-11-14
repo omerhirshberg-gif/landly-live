@@ -50,12 +50,12 @@ const AUTH_READY_TIMEOUT_MS = 5000
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: HOME_TITLE, template: '%s | Landly' },
+  title: { default: HOME_TITLE, template: '%s | GoLandly' },
   description: HOME_DESCRIPTION,
-  applicationName: 'Landly',
+  applicationName: 'GoLandly',
   openGraph: {
     type: 'website',
-    siteName: 'Landly',
+    siteName: 'GoLandly',
     locale: 'en_US',
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
@@ -115,7 +115,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* Who Landly is and its perk search, for search engines, on every page. */}
+        {/* Who GoLandly is and its perk search, for search engines, on every page. */}
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         {/* The floating widgets each sit in a SectionBoundary: one that throws
             drops out alone and the page stays up. */}

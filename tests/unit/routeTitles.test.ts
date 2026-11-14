@@ -70,64 +70,63 @@ beforeEach(() => {
 })
 
 const EXPECTED: [string, string][] = [
-  ['/', 'Landly — Aliyah Benefits & Perks for Olim and Lone Soldiers'],
-  ['/categories', 'Perks & Discounts in Israel | Landly'],
-  ['/categories/new', 'New Perks | Landly'],
-  ['/categories/bestsellers', 'Bestsellers | Landly'],
-  ['/member', 'My Pass | Landly'],
-  ['/member/vouchers/[voucherId]', 'Voucher | Landly'],
-  ['/wishlist', 'Wishlist | Landly'],
-  ['/support', 'Support | Landly'],
-  ['/olim', 'Making Aliyah: Benefits & Lone Soldier Perks | Landly'],
-  ['/about', 'About Us | Landly'],
-  ['/profile', 'Profile | Landly'],
-  ['/settings', 'Settings | Landly'],
-  ['/settings/privacy-security', 'Privacy & Security | Landly'],
-  ['/settings/language-region', 'Language & Region | Landly'],
-  ['/settings/language-region/origin', 'Country of Origin | Landly'],
-  ['/settings/member-type', 'Customer Type | Landly'],
-  ['/settings/delete-account', 'Delete Account | Landly'],
-  ['/checkout', 'Checkout | Landly'],
-  ['/checkout/success', 'Order Confirmed | Landly'],
-  ['/order-success', 'Order Confirmed | Landly'],
-  ['/login', 'Sign In | Landly'],
-  ['/signup', 'Create Account | Landly'],
-  ['/forgot-password', 'Forgot Password | Landly'],
-  ['/reset-password', 'Reset Password | Landly'],
-  ['/reset-password/success', 'Password Updated | Landly'],
-  ['/verify-email', 'Verify Your Email | Landly'],
-  ['/privacy', 'Privacy Policy | Landly'],
-  ['/terms', 'Terms and Conditions | Landly'],
-  ['/business', 'Business Portal | Landly Business'],
-  ['/business/login', 'Sign In | Landly Business'],
-  ['/business/dashboard', 'Business Dashboard | Landly Business'],
-  ['/business/dashboard/offers', 'Offers | Landly Business'],
-  ['/business/dashboard/vouchers', 'Vouchers | Landly Business'],
-  ['/business/dashboard/history', 'Redemption History | Landly Business'],
-  ['/business/dashboard/support', 'Support | Landly Business'],
-  ['/admin', 'Dashboard | Landly Admin'],
-  ['/admin/login', 'Admin Portal | Landly'],
-  ['/admin/businesses', 'Businesses | Landly Admin'],
-  ['/admin/businesses/new', 'Add New Business | Landly Admin'],
-  ['/admin/businesses/[uid]', 'Business Details | Landly Admin'],
-  ['/admin/offers', 'Offers | Landly Admin'],
-  ['/admin/offers/new', 'New Offer | Landly Admin'],
-  ['/admin/offers/[offerId]/edit', 'Edit Offer | Landly Admin'],
-  ['/admin/orphans', 'Orphaned Accounts | Landly Admin'],
-  ['/admin/users', 'Users | Landly Admin'],
-  ['/admin/users/[uid]', 'Users | Landly Admin'],
-  ['/admin/inventory', 'Inventory | Landly Admin'],
-  ['/admin/merchants', 'Merchant Invites | Landly Admin'],
-  ['/admin/merchants/invite', 'Merchant Invites | Landly Admin'],
-  ['/admin/merchants/batch', 'Merchant Invites | Landly Admin'],
-  ['/admin/payouts', 'Payouts | Landly Admin'],
-  ['/admin/payouts/[batchId]', 'Payouts | Landly Admin'],
-  ['/business/onboard/[token]', 'Merchant onboarding | Landly Business'],
-  ['/admin/prelaunch', 'Pre-Launch Leads | Landly Admin'],
-  ['/admin/system/costs', 'Usage & Costs | Landly Admin'],
-  ['/admin/search', 'Search | Landly Admin'],
-  ['/admin/support', 'Support Inbox | Landly Admin'],
-  ['/join', 'Landly | Local deals for people new to Israel'],
+  ['/', 'GoLandly — Aliyah Benefits & Perks for Olim and Lone Soldiers'],
+  ['/categories', 'Perks & Discounts in Israel | GoLandly'],
+  ['/categories/new', 'New Perks | GoLandly'],
+  ['/categories/bestsellers', 'Bestsellers | GoLandly'],
+  ['/member', 'My Pass | GoLandly'],
+  ['/member/vouchers/[voucherId]', 'Voucher | GoLandly'],
+  ['/wishlist', 'Wishlist | GoLandly'],
+  ['/support', 'Support | GoLandly'],
+  ['/about', 'About Us | GoLandly'],
+  ['/profile', 'Profile | GoLandly'],
+  ['/settings', 'Settings | GoLandly'],
+  ['/settings/privacy-security', 'Privacy & Security | GoLandly'],
+  ['/settings/language-region', 'Language & Region | GoLandly'],
+  ['/settings/language-region/origin', 'Country of Origin | GoLandly'],
+  ['/settings/member-type', 'Customer Type | GoLandly'],
+  ['/settings/delete-account', 'Delete Account | GoLandly'],
+  ['/checkout', 'Checkout | GoLandly'],
+  ['/checkout/success', 'Order Confirmed | GoLandly'],
+  ['/order-success', 'Order Confirmed | GoLandly'],
+  ['/login', 'Sign In | GoLandly'],
+  ['/signup', 'Create Account | GoLandly'],
+  ['/forgot-password', 'Forgot Password | GoLandly'],
+  ['/reset-password', 'Reset Password | GoLandly'],
+  ['/reset-password/success', 'Password Updated | GoLandly'],
+  ['/verify-email', 'Verify Your Email | GoLandly'],
+  ['/privacy', 'Privacy Policy | GoLandly'],
+  ['/terms', 'Terms and Conditions | GoLandly'],
+  ['/business', 'Business Portal | GoLandly Business'],
+  ['/business/login', 'Sign In | GoLandly Business'],
+  ['/business/dashboard', 'Business Dashboard | GoLandly Business'],
+  ['/business/dashboard/offers', 'Offers | GoLandly Business'],
+  ['/business/dashboard/vouchers', 'Vouchers | GoLandly Business'],
+  ['/business/dashboard/history', 'Redemption History | GoLandly Business'],
+  ['/business/dashboard/support', 'Support | GoLandly Business'],
+  ['/admin', 'Dashboard | GoLandly Admin'],
+  ['/admin/login', 'Admin Portal | GoLandly'],
+  ['/admin/businesses', 'Businesses | GoLandly Admin'],
+  ['/admin/businesses/new', 'Add New Business | GoLandly Admin'],
+  ['/admin/businesses/[uid]', 'Business Details | GoLandly Admin'],
+  ['/admin/offers', 'Offers | GoLandly Admin'],
+  ['/admin/offers/new', 'New Offer | GoLandly Admin'],
+  ['/admin/offers/[offerId]/edit', 'Edit Offer | GoLandly Admin'],
+  ['/admin/orphans', 'Orphaned Accounts | GoLandly Admin'],
+  ['/admin/users', 'Users | GoLandly Admin'],
+  ['/admin/users/[uid]', 'Users | GoLandly Admin'],
+  ['/admin/inventory', 'Inventory | GoLandly Admin'],
+  ['/admin/merchants', 'Merchant Invites | GoLandly Admin'],
+  ['/admin/merchants/invite', 'Merchant Invites | GoLandly Admin'],
+  ['/admin/merchants/batch', 'Merchant Invites | GoLandly Admin'],
+  ['/admin/payouts', 'Payouts | GoLandly Admin'],
+  ['/admin/payouts/[batchId]', 'Payouts | GoLandly Admin'],
+  ['/business/onboard/[token]', 'Merchant onboarding | GoLandly Business'],
+  ['/admin/prelaunch', 'Pre-Launch Leads | GoLandly Admin'],
+  ['/admin/system/costs', 'Usage & Costs | GoLandly Admin'],
+  ['/admin/search', 'Search | GoLandly Admin'],
+  ['/admin/support', 'Support Inbox | GoLandly Admin'],
+  ['/join', 'GoLandly | Local deals for people new to Israel'],
 ]
 
 describe('browser tab titles', () => {
@@ -154,18 +153,18 @@ describe('browser tab titles', () => {
   describe('/offers/[offerId]', () => {
     it("uses the perk's own title", async () => {
       offerDoc.mockResolvedValue({ data: () => ({ title: ' 10% at Aroma ' }) })
-      expect(await tabTitle('/offers/[offerId]', { offerId: 'abc' })).toBe('10% at Aroma | Landly')
+      expect(await tabTitle('/offers/[offerId]', { offerId: 'abc' })).toBe('10% at Aroma | GoLandly')
       expect(offerDoc).toHaveBeenCalledWith('abc')
     })
     it('falls back when the offer is missing', async () => {
       offerDoc.mockResolvedValue({ data: () => undefined })
-      expect(await tabTitle('/offers/[offerId]', { offerId: 'gone' })).toBe('Perk | Landly')
+      expect(await tabTitle('/offers/[offerId]', { offerId: 'gone' })).toBe('Perk | GoLandly')
     })
     it('falls back when Firestore is unreachable', async () => {
       offerDoc.mockImplementation(async () => {
         throw new Error('no credentials')
       })
-      expect(await tabTitle('/offers/[offerId]', { offerId: 'abc' })).toBe('Perk | Landly')
+      expect(await tabTitle('/offers/[offerId]', { offerId: 'abc' })).toBe('Perk | GoLandly')
     })
   })
 })

@@ -46,7 +46,7 @@ export const EMAIL_LOGO_URL = `${PRODUCTION_API_ORIGIN}/logo-mark.png`
 export const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 // Layout: all-light. A pale slate canvas (#F8FAFC) around one white card with
-// a brand-blue accent bar on top; header (emblem + live "Landly" text, readable
+// a brand-blue accent bar on top; header (emblem + live "GoLandly" text, readable
 // with images off), body, button, security note and a muted footer all sit on
 // white. Tables and inline styles only; the button has a VML twin because
 // Outlook on Windows ignores padding/radius on <a>.
@@ -91,9 +91,9 @@ export function renderBrandedEmail(params: { lang: Lang; origin: string } & Bran
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="${dir}" align="center">
                 <tr>
                   <td valign="middle" style="padding-${isRtl ? 'left' : 'right'}:12px;">
-                    <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="Landly" width="48" height="46" style="display:block;width:48px;height:46px;border:0;outline:none;text-decoration:none;">
+                    <img src="${escapeHtml(EMAIL_LOGO_URL)}" alt="GoLandly" width="48" height="46" style="display:block;width:48px;height:46px;border:0;outline:none;text-decoration:none;">
                   </td>
-                  <td valign="middle" style="font-family:${FONT_STACK};font-size:26px;line-height:30px;font-weight:800;color:#0038B8;letter-spacing:-0.5px;">Landly</td>
+                  <td valign="middle" style="font-family:${FONT_STACK};font-size:26px;line-height:30px;font-weight:800;color:#0038B8;letter-spacing:-0.5px;">GoLandly</td>
                 </tr>
               </table>
               <p style="margin:10px 0 0 0;font-family:${FONT_STACK};font-size:11px;line-height:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#64748B;">${escapeHtml(t.email_tagline)}</p>
@@ -145,7 +145,7 @@ ${detailsHtml}
             <td align="center" bgcolor="#FFFFFF" style="padding:24px 32px 32px 32px;background-color:#FFFFFF;border-top:1px solid #E2E8F0;border-radius:0 0 16px 16px;font-family:${FONT_STACK};">
               <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#64748B;">${escapeHtml(t.email_footerHelp)}</p>
               <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;"><a href="${supportHref}" dir="ltr" style="color:#2563EB;text-decoration:none;font-weight:600;unicode-bidi:isolate;">${escapeHtml(SUPPORT_EMAIL)}</a>&nbsp;&nbsp;<span style="color:#CBD5E1;">|</span>&nbsp;&nbsp;<a href="${escapeHtml(`${origin}/support`)}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">${escapeHtml(t.email_footerSupport)}</a></p>
-              <p style="margin:0;font-size:12px;line-height:18px;color:#94A3B8;">&copy; ${year} Landly. ${escapeHtml(t.footer_copyright_notice)}<br>${escapeHtml(t.footer_location)}</p>
+              <p style="margin:0;font-size:12px;line-height:18px;color:#94A3B8;">&copy; ${year} GoLandly. ${escapeHtml(t.footer_copyright_notice)}<br>${escapeHtml(t.footer_location)}</p>
             </td>
           </tr>
         </table>

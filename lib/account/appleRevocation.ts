@@ -1,6 +1,6 @@
 import type { UserCredential } from 'firebase/auth'
 
-// Revoking Landly's Sign in with Apple tokens when a member asks for their
+// Revoking GoLandly's Sign in with Apple tokens when a member asks for their
 // account to be deleted (App Store Review Guideline 5.1.1(v)). Apple's tokens
 // are never stored, so the member confirms with Apple once more on the
 // deletion form; the fresh credential is revoked, then the request goes to
@@ -31,7 +31,7 @@ export type AppleDeletionConfirmation = { status: 'cancelled' } | { status: 'mis
 
 const CANCEL_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled'])
 // The confirmation can't run here at all (popups refused, an in-app browser):
-// the request still goes, and the member is told how to remove Landly in
+// the request still goes, and the member is told how to remove GoLandly in
 // their Apple ID settings.
 const UNAVAILABLE_CODES = new Set(['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'])
 
@@ -50,7 +50,7 @@ export function confirmationFailure(err: unknown): AppleDeletionConfirmation {
  * The browser path (website, Expo web build): Firebase's Apple popup confirms
  * the member again, and Firebase revokes the fresh access token with this
  * project's own Apple configuration (revokeAccessToken), so no Apple secret
- * lives anywhere in Landly.
+ * lives anywhere in GoLandly.
  */
 export async function confirmAndRevokeWithPopup(calls: {
   reauthenticate: () => Promise<UserCredential>

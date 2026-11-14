@@ -58,8 +58,8 @@ export default function BusinessLoginPage() {
         <div className="w-full max-w-md">
           <BackToHomeLink label={t('auth_backHome')} variant="dark" />
           <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-            <img src="/logo-mark.png" alt="Landly" className="h-11 w-auto" />
-            <span className="font-black text-white text-2xl">Landly</span>
+            <img src="/logo-mark.png" alt="GoLandly" className="h-11 w-auto" />
+            <span className="font-black text-white text-2xl">GoLandly</span>
           </Link>
 
           <h1 className="text-2xl font-black text-white mb-1">{t('bizlogin_title')}</h1>

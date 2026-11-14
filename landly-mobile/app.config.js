@@ -36,15 +36,18 @@ function readRootEnv() {
 
 const rootEnv = readRootEnv()
 
-// Native Google sign-in (src/auth/googleSignIn.ts): one OAuth client per
-// platform. Each client's reversed ID is registered as a URL scheme so
-// Google's redirect comes back to the app.
+// Native Google sign-in: iOS (src/auth/googleSignIn.ts) uses the iOS OAuth
+// client, whose reversed ID is registered as a URL scheme so Google's
+// redirect comes back to the app. Android (src/auth/googleSignIn.android.ts)
+// uses Google's native sheet and needs only the project's *web* client ID:
+// the app itself is identified by its package name and signing SHA-1 on the
+// Android client in the Google Cloud console, so there is no scheme.
 const googleClientIds = {
   ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
-  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
 }
 const reversed = (id) => id.split('.').reverse().join('.')
-const googleSchemes = Object.values(googleClientIds).filter(Boolean).map(reversed)
+const googleSchemes = googleClientIds.ios ? [reversed(googleClientIds.ios)] : []
 const firebaseValue = (name) => process.env[`EXPO_PUBLIC_FIREBASE_${name}`] || rootEnv[`NEXT_PUBLIC_FIREBASE_${name}`]
 
 module.exports = ({ config }) => ({

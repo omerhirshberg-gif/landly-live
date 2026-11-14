@@ -15,7 +15,7 @@ const { default: TermsContent } = await import('@/components/legal/TermsContent'
 const text = (html: string) =>
   html.replace(/<[^>]+>/g, '').replace(/&#x27;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
 
-describe('privacy policy: member types, lone soldiers and mentor requests', () => {
+describe('privacy policy: member types and lone soldiers', () => {
   const policy = text(renderToStaticMarkup(createElement(PrivacyPolicy)))
 
   it('is dated November 2026', () => {
@@ -32,15 +32,13 @@ describe('privacy policy: member types, lone soldiers and mentor requests', () =
     expect(policy).toContain('we do not request or collect military service records, ID documents or any official or classified military information')
   })
 
-  it('says mentor request details go only to the matched mentor, for matching and guidance', () => {
-    expect(policy).toContain('Aliyah mentor requests')
-    expect(policy).toContain('your preferred mentor language, your planned Aliyah date')
-    expect(policy).toContain('We share these details exclusively with the verified community mentor matched to you, solely for matching and guiding you')
-    expect(policy).toContain('Mentor requests are kept as long as needed')
+  it('no longer mentions mentor requests, matching or retention', () => {
+    expect(policy).not.toMatch(/mentor/i)
+    expect(policy).not.toContain('Making Aliyah')
   })
 
   it('names the provider that actually delivers the forms (Resend), not a retired one', () => {
-    expect(policy).toContain('support, business and mentor request forms to our team')
+    expect(policy).toContain('support and business forms to our team')
     expect(policy).not.toContain('Formspree')
   })
 })

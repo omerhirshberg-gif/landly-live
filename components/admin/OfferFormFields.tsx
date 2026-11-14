@@ -11,10 +11,14 @@ import {
   type RedemptionMethod,
 } from '@/lib/offers/redemption'
 import type { OfferTranslations, TranslationOverrides } from '@/lib/offers/offerText'
+import ChipsInput from './ChipsInput'
+import BranchPlacesPicker, { type BranchesValue } from './BranchPlacesPicker'
+import { placeChainName, type ParticipatingPlace } from '@/lib/geo'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL } from './formStyles'
 import ImageUploadField from './ImageUploadField'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import OfferTranslationsEditor from './OfferTranslationsEditor'
+import { directionalProps } from '@/lib/directionalInput'
 
 export interface OfferFormValue {
   title: string
@@ -26,6 +30,16 @@ export interface OfferFormValue {
   totalQuantity: string
   unlimited: boolean
   isBestseller: boolean
+  /** A direct-merchant chain redeemable across its branches: hides the offer's single address and Waze / Maps buttons. */
+  isNationwide: boolean
+  /** The stores (or chains) that honour a nationwide or Multipass offer; empty means every store. */
+  participatingChains: string[]
+  /** The branches picked from Google Places; `participatingChains` lists their names too, plus any typed names. */
+  participatingPlaces: ParticipatingPlace[]
+  /** A perk with no business: the issuer's name, and for a multi-chain pass the guide on how to redeem it at any chain. */
+  brandName: string
+  guideHe: string
+  guideEn: string
   validityDays: string
   redemptionTerms: string
   redemptionMethod: RedemptionMethod
@@ -81,6 +95,12 @@ interface Props {
   section?: OfferFormSection
   /** A Multipass offer's stock is its pool, so the quantity fields are left out. */
   poolManaged?: boolean
+  /** The nationwide switch, for a local-business offer being edited (the new-offer wizard puts it in its channel step). */
+  showNationwide?: boolean
+  /** The list of participating stores or chains: for a nationwide local offer, an optional Multipass one, or a multi-chain voucher's chains; none to leave it out. */
+  storesField?: StoresMode
+  /** The issuer's name (a Multipass or multi-chain perk), and with 'chain' the redemption guide too; none for a perk of a business. */
+  issuerFields?: 'brand' | 'chain'
 }
 
 const CHECKBOX_ROW =
@@ -116,8 +136,62 @@ function PriceInput({ id, value, onChange }: { id: string; value: string; onChan
   )
 }
 
-export default function OfferFormFields({ value, onChange, translations, section, poolManaged = false }: Props) {
+/** Hides the offer's single address and navigation buttons; a Multipass perk does this on its own, so it has no switch. */
+export function NationwideField({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
   const { t } = useAdminT()
+  return (
+    <div>
+      <label className={CHECKBOX_ROW}>
+        <Switch checked={checked} onChange={onChange} />
+        <i className="fa-solid fa-globe text-xs text-[#0038B8]" aria-hidden="true" />
+        {t('form.nationwide')}
+      </label>
+      <p className={ADMIN_HINT}>{t('form.nationwideHint')}</p>
+    </div>
+  )
+}
+
+/** The stores or chains that honour the offer. Empty means every store. */
+export type StoresMode = 'nationwide' | 'multipass' | 'chains'
+
+export function StoresField({ mode, chains, places, onChange }: { mode: StoresMode; chains: string[]; places: ParticipatingPlace[]; onChange: (next: { chains: string[]; places: ParticipatingPlace[] }) => void }) {
+  const { t } = useAdminT()
+  // A multi-chain pass lists brands (FOX, Castro), which are typed and kept exactly as written.
+  if (mode === 'chains') {
+    return (
+      <ChipsInput
+        id="offer-stores"
+        label={t('wizard.chains')}
+        hint={t('wizard.chainsHint')}
+        placeholder={t('wizard.chainsPlaceholder')}
+        value={chains}
+        onChange={(next) => onChange({ chains: next, places: [] })}
+      />
+    )
+  }
+  return (
+    <BranchPlacesPicker
+      id="offer-stores"
+      label={mode === 'multipass' ? t('form.storesMultipass') : t('form.stores')}
+      value={branchesOf(chains, places)}
+      onChange={(next) => onChange(chainsOf(next))}
+    />
+  )
+}
+
+/** The picker's view of the form's two lists: the picked branches, and the chain names that are not one of them. */
+export function branchesOf(chains: string[], places: ParticipatingPlace[]): BranchesValue {
+  const picked = new Set(places.map((place) => placeChainName(place).toLowerCase()))
+  return { places, typed: chains.filter((name) => !picked.has(name.toLowerCase())) }
+}
+
+/** The form's two lists from the picker's value; the server derives the same chain names when it saves. */
+export function chainsOf({ places, typed }: BranchesValue): { chains: string[]; places: ParticipatingPlace[] } {
+  return { chains: [...places.map(placeChainName), ...typed], places }
+}
+
+export default function OfferFormFields({ value, onChange, translations, section, poolManaged = false, showNationwide = false, storesField, issuerFields }: Props) {
+  const { t, dir: uiDir } = useAdminT()
   const id = useId()
   const field = (name: string) => `${id}-${name}`
   const show = (part: OfferFormSection) => !section || section === part
@@ -129,6 +203,13 @@ export default function OfferFormFields({ value, onChange, translations, section
     <div className="space-y-8">
       {show('basics') && (
         <Group legend={t('form.details')}>
+          {issuerFields && (
+            <div className="sm:col-span-2">
+              <label htmlFor={field('brandName')} className={ADMIN_LABEL}>{t('wizard.brandName')}</label>
+              <input id={field('brandName')} required maxLength={80} dir="auto" autoComplete="off" className={ADMIN_INPUT} value={value.brandName} onChange={(e) => onChange('brandName', e.target.value)} />
+              <p className={ADMIN_HINT}>{t('form.brandEditHint')}</p>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <label htmlFor={field('title')} className={ADMIN_LABEL}>{t('form.title')}</label>
             <input id={field('title')} required dir="auto" className={ADMIN_INPUT} value={value.title} onChange={(e) => onChange('title', e.target.value)} />
@@ -144,6 +225,19 @@ export default function OfferFormFields({ value, onChange, translations, section
               onChange={(e) => onChange('description', e.target.value)}
             />
           </div>
+          {issuerFields === 'chain' && (
+            <>
+              <div>
+                <label htmlFor={field('guideHe')} className={ADMIN_LABEL}>{t('wizard.guideHe')}</label>
+                <textarea id={field('guideHe')} rows={4} maxLength={1000} dir="rtl" className={ADMIN_INPUT} value={value.guideHe} onChange={(e) => onChange('guideHe', e.target.value)} />
+              </div>
+              <div>
+                <label htmlFor={field('guideEn')} className={ADMIN_LABEL}>{t('wizard.guideEn')}</label>
+                <textarea id={field('guideEn')} rows={4} maxLength={1000} dir="ltr" className={ADMIN_INPUT} value={value.guideEn} onChange={(e) => onChange('guideEn', e.target.value)} />
+              </div>
+              <p className={`${ADMIN_HINT} sm:col-span-2`}>{t('wizard.guideHint')}</p>
+            </>
+          )}
         </Group>
       )}
 
@@ -197,7 +291,7 @@ export default function OfferFormFields({ value, onChange, translations, section
           <Group legend={t('form.availability')}>
             <div>
               <label htmlFor={field('expiryDate')} className={ADMIN_LABEL}>{t('form.expiry')}</label>
-              <input id={field('expiryDate')} type="date" className={ADMIN_INPUT} value={value.expiryDate} onChange={(e) => onChange('expiryDate', e.target.value)} />
+              <input id={field('expiryDate')} type="date" dir="ltr" className={ADMIN_INPUT} value={value.expiryDate} onChange={(e) => onChange('expiryDate', e.target.value)} />
               <p className={ADMIN_HINT}>{t('form.expiryHint')}</p>
             </div>
             {poolManaged ? (
@@ -229,6 +323,16 @@ export default function OfferFormFields({ value, onChange, translations, section
               <i className="fa-solid fa-star text-xs text-amber-500" aria-hidden="true" />
               {t('form.bestseller')}
             </label>
+            {showNationwide && !poolManaged && (
+              <div className="sm:col-span-2">
+                <NationwideField checked={value.isNationwide} onChange={(v) => onChange('isNationwide', v)} />
+              </div>
+            )}
+            {storesField && (
+              <div className="sm:col-span-2">
+                <StoresField mode={storesField} chains={value.participatingChains} places={value.participatingPlaces} onChange={(next) => { onChange('participatingChains', next.chains); onChange('participatingPlaces', next.places) }} />
+              </div>
+            )}
           </Group>
         </>
       )}
@@ -276,7 +380,7 @@ export default function OfferFormFields({ value, onChange, translations, section
               </label>
               <textarea
                 id={field('redemptionInstructions')}
-                dir="auto"
+                {...directionalProps(value.redemptionInstructions, t('form.instructionsPlaceholder'), uiDir === 'rtl')}
                 className={`${ADMIN_INPUT} resize-y`}
                 rows={3}
                 maxLength={MAX_REDEMPTION_INSTRUCTIONS_LENGTH}
@@ -317,7 +421,7 @@ export default function OfferFormFields({ value, onChange, translations, section
               <label htmlFor={field('redemptionTerms')} className={ADMIN_LABEL}>{t('form.redemptionTerms')}</label>
               <textarea
                 id={field('redemptionTerms')}
-                dir="auto"
+                {...directionalProps(value.redemptionTerms, t('form.termsPlaceholder'), uiDir === 'rtl')}
                 className={`${ADMIN_INPUT} resize-y`}
                 rows={3}
                 maxLength={MAX_REDEMPTION_TERMS_LENGTH}

@@ -60,7 +60,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
   return (
     <html lang={lang} dir={isRtl ? 'rtl' : 'ltr'} className={isRtl ? 'is-rtl' : undefined}>
       <head>
-        <title>{`${copy.title} · Landly`}</title>
+        <title>{`${copy.title} · GoLandly`}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />

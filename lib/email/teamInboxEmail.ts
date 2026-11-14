@@ -2,7 +2,7 @@ import 'server-only'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { EmailProviderError, emailConfigProblem, escapeHtml, getResend } from './brandedEmail'
 
-// Shared shell for the public contact forms (/support, /business, /olim) that
+// Shared shell for the public contact forms (/support, /business) that
 // land in the team inbox: a plain internal email (not the branded customer
 // shell) listing the fields, the free-text message, and Reply-To set to the
 // sender so answering from Gmail reaches them directly.
@@ -22,7 +22,7 @@ export interface TeamInboxEmail {
   message?: string
   /** Who the footer says Reply reaches, e.g. the sender's name. */
   replyName: string
-  /** Which form it came from, for the footer ("the Landly support form"). */
+  /** Which form it came from, for the footer ("the GoLandly support form"). */
   source: string
   replyTo: string
 }

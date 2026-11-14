@@ -166,15 +166,6 @@ describe('the landing’s way in', () => {
   })
 })
 
-describe('Aliyah banner', () => {
-  it('stands out in cyan, mirrored for Hebrew', () => {
-    const source = read('components/home/HowItWorks.tsx')
-    expect(source).toContain('bg-gradient-to-r rtl:bg-gradient-to-l from-sky-400/35 via-cyan-400/30 to-blue-500/25')
-    expect(source).toContain('border-cyan-200')
-    expect(source).not.toContain('transition-all')
-  })
-})
-
 describe('deal images and logos', () => {
   it('reveals a photo that finished loading before hydration, and reports one that failed', () => {
     expect(settledImage(null)).toBeNull()

@@ -15,6 +15,7 @@ import { REDEMPTION_METHOD_LABEL_KEYS } from '@/lib/offers/redemption'
 import { formatDistance, offerPlaceLabel } from '@/lib/geo'
 import DealMedia from './DealMedia'
 import { isMultiChain, PerkReachLine } from './PerkReach'
+import { locationNoticeKind } from '@/lib/offers/locationVisibility'
 import DiscountBadge from './DiscountBadge'
 import MerchantBadge from './MerchantBadge'
 import CategoryIcon from '@/components/ui/CategoryIcon'
@@ -59,8 +60,8 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
   const hasDistance = typeof distanceKm === 'number'
   const rail = layout === 'rail'
   const multiChain = isMultiChain(offer)
-  // A Multipass perk has no street address: the chains (or "nationwide") say where it works.
-  const reach = multiChain || (offer.fulfillmentType === 'multipass_pool' && !place)
+  // A multi-branch perk has no street address: the chains or the branch-validity notice say where it works.
+  const reach = locationNoticeKind(offer) !== null
   const image = useDealImage(offer.imageUrl)
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
@@ -119,26 +120,18 @@ export default function OfferCard({ offer, showWishlistButton = false, layout = 
         <p className={`line-clamp-2 text-[15px] font-bold leading-tight text-ink`}>
           <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
         </p>
-        {/* One dense line: the business, then where (or how far). */}
-        <div className="mt-[3px] flex min-w-0 items-center gap-1 text-meta leading-snug text-body">
-          <bdi className="min-w-0 truncate" lang={name.lang ?? undefined} dir="auto">{name.text}</bdi>
-          {reach && (
-            <>
-              <span aria-hidden="true" className="text-slate-400">·</span>
-              <PerkReachLine offer={offer} hasPlace={!!place} className="text-micro text-muted" />
-            </>
-          )}
-          {!reach && (place || hasDistance) && (
-            <>
-              <span aria-hidden="true" className="text-slate-400">·</span>
-              <MapPin aria-hidden="true" className={`h-3 w-3 flex-shrink-0 ${hasDistance ? 'text-brand' : 'text-slate-400'}`} strokeWidth={1.75} />
-              {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
-              {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 text-micro font-semibold text-brand">{formatDistance(distanceKm, lang)}</bdi>}
-              {hasDistance && place && <span aria-hidden="true" className="text-micro text-muted">·</span>}
-              {place && <bdi className="min-w-0 flex-shrink-[2] truncate text-micro font-medium text-muted" dir="auto">{place}</bdi>}
-            </>
-          )}
-        </div>
+        {/* The business on its own line, then where (or how far) on a full-width line below, so a long notice wraps whole. */}
+        <bdi className="mt-[3px] block min-w-0 truncate text-meta leading-snug text-body" lang={name.lang ?? undefined} dir="auto">{name.text}</bdi>
+        {reach && <PerkReachLine offer={offer} className="mt-0.5 text-micro leading-4 text-muted" />}
+        {!reach && (place || hasDistance) && (
+          <div className="mt-0.5 flex min-w-0 items-start gap-1 text-micro leading-4">
+            <MapPin aria-hidden="true" className={`mt-[2px] h-3 w-3 flex-shrink-0 ${hasDistance ? 'text-brand' : 'text-slate-400'}`} strokeWidth={1.75} />
+            {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
+            {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 font-semibold text-brand">{formatDistance(distanceKm, lang)}</bdi>}
+            {hasDistance && place && <span aria-hidden="true" className="text-muted">·</span>}
+            {place && <bdi className="line-clamp-2 min-w-0 font-medium text-muted" dir="auto">{place}</bdi>}
+          </div>
+        )}
 
         {/* One baseline at the card's foot: the price, then the struck-through original. Always left to right, "₪" included. */}
         <div className="mt-auto flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap pt-1.5">

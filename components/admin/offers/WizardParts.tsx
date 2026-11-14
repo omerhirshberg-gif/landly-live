@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import BidiText from '@/components/admin/BidiText'
+import { StoresField } from '@/components/admin/OfferFormFields'
 import { SearchInput } from '@/components/admin/ListToolbar'
-import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
 import type { PerkScope } from '@/lib/offers/perkScope'
+import type { ParticipatingPlace } from '@/lib/geo'
 import { PAYMENT_TERMS, paymentTermsDays, type PaymentTerms } from '@/lib/merchants/terms'
 
 export type Fulfillment = 'direct_merchant' | 'multipass_pool'
@@ -207,7 +209,7 @@ export function TermsFields({
         </div>
         <div>
           <label htmlFor="wiz-terms" className={ADMIN_LABEL}>{t('wizard.paymentTerms')}</label>
-          <select id="wiz-terms" value={paymentTerms} onChange={(e) => onPaymentTerms(e.target.value as PaymentTerms | '')} className={ADMIN_INPUT}>
+          <select id="wiz-terms" value={paymentTerms} onChange={(e) => onPaymentTerms(e.target.value as PaymentTerms | '')} className={ADMIN_SELECT}>
             <option value="">{t('wizard.termsUnset')}</option>
             {PAYMENT_TERMS.map((terms) => (
               <option key={terms} value={terms}>{termsLabel(t, terms)}</option>
@@ -223,57 +225,48 @@ export interface MultipassScopeValue {
   perkScope: PerkScope
   brandName: string
   chains: string[]
+  /** Branches picked from Google Places (a single-brand Multipass perk); `chains` lists their names too. */
+  places: ParticipatingPlace[]
   guideHe: string
   guideEn: string
   category: string
 }
 
-export const EMPTY_MULTIPASS_SCOPE: MultipassScopeValue = { perkScope: 'single_business', brandName: '', chains: [], guideHe: '', guideEn: '', category: '' }
+export const EMPTY_MULTIPASS_SCOPE: MultipassScopeValue = { perkScope: 'single_business', brandName: '', chains: [], places: [], guideHe: '', guideEn: '', category: '' }
 
-/** Free-text tags: Enter or a comma adds one, a duplicate is ignored, each has a remove button. */
-function ChipsInput({ id, label, hint, placeholder, value, onChange }: { id: string; label: string; hint: string; placeholder: string; value: string[]; onChange: (next: string[]) => void }) {
+/** A local perk of one business, or a multi-chain / multi-brand pass with an issuer and no business, as two radio cards. */
+export function DirectScopePicker({ chain, onChange }: { chain: boolean; onChange: (chain: boolean) => void }) {
   const { t } = useAdminT()
-  const [draft, setDraft] = useState('')
-  const add = (raw: string) => {
-    const names = raw.split(/[,;\n]/).map((n) => n.replace(/\s+/g, ' ').trim()).filter(Boolean)
-    if (names.length === 0) return
-    const have = new Set(value.map((v) => v.toLowerCase()))
-    const next = [...value]
-    for (const name of names) if (!have.has(name.toLowerCase())) { have.add(name.toLowerCase()); next.push(name) }
-    onChange(next)
-    setDraft('')
-  }
+  const options: { chain: boolean; icon: string; title: AdminKey; hint: AdminKey }[] = [
+    { chain: false, icon: 'fa-store', title: 'wizard.directScopeSingle', hint: 'wizard.directScopeSingleHint' },
+    { chain: true, icon: 'fa-network-wired', title: 'wizard.directScopeChain', hint: 'wizard.directScopeChainHint' },
+  ]
   return (
-    <div>
-      <label htmlFor={id} className={ADMIN_LABEL}>{label}</label>
-      <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 focus-within:border-[#0038B8] focus-within:ring-2 focus-within:ring-[#0038B8]/20">
-        {value.map((name) => (
-          <span key={name} className="inline-flex items-center gap-1 rounded-full border border-[#BFDBFE] bg-[#EFF6FF] py-1 ps-3 pe-1 text-sm font-medium text-[#0B1B3D]">
-            <bdi dir="auto">{name}</bdi>
-            <button type="button" aria-label={t('wizard.chainRemove', { name })} onClick={() => onChange(value.filter((v) => v !== name))} className="-my-2.5 -me-1 flex h-11 w-11 items-center justify-center rounded-full text-[#475569] hover:bg-[#DBEAFE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-            </button>
-          </span>
-        ))}
-        <input
-          id={id}
-          value={draft}
-          placeholder={placeholder}
-          autoComplete="off"
-          enterKeyHint="done"
-          className="min-w-[8rem] flex-1 bg-transparent py-1 text-base outline-none placeholder:text-[#94A3B8]"
-          onChange={(e) => (/[,;]/.test(e.target.value) ? add(e.target.value) : setDraft(e.target.value))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              add(draft)
-            } else if (e.key === 'Backspace' && draft === '' && value.length > 0) onChange(value.slice(0, -1))
-          }}
-          onBlur={() => add(draft)}
-        />
+    <fieldset className="min-w-0">
+      <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.directScope')}</legend>
+      <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {options.map((option) => {
+          const selected = chain === option.chain
+          return (
+            <label
+              key={String(option.chain)}
+              className={`flex min-h-24 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0038B8] ${
+                selected ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]'
+              }`}
+            >
+              <input type="radio" name="direct-scope" checked={selected} onChange={() => onChange(option.chain)} className="sr-only" />
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+                <i className={`fa-solid ${option.icon} text-sm`} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-[#0B1B3D]">{t(option.title)}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-[#475569]">{t(option.hint)}</span>
+              </span>
+            </label>
+          )
+        })}
       </div>
-      <p className={ADMIN_HINT}>{hint}</p>
-    </div>
+    </fieldset>
   )
 }
 
@@ -326,15 +319,20 @@ export function MultipassPerkFields({ value, onChange }: { value: MultipassScope
         </div>
         <div>
           <label htmlFor="wiz-category" className={ADMIN_LABEL}>{t('wizard.category')}</label>
-          <select id="wiz-category" required className={ADMIN_INPUT} value={value.category} onChange={(e) => set('category', e.target.value)}>
+          <select id="wiz-category" required className={ADMIN_SELECT} value={value.category} onChange={(e) => set('category', e.target.value)}>
             <option value="">{t('wizard.pickCategory')}</option>
             {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>
+      <StoresField
+        mode={multi ? 'chains' : 'multipass'}
+        chains={value.chains}
+        places={multi ? [] : value.places}
+        onChange={(next) => onChange({ ...value, chains: next.chains, places: next.places })}
+      />
       {multi && (
         <>
-          <ChipsInput id="wiz-chains" label={t('wizard.chains')} hint={t('wizard.chainsHint')} placeholder={t('wizard.chainsPlaceholder')} value={value.chains} onChange={(next) => set('chains', next)} />
           <fieldset className="min-w-0">
             <legend className="mb-3 text-[13px] font-semibold text-[#475569]">{t('wizard.guideTitle')}</legend>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

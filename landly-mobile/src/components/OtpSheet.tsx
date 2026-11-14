@@ -20,7 +20,8 @@ import {
 } from '@shared/account/contactChange'
 import { auth } from '@shared/firebase/config'
 import { formatPhone } from '@shared/auth/onboarding'
-import { normalizeOtpInput, OTP_LENGTH, type OtpTarget } from '@shared/auth/otp'
+import { normalizeOtpInput, OTP_LENGTH, type OtpChannel, type OtpTarget } from '@shared/auth/otp'
+import { otpCopyKeys, resolveOtpChannel, splitAtPlaceholder } from '@shared/auth/otpChannel'
 import { useResendCountdown } from '@shared/auth/useResendCountdown'
 import AppText from './AppText'
 import { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
@@ -37,7 +38,7 @@ const EXIT_MS = 220
 const FOCUS_DELAY_MS = ENTER_MS + 20
 
 // The 6-digit code for a pending change in the Profile tab (web:
-// components/profile/OtpDialog.tsx): "Verify via WhatsApp" for a new phone
+// components/profile/OtpDialog.tsx): "Verify via SMS" (Israeli numbers) or "Verify via WhatsApp" for a new phone
 // number, or the code emailed to a new address, in a bottom sheet that slides
 // up over a fading scrim (Reanimated; still under the OS's reduced-motion
 // setting) and rides above the keyboard. The Modal stays up until the slide
@@ -79,6 +80,9 @@ export default function OtpSheet({
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // SMS for an Israeli number, WhatsApp elsewhere: decided by the number, confirmed by the server's answer on a resend.
+  const [channel, setChannel] = useState<OtpChannel>(() => (target.kind === 'phone' ? resolveOtpChannel(target.phone) : 'whatsapp'))
+  const copy = otpCopyKeys(channel)
   const { secondsLeft, restart } = useResendCountdown(resendIn)
   const closing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -144,7 +148,7 @@ export default function OtpSheet({
       .then<ContactChangeResult<EmailChangeStart> | ContactChangeResult<PhoneChangeStart>>((idToken) =>
         target.kind === 'email'
           ? resendEmailChange(idToken, lang, API_BASE_URL)
-          : requestPhoneChange(idToken, { phone: target.phone, lang, channel: 'whatsapp' }, API_BASE_URL)
+          : requestPhoneChange(idToken, { phone: target.phone, lang }, API_BASE_URL)
       )
       .catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
@@ -154,9 +158,11 @@ export default function OtpSheet({
         return
       }
       restart('resendIn' in result ? result.resendIn : 0)
+      const sentVia = 'channel' in result ? result.channel : channel
+      setChannel(sentVia)
       setCode('')
       // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
-      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t('pending_phone_body').replace('{phone}', `⁦${display}⁩`))
+      setNotice(isEmail ? t('pending_email_body').replace('{email}', `⁦${display}⁩`) : t(otpCopyKeys(sentVia).pendingBody).replace('{phone}', `⁦${display}⁩`))
       inputRef.current?.focus()
       return
     }
@@ -199,10 +205,10 @@ export default function OtpSheet({
           >
             <View style={styles.handle} />
             <View style={styles.header}>
-              <View style={[styles.badge, isEmail && styles.badgeEmail]}>
-                <LineIcon name={isEmail ? 'mail' : 'chat'} size={20} color={isEmail ? colors.brand : colors.whatsapp} />
+              <View style={[styles.badge, (isEmail || channel === 'sms') && styles.badgeEmail]}>
+                <LineIcon name={isEmail ? 'mail' : 'chat'} size={20} color={isEmail || channel === 'sms' ? colors.brand : colors.whatsapp} />
               </View>
-              <AppText accessibilityRole="header" style={styles.title}>{t(isEmail ? 'otp_email_title' : 'otp_title')}</AppText>
+              <AppText accessibilityRole="header" style={styles.title}>{t(isEmail ? 'otp_email_title' : copy.title)}</AppText>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('otp_close')}
@@ -215,8 +221,18 @@ export default function OtpSheet({
               </Pressable>
             </View>
             <AppText style={styles.subtitle}>
-              {t(isEmail ? 'otp_email_subtitle' : 'otp_subtitle')}{' '}
-              <AppText style={styles.number}>{`⁦${display}⁩`}</AppText>
+              {isEmail ? (
+                <>
+                  {t('otp_email_subtitle')}{' '}
+                  <AppText style={styles.number}>{`⁦${display}⁩`}</AppText>
+                </>
+              ) : (
+                <>
+                  {splitAtPlaceholder(t(copy.subtitle), '{phone}')[0]}
+                  <AppText ltr style={styles.number}>{`⁦${display}⁩`}</AppText>
+                  {splitAtPlaceholder(t(copy.subtitle), '{phone}')[1]}
+                </>
+              )}
             </AppText>
 
             <View style={styles.boxesWrap}>

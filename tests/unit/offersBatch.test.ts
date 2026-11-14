@@ -13,7 +13,7 @@ const row = (over: Partial<Record<(typeof OFFER_TEMPLATE_COLUMNS)[number], unkno
 
 describe('offers catalog sheet', () => {
   it('has the agreed template columns and limits', () => {
-    expect(OFFER_TEMPLATE_COLUMNS).toEqual(['title_he', 'title_en', 'businessId', 'category', 'fulfillmentType', 'originalPrice', 'discountedPrice', 'totalQuantity', 'commissionRate', 'paymentTerms', 'howToRedeem_he', 'imageUrl', 'perkScope', 'brandName', 'participatingChains'])
+    expect(OFFER_TEMPLATE_COLUMNS).toEqual(['title_he', 'title_en', 'businessId', 'category', 'fulfillmentType', 'originalPrice', 'discountedPrice', 'totalQuantity', 'commissionRate', 'paymentTerms', 'howToRedeem_he', 'imageUrl', 'perkScope', 'brandName', 'participatingChains', 'isNationwide'])
     expect(MAX_BATCH_OFFERS).toBe(200)
     expect(BATCH_COMMIT_CHUNK).toBe(400)
   })
@@ -23,6 +23,28 @@ describe('offers catalog sheet', () => {
     expect(a.rows.map((r) => r.errors)).toEqual([[], []])
     expect(a.rows[0]!.offer).toMatchObject({ businessUid: 'uid-1', offerPrice: 80, originalPrice: 100, totalQuantity: 50, commissionRate: 0.1, paymentTerms: 'net_30', fulfillmentType: 'direct_merchant' })
     expect(a.rows[0]!.row).toBe(2)
+  })
+
+  it('reads the optional isNationwide column: empty is a single location, Multipass is always multi-branch', () => {
+    const sheet = parseOffersSheet([HEADER, row(), row({ isNationwide: 'yes' }), row({ isNationwide: 'כן' }), row({ isNationwide: 'no' }), row({ isNationwide: 'maybe' }), row({ fulfillmentType: 'multipass_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox', isNationwide: 'no' })], lookup)
+    expect(sheet.rows.map((r) => r.offer?.isNationwide)).toEqual([false, true, true, false, undefined, true])
+    expect(sheet.rows[4]!.errors[0]).toMatchObject({ code: 'nationwide_invalid', cell: 'P6' })
+  })
+
+  it('reads participating stores: needs isNationwide on a local row, optional on Multipass', () => {
+    const multi = { fulfillmentType: 'multipass_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox' }
+    const sheet = parseOffersSheet([HEADER, row({ participatingChains: 'Azrieli; Dizengoff Center' }), row({ isNationwide: 'yes', participatingChains: 'Azrieli; Dizengoff Center' }), row({ ...multi, perkScope: 'single_business', participatingChains: 'Azrieli' }), row({ ...multi, participatingChains: 'A; B' })], lookup)
+    expect(sheet.rows[0]!.errors[0]).toMatchObject({ code: 'chains_need_nationwide', cell: 'O2' })
+    expect(sheet.rows[1]!.offer).toMatchObject({ isNationwide: true, participatingChains: ['Azrieli', 'Dizengoff Center'] })
+    expect(sheet.rows[2]!.offer).toMatchObject({ perkScope: 'single_business', participatingChains: ['Azrieli'] })
+    expect(sheet.rows[3]!.offer).toMatchObject({ perkScope: 'multi_chain', participatingChains: ['A', 'B'] })
+  })
+
+  it('accepts a manual multi-chain pass on a local row: brand and chains, no business, no terms', () => {
+    const pass = { perkScope: 'multi_chain', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'BUYME All', category: 'Fashion and Shopping', participatingChains: 'FOX; Castro' }
+    const sheet = parseOffersSheet([HEADER, row(pass), row({ ...pass, brandName: '' }), row({ ...pass, businessId: 'biz1' }), row({ ...pass, participatingChains: '' }), row({ ...pass, category: '' }), row({ ...pass, commissionRate: 10 }), row({ perkScope: 'nonsense' })], lookup)
+    expect(sheet.rows[0]!.offer).toMatchObject({ fulfillmentType: 'direct_merchant', perkScope: 'multi_chain', brandName: 'BUYME All', businessUid: '', isNationwide: true, participatingChains: ['FOX', 'Castro'] })
+    expect(sheet.rows.slice(1).map((r) => r.errors[0]?.code)).toEqual(['brand_required', 'multipass_business', 'chains_required', 'multipass_category', 'multipass_terms', 'scope_invalid'])
   })
 
   it('names the exact cell of every problem', () => {

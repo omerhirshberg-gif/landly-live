@@ -7,7 +7,7 @@ import { PERKS_DESCRIPTION, PERKS_TITLE, pageMetadata } from '@/lib/seo/site'
 // (?cat=, ?q=) share the catalog's canonical URL.
 export const metadata: Metadata = {
   ...pageMetadata({ title: PERKS_TITLE, description: PERKS_DESCRIPTION, path: '/categories' }),
-  title: { default: PERKS_TITLE, template: '%s | Landly' },
+  title: { default: PERKS_TITLE, template: '%s | GoLandly' },
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {

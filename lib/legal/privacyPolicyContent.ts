@@ -45,7 +45,7 @@ export interface PrivacyPolicyText {
 }
 
 /** When the policy last changed; each language's pp_updated_date spells this date. */
-export const PRIVACY_POLICY_UPDATED_ISO = '2026-11-01'
+export const PRIVACY_POLICY_UPDATED_ISO = '2026-11-14'
 
 const PLACEHOLDERS: Record<string, PolicyInline> = {
   email: { email: true },
@@ -106,8 +106,6 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
       p('pp_collect_messages_p'),
       h3('pp_collect_whatsapp_h'),
       ul('pp_collect_whatsapp_1', 'pp_collect_whatsapp_2', 'pp_collect_whatsapp_3'),
-      h3('pp_collect_mentor_h'),
-      p('pp_collect_mentor_p'),
       h3('pp_collect_technical_h'),
       p('pp_collect_technical_p'),
     ],
@@ -149,7 +147,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
     title: 'pp_use_title',
     blocks: [
       p('pp_use_p1'),
-      ul('pp_use_1', 'pp_use_2', 'pp_use_3', 'pp_use_4', 'pp_use_5', 'pp_use_6', 'pp_use_7', 'pp_use_8', 'pp_use_9', 'pp_use_10', 'pp_use_11'),
+      ul('pp_use_1', 'pp_use_2', 'pp_use_3', 'pp_use_4', 'pp_use_5', 'pp_use_6', 'pp_use_7', 'pp_use_8', 'pp_use_10', 'pp_use_11'),
       p('pp_use_p2'),
       p('pp_use_p3'),
     ],
@@ -181,7 +179,7 @@ export const PRIVACY_POLICY_STRUCTURE: { id: string; title: TranslationKey; bloc
     id: 'retention',
     title: 'pp_retention_title',
     blocks: [
-      ul('pp_retention_1', 'pp_retention_2', 'pp_retention_3', 'pp_retention_4', 'pp_retention_5', 'pp_retention_6', 'pp_retention_7', 'pp_retention_8', 'pp_retention_9', 'pp_retention_10'),
+      ul('pp_retention_1', 'pp_retention_2', 'pp_retention_3', 'pp_retention_4', 'pp_retention_5', 'pp_retention_7', 'pp_retention_8', 'pp_retention_9', 'pp_retention_10'),
     ],
   },
   {

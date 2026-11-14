@@ -2,6 +2,7 @@ import { CATEGORY_TILES, type CategoryTile } from '@/lib/categories'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import type { Lang, TranslationKey } from '@/lib/i18n/translations'
 import { CONTENT_LANGS, localizeText } from '@/lib/i18n/contentTranslation'
+import { hasSinglePlace } from '@/lib/offers/perkScope'
 import { haversineDistanceKm, type Coordinates } from '@/lib/geo'
 import { businessNameVariants } from '@/lib/business/businessText'
 
@@ -143,9 +144,9 @@ export interface PerkFilters {
 }
 
 /** Kilometres from `origin` to the offer's business, or null when it has no coordinates (online-only, not geocoded). */
-export function offerDistanceKm(offer: Pick<OfferDocument, 'geo' | 'perkScope'>, origin: Coordinates | null | undefined): number | null {
-  // A multi-chain voucher has no single place, so it is never ranked by distance.
-  if (offer.perkScope === 'multi_chain') return null
+export function offerDistanceKm(offer: Pick<OfferDocument, 'geo' | 'perkScope' | 'fulfillmentType' | 'isNationwide'>, origin: Coordinates | null | undefined): number | null {
+  // A multi-chain, Multipass or nationwide perk has no single place, so it is never ranked by distance.
+  if (!hasSinglePlace(offer)) return null
   return origin && offer.geo ? haversineDistanceKm(origin, offer.geo) : null
 }
 

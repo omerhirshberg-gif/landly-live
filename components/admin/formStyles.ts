@@ -12,6 +12,10 @@ export const ADMIN_INPUT =
   'focus:border-[#0038B8] focus:bg-[#F8FBFF] focus:ring-4 focus:ring-[#0038B8]/15 ' +
   'disabled:cursor-not-allowed disabled:bg-[#F1F5F9] disabled:text-[#94A3B8]'
 
+// A <select>: the chevron sits on the end edge (see select.admin-select in globals.css), so the text gets the
+// start padding and clears the chevron with pe-10 in both directions.
+export const ADMIN_SELECT = `${ADMIN_INPUT} admin-select cursor-pointer appearance-none ps-3.5 pe-10`
+
 export const ADMIN_LABEL = 'block mb-1.5 text-sm font-semibold text-[#0B1B3D]'
 
 export const ADMIN_HINT = 'mt-1.5 text-[13px] leading-snug text-[#64748B]'

@@ -67,7 +67,7 @@ describe('web OfferTileRail', () => {
   const offers = ['1', '2', '3', '4', '5'].map((id) => offer(id))
 
   it('is one row of tiles scrolling sideways, with a hidden scrollbar and snapping', () => {
-    const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'New on Landly', offers }))
+    const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'New on GoLandly', offers }))
     const rail = html.match(/<div class="(offer-tile-rail[^"]*)">/)![1].split(' ')
     expect(rail).not.toContain('grid-rows-2')
     for (const c of ['grid', 'grid-flow-col', 'auto-cols-[260px]', 'sm:auto-cols-[280px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
@@ -108,7 +108,7 @@ describe('PerksToolbar on the overview', () => {
 })
 
 describe('/categories overview order', () => {
-  it('stacks New on Landly over Best Sellers, then the full category grid', async () => {
+  it('stacks New on GoLandly over Best Sellers, then the full category grid', async () => {
     const { readFileSync } = await import('node:fs')
     const page = readFileSync('app/categories/page.tsx', 'utf8')
     const overview = page.slice(page.indexOf("title={t('row_new')}"))

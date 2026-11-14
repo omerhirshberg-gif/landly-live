@@ -3,22 +3,23 @@
 import { useId, useRef, useState, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useShake } from '@/lib/useShake'
+import { directionalProps } from '@/lib/directionalInput'
 
-// Web counterpart of landly-mobile/src/components/TextField.tsx: label, a
-// 52px field with a leading outline icon, a focus ring, and an eye toggle on
-// password fields. `error` replaces `hint` below the field and turns it red.
+// Web counterpart of landly-mobile/src/components/TextField.tsx: a 48px field
+// with the field's name as a grey hint inside it (no label above; the name is
+// still the input's aria-label, so screen readers and password managers read
+// it), a leading outline icon, a focus ring, and an eye toggle on password
+// fields. `showLabel` keeps a small label above instead, for a pair of
+// fields that look alike once typed in (create / confirm password). `error` replaces `hint` below the field and turns it red.
 // Email, password and phone values are typed left-to-right even in Hebrew;
 // free text (type="text", e.g. a name) follows the page direction.
 // `prefix` sits inside the field before the value (the phone country code).
 // `shake` plays the invalid-field shake each time it goes up while there's an
 // error (a submit that failed validation); the message is tied to the input
 // with aria-describedby, so a screen reader reads it with the field.
-// On focus the field box (never the text itself, which would blur) grows to
-// 1.025 with the brand border and halo — a transform, so nothing around it
-// moves. No permanent will-change: with it the browser keeps the box as a
-// bitmap rasterized at 1.0 and stretches it, leaving the typed text soft;
-// without it the text is re-rasterized crisp at 1.025 once the transition
-// settles. Reduced motion keeps the colour change only (mobile: TextField.tsx).
+// On focus the box gets the brand border and a soft ring; it does not scale.
+// While the field is empty its hint follows the page direction (start edge in
+// Hebrew); typed email, password and phone values are left-to-right.
 const ICONS = {
   mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
   lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
@@ -32,6 +33,7 @@ const EYE_OFF =
 
 export default function TextField({
   label,
+  showLabel = false,
   icon,
   hint,
   error,
@@ -41,6 +43,8 @@ export default function TextField({
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> & {
   label: string
+  /** A small label above the box, and no hint inside it. */
+  showLabel?: boolean
   icon?: keyof typeof ICONS
   hint?: string
   error?: string | null
@@ -49,7 +53,7 @@ export default function TextField({
   /** Reaches the input through ...props (React 19 passes ref as a prop). */
   ref?: Ref<HTMLInputElement>
 }) {
-  const { t } = useLang()
+  const { t, isRtl } = useLang()
   const id = useId()
   const [revealed, setRevealed] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -59,13 +63,15 @@ export default function TextField({
   const iconColor = error ? 'stroke-red-600' : 'stroke-slate-400 group-focus-within:stroke-brand'
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="block mb-2 text-meta font-semibold text-slate-700">
-        {label}
-      </label>
+      {showLabel && (
+        <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
+          {label}
+        </label>
+      )}
       <div
         ref={boxRef}
-        className={`group flex items-center h-[52px] px-3.5 sm:px-4 rounded-[14px] border bg-slate-50 cursor-text [transition:transform_200ms_cubic-bezier(0.16,1,0.3,1),box-shadow_200ms_ease,border-color_200ms_ease,background-color_200ms_ease] focus-within:scale-[1.025] motion-reduce:focus-within:scale-100 focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(0,56,184,0.12),0_8px_20px_-8px_rgba(0,56,184,0.28)] ${
-          error ? 'border-red-600' : 'border-slate-200 focus-within:border-brand'
+        className={`group flex items-center h-12 px-4 rounded-xl border bg-slate-50/80 cursor-text transition-[border-color,background-color,box-shadow] duration-200 focus-within:bg-white focus-within:ring-2 ${
+          error ? 'border-red-600 focus-within:ring-red-600/15' : 'border-slate-200 focus-within:border-[#0038B8] focus-within:ring-[#0038B8]/15'
         }`}
       >
         {prefix}
@@ -89,8 +95,10 @@ export default function TextField({
           type={password && revealed ? 'text' : type}
           aria-invalid={!!error || undefined}
           aria-describedby={messageId}
-          dir={type === 'text' ? undefined : 'ltr'}
-          className="flex-1 min-w-0 h-full bg-transparent border-0 p-0 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:ring-0"
+          aria-label={label}
+          placeholder={showLabel ? undefined : label}
+          {...directionalProps(String(props.value ?? props.defaultValue ?? ''), showLabel ? undefined : label, isRtl, type === 'text' ? 'text' : 'ltr')}
+          className="flex-1 min-w-0 h-full bg-transparent border-0 p-0 text-base text-slate-900 placeholder:text-slate-400 outline-none focus:ring-0 text-start"
           {...props}
         />
         {password && (

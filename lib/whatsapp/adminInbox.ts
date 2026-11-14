@@ -23,7 +23,7 @@ import { isBotLanguage } from './webhookPayload'
 // The support inbox behind /admin/support (app/api/admin/whatsapp/*): the
 // conversation list, one chat's transcript, a reply from the team and a
 // status change. Replies are plain text from the number the member last
-// wrote to, as Landly, and only inside Meta's 24-hour customer-service
+// wrote to, as GoLandly, and only inside Meta's 24-hour customer-service
 // window. A reply keeps the conversation escalated (and refreshes
 // escalatedAt) so the bot stays quiet while a person is answering, and
 // starts the clock on the team's follow-up and silent resolve

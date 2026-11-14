@@ -1,6 +1,6 @@
 # Google Cloud configuration
 
-Landly runs two Firebase/GCP projects with billing enabled:
+GoLandly runs two Firebase/GCP projects with billing enabled:
 
 | Environment | Firebase project | Where it runs |
 |---|---|---|
@@ -51,7 +51,7 @@ Vercel → Settings → Environment Variables. Use **Preview** for DEV values an
 |---|---|---|---|---|
 | `LANDLY_TRANSLATION_ENABLED` | server | `true` | `true` | Anything else: offers save untranslated, the admin sees a warning |
 | `GOOGLE_TRANSLATE_LOCATION` | server | `global` | `global` | Must be the glossary's region if a glossary is used |
-| `GOOGLE_TRANSLATE_GLOSSARY` | server | optional | optional | `projects/<id>/locations/<region>/glossaries/<name>`: keeps "Landly", "olim", "Tzav Rishon" and similar as written |
+| `GOOGLE_TRANSLATE_GLOSSARY` | server | optional | optional | `projects/<id>/locations/<region>/glossaries/<name>`: keeps "GoLandly", "olim", "Tzav Rishon" and similar as written |
 | `GOOGLE_MAPS_SERVER_API_KEY` | server | DEV key | PROD key | Unset: the admin address field saves free text, "Near me" shows no city name |
 | `CORS_ALLOWED_ORIGINS` | server | existing | existing | Already used; `/api/geo/reverse` answers the Expo web build through it |
 

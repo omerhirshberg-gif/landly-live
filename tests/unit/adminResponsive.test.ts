@@ -65,7 +65,7 @@ describe('admin portal on phones', () => {
     for (const element of ['input', 'select', 'textarea']) {
       for (const { attrs } of openingTags(read(path), element)) {
         if (/type="(?:checkbox|radio|file|hidden)"/.test(attrs)) continue
-        expect(attrs, attrs).toMatch(/\bADMIN_INPUT\b|\btext-base\b/)
+        expect(attrs, attrs).toMatch(/\bADMIN_(INPUT|SELECT)\b|\btext-base\b/)
       }
     }
   })

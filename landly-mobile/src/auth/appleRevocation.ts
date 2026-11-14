@@ -13,7 +13,7 @@ import type { Lang } from '@shared/i18n/translations'
 // authorization code is revoked through Firebase
 // (lib/account/appleRevocation.ts). Android has no Apple sheet: the request
 // goes out marked 'unavailable', and the member is told how to remove
-// Landly in their Apple ID settings.
+// GoLandly in their Apple ID settings.
 
 function randomNonce(): string {
   return Array.from(Crypto.getRandomBytes(32), (b) => b.toString(16).padStart(2, '0')).join('')

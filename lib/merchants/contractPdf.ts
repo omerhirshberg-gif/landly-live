@@ -26,13 +26,13 @@ export interface ContractInput {
 }
 
 // The agreement as sent. The wording is a working draft of the commercial
-// terms only; Landly's counsel should review it before merchants rely on it.
+// terms only; GoLandly's counsel should review it before merchants rely on it.
 // `{…}` marks the values filled in per merchant.
 const COPY = {
   en: {
     title: 'Merchant Services Agreement',
     sections: [
-      ['Parties', 'This agreement is between Landly (the "Platform") and {legalName} (tax ID ending {taxId}), operating as {businessName} (the "Merchant").'],
+      ['Parties', 'This agreement is between GoLandly (the "Platform") and {legalName} (tax ID ending {taxId}), operating as {businessName} (the "Merchant").'],
       ['Services', 'The Platform lists the Merchant\'s offers to its members and issues vouchers for them. The Merchant honours every valid voucher for the goods or services described in the offer.'],
       ['Commission', 'The Platform keeps a commission of {commission} of the price paid for each voucher the Merchant redeems. The rest is paid to the Merchant.'],
       ['Payment terms', 'Redeemed vouchers are paid out by bank transfer to the account the Merchant provided. Payment timing: {terms}.'],
@@ -46,7 +46,7 @@ const COPY = {
   he: {
     title: 'הסכם שירותים לבית עסק',
     sections: [
-      ['הצדדים', 'הסכם זה נערך בין Landly (״הפלטפורמה״) לבין {legalName} (מספר מזהה המסתיים ב-{taxId}), הפועל/ת כ-{businessName} (״בית העסק״).'],
+      ['הצדדים', 'הסכם זה נערך בין GoLandly (״הפלטפורמה״) לבין {legalName} (מספר מזהה המסתיים ב-{taxId}), הפועל/ת כ-{businessName} (״בית העסק״).'],
       ['השירותים', 'הפלטפורמה מציגה את ההצעות של בית העסק לחברים שלה ומנפיקה עבורן שוברים. בית העסק מכבד כל שובר תקף עבור המוצרים או השירותים המתוארים בהצעה.'],
       ['עמלה', 'הפלטפורמה גובה עמלה בשיעור {commission} ממחיר השובר ששולם, בגין כל שובר שבית העסק מימש. יתרת הסכום משולמת לבית העסק.'],
       ['תנאי תשלום', 'שוברים שמומשו משולמים בהעברה בנקאית לחשבון שבית העסק מסר. מועד התשלום: {terms}.'],
@@ -105,7 +105,7 @@ export async function renderContractPdf(input: ContractInput): Promise<Uint8Arra
   const embed = (b64: string) => pdf.embedFont(Buffer.from(b64, 'base64'), { subset: true })
   const fonts: Fonts = { heR: await embed(hebrewRegular), laR: await embed(latinRegular), heB: await embed(hebrewBold), laB: await embed(latinBold) }
   pdf.setTitle(`${copy.title} — ${input.businessName}`)
-  pdf.setProducer('Landly')
+  pdf.setProducer('GoLandly')
   pdf.setCreationDate(input.signedAt)
 
   const W = 595.28, H = 841.89, M = 56
@@ -115,7 +115,7 @@ export async function renderContractPdf(input: ContractInput): Promise<Uint8Arra
   let y = H - M
 
   page.drawRectangle({ x: 0, y: H - 6, width: W, height: 6, color: BRAND })
-  drawLine(page, fonts, 'LANDLY', edge, y - 8, 11, rtl, true, BRAND)
+  drawLine(page, fonts, 'GOLANDLY', edge, y - 8, 11, rtl, true, BRAND)
   y -= 40
   drawLine(page, fonts, copy.title, edge, y, 22, rtl, true)
   y -= 14

@@ -6,8 +6,9 @@ import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type Redemp
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
 import { readPerkScope, type PerkScope } from '../offers/perkScope'
-import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
+import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
 
 // refunded: cancelled through support after purchase (set by an admin, never
 // by a client); it leaves the wallet like a redeemed one, but was never used.
@@ -48,8 +49,11 @@ export interface VoucherDocument {
   businessGeo?: Coordinates | null
   // A Multipass voucher has no business: its brand and, for a multi-chain one, the chains and shared guide as at purchase.
   perkScope?: PerkScope
+  isNationwide?: boolean // as at purchase; absent on vouchers from before the flag, which read as false
+  fulfillmentType?: FulfillmentType
   brandName?: string
   participatingChains?: string[]
+  participatingPlaces?: ParticipatingPlace[] // the branches picked from Google Places, as at purchase
   chainsCount?: number
   universalRedemptionGuide?: { he: string; en: string } | null
 }
@@ -92,6 +96,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
+    fulfillmentType: parseFulfillmentType(data.fulfillmentType),
     ...readPerkScope(data),
   }
 }

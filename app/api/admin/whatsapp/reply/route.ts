@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { REPLY_MAX, replyAsTeam, WA_ID } from '@/lib/whatsapp/adminInbox'
 
-// A reply from the team to a WhatsApp member, sent as Landly from the
+// A reply from the team to a WhatsApp member, sent as GoLandly from the
 // support inbox (lib/whatsapp/adminInbox.ts). 409 once Meta's 24-hour
 // window has closed; 502 when Meta refuses it (the failed message is still
 // returned, and shows in the transcript as failed).

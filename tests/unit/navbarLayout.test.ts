@@ -37,7 +37,7 @@ describe('navbar layout lock', () => {
     const nav = html.slice(0, html.indexOf('</nav>'))
     expect(nav).toMatch(/<nav[^>]*><div dir="ltr"/)
 
-    const logo = nav.indexOf('alt="Landly"')
+    const logo = nav.indexOf('alt="GoLandly"')
     const langSwitch = nav.indexOf('lucide-globe')
     const hamburger = nav.indexOf(`aria-label="${translations[lang].nav_menu_label}"`)
     expect(logo).toBeGreaterThan(-1)
@@ -93,9 +93,9 @@ describe('mobile drawer', () => {
     const home = d.search(new RegExp(`<a [^>]*href="/"[^>]*>(?:(?!</a>).)*>${translations.en.nav_home}<`))
     expect(home).toBeGreaterThan(-1)
     expect(home).toBeLessThan(d.indexOf('href="/#how"'))
-    expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/olim"'))
-    expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/olim"'))
-    expect(d.indexOf('href="/olim"')).toBeLessThan(d.indexOf('href="/support"'))
+    expect(d.indexOf('href="/#how"')).toBeLessThan(d.indexOf('href="/business"'))
+    expect(d.indexOf('href="/business"')).toBeLessThan(d.indexOf('href="/support"'))
+    expect(d).not.toContain('href="/olim"')
     expect(d).not.toContain('href="/#deals"')
   })
 
@@ -107,14 +107,14 @@ describe('mobile drawer', () => {
     expect(deals).toBeLessThan(d.indexOf('href="/#how"'))
   })
 
-  it.each(['en', 'he'] as const)('lists Partner with Us after Making Aliyah?, before About and Support, styled like its neighbours (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('lists Partner with Us after How It Works, before About and Support, styled like its neighbours (%s)', (lang) => {
     const d = drawer(lang)
     const link = d.match(/<a class="([^"]*)" href="\/business">(.*?)<\/a>/)!
     expect(link[2]).toContain('lucide-handshake')
     expect(link[2]).toContain(`>${translations[lang].nav_partner}<`)
     expect(link[1]).toBe(d.match(/<a class="([^"]*)" href="\/about">/)![1])
     const partner = d.indexOf('href="/business"')
-    expect(partner).toBeGreaterThan(d.indexOf('href="/olim"'))
+    expect(partner).toBeGreaterThan(d.indexOf('href="/#how"'))
     expect(partner).toBeLessThan(d.indexOf('href="/about"'))
     expect(d.indexOf('href="/about"')).toBeLessThan(d.indexOf('href="/support"'))
   })
@@ -152,15 +152,15 @@ describe('header account actions', () => {
     expect(signIn).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
-  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, My Pass, Making Aliyah? and Support (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, My Pass and Support (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const nav = html.slice(0, html.indexOf('</nav>'))
     const t = translations[lang]
     const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"'))
     const hrefs = [...centre.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
-    expect(hrefs).toEqual(['/', '/categories', '/member', '/olim', '/support'])
+    expect(hrefs).toEqual(['/', '/categories', '/member', '/support'])
     expect(centre).not.toContain('/wishlist')
-    for (const label of [t.nav_home, t.nav_cta, t.nav_my_pass, t.nav_olim, t.nav_support]) expect(centre).toContain(`>${label}<`)
+    for (const label of [t.nav_home, t.nav_cta, t.nav_my_pass, t.nav_support]) expect(centre).toContain(`>${label}<`)
     // The avatar menu is the account: no Profile text link in the bar.
     expect(centre).not.toContain(`>${t.nav_profile}<`)
     // On / the Home link is the current page.
@@ -190,21 +190,21 @@ describe('header account actions', () => {
     expect(nav.indexOf('aria-haspopup="menu"')).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
-  it('signed in: drops the How it works link but keeps Making Aliyah', () => {
+  it('signed in: drops the How it works link and never offers Making Aliyah', () => {
     const html = render('en', { loggedIn: true })
     const nav = html.slice(0, html.indexOf('</nav>'))
     const drawer = html.slice(html.indexOf('</nav>'))
     for (const part of [nav, drawer]) {
       expect(part).not.toContain('href="/#how"')
-      expect(part).toContain('href="/olim"')
+      expect(part).not.toContain('href="/olim"')
     }
   })
 
-  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, Making Aliyah?, then Settings (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, then Settings (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const drawer = html.slice(html.indexOf('</nav>'))
     const t = translations[lang]
-    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/olim', '/settings'])
+    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/settings'])
     expect(drawer).toContain(`>${t.nav_home}<`)
     expect(drawer).not.toContain(`>${t.nav_perks}<`)
     // Preferences live on /settings now: no accordions, language buttons, security or legal links in the drawer.
@@ -246,7 +246,7 @@ describe('header account actions', () => {
     expect(pass[2]).toContain('lucide-qr-code')
     expect(pass[2]).toContain('>' + t.nav_my_pass + '<')
     const links = drawer.slice(drawer.indexOf(home[0]), drawer.indexOf('href="/settings"'))
-    expect(links).toContain('href="/olim"')
+    expect(links).not.toContain('href="/olim"')
     expect(links).not.toContain('lucide-chevron')
     expect(drawer).not.toContain('bg-[linear-gradient')
     expect(drawer).not.toContain(t.nav_pass_title)
@@ -362,20 +362,20 @@ describe('mobile drawer: signed-out layout', () => {
   it.each(['en', 'he'] as const)('gives every guest link the same 20px fine-stroke vector glyph in a 40px tinted tile, with no images (%s)', (lang) => {
     const d = drawer(lang)
     const links = d.slice(0, d.indexOf('href="/settings"'))
-    for (const icon of ['house', 'gift', 'list-checks', 'plane-takeoff', 'handshake', 'info', 'headset']) {
+    for (const icon of ['house', 'gift', 'list-checks', 'handshake', 'info', 'headset']) {
       expect(links).toMatch(new RegExp(`stroke-width="1.75"[^>]*class="lucide lucide-${icon}[^"]* h-5 w-5"`))
     }
     expect(links).not.toContain('fa-')
     // One 40px tile for every row: same box, tint and hairline, 4px clear of the 48px row.
     const tiles = links.match(/<span class="[^"]*w-10 h-10[^"]*"/g)!
-    expect(tiles.length).toBeGreaterThanOrEqual(7)
+    expect(tiles.length).toBeGreaterThanOrEqual(6)
     for (const tile of tiles) expect(tile).toBe('<span class="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl border border-brand/10 bg-brandTint text-brand"')
     expect(d).not.toContain('<img')
   })
 
   it('gives every menu item a 48px rounded touch target', () => {
     const d = drawer('en')
-    for (const href of ['/#how', '/olim', '/support', '/business']) {
+    for (const href of ['/#how', '/support', '/business']) {
       const cls = d.match(new RegExp(`class="([^"]*)" href="${href}"`))![1]
       expect(cls).toContain('min-h-[48px]')
       expect(cls).toContain('rounded-xl')
@@ -392,7 +392,7 @@ describe('mobile drawer: signed-out layout', () => {
     expect(d.indexOf('href="/login"')).toBeGreaterThan(d.indexOf('href="/settings"'))
     expect(d.indexOf('href="/signup"')).toBeGreaterThan(d.indexOf('href="/login"'))
     expect(d.indexOf('contact@golandly.com')).toBeGreaterThan(d.indexOf('href="/signup"'))
-    expect(d).toContain('<bdi>Landly</bdi>')
+    expect(d).toContain('<bdi>GoLandly</bdi>')
     expect(d).not.toContain('Ltd')
     // Guests get no Sign Out, and no loose legal links (they're on /settings).
     expect(d).not.toContain(`>${t.nav_logout}<`)

@@ -82,7 +82,7 @@ function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
       <div className="box-content flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[#E2E8F0] ps-5 pe-2 pt-[env(safe-area-inset-top)] md:pt-0">
         <Link href="/admin" onClick={onNavigate} className={`flex min-h-12 min-w-0 items-center gap-2.5 rounded-lg ${FOCUS_RING}`}>
           <img src="/logo-mark.png" alt="" className="h-8 w-auto shrink-0" />
-          <span className="text-lg font-bold leading-none text-[#0B1B3D]">Landly</span>
+          <span className="text-lg font-bold leading-none text-[#0B1B3D]">GoLandly</span>
           <span className="rounded-full bg-[#F0F7FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#0038B8]">{t('nav.adminBadge')}</span>
         </Link>
         {onClose && (

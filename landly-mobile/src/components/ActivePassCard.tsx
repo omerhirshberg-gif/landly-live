@@ -22,7 +22,7 @@ export default function ActivePassCard({ count, onPress }: { count: number | nul
       style={({ pressed }) => [styles.passCard, pressed && styles.passCardPressed]}
     >
       <View style={styles.passGlow} />
-      {/* The Landly emblem as a watermark in the top end corner (web: components/home/LandlyMark.tsx). */}
+      {/* The GoLandly emblem as a watermark in the top end corner (web: components/home/LandlyMark.tsx). */}
       <Svg viewBox={`0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`} width={88} height={86} style={styles.passMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {[STAR, ARCH, ARROW].flatMap((part) => [part.light, part.dark]).map((d) => (
           <Path key={d.slice(0, 24)} d={d} fill={colors.white} fillOpacity={0.15} fillRule="evenodd" />

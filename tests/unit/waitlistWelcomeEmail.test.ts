@@ -48,7 +48,7 @@ function seed(data: Record<string, unknown> = LEAD) {
 
 beforeEach(() => {
   vi.stubEnv('RESEND_API_KEY', 're_test')
-  vi.stubEnv('EMAIL_FROM', 'Landly <noreply@golandly.com>')
+  vi.stubEnv('EMAIL_FROM', 'GoLandly <noreply@golandly.com>')
   mocks.send.mockReset().mockResolvedValue({ data: { id: 'm1' }, error: null })
   mocks.after.mockReset()
   mocks.sync.mockReset().mockResolvedValue('synced')
@@ -93,7 +93,7 @@ describe('renderWaitlistWelcomeEmail', () => {
     ]
     expected.forEach(([name, href], i) => {
       expect(cells[i]).toContain(`href="${href}"`)
-      expect(cells[i]).toContain(`title="Landly on ${name}"`)
+      expect(cells[i]).toContain(`title="GoLandly on ${name}"`)
       expect(cells[i]).toContain('target="_blank" rel="noopener noreferrer"')
       expect(cells[i]).toContain(`src="https://www.golandly.com/email/${name.toLowerCase()}.png"`)
       expect(cells[i]).toMatch(new RegExp(`\\s${name}\\s+</a>`))
@@ -123,7 +123,7 @@ describe('sendWaitlistWelcomeEmail', () => {
     expect(await sendWaitlistWelcomeEmail(store.leadDb, 'lead1')).toBe('sent')
     expect(mocks.send).toHaveBeenCalledTimes(1)
     const [payload, options] = mocks.send.mock.calls[0]
-    expect(payload).toMatchObject({ from: 'Landly <noreply@golandly.com>', to: 'noa@example.com', replyTo: 'contact@golandly.com', subject: WAITLIST_WELCOME_COPY.he.subject })
+    expect(payload).toMatchObject({ from: 'GoLandly <noreply@golandly.com>', to: 'noa@example.com', replyTo: 'contact@golandly.com', subject: WAITLIST_WELCOME_COPY.he.subject })
     expect(payload.html).toContain('dir="rtl"')
     expect(options).toEqual({ idempotencyKey: 'waitlist-welcome/lead1' })
     expect(store.snapshot()[PATH].welcomeEmailSent).toBe(true)

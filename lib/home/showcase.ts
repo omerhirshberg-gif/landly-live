@@ -155,9 +155,9 @@ export function pickHeroFeatures(offers: readonly ShowcaseOffer[]): HeroFeature[
   return features
 }
 
-/** What's inside on the guest home: a pillar groups real business categories, or none (Community: mentoring, not a catalogue). */
+/** What's inside on the guest home: a pillar groups real business categories. */
 export interface ValuePillar {
-  key: 'dining' | 'lifestyle' | 'experiences' | 'community'
+  key: 'dining' | 'lifestyle' | 'experiences'
   categories: readonly CategoryTile['category'][]
 }
 
@@ -165,11 +165,9 @@ export const VALUE_PILLARS: readonly ValuePillar[] = [
   { key: 'dining', categories: ['Restaurants and Cafes'] },
   { key: 'lifestyle', categories: ['Fashion and Shopping', 'Beauty and Skincare', 'Home and Furnishing', 'Kids and Baby', 'Pampering Bundles', 'Sport and Fitness'] },
   { key: 'experiences', categories: ['Attractions and Tours', 'Beach and Sea', 'Israel and Global Tourism'] },
-  { key: 'community', categories: [] },
 ]
 
-/** Where a pillar's card leads: its one category, the catalogue, or /olim for Community. */
+/** Where a pillar's card leads: its one category, or the catalogue. */
 export function pillarHref(pillar: ValuePillar): string {
-  if (pillar.categories.length === 0) return '/olim'
   return pillar.categories.length === 1 ? categoryHref(pillar.categories[0]) : '/categories'
 }

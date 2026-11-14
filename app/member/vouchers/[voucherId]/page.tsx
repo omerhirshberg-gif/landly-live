@@ -24,6 +24,8 @@ import TranslationNotice from '@/components/ui/TranslationNotice'
 import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { offerTextSources } from '@/lib/offers/offerText'
+import { locationNoticeKind } from '@/lib/offers/locationVisibility'
+import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '@/components/discover/PerkReach'
 
 type Voucher = VoucherDocument & { id: string }
 
@@ -109,6 +111,10 @@ export default function VoucherPage() {
                           </span>
                         )}
                       </div>
+                      {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-3.5 text-sm text-muted" />}
+                      {!place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
+                        <div className="mt-3"><ParticipatingChains offer={voucher} guide={false} /></div>
+                      )}
                       {place && (
                         <p className="mt-3.5 flex items-start gap-1.5 text-sm text-muted">
                           <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
@@ -147,6 +153,8 @@ export default function VoucherPage() {
 
               {/* How to redeem, up under the ticket; the conditions stay in VoucherTerms, so they aren't shown twice. */}
               <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+                {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
+                {voucher.perkScope === 'multi_chain' && <div className="mb-5"><RedemptionGuide offer={voucher} /></div>}
                 <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" />
                 {(voucher.expiresAt || voucher.redemptionTerms) && (
                   <div className="mt-5 border-t border-slate-100 pt-5">

@@ -161,6 +161,7 @@ function ResetPasswordContent() {
               <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
               <TextField
                 label={t('resetPage_passwordLabel')}
+                showLabel
                 icon="lock"
                 type="password"
                 value={password}
@@ -184,6 +185,7 @@ function ResetPasswordContent() {
               <PasswordRequirements password={password} visible={passwordFocused} />
               <TextField
                 label={t('onb_confirmPasswordLabel')}
+                showLabel
                 icon="lock"
                 type="password"
                 value={confirm}

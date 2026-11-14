@@ -18,7 +18,7 @@ import { visualHebrewLine as he } from '@/lib/seo/ogText'
 // Hebrew goes through visualHebrewLine, one line per element, right-aligned.
 // The render is a PNG of nearly 900 KB, heavy for chat apps' link scrapers, so
 // it's re-encoded as a JPEG of under 200 KB.
-export const alt = 'Landly — המועדון שלכם לחיים בישראל'
+export const alt = 'GoLandly — המועדון שלכם לחיים בישראל'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/jpeg'
 

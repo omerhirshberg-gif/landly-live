@@ -87,7 +87,7 @@ export function assessRow({ projectId, host, authUri, status, body, exchangeMess
 
 /**
  * Whether the app's local iOS project can use the native Apple sheet:
- *   ok                 -- app.json asks for it and Landly.entitlements has it
+ *   ok                 -- app.json asks for it and GoLandly.entitlements has it
  *   missing-config     -- app.json lacks ios.usesAppleSignIn or the
  *                         expo-apple-authentication plugin
  *   stale-build        -- app.json asks for it but ios/ was generated before
@@ -139,7 +139,7 @@ export const EXPECTED_APPLE_TEAM_ID = 'Q9PZPLU6GY'
 export function appleKeyProblems({ teamId, keyId, privateKeyPem, fileName }) {
   const problems = []
   if (!/^[A-Z0-9]{10}$/.test(teamId ?? '')) problems.push(`Team ID ${JSON.stringify(teamId ?? '')} is not 10 letters/digits`)
-  else if (teamId !== EXPECTED_APPLE_TEAM_ID) problems.push(`Team ID ${teamId} is not Landly's (${EXPECTED_APPLE_TEAM_ID})`)
+  else if (teamId !== EXPECTED_APPLE_TEAM_ID) problems.push(`Team ID ${teamId} is not GoLandly's (${EXPECTED_APPLE_TEAM_ID})`)
   if (!/^[A-Z0-9]{10}$/.test(keyId ?? '')) problems.push(`Key ID ${JSON.stringify(keyId ?? '')} is not 10 letters/digits`)
   const named = String(fileName ?? '').match(/AuthKey_([A-Z0-9]{10})\.p8$/)?.[1]
   if (named && keyId && named !== keyId) problems.push(`the key file is AuthKey_${named}.p8 but the Key ID is ${keyId}: they belong to different keys`)

@@ -13,7 +13,7 @@ import { ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
 import PrelaunchTable, { langName, personaName, referralSourceName } from '@/components/admin/PrelaunchTable'
 import StatCard from '@/components/admin/StatCard'
-import { ADMIN_INPUT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
+import { ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
 import { useAdminT } from '@/lib/admin/translations'
 
 interface LeadsResponse {
@@ -179,14 +179,14 @@ export default function PrelaunchLeadsPage() {
             <SearchInput value={filters.query} onChange={(query) => set({ query })} label={t('leads.search')} placeholder={t('leads.searchPlaceholder')} />
             <div>
               <label htmlFor="lead-lang" className={ADMIN_LABEL}>{t('leads.language')}</label>
-              <select id="lead-lang" className={ADMIN_INPUT} value={filters.lang ?? ''} onChange={(event) => set({ lang: (event.target.value || null) as LeadFilters['lang'] })}>
+              <select id="lead-lang" className={ADMIN_SELECT} value={filters.lang ?? ''} onChange={(event) => set({ lang: (event.target.value || null) as LeadFilters['lang'] })}>
                 <option value="">{t('leads.allLanguages')}</option>
                 {PRELAUNCH_LANGS.map((lang) => <option key={lang} value={lang}>{langName(lang)}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="lead-persona" className={ADMIN_LABEL}>{t('leads.persona')}</label>
-              <select id="lead-persona" className={ADMIN_INPUT} value={filters.persona ?? ''} onChange={(event) => set({ persona: (event.target.value || null) as LeadFilters['persona'] })}>
+              <select id="lead-persona" className={ADMIN_SELECT} value={filters.persona ?? ''} onChange={(event) => set({ persona: (event.target.value || null) as LeadFilters['persona'] })}>
                 <option value="">{t('leads.allPersonas')}</option>
                 {[...PERSONAS, 'none' as const].map((key) => <option key={key} value={key}>{personaName(key, t)}</option>)}
               </select>

@@ -19,7 +19,7 @@ export function parseWebAuthnConfig(env: {
   WEBAUTHN_ORIGINS?: string
   APP_URL?: string
 }): WebAuthnConfig | null {
-  const rpName = env.WEBAUTHN_RP_NAME?.trim() || 'Landly'
+  const rpName = env.WEBAUTHN_RP_NAME?.trim() || 'GoLandly'
   let appOrigin: URL | null = null
   try {
     if (env.APP_URL) appOrigin = new URL(env.APP_URL)

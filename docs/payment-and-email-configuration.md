@@ -166,64 +166,49 @@ expires after 10 minutes, five wrong tries clear the change, and a new code can
 be sent once a minute. Once confirmed, the account's email changes in Firebase
 Auth and Firestore and the previous address receives a security notice.
 
-Phone changes from the profile screens are confirmed by a 6-digit code sent via
-WhatsApp (`lib/auth/phoneVerification.ts`). Server-side settings:
+Phone changes from the profile screens are confirmed by a 6-digit code
+(`lib/auth/phoneVerification.ts`). GoLandly generates, salts-and-hashes,
+rate-limits and verifies the code itself (`phoneVerifications/{uid}`); **019**
+(019sms.co.il) only delivers it (`lib/otp/gateway019.ts`). The number decides
+the channel (`lib/auth/otpChannel.ts`, enforced by `/api/account/change-phone`;
+a channel sent by a client is ignored): `+972` / `972…` numbers get an **SMS**,
+every other country a **WhatsApp** message built on one of 019's pre-approved
+Meta templates, so GoLandly needs no Meta Business Verification of its own. The
+website and the app show "via SMS" or "via WhatsApp" copy accordingly, in all
+five languages. Server-side settings (the same names in `.env.local`, and in
+Vercel for **both** `landly-dev` and `landly-be752`; `.env.example` lists them):
 
 | Variable | Purpose |
 | --- | --- |
 | `PHONE_VERIFICATION_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`. The older name `FIREBASE_PHONE_AUTH_ENABLED` is still read when this one is unset. |
-| `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API token. Use a permanent System User token; temporary tokens expire after 24 hours. |
-| `WHATSAPP_PHONE_NUMBER_ID` | The sending number's ID in WhatsApp Manager. |
-| `WHATSAPP_OTP_TEMPLATE` | Name of the approved *authentication* template (copy-code button). Defaults to `landly_otp_code`. See the template checklist below. |
-| `WHATSAPP_OTP_FALLBACK_LANGUAGE` | Optional. A language code tried right after the member's own when their copy is missing (for example `en_GB`); `en_US` and then `en` follow anyway. |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Optional, read only by `scripts/whatsapp-diagnose-templates.mjs`: the WhatsApp Business Account (WABA) that owns the number. Without it the script finds the WABA through the token. |
-| `WHATSAPP_OTP_LIVE` | Optional. `true` sends real WhatsApp messages outside production (codes and bot replies); otherwise they are only logged to the `next dev` terminal. |
-| `WHATSAPP_GRAPH_VERSION` | Optional, defaults to `v21.0` (supported until about January 2027). A value not shaped like `v25.0` is ignored. |
+| `SMS_019_USERNAME` | The 019 account's user name. |
+| `SMS_019_PASSWORD` | The 019 account's password. Either this or `SMS_019_TOKEN` is enough. |
+| `SMS_019_TOKEN` | A 019 API token, used instead of the password when set. |
+| `SMS_019_SENDER` | The sender name members see on the SMS / WhatsApp message. |
+| `OTP_019_LIVE` | Optional. `true` sends real messages outside production; otherwise the code is only logged to the `next dev` terminal. Production always sends once the settings above are complete. |
 
-If the flag is on but the token or number ID is missing, phone edits save
-directly and the server logs the missing setting, so members are never left
-with a banner that cannot clear. Onboarding and sign-up still save the phone
-directly.
+Without a complete 019 configuration nothing is sent and nobody is blocked: in
+development the code is logged (`[phone-otp] simulated SMS|WhatsApp to +33
+•••• 5678: code 123456`), and in production phone edits save directly while the
+server logs the missing setting. 019's endpoints, auth header and request
+bodies live in `lib/otp/gateway019Contract.ts` (marked `TODO(019 docs)`); until
+its two endpoints are filled in from 019's documentation the gateway reports
+itself unconfigured, so pasting credentials early cannot send a half-formed
+request. A failed send leaves nothing pending: the member sees "We couldn't
+send the code…" on the profile screen, and a failed *Resend* closes the code
+dialog or sheet too, since the code sent before is no longer valid. Failures
+are logged as a class only (`auth`, `rejected`, `unavailable`, `network`,
+`not_configured`), never with credentials, the code or the whole number.
+Onboarding and sign-up still save the phone directly.
 
-Meta matches a template's language code exactly: a copy created as `en_US`
-(WhatsApp Manager's default English) is not found when `en` is asked for, and
-the send fails with **132001** ("Template name does not exist in the
-translation"). The code is therefore tried in up to three languages, in this
-order, without repeats: the member's (`en_US` for English, `he`, `ru`, `fr`,
-`es`), `WHATSAPP_OTP_FALLBACK_LANGUAGE` if set, `en_US`, `en`. Only 132001
-moves on to the next language; any other refusal (132000 parameter count,
-132012 parameter format, 132015/132016 paused or disabled, 131xxx) is the
-template or the number itself, so it fails at once. When every language
-answers 132001 the server logs a hint naming the template and number ID: the
-template is then missing from the WABA that owns `WHATSAPP_PHONE_NUMBER_ID`
-(often a production number in another WABA than dev's, or a different
-`WHATSAPP_OTP_TEMPLATE` in Vercel). A failed send leaves nothing pending: the
-member sees "We couldn't send the code by WhatsApp…" on the profile screen,
-and a failed *Resend* closes the code dialog or sheet too, since the code sent
-before is no longer valid.
-
-Template checklist, in **each** WABA (`landly-dev`'s and `landly-be752`'s
-sending numbers):
-
-- Name: exactly `WHATSAPP_OTP_TEMPLATE` for that environment (default `landly_otp_code`).
-- Category **Authentication**, with a **Copy code** button (the code fills both the body and the button).
-- Languages: `en_US` (required, the fallback every member ends on), plus `he`, `ru`, `fr`, `es`; each **Approved**, none paused.
-- In the same WABA as that environment's `WHATSAPP_PHONE_NUMBER_ID`.
-
-Check one environment at a time; the script only reads from the Graph API and
-exits 1 when a member language would get no code:
-
-```
-node --env-file=.env.local scripts/whatsapp-diagnose-templates.mjs                # landly-dev
-vercel env pull .env.production.local --environment=production
-node --env-file=.env.production.local scripts/whatsapp-diagnose-templates.mjs     # landly-be752
-```
+The `WHATSAPP_*` variables below belong to the support bot (Meta Cloud API) and
+no longer play any part in phone verification.
 
 ## WhatsApp support bot
 
 `app/api/webhooks/whatsapp/route.ts` receives messages sent to the WhatsApp
 Cloud API number. Any message is answered with three reply buttons (Member
-Perks, Landly Pass, Talk to Team), at most once every 10 minutes per number.
+Perks, GoLandly Pass, Talk to Team), at most once every 10 minutes per number.
 Perks and Pass reply with a link button to `{APP_URL}/categories` and
 `{APP_URL}/member`. Talk to Team emails the team inbox (`SUPPORT_EMAIL`) with
 the sender's name, member UID, email, language and a `wa.me` link to answer

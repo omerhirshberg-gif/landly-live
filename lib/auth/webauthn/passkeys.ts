@@ -92,7 +92,7 @@ export async function deletePasskey(uid: string, id: string): Promise<boolean> {
 /**
  * The member's WebAuthn user handle (32 random bytes, base64url), created on
  * first use. Never the uid itself: the handle is stored on the authenticator
- * and shown to it, so it shouldn't identify the account outside Landly.
+ * and shown to it, so it shouldn't identify the account outside GoLandly.
  * users/{uid}.webauthnUserId is server-only in firestore.rules. Null when the
  * profile document doesn't exist (the sign-in that creates it hasn't run).
  */

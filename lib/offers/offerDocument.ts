@@ -2,7 +2,7 @@ import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/vou
 import { normalizeImageUrl } from '../offers/imageUrl'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
-import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type PlaceSnapshot } from '../geo'
+import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
 import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
 import { readPerkScope, type PerkScope } from '../offers/perkScope'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
@@ -48,8 +48,10 @@ export interface OfferDocument {
   // a multi-chain one lists its chains. Optional only for hand-built fixtures: every offer read from Firestore has them.
   fulfillmentType?: FulfillmentType
   perkScope?: PerkScope
+  isNationwide?: boolean // a direct-merchant chain redeemable across its branches: no single address or navigation (lib/offers/locationVisibility.ts)
   brandName?: string
   participatingChains?: string[]
+  participatingPlaces?: ParticipatingPlace[] // branches picked from Google Places: names in each language and exact positions (lib/geo.ts)
   chainsCount?: number
   universalRedemptionGuide?: { he: string; en: string } | null
 }

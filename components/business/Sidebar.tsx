@@ -36,8 +36,8 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
     <>
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-950/95 backdrop-blur">
         <Link href="/business/dashboard" className="flex items-center gap-2 min-w-0">
-          <img src="/logo-mark.png" alt="Landly" className="h-7 w-auto shrink-0" />
-          <span className="font-black text-white text-lg leading-none truncate">Landly</span>
+          <img src="/logo-mark.png" alt="GoLandly" className="h-7 w-auto shrink-0" />
+          <span className="font-black text-white text-lg leading-none truncate">GoLandly</span>
         </Link>
         <button
           onClick={() => setOpen(true)}
@@ -70,9 +70,9 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
         }`}
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-          <img src="/logo-mark.png" alt="Landly" className="h-8 w-auto" />
+          <img src="/logo-mark.png" alt="GoLandly" className="h-8 w-auto" />
           <div className="flex items-center gap-2">
-            <span className="font-black text-white text-lg leading-none">Landly</span>
+            <span className="font-black text-white text-lg leading-none">GoLandly</span>
             <span className="inline-flex items-center text-micro font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
               Business
             </span>

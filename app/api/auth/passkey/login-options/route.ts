@@ -6,7 +6,7 @@ import { isPasskeyRateLimited } from '@/lib/auth/passkeyRateLimit'
 
 // Step 1 of signing in with a passkey, from the button or the email field's
 // autofill on /login. No account is named: the allow-list is empty, so the
-// browser offers whichever Landly passkeys the device holds (discoverable
+// browser offers whichever GoLandly passkeys the device holds (discoverable
 // credentials), and nothing here reveals whether an email has an account.
 export async function POST(request: Request) {
   if (isPasskeyRateLimited('options', request)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })

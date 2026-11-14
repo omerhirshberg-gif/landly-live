@@ -18,7 +18,7 @@ import { EMBLEM_AXIS_X, EMBLEM_VIEWBOX } from '@shared/brand/emblemPaths'
 import { WORDMARK_COLOR, WORDMARK_PATH, WORDMARK_VIEWBOX } from '@shared/brand/wordmarkPath'
 import { ARROW_SPRING, CURVES, FROM, T } from '@shared/brand/entranceTimeline'
 
-// The vector Landly emblem, the vector "Landly" wordmark
+// The vector GoLandly emblem, the vector "GoLandly" wordmark
 // (lib/brand/wordmarkPath.ts) and the slogan as live text. The splash plays it with `intro`; the login header renders the
 // finished state at the same size, so the splash can hand its logo over to
 // the login screen without a seam.
@@ -30,7 +30,7 @@ export const EMBLEM = { width: EMBLEM_W, height: Math.round((EMBLEM_W * EMBLEM_V
 export const emblemShift = (width: number) => Math.round(((EMBLEM_VIEWBOX.width / 2 - EMBLEM_AXIS_X) * width) / EMBLEM_VIEWBOX.width)
 const EMBLEM_SHIFT = emblemShift(EMBLEM_W)
 // Whole pixels throughout, so nothing lands on a half-pixel row.
-const WORDMARK = { width: 100, height: 28 }
+const WORDMARK = { width: 146, height: 28 }
 const WORDMARK_VB = `${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`
 const WORDMARK_GAP = 10
 const GAP = 8
@@ -54,7 +54,7 @@ const GLOW = 200
 const GLOW_REST = 0.4
 const GLOW_TOTAL = T.shine + T.shineMs
 
-/** The vector "Landly" wordmark (also the lock screen's, under its emblem). */
+/** The vector "GoLandly" wordmark (also the lock screen's, under its emblem). */
 export function Wordmark({ width, height, style }: { width: number; height: number; style?: StyleProp<ViewStyle> }) {
   return (
     <Svg viewBox={WORDMARK_VB} width={width} height={height} style={style}>
@@ -106,10 +106,13 @@ export function BrandLockup({ scale }: { scale: number }) {
 // the logo glides into the app lock's header, which has none.
 export default memo(function BrandHero({
   intro = false,
+  go = true,
   onIntroDone,
   sloganFade,
 }: {
   intro?: boolean
+  /** Holds the staged intro at 0% until true, so it plays from its first frame once the screen is visible. */
+  go?: boolean
   onIntroDone?: () => void
   sloganFade?: SharedValue<number>
 }) {
@@ -132,7 +135,7 @@ export default memo(function BrandHero({
   const whole = useSharedValue(intro && reduced ? 0 : 1)
 
   useEffect(() => {
-    if (!intro) return
+    if (!intro || !go) return
     const done = () => onIntroDone?.()
     if (!staged) {
       whole.set(withTiming(1, { duration: T.reducedMs, easing: EASE_OUT }, (fin) => fin && scheduleOnRN(done)))
@@ -160,9 +163,9 @@ export default memo(function BrandHero({
     slogan.set(withDelay(T.slogan, withTiming(1, { duration: T.shine - T.slogan, easing: EASE_OUT })))
     // Stage 4 — shine sweep, then hand back to the splash
     shine.set(withDelay(T.shine, withTiming(1, { duration: T.shineMs, easing: EASE_IN_OUT }, (fin) => fin && scheduleOnRN(done))))
-    // Shared values are stable refs; the intro runs once on mount.
+    // Shared values are stable refs; the intro runs once, when `go` turns true.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [go])
 
   const wholeStyle = useAnimatedStyle(() => ({ opacity: whole.get() }))
   const baseStyle = useAnimatedStyle(() => ({ transform: [{ scale: baseScale.get() }] }))
@@ -184,7 +187,7 @@ export default memo(function BrandHero({
       style={[styles.hero, wholeStyle]}
       accessible
       accessibilityRole="image"
-      accessibilityLabel="Landly — Lifestyle & Growth"
+      accessibilityLabel="GoLandly — Lifestyle & Growth"
     >
       <View style={styles.emblem}>
         <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]}>

@@ -6,7 +6,7 @@ import { offerJsonLd } from '@/lib/seo/jsonLd'
 import { pageMetadata } from '@/lib/seo/site'
 
 // The perk page is a client component, so its search metadata -- the perk's
-// own name as the tab title ("10% at Aroma | Landly"), its description, its
+// own name as the tab title ("10% at Aroma | GoLandly"), its description, its
 // photo as the share card -- and its structured data (the perk as a Product
 // with its member price) are resolved here on the server. Offers are public
 // (firestore.rules), so this reveals nothing the page doesn't. Any failure

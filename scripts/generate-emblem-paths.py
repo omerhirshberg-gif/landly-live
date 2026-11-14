@@ -1,4 +1,4 @@
-"""Builds the Landly emblem's star and arrow from exact geometry and rewrites
+"""Builds the GoLandly emblem's star and arrow from exact geometry and rewrites
 lib/brand/emblemPaths.ts. The arch keeps its traced contour (read from the
 current emblemPaths.ts) and is passed through unchanged.
 
@@ -207,7 +207,7 @@ d3 = dnL_band.intersection(star)
 d4 = upR_band.intersection(box(-50, CY, VIEW_W + 50, VIEW_H + 50)).intersection(star)
 star_dark = unary_union([d1, d2, d3, d4])
 
-SRC.write_text(f"""// Vector Landly emblem, built from exact geometry by
+SRC.write_text(f"""// Vector GoLandly emblem, built from exact geometry by
 // scripts/generate-emblem-paths.py (do not edit by hand):
 //  - Star of David: two equilateral triangles about one centre ({fmt(CX)}, {fmt(CY)}),
 //    circumradius {fmt(R)}, each a ring of constant band width {fmt(BAND)}; the darker
