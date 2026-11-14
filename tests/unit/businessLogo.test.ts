@@ -250,7 +250,7 @@ describe('logo wiring', () => {
     expect(read('app/admin/businesses/new/page.tsx')).toContain("<BusinessLogoField value={form.logoUrl} onChange={(url) => update('logoUrl', url)} />")
     const edit = read('components/admin/BusinessEditForm.tsx')
     expect(edit).toContain('<BusinessLogoField value={form.logoUrl}')
-    expect(edit).toContain('logoUrl: form.logoUrl, phone: form.phone }')
+    expect(edit).toContain('logoUrl: form.logoUrl, phone: form.phone')
   })
 
   it('reads the logo with every offer, normalized like its image, on web and in the app', () => {

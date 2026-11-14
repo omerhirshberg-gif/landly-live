@@ -21,6 +21,7 @@ import { parseBusinessTranslations } from '@/lib/business/businessText'
 import { parseLogoUrl } from '@/lib/business/businessLogo'
 import { parseBusinessPhone } from '@/lib/admin/businessPhone'
 import { isCommissionRate, isPaymentTerms } from '@/lib/merchants/terms'
+import { parsePerkScopeFields } from '@/lib/offers/perkScope'
 
 interface RequestBody {
   business: {
@@ -36,6 +37,8 @@ interface RequestBody {
     logoUrl?: unknown
     /** Optional contact number, local Israeli or "+country"; stored as E.164. */
     phone?: unknown
+    /** A nationwide chain / multi-branch business: its location is optional (headquarters only) and its offers carry no address. */
+    isChain?: unknown
   }
   offer: {
     title: string
@@ -50,6 +53,10 @@ interface RequestBody {
     redemptionTerms?: string
     redemptionMethod?: string
     redemptionInstructions?: string
+    /** Absent reads as true for a chain business, false otherwise. */
+    isNationwide?: unknown
+    participatingChains?: unknown
+    participatingPlaces?: unknown
   }
   translationOverrides?: unknown
   /** The admin's own wording for the business name, per language. */
@@ -99,6 +106,7 @@ export async function GET(request: Request) {
     businessId: doc.data().businessId ?? '',
     category: doc.data().category ?? '',
     location: doc.data().location ?? '',
+    isChain: doc.data().isChain === true,
     address: parseGeoAddress(doc.data().address),
     logoUrl: typeof doc.data().logoUrl === 'string' ? doc.data().logoUrl : '',
     phone: typeof doc.data().phone === 'string' ? doc.data().phone : '',
@@ -123,12 +131,15 @@ export async function POST(request: Request) {
   if (!body?.business || !body?.offer) return badRequest('Missing business or offer data.')
   const { business, offer } = body
 
+  const isChain = business.isChain === true
+  // A chain's location is its headquarters and may be left empty.
   const requiredBusinessFields: (keyof RequestBody['business'])[] = [
-    'businessName', 'businessId', 'category', 'location', 'loginEmail', 'loginPassword',
+    'businessName', 'businessId', 'category', ...(isChain ? [] : ['location' as const]), 'loginEmail', 'loginPassword',
   ]
   for (const field of requiredBusinessFields) {
     if (!business[field] || typeof business[field] !== 'string') return badRequest(`Missing business.${field}.`)
   }
+  if (isChain && business.location !== undefined && typeof business.location !== 'string') return badRequest('business.location must be text.')
   if (!/^\S+@\S+\.\S+$/.test(business.loginEmail)) return badRequest('Invalid login email.')
   if (business.loginPassword.length < 6) return badRequest('Login password must be at least 6 characters.')
 
@@ -146,6 +157,16 @@ export async function POST(request: Request) {
   if (!voucherTerms.ok) return badRequest(voucherTerms.error)
   const redemption = parseOfferRedemption(offer)
   if (!redemption.ok) return badRequest(redemption.error)
+  // The first offer of a chain is nationwide unless the admin says otherwise; its stores narrow it (lib/offers/perkScope.ts).
+  // Checked here, before the login exists, with a stand-in id; the real one is set below.
+  const scopeInput = {
+    fulfillmentType: 'direct_merchant' as const,
+    isNationwide: offer.isNationwide === undefined ? isChain : offer.isNationwide === true,
+    participatingChains: offer.participatingChains,
+    participatingPlaces: offer.participatingPlaces,
+  }
+  const scopeCheck = parsePerkScopeFields({ ...scopeInput, businessId: 'pending' })
+  if (!scopeCheck.ok) return badRequest(scopeCheck.error)
   const address = business.address === undefined || business.address === null ? null : parseGeoAddress(business.address)
   if (business.address && !address) return badRequest('business.address is not a valid place.')
   const overrides = parseTranslationOverrides(body.translationOverrides)
@@ -187,7 +208,9 @@ export async function POST(request: Request) {
     return badRequest(!translated.ok ? translated.error : !nameTranslated.ok ? nameTranslated.error : 'Invalid translations.')
   }
 
-  const businessDoc = { location: business.location, ...(address ? { address } : {}) }
+  const location = typeof business.location === 'string' ? business.location : ''
+  const businessDoc = { location, ...(address ? { address } : {}), ...(isChain ? { isChain: true } : {}) }
+  const scope = parsePerkScopeFields({ ...scopeInput, businessId: uid })
   const offerRef = adminDb.collection('offers').doc()
   try {
     const batch = adminDb.batch()
@@ -203,6 +226,8 @@ export async function POST(request: Request) {
       voucherStats: { active: 0, redeemedTotal: 0, redeemedThisMonth: 0 },
     })
     batch.set(offerRef, {
+      ...(scope.ok ? scope.fields : {}),
+      fulfillmentType: 'direct_merchant',
       businessId: uid,
       businessName: business.businessName,
       businessTranslations: nameTranslated.translations,

@@ -9,11 +9,11 @@ import { businessNameOverridesOf, type BusinessTranslations } from '@/lib/busine
 import AddressAutocomplete from './AddressAutocomplete'
 import BusinessLogoField from './BusinessLogoField'
 import BusinessPhoneField from './BusinessPhoneField'
-import { categoryEmoji } from './CategoryBadge'
 import BusinessNameTranslations from './BusinessNameTranslations'
 import Alert from './Alert'
 import { ButtonSpinner, FormSection, StickyActionBar } from './FormSection'
-import { ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from './formStyles'
+import Switch from './Switch'
+import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from './formStyles'
 import { useAdminT } from '@/lib/admin/translations'
 
 export interface EditableBusiness {
@@ -26,6 +26,8 @@ export interface EditableBusiness {
   logoUrl: string
   /** E.164, or '' for none. */
   phone: string
+  /** A nationwide / multi-branch chain: no single branch address. */
+  isChain?: boolean
 }
 
 // The business page's Details tab: name (and its translations), category,
@@ -47,7 +49,8 @@ export default function BusinessEditForm({
   const { t } = useAdminT()
   const [nameOverrides, setNameOverrides] = useState(() => businessNameOverridesOf(business.translations))
   const saved = useMemo(() => JSON.stringify([business, businessNameOverridesOf(business.translations)]), [business])
-  const dirty = JSON.stringify([form, nameOverrides]) !== saved
+  const [markExisting, setMarkExisting] = useState(false)
+  const dirty = JSON.stringify([form, nameOverrides]) !== saved || (form.isChain === true && markExisting)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   useUnsavedGuard(dirty && !saving)
@@ -65,7 +68,8 @@ export default function BusinessEditForm({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          business: { businessName: form.businessName, category: form.category, location: form.location, address: form.address, logoUrl: form.logoUrl, phone: form.phone },
+          business: { businessName: form.businessName, category: form.category, location: form.location, address: form.address, logoUrl: form.logoUrl, phone: form.phone, isChain: form.isChain === true },
+          markExistingNationwide: form.isChain === true && markExisting,
           businessNameOverrides: nameOverrides,
         }),
       })
@@ -86,6 +90,7 @@ export default function BusinessEditForm({
     if (!confirmLeave(dirty)) return
     setForm(business)
     setNameOverrides(businessNameOverridesOf(business.translations))
+    setMarkExisting(false)
     setError(null)
   }
 
@@ -115,7 +120,7 @@ export default function BusinessEditForm({
               onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat}>{`${categoryEmoji(cat)} ${cat}`.trim()}</option>
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
@@ -127,9 +132,24 @@ export default function BusinessEditForm({
       </FormSection>
 
       <FormSection icon="fa-location-dot" title={t('bizEdit.locationTitle')} description={t('bizEdit.locationDesc')}>
+        <label className="mb-4 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-adm-line bg-adm-surface px-4 text-sm font-semibold text-adm-text">
+          <Switch checked={form.isChain === true} onChange={(v) => setForm((prev) => ({ ...prev, isChain: v }))} />
+          {t('newBiz.isChain')}
+        </label>
+        <p className={`${ADMIN_HINT} mb-4 mt-0`}>{t('newBiz.isChainHint')}</p>
+        {form.isChain === true && (
+          <div className="mb-4">
+            <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-adm-text">
+              <input type="checkbox" checked={markExisting} onChange={(e) => setMarkExisting(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
+              {t('bizEdit.markExisting')}
+            </label>
+            <p className={ADMIN_HINT}>{t('bizEdit.markExistingHint')}</p>
+            <p className={`${ADMIN_HINT} mt-2`}>{t('newBiz.hqOptional')}</p>
+          </div>
+        )}
         <AddressAutocomplete
           id="edit-biz-location"
-          required
+          required={form.isChain !== true}
           value={{ text: form.location, address: form.address }}
           onChange={({ text, address }) => setForm((prev) => ({ ...prev, location: text, address }))}
         />

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, Stack, useLocalSearchParams } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import Animated, { ZoomIn } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -19,6 +19,8 @@ import PerkImage from '../../components/PerkImage'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { success, tick } from '../../lib/haptics'
+import { lockedBackOptions } from '../../lib/pageFlip'
+import { useFocusedBackGuard } from '../../lib/useBackGuard'
 import { webOnly } from '../../lib/webStyles'
 import { colors, radius } from '../../theme'
 
@@ -45,6 +47,14 @@ export default function OrderSuccessScreen() {
   const [order, setOrder] = useState<OrderDocument | null | undefined>(undefined)
   const [offer, setOffer] = useState<OfferDocument | null>(null)
   const celebrated = useRef(false)
+
+  // The order is settled: no swipe back into the paid checkout. The header's back and
+  // Android's back both go to My Pass.
+  const toWallet = () => router.navigate('/wallet')
+  useFocusedBackGuard(() => {
+    toWallet()
+    return true
+  })
 
   useEffect(() => {
     if (!orderId) return
@@ -79,7 +89,8 @@ export default function OrderSuccessScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title={t('success_title')} fallback="/wallet" />
+      <Stack.Screen options={lockedBackOptions} />
+      <ScreenHeader title={t('success_title')} fallback="/wallet" onBack={toWallet} />
 
       {pending ? (
         <View style={styles.centered} accessibilityLiveRegion="polite">
@@ -253,7 +264,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  savingsText: { fontSize: 13, fontWeight: '700', color: colors.success },
+  savingsText: { fontSize: 13, fontWeight: '700', color: colors.success, fontVariant: ['tabular-nums'] },
   divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 16 },
   orderRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   orderText: { flex: 1, minWidth: 0 },

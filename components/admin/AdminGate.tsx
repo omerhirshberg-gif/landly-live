@@ -47,7 +47,7 @@ export default function AdminGate({ children }: { children: React.ReactNode }) {
   }, [onLogin, router])
 
   if (!checked) {
-    return <div className="min-h-[var(--app-dvh)] bg-[#F8FAFC]" />
+    return <div className="min-h-[var(--app-dvh)] bg-[#131314]" />
   }
   return <>{children}</>
 }

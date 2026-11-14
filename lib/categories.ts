@@ -24,28 +24,26 @@ export const BUSINESS_CATEGORIES = [
 export interface CategoryTile {
   category: (typeof BUSINESS_CATEGORIES)[number]
   labelKey: TranslationKey
-  /** The Expo app's tile glyph; the website draws components/ui/CategoryIcon.tsx instead. */
-  emoji: string
   /** The rail's lifestyle photo: public/categories/{photo}.webp, and the same file in landly-mobile/assets/categories/ (src/lib/categoryPhotos.ts). */
   photo: string
 }
 
 // Single source of truth pairing each real category with its display label
-// and emoji (the app), shared by app/categories/page.tsx (tile grid) and
+// shared by app/categories/page.tsx (tile grid) and
 // the /categories chip rail and lib/perks/perksFilter.ts so they can't drift.
 export const CATEGORY_TILES: CategoryTile[] = [
-  { category: 'Restaurants and Cafes', labelKey: 'row_restaurants', emoji: '🍽️', photo: 'restaurants' },
-  { category: 'Beach and Sea', labelKey: 'row_beach', emoji: '🏖️', photo: 'beach' },
-  { category: 'Attractions and Tours', labelKey: 'cats_attractions_tours', emoji: '🎯', photo: 'attractions' },
-  { category: 'Fashion and Shopping', labelKey: 'row_fashion', emoji: '👗', photo: 'fashion' },
-  { category: 'Sport and Fitness', labelKey: 'row_sport', emoji: '💪', photo: 'sport' },
-  { category: 'Israel and Global Tourism', labelKey: 'row_tourism', emoji: '🏨', photo: 'tourism' },
-  { category: 'Pampering Bundles', labelKey: 'row_bundles', emoji: '🥂', photo: 'pampering' },
-  { category: 'Beauty and Skincare', labelKey: 'row_beauty', emoji: '💄', photo: 'beauty' },
-  { category: 'Home and Furnishing', labelKey: 'cats_home', emoji: '🏠', photo: 'home' },
-  { category: 'Kids and Baby', labelKey: 'cats_kids', emoji: '👶', photo: 'kids' },
-  { category: 'Insurance and Savings', labelKey: 'cats_insurance', emoji: '📊', photo: 'insurance' },
-  { category: 'Cars and Transport', labelKey: 'cats_cars', emoji: '🚗', photo: 'cars' },
+  { category: 'Restaurants and Cafes', labelKey: 'row_restaurants', photo: 'restaurants' },
+  { category: 'Beach and Sea', labelKey: 'row_beach', photo: 'beach' },
+  { category: 'Attractions and Tours', labelKey: 'cats_attractions_tours', photo: 'attractions' },
+  { category: 'Fashion and Shopping', labelKey: 'row_fashion', photo: 'fashion' },
+  { category: 'Sport and Fitness', labelKey: 'row_sport', photo: 'sport' },
+  { category: 'Israel and Global Tourism', labelKey: 'row_tourism', photo: 'tourism' },
+  { category: 'Pampering Bundles', labelKey: 'row_bundles', photo: 'pampering' },
+  { category: 'Beauty and Skincare', labelKey: 'row_beauty', photo: 'beauty' },
+  { category: 'Home and Furnishing', labelKey: 'cats_home', photo: 'home' },
+  { category: 'Kids and Baby', labelKey: 'cats_kids', photo: 'kids' },
+  { category: 'Insurance and Savings', labelKey: 'cats_insurance', photo: 'insurance' },
+  { category: 'Cars and Transport', labelKey: 'cats_cars', photo: 'cars' },
 ]
 
 // How many offers each category holds, for the grid's "X perks available"

@@ -82,31 +82,31 @@ export default function BatchInvitesPage() {
         <Card className="space-y-4 p-6">
           <div>
             <label htmlFor="batch-file" className={ADMIN_LABEL}>{t('batch.file')}</label>
-            <input id="batch-file" type="file" accept=".csv,.json,text/csv,application/json" onChange={(e) => choose(e.target.files?.[0])} className={`${ADMIN_INPUT} file:me-3 file:rounded-lg file:border-0 file:bg-[#F0F7FF] file:px-3 file:py-1.5 file:font-semibold file:text-[#0038B8]`} />
+            <input id="batch-file" type="file" accept=".csv,.json,text/csv,application/json" onChange={(e) => choose(e.target.files?.[0])} className={`${ADMIN_INPUT} file:me-3 file:rounded-lg file:border-0 file:bg-adm-accent-soft file:px-3 file:py-1.5 file:font-semibold file:text-adm-accent`} />
             <p className={ADMIN_HINT}>{t('batch.columns')}</p>
           </div>
           {rows && (
             <>
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="font-semibold text-[#0B1B3D]" dir="auto">{fileName}</span>
+                <span className="font-semibold text-adm-text" dir="auto">{fileName}</span>
                 <StatusBadge tone="emerald">{t('batch.ready', { n: valid })}</StatusBadge>
                 {invalid > 0 && <StatusBadge tone="rose">{t('batch.problems', { n: invalid })}</StatusBadge>}
               </div>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-adm-line">
                 <table className="w-full min-w-[32rem] text-sm">
-                  <thead className="bg-slate-50 text-start text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-2.5 text-start">{t('batch.colRow')}</th><th className="px-4 py-2.5 text-start">{t('batch.colMerchant')}</th><th className="px-4 py-2.5 text-start">{t('batch.colResult')}</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <thead className="bg-adm-sunken text-start text-xs uppercase tracking-wider text-adm-muted"><tr><th className="px-4 py-2.5 text-start">{t('batch.colRow')}</th><th className="px-4 py-2.5 text-start">{t('batch.colMerchant')}</th><th className="px-4 py-2.5 text-start">{t('batch.colResult')}</th></tr></thead>
+                  <tbody className="divide-y divide-adm-line-soft">
                     {rows.map((r) => (
-                      <tr key={r.row} className={r.ok ? '' : 'bg-rose-50/40'}>
-                        <td className="px-4 py-2.5 tabular-nums text-slate-500">{r.row}</td>
-                        <td className="px-4 py-2.5">{r.ok ? <><BidiText>{r.businessName}</BidiText> <span className="text-xs text-slate-400"><bdi dir="ltr">{r.contactEmail}</bdi></span></> : '—'}</td>
-                        <td className="px-4 py-2.5">{r.ok ? <StatusBadge tone="emerald" icon="fa-circle-check">{t('batch.rowReady')}</StatusBadge> : <ul className="space-y-0.5 text-rose-700">{r.errors.map((m) => <li key={m}>{m}</li>)}</ul>}</td>
+                      <tr key={r.row} className={r.ok ? '' : 'bg-adm-danger-soft/40'}>
+                        <td className="px-4 py-2.5 tabular-nums text-adm-muted">{r.row}</td>
+                        <td className="px-4 py-2.5">{r.ok ? <><BidiText>{r.businessName}</BidiText> <span className="text-xs text-adm-hint"><bdi dir="ltr">{r.contactEmail}</bdi></span></> : '—'}</td>
+                        <td className="px-4 py-2.5">{r.ok ? <StatusBadge tone="emerald" icon="fa-circle-check">{t('batch.rowReady')}</StatusBadge> : <ul className="space-y-0.5 text-adm-danger">{r.errors.map((m) => <li key={m}>{m}</li>)}</ul>}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D]">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-adm-text">
                 <Switch checked={sendEmail} onChange={setSendEmail} />
                 {t('batch.emailEach')}
               </label>
@@ -122,14 +122,14 @@ export default function BatchInvitesPage() {
           <Alert tone="warning">{tn('batch.created', created.created.length)}</Alert>
           {created.failed.length > 0 && <Alert>{tn('batch.notCreated', created.failed.length, { rows: created.failed.map((f) => `#${f.row}`).join(', ') })}</Alert>}
           <button type="button" onClick={download} className={PRIMARY_BUTTON}><i className="fa-solid fa-file-arrow-down" aria-hidden="true" /> {t('batch.download')}</button>
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <ul className="divide-y divide-adm-line-soft rounded-xl border border-adm-line">
             {created.created.map((c) => (
               <li key={c.row} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                <span className="min-w-0 truncate font-medium text-[#0B1B3D]"><BidiText>{c.businessName}</BidiText></span>
+                <span className="min-w-0 truncate font-medium text-adm-text"><BidiText>{c.businessName}</BidiText></span>
                 <span className="flex items-center gap-3">
                   {c.emailed === true && <StatusBadge tone="emerald">{t('batch.emailed')}</StatusBadge>}
                   {c.emailed === false && <StatusBadge tone="amber">{t('batch.emailFailed')}</StatusBadge>}
-                  {c.whatsappHref && <a href={c.whatsappHref} target="_blank" rel="noopener noreferrer" className="min-h-11 content-center text-sm font-semibold text-[#0038B8] hover:underline">{t('batch.whatsapp')}</a>}
+                  {c.whatsappHref && <a href={c.whatsappHref} target="_blank" rel="noopener noreferrer" className="min-h-11 content-center text-sm font-semibold text-adm-accent hover:underline">{t('batch.whatsapp')}</a>}
                 </span>
               </li>
             ))}

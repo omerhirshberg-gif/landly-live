@@ -217,9 +217,9 @@ describe('the perk page’s logo badge', () => {
     expect(offer.indexOf('<NavigationButtons')).toBeLessThan(offer.indexOf('<View style={styles.folds}>'))
   })
 
-  it('draws the pills compact and text only, in one shape', () => {
+  it('draws the chips compact, softly rounded and text only, in one shape', () => {
     const offer = page()
-    expect(offer).toContain("chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }")
+    expect(offer).toContain("chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 }")
     expect(offer.match(/<View style=\{\[styles\.chip, /g)).toHaveLength(2)
     expect(offer).not.toContain('<Emoji')
   })

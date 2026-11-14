@@ -32,7 +32,7 @@ describe('ImageUploadField: an offer photo', () => {
 
   it('shows an uploaded photo whole on a studio backdrop, not cut to fit the preview', () => {
     const html = render({ value: 'https://firebasestorage.googleapis.com/v0/b/b/o/banners%2Fx.jpg?alt=media' })
-    expect(html).toContain('bg-[#F4F6F9]')
+    expect(html).toContain('bg-adm-sunken')
     expect(html).toContain('h-full w-full object-contain')
     expect(html).not.toContain('object-cover')
   })

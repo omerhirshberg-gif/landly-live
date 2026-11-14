@@ -224,7 +224,7 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
 
   it('renders the inline sidebar only from md', async () => {
     const { DesktopSidebar } = await import('@/components/admin/Sidebar')
-    const html = renderToStaticMarkup(createElement(DesktopSidebar, { onLogout: noop, needsReply: 0 }))
+    const html = renderToStaticMarkup(createElement(DesktopSidebar, { needsReply: 0 }))
     const classes = classOf(html, 'aria-label="Admin navigation"').split(' ')
     expect(classes).toEqual(expect.arrayContaining(['hidden', 'md:flex', 'w-64', 'shrink-0', 'sticky']))
     expect(html).toContain('aria-current="page"')
@@ -233,7 +233,7 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
 
   it('keeps a closed drawer off-screen, invisible and inert', async () => {
     const { MobileDrawer } = await import('@/components/admin/Sidebar')
-    const html = renderToStaticMarkup(createElement(MobileDrawer, { open: false, onClose: noop, onNavigate: noop, onLogout: noop, needsReply: 0 }))
+    const html = renderToStaticMarkup(createElement(MobileDrawer, { open: false, onClose: noop, onNavigate: noop, needsReply: 0 }))
     const root = classOf(html, 'id="admin-drawer"').split(' ')
     expect(root).toEqual(expect.arrayContaining(['fixed', 'inset-0', 'z-50', 'flex', 'md:hidden', 'invisible']))
     expect(html).toMatch(/id="admin-drawer"[^>]*inert=""|inert=""[^>]*id="admin-drawer"/)
@@ -243,10 +243,10 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
 
   it('slides an open drawer in over a blurred backdrop, with a 48px close button', async () => {
     const { MobileDrawer } = await import('@/components/admin/Sidebar')
-    const html = renderToStaticMarkup(createElement(MobileDrawer, { open: true, onClose: noop, onNavigate: noop, onLogout: noop, needsReply: 0 }))
+    const html = renderToStaticMarkup(createElement(MobileDrawer, { open: true, onClose: noop, onNavigate: noop, needsReply: 0 }))
     expect(html).not.toMatch(/inert=/)
     expect(classOf(html, 'id="admin-drawer"').split(' ')).toContain('visible')
-    expect(html).toMatch(/class="[^"]*fixed inset-0 bg-slate-900\/40 backdrop-blur-sm[^"]*opacity-100/)
+    expect(html).toMatch(/class="[^"]*fixed inset-0 bg-black\/60 backdrop-blur-sm[^"]*opacity-100/)
     expect(html).toMatch(/class="[^"]*w-72 max-w-\[85vw\][^"]*translate-x-0/)
     expect(html).toMatch(/class="[^"]*h-12 w-12[^"]*"[^>]*aria-label="Close menu"/)
     expect(html).toContain('pt-[env(safe-area-inset-top)]')
@@ -299,7 +299,7 @@ describe('back buttons and forward chevrons', () => {
       const html = renderToStaticMarkup(createElement(BackButton, { ...props, children: 'All chats' } as Parameters<typeof BackButton>[0]))
       expect(html).toContain('fa-chevron-left')
       expect(html).toContain('>All chats<')
-      for (const token of ['min-h-11', 'min-w-11', 'px-3', 'py-2', 'rounded-xl', 'text-slate-700', 'hover:text-slate-900', 'active:bg-slate-100']) expect(html).toContain(token)
+      for (const token of ['min-h-11', 'min-w-11', 'px-3', 'py-2', 'rounded-xl', 'text-adm-text-2', 'hover:text-adm-text', 'active:bg-adm-raised']) expect(html).toContain(token)
     }
   })
 
@@ -316,9 +316,18 @@ describe('no duplicate page titles', () => {
     expect(html).toContain('All perks across every business.')
   })
 
+  it('shows the title as a heading only when PageHeader is asked to (the dashboard)', async () => {
+    const { default: PageHeader } = await import('@/components/admin/PageHeader')
+    const html = renderToStaticMarkup(createElement(PageHeader, { title: 'Dashboard', subtitle: 'Overview', visibleTitle: true, actions: createElement('a', { href: '/x' }, 'Go') }))
+    expect(html).toMatch(/<h1 class="text-2xl font-extrabold[^"]*text-adm-text[^"]*">Dashboard<\/h1>/)
+    expect(html).not.toContain('sr-only')
+    expect(html).toContain('border-b border-adm-line pb-6')
+  })
+
   it.each(tsxFiles)('%s: shows no visible h1 the header already shows', (path) => {
     // The exceptions say something the header doesn't: a success state, and the login page (no header).
-    const allowed = ['>Offer created</h1>', ">{t('wizard.created')}</h1>", ">{t('newBiz.created')}</h1>", ">{t('login.title')}</h1>"]
+    // PageHeader's opt-in visibleTitle (the dashboard's executive header) is the one that shows its title as text.
+    const allowed = ['>Offer created</h1>', ">{t('wizard.created')}</h1>", ">{t('newBiz.created')}</h1>", ">{t('login.title')}</h1>", ...(path === 'components/admin/PageHeader.tsx' ? ['>{title}</h1>'] : [])]
     for (const { attrs, body } of openingTags(read(path), 'h1')) {
       if (allowed.includes(`>${body}</h1>`)) continue
       expect(attrs, `${attrs}${body}`).toContain('sr-only')
@@ -347,7 +356,7 @@ describe('needs-reply badge', () => {
 
   it('badges the ☰ at its top-end corner and says so to screen readers', async () => {
     const { default: AdminHeader } = await import('@/components/admin/AdminHeader')
-    const props = { menuOpen: false, onOpenMenu: noop, menuButtonRef: null }
+    const props = { menuOpen: false, onOpenMenu: noop, menuButtonRef: null, onLogout: noop }
     const html = renderToStaticMarkup(createElement(AdminHeader, { ...props, needsReply: 3 }))
     expect(html).toContain('aria-label="Open menu, 3 WhatsApp chats need a reply"')
     expect(html).toMatch(/absolute -end-1 -top-1[^"]*"><span aria-hidden="true">3</)
@@ -358,16 +367,16 @@ describe('needs-reply badge', () => {
 
   it('lays the phone top bar out in three zones, the title centred between equal sides', async () => {
     const { default: AdminHeader } = await import('@/components/admin/AdminHeader')
-    const html = renderToStaticMarkup(createElement(AdminHeader, { menuOpen: false, onOpenMenu: noop, menuButtonRef: null, needsReply: 0 }))
+    const html = renderToStaticMarkup(createElement(AdminHeader, { menuOpen: false, onOpenMenu: noop, menuButtonRef: null, needsReply: 0, onLogout: noop }))
     const header = html.match(/<header class="([^"]*)"/)![1].split(' ')
-    for (const token of ['sticky', 'top-0', 'z-40', 'overflow-x-clip', 'bg-white/95', 'backdrop-blur-md', 'border-slate-200/80', 'pt-[max(env(safe-area-inset-top),0.75rem)]', 'pb-3', 'md:pt-[env(safe-area-inset-top)]', 'md:pb-0']) {
+    for (const token of ['sticky', 'top-0', 'z-40', 'overflow-x-clip', 'bg-adm-surface/95', 'backdrop-blur-md', 'border-adm-line/80', 'pt-[max(env(safe-area-inset-top),0.75rem)]', 'pb-3', 'md:pt-[env(safe-area-inset-top)]', 'md:pb-0']) {
       expect(header, token).toContain(token)
     }
     const row = html.match(/<header[^>]*><div class="([^"]*)"/)![1].split(' ')
-    for (const token of ['grid', 'h-12', 'grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]', 'px-4', 'sm:px-6', 'md:flex', 'md:h-16']) expect(row, token).toContain(token)
-    expect(html).toMatch(/<span class="[^"]*\btruncate text-center text-base font-semibold text-slate-900 sm:text-lg md:hidden"[^>]*>WhatsApp Support<\/span>/)
+    for (const token of ['grid', 'h-12', 'grid-cols-[6.5rem_minmax(0,1fr)_6.5rem]', 'px-4', 'sm:px-6', 'md:flex', 'md:h-16']) expect(row, token).toContain(token)
+    expect(html).toMatch(/<span class="[^"]*\btruncate text-center text-base font-semibold text-adm-text sm:text-lg md:hidden"[^>]*>WhatsApp Support<\/span>/)
     // The ☰ keeps its 48px target with tap feedback, and nothing sits outside the gutter.
-    expect(html).toMatch(/class="relative flex h-12 w-12 [^"]*active:bg-slate-100/)
+    expect(html).toMatch(/class="relative flex h-12 w-12 [^"]*active:bg-adm-raised/)
     expect(html).not.toMatch(/-m[se]-\d/)
   })
 
@@ -375,7 +384,7 @@ describe('needs-reply badge', () => {
     const header = read('components/admin/AdminHeader.tsx')
     expect(header).toMatch(/<div className="hidden sm:block md:hidden">\s*<LiveClock compact muted \/>/)
     expect(header).toMatch(/<div className="hidden lg:block">\s*<LiveClock \/>/)
-    expect(read('components/admin/LiveClock.tsx')).toContain("muted ? 'text-xs font-medium text-slate-400'")
+    expect(read('components/admin/LiveClock.tsx')).toContain("muted ? 'text-xs font-medium text-adm-hint'")
   })
 
   it('tells full-screen pages the header\'s height on phones and from md', () => {
@@ -389,8 +398,8 @@ describe('needs-reply badge', () => {
 
   it('badges "WhatsApp Support" at the trailing edge, in the drawer and the sidebar', async () => {
     const { DesktopSidebar, MobileDrawer } = await import('@/components/admin/Sidebar')
-    const drawer = renderToStaticMarkup(createElement(MobileDrawer, { open: true, onClose: noop, onNavigate: noop, onLogout: noop, needsReply: 5 }))
-    const sidebar = renderToStaticMarkup(createElement(DesktopSidebar, { onLogout: noop, needsReply: 5 }))
+    const drawer = renderToStaticMarkup(createElement(MobileDrawer, { open: true, onClose: noop, onNavigate: noop, needsReply: 5 }))
+    const sidebar = renderToStaticMarkup(createElement(DesktopSidebar, { needsReply: 5 }))
     for (const html of [drawer, sidebar]) {
       expect(html).toMatch(/href="\/admin\/support"[^>]*>(?:(?!<\/a>).)*WhatsApp Support<span class="[^"]*bg-\[#16A34A\][^"]*\bms-auto"><span aria-hidden="true">5</)
       expect(html.match(/bg-\[#16A34A\]/g)).toHaveLength(1)

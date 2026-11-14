@@ -70,7 +70,7 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
     action.onSelect?.()
   }
   const tone = (danger?: boolean) =>
-    danger ? 'text-[#B91C1C] hover:bg-[#FEF2F2] focus-visible:bg-[#FEF2F2]' : 'text-[#0B1B3D] hover:bg-[#F1F5F9] focus-visible:bg-[#F0F7FF]'
+    danger ? 'text-adm-danger hover:bg-adm-danger-soft focus-visible:bg-adm-danger-soft' : 'text-adm-text hover:bg-adm-raised focus-visible:bg-adm-accent-soft'
   const safe = actions.filter((action) => !action.danger)
   const danger = actions.filter((action) => action.danger)
 
@@ -84,7 +84,7 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen((was) => !was)}
-        className="flex h-11 w-11 items-center justify-center rounded-xl text-[#475569] transition-colors hover:bg-[#F1F5F9] hover:text-[#0B1B3D] active:bg-[#E2E8F0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent]"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-adm-text-2 transition-colors hover:bg-adm-raised hover:text-adm-text active:bg-adm-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent [-webkit-tap-highlight-color:transparent]"
       >
         <i className="fa-solid fa-ellipsis" aria-hidden="true" />
       </button>
@@ -94,12 +94,12 @@ export default function RowActionsMenu({ label, actions, className = '' }: { lab
           role="menu"
           aria-label={label}
           style={place}
-          className="fixed z-50 w-56 overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white p-1 shadow-lg shadow-slate-900/10"
+          className="fixed z-50 w-56 overflow-y-auto rounded-xl border border-adm-line bg-adm-surface p-1 shadow-lg shadow-slate-900/10"
         >
           {[safe, danger].map(
             (group, i) =>
               group.length > 0 && (
-                <div key={i} className={i > 0 && safe.length > 0 ? 'mt-1 border-t border-[#E2E8F0] pt-1' : undefined}>
+                <div key={i} className={i > 0 && safe.length > 0 ? 'mt-1 border-t border-adm-line pt-1' : undefined}>
                   {group.map((action) =>
                     action.href ? (
                       <Link key={action.label} href={action.href} role="menuitem" className={`${MENU_ITEM_BUTTON} ${tone(action.danger)}`} onClick={() => setOpen(false)}>

@@ -34,7 +34,7 @@ function syncErrorText(code: string | null, t: Translate) {
 }
 
 function LangPill({ lang }: { lang: PrelaunchLang }) {
-  return <span className="inline-flex rounded-full bg-[#F0F7FF] px-2.5 py-0.5 text-xs font-bold text-[#0038B8]">{langName(lang)}</span>
+  return <span className="inline-flex rounded-md bg-adm-accent-soft px-2.5 py-0.5 text-xs font-bold text-adm-accent">{langName(lang)}</span>
 }
 
 /** The page they signed up on, and their preferred language when it's a different one. */
@@ -45,7 +45,7 @@ function LangCell({ lead }: { lead: AdminLead }) {
       <LangPill lang={lead.lang} />
       {lead.preferredLanguage !== lead.lang && (
         <span title={t('leadTable.prefers', { lang: langName(lead.preferredLanguage) })} className="inline-flex items-center gap-1">
-          <span aria-hidden="true" className="text-xs text-[#64748B]">→</span>
+          <span aria-hidden="true" className="text-xs text-adm-muted">→</span>
           <span className="sr-only">{t('leadTable.prefersSr')}</span>
           <LangPill lang={lead.preferredLanguage} />
         </span>
@@ -56,12 +56,12 @@ function LangCell({ lead }: { lead: AdminLead }) {
 
 function PersonaBadge({ lead }: { lead: AdminLead }) {
   const { t } = useAdminT()
-  if (!lead.persona) return <span className="text-sm text-[#64748B]">—</span>
+  if (!lead.persona) return <span className="text-sm text-adm-muted">—</span>
   return (
     <span className="block min-w-0">
-      <span className="inline-flex whitespace-nowrap rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">{personaName(lead.persona, t)}</span>
+      <span className="inline-flex whitespace-nowrap rounded-md bg-adm-violet-soft px-2.5 py-0.5 text-xs font-semibold text-adm-violet">{personaName(lead.persona, t)}</span>
       {lead.personaOtherDescription && (
-        <span title={lead.personaOtherDescription} className="mt-1 block text-xs text-[#475569] [overflow-wrap:anywhere]"><BidiText>{lead.personaOtherDescription}</BidiText></span>
+        <span title={lead.personaOtherDescription} className="mt-1 block text-xs text-adm-text-2 [overflow-wrap:anywhere]"><BidiText>{lead.personaOtherDescription}</BidiText></span>
       )}
     </span>
   )
@@ -70,8 +70,8 @@ function PersonaBadge({ lead }: { lead: AdminLead }) {
 function ReferralSourceCell({ source }: { source: ReferralSource | null }) {
   const { t } = useAdminT()
   return source
-    ? <span title={referralSourceName(source, t)} className="block truncate text-sm text-[#0B1B3D]">{referralSourceName(source, t)}</span>
-    : <span className="text-sm text-[#64748B]">—</span>
+    ? <span title={referralSourceName(source, t)} className="block truncate text-sm text-adm-text">{referralSourceName(source, t)}</span>
+    : <span className="text-sm text-adm-muted">—</span>
 }
 
 function PhoneCell({ phone }: { phone: string }) {
@@ -84,7 +84,7 @@ function PhoneCell({ phone }: { phone: string }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={t('leadTable.openWhatsapp', { phone: displayPhone(phone) })}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#128C4B] transition-colors hover:bg-[#ECFDF5]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-adm-ok transition-colors hover:bg-adm-ok-soft"
       >
         <i className="fa-brands fa-whatsapp text-lg" aria-hidden="true" />
       </a>
@@ -96,18 +96,18 @@ function Referral({ lead }: { lead: AdminLead }) {
   const { t } = useAdminT()
   return (
     <span className="block min-w-0 text-xs">
-      <code className="block truncate text-[#0B1B3D]">{lead.id}</code>
-      {lead.referredBy && <code className="block truncate text-xs text-[#475569]">{t('leadTable.via', { id: lead.referredBy })}</code>}
+      <code className="block truncate text-adm-text">{lead.id}</code>
+      {lead.referredBy && <code className="block truncate text-xs text-adm-text-2">{t('leadTable.via', { id: lead.referredBy })}</code>}
     </span>
   )
 }
 
 function Utm({ lead }: { lead: AdminLead }) {
-  if (!lead.utmSource && !lead.utmCampaign) return <span className="text-sm text-[#64748B]">—</span>
+  if (!lead.utmSource && !lead.utmCampaign) return <span className="text-sm text-adm-muted">—</span>
   return (
     <span className="block min-w-0 text-sm">
       <BidiText>{lead.utmSource ?? '—'}</BidiText>
-      <span className="block text-xs text-[#475569]"><BidiText>{lead.utmCampaign ?? '—'}</BidiText></span>
+      <span className="block text-xs text-adm-text-2"><BidiText>{lead.utmCampaign ?? '—'}</BidiText></span>
     </span>
   )
 }
@@ -139,12 +139,12 @@ function SyncStatus({ lead, listId, retrying, onRetry, showReason = false }: Syn
           aria-busy={retrying}
           title={t('leadTable.retry', { reason })}
           aria-label={t('leadTable.retryAria', { email: lead.email, reason })}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#0038B8] transition-colors hover:bg-[#F0F7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] disabled:opacity-50"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-adm-accent transition-colors hover:bg-adm-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent disabled:opacity-50"
         >
           <i className={`fa-solid fa-rotate-right text-xs ${retrying ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
         </button>
       </span>
-      {showReason && <span className="text-xs text-rose-700">{reason}</span>}
+      {showReason && <span className="text-xs text-adm-danger">{reason}</span>}
     </span>
   )
 }
@@ -153,7 +153,7 @@ function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 font-semibold text-[#0B1B3D]"><BidiText>{leadFullName(lead)}</BidiText></div>
+        <div className="min-w-0 font-semibold text-adm-text"><BidiText>{leadFullName(lead)}</BidiText></div>
         <span className="shrink-0"><LangCell lead={lead} /></span>
       </div>
       {(lead.persona || lead.referralSource) && (
@@ -162,9 +162,9 @@ function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead
           {lead.referralSource && <span className="shrink-0"><ReferralSourceCell source={lead.referralSource} /></span>}
         </div>
       )}
-      <div className="mt-1 text-sm text-[#475569]"><PhoneCell phone={lead.phone} /></div>
-      <bdi dir="ltr" className="block truncate text-sm text-[#475569]">{lead.email}</bdi>
-      <div className="mt-2 flex items-end justify-between gap-3 text-xs text-[#475569]">
+      <div className="mt-1 text-sm text-adm-text-2"><PhoneCell phone={lead.phone} /></div>
+      <bdi dir="ltr" className="block truncate text-sm text-adm-text-2">{lead.email}</bdi>
+      <div className="mt-2 flex items-end justify-between gap-3 text-xs text-adm-text-2">
         <Referral lead={lead} />
         <bdi dir="ltr" className="shrink-0 whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>
       </div>

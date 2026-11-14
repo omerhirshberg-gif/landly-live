@@ -75,12 +75,12 @@ export default function OrphansPage() {
         {orphans?.map((orphan) => (
           <Card key={orphan.uid} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFFBEB] text-amber-700">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-adm-warn-soft text-adm-warn">
                 <i className="fa-solid fa-triangle-exclamation text-sm" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="truncate font-semibold text-[#0B1B3D]" dir="ltr">{orphan.email}</div>
-                <div className="truncate text-xs text-[#64748B]">
+                <div className="truncate font-semibold text-adm-text" dir="ltr">{orphan.email}</div>
+                <div className="truncate text-xs text-adm-muted">
                   {orphan.providerIds.join(', ') || t('orph.noProvider')} · {t('orph.created')} <bdi dir="ltr">{formatIsraeliDate(orphan.createdAt)}</bdi> ·{' '}
                   <span className="font-mono">{orphan.uid}</span>
                 </div>

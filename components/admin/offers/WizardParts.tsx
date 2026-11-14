@@ -20,6 +20,8 @@ export interface WizardBusiness {
   category: string
   commissionRate: number | null
   paymentTerms: PaymentTerms | null
+  /** A chain business: its new offers default to nationwide. */
+  isChain?: boolean
 }
 
 const STEP_KEYS = ['wizard.step1', 'wizard.step2', 'wizard.step3', 'wizard.step4'] as const satisfies readonly AdminKey[]
@@ -29,11 +31,11 @@ export function WizardStepper({ step, maxReached, onGo }: { step: number; maxRea
   const { t } = useAdminT()
   return (
     <nav aria-label={t('wizard.steps')} className="mb-6">
-      <p className="mb-2 text-sm font-semibold text-[#0B1B3D] md:hidden">
+      <p className="mb-2 text-sm font-semibold text-adm-text md:hidden">
         {t('wizard.stepOf', { n: step, total: STEP_KEYS.length })} · {t(STEP_KEYS[step - 1]!)}
       </p>
-      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 md:hidden" aria-hidden="true">
-        <div className="h-full rounded-full bg-[#0038B8] transition-[width] duration-300" style={{ width: `${(step / STEP_KEYS.length) * 100}%` }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-adm-raised md:hidden" aria-hidden="true">
+        <div className="h-full rounded-full bg-adm-accent transition-[width] duration-300" style={{ width: `${(step / STEP_KEYS.length) * 100}%` }} />
       </div>
       <ol className="hidden items-center md:flex">
         {STEP_KEYS.map((key, i) => {
@@ -47,18 +49,18 @@ export function WizardStepper({ step, maxReached, onGo }: { step: number; maxRea
                 disabled={!reachable}
                 aria-current={current ? 'step' : undefined}
                 onClick={() => onGo(n)}
-                className="flex min-h-11 items-center gap-3 rounded-xl pe-3 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] disabled:cursor-default"
+                className="flex min-h-11 items-center gap-3 rounded-xl pe-3 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent disabled:cursor-default"
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${
-                    current ? 'bg-[#0038B8] text-white shadow-sm shadow-[#0038B8]/25' : n < step ? 'bg-emerald-600 text-white' : 'border border-[#CBD5E1] bg-white text-[#64748B]'
+                    current ? 'bg-adm-accent text-adm-on-accent shadow-sm shadow-adm-accent/25' : n < step ? 'bg-emerald-600 text-white' : 'border border-adm-line-strong bg-adm-surface text-adm-muted'
                   }`}
                 >
                   {n < step ? <i className="fa-solid fa-check text-xs" aria-hidden="true" /> : <bdi dir="ltr">{n}</bdi>}
                 </span>
-                <span className={`text-sm font-semibold ${current ? 'text-[#0B1B3D]' : 'text-[#475569]'}`}>{t(key)}</span>
+                <span className={`text-sm font-semibold ${current ? 'text-adm-text' : 'text-adm-text-2'}`}>{t(key)}</span>
               </button>
-              {n < STEP_KEYS.length && <span className={`mx-2 h-px flex-1 ${n < step ? 'bg-emerald-600' : 'bg-[#E2E8F0]'}`} aria-hidden="true" />}
+              {n < STEP_KEYS.length && <span className={`mx-2 h-px flex-1 ${n < step ? 'bg-emerald-600' : 'bg-adm-raised'}`} aria-hidden="true" />}
             </li>
           )
         })}
@@ -87,10 +89,10 @@ export function BusinessPicker({
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-3 rounded-xl border border-[#0038B8]/20 bg-[#F0F7FF] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-adm-accent/20 bg-adm-accent-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <BidiText lines={2} className="font-semibold text-[#0B1B3D]">{selected.businessName}</BidiText>
-          <div className="text-xs text-[#475569]"><bdi dir="ltr">{selected.businessId}</bdi></div>
+          <BidiText lines={2} className="font-semibold text-adm-text">{selected.businessName}</BidiText>
+          <div className="text-xs text-adm-text-2"><bdi dir="ltr">{selected.businessId}</bdi></div>
         </div>
         <button type="button" className={SECONDARY_BUTTON} onClick={() => onSelect(null)}>
           {t('common.change')}
@@ -101,32 +103,32 @@ export function BusinessPicker({
   return (
     <div className="space-y-3">
       <SearchInput label={t('wizard.searchBusiness')} placeholder={t('wizard.searchBusinessPlaceholder')} value={search} onChange={setSearch} />
-      <div className="max-h-80 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0]" role="group" aria-label={t('wizard.businessesLabel')}>
+      <div className="max-h-80 overflow-y-auto overscroll-y-contain rounded-xl border border-adm-line" role="group" aria-label={t('wizard.businessesLabel')}>
         {businesses === null ? (
-          <p className="px-4 py-3 text-sm text-[#64748B]">{t('wizard.loadingBusinesses')}</p>
+          <p className="px-4 py-3 text-sm text-adm-muted">{t('wizard.loadingBusinesses')}</p>
         ) : filtered.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-[#64748B]">{t('wizard.noBusinesses')}</p>
+          <p className="px-4 py-3 text-sm text-adm-muted">{t('wizard.noBusinesses')}</p>
         ) : (
-          <ul className="divide-y divide-[#E2E8F0]">
+          <ul className="divide-y divide-adm-line">
             {filtered.map((b) => (
               <li key={b.uid}>
                 <button
                   type="button"
                   onClick={() => onSelect(b.uid)}
-                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-start transition-colors hover:bg-[#F8FAFC] focus-visible:bg-[#F0F7FF] focus-visible:outline-none"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 text-start transition-colors hover:bg-adm-raised focus-visible:bg-adm-accent-soft focus-visible:outline-none"
                 >
                   <span className="min-w-0">
-                    <BidiText lines={2} className="font-semibold text-[#0B1B3D]">{b.businessName}</BidiText>
-                    <span className="block text-xs text-[#64748B]"><bdi dir="ltr">{b.businessId}</bdi></span>
+                    <BidiText lines={2} className="font-semibold text-adm-text">{b.businessName}</BidiText>
+                    <span className="block text-xs text-adm-muted"><bdi dir="ltr">{b.businessId}</bdi></span>
                   </span>
-                  <i className={`fa-solid fa-chevron-right text-xs text-[#CBD5E1] ${dir === 'rtl' ? '-scale-x-100' : ''}`} aria-hidden="true" />
+                  <i className={`fa-solid fa-chevron-right text-xs text-adm-hint ${dir === 'rtl' ? '-scale-x-100' : ''}`} aria-hidden="true" />
                 </button>
               </li>
             ))}
           </ul>
         )}
       </div>
-      {businesses !== null && filtered.length > 0 && <p className="text-xs text-[#64748B]">{tn('wizard.businessCount', filtered.length)}</p>}
+      {businesses !== null && filtered.length > 0 && <p className="text-xs text-adm-muted">{tn('wizard.businessCount', filtered.length)}</p>}
     </div>
   )
 }
@@ -140,24 +142,24 @@ export function FulfillmentPicker({ value, onChange }: { value: Fulfillment; onC
   ]
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.fulfillment')}</legend>
+      <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.fulfillment')}</legend>
       <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const selected = value === option.value
           return (
             <label
               key={option.value}
-              className={`flex min-h-24 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0038B8] ${
-                selected ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]'
+              className={`flex min-h-24 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-adm-accent ${
+                selected ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line bg-adm-surface hover:bg-adm-raised'
               }`}
             >
               <input type="radio" name="fulfillment" value={option.value} checked={selected} onChange={() => onChange(option.value)} className="sr-only" />
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-adm-accent text-adm-on-accent' : 'bg-adm-raised text-adm-text-2'}`}>
                 <i className={`fa-solid ${option.icon} text-sm`} aria-hidden="true" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-[#0B1B3D]">{t(option.title)}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[#475569]">{t(option.hint)}</span>
+                <span className="block text-sm font-semibold text-adm-text">{t(option.title)}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-adm-text-2">{t(option.hint)}</span>
               </span>
             </label>
           )
@@ -187,7 +189,7 @@ export function TermsFields({
   const { t } = useAdminT()
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.commission')} · {t('wizard.paymentTerms')}</legend>
+      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.commission')} · {t('wizard.paymentTerms')}</legend>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="wiz-commission" className={ADMIN_LABEL}>{t('wizard.commission')}</label>
@@ -203,7 +205,7 @@ export function TermsFields({
               value={commission}
               onChange={(e) => onCommission(e.target.value)}
             />
-            <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-[#64748B]" aria-hidden="true">%</span>
+            <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-adm-muted" aria-hidden="true">%</span>
           </div>
           <p className={ADMIN_HINT}>{t('wizard.commissionHint')}</p>
         </div>
@@ -243,24 +245,24 @@ export function DirectScopePicker({ chain, onChange }: { chain: boolean; onChang
   ]
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.directScope')}</legend>
+      <legend className="mb-3 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.directScope')}</legend>
       <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const selected = chain === option.chain
           return (
             <label
               key={String(option.chain)}
-              className={`flex min-h-24 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0038B8] ${
-                selected ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]'
+              className={`flex min-h-24 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-adm-accent ${
+                selected ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line bg-adm-surface hover:bg-adm-raised'
               }`}
             >
               <input type="radio" name="direct-scope" checked={selected} onChange={() => onChange(option.chain)} className="sr-only" />
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-adm-accent text-adm-on-accent' : 'bg-adm-raised text-adm-text-2'}`}>
                 <i className={`fa-solid ${option.icon} text-sm`} aria-hidden="true" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-[#0B1B3D]">{t(option.title)}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-[#475569]">{t(option.hint)}</span>
+                <span className="block text-sm font-semibold text-adm-text">{t(option.title)}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-adm-text-2">{t(option.hint)}</span>
               </span>
             </label>
           )
@@ -279,22 +281,22 @@ export function MultipassScopePicker({ value, onChange }: { value: PerkScope; on
   ]
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-3 text-[13px] font-semibold text-[#475569]">{t('wizard.scope')}</legend>
+      <legend className="mb-3 text-[13px] font-semibold text-adm-text-2">{t('wizard.scope')}</legend>
       <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const on = value === option.value
           return (
             <label
               key={option.value}
-              className={`flex min-h-20 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0038B8] ${on ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]'}`}
+              className={`flex min-h-20 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-adm-accent ${on ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line bg-adm-surface hover:bg-adm-raised'}`}
             >
               <input type="radio" name="perk-scope" value={option.value} checked={on} onChange={() => onChange(option.value)} className="sr-only" />
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${on ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${on ? 'bg-adm-accent text-adm-on-accent' : 'bg-adm-raised text-adm-text-2'}`}>
                 <i className={`fa-solid ${option.icon} text-sm`} aria-hidden="true" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-[#0B1B3D]">{t(option.title)}</span>
-                <span className="mt-0.5 block text-[13px] leading-relaxed text-[#475569]">{t(option.hint)}</span>
+                <span className="block text-sm font-semibold text-adm-text">{t(option.title)}</span>
+                <span className="mt-0.5 block text-[13px] leading-relaxed text-adm-text-2">{t(option.hint)}</span>
               </span>
             </label>
           )
@@ -334,7 +336,7 @@ export function MultipassPerkFields({ value, onChange }: { value: MultipassScope
       {multi && (
         <>
           <fieldset className="min-w-0">
-            <legend className="mb-3 text-[13px] font-semibold text-[#475569]">{t('wizard.guideTitle')}</legend>
+            <legend className="mb-3 text-[13px] font-semibold text-adm-text-2">{t('wizard.guideTitle')}</legend>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="wiz-guide-he" className={ADMIN_LABEL}>{t('wizard.guideHe')}</label>

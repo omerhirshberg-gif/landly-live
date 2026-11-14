@@ -18,6 +18,7 @@ import { isAppleMobileWeb, providerOrder } from '@shared/auth/appleDevice'
 import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@shared/auth/signInCustomer'
 import { signUpCustomer } from '@shared/auth/signUpCustomer'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
+import { authBack } from '@shared/navigation/backGuard'
 import { auth, devicePersistence } from '@shared/firebase/config'
 import { describeAuthError, isAuthCancellation, logAuthError, withIsolatedCode, type AuthErrorDescription, type AuthErrorProvider } from '@shared/firebase/authErrors'
 import { getUserDocument } from '@shared/firebase/users'
@@ -45,6 +46,7 @@ import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmai
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
 import { warning as warningHaptic } from '../../lib/haptics'
+import { useBackGuard } from '../../lib/useBackGuard'
 import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
 import { formFactor, usesPanes } from '../../lib/layout'
 import { VIEWPORT_HEIGHT, isWeb, webOnly } from '../../lib/webStyles'
@@ -401,6 +403,13 @@ export default function LoginScreen() {
     setPending(null)
     switchMode('signIn')
   }
+
+  // Android's back button: the email check and sign-up return to sign-in, sign-in stays (nothing is
+  // behind it). While the onboarding wizard is up it answers first (it registers after this one).
+  useBackGuard(() => {
+    if (authBack({ pending: !!pending, mode }) === 'to-sign-in') handleBackToSignIn()
+    return true
+  })
 
   const signUp = mode === 'signUp'
   const busy = submitting || oauthBusy !== null

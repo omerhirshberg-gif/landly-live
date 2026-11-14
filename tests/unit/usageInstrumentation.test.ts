@@ -8,6 +8,13 @@ const mocks = vi.hoisted(() => ({
   recordUsage: vi.fn(),
   recordUsageBatch: vi.fn(),
   handleInboundEvents: vi.fn(),
+  sendVia019Sms: vi.fn(),
+  sendVia019WhatsApp: vi.fn(),
+}))
+vi.mock('@/lib/otp/gateway019', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/otp/gateway019')>()),
+  sendVia019Sms: mocks.sendVia019Sms,
+  sendVia019WhatsApp: mocks.sendVia019WhatsApp,
 }))
 vi.mock('@/lib/usage/recordUsage', () => ({ recordUsage: mocks.recordUsage, recordUsageBatch: mocks.recordUsageBatch }))
 vi.mock('@/lib/firebase/admin', () => ({
@@ -26,7 +33,8 @@ vi.mock('next/server', async (importOriginal) => ({
 import { cloudTranslator } from '@/lib/translate/cloudTranslate'
 import { autocompleteAddress, placeAddress, reverseGeocodeCity } from '@/lib/maps/googleMaps'
 import { sendWhatsAppMessage } from '@/lib/whatsapp/graph'
-import { devProvider } from '@/lib/auth/phoneVerification'
+import { devProvider, gateway019Provider, OtpDeliveryError } from '@/lib/auth/phoneVerification'
+import { Gateway019Error } from '@/lib/otp/gateway019'
 import { POST as whatsappWebhook } from '@/app/api/webhooks/whatsapp/route'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -102,6 +110,33 @@ describe('Google Maps', () => {
   })
 })
 
+describe('019 Gateway', () => {
+  const sms = { phone: '+972501234567', code: '123456', channel: 'sms', lang: 'en' } as const
+  const whatsapp = { phone: '+33612345678', code: '123456', channel: 'whatsapp', lang: 'en' } as const
+
+  it('counts an accepted SMS and an accepted WhatsApp code under their own counters', async () => {
+    await gateway019Provider.send(sms)
+    await gateway019Provider.send(whatsapp)
+    expect(mocks.sendVia019Sms).toHaveBeenCalledOnce()
+    expect(mocks.sendVia019WhatsApp).toHaveBeenCalledOnce()
+    expect(mocks.recordUsage.mock.calls).toEqual([['gateway019.smsOtpSent'], ['gateway019.whatsappOtpSent']])
+  })
+
+  it('counts nothing when 019 refuses or cannot be reached', async () => {
+    mocks.sendVia019Sms.mockRejectedValueOnce(new Gateway019Error('rejected', 'HTTP 400'))
+    mocks.sendVia019WhatsApp.mockRejectedValueOnce(new Gateway019Error('network', 'unreachable'))
+    await expect(gateway019Provider.send(sms)).rejects.toBeInstanceOf(OtpDeliveryError)
+    await expect(gateway019Provider.send(whatsapp)).rejects.toBeInstanceOf(OtpDeliveryError)
+    expect(mocks.recordUsage).not.toHaveBeenCalled()
+  })
+
+  it('no longer counts any Meta OTP', async () => {
+    await gateway019Provider.send(whatsapp)
+    expect(mocks.recordUsage).not.toHaveBeenCalledWith('whatsapp.authSent')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
 describe('WhatsApp', () => {
   const accepted = () => json({ messages: [{ id: 'wamid.ok' }] })
 
@@ -119,7 +154,7 @@ describe('WhatsApp', () => {
 
   it('counts a simulated OTP at no cost', async () => {
     await devProvider.send({ phone: '+972501234567', code: '123456', channel: 'whatsapp', lang: 'en' })
-    expect(mocks.recordUsage).toHaveBeenCalledExactlyOnceWith('whatsapp.simulated')
+    expect(mocks.recordUsage).toHaveBeenCalledExactlyOnceWith('gateway019.simulated')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

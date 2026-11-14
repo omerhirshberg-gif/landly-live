@@ -32,9 +32,17 @@ export interface UsageCounters {
     inboundMessages: number
     /** Bot, team and idle-sweep replies Meta accepted (free inside the 24h window). */
     serviceSent: number
-    /** OTP authentication templates Meta accepted (HTTP 200 with a wamid). */
+    /** Legacy: OTP authentication templates Meta accepted, before OTPs moved to 019. Read for old months, never written. */
     authSent: number
-    /** Sends logged instead of sent (WhatsApp not live: `next dev`, Preview). */
+    /** Legacy: OTP sends logged instead of sent, before the 019 counters. Read for old months, never written. */
+    simulated: number
+  }
+  gateway019: {
+    /** SMS codes (Israeli numbers) 019 accepted. */
+    smsOtpSent: number
+    /** WhatsApp codes (other countries) 019 accepted. */
+    whatsappOtpSent: number
+    /** Codes logged instead of sent (019 not live: `next dev`, Preview). */
     simulated: number
   }
 }
@@ -51,6 +59,9 @@ export const USAGE_METRICS = [
   'whatsapp.serviceSent',
   'whatsapp.authSent',
   'whatsapp.simulated',
+  'gateway019.smsOtpSent',
+  'gateway019.whatsappOtpSent',
+  'gateway019.simulated',
 ] as const
 
 export type UsageMetric = (typeof USAGE_METRICS)[number]
@@ -87,6 +98,7 @@ export function emptyCounters(): UsageCounters {
       geocoding: { requests: 0 },
     },
     whatsapp: { inboundMessages: 0, serviceSent: 0, authSent: 0, simulated: 0 },
+    gateway019: { smsOtpSent: 0, whatsappOtpSent: 0, simulated: 0 },
   }
 }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Bell } from 'lucide-react'
 import { NOTIFICATION_POINTS } from '@/lib/brand/onboardingIcons'
 import { useLang } from '@/lib/i18n/useLang'
 import Button from '../entrance/Button'
@@ -21,7 +22,7 @@ export default function NotificationsStep({
     <>
       <PointList points={NOTIFICATION_POINTS.map((p) => ({ icon: p.icon, label: t(p.key) }))} className="mb-6" />
       <div className="grid gap-2.5">
-        <Button label={t('onb_notif_enable')} onClick={onEnable} busy={busy === 'enable'} disabled={busy === 'later'} large />
+        <Button icon={<Bell className="h-5 w-5" strokeWidth={2} />} label={t('onb_notif_enable')} onClick={onEnable} busy={busy === 'enable'} disabled={busy === 'later'} large />
         <Button label={t('onb_notif_later')} onClick={onLater} busy={busy === 'later'} disabled={busy === 'enable'} variant="secondary" />
       </div>
     </>

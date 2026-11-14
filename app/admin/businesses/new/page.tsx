@@ -14,6 +14,7 @@ import type { BusinessNameOverrides } from '@/lib/business/businessText'
 import BusinessLogoField from '@/components/admin/BusinessLogoField'
 import BusinessNameTranslations from '@/components/admin/BusinessNameTranslations'
 import Alert from '@/components/admin/Alert'
+import Switch from '@/components/admin/Switch'
 import BackLink from '@/components/admin/BackLink'
 import Card from '@/components/admin/Card'
 import { ButtonSpinner, FormSection, StickyActionBar } from '@/components/admin/FormSection'
@@ -21,7 +22,6 @@ import { FormTabs, TabPanel, useFormTabs } from '@/components/admin/FormTabs'
 import { useAdminParent } from '@/components/admin/AdminCrumbContext'
 import PageHeader from '@/components/admin/PageHeader'
 import BusinessPhoneField from '@/components/admin/BusinessPhoneField'
-import { categoryEmoji } from '@/components/admin/CategoryBadge'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_SELECT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
 import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
@@ -57,6 +57,7 @@ const emptyForm = {
   totalQuantity: '',
   unlimited: false,
   isBestseller: false,
+  isChain: false,
   isNationwide: false,
   participatingChains: [],
   participatingPlaces: [],
@@ -117,6 +118,7 @@ export default function NewBusinessPage() {
             category: form.category,
             location: form.location,
             address: form.address,
+            isChain: form.isChain,
             logoUrl: form.logoUrl,
             phone: form.phone,
             loginEmail: form.loginEmail,
@@ -131,6 +133,9 @@ export default function NewBusinessPage() {
             expiryDate: form.expiryDate || null,
             totalQuantity: form.unlimited || !form.totalQuantity ? null : Number(form.totalQuantity),
             isBestseller: form.isBestseller,
+            isNationwide: form.isNationwide,
+            participatingChains: form.isNationwide ? form.participatingChains : [],
+            participatingPlaces: form.isNationwide ? form.participatingPlaces : [],
             ...voucherTermsPayload(form),
           },
           translationOverrides: form.translationOverrides,
@@ -156,32 +161,32 @@ export default function NewBusinessPage() {
         <BackLink />
 
         <Card className="overflow-hidden">
-          <div className="flex items-start gap-4 border-b border-[#E2E8F0] bg-[#ECFDF5] px-5 py-5 sm:px-6">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+          <div className="flex items-start gap-4 border-b border-adm-line bg-adm-ok-soft px-5 py-5 sm:px-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <i className="fa-solid fa-check text-lg" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#0B1B3D]">{t('newBiz.created')}</h1>
-              <p className="mt-0.5 text-sm text-emerald-800">{t('newBiz.createdSub')}</p>
+              <h1 className="text-xl font-bold text-adm-text">{t('newBiz.created')}</h1>
+              <p className="mt-0.5 text-sm text-adm-ok">{t('newBiz.createdSub')}</p>
             </div>
           </div>
 
-          <dl className="divide-y divide-[#E2E8F0]">
+          <dl className="divide-y divide-adm-line">
             <ResultRow label={t('newBiz.business')}>
-              <span className="font-semibold text-[#0B1B3D]" dir="auto">{result.businessName}</span>
+              <span className="font-semibold text-adm-text" dir="auto">{result.businessName}</span>
             </ResultRow>
             <ResultRow label={t('newBiz.loginEmail')}>
               <div className="flex items-center gap-1">
-                <span className="min-w-0 break-all font-mono text-[#0B1B3D]" dir="ltr">{result.loginEmail}</span>
+                <span className="min-w-0 break-all font-mono text-adm-text" dir="ltr">{result.loginEmail}</span>
                 <CopyButton value={result.loginEmail} label={t('newBiz.copyEmail')} />
               </div>
             </ResultRow>
             <ResultRow label={t('newBiz.loginPassword')}>
-              <RevealableText className="font-mono text-[#0B1B3D]">{result.loginPassword}</RevealableText>
+              <RevealableText className="font-mono text-adm-text">{result.loginPassword}</RevealableText>
             </ResultRow>
             <ResultRow label={t('newBiz.firstOffer')}>
-              <div className="font-semibold text-[#0B1B3D]" dir="auto">{result.offerTitle}</div>
-              <div className="font-mono text-xs text-[#64748B]">{result.offerId}</div>
+              <div className="font-semibold text-adm-text" dir="auto">{result.offerTitle}</div>
+              <div className="font-mono text-xs text-adm-muted">{result.offerId}</div>
             </ResultRow>
           </dl>
         </Card>
@@ -237,14 +242,23 @@ export default function NewBusinessPage() {
                 <label htmlFor="biz-category" className={ADMIN_LABEL}>{t('newBiz.category')}</label>
                 <select id="biz-category" required className={`${ADMIN_SELECT}`} value={form.category} onChange={(e) => update('category', e.target.value)}>
                   {BUSINESS_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{`${categoryEmoji(cat)} ${cat}`.trim()}</option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
               <div className="sm:col-span-2">
+                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-adm-line bg-adm-surface px-4 text-sm font-semibold text-adm-text transition-colors hover:bg-adm-raised has-[:checked]:border-adm-accent/40 has-[:checked]:bg-adm-accent-soft">
+                  <Switch checked={form.isChain} onChange={(v) => setForm((prev) => ({ ...prev, isChain: v, isNationwide: v }))} />
+                  <i className="fa-solid fa-sitemap text-xs text-adm-accent" aria-hidden="true" />
+                  {t('newBiz.isChain')}
+                </label>
+                <p className={ADMIN_HINT}>{t('newBiz.isChainHint')}</p>
+              </div>
+              <div className="sm:col-span-2">
+                {form.isChain && <p className={`${ADMIN_HINT} mb-2 mt-0`}>{t('newBiz.hqOptional')}</p>}
                 <AddressAutocomplete
                   id="biz-location"
-                  required
+                  required={!form.isChain}
                   value={{ text: form.location, address: form.address }}
                   onChange={({ text, address }) => setForm((prev) => ({ ...prev, location: text, address }))}
                 />
@@ -287,7 +301,7 @@ export default function NewBusinessPage() {
 
         <TabPanel state={tabs} tab="pricing">
           <FormSection icon="fa-shekel-sign" title={t('newBiz.pricingTitle')} description={t('newBiz.pricingDesc')}>
-            <OfferFormFields value={form} onChange={updateOffer} section="pricing" />
+            <OfferFormFields value={form} onChange={updateOffer} section="pricing" showNationwide storesField={form.isNationwide ? 'nationwide' : undefined} />
           </FormSection>
           <FormSection icon="fa-ticket" title={t('newBiz.redemptionTitle')} description={t('newBiz.redemptionDesc')}>
             <OfferFormFields value={form} onChange={updateOffer} section="terms" />
@@ -332,7 +346,7 @@ export default function NewBusinessPage() {
 function ResultRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-5 py-4 sm:px-6">
-      <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{label}</dt>
       <dd className="mt-1">{children}</dd>
     </div>
   )

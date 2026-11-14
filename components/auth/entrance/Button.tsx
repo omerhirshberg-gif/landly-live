@@ -1,6 +1,6 @@
 'use client'
 
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 // Web counterpart of landly-mobile/src/components/Button.tsx: press feedback
 // lands on press-in (scale 0.98 + the darker fill), a gentle 1.01 lift on
@@ -14,6 +14,7 @@ export default function Button({
   variant = 'primary',
   large,
   arrow,
+  icon,
   type = 'button',
   ...props
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
@@ -24,6 +25,8 @@ export default function Button({
   large?: boolean
   /** Trailing forward arrow. */
   arrow?: boolean
+  /** A line icon before the label (20px, 2px stroke), mirrored by the page direction. */
+  icon?: ReactNode
 }) {
   const primary = variant === 'primary'
   const inactive = disabled || busy
@@ -53,6 +56,7 @@ export default function Button({
           className={`me-2 h-5 w-5 rounded-full border-2 border-current border-r-transparent animate-spin ${primary ? 'text-white' : 'text-brand'}`}
         />
       )}
+      {icon && !busy && <span aria-hidden="true" className="me-2.5 flex shrink-0 items-center">{icon}</span>}
       <span className={large ? 'text-title font-extrabold tracking-[0.2px]' : 'text-base font-bold'}>{label}</span>
       {arrow && !busy && (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ms-2.5 rtl:-scale-x-100">

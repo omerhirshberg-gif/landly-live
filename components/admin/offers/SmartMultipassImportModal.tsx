@@ -142,36 +142,36 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
 
         {(phase === 'idle' || phase === 'reading' || phase === 'checking') && (
           <>
-            {fixedPerk && <p dir="auto" className="break-words text-base font-semibold text-[#0B1B3D]">{fixedPerk.title}</p>}
+            {fixedPerk && <p dir="auto" className="break-words text-base font-semibold text-adm-text">{fixedPerk.title}</p>}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files[0]) }}
-              className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors ${dragging ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#CBD5E1] bg-[#F8FAFC]'}`}
+              className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors ${dragging ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line-strong bg-adm-sunken'}`}
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#0038B8] shadow-sm">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-adm-surface text-adm-accent shadow-sm">
                 <i className={`fa-solid ${phase === 'idle' ? 'fa-file-excel' : 'fa-spinner fa-spin'} text-lg`} aria-hidden="true" />
               </span>
-              <p className="text-base font-semibold text-[#0B1B3D]">{phase === 'reading' ? t('smart.reading') : phase === 'checking' ? t('smart.checking') : t('smart.drop')}</p>
-              <p className="text-sm text-[#475569]">{t('upload.orBrowse')}</p>
+              <p className="text-base font-semibold text-adm-text">{phase === 'reading' ? t('smart.reading') : phase === 'checking' ? t('smart.checking') : t('smart.drop')}</p>
+              <p className="text-sm text-adm-text-2">{t('upload.orBrowse')}</p>
               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,text/csv" className="sr-only" tabIndex={-1} aria-label={t('upload.choose')} onChange={(e) => void handleFile(e.target.files?.[0])} />
               <button type="button" className={SECONDARY_BUTTON} disabled={phase !== 'idle'} onClick={() => inputRef.current?.click()}>
                 <i className="fa-solid fa-folder-open text-xs" aria-hidden="true" />
                 {t('upload.choose')}
               </button>
-              <p className="text-[13px] text-[#64748B]">{t('smart.formats', { n: MAX_SHEET_ROWS })}</p>
+              <p className="text-[13px] text-adm-muted">{t('smart.formats', { n: MAX_SHEET_ROWS })}</p>
             </div>
           </>
         )}
 
         {(phase === 'review' || phase === 'committing') && plan && (
           <>
-            <p className="flex items-center gap-2 text-sm font-semibold text-[#0B1B3D]">
-              <i className="fa-solid fa-file-excel text-emerald-600" aria-hidden="true" />
+            <p className="flex items-center gap-2 text-sm font-semibold text-adm-text">
+              <i className="fa-solid fa-file-excel text-adm-ok" aria-hidden="true" />
               <bdi dir="ltr" className="min-w-0 truncate">{fileName}</bdi>
             </p>
             {plan.tooMany && <Alert tone="warning">{t('smart.tooMany', { n: MAX_SHEET_ROWS })}</Alert>}
-            {fixedPerk && !plan.hasPerkColumns && <p className="text-sm text-[#475569]">{t('smart.fixedTarget')}</p>}
+            {fixedPerk && !plan.hasPerkColumns && <p className="text-sm text-adm-text-2">{t('smart.fixedTarget')}</p>}
 
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Stat label={t('smart.summaryNew')} value={counted(newRows).length} hint={t('smart.codesN', { n: sum(newRows) })} tone="good" />
@@ -184,21 +184,21 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
 
             <ul className="space-y-3">
               {rows.map((r) => (
-                <li key={r.perk.key} className={`rounded-2xl border p-4 transition-colors ${r.include ? 'border-[#E2E8F0] bg-white' : 'border-[#E2E8F0] bg-[#F8FAFC] opacity-70'}`}>
+                <li key={r.perk.key} className={`rounded-2xl border p-4 transition-colors ${r.include ? 'border-adm-line bg-adm-surface' : 'border-adm-line bg-adm-sunken opacity-70'}`}>
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <BidiText lines={2} className="text-base font-semibold text-[#0B1B3D]">{r.perk.title || r.perk.brand}</BidiText>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#64748B]">
+                      <BidiText lines={2} className="text-base font-semibold text-adm-text">{r.perk.title || r.perk.brand}</BidiText>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-adm-muted">
                         {r.perk.brand && r.perk.brand !== r.perk.title && <BidiText lines={2}>{r.perk.brand}</BidiText>}
                         <span>{t('smart.codesN', { n: `⁦${r.perk.codes}⁩` })}</span>
                         {r.perk.expiresFirst && <span>{t('smart.col.expiry')}: <bdi dir="ltr" className="tabular-nums">{r.perk.expiresFirst}</bdi></span>}
                       </p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-3 py-1 text-[13px] font-semibold ${r.creates ? 'bg-[#F0F7FF] text-[#0038B8]' : r.target ? 'bg-[#F1F5F9] text-[#334155]' : 'bg-amber-50 text-amber-800'}`}>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-[13px] font-semibold ${r.creates ? 'bg-adm-accent-soft text-adm-accent' : r.target ? 'bg-adm-raised text-adm-text-2' : 'bg-adm-warn-soft text-adm-warn'}`}>
                       {r.creates ? t('smart.statusNew') : r.target ? t('smart.statusRestock') : t('smart.pickPerk')}
                     </span>
                     {!fixedPerk && (
-                      <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-[13px] font-medium text-[#475569]">
+                      <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-[13px] font-medium text-adm-text-2">
                         <span className="hidden sm:inline">{t('smart.col.include')}</span>
                         <Switch checked={r.include} onChange={(include) => edit(r.perk.key, { include })} aria-label={`${t('smart.col.include')}: ${r.perk.title}`} />
                       </label>
@@ -233,9 +233,9 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
 
                   {r.include && r.target && (
                     <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
-                      <div><dt className="text-[13px] text-[#64748B]">{t('smart.col.current')}</dt><dd className="font-semibold tabular-nums text-[#0B1B3D]"><bdi dir="ltr">{r.target.remaining}</bdi></dd></div>
-                      <div><dt className="text-[13px] text-[#64748B]">{t('smart.col.added')}</dt><dd className="font-semibold tabular-nums text-emerald-700"><bdi dir="ltr">+{r.perk.codes}</bdi></dd></div>
-                      <div><dt className="text-[13px] text-[#64748B]">{t('smart.col.total')}</dt><dd className="font-semibold tabular-nums text-[#0B1B3D]"><bdi dir="ltr">{r.target.remaining + r.perk.codes}</bdi></dd></div>
+                      <div><dt className="text-[13px] text-adm-muted">{t('smart.col.current')}</dt><dd className="font-semibold tabular-nums text-adm-text"><bdi dir="ltr">{r.target.remaining}</bdi></dd></div>
+                      <div><dt className="text-[13px] text-adm-muted">{t('smart.col.added')}</dt><dd className="font-semibold tabular-nums text-adm-ok"><bdi dir="ltr">+{r.perk.codes}</bdi></dd></div>
+                      <div><dt className="text-[13px] text-adm-muted">{t('smart.col.total')}</dt><dd className="font-semibold tabular-nums text-adm-text"><bdi dir="ltr">{r.target.remaining + r.perk.codes}</bdi></dd></div>
                     </dl>
                   )}
                 </li>
@@ -243,12 +243,12 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
             </ul>
 
             {plan.problems.length > 0 && (
-              <details className="group rounded-2xl border border-[#E2E8F0]">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-semibold text-[#0B1B3D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
+              <details className="group rounded-2xl border border-adm-line">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-semibold text-adm-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent">
                   {t('smart.attention')}
-                  <i className="fa-solid fa-chevron-down text-xs text-[#64748B] transition-transform group-open:rotate-180" aria-hidden="true" />
+                  <i className="fa-solid fa-chevron-down text-xs text-adm-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                 </summary>
-                <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-[#E2E8F0] p-4 text-sm text-[#475569]">
+                <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-adm-line p-4 text-sm text-adm-text-2">
                   {plan.problems.slice(0, 200).map((p, i) => (
                     <li key={i}>{t(`smart.problem.${p.reason}` as AdminKey, { row: `⁦${p.row}⁩` })}</li>
                   ))}
@@ -269,10 +269,10 @@ export default function SmartMultipassImportModal({ onClose, onDone, fixedPerk }
           <>
             <Alert tone="success">{message}</Alert>
             <div>
-              <h3 className="mb-2 text-sm font-bold text-[#0B1B3D]">{t('smart.failedTitle')}</h3>
+              <h3 className="mb-2 text-sm font-bold text-adm-text">{t('smart.failedTitle')}</h3>
               <ul className="space-y-2">
                 {failures.map((f, i) => (
-                  <li key={i} className="rounded-xl border border-[#FCA5A5] bg-[#FEF2F2] px-4 py-3 text-sm text-[#991B1B]">
+                  <li key={i} className="rounded-xl border border-adm-danger-line bg-adm-danger-soft px-4 py-3 text-sm text-adm-danger">
                     <BidiText lines={2} className="font-semibold">{f.title}</BidiText>
                     <p>{f.error}</p>
                   </li>
@@ -293,18 +293,18 @@ function Field({ id, label, value, invalid, onChange }: { id: string; label: str
   return (
     <div>
       <label htmlFor={id} className={ADMIN_LABEL}>{label}</label>
-      <input id={id} inputMode="decimal" dir="ltr" autoComplete="off" aria-invalid={invalid || undefined} className={`${ADMIN_INPUT} tabular-nums ${invalid ? 'border-[#F87171]' : ''}`} value={value} onChange={(e) => onChange(e.target.value)} />
+      <input id={id} inputMode="decimal" dir="ltr" autoComplete="off" aria-invalid={invalid || undefined} className={`${ADMIN_INPUT} tabular-nums ${invalid ? 'border-adm-danger' : ''}`} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   )
 }
 
 function Stat({ label, value, hint, tone }: { label: string; value: number; hint: string; tone: 'good' | 'warn' | 'plain' }) {
-  const color = tone === 'good' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-700' : 'text-[#0B1B3D]'
+  const color = tone === 'good' ? 'text-adm-ok' : tone === 'warn' ? 'text-adm-warn' : 'text-adm-text'
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-3">
-      <dt className="text-[13px] text-[#64748B]">{label}</dt>
+    <div className="rounded-xl border border-adm-line bg-adm-surface px-4 py-3">
+      <dt className="text-[13px] text-adm-muted">{label}</dt>
       <dd className={`mt-1 text-2xl font-bold tabular-nums ${color}`}><bdi dir="ltr">{value}</bdi></dd>
-      {hint && <p className="text-[13px] text-[#64748B]">{hint}</p>}
+      {hint && <p className="text-[13px] text-adm-muted">{hint}</p>}
     </div>
   )
 }

@@ -83,24 +83,24 @@ export default function AudioMessage({ media }: { media: InboxMedia }) {
           onClick={decode}
           disabled={decoded.state === 'decoding'}
           aria-busy={decoded.state === 'decoding'}
-          className="flex min-h-11 w-full items-center gap-2.5 rounded-full bg-[#F1F5F9] px-3 text-[13px] font-semibold text-[#0F172A] transition-colors hover:bg-[#E2E8F0] disabled:cursor-progress focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent]"
+          className="flex min-h-11 w-full items-center gap-2.5 rounded-full bg-adm-raised px-3 text-[13px] font-semibold text-adm-text transition-colors hover:bg-adm-raised disabled:cursor-progress focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent [-webkit-tap-highlight-color:transparent]"
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0038B8] text-white">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-adm-accent text-adm-on-accent">
             <i className={`fa-solid ${decoded.state === 'decoding' ? 'fa-spinner fa-spin motion-reduce:animate-none' : 'fa-play'} text-xs`} aria-hidden="true" />
           </span>
           {decoded.state === 'decoding' ? `Preparing ${noun}…` : `Play ${noun}`}
         </button>
       ) : (
-        <p className="text-[13px] text-[#64748B]">
+        <p className="text-[13px] text-adm-muted">
           {decoded.state === 'failed' ? `This ${noun} couldn't be played here.` : `This browser can't play this ${noun}.`} Download it to listen.
         </p>
       )}
-      <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+      <div className="flex items-center gap-2 text-[11px] text-adm-muted">
         <i className={`fa-solid ${media.voice ? 'fa-microphone' : 'fa-music'}`} aria-hidden="true" />
         <span>{label}</span>
         {media.size !== undefined && <bdi dir="ltr">{fileSize(media.size)}</bdi>}
         {media.downloadUrl && (
-          <a href={media.downloadUrl} className="ms-auto font-semibold text-[#0038B8] hover:underline" aria-label={`Download ${noun}`}>
+          <a href={media.downloadUrl} className="ms-auto font-semibold text-adm-accent hover:underline" aria-label={`Download ${noun}`}>
             <i className="fa-solid fa-download me-1" aria-hidden="true" />
             Download
           </a>

@@ -90,7 +90,7 @@ export default function DataTable<Row>({
       <Card className="hidden overflow-hidden lg:block">
         <div className="admin-table-scroll overflow-x-auto overscroll-x-contain">
         <table className="w-full min-w-[960px] text-start text-sm font-medium" aria-label={label}>
-          <thead className={`border-b border-[#E2E8F0] bg-[#F8FAFC] text-[13px] font-bold text-[#64748B] ${locale === 'he' ? '' : 'uppercase tracking-wider'}`}>
+          <thead className={`border-b border-adm-line bg-adm-sunken text-[13px] font-bold text-adm-muted ${locale === 'he' ? '' : 'uppercase tracking-wider'}`}>
             <tr>
               {columns.map((column, i) => {
                 const sorting = sort?.id === column.id ? sort.direction : null
@@ -106,9 +106,9 @@ export default function DataTable<Row>({
                       <button
                         type="button"
                         onClick={() => toggleSort(column.id)}
-                        className={`inline-flex min-h-11 items-center gap-1.5 transition-colors hover:text-[#0B1B3D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] ${
+                        className={`inline-flex min-h-11 items-center gap-1.5 transition-colors hover:text-adm-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent ${
                           column.align === 'end' ? 'flex-row-reverse' : ''
-                        } ${sorting ? 'text-[#0B1B3D]' : ''}`}
+                        } ${sorting ? 'text-adm-text' : ''}`}
                       >
                         {column.header}
                         <i
@@ -129,12 +129,12 @@ export default function DataTable<Row>({
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8F0]">
+          <tbody className="divide-y divide-adm-line">
             {sorted.map((row) => (
               <tr
                 key={rowKey(row)}
                 onClick={rowHref ? () => router.push(rowHref(row)) : undefined}
-                className={`${rowHref ? 'cursor-pointer transition-colors hover:bg-[#F8FAFC]' : ''} ${rowClassName?.(row) ?? ''}`}
+                className={`${rowHref ? 'cursor-pointer transition-colors hover:bg-adm-raised' : ''} ${rowClassName?.(row) ?? ''}`}
               >
                 {columns.map((column, i) => (
                   <td
@@ -145,7 +145,7 @@ export default function DataTable<Row>({
                       <Link
                         href={rowHref(row)}
                         onClick={(event) => event.stopPropagation()}
-                        className="block min-w-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
+                        className="block min-w-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent"
                       >
                         {column.cell(row)}
                       </Link>

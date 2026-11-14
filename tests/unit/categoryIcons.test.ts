@@ -14,7 +14,7 @@ describe('category vector icons', () => {
     expect(new Set(CATEGORY_TILES.map((tile) => CATEGORY_ICONS[tile.category])).size).toBe(CATEGORY_TILES.length)
     for (const tile of CATEGORY_TILES) {
       expect(tile).not.toHaveProperty('icon')
-      expect(tile.emoji).toMatch(EMOJI)
+      expect(tile).not.toHaveProperty('emoji')
     }
   })
 
@@ -83,6 +83,5 @@ describe('category vector icons', () => {
     expect(html).toMatch(/^<svg [^>]*viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lipstick h-5 w-5" aria-hidden="true"/)
     expect(html).not.toContain('rtl:')
     expect(html.match(/<path /g)).toHaveLength(3)
-    expect(CATEGORY_TILES.find((tile) => tile.category === 'Beauty and Skincare')?.emoji).toBe('💄')
   })
 })

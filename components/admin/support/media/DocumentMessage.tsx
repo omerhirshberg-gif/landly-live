@@ -11,16 +11,16 @@ export default function DocumentMessage({ media }: { media: InboxMedia }) {
     <a
       href={media.downloadUrl}
       aria-label={`Download ${name}`}
-      className="flex w-72 max-w-full items-center gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5 ring-1 ring-[#E2E8F0] transition-colors hover:bg-[#F1F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
+      className="flex w-72 max-w-full items-center gap-3 rounded-xl bg-adm-sunken px-3 py-2.5 ring-1 ring-adm-line transition-colors hover:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent"
     >
-      <i className="fa-regular fa-file-lines shrink-0 text-2xl text-[#0038B8]" aria-hidden="true" />
+      <i className="fa-regular fa-file-lines shrink-0 text-2xl text-adm-accent" aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <bdi dir="auto" className="block truncate text-sm font-semibold text-[#0F172A]">
+        <bdi dir="auto" className="block truncate text-sm font-semibold text-adm-text">
           {name}
         </bdi>
-        <span className="block text-[11px] text-[#64748B]">{[ext, fileSize(media.size)].filter(Boolean).join(' · ')}</span>
+        <span className="block text-[11px] text-adm-muted">{[ext, fileSize(media.size)].filter(Boolean).join(' · ')}</span>
       </span>
-      <i className="fa-solid fa-download shrink-0 text-[#64748B]" aria-hidden="true" />
+      <i className="fa-solid fa-download shrink-0 text-adm-muted" aria-hidden="true" />
     </a>
   )
 }

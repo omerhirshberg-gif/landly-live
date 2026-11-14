@@ -8,7 +8,7 @@ interface Props {
 }
 
 const ICON_BUTTON =
-  'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[#64748B] transition-colors hover:bg-[#F0F7FF] hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
+  'inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-adm-muted transition-colors hover:bg-adm-accent-soft hover:text-adm-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent'
 
 // Masks a sensitive value (e.g. a freshly-created login password) behind a
 // reveal toggle instead of printing it to the screen by default.
@@ -65,7 +65,7 @@ export function CopyButton({ value, label = 'Copy' }: { value: string; label?: s
       aria-label={status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : label}
     >
       <i
-        className={`fa-solid ${status === 'copied' ? 'fa-check text-emerald-600' : status === 'failed' ? 'fa-xmark text-[#B91C1C]' : 'fa-copy'} text-sm`}
+        className={`fa-solid ${status === 'copied' ? 'fa-check text-adm-ok' : status === 'failed' ? 'fa-xmark text-adm-danger' : 'fa-copy'} text-sm`}
         aria-hidden="true"
       />
       <span className="sr-only" aria-live="polite">

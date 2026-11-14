@@ -464,11 +464,11 @@ describe('support bot decisions', () => {
       if (menu.type !== 'interactive' || menu.interactive.type !== 'list') throw new Error('expected a list message')
       return menu.interactive.action.sections[0].rows.find((r) => r.id === 'menu_login_help')
     }
-    expect(row('en')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Login & Account help' })
-    expect(row('he')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 \u05E2\u05D6\u05E8\u05D4 \u05D1\u05D4\u05EA\u05D7\u05D1\u05E8\u05D5\u05EA \u05D5\u05D7\u05E9\u05D1\u05D5\u05DF' })
-    expect(row('ru')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 \u0412\u0445\u043E\u0434 \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442', description: '\u041F\u0440\u043E\u0431\u043B\u0435\u043C\u044B \u0441\u043E \u0432\u0445\u043E\u0434\u043E\u043C \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u043C' })
-    expect(row('fr')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Connexion et compte', description: 'Aide \u00E0 la connexion et compte' })
-    expect(row('es')).toEqual({ id: 'menu_login_help', title: '\uD83D\uDD10 Sesi\u00F3n y cuenta', description: 'Ayuda para iniciar sesi\u00F3n y cuenta' })
+    expect(row('en')).toEqual({ id: 'menu_login_help', title: 'Login & Account help' })
+    expect(row('he')).toEqual({ id: 'menu_login_help', title: '\u05E2\u05D6\u05E8\u05D4 \u05D1\u05D4\u05EA\u05D7\u05D1\u05E8\u05D5\u05EA \u05D5\u05D7\u05E9\u05D1\u05D5\u05DF' })
+    expect(row('ru')).toEqual({ id: 'menu_login_help', title: '\u0412\u0445\u043E\u0434 \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442', description: '\u041F\u0440\u043E\u0431\u043B\u0435\u043C\u044B \u0441\u043E \u0432\u0445\u043E\u0434\u043E\u043C \u0438 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u043C' })
+    expect(row('fr')).toEqual({ id: 'menu_login_help', title: 'Connexion et compte', description: 'Aide \u00E0 la connexion et compte' })
+    expect(row('es')).toEqual({ id: 'menu_login_help', title: 'Sesi\u00F3n y cuenta', description: 'Ayuda para iniciar sesi\u00F3n y cuenta' })
   })
 
   it('dispatches choices by count: up to three as buttons, four to ten as one list, never more', () => {

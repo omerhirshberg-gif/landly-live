@@ -171,7 +171,7 @@ export default function BusinessesListPage() {
               width: 'w-32',
               className: 'hidden xl:table-cell',
               cell: (business) => (
-                <bdi dir="ltr" className="tabular-nums text-[#475569]">
+                <bdi dir="ltr" className="tabular-nums text-adm-text-2">
                   {business.businessId}
                 </bdi>
               ),
@@ -194,7 +194,7 @@ export default function BusinessesListPage() {
               align: 'end',
               width: 'w-28',
               sortValue: (business) => business.redeemedTotal,
-              cell: (business) => <span className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</span>,
+              cell: (business) => <span className="font-semibold tabular-nums text-adm-text">{business.redeemedTotal}</span>,
             },
           ]}
           actions={(business) => [
@@ -204,14 +204,14 @@ export default function BusinessesListPage() {
           card={(business) => (
             <>
               <BusinessIdentity business={business} />
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3 text-sm">
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-adm-line pt-3 text-sm">
                 <CategoryBadge category={business.category} />
                 <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
                   {t('biz.activeCount', { n: business.activePerkCount })}
                 </StatusBadge>
-                <span className="ms-auto inline-flex items-center gap-1.5 text-[#475569]">
-                  <i className="fa-solid fa-ticket text-xs text-[#64748B]" aria-hidden="true" />
-                  <bdi dir="ltr" className="font-semibold tabular-nums text-[#0B1B3D]">{business.redeemedTotal}</bdi> {t('biz.redeemedSuffix')}
+                <span className="ms-auto inline-flex items-center gap-1.5 text-adm-text-2">
+                  <i className="fa-solid fa-ticket text-xs text-adm-muted" aria-hidden="true" />
+                  <bdi dir="ltr" className="font-semibold tabular-nums text-adm-text">{business.redeemedTotal}</bdi> {t('biz.redeemedSuffix')}
                 </span>
               </div>
             </>
@@ -229,9 +229,9 @@ function BusinessIdentity({ business }: { business: Business }) {
     <span className="flex min-w-0 items-center gap-3">
       <LogoTile logoUrl={business.logoUrl} name={business.businessName} />
       <span className="min-w-0 flex-1">
-        <BidiText className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{business.businessName}</BidiText>
-        {altName && <BidiText className="text-sm text-[#475569]">{altName}</BidiText>}
-        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-[#64748B] [text-align:match-parent]">
+        <BidiText className="font-semibold text-adm-text hover:text-adm-accent">{business.businessName}</BidiText>
+        {altName && <BidiText className="text-sm text-adm-text-2">{altName}</BidiText>}
+        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-adm-muted [text-align:match-parent]">
           {business.email}
         </bdi>
       </span>

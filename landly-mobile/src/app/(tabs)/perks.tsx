@@ -211,7 +211,7 @@ export default function PerksScreen() {
                 pinned at the end, past a hairline divider. */}
             {!browsing && (
               <View style={styles.filterRow}>
-                <PerksCategoryChips value={category} onChange={setCategory} style={[styles.chips, isRtl ? { marginRight: -paddingRight } : { marginLeft: -paddingLeft }]} />
+                <PerksCategoryChips value={category} onChange={setCategory} style={[styles.chips, { marginStart: -(isRtl ? paddingRight : paddingLeft) }]} />
                 <View style={styles.filterDivider} />
                 <SortSheet value={sort} onChange={setSort} />
               </View>
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   nearbyEmpty: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
   filterRow: { flexDirection: 'row', alignItems: 'center' },
   // Bleed to the start edge only (by that side's padding, set inline: the right in Hebrew); the rail's own end padding is the gap before the divider.
-  chips: { flex: 1, minWidth: 0, marginLeft: 0, marginRight: 0 },
+  chips: { flex: 1, minWidth: 0, marginEnd: 0 },
   rails: { gap: 16, marginTop: 4 },
   filterDivider: { width: 1, height: 24, flexShrink: 0, marginEnd: 12, backgroundColor: colors.border },
   sectionTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },

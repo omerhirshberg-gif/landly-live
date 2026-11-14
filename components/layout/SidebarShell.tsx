@@ -15,7 +15,7 @@ interface SidebarShellProps {
 // through here.
 export default function SidebarShell({ sidebar, header, children }: SidebarShellProps) {
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen min-h-dvh bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
       {sidebar}
       <main className="md:ps-64">
         {header}

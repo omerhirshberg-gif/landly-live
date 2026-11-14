@@ -99,7 +99,7 @@ describe('native back button', () => {
   })
 
   it('backs every settings header and the category screen', () => {
-    expect(read('components/ScreenHeader.tsx')).toContain("<GlassBackButton label={t('settings_back')} onPress={() => goBack(fallback)} />")
+    expect(read('components/ScreenHeader.tsx')).toContain("<GlassBackButton label={t('settings_back')} onPress={() => (onBack ? onBack() : goBack(fallback))} />")
     expect(read('app/category/[category].tsx')).toContain("<GlassBackButton label={t('cats_detail_back')} onPress={goBack} />")
   })
 })

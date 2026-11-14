@@ -65,8 +65,8 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
 
   if (!windowOpen) {
     return (
-      <div className="shrink-0 border-t border-[#E2E8F0] bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm text-[#475569]">
-        <i className="fa-solid fa-lock me-2 text-[#64748B]" aria-hidden="true" />
+      <div className="shrink-0 border-t border-adm-line bg-adm-surface px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-sm text-adm-text-2">
+        <i className="fa-solid fa-lock me-2 text-adm-muted" aria-hidden="true" />
         {t('support.lastWrote', { when: `\u2066${relativeTime(lastInboundAt, now, locale)}\u2069` })}
       </div>
     )
@@ -74,7 +74,7 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
 
   return (
     <form
-      className="shrink-0 border-t border-[#E2E8F0] bg-white px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+      className="shrink-0 border-t border-adm-line bg-adm-surface px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (canSend) onSend()
@@ -100,18 +100,18 @@ export default function ReplyComposer({ value, onChange, onSend, sending, window
           placeholder={t('support.replyPlaceholder')}
           aria-label={t('support.replyLabel')}
           aria-describedby="reply-hint"
-          className="block min-h-12 w-full resize-none rounded-xl border border-[#CBD5E1] bg-white px-4 py-3 text-base leading-6 text-[#0F172A] outline-none transition-[border-color,box-shadow] placeholder:text-[#94A3B8] focus:border-[#0038B8] focus:ring-4 focus:ring-[#0038B8]/15 read-only:bg-[#F8FAFC]"
+          className="block min-h-12 w-full resize-none rounded-xl border border-adm-line-strong bg-adm-surface px-4 py-3 text-base leading-6 text-adm-text outline-none transition-[border-color,box-shadow] placeholder:text-adm-hint focus:border-adm-accent focus:ring-4 focus:ring-adm-accent/15 read-only:bg-adm-sunken"
         />
         <button
           type="submit"
           disabled={!canSend}
           aria-label={sending ? t('support.sending') : t('support.sendReply')}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0038B8] text-white shadow-sm shadow-[#0038B8]/25 transition-colors hover:bg-[#002A8A] active:bg-[#002066] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 [-webkit-tap-highlight-color:transparent]"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-adm-accent text-adm-on-accent shadow-sm shadow-adm-accent/25 transition-colors hover:bg-adm-accent-hover active:bg-adm-accent-press focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 [-webkit-tap-highlight-color:transparent]"
         >
           {sending ? <ButtonSpinner /> : <i className="fa-solid fa-paper-plane" aria-hidden="true" />}
         </button>
       </div>
-      <p id="reply-hint" className="mt-1.5 hidden text-[11px] text-[#64748B] sm:block">
+      <p id="reply-hint" className="mt-1.5 hidden text-[11px] text-adm-muted sm:block">
         {touchFirst ? (
           <>
             <kbd className="font-sans">Enter</kbd> {t('support.hintTouch')} ·{' '}

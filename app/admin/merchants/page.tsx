@@ -55,19 +55,19 @@ export default function MerchantInvitesPage() {
       {!data && !error && <CardSkeletons count={3} />}
       {data && data.invites.length === 0 && <EmptyState icon="fa-envelope-open-text" title={t('mer.emptyTitle')} description={t('mer.emptyBody')} />}
       {data && data.invites.length > 0 && (
-        <Card className="divide-y divide-slate-100">
+        <Card className="divide-y divide-adm-line-soft">
           {data.invites.map((i) => (
             <div key={i.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-4">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#0B1B3D]"><BidiText>{i.businessName}</BidiText></p>
-                <p className="truncate text-xs text-slate-500"><bdi dir="ltr">{i.contactEmail}</bdi></p>
-                <p className="text-xs text-slate-500"><bdi dir="ltr">{Number((i.commissionRate * 100).toFixed(2))}%</bdi> · {isPaymentTerms(i.paymentTerms) ? termsLabel(t, i.paymentTerms) : i.paymentTerms}</p>
+                <p className="truncate text-sm font-semibold text-adm-text"><BidiText>{i.businessName}</BidiText></p>
+                <p className="truncate text-xs text-adm-muted"><bdi dir="ltr">{i.contactEmail}</bdi></p>
+                <p className="text-xs text-adm-muted"><bdi dir="ltr">{Number((i.commissionRate * 100).toFixed(2))}%</bdi> · {isPaymentTerms(i.paymentTerms) ? termsLabel(t, i.paymentTerms) : i.paymentTerms}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400"><bdi dir="ltr">{i.status === 'completed' ? formatIsraeliDate(i.completedAt) : `${t('mer.expires')} ${formatIsraeliDate(i.expiresAt)}`}</bdi></span>
+                <span className="text-xs text-adm-hint"><bdi dir="ltr">{i.status === 'completed' ? formatIsraeliDate(i.completedAt) : `${t('mer.expires')} ${formatIsraeliDate(i.expiresAt)}`}</bdi></span>
                 <StatusBadge tone={TONE[i.status] ?? 'slate'}>{`mer.status.${i.status}` in en ? t(`mer.status.${i.status}` as AdminKey) : i.status}</StatusBadge>
                 {(i.status === 'pending' || i.status === 'opened') && (
-                  <button type="button" onClick={() => revoke(i.id)} className="min-h-11 rounded-lg px-2 text-sm font-semibold text-rose-700 hover:underline">{t('mer.revoke')}</button>
+                  <button type="button" onClick={() => revoke(i.id)} className="min-h-11 rounded-lg px-2 text-sm font-semibold text-adm-danger hover:underline">{t('mer.revoke')}</button>
                 )}
               </div>
             </div>
@@ -77,15 +77,15 @@ export default function MerchantInvitesPage() {
       {notOnboarded.length > 0 && (
         <section className="mt-10" aria-labelledby="legacy-h">
           <h2 id="legacy-h" className={SECTION_HEADING}>{t('mer.withoutAgreement')}</h2>
-          <Card className="divide-y divide-slate-100">
+          <Card className="divide-y divide-adm-line-soft">
             {notOnboarded.map((b) => (
               <div key={b.id} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
-                <span className="truncate font-medium text-[#0B1B3D]"><BidiText>{b.name}</BidiText></span>
+                <span className="truncate font-medium text-adm-text"><BidiText>{b.name}</BidiText></span>
                 <StatusBadge tone={b.hasTerms ? 'blue' : 'amber'}>{b.hasTerms ? t('mer.termsSet') : t('mer.noTerms')}</StatusBadge>
               </div>
             ))}
           </Card>
-          <p className="mt-2 text-xs text-slate-400">{t('mer.legacyNote')}</p>
+          <p className="mt-2 text-xs text-adm-hint">{t('mer.legacyNote')}</p>
         </section>
       )}
     </>

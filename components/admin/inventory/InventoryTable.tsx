@@ -11,14 +11,14 @@ import Link from 'next/link'
 /** A perk's stock: the number over a bar. Amber once low, red at zero; a local perk with no limit has none. */
 function StockBar({ row }: { row: InventoryRow }) {
   const { t } = useAdminT()
-  if (row.remaining === null) return <span className="text-sm text-[#475569]">{t('common.unlimited')}</span>
+  if (row.remaining === null) return <span className="text-sm text-adm-text-2">{t('common.unlimited')}</span>
   const total = row.purchased ?? 0
   const share = total ? Math.min(100, Math.round((row.remaining / total) * 100)) : 0
-  const tone = row.health === 'out' ? 'bg-[#DC2626]' : row.health === 'low' ? 'bg-amber-500' : 'bg-[#0038B8]'
+  const tone = row.health === 'out' ? 'bg-[#DC2626]' : row.health === 'low' ? 'bg-amber-500' : 'bg-adm-accent'
   return (
     <div className="min-w-[110px]">
-      <bdi dir="ltr" className="text-lg font-bold tabular-nums text-[#0B1B3D]">{row.remaining}</bdi>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#F1F5F9]" aria-hidden="true">
+      <bdi dir="ltr" className="text-lg font-bold tabular-nums text-adm-text">{row.remaining}</bdi>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-adm-raised" aria-hidden="true">
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${share}%` }} />
       </div>
     </div>
@@ -35,7 +35,7 @@ function HealthBadge({ row }: { row: InventoryRow }) {
 
 function RestockButton({ row, onRestock }: { row: InventoryRow; onRestock: (row: InventoryRow) => void }) {
   const { t } = useAdminT()
-  if (row.kind !== 'multipass') return <span className="text-xs text-[#64748B]">—</span>
+  if (row.kind !== 'multipass') return <span className="text-xs text-adm-muted">—</span>
   return (
     <button
       type="button"
@@ -66,10 +66,10 @@ export function UploadIcon() {
 function Identity({ row }: { row: InventoryRow }) {
   return (
     <span className="block min-w-0">
-      <Link href={`/admin/offers/${row.id}/edit`} className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
-        <BidiText lines={2} className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{row.title}</BidiText>
+      <Link href={`/admin/offers/${row.id}/edit`} className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent">
+        <BidiText lines={2} className="font-semibold text-adm-text hover:text-adm-accent">{row.title}</BidiText>
       </Link>
-      <BidiText lines={2} className="text-xs text-[#64748B]">{row.businessName}</BidiText>
+      <BidiText lines={2} className="text-xs text-adm-muted">{row.businessName}</BidiText>
     </span>
   )
 }
@@ -95,9 +95,9 @@ export default function InventoryTable({ rows, onRestock }: { rows: InventoryRow
           header: t('inv.col.purchased'),
           align: 'end',
           sortValue: (row) => row.purchased ?? Number.MAX_SAFE_INTEGER,
-          cell: (row) => (row.purchased === null ? <span className="text-[#475569]">{t('common.unlimited')}</span> : <bdi dir="ltr" className="tabular-nums">{row.purchased}</bdi>),
+          cell: (row) => (row.purchased === null ? <span className="text-adm-text-2">{t('common.unlimited')}</span> : <bdi dir="ltr" className="tabular-nums">{row.purchased}</bdi>),
         },
-        { id: 'claimed', header: t('inv.col.claimed'), align: 'end', sortValue: (row) => row.claimed, cell: (row) => <bdi dir="ltr" className="font-semibold tabular-nums text-[#0B1B3D]">{row.claimed}</bdi> },
+        { id: 'claimed', header: t('inv.col.claimed'), align: 'end', sortValue: (row) => row.claimed, cell: (row) => <bdi dir="ltr" className="font-semibold tabular-nums text-adm-text">{row.claimed}</bdi> },
         {
           id: 'remaining',
           header: t('inv.col.remaining'),
@@ -119,9 +119,9 @@ export default function InventoryTable({ rows, onRestock }: { rows: InventoryRow
           </div>
           <StockBar row={row} />
           <dl className="grid grid-cols-3 gap-3 text-xs">
-            <div><dt className="text-[#64748B]">{t('inv.col.type')}</dt><dd className="font-semibold text-[#0B1B3D]">{typeLabel(row)}</dd></div>
-            <div><dt className="text-[#64748B]">{t('inv.col.purchased')}</dt><dd className="font-semibold text-[#0B1B3D]">{row.purchased === null ? t('common.unlimited') : <bdi dir="ltr" className="tabular-nums">{row.purchased}</bdi>}</dd></div>
-            <div><dt className="text-[#64748B]">{t('inv.col.claimed')}</dt><dd className="font-semibold text-[#0B1B3D]"><bdi dir="ltr" className="tabular-nums">{row.claimed}</bdi></dd></div>
+            <div><dt className="text-adm-muted">{t('inv.col.type')}</dt><dd className="font-semibold text-adm-text">{typeLabel(row)}</dd></div>
+            <div><dt className="text-adm-muted">{t('inv.col.purchased')}</dt><dd className="font-semibold text-adm-text">{row.purchased === null ? t('common.unlimited') : <bdi dir="ltr" className="tabular-nums">{row.purchased}</bdi>}</dd></div>
+            <div><dt className="text-adm-muted">{t('inv.col.claimed')}</dt><dd className="font-semibold text-adm-text"><bdi dir="ltr" className="tabular-nums">{row.claimed}</bdi></dd></div>
           </dl>
           {row.kind === 'multipass' && <RestockButton row={row} onRestock={onRestock} />}
         </div>

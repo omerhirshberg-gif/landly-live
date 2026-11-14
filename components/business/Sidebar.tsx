@@ -37,7 +37,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-slate-950/95 backdrop-blur">
         <Link href="/business/dashboard" className="flex items-center gap-2 min-w-0">
           <img src="/logo-mark.png" alt="GoLandly" className="h-7 w-auto shrink-0" />
-          <span className="font-black text-white text-lg leading-none truncate">GoLandly</span>
+          <span className="font-black text-white text-lg leading-tight truncate">GoLandly</span>
         </Link>
         <button
           onClick={() => setOpen(true)}
@@ -57,7 +57,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
       )}
 
       <aside
-        className={`fixed inset-y-0 start-0 z-[9999] w-64 flex flex-col border-e border-white/10 bg-slate-950 transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed inset-y-0 start-0 z-[9999] w-64 flex flex-col border-e border-white/10 bg-gradient-to-b from-slate-950 to-slate-900 transition-transform duration-200 md:translate-x-0 ${
           // Scoped to max-md so this never competes at desktop widths with
           // md:translate-x-0 above -- an earlier version mixed an unprefixed
           // -translate-x-full with rtl:translate-x-full for the mobile-closed
@@ -72,8 +72,8 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
           <img src="/logo-mark.png" alt="GoLandly" className="h-8 w-auto" />
           <div className="flex items-center gap-2">
-            <span className="font-black text-white text-lg leading-none">GoLandly</span>
-            <span className="inline-flex items-center text-micro font-bold uppercase tracking-wide text-brand bg-brand/10 border border-brand/30 rounded-full px-2 py-0.5">
+            <span className="font-black text-white text-lg leading-tight">GoLandly</span>
+            <span className="inline-flex items-center text-micro font-bold uppercase tracking-wide text-brand">
               Business
             </span>
           </div>
@@ -117,7 +117,7 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
           ))}
         </nav>
 
-        <div className="relative z-10 px-3 pt-4 pb-6 border-t border-white/10 bg-slate-950">
+        <div className="relative z-10 px-3 pt-4 pb-6 border-t border-white/10 bg-slate-950/80 backdrop-blur-md">
           <button
             onClick={onLogout}
             className="flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-semibold text-red-400 border border-transparent transition-colors hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/20"

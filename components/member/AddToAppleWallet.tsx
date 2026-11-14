@@ -149,7 +149,7 @@ function IPhoneHandoff({ voucherId }: { voucherId: string }) {
 
   return (
     <>
-      <button type="button" onClick={open} className={`inline-flex min-h-12 items-center gap-2 rounded-full px-4 text-sm font-semibold text-slate-600 transition-colors [@media(hover:hover)]:hover:text-brand ${FOCUS}`}>
+      <button type="button" onClick={open} className={`inline-flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-600 transition-colors [@media(hover:hover)]:hover:text-brand ${FOCUS}`}>
         <Smartphone aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
         <span>{t('wallet_on_iphone_trigger')}</span>
       </button>

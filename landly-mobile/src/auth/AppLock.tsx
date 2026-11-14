@@ -10,6 +10,7 @@ import { formatLastEntry, greetingKey, greetingPeriod, resolveLastEntry } from '
 import { greetingName } from '@shared/auth/names'
 import { LOCK_RISE, UNLOCK } from '@shared/brand/onboardingMotion'
 import { auth } from '@shared/firebase/config'
+import { useBackGuard } from '../lib/useBackGuard'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import type { TranslationKey } from '@shared/i18n/translations'
@@ -387,6 +388,10 @@ export function AppLockOverlay({ settled }: { settled: boolean }) {
   const reduced = useReducedMotion()
   const { phase, setLockRect, landed } = useEntrance()
   const lockupRef = useRef<View>(null)
+
+  // Locked, or under the privacy cover: Android's back button does nothing (it would pop the
+  // screens underneath, or leave the app, around the lock).
+  useBackGuard(() => true, locked || covered)
 
   // The lock screen stays mounted through its exit: `shown` turns on with the
   // lock and off only once the exit has played (or the privacy cover takes

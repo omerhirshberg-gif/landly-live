@@ -10,6 +10,7 @@ import {
   organizationJsonLd,
   perksAggregateOfferJsonLd,
   serializeJsonLd,
+  SOCIAL_PROFILES,
   websiteJsonLd,
 } from '@/lib/seo/jsonLd'
 import { isOfferLive, offerSeoDescription, toPublicOffer } from '@/lib/offers/publicOffer'
@@ -48,10 +49,35 @@ describe('JSON-LD', () => {
   })
 
   it('describes GoLandly and its perk search', () => {
-    expect(organizationJsonLd()).toMatchObject({ '@type': 'Organization', name: 'GoLandly', url: 'https://www.golandly.com', logo: 'https://www.golandly.com/logo-mark.png' })
+    expect(organizationJsonLd()).toMatchObject({ '@type': 'Organization', name: 'GoLandly', url: 'https://www.golandly.com', logo: 'https://www.golandly.com/icons/icon-512.png' })
     const site = websiteJsonLd()
+    expect(site).toMatchObject({ '@type': 'WebSite', name: 'GoLandly', url: 'https://www.golandly.com' })
     expect(site.potentialAction).toMatchObject({ '@type': 'SearchAction', target: { urlTemplate: 'https://www.golandly.com/categories?q={search_term_string}' } })
     expect(site.publisher).toEqual({ '@id': organizationJsonLd()['@id'] })
+  })
+
+  it('names the brand for Google: GoLandly first, alternates without the old spelling', () => {
+    const org = organizationJsonLd()
+    const site = websiteJsonLd()
+    expect(site.alternateName).toEqual(['golandly', 'GoLandly Israel'])
+    expect(org.alternateName).toEqual(['golandly', 'GoLandly Israel'])
+    expect(JSON.stringify([org, site])).not.toMatch(new RegExp(`(?<!Go)${'Land'}ly`))
+    expect(org).not.toHaveProperty('legalName')
+  })
+
+  it('uses the square 512px icon as the logo, from the public folder', () => {
+    const logo = String(organizationJsonLd().logo)
+    expect(logo).toBe('https://www.golandly.com/icons/icon-512.png')
+    const png = readFileSync('public/icons/icon-512.png')
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([512, 512])
+  })
+
+  it("lists the footer's official profiles as sameAs", () => {
+    const org = organizationJsonLd()
+    expect(org.sameAs).toEqual(SOCIAL_PROFILES)
+    expect(SOCIAL_PROFILES).toHaveLength(3)
+    const footer = readFileSync('components/layout/Footer.tsx', 'utf8')
+    for (const url of SOCIAL_PROFILES) expect(footer, url).toContain(url)
   })
 
   it('sums the live perks into one AggregateOffer, or nothing without perks', () => {

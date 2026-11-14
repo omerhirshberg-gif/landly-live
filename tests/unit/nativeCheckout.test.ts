@@ -125,8 +125,10 @@ describe('native checkout screen', () => {
   it('holds the screen while paying and replaces it with the order confirmation on success', () => {
     const screen = read('app/checkout/[offerId].tsx')
     expect(screen).not.toMatch(/WebBrowser|openBrowserAsync|Linking/)
-    expect(screen).toContain('<Stack.Screen options={{ gestureEnabled: !paying }} />')
-    expect(screen).toContain("BackHandler.addEventListener('hardwareBackPress'")
+    // Locked while paying and on the card step (iOS drag, Android drag and edge swipe); Android back waits or returns to the summary.
+    expect(screen).toContain('<Stack.Screen options={swipeAllowed ? { gestureEnabled: true, fullScreenGestureEnabled: true } : lockedBackOptions} />')
+    expect(screen).toContain('useFocusedBackGuard(')
+    expect(screen).toContain('checkoutBack({ paying, step })')
     expect(screen).toContain("router.replace({ pathname: '/order-success/[orderId]', params: { orderId } })")
     expect(screen).toContain('useSafeAreaInsets()')
     expect(screen).toContain("t('checkout_agree')")
@@ -164,7 +166,8 @@ describe('swipe back from the Perks tab', () => {
     const pageFlip = read('lib/pageFlip.ts')
     expect(pageFlip).toContain('gestureEnabled: true')
     expect(pageFlip).toContain('fullScreenGestureEnabled: true')
-    // Checkout holds the swipe only while a payment is in flight.
-    expect(read('app/checkout/[offerId].tsx')).toContain('<Stack.Screen options={{ gestureEnabled: !paying }} />')
+    // Checkout holds the swipe while a payment is in flight and on the card step; the order confirmation never swipes back.
+    expect(read('app/checkout/[offerId].tsx')).toContain('checkoutSwipeAllowed({ paying, step })')
+    expect(read('app/order-success/[orderId].tsx')).toContain('<Stack.Screen options={lockedBackOptions} />')
   })
 })

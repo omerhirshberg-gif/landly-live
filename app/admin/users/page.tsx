@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { useAdminT } from '@/lib/admin/translations'
 import type { AdminLocale } from '@/lib/admin/adminLocale'
@@ -147,7 +147,7 @@ export default function UsersPage() {
               onSelect={(key) => set({ customerType: filters.customerType === key ? ANY : key })}
               describe={(key) => {
                 const info = customerTypeInfo(key, locale)
-                return { label: info.label, mark: info.emoji, color: info.color }
+                return { label: info.label, mark: <info.Icon className="mx-auto h-4 w-4" strokeWidth={1.75} style={{ color: info.color }} />, color: info.color }
               }}
             />
             <Breakdown
@@ -201,7 +201,7 @@ export default function UsersPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <ResultCount shown={filtered.length} total={rows.length} noun={t('users.nounMembers')} />
                 {filtering && (
-                  <button type="button" onClick={() => setFilters(NO_FILTERS)} className="inline-flex min-h-11 items-center text-sm font-semibold text-[#0038B8] hover:text-[#002A8A]">
+                  <button type="button" onClick={() => setFilters(NO_FILTERS)} className="inline-flex min-h-11 items-center text-sm font-semibold text-adm-accent hover:text-adm-accent">
                     {t('list.clearFilters')}
                   </button>
                 )}
@@ -268,7 +268,7 @@ function Breakdown({
   shares: readonly Share[]
   selected: string
   onSelect: (key: string) => void
-  describe: (key: string) => { label: string; mark: string; color: string }
+  describe: (key: string) => { label: string; mark: ReactNode; color: string }
 }) {
   const max = Math.max(1, ...shares.map((share) => share.count))
   return (
@@ -286,25 +286,25 @@ function Breakdown({
                 disabled={other}
                 aria-pressed={other ? undefined : pressed}
                 onClick={() => onSelect(share.key)}
-                className={`block min-h-11 w-full rounded-xl px-2 py-1.5 text-start transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] disabled:cursor-default ${
-                  pressed ? 'bg-[#F0F7FF]' : 'enabled:hover:bg-[#F8FAFC]'
+                className={`block min-h-11 w-full rounded-xl px-2 py-1.5 text-start transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent disabled:cursor-default ${
+                  pressed ? 'bg-adm-accent-soft' : 'enabled:hover:bg-adm-raised'
                 }`}
               >
                 <span className="flex items-center gap-2 text-sm">
                   <span aria-hidden="true" className="w-5 shrink-0 text-center leading-none">
                     {mark}
                   </span>
-                  <span className={`min-w-0 flex-1 truncate ${pressed ? 'font-semibold text-[#0038B8]' : 'text-[#0B1B3D]'}`} dir="auto">
+                  <span className={`min-w-0 flex-1 truncate ${pressed ? 'font-semibold text-adm-accent' : 'text-adm-text'}`} dir="auto">
                     {label}
                   </span>
-                  <span className="shrink-0 tabular-nums text-[#475569]">
+                  <span className="shrink-0 tabular-nums text-adm-text-2">
                     <bdi dir="ltr">{share.count}</bdi>
-                    <span className="ms-1.5 text-xs text-[#64748B]">
+                    <span className="ms-1.5 text-xs text-adm-muted">
                       <bdi dir="ltr">{share.percent}%</bdi>
                     </span>
                   </span>
                 </span>
-                <span className="mt-1.5 ms-7 block h-1.5 overflow-hidden rounded-full bg-[#F1F5F9]" aria-hidden="true">
+                <span className="mt-1.5 ms-7 block h-1.5 overflow-hidden rounded-full bg-adm-raised" aria-hidden="true">
                   <span className="block h-full rounded-full" style={{ width: `${(share.count / max) * 100}%`, backgroundColor: color }} />
                 </span>
               </button>
@@ -320,7 +320,7 @@ function UserAvatar({ user }: { user: AdminUserRow }) {
   const [failed, setFailed] = useState(false)
   const initial = [...(user.name || user.email).trim()][0]?.toUpperCase() ?? '?'
   return (
-    <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0F7FF] text-sm font-bold text-[#0038B8]">
+    <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-adm-accent-soft text-sm font-bold text-adm-accent">
       {user.photoURL && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={user.photoURL} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" onError={() => setFailed(true)} />
@@ -337,8 +337,8 @@ function UserIdentity({ user }: { user: AdminUserRow }) {
     <div className="flex min-w-0 items-center gap-3">
       <UserAvatar user={user} />
       <div className="min-w-0">
-        <BidiText className="font-semibold text-[#0B1B3D]">{user.name || t('users.noName')}</BidiText>
-        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-[#64748B] [text-align:match-parent]">
+        <BidiText className="font-semibold text-adm-text">{user.name || t('users.noName')}</BidiText>
+        <bdi dir="ltr" className="mt-0.5 block truncate text-xs text-adm-muted [text-align:match-parent]">
           {user.email}
         </bdi>
       </div>
@@ -348,11 +348,11 @@ function UserIdentity({ user }: { user: AdminUserRow }) {
 
 function PhoneContact({ user }: { user: AdminUserRow }) {
   const { t } = useAdminT()
-  if (!user.phone) return <span className="text-sm text-[#64748B]">{t('users.noPhone')}</span>
+  if (!user.phone) return <span className="text-sm text-adm-muted">{t('users.noPhone')}</span>
   return (
     <span className="inline-flex items-center gap-2">
       {user.phoneCountry && <span aria-hidden="true">{flagEmoji(user.phoneCountry)}</span>}
-      <bdi dir="ltr" className="tabular-nums text-[#475569]">
+      <bdi dir="ltr" className="tabular-nums text-adm-text-2">
         {displayPhone(user.phone)}
       </bdi>
       <a
@@ -360,7 +360,7 @@ function PhoneContact({ user }: { user: AdminUserRow }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={t('users.chatWith', { name: user.name || user.email })}
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#25D366] transition-colors hover:bg-[#ECFDF5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#25D366] transition-colors hover:bg-adm-ok-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent"
       >
         <i className="fa-brands fa-whatsapp text-lg" aria-hidden="true" />
       </a>
@@ -382,7 +382,7 @@ function VerifiedMark({ ok, icon, label }: { ok: boolean; icon: string; label: s
   const { t } = useAdminT()
   const text = t(ok ? 'users.verified' : 'users.notVerified', { what: label })
   return (
-    <span className={`inline-flex items-center gap-1 ${ok ? 'text-emerald-700' : 'text-[#CBD5E1]'}`} title={text}>
+    <span className={`inline-flex items-center gap-1 ${ok ? 'text-adm-ok' : 'text-adm-hint'}`} title={text}>
       <i className={`fa-solid ${icon} text-xs`} aria-hidden="true" />
       <i className={`fa-solid ${ok ? 'fa-circle-check' : 'fa-circle-xmark'} text-[11px]`} aria-hidden="true" />
       <span className="sr-only">{text}</span>
@@ -417,12 +417,12 @@ function UsersTable({ rows, country }: { rows: AdminUserRow[]; country: (code: s
           sortValue: (user) => country(user.originCountry),
           cell: (user) =>
             user.originCountry ? (
-              <span className="inline-flex items-center gap-1.5 text-[#475569]">
+              <span className="inline-flex items-center gap-1.5 text-adm-text-2">
                 <span aria-hidden="true">{flagEmoji(user.originCountry)}</span>
                 {country(user.originCountry)}
               </span>
             ) : (
-              <span className="text-[#64748B]">—</span>
+              <span className="text-adm-muted">—</span>
             ),
         },
         { id: 'status', header: t('users.col.status'), sortValue: (user) => user.status, cell: (user) => <UserStatusBadge status={user.status} /> },
@@ -432,14 +432,14 @@ function UsersTable({ rows, country }: { rows: AdminUserRow[]; country: (code: s
           header: t('users.col.passes'),
           align: 'end',
           sortValue: (user) => user.activePasses,
-          cell: (user) => <span className={`font-semibold tabular-nums ${user.activePasses ? 'text-[#0B1B3D]' : 'text-[#CBD5E1]'}`}>{user.activePasses}</span>,
+          cell: (user) => <span className={`font-semibold tabular-nums ${user.activePasses ? 'text-adm-text' : 'text-adm-hint'}`}>{user.activePasses}</span>,
         },
         {
           id: 'joined',
           header: t('users.col.joined'),
           sortValue: (user) => time(user.createdAt),
           cell: (user) => (
-            <bdi dir="ltr" className="tabular-nums text-[#475569]">
+            <bdi dir="ltr" className="tabular-nums text-adm-text-2">
               {formatIsraeliDate(user.createdAt)}
             </bdi>
           ),
@@ -450,7 +450,7 @@ function UsersTable({ rows, country }: { rows: AdminUserRow[]; country: (code: s
           className: 'hidden xl:table-cell',
           sortValue: (user) => time(user.lastSignInAt),
           cell: (user) => (
-            <bdi dir="ltr" className="tabular-nums text-[#475569]">
+            <bdi dir="ltr" className="tabular-nums text-adm-text-2">
               {formatIsraeliDateTime(user.lastSignInAt)}
             </bdi>
           ),
@@ -459,10 +459,10 @@ function UsersTable({ rows, country }: { rows: AdminUserRow[]; country: (code: s
       card={(user) => (
         <>
           <UserIdentity user={user} />
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-adm-line pt-3">
             <CustomerTypeBadge type={user.customerType} note={user.customerTypeOther} />
             {user.originCountry && (
-              <span className="inline-flex items-center gap-1 text-xs text-[#475569]">
+              <span className="inline-flex items-center gap-1 text-xs text-adm-text-2">
                 <span aria-hidden="true">{flagEmoji(user.originCountry)}</span>
                 {country(user.originCountry)}
               </span>
@@ -472,18 +472,18 @@ function UsersTable({ rows, country }: { rows: AdminUserRow[]; country: (code: s
               <Verified user={user} />
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[#64748B]">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-adm-muted">
             <PhoneContact user={user} />
             <span className="inline-flex items-center gap-3">
               <span>
-                <span className="font-semibold tabular-nums text-[#0B1B3D]">{user.activePasses}</span> {tn('users.pass', user.activePasses, { n: '' }).trim()}
+                <span className="font-semibold tabular-nums text-adm-text">{user.activePasses}</span> {tn('users.pass', user.activePasses, { n: '' }).trim()}
               </span>
               <span>
                 {t('users.joined')} <bdi dir="ltr">{formatIsraeliDate(user.createdAt)}</bdi>
               </span>
             </span>
           </div>
-          <div className="mt-1 text-xs text-[#64748B]">
+          <div className="mt-1 text-xs text-adm-muted">
             {t('users.lastSignIn')} <bdi dir="ltr">{formatIsraeliDateTime(user.lastSignInAt)}</bdi>
           </div>
         </>

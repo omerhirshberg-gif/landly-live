@@ -102,7 +102,7 @@ export const devProvider: OtpProvider = {
   name: 'dev',
   async send({ phone, code, channel }) {
     console.info(`[phone-otp] simulated ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} to ${maskPhone(phone)}: code ${code}`)
-    recordUsage('whatsapp.simulated')
+    recordUsage('gateway019.simulated')
   },
 }
 
@@ -112,6 +112,8 @@ export const gateway019Provider: OtpProvider = {
   async send({ phone, code, channel, lang }) {
     try {
       await (channel === 'sms' ? sendVia019Sms : sendVia019WhatsApp)({ phone, code, lang })
+      // Only once 019 has accepted it; a refused or unreachable send costs nothing.
+      recordUsage(channel === 'sms' ? 'gateway019.smsOtpSent' : 'gateway019.whatsappOtpSent')
     } catch (err) {
       if (!(err instanceof Gateway019Error)) throw err
       console.error(`[phone-otp] 019 ${channel} delivery failed (${err.code}): ${err.message}`)

@@ -687,8 +687,8 @@ describe('copy', () => {
       expect(t.pending_phone_body_whatsapp, lang).toContain('{phone}')
       expect(t.emailChanged_body, lang).toContain('{email}')
       expect(t.otp_resend_in, lang).toContain('{seconds}')
-      expect(t.otp_title_sms, lang).toContain('💬')
-      expect(t.otp_title_whatsapp, lang).toContain('💬')
+      expect(t.otp_title_sms, lang).not.toMatch(/\p{Extended_Pictographic}/u)
+      expect(t.otp_title_whatsapp, lang).not.toMatch(/\p{Extended_Pictographic}/u)
       for (const key of ['otp_email_title', 'otp_email_subtitle', 'otp_email_success', 'pending_email_enter', 'emailChange_codeLabel'] as const) {
         expect(t[key], `${lang}.${key}`).toBeTruthy()
       }

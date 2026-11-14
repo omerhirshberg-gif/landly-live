@@ -38,7 +38,7 @@ const report = async (query = '') => (await (await call(query)).json()) as Usage
 beforeEach(() => {
   mocks.authError = null
   mocks.projectId = 'landly-be752'
-  mocks.data = { projectId: 'landly-be752', whatsapp: { authSent: 30, simulated: 0 }, google: { translation: { chars: 1200 } } }
+  mocks.data = { projectId: 'landly-be752', gateway019: { smsOtpSent: 20, whatsappOtpSent: 10 }, google: { translation: { chars: 1200 } } }
   mocks.fail = false
   mocks.docIds = []
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -67,17 +67,17 @@ describe('GET /api/admin/usage', () => {
     const r = await report('?month=2026-10')
     expect(mocks.docIds).toEqual(['apiUsageStats/2026-10'])
     expect(r.totals.otpSent).toBe(30)
-    expect(r.totals.netIls).toBeCloseTo(3.6, 6)
-    expect(r.groups.map((g) => g.vendor)).toEqual(['google', 'meta'])
+    expect(r.totals.netIls).toBeCloseTo(20 * 0.06 + 10 * 0.12, 6)
+    expect(r.groups.map((g) => g.vendor)).toEqual(['google', 'gateway019', 'meta'])
     expect(reportLines(r).find((l) => l.skuId === 'translation')!.used).toBe(1200)
   })
 
   it('labels a DEV deployment’s own counters as DEV', async () => {
     mocks.projectId = 'landly-dev'
-    mocks.data = { projectId: 'landly-dev', whatsapp: { simulated: 4 } }
+    mocks.data = { projectId: 'landly-dev', gateway019: { simulated: 4 } }
     const r = await report('?month=2026-10')
     expect(r).toMatchObject({ projectId: 'landly-dev', environment: 'dev' })
-    expect(reportLines(r).find((l) => l.skuId === 'waSimulated')!.used).toBe(4)
+    expect(reportLines(r).find((l) => l.skuId === 'sim019')!.used).toBe(4)
   })
 
   it('answers zeros for a month with no counters', async () => {

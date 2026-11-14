@@ -2,7 +2,7 @@ import { useAdminT } from '@/lib/admin/translations'
 import type { MeterStatus } from '@/lib/usage/usageReport'
 
 const BAR = { ok: 'bg-emerald-500', warn: 'bg-amber-500', over: 'bg-[#DC2626]' } as const
-const TEXT = { ok: 'text-[#64748B]', warn: 'text-amber-700', over: 'text-[#B91C1C]' } as const
+const TEXT = { ok: 'text-adm-muted', warn: 'text-adm-warn', over: 'text-adm-danger' } as const
 
 /** How much of a free monthly allowance is used: green, amber from 80%, red once units are billed. */
 export default function FreeTierMeter({ service, coverage, status }: { service: string; coverage: number; status: MeterStatus }) {
@@ -17,7 +17,7 @@ export default function FreeTierMeter({ service, coverage, status }: { service: 
         aria-valuemax={100}
         aria-valuenow={Math.min(pct, 100)}
         aria-valuetext={t('usage.meterValue', { pct })}
-        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]"
+        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-adm-raised"
       >
         <div className={`h-full rounded-full ${BAR[status]}`} style={{ inlineSize: `${Math.min(pct, 100)}%` }} />
       </div>

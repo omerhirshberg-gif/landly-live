@@ -132,7 +132,7 @@ export default function ImageUploadField({
     <div>
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
         <span id={`${id}-label`} className={ADMIN_LABEL.replace('mb-1.5 ', '')}>{logo ? t('img.logo') : t('img.image')}</span>
-        <div role="tablist" aria-labelledby={`${id}-label`} className="inline-flex rounded-xl bg-[#F1F5F9] p-1">
+        <div role="tablist" aria-labelledby={`${id}-label`} className="inline-flex rounded-xl bg-adm-raised p-1">
           {(['upload', 'link'] as const).map((option) => (
             <button
               key={option}
@@ -142,7 +142,7 @@ export default function ImageUploadField({
               aria-controls={`${id}-${option}`}
               onClick={() => setTab(option)}
               className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
-                tab === option ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
+                tab === option ? 'bg-adm-surface text-adm-text shadow-sm' : 'text-adm-text-2 [@media(hover:hover)]:hover:text-adm-text'
               }`}
             >
               {option === 'upload' ? t('img.upload') : t('img.paste')}
@@ -154,7 +154,7 @@ export default function ImageUploadField({
       {tab === 'upload' ? (
         <div id={`${id}-upload`} role="tabpanel">
           {!logo && (
-            <div role="radiogroup" aria-label={t('img.image')} className="mb-2 inline-flex rounded-xl bg-[#F1F5F9] p-1">
+            <div role="radiogroup" aria-label={t('img.image')} className="mb-2 inline-flex rounded-xl bg-adm-raised p-1">
               {(['none', '16:9'] as const).map((option) => (
                 <button
                   key={option}
@@ -164,7 +164,7 @@ export default function ImageUploadField({
                   disabled={working}
                   onClick={() => setCrop(option)}
                   className={`min-h-11 rounded-lg px-3 text-xs font-semibold transition-colors duration-150 ${
-                    crop === option ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
+                    crop === option ? 'bg-adm-surface text-adm-text shadow-sm' : 'text-adm-text-2 [@media(hover:hover)]:hover:text-adm-text'
                   }`}
                 >
                   {option === 'none' ? t('img.cropFull') : t('img.cropBanner')}
@@ -184,20 +184,20 @@ export default function ImageUploadField({
               if (!working) onFiles(e.dataTransfer.files)
             }}
             className={`relative overflow-hidden rounded-xl border-2 border-dashed transition-colors duration-150 ${
-              dragging ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#CBD5E1] bg-[#F8FAFC]'
+              dragging ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line-strong bg-adm-sunken'
             }`}
           >
             {shown && logo ? (
               // As members see it: the whole logo in the badge's rounded white tile.
               <div className="relative flex min-h-40 w-full items-center justify-center py-5">
-                <div className="h-28 w-28 overflow-hidden rounded-[22px] border border-black/[0.06] bg-white p-3 shadow-md">
+                <div className="h-28 w-28 overflow-hidden rounded-[22px] border border-black/[0.06] bg-adm-logo p-3 shadow-md">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={shown} alt="" decoding="async" className="h-full w-full object-contain" />
                 </div>
                 {working && <ProgressOverlay progress={state.progress} />}
               </div>
             ) : shown ? (
-              <div className="relative aspect-[16/9] w-full bg-[#F4F6F9]">
+              <div className="relative aspect-[16/9] w-full bg-adm-sunken">
                 {/* The whole photo, whatever its shape (a portrait is not cut to fit the preview). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={shown} alt="" decoding="async" className="h-full w-full object-contain" />
@@ -208,15 +208,15 @@ export default function ImageUploadField({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 disabled={working}
-                className={`flex ${logo ? 'min-h-40' : 'aspect-[16/9]'} min-h-12 w-full flex-col items-center justify-center gap-2 px-4 text-center text-[#475569] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0038B8]`}
+                className={`flex ${logo ? 'min-h-40' : 'aspect-[16/9]'} min-h-12 w-full flex-col items-center justify-center gap-2 px-4 text-center text-adm-text-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-adm-accent`}
               >
                 {working ? (
                   <ProgressOverlay progress={state.progress} inline />
                 ) : (
                   <>
-                    <i className="fa-solid fa-cloud-arrow-up text-2xl text-[#0038B8]" aria-hidden="true" />
-                    <span className="text-sm font-semibold text-[#0B1B3D]">{logo ? t('img.chooseLogo') : t('img.choosePhoto')}</span>
-                    <span className="text-xs text-[#64748B]">
+                    <i className="fa-solid fa-cloud-arrow-up text-2xl text-adm-accent" aria-hidden="true" />
+                    <span className="text-sm font-semibold text-adm-text">{logo ? t('img.chooseLogo') : t('img.choosePhoto')}</span>
+                    <span className="text-xs text-adm-muted">
                       {logo
                         ? t('img.logoSpec')
                         : crop === '16:9' ? t('img.photoSpecCrop') : t('img.photoSpec')}
@@ -248,12 +248,12 @@ export default function ImageUploadField({
             </div>
           )}
           {lowResolution && state.kind !== 'error' && (
-            <p role="status" className="mt-2 text-xs font-medium text-[#B45309]">
+            <p role="status" className="mt-2 text-xs font-medium text-adm-warn">
               {t('img.lowRes')}
             </p>
           )}
           {state.kind === 'error' && (
-            <p role="alert" className="mt-2 text-xs font-medium text-[#B91C1C]">
+            <p role="alert" className="mt-2 text-xs font-medium text-adm-danger">
               {state.message}
             </p>
           )}
@@ -298,13 +298,13 @@ function ProgressOverlay({ progress, inline = false }: { progress: number | null
       aria-live="polite"
     >
       <div className="w-full">
-        <span className={`mb-1.5 block text-xs font-semibold ${inline ? 'text-[#0B1B3D]' : 'text-white'}`}>
+        <span className={`mb-1.5 block text-xs font-semibold ${inline ? 'text-adm-text' : 'text-white'}`}>
           {percent === null ? t('img.preparing') : t('img.uploading', { pct: percent })}
         </span>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/60">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-adm-surface/60">
           {/* Fills from the inline start, so it grows right-to-left in Hebrew. */}
           <div
-            className="h-full rounded-full bg-[#0038B8] transition-[width] duration-200 ease-out motion-reduce:transition-none"
+            className="h-full rounded-full bg-adm-accent transition-[width] duration-200 ease-out motion-reduce:transition-none"
             style={{ width: `${percent ?? 8}%` }}
           />
         </div>

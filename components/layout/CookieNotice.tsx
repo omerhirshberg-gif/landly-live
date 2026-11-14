@@ -59,7 +59,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
     // data-floating-clearance: floating buttons (the WhatsApp widget) rise above the bar while it shows.
     <div
       data-floating-clearance=""
-      className="fixed bottom-0 inset-x-0 z-[900] bg-slate-900 text-slate-300 pl-[calc(1.25rem+env(safe-area-inset-left,0px))] pr-[calc(1.25rem+env(safe-area-inset-right,0px))] pt-3.5 sm:pl-[calc(1.5rem+env(safe-area-inset-left,0px))] sm:pr-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+      className="fixed bottom-0 inset-x-0 z-[900] bg-white/85 backdrop-blur-md border-t border-slate-200 text-slate-600 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] ps-[calc(1.25rem+env(safe-area-inset-left,0px))] pe-[calc(1.25rem+env(safe-area-inset-right,0px))] pt-3.5 sm:ps-[calc(1.5rem+env(safe-area-inset-left,0px))] sm:pe-[calc(1.5rem+env(safe-area-inset-right,0px))]"
       style={{ paddingBottom: 'calc(0.875rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="max-w-7xl mx-auto flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -69,7 +69,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
               <a
                 key={i}
                 href={CONSENT_PATHS.privacy}
-                className="font-semibold text-white underline underline-offset-2 decoration-slate-500 transition-colors hover:text-sky-300 hover:decoration-sky-300"
+                className="font-semibold text-brand underline underline-offset-2 decoration-brand/40 transition-colors hover:text-brandDark hover:decoration-brandDark"
               >
                 {t('cookie_notice_privacy_link')}
               </a>
@@ -81,7 +81,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
         <div className="flex items-center justify-center gap-2 flex-shrink-0">
           <button
             onClick={onDismiss}
-            className="tap-target bg-white text-slate-900 font-bold text-meta px-6 py-2 rounded-full whitespace-nowrap transition-colors hover:bg-slate-200"
+            className="tap-target bg-brand text-white font-bold text-meta px-6 py-2 rounded-xl whitespace-nowrap transition-colors hover:bg-brandDark"
           >
             {t('cookie_notice_dismiss')}
           </button>
@@ -89,7 +89,7 @@ export function CookieNoticeBar({ t, onDismiss }: { t: (key: TranslationKey) => 
           <button
             onClick={onDismiss}
             aria-label={t('cookie_notice_dismiss_aria')}
-            className="hidden sm:inline-flex tap-target items-center justify-center text-slate-400 hover:text-white transition-colors"
+            className="hidden sm:inline-flex tap-target items-center justify-center text-slate-500 hover:text-slate-900 transition-colors"
           >
             <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
           </button>

@@ -31,7 +31,7 @@ export interface ShowcaseOffer {
 export default function OfferShowcaseCard({ offer, editHref, actions }: { offer: ShowcaseOffer; editHref: string; actions: readonly RowAction[] }) {
   return (
     <Card hover className="flex flex-col">
-      <Link href={editHref} className="group relative block rounded-t-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8]">
+      <Link href={editHref} className="group relative block rounded-t-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent">
         <OfferPhoto imageUrl={offer.imageUrl} />
         <LogoTile logoUrl={offer.businessLogoUrl} name={offer.businessName} className="absolute start-3 -bottom-6" />
         <span className="absolute top-4 end-4">
@@ -40,13 +40,13 @@ export default function OfferShowcaseCard({ offer, editHref, actions }: { offer:
         <span className="sr-only">Edit {offer.title}</span>
       </Link>
       <div className="flex flex-1 flex-col px-4 pb-3 pt-8">
-        <Link href={editHref} className="font-semibold leading-snug text-[#0B1B3D] hover:text-[#0038B8]">
+        <Link href={editHref} className="font-semibold leading-snug text-adm-text hover:text-adm-accent">
           <BidiText lines={2}>{offer.title}</BidiText>
         </Link>
         <div className="mt-2">
           <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
         </div>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-[#64748B]">
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs text-adm-muted">
           <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1">
               <i className="fa-solid fa-ticket text-[10px]" aria-hidden="true" />
@@ -73,7 +73,7 @@ function OfferPhoto({ imageUrl }: { imageUrl: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const photo = imageUrl && failedUrl !== imageUrl ? imageUrl : null
   return (
-    <span className="m-2 mb-0 block aspect-video overflow-hidden rounded-[14px] border border-[#E2E8F0] bg-gradient-to-br from-[#F0F7FF] to-[#E2E8F0]">
+    <span className="m-2 mb-0 block aspect-video overflow-hidden rounded-[14px] border border-adm-line bg-gradient-to-br from-adm-accent-soft to-adm-raised">
       {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -85,7 +85,7 @@ function OfferPhoto({ imageUrl }: { imageUrl: string }) {
           onError={() => setFailedUrl(photo)}
         />
       ) : (
-        <span className="flex h-full w-full items-center justify-center text-2xl text-[#0038B8]/30" aria-hidden="true">
+        <span className="flex h-full w-full items-center justify-center text-2xl text-adm-accent/30" aria-hidden="true">
           <i className="fa-solid fa-image" />
         </span>
       )}

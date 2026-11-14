@@ -32,11 +32,11 @@ function Breakdown({ rows, total }: { rows: { key: string; label: string; count:
       {rows.map(({ key, label, count }) => (
         <li key={key}>
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate text-[#475569]">{label}</span>
-            <span className="font-semibold tabular-nums text-[#0B1B3D]">{count}</span>
+            <span className="min-w-0 truncate text-adm-text-2">{label}</span>
+            <span className="font-semibold tabular-nums text-adm-text">{count}</span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F1F5F9]">
-            <div className="h-full rounded-full bg-[#0038B8]" style={{ width: `${total ? (count / total) * 100 : 0}%` }} />
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-adm-raised">
+            <div className="h-full rounded-full bg-adm-accent" style={{ width: `${total ? (count / total) * 100 : 0}%` }} />
           </div>
         </li>
       ))}
@@ -153,16 +153,16 @@ export default function PrelaunchLeadsPage() {
                 <ol className="mt-3 space-y-2">
                   {data.stats.topReferrers.map((referrer) => (
                     <li key={referrer.id} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 text-[#0B1B3D]">
+                      <span className="min-w-0 text-adm-text">
                         <BidiText>{referrer.name}</BidiText>
-                        <code className="block truncate text-xs text-[#475569]">{referrer.id}</code>
+                        <code className="block truncate text-xs text-adm-text-2">{referrer.id}</code>
                       </span>
-                      <span className="font-semibold tabular-nums text-[#0B1B3D]">{referrer.count}</span>
+                      <span className="font-semibold tabular-nums text-adm-text">{referrer.count}</span>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="mt-3 text-sm text-[#475569]">{t('leads.noReferred')}</p>
+                <p className="mt-3 text-sm text-adm-text-2">{t('leads.noReferred')}</p>
               )}
             </Card>
           </>

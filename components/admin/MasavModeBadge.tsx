@@ -8,11 +8,11 @@ import { useAdminT } from '@/lib/admin/translations'
 export default function MasavModeBadge({ institutionCode }: { institutionCode: string }) {
   const { t } = useAdminT()
   return (
-    <div role="status" className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/40 px-4 py-3 text-sm font-semibold text-amber-900">
-      <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+    <div role="status" className="flex items-start gap-3 rounded-2xl border border-adm-warn-line bg-adm-warn-soft px-4 py-3 text-sm font-semibold text-adm-warn">
+      <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0 text-adm-warn" aria-hidden="true" />
       <span>
         {t('masav.mock')} <bdi dir="ltr" className="font-mono">{institutionCode}</bdi>
-        <span className="mt-0.5 block text-xs font-medium text-amber-800/80">{t('masav.note')}</span>
+        <span className="mt-0.5 block text-xs font-medium text-adm-warn/80">{t('masav.note')}</span>
       </span>
     </div>
   )

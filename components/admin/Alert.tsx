@@ -2,9 +2,9 @@
 // that went through with something to know (warning: e.g. a translation that
 // failed). role="alert" so a screen reader announces it the moment it appears.
 const TONES = {
-  error: { box: 'border-[#FCA5A5] bg-[#FEF2F2] text-[#B91C1C]', icon: 'fa-circle-exclamation' },
-  success: { box: 'border-[#6EE7B7] bg-[#ECFDF5] text-[#047857]', icon: 'fa-circle-check' },
-  warning: { box: 'border-[#FCD34D] bg-[#FFFBEB] text-[#92400E]', icon: 'fa-triangle-exclamation' },
+  error: { box: 'border-adm-danger-line bg-adm-danger-soft text-adm-danger', icon: 'fa-circle-exclamation' },
+  success: { box: 'border-adm-ok-line bg-adm-ok-soft text-adm-ok', icon: 'fa-circle-check' },
+  warning: { box: 'border-adm-warn-line bg-adm-warn-soft text-adm-warn', icon: 'fa-triangle-exclamation' },
 }
 
 export default function Alert({

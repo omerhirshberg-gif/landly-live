@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   titleCompact: { fontSize: 14, lineHeight: 19 },
   business: { flexShrink: 1, fontSize: 13, lineHeight: 18, color: colors.body },
   businessCompact: { fontSize: 12, lineHeight: 17 },
-  metaTextCompact: { fontSize: 11, lineHeight: 15 },
+  metaTextCompact: { fontSize: 12, lineHeight: 16 },
   meta: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 },
   pin: { marginTop: 2 },
   // The method (and category) tag over the photo's top start corner.
@@ -235,17 +235,18 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
+    borderCurve: 'continuous',
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
   },
-  methodText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '600', color: colors.body },
+  methodText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: colors.body },
   locationText: { fontSize: 12, lineHeight: 16, color: colors.textFaint, flexShrink: 2 },
   distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // The price row rides the card's foot (`marginTop: auto`), on one baseline.
   priceRow: { flexDirection: 'row', alignItems: 'baseline', columnGap: 8, marginTop: 'auto', paddingTop: 6 },
-  price: { fontSize: 18, fontWeight: '800', color: colors.brand },
+  price: { fontSize: 18, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
   priceCompact: { fontSize: 16 },
-  original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through' },
+  original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
   originalCompact: { fontSize: 12 },
   // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text.
   // The card doesn't clip (its shadow), so the ribbon rounds the card's corner itself, inside the 1pt border.

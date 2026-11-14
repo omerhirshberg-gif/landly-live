@@ -72,7 +72,8 @@ export async function POST(request: Request) {
     }
     const batch = adminDb.batch()
     batch.update(doc.ref, { translations: named.translations, ...(address ? { address } : {}) })
-    const place = offerPlaceFields({ location: data.location, address })
+    // A chain's offers carry no address (offerPlaceFields), so a refreshed headquarters address is never copied onto them.
+    const place = data.isChain === true ? {} : offerPlaceFields({ location: data.location, address })
     for (const offerRef of offerRefs) {
       batch.update(offerRef, { businessTranslations: named.translations, ...place })
     }

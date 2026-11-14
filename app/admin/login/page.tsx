@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminBrand } from '@/components/admin/AdminBrand'
 import Switch from '@/components/admin/Switch'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -51,23 +52,22 @@ export default function AdminLoginPage() {
       {/* Decorative: a soft brand wash over a faint grid that fades out toward the edges. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#E2E8F0_1px,transparent_1px),linear-gradient(to_bottom,#E2E8F0_1px,transparent_1px)] bg-[size:40px_40px] opacity-60 [mask-image:radial-gradient(ellipse_at_center,#000_20%,transparent_70%)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgb(var(--adm-line))_1px,transparent_1px),linear-gradient(to_bottom,rgb(var(--adm-line))_1px,transparent_1px)] bg-[size:40px_40px] opacity-60 [mask-image:radial-gradient(ellipse_at_center,#000_20%,transparent_70%)]"
       />
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(ellipse_at_top,rgba(0,56,184,0.10),transparent_65%)]"
+        className="absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(ellipse_at_top,rgb(var(--adm-accent)/0.12),transparent_65%)]"
       />
 
       <main className="w-full max-w-md">
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
+        <div className="rounded-2xl border border-adm-line bg-adm-surface p-6 shadow-xl shadow-black/20 sm:p-8">
           <div className="flex flex-col items-center text-center">
-            <img src="/logo-mark.png" alt="GoLandly" className="h-12 w-auto" />
-            <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#F0F7FF] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0038B8]">
-              <i className="fa-solid fa-shield-halved text-[10px]" aria-hidden="true" />
-              {t('login.badge')}
-            </span>
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#0B1B3D]">{t('login.title')}</h1>
-            <p className="mt-1.5 text-sm text-[#475569]">{t('login.subtitle')}</p>
+            <div className="flex items-center gap-3">
+              <img src="/logo-mark.png" alt="" className="h-12 w-auto" />
+              <AdminBrand className="text-2xl" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-adm-text">{t('login.title')}</h1>
+            <p className="mt-1.5 text-sm text-adm-text-2">{t('login.subtitle')}</p>
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -94,17 +94,17 @@ export default function AdminLoginPage() {
             </div>
 
             <div>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D] select-none [-webkit-tap-highlight-color:transparent]">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-adm-text select-none [-webkit-tap-highlight-color:transparent]">
                 <Switch name="remember" checked={remember} onChange={setRemember} aria-describedby={REMEMBER_HINT_ID} />
                 <span>
                   {t('login.stay')}
-                  <span className="text-[#64748B]"> · </span>
+                  <span className="text-adm-muted"> · </span>
                   <bdi lang="he" dir="rtl">
                     זכור אותי
                   </bdi>
                 </span>
               </label>
-              <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-[#64748B]">
+              <p id={REMEMBER_HINT_ID} className="ms-8 text-xs text-adm-muted">
                 {t('login.stayHint')}
               </p>
             </div>
@@ -124,7 +124,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 flex items-center justify-center gap-2 border-t border-[#E2E8F0] pt-5 text-xs font-medium text-[#64748B]">
+          <div className="mt-6 flex items-center justify-center gap-2 border-t border-adm-line pt-5 text-xs font-medium text-adm-muted">
             <i className="fa-solid fa-lock text-[10px]" aria-hidden="true" />
             {t('login.restricted')}
           </div>

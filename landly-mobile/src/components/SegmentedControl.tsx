@@ -102,9 +102,10 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer', userSelect: 'none' }),
   },
   label: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  brandTrack: { borderRadius: radius.pill, backgroundColor: '#eef2f7' },
+  brandTrack: { borderRadius: radius.md, borderCurve: 'continuous', backgroundColor: '#eef2f7' },
   brandPill: {
-    borderRadius: radius.pill,
+    borderRadius: 10,
+    borderCurve: 'continuous',
     backgroundColor: colors.brand,
     shadowColor: colors.brand,
     shadowOpacity: 0.3,

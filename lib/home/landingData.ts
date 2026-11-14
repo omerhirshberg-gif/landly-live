@@ -42,6 +42,13 @@ function toDeal(offer: PublicOffer): OfferDocument {
     translations: offer.translations ?? null,
     city: offer.city,
     address: offer.address ?? null,
+    fulfillmentType: offer.fulfillmentType,
+    perkScope: offer.perkScope,
+    isNationwide: offer.isNationwide === true,
+    participatingChains: offer.participatingChains ?? [],
+    participatingPlaces: offer.participatingPlaces ?? [],
+    chainsCount: offer.chainsCount ?? 0,
+    brandName: offer.brandName,
   }
 }
 

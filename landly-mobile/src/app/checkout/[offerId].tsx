@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams, type Href } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getOffer, type OfferDocument } from '@shared/firebase/offers'
@@ -10,6 +10,7 @@ import { formatPrice, priceDifference } from '@shared/format'
 import type { TranslationKey } from '@shared/i18n/translations'
 import { initiateCheckout, settleSandboxOrder, type CheckoutFailure, type CheckoutOrder } from '@shared/payments/checkoutClient'
 import { cancellationFeeAgorot } from '@shared/payments/voucherTerms'
+import { checkoutBack, checkoutSwipeAllowed } from '@shared/navigation/backGuard'
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
@@ -23,6 +24,8 @@ import TranzilaPaymentStep from '../../components/TranzilaPaymentStep'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
 import { cachedOffer } from '../../lib/openOffer'
+import { lockedBackOptions } from '../../lib/pageFlip'
+import { useFocusedBackGuard } from '../../lib/useBackGuard'
 import { colors, radius } from '../../theme'
 
 const FAILURE_KEYS: Record<CheckoutFailure, TranslationKey> = {
@@ -142,12 +145,14 @@ export default function CheckoutScreen() {
     })
   }, [step, orderId, complete, t])
 
-  // Android's back button waits for the payment, like the swipe and the header.
-  useEffect(() => {
-    if (!paying) return
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true)
-    return () => sub.remove()
-  }, [paying])
+  // Android's back button waits for the payment, like the swipe and the header,
+  // and on the card step returns to the summary instead of leaving the checkout.
+  const backAction = checkoutBack({ paying, step })
+  const swipeAllowed = checkoutSwipeAllowed({ paying, step })
+  useFocusedBackGuard(() => {
+    if (backAction === 'to-summary') setStep('summary')
+    return backAction !== 'default'
+  })
 
   const pay = async () => {
     if (!user || !offerId || !order || busy.current) return
@@ -188,8 +193,13 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <Stack.Screen options={{ gestureEnabled: !paying }} />
-      <ScreenHeader title={t('checkout_title')} fallback={backFallback} />
+      {/* Swipe-back only on the summary: not mid-payment, not on the card step (iOS drag, Android drag and OS edge alike). */}
+      <Stack.Screen options={swipeAllowed ? { gestureEnabled: true, fullScreenGestureEnabled: true } : lockedBackOptions} />
+      <ScreenHeader
+        title={t('checkout_title')}
+        fallback={backFallback}
+        onBack={backAction === 'default' ? undefined : () => backAction === 'to-summary' && setStep('summary')}
+      />
 
       {claimed ? (
         <View style={styles.centered}>
@@ -329,10 +339,10 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: 14, color: colors.textMuted },
   struck: { textDecorationLine: 'line-through' },
   // Web: text-emerald-700.
-  discountValue: { fontSize: 14, fontWeight: '600', color: colors.discount },
+  discountValue: { fontSize: 14, fontWeight: '600', color: colors.discount, fontVariant: ['tabular-nums'] },
   totalRow: { alignItems: 'flex-end', paddingTop: 4 },
   totalLabel: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.heading },
-  totalValue: { fontSize: 28, fontWeight: '800', color: colors.brand },
+  totalValue: { fontSize: 28, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
   vatNote: { fontSize: 12, color: colors.textMuted },
   savings: {
     flexDirection: 'row',
@@ -346,7 +356,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  savingsText: { fontSize: 13, fontWeight: '700', color: colors.success },
+  savingsText: { fontSize: 13, fontWeight: '700', color: colors.success, fontVariant: ['tabular-nums'] },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.heading, marginTop: 20, marginBottom: 8 },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   factText: { flex: 1, fontSize: 14, color: colors.body },

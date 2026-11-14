@@ -81,17 +81,17 @@ export default function PayoutsPage() {
 
           {preview && (
             <>
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-adm-line">
                 <table className="w-full min-w-[40rem] text-sm">
-                  <thead className="bg-slate-50 text-xs text-slate-500">
+                  <thead className="bg-adm-sunken text-xs text-adm-muted">
                     <tr><th className="px-4 py-2.5 text-start">{t('pay.col.merchant')}</th><th className="px-4 py-2.5 text-end">{t('pay.col.vouchers')}</th><th className="px-4 py-2.5 text-end">{t('pay.col.gross')}</th><th className="px-4 py-2.5 text-end">{t('pay.col.commission')}</th><th className="px-4 py-2.5 text-end">{t('pay.col.net')}</th><th className="px-4 py-2.5 text-start">{t('pay.col.status')}</th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {preview.lines.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">{t('pay.empty')}</td></tr>}
+                  <tbody className="divide-y divide-adm-line-soft">
+                    {preview.lines.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-adm-muted">{t('pay.empty')}</td></tr>}
                     {preview.lines.map((l) => (
-                      <tr key={l.businessId} className={l.blocked && l.blocked !== 'nothing_due' ? 'bg-amber-50/40' : ''}>
-                        <td className="px-4 py-2.5 font-medium text-[#0B1B3D]"><BidiText>{l.businessName}</BidiText></td>
-                        <td className="px-4 py-2.5 text-end tabular-nums">{l.voucherIds.length}{l.notYetDue > 0 && <span className="text-xs text-slate-400"> <bdi dir="ltr">{t('pay.notDue', { n: l.notYetDue })}</bdi></span>}</td>
+                      <tr key={l.businessId} className={l.blocked && l.blocked !== 'nothing_due' ? 'bg-adm-warn-soft/40' : ''}>
+                        <td className="px-4 py-2.5 font-medium text-adm-text"><BidiText>{l.businessName}</BidiText></td>
+                        <td className="px-4 py-2.5 text-end tabular-nums">{l.voucherIds.length}{l.notYetDue > 0 && <span className="text-xs text-adm-hint"> <bdi dir="ltr">{t('pay.notDue', { n: l.notYetDue })}</bdi></span>}</td>
                         <td className="px-4 py-2.5 text-end tabular-nums"><bdi dir="ltr">{money(l.grossAgorot)}</bdi></td>
                         <td className="px-4 py-2.5 text-end tabular-nums"><bdi dir="ltr">{money(l.commissionAgorot)}</bdi></td>
                         <td className="px-4 py-2.5 text-end font-semibold tabular-nums"><bdi dir="ltr">{money(l.netAgorot)}</bdi></td>
@@ -102,12 +102,12 @@ export default function PayoutsPage() {
                 </table>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <p className="text-sm text-slate-600"><span className="font-bold text-[#0B1B3D]">{tn('pay.merchants', preview.readyCount)}</span>, <span className="font-bold text-[#0B1B3D]">{tn('pay.vouchers', preview.readyVouchers)}</span>, {t('pay.total')} <span className="font-bold text-[#0B1B3D]"><bdi dir="ltr">{money(preview.readyNetAgorot)}</bdi></span></p>
+                <p className="text-sm text-adm-text-2"><span className="font-bold text-adm-text">{tn('pay.merchants', preview.readyCount)}</span>, <span className="font-bold text-adm-text">{tn('pay.vouchers', preview.readyVouchers)}</span>, {t('pay.total')} <span className="font-bold text-adm-text"><bdi dir="ltr">{money(preview.readyNetAgorot)}</bdi></span></p>
                 {!confirming ? (
                   <button type="button" disabled={preview.readyCount === 0} onClick={() => setConfirming(true)} className={PRIMARY_BUTTON}>{t('pay.lock')}</button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium text-amber-800">{t('pay.confirm', { n: preview.readyVouchers })}</span>
+                    <span className="text-sm font-medium text-adm-warn">{t('pay.confirm', { n: preview.readyVouchers })}</span>
                     <button type="button" onClick={() => call('create')} disabled={busy} className={PRIMARY_BUTTON}>{busy ? t('pay.locking') : t('pay.yesLock')}</button>
                     <button type="button" onClick={() => setConfirming(false)} className={SECONDARY_BUTTON}>{t('common.cancel')}</button>
                   </div>
@@ -120,13 +120,13 @@ export default function PayoutsPage() {
 
       <section aria-labelledby="batches-h">
         <h2 id="batches-h" className={SECTION_HEADING}>{t('pay.batches')}</h2>
-        <Card className="divide-y divide-slate-100">
-          {overview && overview.batches.length === 0 && <p className="p-5 text-sm text-slate-500">{t('pay.noBatches')}</p>}
+        <Card className="divide-y divide-adm-line-soft">
+          {overview && overview.batches.length === 0 && <p className="p-5 text-sm text-adm-muted">{t('pay.noBatches')}</p>}
           {overview?.batches.map((b) => (
-            <Link key={b.id} href={`/admin/payouts/${b.id}`} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-4 transition-colors hover:bg-slate-50/70">
+            <Link key={b.id} href={`/admin/payouts/${b.id}`} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-4 transition-colors hover:bg-adm-raised/70">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#0B1B3D]">{t('pay.payDate')} <bdi dir="ltr">{formatIsraeliDate(b.valueDate)}</bdi></p>
-                <p className="truncate text-xs text-slate-500">{tn('pay.merchants', b.merchantCount)} · {tn('pay.vouchers', b.voucherCount)} · <bdi dir="ltr">{money(b.totalAgorot)}</bdi></p>
+                <p className="text-sm font-semibold text-adm-text">{t('pay.payDate')} <bdi dir="ltr">{formatIsraeliDate(b.valueDate)}</bdi></p>
+                <p className="truncate text-xs text-adm-muted">{tn('pay.merchants', b.merchantCount)} · {tn('pay.vouchers', b.voucherCount)} · <bdi dir="ltr">{money(b.totalAgorot)}</bdi></p>
               </div>
               <div className="flex items-center gap-2">
                 {b.mock && <StatusBadge tone="amber">{t('pay.test')}</StatusBadge>}

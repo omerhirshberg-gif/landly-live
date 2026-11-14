@@ -76,7 +76,8 @@ export async function POST(request: Request) {
         ...(noBusiness
           ? { perkScope: offer.perkScope, brandName: offer.brandName, ...(offer.participatingChains.length > 0 ? { participatingChains: offer.participatingChains, chainsCount: offer.participatingChains.length } : {}) }
           : { perkScope: 'single_business', businessId: offer.businessUid, ...(offer.participatingChains.length > 0 ? { participatingChains: offer.participatingChains, chainsCount: offer.participatingChains.length } : {}) }),
-        isNationwide: offer.isNationwide,
+        // An empty isNationwide cell on a chain business's row means nationwide.
+        isNationwide: !noBusiness && !offer.nationwideGiven && business.isChain === true ? true : offer.isNationwide,
         fulfillmentType: offer.fulfillmentType,
         businessName: noBusiness ? offer.brandName : business.businessName ?? '',
         businessTranslations: noBusiness ? null : parseBusinessTranslations(business.translations),

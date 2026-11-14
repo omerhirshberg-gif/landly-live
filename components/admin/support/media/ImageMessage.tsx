@@ -20,7 +20,7 @@ export default function ImageMessage({ media, caption }: { media: InboxMedia; ca
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('media.openPhoto')}
-        className="block min-h-11 min-w-11 overflow-hidden rounded-xl bg-[#F1F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent]"
+        className="block min-h-11 min-w-11 overflow-hidden rounded-xl bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent [-webkit-tap-highlight-color:transparent]"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- a signed Storage URL, shown as is */}
         <img src={media.url} alt={alt} loading="lazy" onError={onError} className="block max-h-80 w-auto max-w-full object-cover" />

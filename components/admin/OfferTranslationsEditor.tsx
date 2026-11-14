@@ -16,7 +16,7 @@ const OFFER_FIELD_LABEL_KEYS = {
 } as const satisfies Record<OfferTextField, AdminKey>
 
 const LINK_BUTTON =
-  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#0038B8] transition-colors hover:bg-[#F0F7FF] active:bg-[#E0EFFE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
+  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-adm-accent transition-colors hover:bg-adm-accent-soft active:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent'
 
 // The offer form's Translations group. Google translates the title,
 // description, terms and steps into the other four languages when the offer
@@ -82,8 +82,8 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{legend}</legend>
-      {intro ? <p className="mb-4 text-sm text-[#475569]">{intro}</p> : <p className="mb-4 text-sm text-[#475569]">
+      <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-adm-muted">{legend}</legend>
+      {intro ? <p className="mb-4 text-sm text-adm-text-2">{intro}</p> : <p className="mb-4 text-sm text-adm-text-2">
         {t('tr.intro')}
         {sourceLang ? (
           <>
@@ -93,7 +93,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
         . {t('tr.introEnd')}
       </p>}
 
-      <div role="tablist" aria-label={t('tr.language')} className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-[#F1F5F9] p-1 [scrollbar-width:none]">
+      <div role="tablist" aria-label={t('tr.language')} className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-adm-raised p-1 [scrollbar-width:none]">
         {targets.map((lang) => {
           const manual = Object.keys(overrides[lang] ?? {}).length
           return (
@@ -106,12 +106,12 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
               aria-controls={`${id}-panel`}
               onClick={() => setActive(lang)}
               className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 ${
-                active === lang ? 'bg-white text-[#0B1B3D] shadow-sm' : 'text-[#475569] [@media(hover:hover)]:hover:text-[#0B1B3D]'
+                active === lang ? 'bg-adm-surface text-adm-text shadow-sm' : 'text-adm-text-2 [@media(hover:hover)]:hover:text-adm-text'
               }`}
             >
               <span lang={lang}>{label(lang)}</span>
               {manual > 0 && (
-                <span className="rounded-full bg-[#0038B8] px-1.5 text-[10px] leading-4 text-white" aria-label={t('tr.written', { n: manual })}>
+                <span className="rounded-full bg-adm-accent px-1.5 text-[10px] leading-4 text-adm-on-accent" aria-label={t('tr.written', { n: manual })}>
                   {manual}
                 </span>
               )}
@@ -129,14 +129,14 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
           const fieldId = `${id}-${active}-${field}`
           const multiline = !singleLine.includes(field)
           return (
-            <div key={`${active}-${field}`} className="rounded-xl border border-[#E2E8F0] p-3 sm:p-4">
+            <div key={`${active}-${field}`} className="rounded-xl border border-adm-line p-3 sm:p-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <label htmlFor={manual !== undefined ? fieldId : undefined} className="text-sm font-semibold text-[#0B1B3D]">
+                <label htmlFor={manual !== undefined ? fieldId : undefined} className="text-sm font-semibold text-adm-text">
                   {labels[field]}
                 </label>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    manual !== undefined ? 'bg-[#F0F7FF] text-[#0038B8]' : 'bg-[#F1F5F9] text-[#475569]'
+                    manual !== undefined ? 'bg-adm-accent-soft text-adm-accent' : 'bg-adm-raised text-adm-text-2'
                   }`}
                 >
                   {manual !== undefined ? t('tr.yours') : t('tr.google')}
@@ -164,7 +164,7 @@ export default function OfferTranslationsEditor<F extends string = OfferTextFiel
                 </>
               ) : (
                 <>
-                  <p lang={machineText ? active : undefined} dir={machineText ? dir : 'auto'} className={`whitespace-pre-line text-sm ${machineText ? 'text-[#0F172A]' : 'italic text-[#64748B]'}`}>
+                  <p lang={machineText ? active : undefined} dir={machineText ? dir : 'auto'} className={`whitespace-pre-line text-sm ${machineText ? 'text-adm-text' : 'italic text-adm-muted'}`}>
                     {machineText ?? pendingText}
                   </p>
                   <button

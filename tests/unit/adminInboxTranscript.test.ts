@@ -92,8 +92,8 @@ describe('ChatTranscript', () => {
 
   it('draws the member in a white card, the team in GoLandly blue, and the bot as one native <details> summary', () => {
     const html = render([member('hi'), bot('Menu\n[A] [B]'), tap('A'), bot('Answer\n[All set]'), team('Hello from the team')])
-    expect(html).toContain('border border-[#E2E8F0] bg-white text-[#0F172A]')
-    expect(html).toContain('bg-[#0038B8] text-white')
+    expect(html).toContain('border border-adm-line bg-adm-surface text-adm-text')
+    expect(html).toContain('bg-adm-accent text-adm-on-accent')
     expect(html.match(/<details/g)).toHaveLength(1)
     expect(html).toMatch(/<summary[^>]*>[\s\S]*Bot<\/span> · 2 automated messages · Chose: <span[^>]*>A<\/span>/)
     expect(html).toContain('<bdi dir="ltr" class="tabular-nums">')

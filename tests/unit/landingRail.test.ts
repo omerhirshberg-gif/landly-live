@@ -17,13 +17,15 @@ describe('the landing column', () => {
 describe('Our perks', () => {
   const deals = read('components/landing/LiveDeals.tsx')
 
-  it('is always a sideways rail, however few the deals, closed by the see-all tile', () => {
+  it('is always a sideways rail, however few the deals, with no empty see-all slot at its end', () => {
     expect(deals).not.toContain('DEALS_GRID_MAX')
     expect(deals).not.toContain('grid')
     expect(deals).toContain('flex flex-row gap-3')
     expect(deals).toContain('snap-x snap-mandatory')
-    expect(deals).toContain('const slots = deals.length + 1')
-    expect(deals).toContain('<SeeAllTile />')
+    expect(deals).toContain('const slots = deals.length')
+    expect(deals).not.toContain('SeeAllTile')
+    expect(deals).toContain('<SeeAllLink />')
+    expect(deals).toContain('useAutoAdvance({ rowRef: railRef, count: slots, active, scrollTo })')
   })
 })
 

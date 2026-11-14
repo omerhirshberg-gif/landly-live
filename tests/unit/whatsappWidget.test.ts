@@ -59,7 +59,7 @@ describe('WhatsApp chat link', () => {
         expect(translations[lang][key]).toBeTruthy()
       }
     }
-    expect(translations.en.whatsapp_bubble_title).toBe('Need help? 💬')
+    expect(translations.en.whatsapp_bubble_title).toBe('Need help?')
     expect(translations.en.whatsapp_bubble_sub).toBe('Chat with our team directly on WhatsApp')
   })
 })

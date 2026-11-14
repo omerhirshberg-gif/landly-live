@@ -117,11 +117,18 @@ export async function POST(request: Request) {
   // A manual multi-chain pass is a direct perk with no business: its issuer's brand stands in, as for Multipass.
   const manualChain = !multipass && body.perk?.perkScope === 'multi_chain'
   const noBusiness = multipass || manualChain
+  // The business is read first: a chain's new offer is nationwide unless the admin turned that off.
+  let business: FirebaseFirestore.DocumentData = {}
+  if (!noBusiness && typeof body.businessUid === 'string' && body.businessUid) {
+    const businessSnap = await adminDb.collection('businesses').doc(body.businessUid).get()
+    if (!businessSnap.exists) return NextResponse.json({ error: 'Business not found.' }, { status: 404 })
+    business = businessSnap.data()!
+  }
   const scope = parsePerkScopeFields({
     fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
     businessId: noBusiness ? undefined : body.businessUid,
     ...(noBusiness ? { ...body.perk, businessId: body.businessUid } : {}),
-    isNationwide: offer.isNationwide === true,
+    isNationwide: offer.isNationwide === undefined ? !noBusiness && business.isChain === true : offer.isNationwide === true,
     ...(noBusiness ? {} : { participatingChains: offer.participatingChains, participatingPlaces: offer.participatingPlaces }),
   })
   if (!scope.ok) return badRequest(scope.error)
@@ -144,14 +151,6 @@ export async function POST(request: Request) {
   if (!redemption.ok) return badRequest(redemption.error)
 
   // A Multipass perk and a manual multi-chain pass have no business document: the brand name stands in for the business name.
-  let business: FirebaseFirestore.DocumentData = {}
-  if (!noBusiness) {
-    const businessSnap = await adminDb.collection('businesses').doc(scope.fields.businessId!).get()
-    if (!businessSnap.exists) {
-      return NextResponse.json({ error: 'Business not found.' }, { status: 404 })
-    }
-    business = businessSnap.data()!
-  }
   const displayName: string = noBusiness ? scope.fields.brandName! : business.businessName ?? ''
   const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), null, body.translationOverrides)
   if (!translated.ok) return badRequest(translated.error)

@@ -64,7 +64,7 @@ export default function TranslateMissingButton({
         {state.kind === 'running' ? runningLabel : label}
       </button>
       {state.message && (
-        <p role="status" className={`text-xs ${state.kind === 'error' ? 'text-[#B91C1C]' : 'text-emerald-700'}`}>
+        <p role="status" className={`text-xs ${state.kind === 'error' ? 'text-adm-danger' : 'text-adm-ok'}`}>
           {state.message}
         </p>
       )}

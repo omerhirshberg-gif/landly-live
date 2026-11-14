@@ -44,7 +44,7 @@ describe('the new lead alert', () => {
       'Preferred language': 'Russian',
       Persona: 'Other',
       'In their words': 'Here <for> work',
-      'Heard about us': '🎵 TikTok',
+      'Heard about us': 'TikTok',
       Submitted: '02.11.2026 12:30 (Israel)',
       'Lead ID': 'abcdefgh23',
       Project: 'landly-dev',

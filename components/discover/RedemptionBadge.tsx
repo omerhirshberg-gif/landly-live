@@ -16,7 +16,7 @@ export default function RedemptionBadge({ method, showIcon = true, className = '
   const Icon = REDEMPTION_METHOD_ICONS[method]
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-micro font-semibold leading-none text-body ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-micro font-semibold leading-tight text-body ${className}`}
     >
       {showIcon && <Icon aria-hidden="true" className="h-3 w-3 text-brand" strokeWidth={2} />}
       {t(REDEMPTION_METHOD_LABEL_KEYS[method])}

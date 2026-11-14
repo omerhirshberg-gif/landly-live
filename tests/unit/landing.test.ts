@@ -14,6 +14,7 @@ import AudienceCards from '@/components/landing/AudienceCards'
 import StoreButtons from '@/components/landing/StoreButtons'
 import BottomCta from '@/components/landing/BottomCta'
 import LandingHero from '@/components/landing/LandingHero'
+import IsraelLifestyleCollage from '@/components/landing/IsraelLifestyleCollage'
 import { settledImage } from '@/components/discover/useDealImage'
 import { dealImageRole } from '@/lib/offers/dealImage'
 import { distinctDescription } from '@/lib/offers/offerText'
@@ -42,6 +43,21 @@ describe('landing data', () => {
       offer(4, { totalQuantity: 5, claimedCount: 4 }),
     ])
     expect(deals.map((d) => d.id).sort()).toEqual(['o1', 'o4'])
+  })
+
+  it('keeps where a perk is valid, so a guest card matches the catalogue', () => {
+    const [chain, plain] = toLandingData([
+      offer(1, { isNationwide: true, perkScope: 'single_business', participatingChains: ['A', 'B'], chainsCount: 2, fulfillmentType: 'direct_merchant' }),
+      offer(2, { createdAt: null }),
+    ]).deals
+    expect(chain).toMatchObject({ isNationwide: true, perkScope: 'single_business', participatingChains: ['A', 'B'], chainsCount: 2, fulfillmentType: 'direct_merchant' })
+    expect(plain.isNationwide).toBe(false)
+    expect(plain.participatingChains).toEqual([])
+  })
+
+  it('reads the scope fields off a stored offer', () => {
+    const p = toPublicOffer('x', { title: 'T', isNationwide: true, perkScope: 'single_business', participatingChains: ['A'] })
+    expect(p).toMatchObject({ isNationwide: true, participatingChains: ['A'], participatingPlaces: [] })
   })
 
   it('is empty with no offers, and never invents one', () => {
@@ -116,17 +132,47 @@ describe('luxury Bento surfaces', () => {
     expect(html.match(/<li class="col-span-2">/g)).toHaveLength(2)
   })
 
-  it('blurs no landing surface', () => {
-    for (const file of landingFiles) expect(read(`components/landing/${file}.tsx`), file).not.toContain('backdrop-blur')
+  it('blurs no landing surface but the hero’s glass trust badge', () => {
+    for (const file of landingFiles.filter((f) => f !== 'LandingHero')) expect(read(`components/landing/${file}.tsx`), file).not.toContain('backdrop-blur')
   })
 })
 
 describe('hero', () => {
-  it('is one centred column with no card, photo or motion left in it', () => {
+  it('is a copy column and a photo collage column from lg, one stack on phones, with no glow blob', () => {
     const html = withLang('he', createElement(LandingHero))
-    expect(html).toContain('flex-col items-center')
-    expect(html).not.toMatch(/href="\/offers\/|<img|hero-float|hero-flow|lg:grid-cols-2|lg:text-start/)
+    expect(html).toContain('lg:grid-cols-12')
+    expect(html).toContain('max-w-[1240px]')
+    expect(html.match(/lg:col-span-6/g)).toHaveLength(2)
+    expect(html).not.toMatch(/hero-float|hero-flow|blur-3xl|radial-gradient/)
     expect(read('app/globals.css')).not.toMatch(/hero-float|hero-flow/)
+  })
+
+  it('opens on the free-pass trust badge, over a pure four-photo gallery with no offer card in it', () => {
+    expect(withLang('en', createElement(LandingHero))).toContain(translations.en.landing_free_badge)
+    const collage = read('components/landing/IsraelLifestyleCollage.tsx')
+    expect(collage).not.toMatch(/OfferCard|deal/)
+    for (const name of ['beach', 'cafe', 'market', 'life']) expect(collage).toContain(`'${name}'`)
+    expect(collage).toContain('grid-cols-2 gap-3')
+  })
+
+  it('draws the three value cards as white cards with a coloured start-edge corner bracket and no numbers', () => {
+    const html = withLang('he', createElement(LandingHero))
+    expect(html.match(/rounded-ss-2xl border-s-\[3px\] border-t-\[3px\]/g)).toHaveLength(3)
+    for (const c of ['#0038B8', '#0284C7', '#059669']) expect(html).toContain(`text-[${c}]`)
+    expect(html).not.toMatch(/>0[123]<\/span>/)
+  })
+
+  it('tilts the four photo prints (mirrored in RTL) and floats them without the forbidden class names or motion under Reduce Motion', () => {
+    const html = withLang('he', createElement(IsraelLifestyleCollage))
+    expect(html.match(/rtl:-?rotate-\[1\.\d+deg\]/g)).toHaveLength(4)
+    expect(html.match(/class="collage-drift[ "]/g)).toHaveLength(4)
+    expect(html).toContain('max-w-[640px]')
+    expect(html).not.toContain('alt=""')
+    expect(html).toContain(translations.he.landing_collage_alt_cafe)
+    expect(withLang('en', createElement(IsraelLifestyleCollage))).toContain(translations.en.landing_collage_alt_cafe)
+    const css = read('app/globals.css')
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\{\.collage-drift\{animation:none/)
+    expect(css).toContain('translate3d(0,-5px,0)')
   })
 
   it('accents the title’s second line in every language, with room for Hebrew descenders', () => {
@@ -143,13 +189,13 @@ describe('the landing’s way in', () => {
     expect(html.indexOf('href="/signup"')).toBeLessThan(html.indexOf('href="/login"'))
     expect(html.indexOf(translations[lang].landing_cta_join)).toBeLessThan(html.indexOf(translations[lang].nav_login))
     expect(html.indexOf(translations[lang].nav_login)).toBeLessThan(html.indexOf('App Store'))
-    expect(html.split(`>${translations[lang].deals_card_soon_badge}<`)).toHaveLength(3)
-    expect(html).toContain('cursor-default border-slate-200/80 bg-slate-100 text-slate-500')
-    expect(html).toContain('-top-2 -end-2')
+    expect(html.split(`>${translations[lang].landing_store_coming_soon}<`)).toHaveLength(3)
+    expect(html).toContain('cursor-default')
+    expect(html).not.toContain('-top-2 -end-2')
   })
 
   it('offers both in the hero and the closing banner', () => {
-    expect(read('components/landing/LandingHero.tsx')).toContain('<StoreButtons />')
+    expect(read('components/landing/LandingHero.tsx')).toContain('<StoreButtons align="start" freeBadge={false} />')
     expect(read('components/landing/BottomCta.tsx')).toContain('<StoreButtons />')
   })
 
@@ -160,7 +206,7 @@ describe('the landing’s way in', () => {
     const { LangContext: Context } = await import('@/lib/i18n/LangProvider')
     const html = renderToStaticMarkup(createElement(Context.Provider, { value: { lang: 'en', setLang: () => {}, t: (key: TranslationKey) => translations.en[key], isRtl: false } }, createElement(Live)))
     expect(html).toContain('href="https://apps.apple.com/app/id1234567890"')
-    expect(html.split('>Soon<')).toHaveLength(2)
+    expect(html.split('>Coming soon<')).toHaveLength(2)
     vi.unstubAllEnvs()
     vi.resetModules()
   })

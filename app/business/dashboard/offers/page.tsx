@@ -76,7 +76,7 @@ export default function BusinessOffersPage() {
           <Card key={offer.id} className="p-5 flex flex-col gap-3">
             <div className="min-w-0">
               <span
-                className={`inline-flex items-center text-micro font-bold uppercase tracking-wide rounded-full px-2 py-0.5 border mb-1.5 ${STATUS_STYLES[offer.status]}`}
+                className={`inline-flex items-center text-micro font-bold uppercase tracking-wide rounded-md px-2 py-0.5 border mb-1.5 ${STATUS_STYLES[offer.status]}`}
               >
                 {statusLabel[offer.status]}
               </span>
@@ -87,7 +87,7 @@ export default function BusinessOffersPage() {
               <div className="text-sm font-bold text-white" dir="ltr">
                 {formatPrice(offer.offerPrice)}{' '}
                 <span className="text-slate-500 font-semibold line-through">{formatPrice(offer.originalPrice)}</span>
-                <span className="text-emerald-400 font-semibold ml-1">
+                <span className="text-emerald-400 font-semibold ms-1">
                   -{getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)}%
                 </span>
               </div>

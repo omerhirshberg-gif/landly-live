@@ -36,7 +36,7 @@ export default function LiveClock({ compact = false, muted = false }: { compact?
 
   if (compact) {
     return (
-      <span className={`tabular-nums ${muted ? 'text-xs font-medium text-slate-400' : 'text-sm font-semibold text-[#0B1B3D]'}`} dir="ltr">
+      <span className={`tabular-nums ${muted ? 'text-xs font-medium text-adm-hint' : 'text-sm font-semibold text-adm-text'}`} dir="ltr">
         {SHORT_TIME_FORMAT.format(now)}
       </span>
     )
@@ -44,15 +44,15 @@ export default function LiveClock({ compact = false, muted = false }: { compact?
 
   return (
     <div
-      className="inline-flex h-10 items-center gap-2.5 rounded-full border border-[#E2E8F0] bg-white px-4 shadow-sm"
+      className="inline-flex h-10 items-center gap-2.5 rounded-xl border border-adm-line bg-adm-surface px-4 shadow-sm"
       dir="ltr"
     >
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
       </span>
-      <span className="text-sm font-semibold text-[#0B1B3D] tabular-nums">{TIME_FORMAT.format(now)}</span>
-      <span className="text-xs font-medium text-[#64748B]">{dateFormat(locale).format(now)} · {t('header.jerusalem')}</span>
+      <span className="text-sm font-semibold text-adm-text tabular-nums">{TIME_FORMAT.format(now)}</span>
+      <span className="text-xs font-medium text-adm-muted">{dateFormat(locale).format(now)} · {t('header.telAviv')}</span>
     </div>
   )
 }

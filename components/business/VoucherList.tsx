@@ -79,7 +79,7 @@ export default function VoucherList({ status, emptyKey, errorKey, dateColumnKey 
       {vouchers?.length === 0 && <p className="text-slate-400">{t(emptyKey)}</p>}
 
       {vouchers && vouchers.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-slate-900 overflow-x-auto">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_8px_30px_rgb(0,0,0,0.25)] backdrop-blur-md overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-slate-500 text-xs uppercase tracking-wide">

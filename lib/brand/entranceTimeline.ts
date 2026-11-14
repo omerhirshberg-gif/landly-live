@@ -119,3 +119,19 @@ export function springToCssLinear(spring: Spring, { samples = 48, rest = 0.001 }
   }
   return { easing: `linear(${points.join(', ')})`, durationMs: Math.round(settle * 1000) }
 }
+
+/**
+ * How long after `SplashScreen.hide()` the native launch screen is still on
+ * screen: its fade (`NativeSplash.setOptions({ duration })`, 200ms in
+ * _layout.tsx) plus a margin for the compositor to commit the frames. The
+ * intro is held at 0% until then, so Stage 1 (the star drawing) is never
+ * played under the fading overlay. The web has no native splash: no wait.
+ */
+export const NATIVE_SPLASH_FADE_MS = 200
+export const NATIVE_SPLASH_CLEARANCE_MS = { android: 260, ios: 120, web: 0 } as const
+
+export function nativeSplashClearanceMs(os: string): number {
+  if (os === 'android') return NATIVE_SPLASH_CLEARANCE_MS.android
+  if (os === 'ios') return NATIVE_SPLASH_CLEARANCE_MS.ios
+  return NATIVE_SPLASH_CLEARANCE_MS.web
+}

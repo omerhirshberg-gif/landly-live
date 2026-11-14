@@ -197,15 +197,15 @@ function EditOfferForm() {
       <FormSection icon="fa-store" title={t('editOffer.fixedTitle')} description={t('editOffer.fixedDesc')}>
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.business')}</dt>
-            <dd className="mt-1 font-semibold text-[#0B1B3D]">
-              <Link href={`/admin/businesses/${offer.businessId}`} className="hover:text-[#0038B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
+            <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('editOffer.business')}</dt>
+            <dd className="mt-1 font-semibold text-adm-text">
+              <Link href={`/admin/businesses/${offer.businessId}`} className="hover:text-adm-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent">
                 <bdi dir="auto">{offer.businessName}</bdi>
               </Link>
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.category')}</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('editOffer.category')}</dt>
             <dd className="mt-1">
               <StatusBadge tone="blue">
                 <span dir="auto">{offer.category}</span>
@@ -213,11 +213,11 @@ function EditOfferForm() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('editOffer.created')}</dt>
-            <dd className="mt-1 font-semibold text-[#0B1B3D]"><bdi dir="ltr">{formatIsraeliDate(offer.createdAt)}</bdi></dd>
+            <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('editOffer.created')}</dt>
+            <dd className="mt-1 font-semibold text-adm-text"><bdi dir="ltr">{formatIsraeliDate(offer.createdAt)}</bdi></dd>
           </div>
         </dl>
-        <p className="mt-4 text-xs text-[#64748B]">
+        <p className="mt-4 text-xs text-adm-muted">
           {t('editOffer.fixedNote')}
         </p>
       </FormSection>

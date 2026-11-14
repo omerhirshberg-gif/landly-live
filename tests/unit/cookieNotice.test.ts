@@ -36,7 +36,7 @@ describe('cookie notice bar', () => {
     const link = html.match(/<a href="\/privacy" class="([^"]*)">([^<]*)<\/a>/)!
     expect(link[2]).toBe(translations[lang].cookie_notice_privacy_link)
     expect(link[1]).toContain('underline')
-    expect(link[1]).toContain('hover:text-sky-300')
+    expect(link[1]).toContain('hover:text-brandDark')
     expect(link[1]).toContain('transition-colors')
   })
 

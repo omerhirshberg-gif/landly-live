@@ -91,12 +91,12 @@ export default function MemberPage() {
       <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="truncate text-xl font-bold tracking-tight text-[#0B1B3D]"><BidiText>{member.name || '—'}</BidiText></p>
-            <p className="truncate text-sm text-slate-500"><bdi dir="ltr">{member.email}</bdi></p>
+            <p className="truncate text-xl font-bold tracking-tight text-adm-text"><BidiText>{member.name || '—'}</BidiText></p>
+            <p className="truncate text-sm text-adm-muted"><bdi dir="ltr">{member.email}</bdi></p>
           </div>
           <UserStatusBadge status={member.status} />
         </div>
-        {member.statusReason && <p className="mt-3 text-sm text-slate-600">{t('member.reason', { reason: '' })}<BidiText>{member.statusReason}</BidiText></p>}
+        {member.statusReason && <p className="mt-3 text-sm text-adm-text-2">{t('member.reason', { reason: '' })}<BidiText>{member.statusReason}</BidiText></p>}
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 text-sm md:grid-cols-4">
           <Fact label={t('member.passId')}><bdi dir="ltr" className="font-mono">{member.passId}</bdi></Fact>
           <Fact label={t('member.verification')}>{t(`member.kyc.${member.kycTier}` as AdminKey)}</Fact>
@@ -105,7 +105,7 @@ export default function MemberPage() {
           <Fact label={t('users.col.lastSignIn')}><bdi dir="ltr">{formatIsraeliDateTime(member.lastSignInAt)}</bdi></Fact>
           <Fact label={t('users.email')}>{member.emailVerified ? t('member.emailVerified') : t('member.emailNotVerified')}</Fact>
         </dl>
-        <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-adm-line-soft pt-5">
           {!member.emailVerified && member.status === 'active' && (
             <button type="button" className={SECONDARY_BUTTON} onClick={resend}><i className="fa-solid fa-paper-plane" aria-hidden="true" /> {t('member.resend')}</button>
           )}
@@ -119,12 +119,12 @@ export default function MemberPage() {
           )}
         </div>
         {pending && (
-          <form onSubmit={changeStatus} className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+          <form onSubmit={changeStatus} className="mt-5 space-y-3 rounded-2xl border border-adm-line bg-adm-sunken/60 p-4">
             <label htmlFor="status-reason" className={ADMIN_LABEL}>
               {pending === 'active' ? t('member.noteOptional') : pending === 'banned' ? t('member.reasonBan') : t('member.reasonSuspend')}
             </label>
             <input id="status-reason" required={pending !== 'active'} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} className={ADMIN_INPUT} dir="auto" autoFocus />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-adm-muted">
               {pending === 'active' ? t('member.restoreHint') : t('member.blockHint')}
             </p>
             <div className="flex gap-2">
@@ -137,15 +137,15 @@ export default function MemberPage() {
 
       <section aria-labelledby="passes-h">
         <h2 id="passes-h" className={SECTION_HEADING}>{t('member.passes')}</h2>
-        <Card className="divide-y divide-slate-100">
-          {member.passes.length === 0 && <p className="p-5 text-sm text-slate-500">{t('member.noPasses')}</p>}
+        <Card className="divide-y divide-adm-line-soft">
+          {member.passes.length === 0 && <p className="p-5 text-sm text-adm-muted">{t('member.noPasses')}</p>}
           {member.passes.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3.5">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#0B1B3D]"><BidiText>{p.offerTitle}</BidiText></p>
-                <p className="truncate text-xs text-slate-500"><BidiText>{p.businessName}</BidiText> · <bdi dir="ltr">{p.displayOrderNumber ?? p.id}</bdi></p>
+                <p className="truncate text-sm font-semibold text-adm-text"><BidiText>{p.offerTitle}</BidiText></p>
+                <p className="truncate text-xs text-adm-muted"><BidiText>{p.businessName}</BidiText> · <bdi dir="ltr">{p.displayOrderNumber ?? p.id}</bdi></p>
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
+              <div className="flex items-center gap-3 text-xs text-adm-muted">
                 {p.expiresAt && <span>{t('member.expires', { date: `\u2066${formatIsraeliDate(p.expiresAt)}\u2069` })}</span>}
                 <StatusBadge tone={p.status === 'active' ? 'emerald' : p.status === 'redeemed' ? 'blue' : 'slate'}>{p.status}</StatusBadge>
               </div>
@@ -157,27 +157,27 @@ export default function MemberPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         <section aria-labelledby="sessions-h">
           <h2 id="sessions-h" className={SECTION_HEADING}>{t('member.devices')}</h2>
-          <Card className="divide-y divide-slate-100">
-            {member.sessions.length === 0 && <p className="p-5 text-sm text-slate-500">{t('member.noDevices')}</p>}
+          <Card className="divide-y divide-adm-line-soft">
+            {member.sessions.length === 0 && <p className="p-5 text-sm text-adm-muted">{t('member.noDevices')}</p>}
             {member.sessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-4 px-5 py-3.5 text-sm">
-                <span className="min-w-0 truncate font-medium text-[#0B1B3D]"><BidiText>{s.deviceName}</BidiText> <span className="text-xs font-normal text-slate-400">{s.platform}</span></span>
-                <bdi dir="ltr" className="shrink-0 text-xs text-slate-500">{formatIsraeliDateTime(s.lastActiveAt)}</bdi>
+                <span className="min-w-0 truncate font-medium text-adm-text"><BidiText>{s.deviceName}</BidiText> <span className="text-xs font-normal text-adm-hint">{s.platform}</span></span>
+                <bdi dir="ltr" className="shrink-0 text-xs text-adm-muted">{formatIsraeliDateTime(s.lastActiveAt)}</bdi>
               </div>
             ))}
           </Card>
         </section>
         <section aria-labelledby="audit-h">
           <h2 id="audit-h" className={SECTION_HEADING}>{t('member.activity')}</h2>
-          <Card className="divide-y divide-slate-100">
-            {member.audit.length === 0 && <p className="p-5 text-sm text-slate-500">{t('member.nothingYet')}</p>}
+          <Card className="divide-y divide-adm-line-soft">
+            {member.audit.length === 0 && <p className="p-5 text-sm text-adm-muted">{t('member.nothingYet')}</p>}
             {member.audit.map((a) => (
               <div key={a.id} className="px-5 py-3.5 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="font-medium text-[#0B1B3D]">{a.action}</span>
-                  <bdi dir="ltr" className="text-xs text-slate-500">{formatIsraeliDateTime(a.at)}</bdi>
+                  <span className="font-medium text-adm-text">{a.action}</span>
+                  <bdi dir="ltr" className="text-xs text-adm-muted">{formatIsraeliDateTime(a.at)}</bdi>
                 </div>
-                {a.note && <p className="mt-0.5 text-xs text-slate-500"><BidiText>{a.note}</BidiText></p>}
+                {a.note && <p className="mt-0.5 text-xs text-adm-muted"><BidiText>{a.note}</BidiText></p>}
               </div>
             ))}
           </Card>
@@ -186,12 +186,12 @@ export default function MemberPage() {
 
       <section aria-labelledby="orders-h">
         <h2 id="orders-h" className={SECTION_HEADING}>{t('member.orders')}</h2>
-        <Card className="divide-y divide-slate-100">
-          {member.orders.length === 0 && <p className="p-5 text-sm text-slate-500">{t('member.noOrders')}</p>}
+        <Card className="divide-y divide-adm-line-soft">
+          {member.orders.length === 0 && <p className="p-5 text-sm text-adm-muted">{t('member.noOrders')}</p>}
           {member.orders.map((o) => (
             <div key={o.id} className="flex items-center justify-between gap-4 px-5 py-3.5 text-sm">
-              <span className="min-w-0 truncate font-medium text-[#0B1B3D]"><BidiText>{o.offerTitle}</BidiText></span>
-              <span className="flex shrink-0 items-center gap-3 text-xs text-slate-500">
+              <span className="min-w-0 truncate font-medium text-adm-text"><BidiText>{o.offerTitle}</BidiText></span>
+              <span className="flex shrink-0 items-center gap-3 text-xs text-adm-muted">
                 <bdi dir="ltr">₪{o.amount}</bdi>
                 <StatusBadge tone={o.status === 'paid' ? 'emerald' : o.status === 'failed' ? 'rose' : 'amber'}>{o.status}</StatusBadge>
               </span>
@@ -206,8 +206,8 @@ export default function MemberPage() {
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-400">{label}</dt>
-      <dd className="mt-0.5 font-semibold text-[#0B1B3D]">{children}</dd>
+      <dt className="text-xs text-adm-hint">{label}</dt>
+      <dd className="mt-0.5 font-semibold text-adm-text">{children}</dd>
     </div>
   )
 }

@@ -17,7 +17,7 @@ export function LanguageBadge({ lang, selected = true }: { lang: Lang; selected?
       title={label}
       aria-label={t('support.langLabel', { lang: label })}
       className={`inline-flex min-h-6 min-w-8 items-center justify-center rounded-md px-1.5 text-[13px] leading-normal font-bold uppercase tracking-wide ${
-        selected ? 'bg-[#F0F7FF] text-[#0038B8]' : 'border border-dashed border-[#CBD5E1] text-[#64748B]'
+        selected ? 'bg-adm-accent-soft text-adm-accent' : 'border border-adm-line text-adm-muted'
       }`}
     >
       {lang}
@@ -50,9 +50,9 @@ export function CategoryBadge({ category }: { category: InquiryCategory }) {
   return (
     <span
       title={t('support.topicTitle')}
-      className="inline-flex min-h-6 items-center gap-1 whitespace-nowrap rounded-md bg-[#F1F5F9] px-1.5 text-[13px] leading-normal font-semibold text-[#475569]"
+      className="inline-flex min-h-6 items-center gap-1 whitespace-nowrap rounded-md bg-adm-raised px-1.5 text-[13px] leading-normal font-semibold text-adm-text-2"
     >
-      <i className={`fa-solid ${CATEGORY_ICONS[category]} text-[10px] text-[#64748B]`} aria-hidden="true" />
+      <i className={`fa-solid ${CATEGORY_ICONS[category]} text-[10px] text-adm-muted`} aria-hidden="true" />
       <span className="sr-only">{t('support.topic')}</span>
       {t(`support.cat.${category}` as AdminKey)}
     </span>

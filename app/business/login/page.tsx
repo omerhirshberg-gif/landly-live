@@ -52,7 +52,7 @@ export default function BusinessLoginPage() {
     // of the active language — see app/login/page.tsx for the same pattern.
     // Business pages use a fixed dark theme (independent of the site's light
     // customer-facing pages) to visually set the portal apart.
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-950" dir="ltr">
+    <div className="min-h-screen min-h-dvh flex flex-col lg:flex-row bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900" dir="ltr">
       {/* Form side */}
       <div dir={isRtl ? 'rtl' : 'ltr'} className="flex-1 flex items-center justify-center px-5 py-10 sm:px-10 lg:px-16 lg:py-12">
         <div className="w-full max-w-md">

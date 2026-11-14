@@ -54,7 +54,7 @@ export default function BusinessGate({ children }: { children: React.ReactNode }
   }, [user, router])
 
   if (loading || !user || checking || !business) {
-    return <div className="min-h-screen bg-slate-950" />
+    return <div className="min-h-screen min-h-dvh bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900" />
   }
 
   return <BusinessContext.Provider value={{ business }}>{children}</BusinessContext.Provider>
