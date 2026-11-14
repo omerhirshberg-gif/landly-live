@@ -4,7 +4,7 @@ import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
 
-// The member's persona (Student, Developer, …) as a pill in its own colour,
+// The member's persona (Student, Developer, …) as a badge in its own colour,
 // on My Pass and Profile (web: components/member/SegmentBadge.tsx). "Other"
 // shows what the member typed for it; no answer yet shows "Member" in grey.
 export default function SegmentBadge({ customerType, customerTypeOther }: { customerType?: string; customerTypeOther?: string }) {
@@ -24,6 +24,6 @@ export default function SegmentBadge({ customerType, customerTypeOther }: { cust
 
 const styles = StyleSheet.create({
   // Solid type colour, white text (web: .segment-badge).
-  badge: { maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 5, borderRadius: radius.pill },
+  badge: { maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 5, borderRadius: radius.sm, borderCurve: 'continuous' },
   text: { fontSize: 12, fontWeight: '800', color: colors.white },
 })

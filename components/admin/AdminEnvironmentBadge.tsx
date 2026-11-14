@@ -8,9 +8,9 @@ import { PRODUCTION_FIREBASE_PROJECT_ID, STAGING_FIREBASE_PROJECT_ID } from '@/l
 // compact pill with just the word; the project id joins it from 640px, and the
 // full name is in the tooltip. Always left to right: it is a code, not a sentence.
 const TONES = {
-  prod: 'text-[#B91C1C]',
-  dev: 'text-[#92400E]',
-  other: 'text-[#475569]',
+  prod: 'text-adm-danger',
+  dev: 'text-adm-warn',
+  other: 'text-adm-text-2',
 } as const
 
 const DOTS = { prod: 'bg-[#DC2626]', dev: 'bg-[#F59E0B]', other: 'bg-[#94A3B8]' } as const

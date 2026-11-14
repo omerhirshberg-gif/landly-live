@@ -656,10 +656,51 @@ html.wa-hidden .wa-widget{display:none;}
 .join-phone .PhoneInputCountrySelect:focus + .PhoneInputCountryIcon{box-shadow:none;}
 
 /* The admin tables' own sideways scroll: a slim bar that doesn't dominate the card. */
-.admin-table-scroll{scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent;}
+.admin-table-scroll{scrollbar-width:thin;scrollbar-color:rgb(var(--adm-line-strong)) transparent;}
 .admin-table-scroll::-webkit-scrollbar{height:8px;}
-.admin-table-scroll::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:9999px;}
+.admin-table-scroll::-webkit-scrollbar-thumb{background:rgb(var(--adm-line-strong));border-radius:9999px;}
 .admin-table-scroll::-webkit-scrollbar-track{background:transparent;}
+
+/* The admin's colour tokens (space-separated RGB channels, so Tailwind's bg-adm-surface/80 alpha works). The :root and
+   .adm-light values are the original light theme, so anything outside .admin-scale that reuses an admin component
+   (the /business dashboard's Card) renders exactly as before. The admin itself is Gemini dark unless the settings menu
+   switched it to light (AdminShell adds .adm-light). */
+:root,.admin-scale.adm-light{
+  --adm-logo:255 255 255;--adm-input:255 255 255;
+  --adm-canvas:248 250 252;--adm-surface:255 255 255;--adm-sunken:248 250 252;--adm-raised:241 245 249;
+  --adm-line:226 232 240;--adm-line-soft:241 245 249;--adm-line-strong:203 213 225;
+  --adm-text:11 27 61;--adm-text-2:71 85 105;--adm-muted:100 116 139;--adm-hint:148 163 184;
+  --adm-accent:0 56 184;--adm-accent-hover:0 42 138;--adm-accent-press:0 32 102;--adm-accent-soft:240 247 255;--adm-on-accent:255 255 255;
+  --adm-nav-active:240 247 255;--adm-nav-active-text:0 56 184;
+  --adm-ok:4 120 87;--adm-ok-soft:236 253 245;--adm-ok-line:167 243 208;
+  --adm-warn:180 83 9;--adm-warn-soft:255 251 235;--adm-warn-line:253 230 138;
+  --adm-danger:185 28 28;--adm-danger-soft:254 242 242;--adm-danger-line:254 202 202;
+  --adm-info:29 78 216;--adm-info-soft:239 246 255;--adm-info-line:191 219 254;
+  --adm-violet:109 40 217;--adm-violet-soft:245 243 255;
+}
+.admin-scale{color-scheme:light;}
+.admin-scale:not(.adm-light){
+  color-scheme:dark;
+  --adm-logo:255 255 255;--adm-input:40 42 44;
+  --adm-canvas:19 19 20;--adm-surface:30 31 32;--adm-sunken:25 26 27;--adm-raised:40 42 44;
+  --adm-line:51 53 55;--adm-line-soft:42 44 46;--adm-line-strong:68 71 70;
+  --adm-text:227 227 227;--adm-text-2:196 199 197;--adm-muted:142 145 143;--adm-hint:154 160 166;
+  --adm-accent:168 199 250;--adm-accent-hover:194 215 251;--adm-accent-press:211 227 253;--adm-accent-soft:40 42 44;--adm-on-accent:6 46 111;
+  --adm-nav-active:8 66 160;--adm-nav-active-text:211 227 253;
+  --adm-ok:110 231 183;--adm-ok-soft:13 40 33;--adm-ok-line:15 69 55;
+  --adm-warn:252 211 77;--adm-warn-soft:53 28 15;--adm-warn-line:99 51 21;
+  --adm-danger:253 164 175;--adm-danger-soft:58 15 28;--adm-danger-line:107 23 47;
+  --adm-info:147 197 253;--adm-info-soft:26 35 63;--adm-info-line:30 51 118;
+  --adm-violet:196 181 253;--adm-violet-soft:40 22 73;
+}
+/* The overscroll area behind the shell matches it, so a rubber-band never flashes white. */
+html:has(.admin-scale:not(.adm-light)),html:has(.admin-scale:not(.adm-light)) body{background:#131314;}
+html:has(.admin-scale.adm-light),html:has(.admin-scale.adm-light) body{background:#F8FAFC;}
+.admin-scale:not(.adm-light) select.admin-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239AA0A6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");}
+.admin-scale:not(.adm-light) select option{background:#1E1F20;color:#E3E3E3;}
+/* Browser autofill paints its own pale background over a field; keep it on the token surface. */
+.admin-scale input:-webkit-autofill,.admin-scale textarea:-webkit-autofill,.admin-scale select:-webkit-autofill{
+  -webkit-box-shadow:0 0 0 1000px rgb(var(--adm-raised)) inset;-webkit-text-fill-color:rgb(var(--adm-text));caret-color:rgb(var(--adm-text));transition:background-color 9999s ease-out;}
 
 /* Hebrew has no capitals, and letter-spacing pulls its letters apart: the admin's small caps labels read plainly in it. */
 .admin-he .uppercase{text-transform:none;}
@@ -678,3 +719,9 @@ html.wa-hidden .wa-widget{display:none;}
 .admin-scale td{font-weight:500;}
 .admin-he .truncate,.admin-he [class*="line-clamp"]{line-height:1.55;padding-block:0.06em;}
 .admin-he{line-height:1.55;}
+
+/* The guest hero gallery's photos drift up and down by a few pixels, each on its
+   own slow cycle (set inline), on the GPU (transform only). Still under Reduce Motion. */
+@keyframes collage-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-5px,0)}}
+.collage-drift{animation:collage-drift 5.5s ease-in-out infinite alternate;will-change:transform}
+@media (prefers-reduced-motion: reduce){.collage-drift{animation:none;will-change:auto}}

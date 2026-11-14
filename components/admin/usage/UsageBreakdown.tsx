@@ -5,12 +5,12 @@ import { formatCount, formatIls } from '@/lib/usage/pricing'
 import type { UsageGroup, UsageLine } from '@/lib/usage/usageReport'
 import FreeTierMeter from './FreeTierMeter'
 
-// Per-service usage and cost, grouped by vendor (Google Cloud, Meta
-// WhatsApp) with each group's subtotal: a table from md, a stacked card per
+// Per-service usage and cost, grouped by vendor (Google Cloud, 019
+// Gateway, Meta WhatsApp) with each group's subtotal: a table from md, a stacked card per
 // service below it. Numbers sit in <bdi dir="ltr"> and end-aligned columns,
 // so they read the same whatever the surrounding direction.
 
-const VENDOR_ICONS = { google: 'fa-cloud', meta: 'fa-comments' } as const
+const VENDOR_ICONS = { google: 'fa-cloud', gateway019: 'fa-comment-sms', meta: 'fa-comments' } as const
 
 function freeLabel(line: UsageLine, t: (key: AdminKey) => string): string {
   if (line.freeAllowance === null) return t('usage.alwaysFree')
@@ -33,9 +33,9 @@ function LineNote({ line, className = '' }: { line: UsageLine; className?: strin
   const { t } = useAdminT()
   if (!line.note && !line.isUpperBound) return null
   return (
-    <span className={`block text-xs text-[#64748B] ${className}`}>
+    <span className={`block text-xs text-adm-muted ${className}`}>
       {line.note}
-      {line.isUpperBound && <span className="text-[#64748B]">{t('usage.upperBound')}</span>}
+      {line.isUpperBound && <span className="text-adm-muted">{t('usage.upperBound')}</span>}
     </span>
   )
 }
@@ -44,12 +44,12 @@ function GroupHeading({ group }: { group: UsageGroup }) {
   const { t } = useAdminT()
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#475569]">
-        <i className={`fa-solid ${VENDOR_ICONS[group.vendor]} text-[#64748B]`} aria-hidden="true" />
-        <span className="truncate">{group.label}</span>
+      <span className="flex min-w-0 items-center gap-2 text-xs font-bold uppercase tracking-wider text-adm-text-2">
+        <i className={`fa-solid ${VENDOR_ICONS[group.vendor]} text-adm-muted`} aria-hidden="true" />
+        <bdi className="truncate">{group.label}</bdi>
       </span>
-      <span className="shrink-0 text-xs text-[#64748B]">
-        {t('usage.subtotal', { amount: '' })}<Num className="font-bold text-[#0B1B3D]">{formatIls(group.netIls)}</Num>
+      <span className="shrink-0 text-xs text-adm-muted">
+        {t('usage.subtotal', { amount: '' })}<Num className="font-bold text-adm-text">{formatIls(group.netIls)}</Num>
       </span>
     </div>
   )
@@ -59,20 +59,20 @@ function MobileGroup({ group }: { group: UsageGroup }) {
   const { t } = useAdminT()
   return (
     <section aria-label={group.label}>
-      <div className="border-y border-[#F1F5F9] bg-[#F8FAFC] px-4 py-2.5">
+      <div className="border-y border-adm-line-soft bg-adm-sunken px-4 py-2.5">
         <GroupHeading group={group} />
       </div>
-      <ul className="divide-y divide-[#F1F5F9]">
+      <ul className="divide-y divide-adm-line-soft">
         {group.lines.map((line) => (
           <li key={line.skuId} className="px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold text-[#0B1B3D]">{line.service}</p>
+                <p className="font-semibold text-adm-text"><bdi>{line.service}</bdi></p>
                 <LineNote line={line} className="mt-0.5" />
               </div>
               <div className="shrink-0 text-end">
-                <Num className="block font-bold text-[#0B1B3D]">{formatIls(line.netIls)}</Num>
-                <span className="text-xs text-[#64748B]">{t('usage.net')}</span>
+                <Num className="block font-bold text-adm-text">{formatIls(line.netIls)}</Num>
+                <span className="text-xs text-adm-muted">{t('usage.net')}</span>
               </div>
             </div>
             {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
@@ -84,8 +84,8 @@ function MobileGroup({ group }: { group: UsageGroup }) {
                 [t('usage.gross'), formatIls(line.grossIls)],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-0">
-                  <dt className="text-[#64748B]">{label}</dt>
-                  <dd className="font-semibold text-[#0F172A]">
+                  <dt className="text-adm-muted">{label}</dt>
+                  <dd className="font-semibold text-adm-text">
                     <Num>{value}</Num>
                   </dd>
                 </div>
@@ -117,7 +117,7 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#E2E8F0] text-xs font-semibold uppercase tracking-wider text-[#64748B]">
+            <tr className="border-b border-adm-line text-xs font-semibold uppercase tracking-wider text-adm-muted">
               <th scope="col" className="py-3 ps-6 pe-3 text-start">{t('usage.col.service')}</th>
               <th scope="col" className="px-3 py-3 text-start">{t('usage.col.metric')}</th>
               <th scope="col" className="px-3 py-3 text-end">{t('usage.col.used')}</th>
@@ -128,8 +128,8 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
             </tr>
           </thead>
           {groups.map((group) => (
-            <tbody key={group.vendor} className="divide-y divide-[#F1F5F9] border-b border-[#E2E8F0] last:border-b-0">
-              <tr className="bg-[#F8FAFC]">
+            <tbody key={group.vendor} className="divide-y divide-adm-line-soft border-b border-adm-line last:border-b-0">
+              <tr className="bg-adm-sunken">
                 <th scope="colgroup" colSpan={7} className="py-2.5 ps-6 pe-6 text-start font-normal">
                   <GroupHeading group={group} />
                 </th>
@@ -137,24 +137,24 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
               {group.lines.map((line) => (
                 <tr key={line.skuId} className="align-top">
                   <th scope="row" className="w-[34%] py-4 ps-6 pe-3 text-start font-normal">
-                    <span className="font-semibold text-[#0B1B3D]">{line.service}</span>
+                    <span className="font-semibold text-adm-text"><bdi>{line.service}</bdi></span>
                     <LineNote line={line} className="mt-0.5" />
                     {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
                   </th>
-                  <td className="px-3 py-4 text-[#64748B]">{t(`usage.unit.${line.unit}` as AdminKey)}</td>
-                  <td className="whitespace-nowrap px-3 py-4 text-end text-[#0F172A]">
+                  <td className="px-3 py-4 text-adm-muted">{t(`usage.unit.${line.unit}` as AdminKey)}</td>
+                  <td className="whitespace-nowrap px-3 py-4 text-end text-adm-text">
                     <Num>{used(line)}</Num>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-end text-[#64748B]">
+                  <td className="whitespace-nowrap px-3 py-4 text-end text-adm-muted">
                     <Num>{freeLabel(line, t)}</Num>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-end text-[#0F172A]">
+                  <td className="whitespace-nowrap px-3 py-4 text-end text-adm-text">
                     <Num>{formatCount(line.billable)}</Num>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-end text-[#64748B]">
+                  <td className="whitespace-nowrap px-3 py-4 text-end text-adm-muted">
                     <Num>{formatIls(line.grossIls)}</Num>
                   </td>
-                  <td className="whitespace-nowrap py-4 ps-3 pe-6 text-end font-bold text-[#0B1B3D]">
+                  <td className="whitespace-nowrap py-4 ps-3 pe-6 text-end font-bold text-adm-text">
                     <Num>{formatIls(line.netIls)}</Num>
                   </td>
                 </tr>

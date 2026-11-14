@@ -19,7 +19,7 @@ export function SearchInput({ value, onChange, placeholder, label, autoFocus, cl
   return (
     <div dir={inputDir.dir === 'auto' ? undefined : inputDir.dir} className={`relative ${className}`}>
       <i
-        className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]"
+        className="fa-solid fa-magnifying-glass pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-sm text-adm-muted"
         aria-hidden="true"
       />
       <input
@@ -55,10 +55,10 @@ export function FilterChips<T extends string>({ label, options, value, onChange 
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
-            className={`inline-flex min-h-12 shrink-0 items-center rounded-full border px-4 text-sm font-semibold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] ${
+            className={`inline-flex min-h-12 shrink-0 items-center rounded-xl border px-4 text-sm font-semibold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent ${
               selected
-                ? 'border-[#0038B8] bg-[#0038B8] text-white shadow-sm shadow-[#0038B8]/20'
-                : 'border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1] hover:text-[#0038B8] active:bg-[#F1F5F9]'
+                ? 'border-adm-accent bg-adm-accent text-adm-on-accent shadow-sm shadow-adm-accent/20'
+                : 'border-adm-line bg-adm-surface text-adm-text-2 hover:border-adm-line-strong hover:text-adm-accent active:bg-adm-raised'
             }`}
           >
             {selected && (
@@ -78,7 +78,7 @@ export function FilterChips<T extends string>({ label, options, value, onChange 
 export function ResultCount({ shown, total, noun }: { shown: number; total: number; noun: string }) {
   const { t } = useAdminT()
   return (
-    <p className="text-sm text-[#64748B]" aria-live="polite">
+    <p className="text-sm text-adm-muted" aria-live="polite">
       {shown === total ? t('list.count', { total, noun }) : t('list.of', { shown, total, noun })}
     </p>
   )

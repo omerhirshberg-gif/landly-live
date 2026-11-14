@@ -46,7 +46,7 @@ export default function MerchantBadge({ logoUrl, businessName, size = 'md' }: Me
           className={size === 'sm' ? 'h-full w-auto max-w-full object-contain' : `h-full w-auto object-contain ${size === 'lg' ? 'min-w-0 max-w-full' : 'max-w-[96px]'}`}
         />
       ) : (
-        <span className={`font-extrabold leading-none text-brand ${size === 'lg' ? 'text-2xl' : 'text-lg'}`}>{Array.from(businessName.trim())[0]?.toUpperCase() ?? ''}</span>
+        <span className={`font-extrabold leading-tight text-brand ${size === 'lg' ? 'text-2xl' : 'text-lg'}`}>{Array.from(businessName.trim())[0]?.toUpperCase() ?? ''}</span>
       )}
     </span>
   )

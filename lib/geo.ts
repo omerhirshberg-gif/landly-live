@@ -246,14 +246,17 @@ export async function reverseGeocode(coords: Coordinates, lang: Lang, apiBase = 
  * What an offer copies from its business's document: the display address,
  * and, once the business is geocoded, its coordinates and city (so "Near me"
  * can sort the one offers fetch without reading businesses, which members
- * can't).
+ * can't). A chain business (`isChain`) copies nothing.
  */
-export function offerPlaceFields(business: { location?: unknown; address?: unknown }): {
+export function offerPlaceFields(business: { location?: unknown; address?: unknown; isChain?: unknown }): {
   location: string
   geo: Coordinates | null
   city: LocalizedName
   address: PlaceSnapshot | null
 } {
+  // A chain's own address is its headquarters, not a place a member can go: its offers carry none, so no
+  // card, page, voucher, "Near me" sort or search can ever show it as a branch.
+  if (business.isChain === true) return { location: '', geo: null, city: {}, address: null }
   const address = parseGeoAddress(business.address)
   return {
     location: typeof business.location === 'string' ? business.location : '',

@@ -31,6 +31,7 @@ interface Business {
   logoUrl: string
   /** E.164, or '' for none. */
   phone: string
+  isChain?: boolean
 }
 
 const businessTabs = (t: (key: AdminKey) => string) => [
@@ -219,7 +220,7 @@ function OfferSection({
     <section>
       <h2 className={SECTION_HEADING}>{title}</h2>
       {offers.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[#CBD5E1] px-5 py-6 text-center text-sm text-[#64748B]">{t('bizDetail.none')}</p>
+        <p className="rounded-2xl border border-adm-line px-5 py-6 text-center text-sm text-adm-muted">{t('bizDetail.none')}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {offers.map((offer) => (

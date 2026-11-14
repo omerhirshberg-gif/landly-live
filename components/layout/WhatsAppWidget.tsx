@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FocusEvent, type PointerEvent } from 'react'
 import { usePathname } from 'next/navigation'
+import { MessageCircle } from 'lucide-react'
 import { floatingClearance } from '@/lib/layout/floatingClearance'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
@@ -234,7 +235,10 @@ export function WhatsAppWidgetView({
             onBlur={blur}
           >
             <a href={href} target="_blank" rel="noopener noreferrer" className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2">
-              <span className="block text-sm font-bold text-[#0B1B3D]">{t('whatsapp_bubble_title')}</span>
+              <span className="flex items-center gap-1.5 text-sm font-bold text-[#0B1B3D]">
+                <MessageCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-[#128C4B]" strokeWidth={1.75} />
+                {t('whatsapp_bubble_title')}
+              </span>
               <span className="mt-0.5 block text-[13px] leading-snug text-[#475569]">{t('whatsapp_bubble_sub')}</span>
             </a>
             <button

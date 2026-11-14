@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { isOfferActive } from '@/lib/admin/offerStatus'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { chunked } from '@/lib/firebase/batching'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
@@ -21,7 +22,11 @@ interface PatchBody {
     logoUrl?: unknown
     /** Contact number (local Israeli or "+country"); '' removes it. Absent keeps the stored one. */
     phone?: unknown
+    /** A nationwide chain / multi-branch business: the location is optional (headquarters only) and its offers carry no address. */
+    isChain?: unknown
   }
+  /** With isChain on: also mark the business's live offers nationwide (never vouchers already issued). */
+  markExistingNationwide?: unknown
   /** The admin's own wording for the name, per language; the rest is Google's (Hebrew names only). */
   businessNameOverrides?: unknown
 }
@@ -46,9 +51,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
   const body = (await request.json().catch(() => null)) as PatchBody | null
   const business = body?.business
   if (!business) return badRequest('Missing business data.')
-  for (const field of ['businessName', 'category', 'location'] as const) {
+  const isChain = business.isChain === true
+  // A chain's location is its headquarters and may be empty.
+  for (const field of ['businessName', 'category', ...(isChain ? [] : ['location' as const])] as const) {
     if (typeof business[field] !== 'string' || !business[field].trim()) return badRequest(`Missing business.${field}.`)
   }
+  if (business.location !== undefined && typeof business.location !== 'string') return badRequest('business.location must be text.')
   const address = business.address === undefined || business.address === null ? null : parseGeoAddress(business.address)
   if (business.address && !address) return badRequest('business.address is not a valid place.')
   const logo = parseLogoUrl(business.logoUrl)
@@ -65,8 +73,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
   const fields = {
     businessName: business.businessName.trim(),
     category: business.category.trim(),
-    location: business.location.trim(),
+    location: (business.location ?? '').trim(),
   }
+  // Only a chain's offers marked nationwide lose their address: a single-branch offer keeps the one it was saved with.
+  const markExisting = isChain && body?.markExistingNationwide === true
   // An unchanged name costs nothing: only a changed (Hebrew) name goes to Google.
   const storedLogo = typeof businessSnap.data()?.logoUrl === 'string' ? (businessSnap.data()?.logoUrl as string) : ''
   const logoUrl = business.logoUrl === undefined ? storedLogo : logo.logoUrl
@@ -80,18 +90,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
     ...fields,
     translations: translated.translations,
     address: address ?? FieldValue.delete(),
+    isChain: isChain ? true : FieldValue.delete(),
     logoUrl: logoUrl || FieldValue.delete(),
     // The phone is the business's own: offers don't copy it.
     ...(business.phone === undefined ? {} : { phone: phone.phone || FieldValue.delete() }),
   })
   const place = offerPlaceFields({ location: fields.location, address })
+  const chainPlace = offerPlaceFields({ isChain: true })
+  let markedNationwide = 0
   for (const doc of offersSnap.docs) {
+    const o = doc.data()
+    const live = isOfferActive({
+      totalQuantity: typeof o.totalQuantity === 'number' ? o.totalQuantity : null,
+      claimedCount: Number(o.claimedCount) || 0,
+      expiryDate: o.expiryDate instanceof Timestamp ? o.expiryDate.toDate() : null,
+    })
+    const mark = markExisting && live && o.isNationwide !== true
+    if (mark) markedNationwide += 1
+    const nationwide = o.isNationwide === true || mark
     batch.update(doc.ref, {
       businessName: fields.businessName,
       businessTranslations: translated.translations,
       businessLogoUrl: logoUrl,
       category: fields.category,
-      ...place,
+      ...(mark ? { isNationwide: true } : {}),
+      // A chain's nationwide offers carry no address; its other offers, and every offer of an ordinary business, keep the business's.
+      ...(isChain ? (nationwide ? chainPlace : {}) : place),
     })
   }
   await batch.commit()
@@ -101,6 +125,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
   return NextResponse.json({
     updated: true,
     updatedOfferCount: offersSnap.size,
+    markedNationwideCount: markedNationwide,
+    isChain,
     translations: translated.translations,
     logoUrl,
     phone: business.phone === undefined ? (typeof businessSnap.data()?.phone === 'string' ? businessSnap.data()?.phone : '') : phone.phone,

@@ -115,10 +115,10 @@ export default function AdminSearchPage() {
             {matchedBusinesses.map((business) => (
               <Card key={business.uid} href={`/admin/businesses/${business.uid}`} className="flex flex-col gap-3 p-5">
                 <div className="min-w-0">
-                  <BidiText className="font-semibold text-[#0B1B3D]">{business.businessName}</BidiText>
-                  <div className="mt-0.5 truncate text-xs text-[#64748B]" dir="ltr">{business.email}</div>
+                  <BidiText className="font-semibold text-adm-text">{business.businessName}</BidiText>
+                  <div className="mt-0.5 truncate text-xs text-adm-muted" dir="ltr">{business.email}</div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 border-t border-[#E2E8F0] pt-3">
+                <div className="flex flex-wrap items-center gap-2 border-t border-adm-line pt-3">
                   <CategoryBadge category={business.category} />
                   <StatusBadge tone={business.activePerkCount > 0 ? 'emerald' : 'slate'} icon="fa-tags">
                     {business.activePerkCount} active perks
@@ -138,12 +138,12 @@ export default function AdminSearchPage() {
               <Card key={offer.id} href={`/admin/offers/${offer.id}/edit`} className="flex flex-col gap-3 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <BidiText className="font-semibold text-[#0B1B3D]">{offer.title}</BidiText>
-                    <BidiText className="mt-0.5 text-xs text-[#64748B]">{offer.businessName}</BidiText>
+                    <BidiText className="font-semibold text-adm-text">{offer.title}</BidiText>
+                    <BidiText className="mt-0.5 text-xs text-adm-muted">{offer.businessName}</BidiText>
                   </div>
                   <OfferStatusBadge offer={offer} />
                 </div>
-                <div className="border-t border-[#E2E8F0] pt-3">
+                <div className="border-t border-adm-line pt-3">
                   <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
                 </div>
               </Card>

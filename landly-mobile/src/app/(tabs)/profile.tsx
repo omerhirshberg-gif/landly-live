@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    minHeight: 28,
+    minHeight: 44,
     marginStart: -8,
     paddingHorizontal: 8,
     borderRadius: 8,

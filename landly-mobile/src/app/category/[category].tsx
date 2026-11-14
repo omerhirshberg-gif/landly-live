@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titleText: { flex: 1, minWidth: 0, gap: 2 },
-  count: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
+  count: { fontSize: 14, lineHeight: 20, color: colors.textMuted, fontVariant: ['tabular-nums'] },
   countPlaceholder: { height: 12, width: 110, marginTop: 6, borderRadius: radius.pill, backgroundColor: colors.borderLight },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },

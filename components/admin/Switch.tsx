@@ -20,8 +20,8 @@ export default function Switch({ checked, onChange, ...rest }: SwitchProps) {
         onChange={(e) => onChange(e.target.checked)}
         className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
       />
-      <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full bg-slate-200 transition-colors duration-200 peer-checked:bg-emerald-500 peer-focus-visible:ring-4 peer-focus-visible:ring-emerald-500/30 peer-disabled:opacity-50 motion-reduce:transition-none" />
-      <span aria-hidden="true" className="pointer-events-none absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-[inset-inline-start] duration-200 peer-checked:start-[1.375rem] peer-disabled:opacity-80 motion-reduce:transition-none" />
+      <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full bg-adm-line transition-colors duration-200 peer-checked:bg-emerald-500 peer-focus-visible:ring-4 peer-focus-visible:ring-emerald-500/30 peer-disabled:opacity-50 motion-reduce:transition-none" />
+      <span aria-hidden="true" className="pointer-events-none absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-adm-surface shadow-sm transition-[inset-inline-start] duration-200 peer-checked:start-[1.375rem] peer-disabled:opacity-80 motion-reduce:transition-none" />
     </span>
   )
 }

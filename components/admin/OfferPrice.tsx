@@ -12,11 +12,11 @@ export default function OfferPrice({ offerPrice, originalPrice, align = 'start' 
   return (
     <span className={`inline-flex flex-col gap-0.5 tabular-nums leading-tight ${align === 'end' ? 'items-end' : 'items-start'}`}>
       <bdi dir="ltr" className="whitespace-nowrap">
-        <span className="font-semibold text-[#0B1B3D]">{formatPrice(offerPrice)}</span>
-        {percent > 0 && <span className="ms-1 text-xs font-semibold text-emerald-700">(-{percent}%)</span>}
+        <span className="font-semibold text-adm-text">{formatPrice(offerPrice)}</span>
+        {percent > 0 && <span className="ms-1 text-xs font-semibold text-adm-ok">(-{percent}%)</span>}
       </bdi>
       {originalPrice > offerPrice && (
-        <bdi dir="ltr" className="whitespace-nowrap text-xs text-[#64748B] line-through">
+        <bdi dir="ltr" className="whitespace-nowrap text-xs text-adm-muted line-through">
           {formatPrice(originalPrice)}
         </bdi>
       )}

@@ -14,6 +14,9 @@ import { Platform } from 'react-native'
 // screen, not only at the edge. LTR keeps the system's own iOS push. Android
 // uses its iOS-style push in the matching direction and the system back
 // gesture. The Expo web build ignores these and uses the browser's back.
+/** A screen that must not be swiped away (mid-payment, a settled order): no drag on iOS and no native swipe. */
+export const lockedBackOptions = { gestureEnabled: false, fullScreenGestureEnabled: false } as const
+
 export function pageFlipOptions(isRtl: boolean) {
   const animation =
     Platform.OS === 'android' ? (isRtl ? 'ios_from_left' : 'ios_from_right') : isRtl ? 'slide_from_left' : 'default'

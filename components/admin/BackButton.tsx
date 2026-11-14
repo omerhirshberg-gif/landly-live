@@ -10,8 +10,8 @@ import { useAdminT } from '@/lib/admin/translations'
 // (never the public site's on <html>).
 
 const BACK_BUTTON =
-  'inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3 py-2 text-[15px] font-semibold text-slate-700 transition-colors ' +
-  'hover:text-slate-900 active:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent]'
+  'inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl px-3 py-2 text-[15px] font-semibold text-adm-text-2 transition-colors ' +
+  'hover:text-adm-text active:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent [-webkit-tap-highlight-color:transparent]'
 
 function Chevron() {
   const { dir } = useAdminT()

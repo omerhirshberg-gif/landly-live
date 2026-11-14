@@ -45,15 +45,15 @@ afterEach(() => {
 
 describe('usageWrite', () => {
   it('nests each counter as an increment, for the month and for the day', () => {
-    const write = usageWrite({ 'google.translation.chars': 120, 'google.translation.requests': 1, 'whatsapp.authSent': 1 }, NOW, 'landly-dev') as any
+    const write = usageWrite({ 'google.translation.chars': 120, 'google.translation.requests': 1, 'gateway019.smsOtpSent': 1 }, NOW, 'landly-dev') as any
     expect(write.month).toBe('2026-10')
     expect(write.projectId).toBe('landly-dev')
     expect(write.updatedAt).toBeInstanceOf(FieldValue)
     expect(isIncrement(write.google.translation.chars, 120)).toBe(true)
     expect(isIncrement(write.google.translation.requests, 1)).toBe(true)
-    expect(isIncrement(write.whatsapp.authSent, 1)).toBe(true)
+    expect(isIncrement(write.gateway019.smsOtpSent, 1)).toBe(true)
     expect(isIncrement(write.daily['25'].google.translation.chars, 120)).toBe(true)
-    expect(isIncrement(write.daily['25'].whatsapp.authSent, 1)).toBe(true)
+    expect(isIncrement(write.daily['25'].gateway019.smsOtpSent, 1)).toBe(true)
     // No dotted keys: set() would store them as single field names.
     const keys = (value: unknown): string[] =>
       value && typeof value === 'object' && !(value instanceof FieldValue) ? Object.entries(value).flatMap(([k, v]) => [k, ...keys(v)]) : []
@@ -77,13 +77,13 @@ describe('recordUsage', () => {
     mocks.after.mockImplementation(() => {
       throw new Error('`after` was called outside a request scope.')
     })
-    expect(() => recordUsage('whatsapp.simulated', 1, NOW)).not.toThrow()
+    expect(() => recordUsage('gateway019.simulated', 1, NOW)).not.toThrow()
     await flush()
     expect(mocks.set).toHaveBeenCalledTimes(1)
   })
 
   it('records nothing for zero, negative or non-numeric amounts', () => {
-    recordUsageBatch({ 'whatsapp.inboundMessages': 0, 'whatsapp.serviceSent': -1, 'whatsapp.authSent': Number.NaN, 'whatsapp.simulated': Infinity })
+    recordUsageBatch({ 'whatsapp.inboundMessages': 0, 'whatsapp.serviceSent': -1, 'gateway019.smsOtpSent': Number.NaN, 'gateway019.simulated': Infinity })
     recordUsage('whatsapp.inboundMessages', 0)
     expect(mocks.after).not.toHaveBeenCalled()
   })
@@ -97,9 +97,9 @@ describe('recordUsage', () => {
 
   it('only logs when Firestore rejects the write', async () => {
     mocks.set.mockRejectedValue(new Error('PERMISSION_DENIED'))
-    recordUsage('whatsapp.authSent', 1, NOW)
+    recordUsage('gateway019.whatsappOtpSent', 1, NOW)
     await expect(tasks[0]!()).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[usage] counters not recorded (whatsapp.authSent): PERMISSION_DENIED'))
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[usage] counters not recorded (gateway019.whatsappOtpSent): PERMISSION_DENIED'))
   })
 
   it('only logs when the Admin SDK has no credentials', async () => {

@@ -11,7 +11,7 @@ import { dayTime, phoneOf } from './time'
 
 const RESOLVE_BUTTON =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-semibold whitespace-nowrap bg-emerald-600 text-white shadow-sm ' +
-  'transition-colors hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8] ' +
+  'transition-colors hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent ' +
   'disabled:cursor-not-allowed disabled:opacity-70 [-webkit-tap-highlight-color:transparent]'
 
 interface ChatHeaderProps {
@@ -42,7 +42,7 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
   const busy = pendingStatus !== null
   return (
     // On a phone this is the top of a full-screen panel, so it clears the notch itself.
-    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E2E8F0] px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 sm:px-4 md:pt-3">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-adm-line px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 sm:px-4 md:pt-3">
       <div className="basis-full md:hidden">
         <BackButton onClick={onBack} className="-ms-2">
           {t('support.allChats')}
@@ -51,19 +51,19 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 break-words text-lg font-bold leading-snug text-[#0B1B3D] xl:text-xl">
+          <h2 className="min-w-0 break-words text-lg font-bold leading-snug text-adm-text xl:text-xl">
             {name ? <span dir="auto">{name}</span> : <bdi dir="ltr">{phoneOf(waId)}</bdi>}
           </h2>
           <LanguageBadge lang={lang} selected={langSelected} />
           <ConversationStatusBadge status={status} />
           {category && status !== 'active' && <CategoryBadge category={category} />}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#64748B]">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-adm-muted">
           <a
             href={`https://wa.me/${waId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-1 hover:text-[#0038B8] active:text-[#0038B8] md:min-h-0"
+            className="inline-flex min-h-11 items-center gap-1 hover:text-adm-accent active:text-adm-accent md:min-h-0"
             aria-label={t('support.openWhatsApp', { phone: phoneOf(waId) })}
           >
             <i className="fa-brands fa-whatsapp" aria-hidden="true" />
@@ -74,19 +74,19 @@ export default function ChatHeader({ conversation, onBack, onStatus, pendingStat
               type="button"
               onClick={copyUid}
               title={t('support.copyUid')}
-              className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-md bg-[#F1F5F9] px-2.5 font-mono text-[13px] text-[#475569] hover:bg-[#E2E8F0] active:bg-[#E2E8F0] md:min-h-0 md:px-1.5 md:py-0.5"
+              className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-md bg-adm-raised px-2.5 font-mono text-[13px] text-adm-text-2 hover:bg-adm-raised active:bg-adm-line md:min-h-0 md:px-1.5 md:py-0.5"
             >
-              <i className={`fa-solid ${copied ? 'fa-check text-emerald-600' : 'fa-user'}`} aria-hidden="true" />
+              <i className={`fa-solid ${copied ? 'fa-check text-adm-ok' : 'fa-user'}`} aria-hidden="true" />
               <span className="truncate">
                 <bdi dir="ltr">{uid}</bdi>
               </span>
             </button>
           ) : (
-            <span className="rounded-md border border-dashed border-[#CBD5E1] px-1.5 py-0.5 text-[13px]">{t('support.notMember')}</span>
+            <span className="rounded-md border border-adm-line px-1.5 py-0.5 text-[13px]">{t('support.notMember')}</span>
           )}
         </div>
         {followUp && status !== 'resolved' && (
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-[#64748B]">
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-adm-muted">
             <i className="fa-regular fa-clock" aria-hidden="true" />
             <span>
               {followUp.sentAt

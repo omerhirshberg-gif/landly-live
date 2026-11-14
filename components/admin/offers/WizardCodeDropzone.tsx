@@ -44,36 +44,36 @@ export default function WizardCodeDropzone({ value, onChange }: { value: WizardC
 
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.codesTitle')}</legend>
+      <legend className="mb-1 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.codesTitle')}</legend>
       <p className={`${ADMIN_HINT} mb-3`}>{t('wizard.codesHint')}</p>
       {error && <Alert className="mb-3">{error}</Alert>}
       {value ? (
-        <div className="space-y-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#0B1B3D]">
-            <i className="fa-solid fa-file-excel text-emerald-600" aria-hidden="true" />
+        <div className="space-y-3 rounded-2xl border border-adm-line bg-adm-sunken p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-adm-text">
+            <i className="fa-solid fa-file-excel text-adm-ok" aria-hidden="true" />
             <bdi dir="ltr" className="min-w-0 truncate">{value.fileName}</bdi>
           </p>
-          <p className="text-sm text-emerald-700">{t('wizard.codesLoaded', { n: value.sheet.entries.length })}</p>
+          <p className="text-sm text-adm-ok">{t('wizard.codesLoaded', { n: value.sheet.entries.length })}</p>
           <dl className="grid grid-cols-3 gap-3 text-xs">
-            <div><dt className="text-[#64748B]">{t('upload.duplicates')}</dt><dd className="font-semibold tabular-nums text-[#0B1B3D]"><bdi dir="ltr">{value.sheet.duplicates}</bdi></dd></div>
-            <div><dt className="text-[#64748B]">{t('upload.empty')}</dt><dd className="font-semibold tabular-nums text-[#0B1B3D]"><bdi dir="ltr">{value.sheet.empty}</bdi></dd></div>
-            <div><dt className="text-[#64748B]">{t('upload.badDates')}</dt><dd className="font-semibold tabular-nums text-[#0B1B3D]"><bdi dir="ltr">{value.sheet.badDates}</bdi></dd></div>
+            <div><dt className="text-adm-muted">{t('upload.duplicates')}</dt><dd className="font-semibold tabular-nums text-adm-text"><bdi dir="ltr">{value.sheet.duplicates}</bdi></dd></div>
+            <div><dt className="text-adm-muted">{t('upload.empty')}</dt><dd className="font-semibold tabular-nums text-adm-text"><bdi dir="ltr">{value.sheet.empty}</bdi></dd></div>
+            <div><dt className="text-adm-muted">{t('upload.badDates')}</dt><dd className="font-semibold tabular-nums text-adm-text"><bdi dir="ltr">{value.sheet.badDates}</bdi></dd></div>
           </dl>
-          <div className="admin-table-scroll overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white">
+          <div className="admin-table-scroll overflow-x-auto rounded-xl border border-adm-line bg-adm-surface">
             <table className="w-full min-w-[360px] text-start text-xs" aria-label={t('wizard.codesPreview')}>
-              <thead className="bg-[#F8FAFC] font-semibold text-[#64748B]">
+              <thead className="bg-adm-sunken font-semibold text-adm-muted">
                 <tr>
                   <th scope="col" className="px-3 py-2 text-start">{t('wizard.codeCol')}</th>
                   <th scope="col" className="px-3 py-2 text-start">{t('wizard.expiryCol')}</th>
                   <th scope="col" className="px-3 py-2 text-start">{t('wizard.pinCol')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
+              <tbody className="divide-y divide-adm-line">
                 {value.sheet.entries.slice(0, PREVIEW_ROWS).map((entry, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2 font-mono"><bdi dir="ltr">{maskCode(entry.code)}</bdi></td>
-                    <td className="px-3 py-2 tabular-nums text-[#475569]"><bdi dir="ltr">{entry.expiresAt ?? '—'}</bdi></td>
-                    <td className="px-3 py-2 font-mono text-[#475569]"><bdi dir="ltr">{entry.pin ? maskCode(entry.pin) : '—'}</bdi></td>
+                    <td className="px-3 py-2 tabular-nums text-adm-text-2"><bdi dir="ltr">{entry.expiresAt ?? '—'}</bdi></td>
+                    <td className="px-3 py-2 font-mono text-adm-text-2"><bdi dir="ltr">{entry.pin ? maskCode(entry.pin) : '—'}</bdi></td>
                   </tr>
                 ))}
               </tbody>
@@ -97,15 +97,15 @@ export default function WizardCodeDropzone({ value, onChange }: { value: WizardC
             setDragging(false)
             void handleFile(e.dataTransfer.files[0])
           }}
-          className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors ${dragging ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#CBD5E1] bg-[#F8FAFC]'}`}
+          className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors ${dragging ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line-strong bg-adm-sunken'}`}
         >
-          <p className="text-base font-semibold text-[#0B1B3D]">{reading ? t('upload.reading') : t('upload.drop')}</p>
+          <p className="text-base font-semibold text-adm-text">{reading ? t('upload.reading') : t('upload.drop')}</p>
           <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,text/csv" className="sr-only" tabIndex={-1} aria-label={t('upload.choose')} onChange={(e) => void handleFile(e.target.files?.[0])} />
           <button type="button" className={SECONDARY_BUTTON} disabled={reading} onClick={() => inputRef.current?.click()}>
             <i className="fa-solid fa-folder-open text-xs" aria-hidden="true" />
             {t('upload.choose')}
           </button>
-          <p className="text-xs text-[#64748B]">{t('upload.formats', { n: MAX_SHEET_ROWS })}</p>
+          <p className="text-xs text-adm-muted">{t('upload.formats', { n: MAX_SHEET_ROWS })}</p>
         </div>
       )}
     </fieldset>

@@ -24,6 +24,8 @@ import { colors } from '../../theme'
 import CelebrationBadge from './CelebrationBadge'
 import CountryCodePicker from './CountryCodePicker'
 import { saveOnboardingDraft } from './draftStorage'
+import { wizardBack } from '@shared/navigation/backGuard'
+import { useBackGuard } from '../../lib/useBackGuard'
 import LanguageStep from './LanguageStep'
 import NotificationsActions, { NotificationPoints } from './NotificationsStep'
 import PersonaStep from './PersonaStep'
@@ -142,6 +144,11 @@ export default function OnboardingWizard({
 
   const back = prevStep(step)
   const goBack = back && !busy ? () => goTo(back, -1) : null
+  // Android's back button: a step back on any card after the first, nothing on the first (never out of the app).
+  useBackGuard(() => {
+    if (wizardBack(goBack !== null) === 'step-back') goBack?.()
+    return true
+  })
 
   const advance = () => {
     const target = nextStep(step)

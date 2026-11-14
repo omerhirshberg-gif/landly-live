@@ -21,13 +21,13 @@ export default function LogoTile({ logoUrl, name, size = 'md', className = '' }:
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center overflow-hidden border border-black/[0.06] shadow-[0_2px_8px_rgba(15,23,42,0.10)] ${box} ${logo ? `bg-white ${pad}` : 'bg-[#F0F7FF]'} ${className}`}
+      className={`flex shrink-0 items-center justify-center overflow-hidden border border-black/[0.06] shadow-[0_2px_8px_rgba(15,23,42,0.10)] ${box} ${logo ? `bg-adm-logo ${pad}` : 'bg-adm-accent-soft'} ${className}`}
     >
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logo} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" onError={() => setFailedUrl(logo)} />
       ) : (
-        <span className={`font-extrabold leading-none text-[#0038B8] ${initial}`}>{[...name.trim()][0]?.toUpperCase() ?? '?'}</span>
+        <span className={`font-extrabold leading-none text-adm-accent ${initial}`}>{[...name.trim()][0]?.toUpperCase() ?? '?'}</span>
       )}
     </span>
   )

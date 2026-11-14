@@ -85,6 +85,11 @@ describe('parseGeoAddress', () => {
     expect(offerPlaceFields({ location: 'Somewhere' })).toEqual({ location: 'Somewhere', geo: null, city: {}, address: null })
   })
 
+  it('copies no place onto a chain business’s offers', () => {
+    expect(offerPlaceFields({ location: 'HQ 1', address: valid, isChain: true })).toEqual({ location: '', geo: null, city: {}, address: null })
+    expect(offerPlaceFields({ location: 'Somewhere', isChain: false })).toEqual({ location: 'Somewhere', geo: null, city: {}, address: null })
+  })
+
   it('reads an offer’s copy of the address lines', () => {
     expect(parsePlaceSnapshot({ placeId: 'ChIJ123', formatted: valid.formatted, short: valid.short })).toEqual({ placeId: 'ChIJ123', formatted: valid.formatted, short: valid.short })
     expect(parsePlaceSnapshot({ placeId: 'ChIJ123', formatted: {} })).toBeNull()

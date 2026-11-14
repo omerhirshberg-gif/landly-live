@@ -3,7 +3,7 @@ import type { UsageCounters } from './usageTypes'
 // What each metered service costs, for the estimates on /admin/system/costs
 // (lib/usage/usageReport.ts). Constants, not env vars, so DEV and PROD
 // always price alike. Google bills in USD and is converted at USD_TO_ILS;
-// the WhatsApp OTP rate is configured in shekels. These are estimates from
+// the 019 OTP rates are configured in shekels. These are estimates from
 // our own counters, not an invoice: re-check the price pages below when
 // `verifiedAt` gets old.
 
@@ -20,11 +20,11 @@ export interface PriceTier {
   unitPrice: Money
 }
 
-export type SkuId = 'translation' | 'placesAutocomplete' | 'placesDetails' | 'geocoding' | 'waAuth' | 'waService' | 'waSimulated'
+export type SkuId = 'translation' | 'placesAutocomplete' | 'placesDetails' | 'geocoding' | 'sms019Otp' | 'wa019Otp' | 'sim019' | 'waAuthLegacy' | 'waService'
 
 export interface MeteredSku {
   id: SkuId
-  vendor: 'google' | 'meta'
+  vendor: 'google' | 'gateway019' | 'meta'
   service: string
   unit: 'characters' | 'requests' | 'messages'
   usage: (counters: UsageCounters) => number
@@ -113,14 +113,45 @@ export const SKUS: readonly MeteredSku[] = [
     sourceUrl: MAPS_PRICING,
   },
   {
-    id: 'waAuth',
+    id: 'sms019Otp',
+    vendor: 'gateway019',
+    service: '019 SMS OTP',
+    unit: 'messages',
+    usage: (c) => c.gateway019.smsOtpSent,
+    freePerMonth: 0,
+    tiers: [{ upTo: Infinity, unitPrice: ils(0.06) }],
+    note: () => 'Israeli numbers · counted when 019 accepts the send',
+  },
+  {
+    id: 'wa019Otp',
+    vendor: 'gateway019',
+    service: '019 WhatsApp OTP',
+    unit: 'messages',
+    usage: (c) => c.gateway019.whatsappOtpSent,
+    freePerMonth: 0,
+    tiers: [{ upTo: Infinity, unitPrice: ils(0.12) }],
+    note: () => 'International numbers · counted when 019 accepts the send',
+  },
+  {
+    id: 'sim019',
+    vendor: 'gateway019',
+    service: '019 simulated sends',
+    unit: 'messages',
+    // The earlier whatsapp.simulated counter was the same thing, before 019 had its own.
+    usage: (c) => c.gateway019.simulated + c.whatsapp.simulated,
+    freePerMonth: null,
+    tiers: [],
+    note: () => 'Logged instead of sent while 019 is not live (DEV)',
+  },
+  {
+    id: 'waAuthLegacy',
     vendor: 'meta',
-    service: 'WhatsApp OTP (authentication)',
+    service: 'Legacy Meta OTP',
     unit: 'messages',
     usage: (c) => c.whatsapp.authSent,
     freePerMonth: 0,
     tiers: [{ upTo: Infinity, unitPrice: ils(0.12) }],
-    note: () => 'Counted when Meta accepts the send',
+    note: () => 'Sent through Meta before OTPs moved to 019',
     sourceUrl: 'https://developers.facebook.com/docs/whatsapp/pricing',
   },
   {
@@ -132,16 +163,6 @@ export const SKUS: readonly MeteredSku[] = [
     freePerMonth: null,
     tiers: [],
     note: (c) => `Free inside the 24h service window · ${formatCount(c.whatsapp.inboundMessages)} member messages received`,
-  },
-  {
-    id: 'waSimulated',
-    vendor: 'meta',
-    service: 'WhatsApp simulated sends',
-    unit: 'messages',
-    usage: (c) => c.whatsapp.simulated,
-    freePerMonth: null,
-    tiers: [],
-    note: () => 'Logged instead of sent while WhatsApp is not live (DEV)',
   },
 ]
 

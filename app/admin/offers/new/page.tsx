@@ -89,6 +89,8 @@ function NewOfferForm() {
     if (!selected || termsSeededFor === selected.uid) return
     setCommission(selected.commissionRate === null ? '' : String(Number((selected.commissionRate * 100).toFixed(2))))
     setPaymentTerms(selected.paymentTerms ?? '')
+    // A chain's offer is nationwide unless the admin turns that off here.
+    setOffer((prev) => ({ ...prev, isNationwide: selected.isChain === true }))
     setTermsSeededFor(selected.uid)
   }, [selected, termsSeededFor])
 
@@ -222,27 +224,27 @@ function NewOfferForm() {
       <div className="max-w-2xl">
         <BackLink />
         <Card className="overflow-hidden">
-          <div className="flex items-start gap-4 border-b border-[#E2E8F0] bg-[#ECFDF5] px-5 py-5 sm:px-6">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+          <div className="flex items-start gap-4 border-b border-adm-line bg-adm-ok-soft px-5 py-5 sm:px-6">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <i className="fa-solid fa-check text-lg" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#0B1B3D]">{t('wizard.created')}</h1>
-              <p className="mt-0.5 text-sm text-emerald-800">{result.multipass && result.warnings.length === 0 && result.codesAdded === 0 ? t('wizard.poolReady') : t('wizard.live')}</p>
+              <h1 className="text-xl font-bold text-adm-text">{t('wizard.created')}</h1>
+              <p className="mt-0.5 text-sm text-adm-ok">{result.multipass && result.warnings.length === 0 && result.codesAdded === 0 ? t('wizard.poolReady') : t('wizard.live')}</p>
             </div>
           </div>
-          <dl className="divide-y divide-[#E2E8F0]">
+          <dl className="divide-y divide-adm-line">
             <div className="px-5 py-4 sm:px-6">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{result.noBusiness ? t('wizard.brandName') : t('wizard.business')}</dt>
-              <dd className="mt-1 font-semibold text-[#0B1B3D]">
+              <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{result.noBusiness ? t('wizard.brandName') : t('wizard.business')}</dt>
+              <dd className="mt-1 font-semibold text-adm-text">
                 <BidiText>{result.businessName}</BidiText>
               </dd>
             </div>
             <div className="px-5 py-4 sm:px-6">
-              <dt className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.offer')}</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.offer')}</dt>
               <dd className="mt-1">
-                <BidiText lines={2} className="font-semibold text-[#0B1B3D]">{result.offerTitle}</BidiText>
-                <div className="font-mono text-xs text-[#64748B]"><bdi dir="ltr">{result.offerId}</bdi></div>
+                <BidiText lines={2} className="font-semibold text-adm-text">{result.offerTitle}</BidiText>
+                <div className="font-mono text-xs text-adm-muted"><bdi dir="ltr">{result.offerId}</bdi></div>
               </dd>
             </div>
           </dl>
@@ -309,28 +311,28 @@ function NewOfferForm() {
       >
         {step === 1 && (
           <Card>
-            <div className="border-b border-[#E2E8F0] px-5 py-4 sm:px-6">
-              <h2 className="text-lg font-bold text-[#0B1B3D] xl:text-xl">{t('wizard.stepOf', { n: 1, total: 4 })}: {t('wizard.step1')}</h2>
+            <div className="border-b border-adm-line px-5 py-4 sm:px-6">
+              <h2 className="text-lg font-bold text-adm-text xl:text-xl">{t('wizard.stepOf', { n: 1, total: 4 })}: {t('wizard.step1')}</h2>
             </div>
             <div className="space-y-8 p-5 sm:p-6">
               <section aria-labelledby="wiz-sec-channel" className="space-y-5">
-                <h3 id="wiz-sec-channel" className="text-sm font-bold text-[#0B1B3D]">{t('wizard.sectionChannel')}</h3>
+                <h3 id="wiz-sec-channel" className="text-sm font-bold text-adm-text">{t('wizard.sectionChannel')}</h3>
                 <FulfillmentPicker value={fulfillment} onChange={setFulfillment} />
                 {!multipass && <DirectScopePicker chain={chainPass} onChange={setChainPass} />}
                 {multipass && <MultipassScopePicker value={scope.perkScope} onChange={(perkScope) => setScope((prev) => ({ ...prev, perkScope }))} />}
-                {multipass && <p className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.multipassNoBusiness')} {t('wizard.multipassNavHidden')}</p>}
-                {manualChain && <p className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.chainNoBusiness')}</p>}
+                {multipass && <p className="rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.multipassNoBusiness')} {t('wizard.multipassNavHidden')}</p>}
+                {manualChain && <p className="rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.chainNoBusiness')}</p>}
                 {!noBusiness && <NationwideField checked={offer.isNationwide} onChange={(v) => updateOffer('isNationwide', v)} />}
                 {!noBusiness && offer.isNationwide && <StoresField mode="nationwide" chains={offer.participatingChains} places={offer.participatingPlaces} onChange={(next) => { updateOffer('participatingChains', next.chains); updateOffer('participatingPlaces', next.places) }} />}
               </section>
-              <section aria-labelledby="wiz-sec-perk" className="space-y-5 border-t border-[#E2E8F0] pt-8">
-                <h3 id="wiz-sec-perk" className="text-sm font-bold text-[#0B1B3D]">{t('wizard.sectionPerk')}</h3>
+              <section aria-labelledby="wiz-sec-perk" className="space-y-5 border-t border-adm-line pt-8">
+                <h3 id="wiz-sec-perk" className="text-sm font-bold text-adm-text">{t('wizard.sectionPerk')}</h3>
                 {noBusiness ? (
                   <MultipassPerkFields value={{ ...scope, perkScope }} onChange={setScope} />
                 ) : (
                   <div>
                     <p className={ADMIN_LABEL}>{t('wizard.business')}</p>
-                    <p className="-mt-1 mb-3 text-[13px] text-[#64748B]">{t('wizard.businessHint')}</p>
+                    <p className="-mt-1 mb-3 text-[13px] text-adm-muted">{t('wizard.businessHint')}</p>
                     <BusinessPicker businesses={businesses} selected={selected} onSelect={setSelectedUid} />
                   </div>
                 )}
@@ -355,7 +357,7 @@ function NewOfferForm() {
               <OfferFormFields value={offer} onChange={updateOffer} section="inventory" poolManaged={multipass} />
               {multipass && (
                 <fieldset className="min-w-0">
-                  <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('wizard.fulfillmentMultipass')}</legend>
+                  <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.fulfillmentMultipass')}</legend>
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                       <label htmlFor="wiz-unit-cost" className={ADMIN_LABEL}>{t('wizard.unitCost')}</label>
@@ -370,7 +372,7 @@ function NewOfferForm() {
                   <div className="mt-6">
                     <WizardCodeDropzone value={codes} onChange={setCodes} />
                   </div>
-                  <p className="mt-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('wizard.poolNote')}</p>
+                  <p className="mt-4 rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.poolNote')}</p>
                 </fieldset>
               )}
             </div>

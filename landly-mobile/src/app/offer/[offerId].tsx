@@ -395,8 +395,8 @@ const styles = StyleSheet.create({
   logo: { position: 'absolute', top: -28, start: BODY_PADDING },
   logoPane: { position: 'absolute', bottom: 16, start: 16 },
   chips: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-  // The pills share one shape: compact, fully rounded, text only.
-  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  // The chips share one shape: compact, softly rounded, text only.
+  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 },
   chipText: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
   methodChip: { flexShrink: 0, backgroundColor: colors.borderLight },
   methodText: { color: colors.body },
@@ -407,8 +407,8 @@ const styles = StyleSheet.create({
   address: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   locationText: { flex: 1, fontSize: 14, color: colors.textFaint },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  price: { fontSize: 28, fontWeight: '800', color: colors.brand },
-  original: { fontSize: 17, color: colors.textFaint, textDecorationLine: 'line-through' },
+  price: { fontSize: 28, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
+  original: { fontSize: 17, color: colors.textFaint, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
   // Web: text-emerald-700.
   saving: { fontSize: 14, fontWeight: '600', color: colors.discount },
   description: { fontSize: 15, lineHeight: 23, color: colors.body },
@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
   expired: { color: colors.danger },
   folds: { marginTop: 20 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  stepNumber: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  stepNumberText: { fontSize: 11, fontWeight: '700', color: colors.brand, textAlign: 'center' },
+  stepNumber: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumberText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: colors.brand, textAlign: 'center' },
   stepText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
   terms: { fontSize: 13, lineHeight: 19, color: colors.textMuted },
   actionBar: {

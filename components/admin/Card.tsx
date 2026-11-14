@@ -9,9 +9,9 @@ interface CardProps {
 }
 
 export default function Card({ href, hover, className = '', children }: CardProps) {
-  const classes = `rounded-2xl border border-slate-200/80 bg-white shadow-sm ${
+  const classes = `rounded-2xl border border-adm-line/80 bg-adm-surface shadow-sm ${
     href || hover
-      ? 'transition-[box-shadow,border-color,background-color] duration-150 hover:border-[#CBD5E1] hover:shadow-md active:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0038B8]'
+      ? 'transition-[box-shadow,border-color,background-color] duration-150 hover:border-adm-line-strong hover:shadow-md active:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent'
       : ''
   } ${className}`
 
@@ -33,10 +33,10 @@ export function CardSkeletons({ count = 3, className = 'h-32' }: { count?: numbe
         <div
           key={i}
           aria-hidden="true"
-          className={`rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm ${className}`}
+          className={`rounded-2xl border border-adm-line/80 bg-adm-surface p-6 shadow-sm ${className}`}
         >
-          <div className="h-4 w-2/3 rounded-md bg-[#F1F5F9] motion-safe:animate-pulse" />
-          <div className="mt-3 h-3 w-1/3 rounded-md bg-[#F1F5F9] motion-safe:animate-pulse" />
+          <div className="h-4 w-2/3 rounded-md bg-adm-raised motion-safe:animate-pulse" />
+          <div className="mt-3 h-3 w-1/3 rounded-md bg-adm-raised motion-safe:animate-pulse" />
         </div>
       ))}
     </>

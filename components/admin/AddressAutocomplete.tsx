@@ -172,15 +172,15 @@ export default function AddressAutocomplete({
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           onBlur={() => setOpen(false)}
         />
-        <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-[#64748B]" aria-hidden="true">
-          <i className={`fa-solid ${status === 'searching' || status === 'picking' ? 'fa-spinner fa-spin' : value.address ? 'fa-location-dot text-emerald-600' : 'fa-magnifying-glass'} text-sm`} />
+        <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-adm-muted" aria-hidden="true">
+          <i className={`fa-solid ${status === 'searching' || status === 'picking' ? 'fa-spinner fa-spin' : value.address ? 'fa-location-dot text-adm-ok' : 'fa-magnifying-glass'} text-sm`} />
         </span>
         {expanded && (
           <ul
             id={listId}
             role="listbox"
             style={{ maxHeight }}
-            className={`drop-in absolute inset-x-0 z-30 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
+            className={`drop-in absolute inset-x-0 z-30 overflow-y-auto overscroll-y-contain rounded-xl border border-adm-line bg-adm-surface py-1 shadow-lg ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}
           >
             {suggestions.map((suggestion, i) => (
               <li
@@ -194,23 +194,23 @@ export default function AddressAutocomplete({
                   void pick(suggestion)
                 }}
                 onMouseEnter={() => setActive(i)}
-                className={`flex min-h-12 cursor-pointer flex-col justify-center px-4 py-2 text-start ${i === active ? 'bg-[#F0F7FF]' : ''}`}
+                className={`flex min-h-12 cursor-pointer flex-col justify-center px-4 py-2 text-start ${i === active ? 'bg-adm-accent-soft' : ''}`}
               >
-                <span className="text-sm font-semibold text-[#0B1B3D]" dir="auto">{suggestion.main}</span>
+                <span className="text-sm font-semibold text-adm-text" dir="auto">{suggestion.main}</span>
                 {suggestion.secondary && (
-                  <span className="text-xs text-[#64748B]" dir="auto">{suggestion.secondary}</span>
+                  <span className="text-xs text-adm-muted" dir="auto">{suggestion.secondary}</span>
                 )}
               </li>
             ))}
-            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#64748B]">{t('address.poweredBy')}</li>
+            <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-adm-muted">{t('address.poweredBy')}</li>
           </ul>
         )}
       </div>
       <p id={`${id}-status`} className={ADMIN_HINT} aria-live="polite">
         {pickError ? (
-          <span className="font-medium text-[#B91C1C]">{pickError}</span>
+          <span className="font-medium text-adm-danger">{pickError}</span>
         ) : value.address ? (
-          <span className="text-emerald-700">
+          <span className="text-adm-ok">
             <i className="fa-solid fa-circle-check me-1" aria-hidden="true" />
             {t('address.onMap', { city: city ? ` · \u2068${city}\u2069` : '' })}
           </span>
@@ -223,15 +223,15 @@ export default function AddressAutocomplete({
         )}
       </p>
       {value.address && (
-        <details className="mt-2 text-xs text-[#475569]">
-          <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-[#0038B8]">{t('address.howSeen')}</summary>
-          <dl className="mt-1 space-y-1.5 rounded-xl border border-[#E2E8F0] p-3">
+        <details className="mt-2 text-xs text-adm-text-2">
+          <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-adm-accent">{t('address.howSeen')}</summary>
+          <dl className="mt-1 space-y-1.5 rounded-xl border border-adm-line p-3">
             {CONTENT_LANGS.map((lang) => {
               const line = value.address?.short?.[lang] || value.address?.formatted[lang]
               return (
                 <div key={lang} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-                  <dt className="shrink-0 font-semibold text-[#64748B] sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</dt>
-                  <dd lang={line ? lang : undefined} dir={line ? directionOf(lang) : undefined} className={`min-w-0 break-words ${line ? 'text-[#0F172A]' : 'italic text-[#64748B]'}`}>
+                  <dt className="shrink-0 font-semibold text-adm-muted sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</dt>
+                  <dd lang={line ? lang : undefined} dir={line ? directionOf(lang) : undefined} className={`min-w-0 break-words ${line ? 'text-adm-text' : 'italic text-adm-muted'}`}>
                     {line || t('address.notGiven')}
                   </dd>
                 </div>

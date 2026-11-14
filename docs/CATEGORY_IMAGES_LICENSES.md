@@ -1,5 +1,7 @@
 # Category rail photo licences (internal)
 
+The guest hero's photos are documented in [IMAGE_LICENSES.md](./IMAGE_LICENSES.md).
+
 Not linked from the Privacy Policy or Terms of Service: the Unsplash License needs no attribution, and the files are self-hosted.
 
 - Licence: [Unsplash License](https://unsplash.com/license): free for commercial use, no permission or credit required. It does not cover trademarks, or the likeness of identifiable people for endorsement.

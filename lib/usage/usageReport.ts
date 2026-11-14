@@ -50,8 +50,11 @@ export interface UsageReport {
 
 const VENDORS: { vendor: MeteredSku['vendor']; label: string }[] = [
   { vendor: 'google', label: 'Google Cloud' },
+  { vendor: 'gateway019', label: '019 Gateway' },
   { vendor: 'meta', label: 'Meta WhatsApp' },
 ]
+
+const SHOWN_WHEN_USED: readonly SkuId[] = ['sim019', 'waAuthLegacy']
 
 export function meterStatus(coverage: number | null, billable: number): MeterStatus {
   if (coverage === null) return 'ok'
@@ -86,8 +89,9 @@ const sum = (lines: UsageLine[], key: 'grossIls' | 'netIls') => lines.reduce((to
 
 export function buildUsageReport(input: { month: string; months: string[]; projectId: string; counters: UsageCounters; now?: Date }): UsageReport {
   const now = input.now ?? new Date()
-  // Simulated sends happen only where WhatsApp isn't live: shown when there are any (DEV, or a misconfigured PROD).
-  const lines = SKUS.map((sku) => usageLine(sku, input.counters)).filter((line) => line.skuId !== 'waSimulated' || line.used > 0)
+  // Shown only when there is something to show: simulated sends (DEV, or a misconfigured PROD) and
+  // the Meta OTPs of months before OTPs moved to 019.
+  const lines = SKUS.map((sku) => usageLine(sku, input.counters)).filter((line) => !SHOWN_WHEN_USED.includes(line.skuId) || line.used > 0)
   const groups = VENDORS.map(({ vendor, label }) => {
     const own = lines.filter((line) => line.vendor === vendor)
     return { vendor, label, lines: own, grossIls: sum(own, 'grossIls'), netIls: sum(own, 'netIls') }
@@ -105,7 +109,7 @@ export function buildUsageReport(input: { month: string; months: string[]; proje
       grossIls,
       netIls,
       freeCoveragePct: grossIls > 0 ? Math.round((1 - netIls / grossIls) * 100) : 100,
-      otpSent: input.counters.whatsapp.authSent,
+      otpSent: input.counters.gateway019.smsOtpSent + input.counters.gateway019.whatsappOtpSent,
     },
     fx: { usdToIls: USD_TO_ILS.rate, verifiedAt: USD_TO_ILS.verifiedAt },
     pricesVerifiedAt: PRICES_VERIFIED_AT,

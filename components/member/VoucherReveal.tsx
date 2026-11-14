@@ -93,7 +93,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
               onClick={toggle}
               aria-expanded={true}
               aria-controls={regionId}
-              className={`tap-target mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
+              className={`tap-target mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
             >
               <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
               <span>{t('voucher_hide_qr')}</span>
@@ -112,7 +112,7 @@ export function CodeReveal({ code }: { code: string }) {
   const backButton = useRef<HTMLButtonElement>(null)
   const { shown, revealed, toggle } = useFlip(frontButton, backButton)
   const masked = '•'.repeat(Math.max(code.length, 8))
-  const toggleClass = `tap-target inline-flex min-h-12 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`
+  const toggleClass = `tap-target inline-flex min-h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`
 
   return (
     <section className="flex flex-col items-center text-center">
@@ -177,7 +177,7 @@ function CopyCodeButton({ code }: { code: string }) {
       <button
         type="button"
         onClick={copy}
-        className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-full bg-brandTint px-5 text-sm font-bold text-brand transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
+        className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-xl bg-brandTint px-5 text-sm font-bold text-brand transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
       >
         <Icon aria-hidden="true" className={`h-4 w-4 ${tone}`} strokeWidth={1.75} />
         <span>{t('voucher_copy_code')}</span>

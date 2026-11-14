@@ -12,13 +12,14 @@ import { colors } from '../theme'
 // stack anchors the Settings menu under every sub-screen
 // (app/settings/_layout.tsx), so a sub-screen always pops back to it; with
 // nothing under it at all (a deep link straight into Settings) back goes to
-// `fallback`. Sits under the screen's own top safe-area inset.
-export default function ScreenHeader({ title, fallback = '/settings' }: { title?: string; fallback?: Href }) {
+// `fallback`. `onBack` replaces the pop (the order confirmation goes to My Pass).
+// Sits under the screen's own top safe-area inset.
+export default function ScreenHeader({ title, fallback = '/settings', onBack }: { title?: string; fallback?: Href; onBack?: () => void }) {
   const { t } = useLang()
 
   return (
     <View style={styles.bar}>
-      <GlassBackButton label={t('settings_back')} onPress={() => goBack(fallback)} />
+      <GlassBackButton label={t('settings_back')} onPress={() => (onBack ? onBack() : goBack(fallback))} />
       {!!title && (
         <>
           <AppText accessibilityRole="header" numberOfLines={1} style={styles.title}>

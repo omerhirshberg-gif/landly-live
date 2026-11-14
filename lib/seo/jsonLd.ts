@@ -11,6 +11,19 @@ type JsonLdNode = Record<string, unknown>
 const ORGANIZATION_ID = `${SITE_URL}/#organization`
 const WEBSITE_ID = `${SITE_URL}/#website`
 
+// Other names the brand is searched by, for Google's site name. The old
+// spelling is left out on purpose, so search results move off it sooner.
+const ALTERNATE_NAMES = ['golandly', 'GoLandly Israel']
+// The square 512px app icon: Google wants a logo of at least 112px that is square.
+const LOGO_PATH = '/icons/icon-512.png'
+// The official profiles, as in the footer (components/layout/Footer.tsx; the
+// Facebook share link is kept without its tracking parameter).
+export const SOCIAL_PROFILES = [
+  'https://instagram.com/golandly',
+  'https://www.facebook.com/share/1DU2BKFA9d/',
+  'https://www.linkedin.com/company/golandly/',
+] as const
+
 /**
  * JSON for a <script type="application/ld+json">. JSON.stringify doesn't
  * escape markup, so a value holding "</script>" (an admin-typed offer title,
@@ -27,8 +40,10 @@ export function organizationJsonLd(): JsonLdNode {
     '@type': 'Organization',
     '@id': ORGANIZATION_ID,
     name: 'GoLandly',
+    alternateName: ALTERNATE_NAMES,
     url: SITE_URL,
-    logo: siteUrl('/logo-mark.png'),
+    logo: siteUrl(LOGO_PATH),
+    sameAs: SOCIAL_PROFILES,
     email: SUPPORT_EMAIL,
     areaServed: { '@type': 'Country', name: 'Israel' },
     founder: FOUNDERS.map((f) => ({ '@type': 'Person', name: f.name })),
@@ -43,6 +58,7 @@ export function websiteJsonLd(): JsonLdNode {
     '@type': 'WebSite',
     '@id': WEBSITE_ID,
     name: 'GoLandly',
+    alternateName: ALTERNATE_NAMES,
     url: SITE_URL,
     inLanguage: ['en', 'he', 'fr', 'ru', 'es'],
     publisher: { '@id': ORGANIZATION_ID },

@@ -352,11 +352,11 @@ function SupportInbox() {
       <h1 className="sr-only">{t('route.WhatsApp Support')}</h1>
 
       <div
-        className="grid h-[var(--panes-h)] min-h-[20rem] grid-cols-[minmax(0,1fr)] overflow-hidden bg-white md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[minmax(20rem,32%)_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] md:rounded-2xl md:border md:border-[#E2E8F0] md:shadow-sm"
+        className="grid h-[var(--panes-h)] min-h-[20rem] grid-cols-[minmax(0,1fr)] overflow-hidden bg-adm-surface md:h-[var(--panes-h-md)] md:min-h-[26rem] md:grid-cols-[minmax(20rem,32%)_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)] md:rounded-2xl md:border md:border-adm-line md:shadow-sm"
         style={PANES_VARS}
       >
         {/* minmax(0,1fr) and min-w-0: a long name or snippet truncates instead of widening the column on a phone. */}
-        <section aria-label={t('support.conversations')} className={`min-h-0 min-w-0 flex-col border-[#E2E8F0] md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
+        <section aria-label={t('support.conversations')} className={`min-h-0 min-w-0 flex-col border-adm-line md:flex md:border-e ${selected ? 'hidden' : 'flex'}`}>
           <ConversationList
             conversations={conversations}
             error={listError}
@@ -373,24 +373,24 @@ function SupportInbox() {
         {/* On a phone an open chat covers the visible viewport, header included: its own header has the way back. */}
         <section
           aria-label={t('support.chat')}
-          className={`min-h-0 min-w-0 flex-col bg-white md:static md:z-auto md:flex md:h-auto ${
+          className={`min-h-0 min-w-0 flex-col bg-adm-surface md:static md:z-auto md:flex md:h-auto ${
             selected ? 'fixed inset-x-0 top-[var(--vv-top,0px)] z-40 flex h-[var(--vv-height,var(--app-dvh))]' : 'hidden'
           }`}
         >
           {!selected ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0F7FF] text-xl text-[#0038B8]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-adm-accent-soft text-xl text-adm-accent">
                 <i className="fa-regular fa-comments" aria-hidden="true" />
               </div>
-              <p className="mt-4 text-base font-semibold text-[#0B1B3D]">{t('support.chooseConversation')}</p>
-              <p className="mt-1 max-w-xs text-sm text-[#64748B]">{t('support.chooseHint')}</p>
+              <p className="mt-4 text-base font-semibold text-adm-text">{t('support.chooseConversation')}</p>
+              <p className="mt-1 max-w-xs text-sm text-adm-muted">{t('support.chooseHint')}</p>
             </div>
           ) : !conversation ? (
             <div className="flex flex-1 flex-col gap-4 p-4 pt-[max(1rem,env(safe-area-inset-top))] md:pt-4">
               <BackButton onClick={closeChat} className={`-ms-2 self-start ${chatError ? '' : 'md:hidden'}`}>
                 {t('support.allChats')}
               </BackButton>
-              {chatError ? <Alert>{chatError}</Alert> : <div className="h-16 rounded-xl bg-[#F1F5F9] motion-safe:animate-pulse" aria-label={t('support.loadingConversation')} />}
+              {chatError ? <Alert>{chatError}</Alert> : <div className="h-16 rounded-xl bg-adm-raised motion-safe:animate-pulse" aria-label={t('support.loadingConversation')} />}
             </div>
           ) : (
             <>

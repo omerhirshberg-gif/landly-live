@@ -15,7 +15,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as NativeSplash from 'expo-splash-screen'
-import { glideToLockup, SPLASH_RELEASE_MS, splashGlideBackstopMs } from '@shared/brand/entranceTimeline'
+import { glideToLockup, nativeSplashClearanceMs, SPLASH_RELEASE_MS, splashGlideBackstopMs } from '@shared/brand/entranceTimeline'
 import BrandHero, { HERO, LOCKUP_HEIGHT, LOCKUP_SCALE } from './BrandHero'
 import { useEntrance, type Rect } from './Entrance'
 import {
@@ -140,22 +140,32 @@ export default function SplashScreen({
   // The native launch screen (expo-splash-screen, app.json) stays up until
   // the splash has drawn its first frame on the same canvas colour, then
   // fades: the intro starts from it, never from a blank or white flash.
-  // The intro is held at 0% (`go`) until the native splash has been told to
-  // hide and two frames have passed, so it plays from its first frame on a
-  // visible screen, not while the cold start's first render is still covered.
-  // The web has no native splash: it starts at once.
+  // The intro is held at 0% (`go`) until the splash has laid out and painted
+  // (two frames) and the native splash has been told to hide and has finished
+  // fading off (nativeSplashClearanceMs: ~260ms Android, ~120ms iOS), so it
+  // plays from its first frame on a visible screen, not under the fading
+  // overlay or while the cold start's first render is still being committed.
+  // The web has no native splash: it starts after the first paint only.
   const nativeHidden = useRef(false)
-  const [go, setGo] = useState(Platform.OS === 'web')
+  const [go, setGo] = useState(false)
   const goFrames = useRef<number[]>([])
+  const goTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hideNativeSplash = useCallback(() => {
     if (nativeHidden.current) return
     nativeHidden.current = true
-    NativeSplash.hide()
+    const clearance = nativeSplashClearanceMs(Platform.OS)
+    if (Platform.OS !== 'web') NativeSplash.hide()
     goFrames.current[0] = requestAnimationFrame(() => {
-      goFrames.current[1] = requestAnimationFrame(() => setGo(true))
+      goFrames.current[1] = requestAnimationFrame(() => {
+        if (clearance === 0) setGo(true)
+        else goTimer.current = setTimeout(() => setGo(true), clearance)
+      })
     })
   }, [])
-  useEffect(() => () => goFrames.current.forEach(cancelAnimationFrame), [])
+  useEffect(() => () => {
+    goFrames.current.forEach(cancelAnimationFrame)
+    if (goTimer.current) clearTimeout(goTimer.current)
+  }, [])
 
   useEffect(() => {
     if (!ready || !introDone || started.current) return

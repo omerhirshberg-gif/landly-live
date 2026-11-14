@@ -1,9 +1,9 @@
 'use client'
 
+import { AdminBrand } from './AdminBrand'
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import AdminLangSwitch from './AdminLangSwitch'
 import WhatsAppBadge from './WhatsAppBadge'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 
@@ -59,12 +59,11 @@ type NavItem = (typeof NAV_GROUPS)[number]['items'][number]
 // Tailwind's md breakpoint, where the inline sidebar takes over.
 const DESKTOP_QUERY = '(min-width: 768px)'
 
-const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]'
+const FOCUS_RING = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent'
 
 interface NavProps {
   /** A nav link was followed (the drawer closes without moving focus). */
   onNavigate?: () => void
-  onLogout: () => void
   /** The drawer's close button; the desktop sidebar has none. */
   onClose?: () => void
   /** WhatsApp chats waiting for the team, badged on "WhatsApp Support". */
@@ -72,24 +71,23 @@ interface NavProps {
 }
 
 /** Logo, links and logout: the same in the sidebar and the drawer. */
-function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
+function NavContent({ onNavigate, onClose, needsReply }: NavProps) {
   const pathname = usePathname()
   const { t } = useAdminT()
   const isActive = (item: NavItem) => (item.exact ? pathname === item.href : pathname.startsWith(item.href))
 
   return (
     <>
-      <div className="box-content flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[#E2E8F0] ps-5 pe-2 pt-[env(safe-area-inset-top)] md:pt-0">
+      <div className="box-content flex h-16 shrink-0 items-center justify-between gap-2 border-b border-adm-line ps-5 pe-2 pt-[env(safe-area-inset-top)] md:pt-0">
         <Link href="/admin" onClick={onNavigate} className={`flex min-h-12 min-w-0 items-center gap-2.5 rounded-lg ${FOCUS_RING}`}>
           <img src="/logo-mark.png" alt="" className="h-8 w-auto shrink-0" />
-          <span className="text-lg font-bold leading-none text-[#0B1B3D]">GoLandly</span>
-          <span className="rounded-full bg-[#F0F7FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#0038B8]">{t('nav.adminBadge')}</span>
+          <AdminBrand />
         </Link>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-[#475569] transition-colors hover:bg-[#F1F5F9] active:bg-[#E2E8F0] ${FOCUS_RING}`}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-adm-text-2 transition-colors hover:bg-adm-raised active:bg-adm-line ${FOCUS_RING}`}
             aria-label={t('nav.closeMenu')}
           >
             <i className="fa-solid fa-xmark text-lg" aria-hidden="true" />
@@ -100,7 +98,7 @@ function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
       <nav aria-label={t('nav.sections')} className="flex-1 overflow-y-auto overscroll-y-contain px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label ?? 'top'} className={group.label ? 'mt-5' : undefined}>
-            {group.label && <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-[#64748B]">{t(group.label)}</p>}
+            {group.label && <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-adm-muted">{t(group.label)}</p>}
             <ul className="space-y-1">
               {group.items.map((item) => {
                 const active = isActive(item)
@@ -112,8 +110,8 @@ function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
                       aria-current={active ? 'page' : undefined}
                       className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors ${FOCUS_RING} ${
                         active
-                          ? 'bg-[#F0F7FF] text-[#0038B8] before:absolute before:inset-y-2.5 before:start-0 before:w-[3px] before:rounded-full before:bg-[#0038B8]'
-                          : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0B1B3D] active:bg-[#F1F5F9]'
+                          ? 'bg-adm-nav-active text-adm-nav-active-text before:absolute before:inset-y-2.5 before:start-0 before:w-[3px] before:rounded-full before:bg-adm-nav-active-text'
+                          : 'text-adm-text-2 hover:bg-adm-raised hover:text-adm-text active:bg-adm-raised'
                       }`}
                     >
                       <i className={`fa-solid ${item.icon} w-5 text-center text-sm`} aria-hidden="true" />
@@ -128,35 +126,25 @@ function NavContent({ onNavigate, onLogout, onClose, needsReply }: NavProps) {
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-[#E2E8F0] px-3 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        {/* The drawer is the phone's only home for the language switch. */}
-        {onClose && <AdminLangSwitch className="mb-3 flex w-full justify-center [&>button]:flex-1" />}
-        <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#ECFDF5] px-3 py-2.5 text-xs font-semibold text-emerald-700">
+      <div className="shrink-0 border-t border-adm-line px-3 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2 rounded-xl border border-adm-ok-line bg-adm-ok-soft px-3 py-2.5 text-xs font-semibold text-adm-ok">
           <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
           {t('nav.sessionActive')}
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-[15px] font-semibold text-[#475569] transition-colors hover:bg-[#FEF2F2] hover:text-[#B91C1C] active:bg-[#FEE2E2] ${FOCUS_RING}`}
-        >
-          <i className="fa-solid fa-right-from-bracket w-5 text-center text-sm" aria-hidden="true" />
-          {t('nav.logout')}
-        </button>
       </div>
     </>
   )
 }
 
 /** The persistent sidebar, md and up only. */
-export function DesktopSidebar({ onLogout, needsReply }: { onLogout: () => void; needsReply: number }) {
+export function DesktopSidebar({ needsReply }: { needsReply: number }) {
   const { t } = useAdminT()
   return (
     <aside
       aria-label={t('nav.sidebar')}
-      className="sticky top-0 hidden h-[var(--app-dvh)] w-64 shrink-0 flex-col border-e border-[#E2E8F0] bg-white md:flex"
+      className="sticky top-0 hidden h-[var(--app-dvh)] w-64 shrink-0 flex-col border-e border-adm-line bg-adm-surface md:flex"
     >
-      <NavContent onLogout={onLogout} needsReply={needsReply} />
+      <NavContent needsReply={needsReply} />
     </aside>
   )
 }
@@ -166,12 +154,11 @@ interface MobileDrawerProps {
   /** Escape, the backdrop, the close button, or growing past md. */
   onClose: () => void
   onNavigate: () => void
-  onLogout: () => void
   needsReply: number
 }
 
 /** The slide-out menu behind the header's ☰, below md only. */
-export function MobileDrawer({ open, onClose, onNavigate, onLogout, needsReply }: MobileDrawerProps) {
+export function MobileDrawer({ open, onClose, onNavigate, needsReply }: MobileDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const { t, dir } = useAdminT()
 
@@ -210,17 +197,17 @@ export function MobileDrawer({ open, onClose, onNavigate, onLogout, needsReply }
       className={`fixed inset-0 z-50 flex md:hidden ${open ? 'visible' : 'invisible delay-300'} transition-[visibility] motion-reduce:delay-0`}
     >
       <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none ${open ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none ${open ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         ref={panelRef}
-        className={`relative z-10 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
+        className={`relative z-10 flex h-full w-72 max-w-[85vw] flex-col bg-adm-surface shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${
           open ? 'translate-x-0' : dir === 'rtl' ? 'translate-x-full' : '-translate-x-full'
         }`}
       >
-        <NavContent onClose={onClose} onNavigate={onNavigate} onLogout={onLogout} needsReply={needsReply} />
+        <NavContent onClose={onClose} onNavigate={onNavigate} needsReply={needsReply} />
       </div>
     </div>
   )

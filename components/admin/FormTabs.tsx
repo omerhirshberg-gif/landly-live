@@ -78,8 +78,8 @@ export function FormTabs<T extends string>({ state, label }: { state: FormTabsSt
 
   return (
     // Sticks under the admin header; on a phone it runs edge to edge and scrolls sideways.
-    <div className="sticky top-[var(--admin-header-h)] z-20 -mx-4 mb-6 overflow-x-auto bg-[#F8FAFC]/90 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 md:top-[var(--admin-header-h-md)] md:mx-0 md:px-0">
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex w-max min-w-full gap-1 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-sm">
+    <div className="sticky top-[var(--admin-header-h)] z-20 -mx-4 mb-6 overflow-x-auto bg-adm-sunken/90 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6 md:top-[var(--admin-header-h-md)] md:mx-0 md:px-0">
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex w-max min-w-full gap-1 rounded-2xl border border-adm-line/80 bg-adm-surface p-1 shadow-sm">
         {tabs.map((tab) => {
           const selected = tab.id === active
           const invalid = errors.has(tab.id)
@@ -93,8 +93,8 @@ export function FormTabs<T extends string>({ state, label }: { state: FormTabsSt
               aria-controls={panelId(tab.id)}
               tabIndex={selected ? 0 : -1}
               onClick={() => setActive(tab.id)}
-              className={`relative inline-flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-semibold transition-colors duration-150 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0038B8] ${
-                selected ? 'bg-[#0038B8] text-white shadow-sm shadow-[#0038B8]/25' : 'text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0B1B3D]'
+              className={`relative inline-flex min-h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-semibold transition-colors duration-150 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-adm-accent ${
+                selected ? 'bg-adm-accent text-adm-on-accent shadow-sm shadow-adm-accent/25' : 'text-adm-text-2 hover:bg-adm-raised hover:text-adm-text'
               }`}
             >
               <i className={`fa-solid ${tab.icon} text-xs`} aria-hidden="true" />

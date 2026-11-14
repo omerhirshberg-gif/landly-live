@@ -51,6 +51,13 @@ describe('locationNotice', () => {
     expect(locationNotice({ perkScope: 'multi_chain', participatingChains: ['A', 'B'] })).toEqual({ key: 'perk_honoured_at_chains', count: 2 })
     expect(locationNotice({ fulfillmentType: 'direct_merchant', geo })).toBeNull()
   })
+  it('counts stores picked from Google Places, once even when also typed', () => {
+    const place = (id: string, he: string) => ({ placeId: id, names: { he }, lat: 32, lng: 34 })
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א'), place('b', 'פוקס ב')] })).toEqual({ key: 'perk_valid_n_stores', count: 2 })
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')] })).toEqual({ key: 'perk_valid_one_store', count: 1 })
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')], participatingChains: ['פוקס א'] })?.count).toBe(1)
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [], participatingChains: [] })).toEqual({ key: 'perk_valid_all_stores', count: 0 })
+  })
   it('has every notice line in all five languages, with {n} only where a count is shown', () => {
     for (const lang of ['en', 'he', 'ru', 'fr', 'es'] as const) {
       const t = translations[lang] as Record<string, string>

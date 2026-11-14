@@ -21,11 +21,11 @@ export default function ChipsInput({ id, label, hint, placeholder, value, onChan
     <div>
       {label && <label htmlFor={id} className={ADMIN_LABEL}>{label}</label>}
       {!label && <span className="sr-only"><label htmlFor={id}>{placeholder}</label></span>}
-      <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 focus-within:border-[#0038B8] focus-within:ring-2 focus-within:ring-[#0038B8]/20">
+      <div className="flex min-h-12 flex-wrap items-center gap-2 rounded-xl border border-adm-line-strong bg-adm-surface px-3 py-2 focus-within:border-adm-accent focus-within:ring-2 focus-within:ring-adm-accent/20">
         {value.map((name) => (
-          <span key={name} className="inline-flex items-center gap-1 rounded-full border border-[#BFDBFE] bg-[#EFF6FF] py-1 ps-3 pe-1 text-sm font-medium text-[#0B1B3D]">
+          <span key={name} className="inline-flex items-center gap-1 rounded-lg border border-adm-info-line bg-adm-info-soft py-1 ps-3 pe-1 text-sm font-medium text-adm-text">
             <bdi dir="auto">{name}</bdi>
-            <button type="button" aria-label={t('wizard.chainRemove', { name })} onClick={() => onChange(value.filter((v) => v !== name))} className="-my-2.5 -me-1 flex h-11 w-11 items-center justify-center rounded-full text-[#475569] hover:bg-[#DBEAFE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
+            <button type="button" aria-label={t('wizard.chainRemove', { name })} onClick={() => onChange(value.filter((v) => v !== name))} className="-my-2.5 -me-1 flex h-11 w-11 items-center justify-center rounded-full text-adm-text-2 hover:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </span>
@@ -36,7 +36,7 @@ export default function ChipsInput({ id, label, hint, placeholder, value, onChan
           placeholder={placeholder}
           autoComplete="off"
           enterKeyHint="done"
-          className="min-w-[8rem] flex-1 bg-transparent py-1 text-base outline-none placeholder:text-[#94A3B8]"
+          className="min-w-[8rem] flex-1 bg-transparent py-1 text-base outline-none placeholder:text-adm-hint"
           onChange={(e) => (/[,;]/.test(e.target.value) ? add(e.target.value) : setDraft(e.target.value))}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

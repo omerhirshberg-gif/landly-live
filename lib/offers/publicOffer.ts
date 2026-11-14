@@ -3,7 +3,9 @@ import { parseOfferTranslations, type OfferTranslations } from './offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
 import { normalizeRedemptionMethod, type RedemptionMethod } from './redemption'
 import { localizeText } from '../i18n/contentTranslation'
-import { parseLocalizedName, parsePlaceSnapshot, type LocalizedName, type PlaceSnapshot } from '../geo'
+import { parseLocalizedName, parsePlaceSnapshot, type LocalizedName, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
+import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
+import { readPerkScope, type PerkScope } from './perkScope'
 
 // The public face of an offer for search engines and share cards (sitemap,
 // JSON-LD, the perk page's metadata): only what the perk page itself shows
@@ -33,6 +35,14 @@ export interface PublicOffer {
   redemptionMethod?: RedemptionMethod
   city?: LocalizedName
   address?: PlaceSnapshot | null
+  // Where the perk is valid, so a guest card says "Valid at 3 stores" / "all stores" like a member's (lib/offers/locationVisibility.ts).
+  fulfillmentType?: FulfillmentType
+  perkScope?: PerkScope
+  isNationwide?: boolean
+  participatingChains?: string[]
+  participatingPlaces?: ParticipatingPlace[]
+  chainsCount?: number
+  brandName?: string
 }
 
 const SEO_DESCRIPTION_MAX = 160
@@ -73,7 +83,14 @@ export function toPublicOffer(id: string, data: Record<string, unknown> | undefi
     redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
     city: parseLocalizedName(data.city),
     address: parsePlaceSnapshot(data.address),
+    fulfillmentType: parseFulfillmentType(data.fulfillmentType),
+    ...scopeOf(data),
   }
+}
+
+function scopeOf(data: Record<string, unknown>) {
+  const s = readPerkScope(data)
+  return { perkScope: s.perkScope, isNationwide: s.isNationwide, participatingChains: s.participatingChains, participatingPlaces: s.participatingPlaces, chainsCount: s.chainsCount, brandName: s.brandName }
 }
 
 /** Claimable: unlimited, or not every voucher claimed yet (the same rule as isOfferAvailable). */

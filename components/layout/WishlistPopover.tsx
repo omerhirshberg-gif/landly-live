@@ -176,7 +176,7 @@ function WishlistList({ ids, count, title, onNavigate, onClose }: { ids: string[
             </span>
             <p className="mt-3 text-sm font-bold text-ink">{t('wishlist_empty_title')}</p>
             <p className="mt-1 text-xs text-[#475569]">{t('wishlist_empty_sub')}</p>
-            <Link href="/categories" onClick={onNavigate} className="ds-btn ds-btn-primary mt-4 min-h-11 rounded-full px-6 text-sm">
+            <Link href="/categories" onClick={onNavigate} className="ds-btn ds-btn-primary mt-4 min-h-11 rounded-xl px-6 text-sm">
               {t('wishlist_popover_browse')}
             </Link>
           </div>

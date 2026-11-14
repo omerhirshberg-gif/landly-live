@@ -82,8 +82,8 @@ export default function PerkCombobox({ options, value, onChange }: { options: re
         className={`${ADMIN_INPUT} ps-4`}
       />
       {open && (
-        <ul id={`${uid}-list`} role="listbox" className="absolute inset-x-0 z-10 mt-1 max-h-64 overflow-y-auto rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg">
-          {matches.length === 0 && <li className="px-4 py-3 text-sm text-[#64748B]">{t('inv.noPerkMatch')}</li>}
+        <ul id={`${uid}-list`} role="listbox" className="absolute inset-x-0 z-10 mt-1 max-h-64 overflow-y-auto rounded-xl border border-adm-line bg-adm-surface py-1 shadow-lg">
+          {matches.length === 0 && <li className="px-4 py-3 text-sm text-adm-muted">{t('inv.noPerkMatch')}</li>}
           {matches.map((option, i) => (
             <li
               key={option.id}
@@ -93,13 +93,13 @@ export default function PerkCombobox({ options, value, onChange }: { options: re
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(option)}
               onMouseEnter={() => setActive(i)}
-              className={`flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2 text-sm ${i === active ? 'bg-[#F0F7FF]' : ''}`}
+              className={`flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-2 text-sm ${i === active ? 'bg-adm-accent-soft' : ''}`}
             >
               <span className="min-w-0">
-                <span dir="auto" className="block break-words font-semibold text-[#0B1B3D]">{option.title}</span>
-                <span dir="auto" className="block break-words text-xs text-[#64748B]">{option.businessName}</span>
+                <span dir="auto" className="block break-words font-semibold text-adm-text">{option.title}</span>
+                <span dir="auto" className="block break-words text-xs text-adm-muted">{option.businessName}</span>
               </span>
-              <span className="shrink-0 text-xs text-[#475569]">{t('inv.leftN', { n: `\u2066${option.remaining}\u2069` })}</span>
+              <span className="shrink-0 text-xs text-adm-text-2">{t('inv.leftN', { n: `\u2066${option.remaining}\u2069` })}</span>
             </li>
           ))}
         </ul>

@@ -21,28 +21,28 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
   // A caption is the member's own words, never bot buttons to split out.
   const { body, choices } = attachment ? { body: message.text, choices: [] } : parseInteractive(message.text)
   const tone = !outgoing
-    ? 'rounded-es-md border border-[#E2E8F0] bg-white text-[#0F172A]'
+    ? 'rounded-es-md border border-adm-line bg-adm-surface text-adm-text'
     : failed
-      ? 'rounded-ee-md bg-[#FEF2F2] text-[#7F1D1D] ring-1 ring-[#FCA5A5]'
-      : `rounded-ee-md bg-[#0038B8] text-white ${message.pending ? 'opacity-75' : ''}`
+      ? 'rounded-ee-md bg-adm-danger-soft text-adm-danger ring-1 ring-adm-danger-line'
+      : `rounded-ee-md bg-adm-accent text-adm-on-accent ${message.pending ? 'opacity-75' : ''}`
   return (
     <div className={`max-w-[85%] rounded-2xl shadow-sm transition-opacity sm:max-w-[70%] ${attachment ? 'p-1.5 pb-2' : 'px-3.5 py-2'} ${tone}`}>
       {attachment && <AttachmentContent kind={attachment.kind} media={attachment.media} caption={message.text} />}
       {body && (
-        <p dir="auto" className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${message.kind === 'media' ? 'italic text-[#64748B]' : ''} ${attachment ? 'mt-1.5 px-2' : ''}`}>
+        <p dir="auto" className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${message.kind === 'media' ? 'italic text-adm-muted' : ''} ${attachment ? 'mt-1.5 px-2' : ''}`}>
           {body}
         </p>
       )}
       {choices.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {choices.map((choice, i) => (
-            <span key={i} dir="auto" className={`${CHOICE} ${outgoing && !failed ? 'bg-white/15 text-white' : 'bg-[#F1F5F9] text-[#475569]'}`}>
+            <span key={i} dir="auto" className={`${CHOICE} ${outgoing && !failed ? 'bg-adm-on-accent/15 text-adm-on-accent' : 'bg-adm-raised text-adm-text-2'}`}>
               {choice}
             </span>
           ))}
         </div>
       )}
-      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${attachment ? 'px-2' : ''} ${outgoing && !failed ? 'text-white/70' : 'text-[#64748B]'}`}>
+      <div className={`mt-1 flex items-center justify-end gap-1.5 text-[11px] ${attachment ? 'px-2' : ''} ${outgoing && !failed ? 'text-adm-on-accent/70' : 'text-adm-muted'}`}>
         <bdi dir="ltr" className="tabular-nums">
           {clockTime(message.at, locale)}
         </bdi>
@@ -51,7 +51,7 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
         )}
       </div>
       {failed && (
-        <p className="mt-1 text-xs font-semibold text-[#B91C1C]">
+        <p className="mt-1 text-xs font-semibold text-adm-danger">
           <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
           {t('support.notDelivered')} <span dir="auto">{message.error}</span>
         </p>
@@ -64,10 +64,10 @@ export default function MessageBubble({ message }: { message: TranscriptMessage 
 export function SystemNote({ message }: { message: TranscriptMessage }) {
   const { locale } = useAdminT()
   return (
-    <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#F1F5F9] px-3 py-1 text-[11px] text-[#64748B] ring-1 ring-[#E2E8F0]">
-      <i className="fa-solid fa-circle-check shrink-0 text-[#64748B]" aria-hidden="true" />
+    <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-adm-raised px-3 py-1 text-[11px] text-adm-muted ring-1 ring-adm-line">
+      <i className="fa-solid fa-circle-check shrink-0 text-adm-muted" aria-hidden="true" />
       <span className="min-w-0 truncate">{message.text}</span>
-      <bdi dir="ltr" className="shrink-0 tabular-nums text-[#64748B]">
+      <bdi dir="ltr" className="shrink-0 tabular-nums text-adm-muted">
         {clockTime(message.at, locale)}
       </bdi>
     </p>
@@ -81,33 +81,33 @@ export function AutomationRun({ run }: { run: AutomationItem }) {
   const { t, tn, locale } = useAdminT()
   const sent = run.steps.filter((step) => step.direction === 'out').length
   return (
-    <details className="group w-full max-w-md rounded-xl border border-dashed border-[#CBD5E1] bg-white/70 text-[#64748B] open:bg-white">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-xs select-none hover:text-[#334155] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8] [-webkit-tap-highlight-color:transparent] [&::-webkit-details-marker]:hidden">
-        <i className="fa-solid fa-robot shrink-0 text-[#64748B]" aria-hidden="true" />
+    <details className="group w-full max-w-md rounded-xl border border-dashed border-adm-line-strong bg-adm-surface/70 text-adm-muted open:bg-adm-surface">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-xs select-none hover:text-adm-text-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent [-webkit-tap-highlight-color:transparent] [&::-webkit-details-marker]:hidden">
+        <i className="fa-solid fa-robot shrink-0 text-adm-muted" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
-          <span className="font-semibold text-[#475569]">{t('support.bot')}</span>
+          <span className="font-semibold text-adm-text-2">{t('support.bot')}</span>
           {` · ${tn('support.botMessages', sent)}`}
           {run.lastChoice && (
             <>
               {` · ${t('support.chose')} `}
-              <span dir="auto" className="font-medium text-[#475569]">
+              <span dir="auto" className="font-medium text-adm-text-2">
                 {run.lastChoice}
               </span>
             </>
           )}
         </span>
         {run.failed > 0 && (
-          <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-[#B91C1C]">
+          <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-adm-danger">
             <span className="h-1.5 w-1.5 rounded-full bg-[#DC2626]" aria-hidden="true" />
             {t('support.failed', { n: run.failed })}
           </span>
         )}
-        <bdi dir="ltr" className="shrink-0 tabular-nums text-[11px] text-[#64748B]">
+        <bdi dir="ltr" className="shrink-0 tabular-nums text-[11px] text-adm-muted">
           {clockTime(run.at, locale)}
         </bdi>
-        <i className="fa-solid fa-chevron-down shrink-0 text-[10px] text-[#64748B] transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+        <i className="fa-solid fa-chevron-down shrink-0 text-[10px] text-adm-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
       </summary>
-      <ol className="space-y-2 border-t border-[#F1F5F9] px-3 py-2.5">
+      <ol className="space-y-2 border-t border-adm-line-soft px-3 py-2.5">
         {run.steps.map((step) => (
           <AutomationStep key={step.id} step={step} />
         ))}
@@ -122,8 +122,8 @@ function AutomationStep({ step }: { step: TranscriptMessage }) {
   if (step.direction === 'in') {
     return (
       <li className="flex items-center gap-1.5 text-[11px]">
-        <span className="text-[#64748B]">{t('support.memberChose')}</span>
-        <span dir="auto" className={`${CHOICE} border border-[#E2E8F0] bg-white text-[#334155]`}>
+        <span className="text-adm-muted">{t('support.memberChose')}</span>
+        <span dir="auto" className={`${CHOICE} border border-adm-line bg-adm-surface text-adm-text-2`}>
           {step.text}
         </span>
       </li>
@@ -133,26 +133,26 @@ function AutomationStep({ step }: { step: TranscriptMessage }) {
   return (
     <li className="text-xs leading-relaxed">
       {body && (
-        <p dir="auto" className="whitespace-pre-wrap break-words text-[#475569] [overflow-wrap:anywhere]">
+        <p dir="auto" className="whitespace-pre-wrap break-words text-adm-text-2 [overflow-wrap:anywhere]">
           {body}
         </p>
       )}
       {(choices.length > 0 || link) && (
         <div className="mt-1 flex flex-wrap gap-1">
           {choices.map((choice, i) => (
-            <span key={i} dir="auto" className={`${CHOICE} bg-[#F1F5F9] text-[#64748B]`}>
+            <span key={i} dir="auto" className={`${CHOICE} bg-adm-raised text-adm-muted`}>
               {choice}
             </span>
           ))}
           {link && (
-            <bdi dir="ltr" className="inline-block max-w-full truncate rounded-full bg-[#F0F7FF] px-2 py-0.5 text-[11px] font-medium text-[#0038B8]">
+            <bdi dir="ltr" className="inline-block max-w-full truncate rounded-full bg-adm-accent-soft px-2 py-0.5 text-[11px] font-medium text-adm-accent">
               {link.replace(/^https?:\/\//, '')}
             </bdi>
           )}
         </div>
       )}
       {step.error && (
-        <p className="mt-0.5 font-semibold text-[#B91C1C]">
+        <p className="mt-0.5 font-semibold text-adm-danger">
           <i className="fa-solid fa-circle-exclamation me-1" aria-hidden="true" />
           {t('support.notDelivered')} <span dir="auto">{step.error}</span>
         </p>

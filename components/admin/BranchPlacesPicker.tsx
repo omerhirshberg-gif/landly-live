@@ -181,12 +181,12 @@ export default function BranchPlacesPicker({ id, label, value, onChange }: { id:
             onFocus={() => suggestions.length > 0 && setOpen(true)}
             onBlur={() => setOpen(false)}
           />
-          <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-[#64748B]" aria-hidden="true">
+          <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-adm-muted" aria-hidden="true">
             <i className={`fa-solid ${status === 'searching' || status === 'picking' ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'} text-sm`} />
           </span>
           {expanded && (
             <ul id={listId} role="listbox" style={{ maxHeight }}
-            className={`drop-in absolute inset-x-0 z-30 overflow-y-auto overscroll-y-contain rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-lg ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
+            className={`drop-in absolute inset-x-0 z-30 overflow-y-auto overscroll-y-contain rounded-xl border border-adm-line bg-adm-surface py-1 shadow-lg ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
               {suggestions.map((suggestion, i) => (
                 <li
                   key={suggestion.placeId}
@@ -199,18 +199,18 @@ export default function BranchPlacesPicker({ id, label, value, onChange }: { id:
                     void pick(suggestion)
                   }}
                   onMouseEnter={() => setActive(i)}
-                  className={`flex min-h-12 cursor-pointer flex-col justify-center px-4 py-2 text-start ${i === active ? 'bg-[#F0F7FF]' : ''}`}
+                  className={`flex min-h-12 cursor-pointer flex-col justify-center px-4 py-2 text-start ${i === active ? 'bg-adm-accent-soft' : ''}`}
                 >
-                  <span className="text-sm font-semibold text-[#0B1B3D]" dir="auto">{suggestion.main}</span>
-                  {suggestion.secondary && <span className="text-xs text-[#64748B]" dir="auto">{suggestion.secondary}</span>}
+                  <span className="text-sm font-semibold text-adm-text" dir="auto">{suggestion.main}</span>
+                  {suggestion.secondary && <span className="text-xs text-adm-muted" dir="auto">{suggestion.secondary}</span>}
                 </li>
               ))}
-              <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-[#64748B]">{t('branches.poweredBy')}</li>
+              <li role="presentation" className="px-4 pb-1 pt-2 text-end text-[10px] text-adm-muted">{t('branches.poweredBy')}</li>
             </ul>
           )}
         </div>
         <p id={`${id}-status`} className={ADMIN_HINT} aria-live="polite">
-          {pickError ? <span className="font-medium text-[#B91C1C]">{pickError}</span> : status === 'error' ? t('branches.unavailable') : t('branches.hint')}
+          {pickError ? <span className="font-medium text-adm-danger">{pickError}</span> : status === 'error' ? t('branches.unavailable') : t('branches.hint')}
         </p>
       </div>
       <PickedList value={value} setName={setName} onChange={onChange} />
@@ -226,22 +226,22 @@ function PickedList({ value, setName, onChange }: { value: BranchesValue; setNam
       {value.places.map((place) => {
         const name = localizedName(place.names, 'en') || placeChainName(place)
         return (
-          <li key={place.placeId} className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-2.5">
+          <li key={place.placeId} className="rounded-2xl border border-adm-line bg-adm-surface px-4 py-2.5">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#0B1B3D]"><bdi dir="auto">{name}</bdi></p>
-                {place.address && <p className="truncate text-xs text-[#64748B]"><bdi dir="auto">{localizedName(place.address, 'en')}</bdi></p>}
+                <p className="truncate text-sm font-semibold text-adm-text"><bdi dir="auto">{name}</bdi></p>
+                {place.address && <p className="truncate text-xs text-adm-muted"><bdi dir="auto">{localizedName(place.address, 'en')}</bdi></p>}
               </div>
-              <button type="button" aria-label={t('branches.remove', { name })} onClick={() => onChange({ ...value, places: value.places.filter((p) => p.placeId !== place.placeId) })} className="-me-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#475569] hover:bg-[#F1F5F9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0038B8]">
+              <button type="button" aria-label={t('branches.remove', { name })} onClick={() => onChange({ ...value, places: value.places.filter((p) => p.placeId !== place.placeId) })} className="-me-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-adm-text-2 hover:bg-adm-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
-            <details className="text-xs text-[#475569]">
-              <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-[#0038B8]">{t('branches.howSeen')}</summary>
+            <details className="text-xs text-adm-text-2">
+              <summary className="inline-flex min-h-10 cursor-pointer items-center font-semibold text-adm-accent">{t('branches.howSeen')}</summary>
               <div className="space-y-2 pb-2">
                 {CONTENT_LANGS.map((lang) => (
                   <label key={lang} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="shrink-0 font-semibold text-[#64748B] sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</span>
+                    <span className="shrink-0 font-semibold text-adm-muted sm:w-20">{LANGUAGES.find((l) => l.code === lang)?.label ?? lang}</span>
                     <input
                       lang={lang}
                       dir={directionOf(lang)}
@@ -259,8 +259,8 @@ function PickedList({ value, setName, onChange }: { value: BranchesValue; setNam
         )
       })}
       {value.typed.length > 0 && (
-        <li className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-2.5">
-          <p className="mb-1 text-xs text-[#92400E]">{t('branches.typedNote')}</p>
+        <li className="rounded-2xl border border-adm-warn-line bg-adm-warn-soft/60 px-4 py-2.5">
+          <p className="mb-1 text-xs text-adm-warn">{t('branches.typedNote')}</p>
           <ChipsInput id="typed-branches" label="" hint="" placeholder="" value={value.typed} onChange={(typed) => onChange({ ...value, typed })} />
         </li>
       )}

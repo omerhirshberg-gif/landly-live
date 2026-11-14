@@ -64,7 +64,7 @@ describe('category grid', () => {
     expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils[^"]* h-\[22px\] w-\[22px\] text-ink [^"]*group-hover:scale-105[^"]*"/)
     expect(html).not.toMatch(/bg-brandTint|border-sky-200/)
     expect(html).not.toContain('fa-solid')
-    for (const tile of tiles) expect(html).not.toContain(tile.emoji)
+    expect(html).not.toMatch(/\p{Extended_Pictographic}/u)
     expect(html.match(/<span aria-hidden="true" class="cat-card-nudge[^"]*"><svg [^>]*class="lucide lucide-arrow-right h-4 w-4 rtl:-scale-x-100"/g)).toHaveLength(3)
   })
 

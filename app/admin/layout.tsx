@@ -14,13 +14,14 @@ export const metadata: Metadata = {
 // interactive-widget=resizes-content makes Android Chrome shrink the layout
 // (and so dvh) for the keyboard, keeping the support reply box above it; iOS
 // ignores it, and the inbox follows window.visualViewport there instead
-// (lib/admin/useVisualViewport.ts).
+// (lib/admin/useVisualViewport.ts). The admin is Gemini dark by default, so the
+// browser chrome is too (the settings menu's Light background swaps it, lib/admin/adminTheme.tsx).
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
-  themeColor: '#F8FAFC',
+  themeColor: '#131314',
 }
 
 // The admin's language comes from its own cookie (lib/admin/adminLocale.ts), so the

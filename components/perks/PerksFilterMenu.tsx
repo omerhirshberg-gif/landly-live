@@ -117,11 +117,11 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
           type="button"
           onClick={onReset}
           disabled={activeCount === 0}
-          className="min-h-11 rounded-full px-4 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-40 [@media(hover:hover)]:hover:bg-slate-100"
+          className="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-40 [@media(hover:hover)]:hover:bg-slate-100"
         >
           {t('cats_filter_reset')}
         </button>
-        <button type="button" onClick={() => { close(false); onDone?.() }} className="ds-btn ds-btn-primary min-h-11 rounded-full px-6 text-sm">
+        <button type="button" onClick={() => { close(false); onDone?.() }} className="ds-btn ds-btn-primary min-h-11 rounded-xl px-6 text-sm">
           {t('cats_filter_show')}
         </button>
       </div>

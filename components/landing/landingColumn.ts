@@ -9,3 +9,10 @@ export const LANDING_COLUMN = 'mx-auto w-full max-w-[2200px] px-4 sm:px-6 lg:px-
 
 /** A sideways row inside LANDING_COLUMN: it bleeds through the gutter, its first card on the column's line. */
 export const LANDING_RAIL = '-mx-4 px-4 scroll-ps-4 scroll-pe-4 sm:-mx-6 sm:px-6 sm:scroll-ps-6 sm:scroll-pe-6 lg:-mx-8 lg:px-8 lg:scroll-ps-8 lg:scroll-pe-8'
+
+/**
+ * LANDING_RAIL without the desktop bleed: through the phone and tablet gutters
+ * the next card still peeks in, but from lg the row stops on the column's edges
+ * and holds only whole cards, so no label is ever cut mid-word at the end.
+ */
+export const LANDING_RAIL_FIT = '-mx-4 px-4 scroll-ps-4 scroll-pe-4 sm:-mx-6 sm:px-6 sm:scroll-ps-6 sm:scroll-pe-6 lg:mx-0 lg:px-0 lg:scroll-px-0'

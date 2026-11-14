@@ -62,7 +62,7 @@ export const actionTint = { bg: colors.brandTint, bgPressed: colors.brandLight, 
 // `frame`: the inset picture frames on perk cards, tiles and the offer screen.
 // `action`: rectangular buttons and fields (web: rounded-xl, .ds-btn); `chip`: filters and
 // status tags. `pill` stays for genuinely round things: avatars, dots, icon badges.
-export const radius = { md: 12, frame: 14, lg: 16, action: 14, chip: 12, pill: 9999 }
+export const radius = { sm: 8, md: 12, frame: 14, lg: 16, action: 14, chip: 12, pill: 9999 }
 
 // The selected filter chip's lift (web: .filter-chip's shadow-sm).
 export const chipShadow = {

@@ -1,5 +1,6 @@
 'use client'
 
+import { Compass } from 'lucide-react'
 import type { Ref } from 'react'
 import { ONB_ICONS } from '@/lib/brand/onboardingIcons'
 import { useLang } from '@/lib/i18n/useLang'
@@ -40,7 +41,7 @@ export default function CelebrationStep({
       </h2>
       <p className="mt-2 mb-7 text-copy leading-6 text-slate-500 text-center">{t('onb_done_body')}</p>
       <div>
-        <Button label={t('onb_done_cta')} onClick={onExplore} busy={busy} large />
+        <Button icon={<Compass className="h-5 w-5" strokeWidth={2} />} label={t('onb_done_cta')} onClick={onExplore} busy={busy} large />
       </div>
     </>
   )

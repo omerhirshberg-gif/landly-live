@@ -8,7 +8,7 @@ import { displayPhone, parseBusinessPhone, whatsappHref } from '@/lib/admin/busi
 import { countPasses, countryShares, dialCode, filterUsers, phoneCountryOf, segmentShares, toAdminUserRow, userTotals, type AdminUserRow, type UserFilters } from '@/lib/admin/userStats'
 import { alternateBusinessName } from '@/lib/business/businessText'
 import { CUSTOMER_TYPES } from '@/lib/customerTypes'
-import CategoryBadge, { categoryEmoji } from '@/components/admin/CategoryBadge'
+import CategoryBadge from '@/components/admin/CategoryBadge'
 import LogoTile from '@/components/admin/LogoTile'
 
 const root = join(__dirname, '..', '..')
@@ -149,10 +149,10 @@ describe('business showcase', () => {
     expect(alternateBusinessName('Pizza Hut', null)).toBe('')
   })
 
-  it('gives categories their emoji, and logos a squircle that falls back to the initial', () => {
-    expect(categoryEmoji('Restaurants and Cafes')).toBe('🍽️')
-    expect(categoryEmoji('Something else')).toBe('')
-    expect(renderToStaticMarkup(createElement(CategoryBadge, { category: 'Beach and Sea' }))).toContain('🏖️')
+  it('gives categories their line icon (never an emoji), and logos a squircle that falls back to the initial', () => {
+    const badge = renderToStaticMarkup(createElement(CategoryBadge, { category: 'Beach and Sea' }))
+    expect(badge).toContain('<svg')
+    expect(badge).not.toMatch(/\p{Extended_Pictographic}/u)
     const empty = renderToStaticMarkup(createElement(LogoTile, { logoUrl: '', name: 'pizza' }))
     expect(empty).toContain('h-12 w-12 rounded-[14px]')
     expect(empty).toContain('>P</span>')

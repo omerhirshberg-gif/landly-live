@@ -128,7 +128,7 @@ describe('two-pane profile and offer from 600px, desktop included', () => {
 
   it('keeps the fixed widgets clear of the side safe areas', () => {
     expect(read('components/layout/WhatsAppWidget.tsx')).toContain('right-[calc(1.25rem+env(safe-area-inset-right,0px))]')
-    expect(read('components/layout/CookieNotice.tsx')).toContain('pl-[calc(1.25rem+env(safe-area-inset-left,0px))] pr-[calc(1.25rem+env(safe-area-inset-right,0px))]')
-    expect(read('components/perks/SortMenu.tsx')).toContain('pl-[calc(0.75rem+env(safe-area-inset-left,0px))] pr-[calc(0.75rem+env(safe-area-inset-right,0px))]')
+    expect(read('components/layout/CookieNotice.tsx')).toContain('ps-[calc(1.25rem+env(safe-area-inset-left,0px))] pe-[calc(1.25rem+env(safe-area-inset-right,0px))]')
+    expect(read('components/perks/SortMenu.tsx')).toContain('ps-[calc(0.75rem+env(safe-area-inset-left,0px))] pe-[calc(0.75rem+env(safe-area-inset-right,0px))]')
   })
 })

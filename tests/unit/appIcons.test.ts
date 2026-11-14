@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 import sharp from 'sharp'
-import { check, CORNER_CLEARANCE, FILES, ICON_FILL, PLAY_MARGIN, PLAY_SIZE, SAFE_RADIUS } from '../../scripts/generate-app-icons.mjs'
+import { check, CORNER_CLEARANCE, FILES, ICON_FILL, MASK_RADIUS, OPTICAL_SHIFT, PLAY_MARGIN, PLAY_SIZE } from '../../scripts/generate-app-icons.mjs'
 
 // The icons are rendered from the vector emblem by scripts/generate-app-icons.mjs;
 // these measure the committed files, so a hand-edited or stale icon fails here.
@@ -14,33 +14,34 @@ describe('app icons', async () => {
 
   it('centre the whole emblem, arrow included, not the Star of David alone', () => {
     const { icon, play, adaptive } = result
-    // iOS and Google Play centre the glyph's box on both axes.
-    expect(Math.abs(icon.margins.left - icon.margins.right)).toBeLessThanOrEqual(2)
-    expect(Math.abs(play.margins.left - play.margins.right)).toBeLessThanOrEqual(2)
+    // iOS and Google Play centre the glyph's box vertically, and nudge it right by OPTICAL_SHIFT so its weight reads as centred.
+    expect(Math.abs(icon.margins.left - icon.margins.right - 2 * OPTICAL_SHIFT)).toBeLessThanOrEqual(3)
+    expect(Math.abs(play.margins.left - play.margins.right - OPTICAL_SHIFT)).toBeLessThanOrEqual(3)
     expect(Math.abs(play.margins.top - play.margins.bottom)).toBeLessThanOrEqual(2)
-    // Android centres the enclosing circle, so the box sits within a few pixels of the middle.
-    expect(Math.abs(adaptive.margins.left - adaptive.margins.right)).toBeLessThanOrEqual(24)
-    expect(Math.abs(adaptive.margins.top - adaptive.margins.bottom)).toBeLessThanOrEqual(24)
+    // Android centres an optical point between box and circle, so the box sits within a few pixels of the middle.
+    expect(Math.abs(adaptive.margins.left - adaptive.margins.right)).toBeLessThanOrEqual(8)
+    expect(Math.abs(adaptive.margins.top - adaptive.margins.bottom)).toBeLessThanOrEqual(8)
   })
 
-  it('fill about two thirds of the iOS icon, on an opaque square, clear of the rounded corners', () => {
+  it('fill about 72% of the iOS icon, on an opaque square, clear of the rounded corners', () => {
     const { icon } = result
     expect([icon.width, icon.height]).toEqual([1024, 1024])
     expect(icon.opaque).toBe(true)
-    expect(icon.fill).toBeGreaterThanOrEqual(0.64)
-    expect(icon.fill).toBeLessThanOrEqual(0.68)
+    expect(icon.fill).toBeGreaterThanOrEqual(0.70)
+    expect(icon.fill).toBeLessThanOrEqual(0.74)
     expect(Math.abs(icon.fill - ICON_FILL)).toBeLessThan(0.005)
     expect(Math.abs(icon.margins.top - icon.margins.bottom)).toBeLessThanOrEqual(2)
     expect(icon.cornerClearance).toBeGreaterThanOrEqual(CORNER_CLEARANCE)
   })
 
-  it("keep Android's adaptive foreground transparent and inside the 66dp safe circle, as large as fits", async () => {
+  it("keep Android's adaptive foreground transparent and inside the 72dp launcher-mask circle, as large as fits, and visibly bigger than a 66dp-safe-zone icon", async () => {
     const { adaptive } = result
     const meta = await sharp(FILES.adaptive).metadata()
     expect(meta.hasAlpha).toBe(true)
     expect(adaptive.background[3]).toBe(0)
-    expect(adaptive.maxRadius).toBeLessThanOrEqual(SAFE_RADIUS)
-    expect(adaptive.maxRadius).toBeGreaterThan(SAFE_RADIUS - 4)
+    expect(adaptive.maxRadius).toBeLessThanOrEqual(MASK_RADIUS)
+    expect(adaptive.maxRadius).toBeGreaterThan(MASK_RADIUS - 6)
+    expect(adaptive.fill).toBeGreaterThan(0.46)
   })
 
   it("sits the Android foreground on app.json's white adaptive background", async () => {

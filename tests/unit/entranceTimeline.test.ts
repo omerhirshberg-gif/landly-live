@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { ARROW_SPRING, ENTRANCE_SPRING, T, springProgress, springToCssLinear } from '@/lib/brand/entranceTimeline'
+import { ARROW_SPRING, ENTRANCE_SPRING, NATIVE_SPLASH_CLEARANCE_MS, NATIVE_SPLASH_FADE_MS, nativeSplashClearanceMs, T, springProgress, springToCssLinear } from '@/lib/brand/entranceTimeline'
 
 const points = (easing: string) => easing.slice('linear('.length, -1).split(', ').map(Number)
 
@@ -71,5 +71,34 @@ describe('web auth intro', () => {
     expect(app).toContain('const GLOW_TOTAL = T.shine + T.shineMs')
     expect(app).toContain('const GLOW_REST = 0.4')
     expect(app).toContain('<RadialGradient id="landlyGlow"')
+  })
+})
+
+describe('native splash hand-off gate', () => {
+  it('holds the intro until the native splash fade has cleared, longest on Android', () => {
+    expect(nativeSplashClearanceMs('android')).toBe(260)
+    expect(nativeSplashClearanceMs('ios')).toBe(120)
+    expect(nativeSplashClearanceMs('web')).toBe(0)
+    expect(nativeSplashClearanceMs('windows')).toBe(0)
+    // Android's wait outlasts the 200ms hardware fade that _layout.tsx configures.
+    expect(nativeSplashClearanceMs('android')).toBeGreaterThan(NATIVE_SPLASH_FADE_MS)
+    expect(NATIVE_SPLASH_CLEARANCE_MS.web).toBe(0)
+  })
+
+  it('gates SplashScreen: go starts false, hides the native splash, then flips after two frames plus the clearance', () => {
+    const src = readFileSync('landly-mobile/src/components/SplashScreen.tsx', 'utf8')
+    expect(src).toContain('useState(false)')
+    expect(src).not.toContain("useState(Platform.OS === 'web')")
+    const hide = src.indexOf('NativeSplash.hide()')
+    const frames = src.indexOf('requestAnimationFrame', hide)
+    const clearance = src.indexOf('setTimeout(() => setGo(true), clearance)')
+    expect(hide).toBeGreaterThan(-1)
+    expect(frames).toBeGreaterThan(hide)
+    expect(clearance).toBeGreaterThan(frames)
+  })
+
+  it('keeps the native fade length in _layout.tsx in step with the constant', () => {
+    const layout = readFileSync('landly-mobile/src/app/_layout.tsx', 'utf8')
+    expect(layout).toContain(`duration: ${NATIVE_SPLASH_FADE_MS}`)
   })
 })

@@ -95,7 +95,7 @@ export default function InviteMerchantPage() {
             <legend className={ADMIN_LABEL}>{t('invite.commission')}</legend>
             <div className="flex flex-wrap gap-2">
               {[...COMMISSION_PRESETS.map((r) => ({ v: String(r), l: `${r * 100}%` })), { v: 'custom', l: t('invite.custom') }].map((o) => (
-                <label key={o.v} className={`flex min-h-12 min-w-[4.5rem] cursor-pointer items-center justify-center rounded-xl border px-4 text-[15px] font-semibold transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0038B8]/15 ${f.commissionRate === o.v ? 'border-[#0038B8] bg-[#0038B8] text-white' : 'border-[#CBD5E1] bg-white text-[#0B1B3D] hover:border-[#0038B8]'}`}>
+                <label key={o.v} className={`flex min-h-12 min-w-[4.5rem] cursor-pointer items-center justify-center rounded-xl border px-4 text-[15px] font-semibold transition-colors has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-adm-accent/15 ${f.commissionRate === o.v ? 'border-adm-accent bg-adm-accent text-adm-on-accent' : 'border-adm-line-strong bg-adm-surface text-adm-text hover:border-adm-accent'}`}>
                   <input type="radio" name="commission" value={o.v} checked={f.commissionRate === o.v} onChange={set('commissionRate')} className="sr-only" />
                   {o.l}
                 </label>
@@ -111,7 +111,7 @@ export default function InviteMerchantPage() {
           {!f.existingBusinessUid && (
             <div><label htmlFor="cat" className={ADMIN_LABEL}>{t('invite.category')}</label><select id="cat" value={f.category} onChange={set('category')} className={ADMIN_SELECT}><option value="">{t('invite.setLater')}</option>{CATEGORY_TILES.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}</select></div>
           )}
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-[#0B1B3D]">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-adm-text">
             <Switch checked={f.sendEmail} onChange={(sendEmail) => setF((v) => ({ ...v, sendEmail }))} />
             {t('invite.sendEmail')}
           </label>

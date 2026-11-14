@@ -11,15 +11,16 @@ import { logoutAdmin } from '@/lib/admin/adminSession'
 import { useNeedsReplyCount } from '@/lib/admin/needsReply'
 import { type AdminLocale } from '@/lib/admin/adminLocale'
 import { AdminLocaleProvider, useAdminT } from '@/lib/admin/translations'
+import { AdminThemeProvider, useAdminTheme } from '@/lib/admin/adminTheme'
 
-// The admin has its own language (English or Hebrew, AdminLangSwitch) and
+// The admin has its own language (English or Hebrew, AdminLangSwitch) and its own background (dark or light, AdminThemeSwitch) and
 // its own direction on the shell's wrapper, whatever the public site uses.
 // Layout classes are logical (ps/pe, start/end) and user data carries
 // dir="auto", so names in either script render correctly inside it.
 //
 // From md: a row of the inline sidebar and the page. Below md: the page at
 // full width under the header, whose ☰ opens the drawer (./Sidebar.tsx).
-const CANVAS = 'min-h-[var(--app-dvh)] bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] text-[#475569] antialiased'
+const CANVAS = 'min-h-[var(--app-dvh)] bg-adm-canvas text-adm-text-2 antialiased'
 
 // The sticky header's height, for pages that size themselves to the screen
 // (AdminHeader): on phones a 3rem row between the notch (at least 0.75rem)
@@ -39,14 +40,19 @@ const MAIN_FULL_BLEED = 'flex w-full flex-1 flex-col md:mx-auto md:block md:min-
 export default function AdminShell({ children, initialLocale }: { children: React.ReactNode; initialLocale: AdminLocale }) {
   return (
     <AdminLocaleProvider initialLocale={initialLocale}>
-      <AdminDocumentTitle />
-      <AdminShellContent>{children}</AdminShellContent>
+      <AdminThemeProvider>
+        <AdminDocumentTitle />
+        <AdminShellContent>{children}</AdminShellContent>
+      </AdminThemeProvider>
     </AdminLocaleProvider>
   )
 }
 
 function AdminShellContent({ children }: { children: React.ReactNode }) {
   const { dir, locale } = useAdminT()
+  const { theme } = useAdminTheme()
+  // Gemini dark is the default; .adm-light switches every --adm-* token (app/globals.css).
+  const themeClass = theme === 'light' ? 'adm-light' : ''
   const router = useRouter()
   const pathname = usePathname()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -78,7 +84,7 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
   if (pathname === '/admin/login') {
     return (
       <AdminGate>
-        <div className={`${CANVAS} admin-scale ${locale === 'he' ? 'admin-he' : ''}`} dir={dir}>
+        <div className={`${CANVAS} admin-scale ${themeClass} ${locale === 'he' ? 'admin-he' : ''}`} dir={dir}>
           {children}
         </div>
       </AdminGate>
@@ -88,11 +94,11 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
   return (
     <AdminGate>
       <AdminCrumbProvider>
-        <div className={`${CANVAS} admin-scale flex ${locale === 'he' ? 'admin-he' : ''}`} style={SHELL_VARS} dir={dir}>
-          <DesktopSidebar onLogout={logout} needsReply={needsReply} />
-          <MobileDrawer open={isMobileOpen} onClose={closeMenu} onNavigate={dismissMenu} onLogout={logout} needsReply={needsReply} />
+        <div className={`${CANVAS} admin-scale ${themeClass} flex ${locale === 'he' ? 'admin-he' : ''}`} style={SHELL_VARS} dir={dir}>
+          <DesktopSidebar needsReply={needsReply} />
+          <MobileDrawer open={isMobileOpen} onClose={closeMenu} onNavigate={dismissMenu} needsReply={needsReply} />
           <div className="flex min-h-[var(--app-dvh)] w-full min-w-0 flex-1 flex-col">
-            <AdminHeader menuOpen={isMobileOpen} onOpenMenu={() => setIsMobileOpen(true)} menuButtonRef={menuButtonRef} needsReply={needsReply} />
+            <AdminHeader menuOpen={isMobileOpen} onOpenMenu={() => setIsMobileOpen(true)} menuButtonRef={menuButtonRef} needsReply={needsReply} onLogout={logout} />
             {/* Fills the space beside the sidebar, capped at 1600px so very wide monitors don't stretch it. */}
             <main className={FULL_BLEED.some((path) => pathname.startsWith(path)) ? MAIN_FULL_BLEED : MAIN}>
               {children}

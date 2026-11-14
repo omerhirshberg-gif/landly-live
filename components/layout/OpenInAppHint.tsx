@@ -67,7 +67,7 @@ export function OpenInAppBar({ t, appUrl, onDismiss, className = '' }: {
       <p className="flex-1 min-w-0 text-meta font-semibold leading-snug text-slate-700">{t('openInApp_text')}</p>
       <a
         href={appUrl}
-        className="tap-target flex-shrink-0 rounded-full bg-brand px-4 py-1.5 text-meta font-bold text-white whitespace-nowrap transition-colors hover:bg-brandDark"
+        className="tap-target flex-shrink-0 rounded-xl bg-brand px-4 py-1.5 text-meta font-bold text-white whitespace-nowrap transition-colors hover:bg-brandDark"
       >
         {t('openInApp_button')}
       </a>

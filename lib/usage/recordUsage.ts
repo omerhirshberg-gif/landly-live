@@ -5,8 +5,8 @@ import { getAdminDb, getAdminProjectId } from '@/lib/firebase/admin'
 import { dayKeyOf, monthKeyOf, USAGE_COLLECTION, type UsageMetric } from './usageTypes'
 
 // Adds to this month's API usage counters (lib/usage/usageTypes.ts), called
-// right after a metered call succeeds: Cloud Translation, Google Maps, and
-// WhatsApp sends. Never in the way of what it measures: it returns nothing
+// right after a metered call succeeds: Cloud Translation, Google Maps,
+// WhatsApp support replies and 019 OTP sends. Never in the way of what it measures: it returns nothing
 // to await, the write runs in after() once the response is out (or detached
 // outside a request, e.g. a unit test), and any failure -- no credentials,
 // Firestore down, a slow write -- is one log line and nothing else. One

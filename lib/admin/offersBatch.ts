@@ -44,6 +44,8 @@ export interface BatchOffer {
   perkScope: PerkScope
   /** A direct offer redeemable across its branches (hides the single address); always true for Multipass. */
   isNationwide: boolean
+  /** Whether the sheet's isNationwide cell was filled: an empty one lets a chain business default to nationwide. */
+  nationwideGiven?: boolean
   brandName: string
   participatingChains: string[]
   category: string | null
@@ -292,7 +294,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       businessKey,
       errors,
       offer: errors.length > 0 ? null : {
-        titleHe, titleEn, businessUid, perkScope, isNationwide, brandName: noBusiness ? brandName : '', participatingChains: chains, category, fulfillmentType: fulfillmentType!, originalPrice, offerPrice,
+        titleHe, titleEn, businessUid, perkScope, isNationwide, ...(nationwideRaw && !noBusiness ? { nationwideGiven: true } : {}), brandName: noBusiness ? brandName : '', participatingChains: chains, category, fulfillmentType: fulfillmentType!, originalPrice, offerPrice,
         totalQuantity, commissionRate, paymentTerms, redemptionInstructions, imageUrl,
       },
     })

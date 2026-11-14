@@ -121,27 +121,27 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
                 setDragging(false)
                 void handleFile(e.dataTransfer.files[0])
               }}
-              className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${dragging ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#CBD5E1] bg-[#F8FAFC]'}`}
+              className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${dragging ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line-strong bg-adm-sunken'}`}
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#0038B8] shadow-sm">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-adm-surface text-adm-accent shadow-sm">
                 <i className={`fa-solid ${phase === 'reading' ? 'fa-spinner fa-spin' : 'fa-file-excel'} text-lg`} aria-hidden="true" />
               </span>
-              <p className="text-base font-semibold text-[#0B1B3D]">{phase === 'reading' ? t('upload.reading') : t('batch.drop')}</p>
-              <p className="text-sm text-[#475569]">{t('upload.orBrowse')}</p>
+              <p className="text-base font-semibold text-adm-text">{phase === 'reading' ? t('upload.reading') : t('batch.drop')}</p>
+              <p className="text-sm text-adm-text-2">{t('upload.orBrowse')}</p>
               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,text/csv" className="sr-only" tabIndex={-1} aria-label={t('upload.choose')} onChange={(e) => void handleFile(e.target.files?.[0])} />
               <button type="button" className={SECONDARY_BUTTON} disabled={phase === 'reading' || businesses === null} onClick={() => inputRef.current?.click()}>
                 <i className="fa-solid fa-folder-open text-xs" aria-hidden="true" />
                 {businesses === null ? t('batch.loadingBusinesses') : t('upload.choose')}
               </button>
-              <p className="text-xs text-[#64748B]">{t('batch.formats', { n: MAX_BATCH_OFFERS })}</p>
+              <p className="text-xs text-adm-muted">{t('batch.formats', { n: MAX_BATCH_OFFERS })}</p>
             </div>
           </>
         )}
 
         {showFile && (
           <>
-            <p className="flex items-center gap-2 text-sm font-semibold text-[#0B1B3D]">
-              <i className="fa-solid fa-file-excel text-emerald-600" aria-hidden="true" />
+            <p className="flex items-center gap-2 text-sm font-semibold text-adm-text">
+              <i className="fa-solid fa-file-excel text-adm-ok" aria-hidden="true" />
               <bdi dir="ltr" className="min-w-0 truncate">{fileName}</bdi>
             </p>
             {parsed.missingColumns.length > 0 ? (
@@ -151,10 +151,10 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
             ) : (
               <>
                 {parsed.tooMany && <Alert tone="warning">{t('batch.tooMany', { n: MAX_BATCH_OFFERS })}</Alert>}
-                <p className="text-sm font-semibold text-[#0B1B3D]" aria-live="polite">{t('batch.summary', { valid, invalid })}</p>
-                <div className="admin-table-scroll overflow-x-auto rounded-xl border border-[#E2E8F0]">
+                <p className="text-sm font-semibold text-adm-text" aria-live="polite">{t('batch.summary', { valid, invalid })}</p>
+                <div className="admin-table-scroll overflow-x-auto rounded-xl border border-adm-line">
                   <table className="w-full min-w-[720px] text-start text-sm">
-                    <thead className="bg-[#F8FAFC] text-xs font-semibold text-[#64748B]">
+                    <thead className="bg-adm-sunken text-xs font-semibold text-adm-muted">
                       <tr>
                         <th scope="col" className="w-16 px-4 py-2 text-start">{t('batch.col.row')}</th>
                         <th scope="col" className="px-4 py-2 text-start">{t('batch.col.offer')}</th>
@@ -163,22 +163,22 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
                         <th scope="col" className="min-w-[260px] px-4 py-2 text-start">{t('batch.col.check')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E2E8F0]">
+                    <tbody className="divide-y divide-adm-line">
                       {parsed.rows.map((row) => {
                         const bad = row.errors.length > 0
                         return (
-                          <tr key={row.row} className={bad ? 'bg-[#FEF2F2]' : undefined}>
-                            <td className="px-4 py-2 align-top tabular-nums text-[#475569]"><bdi dir="ltr">{row.row}</bdi></td>
-                            <td className="px-4 py-2 align-top"><BidiText lines={2} className="font-semibold text-[#0B1B3D]">{row.title || '—'}</BidiText></td>
-                            <td className="px-4 py-2 align-top text-[#475569]">
+                          <tr key={row.row} className={bad ? 'bg-adm-danger-soft' : undefined}>
+                            <td className="px-4 py-2 align-top tabular-nums text-adm-text-2"><bdi dir="ltr">{row.row}</bdi></td>
+                            <td className="px-4 py-2 align-top"><BidiText lines={2} className="font-semibold text-adm-text">{row.title || '—'}</BidiText></td>
+                            <td className="px-4 py-2 align-top text-adm-text-2">
                               {row.offer ? <BidiText lines={2}>{row.offer.brandName || names.get(row.offer.businessUid) || ''}</BidiText> : <bdi dir="ltr" className="font-mono text-xs">{row.businessKey || '—'}</bdi>}
                             </td>
-                            <td className="px-4 py-2 align-top tabular-nums text-[#475569]">
+                            <td className="px-4 py-2 align-top tabular-nums text-adm-text-2">
                               {row.offer ? <bdi dir="ltr">{formatPrice(row.offer.offerPrice)} / {formatPrice(row.offer.originalPrice)}</bdi> : '—'}
                             </td>
                             <td className="px-4 py-2 align-top">
                               {bad ? (
-                                <ul className="space-y-1 text-[#B91C1C]">
+                                <ul className="space-y-1 text-adm-danger">
                                   {row.errors.map((e) => (
                                     <li key={e.cell + e.code} className="flex items-start gap-2">
                                       <i className="fa-solid fa-circle-xmark mt-0.5 text-xs" aria-hidden="true" />
@@ -187,7 +187,7 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
                                   ))}
                                 </ul>
                               ) : (
-                                <span className="inline-flex items-center gap-2 font-semibold text-emerald-700">
+                                <span className="inline-flex items-center gap-2 font-semibold text-adm-ok">
                                   <i className="fa-solid fa-circle-check" aria-hidden="true" />
                                   {t('batch.ready')}
                                 </span>
@@ -199,7 +199,7 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
                     </tbody>
                   </table>
                 </div>
-                {invalid > 0 && <p className="text-xs text-[#64748B]">{t('batch.skipNote')}</p>}
+                {invalid > 0 && <p className="text-xs text-adm-muted">{t('batch.skipNote')}</p>}
               </>
             )}
 

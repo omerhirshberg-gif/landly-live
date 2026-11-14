@@ -104,12 +104,12 @@ interface Props {
 }
 
 const CHECKBOX_ROW =
-  'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1B3D] transition-colors hover:bg-[#F8FAFC] has-[:checked]:border-[#0038B8]/40 has-[:checked]:bg-[#F0F7FF]'
+  'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-adm-line bg-adm-surface px-4 text-sm font-semibold text-adm-text transition-colors hover:bg-adm-raised has-[:checked]:border-adm-accent/40 has-[:checked]:bg-adm-accent-soft'
 
 function Group({ legend, children }: { legend: string; children: React.ReactNode }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{legend}</legend>
+      <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-adm-muted">{legend}</legend>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">{children}</div>
     </fieldset>
   )
@@ -118,7 +118,7 @@ function Group({ legend, children }: { legend: string; children: React.ReactNode
 function PriceInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
   return (
     <div className="relative" dir="ltr">
-      <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-base font-medium text-[#64748B]" aria-hidden="true">
+      <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-base font-medium text-adm-muted" aria-hidden="true">
         ₪
       </span>
       <input
@@ -143,7 +143,7 @@ export function NationwideField({ checked, onChange }: { checked: boolean; onCha
     <div>
       <label className={CHECKBOX_ROW}>
         <Switch checked={checked} onChange={onChange} />
-        <i className="fa-solid fa-globe text-xs text-[#0038B8]" aria-hidden="true" />
+        <i className="fa-solid fa-globe text-xs text-adm-accent" aria-hidden="true" />
         {t('form.nationwide')}
       </label>
       <p className={ADMIN_HINT}>{t('form.nationwideHint')}</p>
@@ -295,7 +295,7 @@ export default function OfferFormFields({ value, onChange, translations, section
               <p className={ADMIN_HINT}>{t('form.expiryHint')}</p>
             </div>
             {poolManaged ? (
-              <p className="sm:col-span-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-sm text-[#475569]">{t('form.poolManaged')}</p>
+              <p className="sm:col-span-2 rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('form.poolManaged')}</p>
             ) : (
               <>
             <div>
@@ -340,15 +340,15 @@ export default function OfferFormFields({ value, onChange, translations, section
       {show('terms') && (
         <>
           <fieldset className="min-w-0">
-            <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#64748B]">{t('form.redeemHow')}</legend>
+            <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('form.redeemHow')}</legend>
             <div role="radiogroup" aria-label={t('form.redemptionMethod')} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {REDEMPTION_METHODS.map((method) => {
                                 const selected = value.redemptionMethod === method
                 return (
                   <label
                     key={method}
-                    className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0038B8] ${
-                      selected ? 'border-[#0038B8] bg-[#F0F7FF]' : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]'
+                    className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-adm-accent ${
+                      selected ? 'border-adm-accent bg-adm-accent-soft' : 'border-adm-line bg-adm-surface hover:bg-adm-raised'
                     }`}
                   >
                     <input
@@ -361,14 +361,14 @@ export default function OfferFormFields({ value, onChange, translations, section
                     />
                     <span
                       className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                        selected ? 'bg-[#0038B8] text-white' : 'bg-[#F1F5F9] text-[#475569]'
+                        selected ? 'bg-adm-accent text-adm-on-accent' : 'bg-adm-raised text-adm-text-2'
                       }`}
                     >
                       <i className={`fa-solid ${METHOD_ICONS[method]} text-sm`} aria-hidden="true" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-[#0B1B3D]">{t(`form.method.${method}` as AdminKey)}</span>
-                      <span className="block text-xs text-[#64748B]">{t(`form.method.${method}.hint` as AdminKey)}</span>
+                      <span className="block text-sm font-semibold text-adm-text">{t(`form.method.${method}` as AdminKey)}</span>
+                      <span className="block text-xs text-adm-muted">{t(`form.method.${method}.hint` as AdminKey)}</span>
                     </span>
                   </label>
                 )
@@ -376,7 +376,7 @@ export default function OfferFormFields({ value, onChange, translations, section
             </div>
             <div className="mt-5">
               <label htmlFor={field('redemptionInstructions')} className={ADMIN_LABEL}>
-                {t('form.instructions')} <span className="font-normal text-[#64748B]">{t('form.optional')}</span>
+                {t('form.instructions')} <span className="font-normal text-adm-muted">{t('form.optional')}</span>
               </label>
               <textarea
                 id={field('redemptionInstructions')}
@@ -411,7 +411,7 @@ export default function OfferFormFields({ value, onChange, translations, section
                   value={value.validityDays}
                   onChange={(e) => onChange('validityDays', e.target.value)}
                 />
-                <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-sm text-[#64748B]" aria-hidden="true">
+                <span className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2 text-sm text-adm-muted" aria-hidden="true">
                   {t('form.days')}
                 </span>
               </div>
@@ -474,10 +474,10 @@ export function ImagePreview({ url, shape = 'banner' }: { url: string; shape?: '
   if (!normalized) return null
 
   return (
-    <div className="mt-3 flex items-start gap-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3" aria-live="polite">
+    <div className="mt-3 flex items-start gap-4 rounded-xl border border-adm-line bg-adm-sunken p-3" aria-live="polite">
       <div
         className={`relative shrink-0 overflow-hidden ${
-          logo ? 'h-20 w-20 rounded-2xl border border-black/[0.06] bg-white p-2 shadow-sm' : 'h-20 w-28 rounded-lg bg-gradient-to-br from-[#F0F7FF] to-[#E2E8F0]'
+          logo ? 'h-20 w-20 rounded-2xl border border-black/[0.06] bg-adm-logo p-2 shadow-sm' : 'h-20 w-28 rounded-lg bg-gradient-to-br from-adm-accent-soft to-adm-raised'
         }`}
       >
         {!problem && state !== 'failed' && (
@@ -492,28 +492,28 @@ export function ImagePreview({ url, shape = 'banner' }: { url: string; shape?: '
           />
         )}
         {(problem || state === 'failed') && (
-          <div className="absolute inset-0 flex items-center justify-center text-[#64748B]">
+          <div className="absolute inset-0 flex items-center justify-center text-adm-muted">
             <i className="fa-solid fa-image" aria-hidden="true" />
           </div>
         )}
       </div>
       <div className="min-w-0 text-xs">
         {problem ? (
-          <p className="font-medium text-[#B91C1C]">{problem}</p>
+          <p className="font-medium text-adm-danger">{problem}</p>
         ) : state === 'failed' ? (
-          <p className="font-medium text-[#B91C1C]">
+          <p className="font-medium text-adm-danger">
             This link doesn&apos;t load as an image. Members will see {logo ? 'the business’s initial' : 'the branded placeholder'} instead.
           </p>
         ) : state === 'loaded' ? (
-          <p className="font-medium text-emerald-700">
+          <p className="font-medium text-adm-ok">
             <i className="fa-solid fa-circle-check me-1" aria-hidden="true" />
             {logo ? 'Logo' : 'Image'} loads correctly.
           </p>
         ) : (
-          <p className="text-[#64748B]">Checking image…</p>
+          <p className="text-adm-muted">Checking image…</p>
         )}
         {normalized !== url.trim() && (
-          <p className="mt-1 break-all text-[#64748B]" dir="ltr">
+          <p className="mt-1 break-all text-adm-muted" dir="ltr">
             Will be saved as: {normalized}
           </p>
         )}

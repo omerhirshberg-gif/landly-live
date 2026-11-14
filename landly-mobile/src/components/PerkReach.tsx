@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, flexShrink: 1 },
   icon: { marginTop: 2 },
   text: { fontSize: 12, lineHeight: 16, fontWeight: '500', color: colors.textMuted, flexShrink: 1 },
-  textCompact: { fontSize: 11, lineHeight: 15 },
+  textCompact: { fontSize: 12, lineHeight: 16 },
   chains: { gap: 14 },
   rail: { flexDirection: 'row', gap: 10, paddingVertical: 2 },
   // A plain rounded-rectangle card with a hairline border: a store, not a pill.

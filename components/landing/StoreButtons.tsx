@@ -10,7 +10,7 @@ const APPLE_PATH = 'M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.
 const PLAY_PATH = 'M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z'
 
 const BADGE = 'relative inline-flex min-h-[52px] rounded-xl border px-4 py-2'
-const ACTION = 'inline-flex min-h-[52px] min-w-[152px] items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-[transform,background-color] duration-200 ease-out-expo [@media(hover:hover)]:hover:-translate-y-1 active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transform-none'
+const ACTION = 'inline-flex min-h-[52px] min-w-[152px] items-center justify-center rounded-xl px-6 py-3 text-base font-bold transition-[transform,background-color] duration-200 ease-out-expo [@media(hover:hover)]:hover:-translate-y-1 active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transform-none'
 
 function StoreBadge({ href, path, small, name, soon }: { href: string; path: string; small: string; name: string; soon: string }) {
   const live = href !== STORE_FALLBACK_PATH
@@ -37,29 +37,34 @@ function StoreBadge({ href, path, small, name, soon }: { href: string; path: str
   }
 
   // No listing yet: not a link at all, so neither a tap nor the keyboard can land on it.
+  // "Coming soon" sits inside the badge, after the store's name, so it never covers the logo.
   return (
-    <div className={`${BADGE} cursor-default border-slate-200/80 bg-slate-100 text-slate-500`}>
+    <div className={`${BADGE} cursor-default items-center gap-3 border-slate-200/80 bg-white/80 text-slate-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)]`}>
       {face}
-      <span className="absolute -top-2 -end-2 rounded-md bg-brand px-2 py-1 text-nano font-bold leading-none text-white shadow-sm">{soon}</span>
+      <span className="rounded-md border border-slate-200/80 bg-slate-50 px-2 py-1 text-nano font-bold leading-tight text-slate-500">{soon}</span>
     </div>
   )
 }
 
 // The landing's way in: that it's free, then joining with signing in beside it,
 // over both store badges. A badge is live once its store has a listing (lib/appLinks.ts) and
-// says "Soon" until then. The two actions share a width so they read as a pair.
-export default function StoreButtons() {
+// says "Coming soon" inside it until then. The two actions share a width so they read as a pair.
+export default function StoreButtons({ align = 'center', freeBadge = true }: { align?: 'center' | 'start'; freeBadge?: boolean } = {}) {
   const { t } = useLang()
-  const soon = t('deals_card_soon_badge')
+  const soon = t('landing_store_coming_soon')
+  // From lg the hero's copy column sits on the start edge, so its way in does too.
+  const start = align === 'start'
 
   return (
-    <div className="flex flex-col items-center gap-5">
-      <div className="flex flex-col items-center gap-3">
-        <p className="inline-flex max-w-full items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 sm:text-sm">
-          <Check aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
-          <span>{t('landing_free_badge')}</span>
-        </p>
-        <div className="flex flex-row flex-wrap items-center justify-center gap-3.5 sm:gap-4">
+    <div className={`flex flex-col gap-5 ${start ? 'items-center lg:items-start' : 'items-center'}`}>
+      <div className={`flex flex-col gap-3 ${start ? 'items-center lg:items-start' : 'items-center'}`}>
+        {freeBadge && (
+          <p className="inline-flex max-w-full items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 sm:text-sm">
+            <Check aria-hidden="true" className="h-4 w-4 flex-shrink-0" strokeWidth={1.75} />
+            <span>{t('landing_free_badge')}</span>
+          </p>
+        )}
+        <div className={`flex flex-row flex-wrap items-center gap-3.5 sm:gap-4 ${start ? 'justify-center lg:justify-start' : 'justify-center'}`}>
           <Link href="/signup" className={`${ACTION} bg-brand text-white shadow-sm [@media(hover:hover)]:hover:bg-brandDark`}>
             {t('landing_cta_join')}
           </Link>
@@ -68,7 +73,7 @@ export default function StoreButtons() {
           </Link>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className={`flex flex-wrap items-center gap-3 ${start ? 'justify-center lg:justify-start' : 'justify-center'}`}>
         <StoreBadge href={APP_STORE_HREF} path={APPLE_PATH} small={t('landing_store_apple_small')} name="App Store" soon={soon} />
         <StoreBadge href={GOOGLE_PLAY_HREF} path={PLAY_PATH} small={t('landing_store_play_small')} name="Google Play" soon={soon} />
       </div>

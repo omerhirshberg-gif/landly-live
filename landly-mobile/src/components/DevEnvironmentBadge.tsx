@@ -35,9 +35,10 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: 8,
+    borderCurve: 'continuous',
     backgroundColor: 'rgba(11, 27, 61, 0.72)',
   },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b' },
-  text: { fontSize: 10, lineHeight: 13, fontWeight: '700', color: '#ffffff', letterSpacing: 0.3 },
+  text: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: '#ffffff', letterSpacing: 0.3 },
 })

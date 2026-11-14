@@ -5,6 +5,7 @@
 
 import { parseFulfillmentType } from '../inventory/types'
 import { parsePerkScope } from './perkScope'
+import { participatingBranches } from './participatingBranches'
 
 export interface LocationSubject {
   fulfillmentType?: unknown
@@ -18,6 +19,8 @@ export interface LocationSubject {
   location?: unknown
   /** The stores (or, for a multi-chain voucher, the chains) that honour the perk. */
   participatingChains?: unknown
+  /** Stores picked from Google Places; counted with the typed names (a store in both lists counts once). */
+  participatingPlaces?: unknown
 }
 
 const isNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
@@ -43,7 +46,15 @@ export function shouldShowLocationNavigation(subject: LocationSubject): boolean 
 
 export type LocationNoticeKind = 'chains' | 'stores' | 'nationwide' | 'participating'
 
-const listLength = (subject: LocationSubject) => (Array.isArray(subject.participatingChains) ? subject.participatingChains.filter((n) => typeof n === 'string' && n.trim()).length : 0)
+// Distinct stores or chains named by the offer: picked places plus typed names, a store in both counted once.
+const listLength = (subject: LocationSubject) =>
+  participatingBranches(
+    {
+      participatingChains: Array.isArray(subject.participatingChains) ? subject.participatingChains.filter((n): n is string => typeof n === 'string') : [],
+      participatingPlaces: Array.isArray(subject.participatingPlaces) ? subject.participatingPlaces : [],
+    },
+    'en',
+  ).length
 
 /** Which replacement notice a multi-branch perk shows; null for a single-location perk. */
 export function locationNoticeKind(subject: LocationSubject): LocationNoticeKind | null {

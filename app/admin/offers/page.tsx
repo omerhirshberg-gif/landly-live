@@ -132,11 +132,11 @@ export default function OffersListPage() {
           <SearchInput label={t('offers.search')} placeholder={t('offers.searchPlaceholder')} value={query} onChange={setQuery} className="max-w-xl" />
           <div className="flex flex-wrap gap-x-10 gap-y-4">
             <div>
-              <p className="mb-1.5 text-xs font-semibold text-[#64748B]">{t('offers.statusCaption')}</p>
+              <p className="mb-1.5 text-xs font-semibold text-adm-muted">{t('offers.statusCaption')}</p>
               <FilterChips label={t('offers.filterStatus')} options={statusOptions} value={status} onChange={setStatus} />
             </div>
             <div>
-              <p className="mb-1.5 text-xs font-semibold text-[#64748B]">{t('offers.channelCaption')}</p>
+              <p className="mb-1.5 text-xs font-semibold text-adm-muted">{t('offers.channelCaption')}</p>
               <FilterChips label={t('offers.filterFulfillment')} options={channelOptions} value={channel} onChange={setChannel} />
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function OffersListPage() {
               width: 'w-[120px] min-w-[120px]',
               sortValue: (offer) => (offer.expiryDate ? new Date(offer.expiryDate).getTime() : Number.MAX_SAFE_INTEGER),
               cell: (offer) => (
-                <bdi dir="ltr" className="tabular-nums text-[#475569]">
+                <bdi dir="ltr" className="tabular-nums text-adm-text-2">
                   {formatIsraeliDate(offer.expiryDate)}
                 </bdi>
               ),
@@ -233,12 +233,12 @@ export default function OffersListPage() {
                 <OfferIdentity offer={offer} />
                 <OfferStatus offer={offer} />
               </div>
-              <div className="mt-3 flex items-end justify-between gap-3 border-t border-[#E2E8F0] pt-3">
+              <div className="mt-3 flex items-end justify-between gap-3 border-t border-adm-line pt-3">
                 <span className="flex flex-col items-start gap-2">
                   <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
                   <ChannelBadge type={offer.fulfillmentType} />
                 </span>
-                <span className="text-end text-xs text-[#64748B]">
+                <span className="text-end text-xs text-adm-muted">
                   <Claimed offer={offer} /> {t('offers.claimedSuffix')}
                   {offer.expiryDate && (
                     <span className="block">
@@ -272,8 +272,8 @@ function OfferIdentity({ offer }: { offer: Offer }) {
     <span className="flex min-w-0 items-center gap-3">
       <OfferThumb imageUrl={offer.imageUrl} logoUrl={offer.businessLogoUrl} />
       <span className="min-w-0 flex-1">
-        <BidiText lines={2} className="font-semibold text-[#0B1B3D] hover:text-[#0038B8]">{offer.title}</BidiText>
-        <BidiText lines={2} className="mt-0.5 text-xs text-[#64748B]">{offer.businessName}</BidiText>
+        <BidiText lines={2} className="font-semibold text-adm-text hover:text-adm-accent">{offer.title}</BidiText>
+        <BidiText lines={2} className="mt-0.5 text-xs text-adm-muted">{offer.businessName}</BidiText>
       </span>
     </span>
   )
@@ -298,7 +298,7 @@ function OfferStatus({ offer }: { offer: Offer }) {
 /** "12/50" claimed ("∞" when unlimited), as one LTR run. */
 function Claimed({ offer }: { offer: Offer }) {
   return (
-    <bdi dir="ltr" className="font-semibold tabular-nums text-[#475569]">
+    <bdi dir="ltr" className="font-semibold tabular-nums text-adm-text-2">
       {offer.claimedCount}/{offer.totalQuantity ?? '∞'}
     </bdi>
   )

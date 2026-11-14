@@ -53,25 +53,25 @@ export default function PayoutBatchPage() {
       <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-400">{t('payBatch.total')}</p>
-            <p className="text-3xl font-extrabold tracking-tight text-[#0B1B3D]"><bdi dir="ltr">{money(batch.totalAgorot)}</bdi></p>
-            <p className="mt-1 text-sm text-slate-500">{t('payBatch.summary', { date: `\u2066${formatIsraeliDate(batch.valueDate)}\u2069`, merchants: tn('payBatch.merchant', batch.merchantCount), vouchers: tn('payBatch.voucher', batch.voucherCount) })}</p>
+            <p className="text-xs text-adm-hint">{t('payBatch.total')}</p>
+            <p className="text-3xl font-extrabold tracking-tight text-adm-text"><bdi dir="ltr">{money(batch.totalAgorot)}</bdi></p>
+            <p className="mt-1 text-sm text-adm-muted">{t('payBatch.summary', { date: `\u2066${formatIsraeliDate(batch.valueDate)}\u2069`, merchants: tn('payBatch.merchant', batch.merchantCount), vouchers: tn('payBatch.voucher', batch.voucherCount) })}</p>
           </div>
           <StatusBadge tone={batch.status === 'paid' ? 'emerald' : batch.status === 'void' ? 'slate' : 'blue'}>{batch.status in { file_generated: 1, paid: 1, void: 1 } ? t(`payBatch.status.${batch.status}` as AdminKey) : batch.status.replace('_', ' ')}</StatusBadge>
         </div>
-        <dl className="mt-5 grid gap-3 text-xs text-slate-500 sm:grid-cols-2">
-          <div><dt className="text-slate-400">{t('payBatch.created')}</dt><dd className="font-medium text-slate-700"><bdi dir="ltr">{formatIsraeliDateTime(batch.createdAt)}</bdi></dd></div>
-          {batch.fileName && <div><dt className="text-slate-400">{t('payBatch.file')}</dt><dd className="break-all font-mono text-slate-700"><bdi dir="ltr">{batch.fileName}</bdi></dd></div>}
-          {batch.fileSha256 && <div className="sm:col-span-2"><dt className="text-slate-400">SHA-256</dt><dd className="break-all font-mono text-slate-700"><bdi dir="ltr">{batch.fileSha256}</bdi></dd></div>}
+        <dl className="mt-5 grid gap-3 text-xs text-adm-muted sm:grid-cols-2">
+          <div><dt className="text-adm-hint">{t('payBatch.created')}</dt><dd className="font-medium text-adm-text-2"><bdi dir="ltr">{formatIsraeliDateTime(batch.createdAt)}</bdi></dd></div>
+          {batch.fileName && <div><dt className="text-adm-hint">{t('payBatch.file')}</dt><dd className="break-all font-mono text-adm-text-2"><bdi dir="ltr">{batch.fileName}</bdi></dd></div>}
+          {batch.fileSha256 && <div className="sm:col-span-2"><dt className="text-adm-hint">SHA-256</dt><dd className="break-all font-mono text-adm-text-2"><bdi dir="ltr">{batch.fileSha256}</bdi></dd></div>}
         </dl>
-        <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-adm-line-soft pt-5">
           {hasFile && <a href={`/api/admin/payouts/${encodeURIComponent(batch.id)}/file`} className={PRIMARY_BUTTON}><i className="fa-solid fa-file-arrow-down" aria-hidden="true" /> {t('payBatch.download')}</a>}
           {batch.status === 'file_generated' && <button type="button" onClick={() => setConfirm('paid')} className={SECONDARY_BUTTON}>{t('payBatch.markPaid')}</button>}
           {batch.status !== 'paid' && batch.status !== 'void' && <button type="button" onClick={() => setConfirm('void')} className={DANGER_BUTTON}>{t('payBatch.voidBatch')}</button>}
         </div>
         {confirm && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-            <span className="text-sm font-medium text-slate-700">{confirm === 'void' ? t('payBatch.confirmVoid') : t('payBatch.confirmPaid')}</span>
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-adm-line bg-adm-sunken/60 p-4">
+            <span className="text-sm font-medium text-adm-text-2">{confirm === 'void' ? t('payBatch.confirmVoid') : t('payBatch.confirmPaid')}</span>
             <button type="button" onClick={() => act(confirm)} className={confirm === 'void' ? DANGER_BUTTON : PRIMARY_BUTTON}>{t('payBatch.confirm')}</button>
             <button type="button" onClick={() => setConfirm(null)} className={SECONDARY_BUTTON}>{t('common.cancel')}</button>
           </div>
@@ -79,14 +79,14 @@ export default function PayoutBatchPage() {
       </Card>
       <section aria-labelledby="lines-h">
         <h2 id="lines-h" className={SECTION_HEADING}>{t('payBatch.merchants')}</h2>
-        <Card className="divide-y divide-slate-100">
+        <Card className="divide-y divide-adm-line-soft">
           {batch.lines.map((l) => (
             <div key={l.businessId} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3.5 text-sm">
-              <span className="min-w-0 truncate font-medium text-[#0B1B3D]"><BidiText>{l.businessName}</BidiText></span>
-              <span className="flex items-center gap-4 text-xs text-slate-500">
+              <span className="min-w-0 truncate font-medium text-adm-text"><BidiText>{l.businessName}</BidiText></span>
+              <span className="flex items-center gap-4 text-xs text-adm-muted">
                 <span>{tn('payBatch.voucher', l.voucherCount)}</span>
                 <span>{t('payBatch.commission', { amount: `\u2066${money(l.commissionAgorot)}\u2069` })}</span>
-                <span className="text-sm font-semibold text-[#0B1B3D]"><bdi dir="ltr">{money(l.netAgorot)}</bdi></span>
+                <span className="text-sm font-semibold text-adm-text"><bdi dir="ltr">{money(l.netAgorot)}</bdi></span>
               </span>
             </div>
           ))}
