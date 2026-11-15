@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
-import { adminFetch } from '@/lib/admin/adminSession'
+import { useMemo } from 'react'
 import { displayPhone, whatsappHref } from '@/lib/admin/businessPhone'
 import { formatIsraeliDateTime } from '@/lib/admin/formatDate'
 import { leadFullName, type AdminLead } from '@/lib/admin/prelaunchStats'
@@ -9,7 +8,6 @@ import { PRELAUNCH_COPY, type Persona, type PrelaunchLang, type ReferralSource }
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import BidiText from './BidiText'
 import DataTable, { type Column } from './DataTable'
-import StatusBadge from './StatusBadge'
 
 type Translate = (key: AdminKey, vars?: Record<string, string | number>) => string
 
@@ -19,19 +17,6 @@ export const personaName = (key: Persona | 'none', t: Translate) => (key === 'no
 export const referralSourceName = (key: ReferralSource | 'none', t: Translate) => (key === 'none' ? t('leadTable.notAnswered') : PRELAUNCH_COPY.en.referralSources[key])
 
 export const langName = (lang: PrelaunchLang) => lang.toUpperCase()
-
-// The codes lib/marketing/ravMesser.server records.
-const SYNC_ERRORS: Record<string, AdminKey> = {
-  token: 'leadTable.err.token',
-  timeout: 'leadTable.err.timeout',
-  network: 'leadTable.err.network',
-  refused: 'leadTable.err.refused',
-}
-
-function syncErrorText(code: string | null, t: Translate) {
-  if (code?.startsWith('http_')) return t('leadTable.err.http', { code: code.slice(5) })
-  return t((code && SYNC_ERRORS[code]) || 'leadTable.err.failed')
-}
 
 function LangPill({ lang }: { lang: PrelaunchLang }) {
   return <span className="inline-flex rounded-md bg-adm-accent-soft px-2.5 py-0.5 text-xs font-bold text-adm-accent">{langName(lang)}</span>
@@ -112,44 +97,7 @@ function Utm({ lead }: { lead: AdminLead }) {
   )
 }
 
-interface SyncProps {
-  lead: AdminLead
-  listId: string
-  retrying: boolean
-  onRetry: (lead: AdminLead) => void
-  /** Touch screens have no tooltip, so the card spells out the reason. */
-  showReason?: boolean
-}
-
-function SyncStatus({ lead, listId, retrying, onRetry, showReason = false }: SyncProps) {
-  const { t } = useAdminT()
-  if (lead.syncStatus === 'synced') {
-    return <StatusBadge tone="emerald" icon="fa-circle-check"><span>{t('leadTable.synced', { list: `\u2066${listId}\u2069` })}</span></StatusBadge>
-  }
-  if (lead.syncStatus === 'pending') return <StatusBadge tone="amber" icon="fa-clock">{t('leadTable.pending')}</StatusBadge>
-  const reason = syncErrorText(lead.syncError, t)
-  return (
-    <span className="flex min-w-0 flex-col gap-1">
-      <span className="flex items-center gap-1">
-        <span title={reason}><StatusBadge tone="rose" icon="fa-triangle-exclamation">{t('leadTable.failed')}</StatusBadge></span>
-        <button
-          type="button"
-          onClick={() => onRetry(lead)}
-          disabled={retrying}
-          aria-busy={retrying}
-          title={t('leadTable.retry', { reason })}
-          aria-label={t('leadTable.retryAria', { email: lead.email, reason })}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-adm-accent transition-colors hover:bg-adm-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent disabled:opacity-50"
-        >
-          <i className={`fa-solid fa-rotate-right text-xs ${retrying ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
-        </button>
-      </span>
-      {showReason && <span className="text-xs text-adm-danger">{reason}</span>}
-    </span>
-  )
-}
-
-function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead'> }) {
+function LeadCard({ lead }: { lead: AdminLead }) {
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -169,48 +117,13 @@ function LeadCard({ lead, sync }: { lead: AdminLead; sync: Omit<SyncProps, 'lead
         <bdi dir="ltr" className="shrink-0 whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>
       </div>
       {(lead.utmSource || lead.utmCampaign) && <div className="mt-2"><Utm lead={lead} /></div>}
-      <div className="mt-2"><SyncStatus lead={lead} {...sync} showReason /></div>
     </div>
   )
 }
 
-// The leads, as a table from lg and as cards below it. A failed lead's Retry
-// asks the server to sync it again, then the page reloads the rows.
-export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }: {
-  rows: readonly AdminLead[]
-  listId: string
-  onRetried: () => void | Promise<void>
-  onRetryError: (message: string) => void
-}) {
+// The leads, as a table from lg and as cards below it.
+export default function PrelaunchTable({ rows }: { rows: readonly AdminLead[] }) {
   const { t } = useAdminT()
-  const [retrying, setRetrying] = useState<ReadonlySet<string>>(new Set())
-
-  const retry = useCallback(async (lead: AdminLead) => {
-    setRetrying((prev) => new Set(prev).add(lead.id))
-    try {
-      const res = await adminFetch('/api/admin/prelaunch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: lead.id }),
-      })
-      if (!res.ok) onRetryError(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? t('leadTable.err.failed'))
-      await onRetried()
-    } catch {
-      onRetryError(t('leadTable.err.failed'))
-    } finally {
-      setRetrying((prev) => {
-        const next = new Set(prev)
-        next.delete(lead.id)
-        return next
-      })
-    }
-  }, [onRetried, onRetryError, t])
-
-  const syncProps = useCallback((lead: AdminLead) => ({
-    listId,
-    retrying: retrying.has(lead.id),
-    onRetry: (row: AdminLead) => void retry(row),
-  }), [listId, retrying, retry])
 
   const columns = useMemo<readonly Column<AdminLead>[]>(() => (
     [
@@ -223,26 +136,19 @@ export default function PrelaunchTable({ rows, listId, onRetried, onRetryError }
       { id: 'date', header: t('leadTable.col.registered'), cell: (lead) => <bdi dir="ltr" className="whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>, sortValue: (lead) => lead.createdAt ?? '', width: 'w-40' },
       { id: 'referral', header: t('leadTable.col.referral'), cell: (lead) => <Referral lead={lead} />, width: 'w-32' },
       { id: 'utm', header: t('leadTable.col.utm'), cell: (lead) => <Utm lead={lead} />, width: 'w-28' },
-      {
-        id: 'sync',
-        header: t('leadTable.col.sync'),
-        cell: (lead) => <SyncStatus lead={lead} {...syncProps(lead)} />,
-        sortValue: (lead) => lead.syncStatus,
-        width: 'w-48',
-      },
     ]
-  ), [syncProps, t])
+  ), [t])
 
   return (
-    // Ten columns need this width: narrower screens beside the sidebar scroll the table, not the page.
+    // Nine columns need this width: narrower screens beside the sidebar scroll the table, not the page.
     <div className="lg:overflow-x-auto">
-      <div className="lg:min-w-[104rem]">
+      <div className="lg:min-w-[94rem]">
         <DataTable
           label={t('leadTable.label')}
           rows={rows}
           rowKey={(lead) => lead.id}
           columns={columns}
-          card={(lead) => <LeadCard lead={lead} sync={syncProps(lead)} />}
+          card={(lead) => <LeadCard lead={lead} />}
           initialSort={{ id: 'date', direction: 'desc' }}
         />
       </div>

@@ -19,6 +19,7 @@ vi.mock('@/lib/firebase/admin', () => ({
   getAdminDb: () => ({
     collection: (name: string) => ({
       doc: (id: string) => ({
+        set: async () => undefined,
         get: async () => {
           if (mocks.fail) throw new Error('UNAVAILABLE')
           mocks.docIds.push(`${name}/${id}`)
@@ -71,7 +72,7 @@ describe('GET /api/admin/usage', () => {
     expect(mocks.docIds).toEqual(['apiUsageStats/2026-10'])
     expect(r.totals.otpSent).toBe(30)
     expect(r.totals.netIls).toBeCloseTo(20 * 0.02 + 10 * 0.075, 6)
-    expect(r.groups.map((g) => g.vendor)).toEqual(['google', 'gateway019', 'meta'])
+    expect(r.groups.map((g) => g.vendor)).toEqual(['google', 'gateway019', 'meta', 'resend'])
     expect(reportLines(r).find((l) => l.skuId === 'translation')!.used).toBe(1200)
   })
 
@@ -81,6 +82,7 @@ describe('GET /api/admin/usage', () => {
     const r = await report('?month=2026-10')
     expect(r).toMatchObject({ projectId: 'landly-dev', environment: 'dev' })
     expect(reportLines(r).find((l) => l.skuId === 'sim019')!.used).toBe(4)
+    expect(r.totals.netIls).toBe(0)
   })
 
   it('answers zeros for a month with no counters', async () => {

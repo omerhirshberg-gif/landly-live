@@ -16,7 +16,6 @@ vi.mock('@/lib/firebase/users', () => ({
   updateUserRegion: vi.fn(),
   updateUserCountryOfOrigin: vi.fn(),
   getUserDocument: () => new Promise(() => {}),
-  updateUserPhone: vi.fn(),
 }))
 vi.mock('@/lib/firebase/useMemberProfile', () => ({
   useMemberProfile: () => ({ loaded: true, profile: state.profile, firstName: null, initials: '', photoURL: null }),

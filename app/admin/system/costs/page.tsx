@@ -192,6 +192,10 @@ export default function UsageCostsPage() {
           <UsageSummary report={report} />
           <UsageBreakdown groups={report.groups} quota={report.quota} onQuota={applyQuota} onStale={() => void load(month)} />
 
+          <p className="px-1 text-xs leading-relaxed text-adm-muted">
+            {t('usage.projectNote', { project: `\u2066${report.projectId}\u2069` })}
+          </p>
+
           <Card className="flex items-start gap-3 p-4 sm:p-6">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-adm-ok-soft text-adm-ok">
               <i className="fa-solid fa-database" aria-hidden="true" />

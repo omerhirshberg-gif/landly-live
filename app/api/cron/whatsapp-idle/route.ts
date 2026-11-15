@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { verifyTokenMatches } from '@/lib/whatsapp/signature'
 import { sweepIdleConversations } from '@/lib/whatsapp/idleSweep'
 
-// The WhatsApp bot's idle check-ins, silent resolves and expired-chat purge
+// The WhatsApp bot's idle check-ins, resolves (closing message inside Meta's 24-hour window, silent
+// outside it) and expired-chat purge
 // (lib/whatsapp/idleSweep.ts). Vercel Cron calls it every 5 minutes on
 // Production (vercel.json) with Authorization: Bearer $CRON_SECRET;
 // scripts/whatsapp-idle-sweep.mjs does the same against a local or Preview

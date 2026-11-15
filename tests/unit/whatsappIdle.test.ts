@@ -8,8 +8,8 @@ vi.mock('resend', () => ({ Resend: class { emails = { send: vi.fn().mockResolved
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.store.db }))
 
 import { GET } from '@/app/api/cron/whatsapp-idle/route'
-import { AUTO_RESOLVED_NOTE, idleAction, idleSchedule, nextIdleDue, PURGE_SLACK_MS, sweepIdleConversations, TEAM_AUTO_RESOLVED_NOTE } from '@/lib/whatsapp/idleSweep'
-import { IDLE_GRACE_MS, idleMs, teamNudgeMs, teamResolveMs } from '@/lib/whatsapp/supportBot'
+import { AUTO_RESOLVED_NOTE, CLOSING_SENT_NOTE_SUFFIX, CLOSING_SKIPPED_NOTE_SUFFIX, idleAction, idleSchedule, nextIdleDue, PURGE_SLACK_MS, sweepIdleConversations, TEAM_AUTO_RESOLVED_NOTE } from '@/lib/whatsapp/idleSweep'
+import { AUTO_RESOLVE_SEND_WINDOW_MS, autoResolvedMessage, IDLE_GRACE_MS, idleMs, teamNudgeMs, teamResolveMs } from '@/lib/whatsapp/supportBot'
 import { MESSAGE_TTL_MS } from '@/lib/whatsapp/conversationLog'
 import { handleInboundEvent } from '@/lib/whatsapp/supportBotHandler'
 import { getConversation, replyAsTeam, setConversationStatus } from '@/lib/whatsapp/adminInbox'
@@ -27,6 +27,11 @@ const checkIns = () =>
   (info.mock.calls as unknown[][])
     .map(([line]) => String(line))
     .filter((line) => line.startsWith('[whatsapp-idle] simulated check-in'))
+    .map((line) => JSON.parse(line.slice(line.indexOf('{'))))
+const closings = () =>
+  (info.mock.calls as unknown[][])
+    .map(([line]) => String(line))
+    .filter((line) => line.startsWith('[whatsapp-idle] simulated closing message'))
     .map((line) => JSON.parse(line.slice(line.indexOf('{'))))
 const botReplies = () =>
   (info.mock.calls as unknown[][]).map(([line]) => String(line)).filter((line) => line.startsWith('[whatsapp-bot] simulated reply'))
@@ -142,7 +147,7 @@ describe('sweepIdleConversations', () => {
     expect(checkIns()).toHaveLength(0)
   })
 
-  it('resolves without a word to the member once the grace period passes, leaving the team a note', async () => {
+  it('resolves with a closing message and Main Menu inside the window, leaving the team a note', async () => {
     const now = Date.now()
     seed(now, { lastMenuAt: ts(now - IDLE - MINUTE) })
     await sweepIdleConversations(now)
@@ -152,16 +157,43 @@ describe('sweepIdleConversations', () => {
     expect(stored).toMatchObject({ status: 'resolved', resolvedBy: 'idle' })
     expect(stored.resolvedAt.toMillis()).toBe(later)
     for (const field of ['idleCheckInAt', 'idleResume', 'lastMenuAt', 'escalatedAt', 'idleDueAt']) expect(stored).not.toHaveProperty(field)
-    // Silent: the check-in is the only message sent; the note is the team's alone.
+    // The check-in, then the team's note and the closing message with its one Main Menu button.
     expect(checkIns()).toHaveLength(1)
-    expect(transcript()).toHaveLength(2)
-    const note = transcript()[1]
-    expect(note).toMatchObject({ direction: 'out', author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE })
+    expect(closings()).toHaveLength(1)
+    expect(closings()[0]).toEqual(autoResolvedMessage('he'))
+    expect(JSON.stringify(closings()[0])).toContain('btn_back_to_menu')
+    expect(JSON.stringify(closings()[0])).toContain(translations.he.wa_bot_btn_menu)
+    expect(transcript()).toHaveLength(3)
+    const note = transcript().find((m) => m.kind === 'note')!
+    expect(note).toMatchObject({ direction: 'out', author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE + CLOSING_SENT_NOTE_SUFFIX })
     expect(note.at.toMillis()).toBe(later)
-    expect(note).not.toHaveProperty('simulated')
-    // The inbox list still shows the last message sent: the check-in.
-    expect(stored.lastSnippet.text).toContain(translations.he.wa_bot_idle_checkin)
+    const closing = transcript().find((m) => m.author === 'bot' && m.at.toMillis() === later)!
+    expect(closing).toMatchObject({ kind: 'interactive', simulated: true })
+    expect(closing.text).toContain('GoLandly')
+    expect(stored.lastSnippet).toBeDefined()
     expect(await sweepIdleConversations(later + MINUTE)).toEqual({ checkedIn: 0, resolved: 0, purged: 0 })
+  })
+
+  it.each(['en', 'he', 'ru', 'fr', 'es'] as const)('has the closing message, GoLandly-branded, emoji-free, with one Main Menu button (%s)', (lang) => {
+    const text = translations[lang].wa_bot_auto_resolved
+    expect(text).toContain('GoLandly')
+    expect(text).not.toMatch(/\p{Extended_Pictographic}/u)
+    const message = JSON.stringify(autoResolvedMessage(lang))
+    expect(message).toContain('\u2068GoLandly\u2069')
+    expect(message).toContain('btn_back_to_menu')
+    expect(message).toContain(translations[lang].wa_bot_btn_menu)
+    expect(message.match(/btn_back_to_menu/g)).toHaveLength(1)
+  })
+
+  it('resolves silently once the member’s last message is past the send window, with a note saying so', async () => {
+    const now = Date.now()
+    const checkedAt = now - IDLE_GRACE_MS
+    seed(now, { inboundAgo: AUTO_RESOLVE_SEND_WINDOW_MS + MINUTE, outboundAgo: IDLE_GRACE_MS + IDLE, idleCheckInAt: ts(checkedAt), idleDueAt: ts(now) })
+    expect(await sweepIdleConversations(now)).toEqual({ checkedIn: 0, resolved: 1, purged: 0 })
+    expect(mocks.store.read(path())).toMatchObject({ status: 'resolved', resolvedBy: 'idle' })
+    expect(closings()).toHaveLength(0)
+    expect(transcript()).toHaveLength(1)
+    expect(transcript()[0]).toMatchObject({ author: 'system', kind: 'note', text: AUTO_RESOLVED_NOTE + CLOSING_SKIPPED_NOTE_SUFFIX })
   })
 
   it('does not resolve a member who wrote back after the check-in', async () => {
@@ -462,9 +494,10 @@ describe('team follow-up sweep', () => {
     stored = mocks.store.read(path())!
     expect(stored).toMatchObject({ status: 'resolved', resolvedBy: 'team_idle' })
     for (const field of ['teamNudgeAt', 'escalatedAt', 'idleDueAt', 'idleCheckInAt']) expect(stored).not.toHaveProperty(field)
-    // Silent to the member: the follow-up is the only message the sweep sent; the note is the team's.
+    // Past Meta's window: silent to the member, the follow-up is the only message sent; the note is the team's.
     expect(teamFollowUps()).toHaveLength(1)
-    expect(transcript().at(-1)).toMatchObject({ author: 'system', kind: 'note', text: TEAM_AUTO_RESOLVED_NOTE })
+    expect(closings()).toHaveLength(0)
+    expect(transcript().at(-1)).toMatchObject({ author: 'system', kind: 'note', text: TEAM_AUTO_RESOLVED_NOTE + CLOSING_SKIPPED_NOTE_SUFFIX })
     expect((await getConversation(WA_ID, nudgeAt + 24 * HOUR))!.conversation).toMatchObject({ status: 'resolved', followUp: null })
 
     // Open door: the member's next message starts over with the menu.

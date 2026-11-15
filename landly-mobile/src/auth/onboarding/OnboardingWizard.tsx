@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native'
 import Animated from 'react-native-reanimated'
-import { DEFAULT_COUNTRY, nextStep, personaNote, phoneToE164, prevStep, type OnboardingDraft, type OnboardingStep } from '@shared/auth/onboarding'
+import { CONTACT_CHANGE_FAILED, contactChangeErrorKey, requestPhoneChange } from '@shared/account/contactChange'
+import { DEFAULT_COUNTRY, nextStep, onboardingPhoneToSave, personaNote, phoneToE164, prevStep, splitPhone, type OnboardingDraft, type OnboardingStep } from '@shared/auth/onboarding'
+import type { OtpTarget } from '@shared/auth/otp'
 import { WELCOME_POINTS } from '@shared/brand/onboardingIcons'
 import { ONB } from '@shared/brand/onboardingMotion'
 import { auth } from '@shared/firebase/config'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
+import { confirmPhoneVerified, useLiveUserDocument } from '@shared/firebase/useLiveUserDocument'
 import { completeOnboardingProfile } from '@shared/firebase/users'
 import { requestWelcomeEmail } from '@shared/auth/requestWelcomeEmail'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -14,6 +17,7 @@ import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
+import OtpSheet from '../../components/OtpSheet'
 import TextField from '../../components/TextField'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
@@ -36,7 +40,7 @@ import { FADE_CSS, rise, SILK_CSS, stepEntering, stepExiting } from './motion'
 
 type WizardData = Omit<OnboardingDraft, 'step'>
 
-const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', countryOfOrigin: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false }
+const EMPTY_DATA: WizardData = { customerType: '', customerTypeOther: '', countryOfOrigin: '', country: DEFAULT_COUNTRY, phone: '', phoneSkipped: false, verifiedPhone: '' }
 
 type FieldErrors = Partial<Record<'customerType' | 'countryOfOrigin' | 'phone', string>>
 
@@ -102,12 +106,17 @@ export default function OnboardingWizard({
           country: draft.country,
           phone: draft.phone,
           phoneSkipped: draft.phoneSkipped,
+          verifiedPhone: draft.verifiedPhone,
         }
       : EMPTY_DATA
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'enable' | 'later' | 'explore' | null>(null)
+  const [phoneBusy, setPhoneBusy] = useState(false)
+  // The 6-digit code sheet for the number being verified (Continue on the phone card).
+  const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
+  const live = useLiveUserDocument(uid)
   const [pendingLang, setPendingLang] = useState<Lang | null>(null)
   const [fading, setFading] = useState(false)
   const pendingLangRef = useRef<Lang | null>(null)
@@ -184,25 +193,70 @@ export default function OnboardingWizard({
     return !Object.values(errors).some(Boolean)
   }
 
-  const handleContinue = () => {
-    if (!validate()) return
-    if (step === 'phone') set('phoneSkipped', false)
+  // A number verified in an earlier session (the draft was lost, or the app reopened): the live
+  // users/{uid} knows it, so the card never asks for it again.
+  useEffect(() => {
+    const saved = live.profile
+    if (!saved?.phoneVerified || !saved.phone || data.verifiedPhone) return
+    const split = splitPhone(saved.phone)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- adopts the server's verified number once it arrives
+    setData((prev) => (prev.verifiedPhone ? prev : { ...prev, verifiedPhone: saved.phone, phoneSkipped: false, ...(prev.phone ? {} : { country: split.country, phone: split.national }) }))
+  }, [live.profile, data.verifiedPhone])
+
+  // Continue on the phone card: a code goes to the number (SMS for +972, WhatsApp elsewhere,
+  // decided by the server) and the card advances once it is entered. Verification off: it advances as typed.
+  const verifyPhone = async () => {
+    const e164 = phoneToE164(data.country, data.phone)
+    if (!e164) return
+    if (e164 === data.verifiedPhone) {
+      advance()
+      return
+    }
+    const user = auth.currentUser
+    if (!user) {
+      setFieldErrors((prev) => ({ ...prev, phone: getAuthErrorMessage(null) }))
+      return
+    }
+    setPhoneBusy(true)
+    const start = await user
+      .getIdToken()
+      .then((idToken) => requestPhoneChange(idToken, { phone: e164, lang }, API_BASE_URL))
+      .catch(() => CONTACT_CHANGE_FAILED)
+    setPhoneBusy(false)
+    if (start.ok && start.mode === 'otp') setOtp({ target: { kind: 'phone', phone: e164 }, resendIn: start.resendIn })
+    else if (start.ok) acceptPhone(e164, false)
+    // A code for this number went out moments ago: enter that one.
+    else if (start.reason === 'rateLimited' && start.retryAfter) setOtp({ target: { kind: 'phone', phone: e164 }, resendIn: start.retryAfter })
+    // Already this account's verified number.
+    else if (start.reason === 'samePhone') acceptPhone(e164, false)
+    else setFieldErrors((prev) => ({ ...prev, phone: t(contactChangeErrorKey(start.reason)) }))
+  }
+
+  // The card is done for this number: it is what finish() saves, and the draft keeps it.
+  const acceptPhone = (e164: string, confirmed: boolean) => {
+    if (confirmed) confirmPhoneVerified(uid, e164)
+    setData((prev) => ({ ...prev, verifiedPhone: e164, phoneSkipped: false }))
     advance()
   }
 
+  const handleContinue = () => {
+    if (!validate()) return
+    if (step === 'phone') {
+      void verifyPhone()
+      return
+    }
+    advance()
+  }
+
+  // Skip leaves the number out, unless one was already verified: that one stays.
   const handleSkipPhone = () => {
     setFieldErrors((prev) => ({ ...prev, phone: undefined }))
-    set('phoneSkipped', true)
+    if (!data.verifiedPhone) set('phoneSkipped', true)
     advance()
   }
 
   const finish = async (notificationsOptIn: boolean) => {
-    const e164 = data.phoneSkipped ? '' : phoneToE164(data.country, data.phone)
-    if (e164 === null) {
-      setBusy(null)
-      goTo('phone', -1)
-      return
-    }
+    const phone = onboardingPhoneToSave(data)
     const user = auth.currentUser
     if (!user) {
       setError(getAuthErrorMessage(null))
@@ -212,7 +266,7 @@ export default function OnboardingWizard({
     setError(null)
     try {
       await completeOnboardingProfile(user.uid, {
-        phone: e164,
+        ...(phone === undefined ? {} : { phone }),
         customerType: data.customerType,
         customerTypeOther: personaNote(data.customerType, data.customerTypeOther),
         countryOfOrigin: data.countryOfOrigin,
@@ -247,7 +301,7 @@ export default function OnboardingWizard({
     onComplete()
   }
 
-  const continueButton = <Button label={t('onb_continue')} onPress={handleContinue} large arrow />
+  const continueButton = <Button label={t('onb_continue')} onPress={handleContinue} busy={step === 'phone' && phoneBusy} large arrow />
 
   // Each card as its sections (title, body, actions), which rise in one after another.
   const sections = (): ReactNode[] => {
@@ -370,6 +424,23 @@ export default function OnboardingWizard({
           ))}
         </Animated.View>
       </View>
+      {otp && (
+        <OtpSheet
+          user={auth.currentUser as NonNullable<typeof auth.currentUser>}
+          target={otp.target}
+          resendIn={otp.resendIn}
+          onClose={() => setOtp(null)}
+          onEnded={(message) => {
+            setOtp(null)
+            setFieldErrors((prev) => ({ ...prev, phone: message }))
+          }}
+          onVerified={() => {
+            const target = otp.target
+            setOtp(null)
+            if (target.kind === 'phone') acceptPhone(target.phone, true)
+          }}
+        />
+      )}
     </Animated.View>
   )
 }

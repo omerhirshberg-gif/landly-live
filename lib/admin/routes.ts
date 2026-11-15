@@ -29,6 +29,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   { pattern: '/admin/users', title: 'Users', parent: '/admin' },
   { pattern: '/admin/users/[uid]', title: 'Member', parent: '/admin/users' },
   { pattern: '/admin/prelaunch', title: 'Pre-Launch Leads', parent: '/admin' },
+  { pattern: '/admin/newsletter', title: 'Newsletter', parent: '/admin' },
   { pattern: '/admin/search', title: 'Search', parent: '/admin' },
   { pattern: '/admin/businesses', title: 'Businesses', parent: '/admin' },
   { pattern: '/admin/businesses/new', title: 'Add Business', parent: '/admin/businesses' },

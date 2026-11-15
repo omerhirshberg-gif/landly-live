@@ -9,9 +9,7 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
-import { usePhoneVerificationNeeded } from '@/lib/firebase/usePhoneVerificationNeeded'
 import { useLang } from '@/lib/i18n/useLang'
-import PhoneBadge from './PhoneBadge'
 
 // The phone/tablet drawer (below lg), where the bar is only the logo and the
 // hamburger. A member's drawer, top to bottom: who they are (a card that
@@ -176,8 +174,6 @@ function MemberCard({ onClose, active, label }: { onClose: () => void; active: b
   const { user } = useAuth()
   const { firstName, initials, photoURL, profile } = useMemberProfile(user)
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || firstName
-  // Live, so the red "1" clears the moment the phone is verified.
-  const needsPhone = usePhoneVerificationNeeded(user?.uid ?? null)
   return (
     <Link
       href="/profile"
@@ -187,7 +183,6 @@ function MemberCard({ onClose, active, label }: { onClose: () => void; active: b
     >
       <span className="relative inline-flex flex-shrink-0">
         <Avatar src={photoURL} initials={initials} size={44} className="ring-2 ring-white shadow-[0_0_0_3px_#e2e8f0]" />
-        {needsPhone && <PhoneBadge className="-top-1.5 -end-1.5" />}
       </span>
       <span className="min-w-0 flex-1 truncate text-base font-bold text-ink">
         {fullName ? (
@@ -195,7 +190,6 @@ function MemberCard({ onClose, active, label }: { onClose: () => void; active: b
             {/* Screen readers hear "Profile" first; sighted members see who they are. */}
             <span className="sr-only">{label}: </span>
             {fullName}
-            {needsPhone && <span className="sr-only">. {t('phone_nudge_badge_label')}</span>}
           </>
         ) : (
           label

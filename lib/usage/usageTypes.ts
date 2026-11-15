@@ -58,6 +58,12 @@ export interface UsageCounters {
     /** Codes logged instead of sent (019 not live: `next dev`, Preview). */
     simulated: number
   }
+  resend: {
+    /** Every email Resend accepted from us: transactional, team alerts and newsletters. */
+    emailsSent: number
+    /** Newsletter emails logged instead of sent (DEV, or no RESEND_API_KEY). */
+    simulated: number
+  }
 }
 
 export const USAGE_METRICS = [
@@ -75,6 +81,8 @@ export const USAGE_METRICS = [
   'gateway019.smsOtpSent',
   'gateway019.whatsappOtpSent',
   'gateway019.simulated',
+  'resend.emailsSent',
+  'resend.simulated',
 ] as const
 
 export type UsageMetric = (typeof USAGE_METRICS)[number]
@@ -112,6 +120,7 @@ export function emptyCounters(): UsageCounters {
     },
     whatsapp: { inboundMessages: 0, serviceSent: 0, authSent: 0, simulated: 0 },
     gateway019: { smsOtpSent: 0, whatsappOtpSent: 0, simulated: 0 },
+    resend: { emailsSent: 0, simulated: 0 },
   }
 }
 

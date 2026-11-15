@@ -23,11 +23,13 @@ export interface PriceTier {
   unitPrice: Money
 }
 
-export type SkuId = 'translation' | 'placesAutocomplete' | 'placesDetails' | 'geocoding' | 'sms019Otp' | 'wa019Otp' | 'sim019' | 'waAuthLegacy' | 'waService'
+export type VendorId = 'google' | 'gateway019' | 'meta' | 'resend'
+
+export type SkuId = 'translation' | 'placesAutocomplete' | 'placesDetails' | 'geocoding' | 'sms019Otp' | 'wa019Otp' | 'sim019' | 'waAuthLegacy' | 'waService' | 'resendEmail' | 'resendSim'
 
 export interface MeteredSku {
   id: SkuId
-  vendor: 'google' | 'gateway019' | 'meta'
+  vendor: VendorId
   service: string
   unit: 'characters' | 'requests' | 'messages'
   usage: (counters: UsageCounters) => number
@@ -171,6 +173,28 @@ export const SKUS: readonly MeteredSku[] = [
     tiers: [],
     note: (c) => `Free inside the 24h service window · ${formatCount(c.whatsapp.inboundMessages)} member messages received`,
     noteParams: (c) => ({ inbound: formatCount(c.whatsapp.inboundMessages) }),
+  },
+  {
+    id: 'resendEmail',
+    vendor: 'resend',
+    service: 'Resend newsletter emails',
+    unit: 'messages',
+    usage: (c) => c.resend.emailsSent,
+    // Free plan: 3,000 emails a month. Past it the Pro plan ($20 for 50,000) applies, priced per email.
+    freePerMonth: 3_000,
+    tiers: [{ upTo: Infinity, unitPrice: usd(20 / 50_000) }],
+    note: () => 'Newsletter campaigns and test sends · counted when Resend accepts the email',
+    sourceUrl: 'https://resend.com/pricing',
+  },
+  {
+    id: 'resendSim',
+    vendor: 'resend',
+    service: 'Resend simulated sends',
+    unit: 'messages',
+    usage: (c) => c.resend.simulated,
+    freePerMonth: null,
+    tiers: [],
+    note: () => 'Logged instead of sent while Resend is not live (DEV)',
   },
 ]
 

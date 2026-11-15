@@ -1,4 +1,4 @@
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { CLEAR_PENDING_EMAIL, customerOrReply, logContactFailure, preflight, replyFor } from '@/lib/account/contactChangeServer'
@@ -8,7 +8,6 @@ import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
 import { revokeMemberSessions } from '@/lib/auth/sessionRevocation'
 import { sendEmailChangedAlert } from '@/lib/email/sendEmailChangeEmail'
 import type { Lang } from '@/lib/i18n/translations'
-import { updateSubscriberEmail } from '@/lib/responder/updateSubscriberEmail'
 
 // The 6-digit code from the email verification dialog ({ code }), checked
 // like a phone code (/api/account/verify-phone-otp) against
@@ -20,15 +19,13 @@ import { updateSubscriberEmail } from '@/lib/responder/updateSubscriberEmail'
 // users/{uid}, the pending fields are cleared -- the profile's amber notice
 // disappears on every device through its live listener -- and the previous
 // address gets a security notice. Every session then ends, and this device
-// gets a custom token to sign straight back in. A member who opted into marketing has the
-// new address carried over to the Responder list in the background
-// (lib/responder/updateSubscriberEmail).
+// gets a custom token to sign straight back in.
 export function OPTIONS(request: Request) {
   return preflight(request)
 }
 
 type Outcome =
-  | { kind: 'claimed'; data: FirebaseFirestore.DocumentData; marketing: { firstName: string } | null }
+  | { kind: 'claimed'; data: FirebaseFirestore.DocumentData }
   | { kind: 'invalidCode'; attemptsLeft: number }
   | { kind: 'expired' | 'tooManyAttempts' | 'noPending' }
 
@@ -76,8 +73,7 @@ export async function POST(request: Request) {
         return { kind: 'invalidCode', attemptsLeft }
       }
       tx.delete(requestRef)
-      const firstName = user.get('firstName')
-      return { kind: 'claimed', data, marketing: user.get('marketingOptIn') === true ? { firstName: typeof firstName === 'string' ? firstName : '' } : null }
+      return { kind: 'claimed', data }
     })
   } catch (err) {
     logContactFailure('verify-email-otp', 'transaction', uid, err)
@@ -91,7 +87,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { data, marketing } = outcome
+  const { data } = outcome
   const newEmail: string = data.newEmail
   const lang: Lang = isValidLang(data.lang) ? data.lang : 'en'
   const adminAuth = getAdminAuth()
@@ -118,14 +114,6 @@ export async function POST(request: Request) {
     // Auth already carries the new address (the source of truth for sign-in);
     // only the profile copy lags, so the change still counts as applied.
     logContactFailure('verify-email-otp', 'profile', uid, err)
-  }
-
-  // Run by after(), so Responder never holds or fails the verification, yet
-  // the platform keeps the function alive until it settles. It never throws
-  // and logs its own failures.
-  if (marketing && previousEmail && previousEmail.toLowerCase() !== newEmail.toLowerCase()) {
-    const change = { uid, oldEmail: previousEmail, newEmail, firstName: marketing.firstName }
-    after(() => updateSubscriberEmail(change))
   }
 
   if (previousEmail && previousEmail !== newEmail) {

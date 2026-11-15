@@ -10,7 +10,7 @@ import { usePathname } from 'next/navigation'
 // the payment iframe.
 export function excludesAccessibilityWidget(pathname: string): boolean {
   return ['/admin', '/business/dashboard', '/business/login', '/login', '/signup',
-    '/forgot-password', '/reset-password', '/verify-email', '/checkout', '/order-success'].some(
+    '/forgot-password', '/reset-password', '/verify-email', '/unsubscribe', '/checkout', '/order-success'].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   )
 }

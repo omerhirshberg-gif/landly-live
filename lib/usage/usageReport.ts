@@ -1,4 +1,4 @@
-import { grossCostIls, netCostIls, PRICES_VERIFIED_AT, SKUS, THRESHOLDS, USD_TO_ILS, type MeteredSku, type SkuId } from './pricing'
+import { grossCostIls, netCostIls, PRICES_VERIFIED_AT, SKUS, THRESHOLDS, USD_TO_ILS, type MeteredSku, type SkuId, type VendorId } from './pricing'
 import { buildQuota, type QuotaInput, type QuotaReport } from './quota'
 import { usageEnvOf, type UsageCounters, type UsageEnv } from './usageTypes'
 
@@ -7,6 +7,7 @@ import { usageEnvOf, type UsageCounters, type UsageEnv } from './usageTypes'
 // Preview their own DEV project. Pure (no I/O), so the route stays thin and
 // the arithmetic is unit-tested.
 
+/** How a meter reads: green, amber from 80% of the allowance, red once units are billed. */
 export type MeterStatus = 'ok' | 'warn' | 'over'
 
 export interface UsageLine {
@@ -31,7 +32,7 @@ export interface UsageLine {
 
 /** The lines of one vendor, with their subtotals. */
 export interface UsageGroup {
-  vendor: MeteredSku['vendor']
+  vendor: VendorId
   label: string
   lines: UsageLine[]
   grossIls: number
@@ -53,13 +54,14 @@ export interface UsageReport {
   generatedAt: string
 }
 
-const VENDORS: { vendor: MeteredSku['vendor']; label: string }[] = [
+const VENDORS: { vendor: VendorId; label: string }[] = [
   { vendor: 'google', label: 'Google Cloud' },
   { vendor: 'gateway019', label: '019 Gateway' },
   { vendor: 'meta', label: 'Meta WhatsApp' },
+  { vendor: 'resend', label: 'Resend Email' },
 ]
 
-const SHOWN_WHEN_USED: readonly SkuId[] = ['sim019', 'waAuthLegacy']
+const SHOWN_WHEN_USED: readonly SkuId[] = ['sim019', 'waAuthLegacy', 'resendSim']
 
 export function meterStatus(coverage: number | null, billable: number): MeterStatus {
   if (coverage === null) return 'ok'
@@ -98,12 +100,14 @@ export function buildUsageReport(input: { month: string; months: string[]; proje
   // Shown only when there is something to show: simulated sends (DEV, or a misconfigured PROD) and
   // the Meta OTPs of months before OTPs moved to 019.
   const lines = SKUS.map((sku) => usageLine(sku, input.counters)).filter((line) => !SHOWN_WHEN_USED.includes(line.skuId) || line.used > 0)
-  const groups = VENDORS.map(({ vendor, label }) => {
+  const groups: UsageGroup[] = VENDORS.map(({ vendor, label }) => {
     const own = lines.filter((line) => line.vendor === vendor)
     return { vendor, label, lines: own, grossIls: sum(own, 'grossIls'), netIls: sum(own, 'netIls') }
   })
-  const grossIls = sum(lines, 'grossIls')
-  const netIls = sum(lines, 'netIls')
+  const meteredGross = sum(lines, 'grossIls')
+  const meteredNet = sum(lines, 'netIls')
+  const grossIls = meteredGross
+  const netIls = meteredNet
   const months = [...new Set([...input.months, input.month, now.toISOString().slice(0, 7)])].sort().reverse()
   return {
     month: input.month,
@@ -114,7 +118,7 @@ export function buildUsageReport(input: { month: string; months: string[]; proje
     totals: {
       grossIls,
       netIls,
-      freeCoveragePct: grossIls > 0 ? Math.round((1 - netIls / grossIls) * 100) : 100,
+      freeCoveragePct: meteredGross > 0 ? Math.round((1 - meteredNet / meteredGross) * 100) : 100,
       otpSent: input.counters.gateway019.smsOtpSent + input.counters.gateway019.whatsappOtpSent,
     },
     quota: buildQuota(input.quota),

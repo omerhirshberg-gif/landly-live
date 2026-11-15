@@ -12,7 +12,9 @@ const EXIT_MS = 200
 // LTR with <bdi> so "+1 415…" or an address never reverses inside Hebrew.
 // It opens and closes by its own height (globals.css .pending-notice), and
 // stays mounted through the close so the last value fades out with it.
-// Phones stack the text over the buttons; from 640px they share one row.
+// Always stacked: the text takes the card's full width and the buttons sit on
+// their own row below it. The card lives in narrow columns (the two-column
+// profile on desktop), so a viewport breakpoint can't decide a side-by-side row.
 export default function PendingChangeNotice({
   show,
   message,
@@ -75,7 +77,7 @@ export default function PendingChangeNotice({
         <div className="pt-3">
           <div
             role="status"
-            className="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-3 text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            className="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-3 text-sm flex flex-col gap-3"
           >
             <p className="flex items-start gap-2.5 min-w-0 leading-5">
               <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" strokeWidth={1.75} />
@@ -86,12 +88,12 @@ export default function PendingChangeNotice({
                 {after}
               </span>
             </p>
-            <div className="flex items-center justify-end gap-1 flex-shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-1">
               <button
                 type="button"
                 onClick={onCancel}
                 disabled={busy}
-                className="tap-target px-3 rounded-[12px] text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-950 disabled:opacity-60"
+                className="tap-target min-h-11 px-3 rounded-[12px] text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-950 disabled:opacity-60"
               >
                 {t('pending_cancel')}
               </button>
@@ -100,7 +102,7 @@ export default function PendingChangeNotice({
                 onClick={onAction}
                 disabled={busy}
                 aria-busy={actionBusy}
-                className="tap-target inline-flex items-center justify-center h-11 px-4 rounded-[12px] bg-white border border-amber-300 text-amber-900 text-sm font-semibold hover:bg-amber-100 transition-colors disabled:opacity-60"
+                className="tap-target inline-flex items-center justify-center min-h-11 min-w-[6rem] px-4 rounded-[12px] border border-amber-300 bg-[#FDE68A] text-[#78350F] text-sm font-semibold hover:bg-amber-300 transition-colors disabled:opacity-60"
               >
                 {actionBusy ? '…' : actionLabel}
               </button>

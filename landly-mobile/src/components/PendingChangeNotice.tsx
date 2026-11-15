@@ -15,8 +15,9 @@ const MOTION_MS = 200
 // then, so it fades in and out with the pending change (Reanimated skips the
 // motion under the OS's reduced-motion setting). `message` holds a
 // placeholder where the value goes, wrapped in LRI…PDI so "+1 415…" or an
-// address stays left-to-right inside Hebrew. The buttons sit at the trailing
-// edge below the text, which keeps a 320pt-wide screen from squeezing either.
+// address stays left-to-right inside Hebrew. The text always takes the card's
+// full width; the buttons (both 44pt tall, "Enter code" a soft amber fill)
+// sit on their own row at the trailing edge below it.
 export default function PendingChangeNotice({
   message,
   placeholder,
@@ -122,12 +123,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.warningAction,
-    backgroundColor: colors.white,
+    backgroundColor: colors.warningBorder, // the soft amber-200 fill (#FDE68A)
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({ cursor: 'pointer' }),
   },
-  actionPressed: { backgroundColor: colors.warningPressed },
+  actionPressed: { backgroundColor: colors.warningAction },
   actionText: { fontSize: 14, fontWeight: '700', color: colors.warningText },
   pressedText: { opacity: 0.7 },
   disabled: { opacity: 0.6 },

@@ -54,7 +54,8 @@ import { BOT_LANGUAGES, isBotLanguage, type BotAction, type InboundEvent } from 
 // A conversation the bot spoke last in, and the member left for idleMs()
 // (lib/whatsapp/idleSweep.ts), gets one check-in: Yes, need help (back to
 // the request or the menu) or All set (resolved). Without an answer within
-// IDLE_GRACE_MS it is resolved silently. A chat still awaiting its language
+// IDLE_GRACE_MS it is resolved, with a closing message and Main Menu while
+// Meta's window is open (AUTO_RESOLVE_SEND_WINDOW_MS), else silently. A chat still awaiting its language
 // gets no check-in.
 //
 // A conversation the team replied in last, and the member left, gets one
@@ -73,6 +74,8 @@ export const INQUIRY_TIMEOUT_MS = 30 * 60 * 1000
 export const ESCALATION_SILENCE_MS = 24 * 60 * 60 * 1000
 /** Meta allows free-form messages for 24 hours after the member's last message. */
 export const CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000
+/** The sweep's closing message goes out only while the member's last message is younger than this: Meta's window less a 10-minute margin. */
+export const AUTO_RESOLVE_SEND_WINDOW_MS = CUSTOMER_SERVICE_WINDOW_MS - 10 * 60 * 1000
 
 /** How long the member may leave a conversation before the check-in: WHATSAPP_IDLE_MINUTES, 20 to 30, else 25. */
 export const IDLE_MINUTES = { min: 20, max: 30, default: 25 } as const
@@ -523,6 +526,9 @@ export const alreadyEscalatedMessage = (lang: Lang) => withBackButton(lang, 'wa_
 export const resolvedMessage = (lang: Lang) => withBackButton(lang, 'wa_bot_resolved')
 /** The team's one follow-up to a member who went quiet after its reply (lib/whatsapp/idleSweep.ts). */
 export const teamNudgeMessage = (lang: Lang) => buttonsMessage(lang, tr(lang, 'wa_team_nudge'), ['btn_idle_done', 'btn_team_nudge_yes'])
+/** The sign-off when the sweep auto-resolves a conversation inside Meta's window (lib/whatsapp/idleSweep.ts), with GoLandly isolated. */
+export const autoResolvedMessage = (lang: Lang) =>
+  buttonsMessage(lang, tr(lang, 'wa_bot_auto_resolved').replace('GoLandly', isolateName('GoLandly')), ['btn_back_to_menu'])
 /** The sign-off when the team resolves a conversation from the inbox. */
 export const teamResolvedMessage = (lang: Lang) => withBackButton(lang, 'wa_team_resolved_thanks')
 

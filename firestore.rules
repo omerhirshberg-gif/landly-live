@@ -237,6 +237,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Newsletter campaign history, the per-recipient send log and the
+    // unsubscribe suppression list (lib/newsletter/): written and read by the
+    // servers through the Admin SDK only. Emails, so no client may touch them.
+    match /newsletterCampaigns/{campaignId} {
+      allow read, write: if false;
+    }
+    match /newsletter_sends/{sendId} {
+      allow read, write: if false;
+    }
+    match /newsletter_suppressions/{hash} {
+      allow read, write: if false;
+    }
+
     // Money, contracts and secrets. All of these are read and written only by the
     // Admin SDK behind the admin session or a one-time invite token; no client
     // may touch them, so a stolen member or business login can't reach any of it.

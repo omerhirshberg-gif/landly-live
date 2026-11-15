@@ -64,8 +64,8 @@ export function normalizePersonaOther(input: string): string {
   return singleLine(input.replace(BIDI_CONTROLS, '').replace(/[<>]/g, '')).slice(0, MAX_PERSONA_OTHER_LENGTH).trim()
 }
 
-// React escapes names on our pages, but they also go to Rav Messer, whose
-// campaigns can merge them into HTML. Angle brackets are the one thing no name
+// React escapes names on our pages, but they are also merged into the HTML of
+// our emails and campaigns. Angle brackets are the one thing no name
 // needs; apostrophes, hyphens and geresh all pass.
 function isValidName(input: string): boolean {
   const name = normalizeLeadName(input)

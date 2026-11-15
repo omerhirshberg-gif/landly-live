@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Removes one /join lead and its phone and email keys, for an opt-out or a
 // privacy request. Without the keys removed, the person couldn't sign up again.
-// Unsubscribes them from Rav Messer first, across the whole account, so the
-// mail stops too. If that fails nothing is deleted, so it can simply be rerun.
-// Run it with the env file that holds the Rav Messer account's credentials.
+// The lead document is the only copy of their address in the newsletter
+// audience, so deleting it also ends their marketing email.
 //
 //   node --env-file=.env.local scripts/delete-prelaunch-lead.mjs --project landly-dev --id abcdefghij        (preview)
 //   node --env-file=.env.local scripts/delete-prelaunch-lead.mjs --project landly-dev --phone +972501234567 --yes
@@ -12,7 +11,6 @@
 import { createHash } from 'node:crypto'
 import { getFirestore } from 'firebase-admin/firestore'
 import { flagValue, initAdminForScript } from './lib/adminInit.mjs'
-import { unsubscribeFromResponder } from './lib/responderUnsubscribe.mjs'
 
 const args = process.argv.slice(2)
 const id = flagValue(args, '--id')
@@ -48,10 +46,9 @@ if (!args.includes('--yes')) {
   process.exit(0)
 }
 const { phone: leadPhone, email: leadEmail } = lead.data()
-await unsubscribeFromResponder(leadEmail)
 const batch = db.batch()
 batch.delete(leadRef)
 batch.delete(keys.doc(keyId('phone', leadPhone)))
 batch.delete(keys.doc(keyId('email', leadEmail)))
 await batch.commit()
-console.log('Unsubscribed from Rav Messer. Deleted the lead and its keys.')
+console.log('Deleted the lead and its keys.')

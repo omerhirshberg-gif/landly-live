@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs'
 import type { Firestore } from 'firebase-admin/firestore'
 import { TransactionStore } from '../helpers/transactionStore'
 
-const mocks = vi.hoisted(() => ({ send: vi.fn(), after: vi.fn(), sync: vi.fn(), db: null as unknown }))
+const mocks = vi.hoisted(() => ({ send: vi.fn(), after: vi.fn(), db: null as unknown }))
+// Usage counting uses after() too; these tests count the route's own after() calls.
+vi.mock('@/lib/usage/recordUsage', () => ({ recordUsage: vi.fn() }))
 vi.mock('resend', () => ({ Resend: class { emails = { send: mocks.send } } }))
 vi.mock('next/server', async (importOriginal) => ({ ...(await importOriginal<typeof import('next/server')>()), after: mocks.after }))
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => mocks.db, getAdminProjectId: () => 'landly-dev' }))
-vi.mock('@/lib/marketing/ravMesser.server', () => ({ syncLeadToRavMesser: mocks.sync }))
 
 import { POST } from '@/app/api/prelaunch/route'
 import { WAITLIST_WELCOME_COPY, renderWaitlistWelcomeEmail, sendWaitlistWelcomeEmail } from '@/lib/email/sendWaitlistWelcomeEmail'
@@ -51,7 +52,6 @@ beforeEach(() => {
   vi.stubEnv('EMAIL_FROM', 'GoLandly <noreply@golandly.com>')
   mocks.send.mockReset().mockResolvedValue({ data: { id: 'm1' }, error: null })
   mocks.after.mockReset()
-  mocks.sync.mockReset().mockResolvedValue('synced')
 })
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -191,7 +191,6 @@ describe('POST /api/prelaunch', () => {
     await mocks.after.mock.calls[0][0]()
     // The welcome email first, then the team's alert, never at the same moment.
     expect(mocks.send.mock.calls.map(([email]) => email.to)).toEqual(['noa@example.com', 'contact@golandly.com'])
-    expect(mocks.sync).toHaveBeenCalledTimes(1)
     expect((await post()).status).toBe(200)
     expect(mocks.after).toHaveBeenCalledTimes(1)
   })
