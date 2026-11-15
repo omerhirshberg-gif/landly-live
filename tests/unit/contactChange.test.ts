@@ -34,12 +34,6 @@ vi.mock('@/lib/firebase/verifyRequestUser', () => ({
     constructor(message: string, public readonly status: number) { super(message) }
   },
 }))
-// Endpoints that 019's docs will supply; set here so the gateway can be exercised.
-vi.mock('@/lib/otp/gateway019Contract', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/otp/gateway019Contract')>()),
-  SMS_ENDPOINT: 'https://019.test/sms',
-  WHATSAPP_ENDPOINT: 'https://019.test/whatsapp',
-}))
 vi.mock('@/lib/auth/uidRateLimit', () => ({ checkUidRateLimit: () => null }))
 
 import { POST as changeEmail } from '@/app/api/account/change-email/route'
@@ -149,8 +143,9 @@ describe('phoneVerificationMode', () => {
 
 describe('OTP providers', () => {
   it('devProvider simulates WhatsApp by logging the code', async () => {
-    await devProvider.send({ phone: '+33612345678', code: '424242', channel: 'whatsapp', lang: 'fr' })
-    expect(info.mock.calls.at(-1)?.[0]).toBe('[phone-otp] simulated WhatsApp to +33 •••• 5678: code 424242')
+    const { code } = await devProvider.send({ phone: '+33612345678', channel: 'whatsapp', lang: 'fr' })
+    expect(code).toMatch(/^\d{6}$/)
+    expect(info.mock.calls.at(-1)?.[0]).toBe(`[phone-otp] simulated WhatsApp to +33 •••• 5678: code ${code}`)
   })
 })
 
@@ -233,15 +228,15 @@ describe('/api/account/change-phone', () => {
   it('answers delivery, not a server error, when 019 refuses the send', async () => {
     vi.stubEnv('OTP_019_LIVE', 'true')
     vi.stubEnv('SMS_019_USERNAME', 'landly')
-    vi.stubEnv('SMS_019_PASSWORD', 'hunter2-secret')
+    vi.stubEnv('SMS_019_TOKEN', 'hunter2-secret')
     vi.stubEnv('SMS_019_SENDER', 'GoLandly')
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{"error":"bad"}', { status: 400 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"status":4,"message":"not enough credit"}'))
     vi.stubGlobal('fetch', fetchMock)
     const res = await changePhone(post({ phone: '+12025550123', lang: 'he' }))
     expect(res.status).toBe(502)
     expect(await res.json()).toMatchObject({ reason: 'delivery', channel: 'whatsapp' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe('https://019.test/whatsapp')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://019sms.co.il/whatsapp-api/send-otp-whatsapp')
     expect(mocks.store.read(`users/${UID}`)?.pendingPhone).toBeUndefined()
     expect(mocks.store.read(`phoneVerifications/${UID}`)).toBeUndefined()
     vi.unstubAllGlobals()

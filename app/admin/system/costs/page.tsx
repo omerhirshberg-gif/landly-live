@@ -12,6 +12,7 @@ import UsageBreakdown from '@/components/admin/usage/UsageBreakdown'
 import UsageSummary from '@/components/admin/usage/UsageSummary'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
+import { quotaState, type QuotaChannel } from '@/lib/usage/quota'
 
 // Estimated API usage and cost for one UTC month, from the counters this
 // deployment's servers keep (lib/usage/recordUsage.ts): live PROD figures on
@@ -104,6 +105,15 @@ export default function UsageCostsPage() {
     }
   }, [load, month])
 
+  // After a top-up the new quota shows at once; the reload that follows settles every figure.
+  const applyQuota = useCallback(
+    (channel: QuotaChannel, quota: number) => {
+      setReport((current) => (current ? { ...current, quota: { ...current.quota, [channel]: quotaState(current.quota[channel].sent, quota) } } : current))
+      void load(month)
+    },
+    [load, month]
+  )
+
   const over = report ? reportLines(report).filter((line) => line.status === 'over') : []
 
   return (
@@ -165,8 +175,8 @@ export default function UsageCostsPage() {
               <i className="fa-solid fa-circle-info mt-0.5 shrink-0" aria-hidden="true" />
               <span className="min-w-0">
                 {t('usage.notProd')}{' '}
-                <a href={PRODUCTION_DASHBOARD} className="break-all font-semibold underline underline-offset-2 hover:text-adm-text">
-                  www.golandly.com/admin/system/costs
+                <a href={PRODUCTION_DASHBOARD} className="break-words font-semibold underline underline-offset-2 hover:text-adm-text">
+                  <bdi dir="ltr">www.golandly.com/admin/system/costs</bdi>
                 </a>
                 .
               </span>
@@ -180,7 +190,7 @@ export default function UsageCostsPage() {
           )}
 
           <UsageSummary report={report} />
-          <UsageBreakdown groups={report.groups} />
+          <UsageBreakdown groups={report.groups} quota={report.quota} onQuota={applyQuota} onStale={() => void load(month)} />
 
           <Card className="flex items-start gap-3 p-4 sm:p-6">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-adm-ok-soft text-adm-ok">

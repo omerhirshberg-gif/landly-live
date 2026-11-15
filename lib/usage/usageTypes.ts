@@ -12,6 +12,18 @@ import { PRODUCTION_FIREBASE_PROJECT_ID, STAGING_FIREBASE_PROJECT_ID } from '@/l
 
 export const USAGE_COLLECTION = 'apiUsageStats'
 
+// The 019 package quota: how many messages were bought, per channel, with
+// no monthly reset. One document beside the monthly counters
+// (apiUsageStats/quota019: smsQuota, whatsappQuota; a missing field is the
+// default). Its id is not a month key, so month listings skip it.
+export const QUOTA_DOC_ID = 'quota019'
+/** Each channel starts with this many purchased messages. */
+export const DEFAULT_QUOTA = 1000
+/** What one top-up adds: fixed on the server, never taken from the client. */
+export const TOPUP_AMOUNT = 1000
+/** Sends before this month were never counted, so lifetime totals start here. */
+export const COUNTERS_SINCE = '2026-10'
+
 /** Which environment a project's counters are: the dashboard shows the deployment's own. */
 export type UsageEnv = 'prod' | 'dev' | 'other'
 

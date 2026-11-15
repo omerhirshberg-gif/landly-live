@@ -1,4 +1,5 @@
 import { grossCostIls, netCostIls, PRICES_VERIFIED_AT, SKUS, THRESHOLDS, USD_TO_ILS, type MeteredSku, type SkuId } from './pricing'
+import { buildQuota, type QuotaInput, type QuotaReport } from './quota'
 import { usageEnvOf, type UsageCounters, type UsageEnv } from './usageTypes'
 
 // One month of this deployment's own counters, priced for
@@ -24,6 +25,8 @@ export interface UsageLine {
   status: MeterStatus
   isUpperBound: boolean
   note: string | null
+  /** Pre-formatted values for the translated note (`usage.note.<skuId>`). */
+  noteParams: Record<string, string>
 }
 
 /** The lines of one vendor, with their subtotals. */
@@ -43,6 +46,8 @@ export interface UsageReport {
   environment: UsageEnv
   groups: UsageGroup[]
   totals: { grossIls: number; netIls: number; freeCoveragePct: number; otpSent: number }
+  /** The purchased 019 packages against lifetime sends (never reset, not tied to `month`). */
+  quota: QuotaReport
   fx: { usdToIls: number; verifiedAt: string }
   pricesVerifiedAt: string
   generatedAt: string
@@ -82,12 +87,13 @@ export function usageLine(sku: MeteredSku, counters: UsageCounters): UsageLine {
     status: meterStatus(coverage, billable),
     isUpperBound: !!sku.isUpperBound,
     note: sku.note?.(counters) ?? null,
+    noteParams: sku.noteParams?.(counters) ?? {},
   }
 }
 
 const sum = (lines: UsageLine[], key: 'grossIls' | 'netIls') => lines.reduce((total, line) => total + line[key], 0)
 
-export function buildUsageReport(input: { month: string; months: string[]; projectId: string; counters: UsageCounters; now?: Date }): UsageReport {
+export function buildUsageReport(input: { month: string; months: string[]; projectId: string; counters: UsageCounters; now?: Date; quota?: QuotaInput }): UsageReport {
   const now = input.now ?? new Date()
   // Shown only when there is something to show: simulated sends (DEV, or a misconfigured PROD) and
   // the Meta OTPs of months before OTPs moved to 019.
@@ -111,6 +117,7 @@ export function buildUsageReport(input: { month: string; months: string[]; proje
       freeCoveragePct: grossIls > 0 ? Math.round((1 - netIls / grossIls) * 100) : 100,
       otpSent: input.counters.gateway019.smsOtpSent + input.counters.gateway019.whatsappOtpSent,
     },
+    quota: buildQuota(input.quota),
     fx: { usdToIls: USD_TO_ILS.rate, verifiedAt: USD_TO_ILS.verifiedAt },
     pricesVerifiedAt: PRICES_VERIFIED_AT,
     generatedAt: now.toISOString(),

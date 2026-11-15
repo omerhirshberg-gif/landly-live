@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { grossCostIls, netCostIls, SKUS, USD_TO_ILS, type SkuId } from '@/lib/usage/pricing'
+import { en } from '@/lib/admin/translations/en'
+import { he } from '@/lib/admin/translations/he'
+import { buildQuota, quotaOf, quotaState, quotaStatus, sumLifetime } from '@/lib/usage/quota'
+import { formatIlsRate, grossCostIls, netCostIls, SKUS, USD_TO_ILS, type SkuId } from '@/lib/usage/pricing'
 import { buildUsageReport, meterStatus, reportLines, type UsageReport } from '@/lib/usage/usageReport'
 import { countersOf, dayKeyOf, emptyCounters, isMonthKey, monthKeyOf, usageEnvOf, type UsageCounters } from '@/lib/usage/usageTypes'
 
@@ -64,20 +67,33 @@ describe('usage report', () => {
     expect(lines(r).filter((l) => l.isUpperBound).map((l) => l.skuId)).toEqual(['placesAutocomplete'])
   })
 
-  it('bills 019 SMS at 0.06 ₪ and 019 WhatsApp at 0.12 ₪, with no free allowance and no meter', () => {
+  it('bills 019 SMS at 0.02 ₪ and 019 WhatsApp at 0.075 ₪, with no free allowance and no meter', () => {
     const r = report(counters((c) => {
       c.gateway019.smsOtpSent = 50
       c.gateway019.whatsappOtpSent = 32
     }))
     const sms = line(r, 'sms019Otp')
     expect(sms).toMatchObject({ freeAllowance: 0, billable: 50, coverage: null })
-    expect(sms.netIls).toBeCloseTo(3, 6)
-    expect(sms.grossIls).toBeCloseTo(3, 6)
+    expect(sms.netIls).toBeCloseTo(50 * 0.02, 6) // 1.00
+    expect(sms.grossIls).toBeCloseTo(1, 6)
     const wa = line(r, 'wa019Otp')
     expect(wa).toMatchObject({ freeAllowance: 0, billable: 32, coverage: null })
-    expect(wa.netIls).toBeCloseTo(3.84, 6)
+    expect(wa.netIls).toBeCloseTo(32 * 0.075, 6) // 2.40
+    expect(wa.grossIls).toBeCloseTo(2.4, 6)
     expect(r.totals.otpSent).toBe(82)
     expect(r.totals.freeCoveragePct).toBe(0)
+  })
+
+  it('prices the 019 units exactly: 0.02 ₪ per SMS, 0.075 ₪ per WhatsApp message, Meta\'s legacy OTP unchanged', () => {
+    const unit = (id: SkuId) => SKUS.find((sku) => sku.id === id)!.tiers[0].unitPrice
+    expect(unit('sms019Otp')).toEqual({ amount: 0.02, currency: 'ILS' })
+    expect(unit('wa019Otp')).toEqual({ amount: 0.075, currency: 'ILS' })
+    expect(unit('waAuthLegacy')).toEqual({ amount: 0.12, currency: 'ILS' })
+    expect(netCostIls(SKUS.find((s) => s.id === 'sms019Otp')!, 1_000)).toBeCloseTo(20, 6)
+    expect(netCostIls(SKUS.find((s) => s.id === 'wa019Otp')!, 1_000)).toBeCloseTo(75, 6)
+    expect(formatIlsRate(0.075)).toContain('0.075')
+    expect(formatIlsRate(0.02)).toContain('0.02')
+    expect(formatIlsRate(0.02)).not.toContain('0.020')
   })
 
   it('keeps support replies and simulated sends free, whatever the volume', () => {
@@ -96,12 +112,12 @@ describe('usage report', () => {
   it('works out the free-tier coverage of the whole month', () => {
     const r = report(counters((c) => {
       c.google.places.detailsRequests = 640 // free: gross 640 × $0.005
-      c.gateway019.whatsappOtpSent = 10 // 1.20 ₪ gross and net
+      c.gateway019.whatsappOtpSent = 10 // 0.75 ₪ gross and net
     }))
-    const gross = 640 * 0.005 * USD_TO_ILS.rate + 1.2
+    const gross = 640 * 0.005 * USD_TO_ILS.rate + 0.75
     expect(r.totals.grossIls).toBeCloseTo(gross, 6)
-    expect(r.totals.netIls).toBeCloseTo(1.2, 6)
-    expect(r.totals.freeCoveragePct).toBe(Math.round((1 - 1.2 / gross) * 100))
+    expect(r.totals.netIls).toBeCloseTo(0.75, 6)
+    expect(r.totals.freeCoveragePct).toBe(Math.round((1 - 0.75 / gross) * 100))
   })
 
   it('turns a meter amber from 80% and red only once units are billed', () => {
@@ -147,7 +163,7 @@ describe('vendor groups', () => {
   it('subtotals each vendor, and the subtotals add up to the totals', () => {
     const r = report(busy)
     const [google, gateway, meta] = r.groups
-    expect(gateway!.netIls).toBeCloseTo(3.84, 6)
+    expect(gateway!.netIls).toBeCloseTo(32 * 0.075, 6) // 2.40
     expect(meta!.netIls).toBe(0)
     expect(google!.netIls).toBeCloseTo(100_000 * (20 / 1e6) * USD_TO_ILS.rate + 1_000 * (5 / 1000) * USD_TO_ILS.rate, 6)
     expect(google!.netIls + gateway!.netIls + meta!.netIls).toBeCloseTo(r.totals.netIls, 6)
@@ -201,5 +217,95 @@ describe('usage counters', () => {
     expect(dayKeyOf(lateOctoberUtc)).toBe('31')
     expect(isMonthKey('2026-10')).toBe(true)
     for (const bad of ['2026-13', '2026-1', '26-10', '2026-10-01', '', null]) expect(isMonthKey(bad)).toBe(false)
+  })
+})
+
+describe('translated service notes', () => {
+  const full = counters((c) => {
+    c.google.translation.detectChars = 9
+    c.whatsapp.inboundMessages = 5
+  })
+
+  it('has an English and a Hebrew note for every service that has one, with the same placeholders', () => {
+    for (const sku of SKUS.filter((s) => s.note)) {
+      const key = `usage.note.${sku.id}` as keyof typeof en
+      expect(en[key], `en ${key}`).toBeTruthy()
+      expect((he as Record<string, string>)[key], `he ${key}`).toBeTruthy()
+      const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
+      expect(placeholders((he as Record<string, string>)[key])).toEqual(placeholders(en[key]))
+      // Every placeholder is supplied by the report line.
+      const params = sku.noteParams?.(full) ?? {}
+      expect(placeholders(en[key]).every((name) => name in params), key).toBe(true)
+    }
+  })
+})
+
+describe('019 package quota', () => {
+  it('starts every channel at 1,000 purchased messages with nothing sent', () => {
+    const q = buildQuota()
+    for (const channel of ['sms', 'whatsapp'] as const) {
+      expect(q[channel]).toEqual({ sent: 0, quota: 1000, remaining: 1000, over: 0, pct: 0, status: 'ok' })
+    }
+    expect(buildUsageReport({ month: '2026-11', months: [], projectId: 'landly-dev', counters: emptyCounters(), now: NOW }).quota).toEqual(q)
+  })
+
+  it('works out sent of quota, the balance and the percentage', () => {
+    expect(quotaState(412, 1000)).toEqual({ sent: 412, quota: 1000, remaining: 588, over: 0, pct: 41.2, status: 'ok' })
+    expect(quotaState(412, 2000)).toMatchObject({ remaining: 1588, pct: 20.6 })
+    expect(quotaState(1200, 1000)).toMatchObject({ remaining: 0, over: 200, pct: 120, status: 'critical' })
+  })
+
+  it('turns amber from 80% used and red from 95% or with nothing left', () => {
+    expect(quotaStatus(799, 1000)).toBe('ok')
+    expect(quotaStatus(800, 1000)).toBe('warn')
+    expect(quotaStatus(949, 1000)).toBe('warn')
+    expect(quotaStatus(950, 1000)).toBe('critical')
+    expect(quotaStatus(1000, 1000)).toBe('critical')
+    expect(quotaStatus(1001, 1000)).toBe('critical')
+    expect(quotaStatus(1_599, 2000)).toBe('ok')
+    expect(quotaStatus(1_600, 2000)).toBe('warn')
+    expect(quotaStatus(1_900, 2000)).toBe('critical')
+  })
+
+  it('takes a stored quota, and falls back to 1,000 for anything malformed', () => {
+    expect(quotaOf(3000)).toBe(3000)
+    for (const bad of [undefined, null, 0, -5, 1.5, '2000', NaN, Infinity]) expect(quotaOf(bad)).toBe(1000)
+    const q = buildQuota({ sent: { sms: 412, whatsapp: 37 }, quota: { sms: 2000, whatsapp: 'x' } })
+    expect(q.sms).toMatchObject({ sent: 412, quota: 2000, remaining: 1588 })
+    expect(q.whatsapp).toMatchObject({ sent: 37, quota: 1000, remaining: 963 })
+  })
+
+  it('sums lifetime sends over every month from 2026-10, never resetting, and skips what is not a month', () => {
+    const doc = (id: string, sms: number, wa: number) => ({ id, data: { gateway019: { smsOtpSent: sms, whatsappOtpSent: wa } } })
+    expect(
+      sumLifetime([
+        doc('2026-09', 900, 900), // before counters were kept
+        doc('2026-10', 300, 20),
+        doc('2026-11', 112, 17),
+        doc('2027-01', 5, 1),
+        { id: 'quota019', data: { smsQuota: 3000, gateway019: { smsOtpSent: 999 } } },
+        { id: 'notes', data: { gateway019: { smsOtpSent: 999 } } },
+        { id: '2026-12', data: { gateway019: { smsOtpSent: 'many', whatsappOtpSent: -4 } } },
+        { id: '2026-08', data: undefined },
+      ])
+    ).toEqual({ sms: 417, whatsapp: 38 })
+    expect(sumLifetime([])).toEqual({ sms: 0, whatsapp: 0 })
+  })
+
+  it('keeps cost lines at rate × messages, whatever the quota', () => {
+    const r = buildUsageReport({
+      month: '2026-10',
+      months: [],
+      projectId: 'landly-dev',
+      counters: counters((c) => {
+        c.gateway019.smsOtpSent = 50
+        c.gateway019.whatsappOtpSent = 32
+      }),
+      now: NOW,
+      quota: { sent: { sms: 50, whatsapp: 32 }, quota: { sms: 3000 } },
+    })
+    expect(line(r, 'sms019Otp').netIls).toBeCloseTo(1, 6)
+    expect(line(r, 'wa019Otp').netIls).toBeCloseTo(2.4, 6)
+    expect(r.quota.sms).toMatchObject({ sent: 50, quota: 3000 })
   })
 })

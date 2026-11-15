@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   fail: false,
   docIds: [] as string[],
   monthIds: ['2026-10', '2026-09', 'notes'],
+  listData: {} as Record<string, unknown>,
 }))
 vi.mock('@/lib/admin/adminAuth', () => ({ requireAdminAuth: () => mocks.authError }))
 vi.mock('@/lib/firebase/admin', () => ({
@@ -24,7 +25,7 @@ vi.mock('@/lib/firebase/admin', () => ({
           return { exists: mocks.data !== undefined, data: () => mocks.data }
         },
       }),
-      select: () => ({ get: async () => ({ docs: mocks.monthIds.map((id) => ({ id })) }) }),
+      select: () => ({ get: async () => ({ docs: mocks.monthIds.map((id) => ({ id, data: () => mocks.listData[id] })) }) }),
     }),
   }),
 }))
@@ -41,6 +42,8 @@ beforeEach(() => {
   mocks.data = { projectId: 'landly-be752', gateway019: { smsOtpSent: 20, whatsappOtpSent: 10 }, google: { translation: { chars: 1200 } } }
   mocks.fail = false
   mocks.docIds = []
+  mocks.listData = {}
+  mocks.monthIds = ['2026-10', '2026-09', 'notes']
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -67,7 +70,7 @@ describe('GET /api/admin/usage', () => {
     const r = await report('?month=2026-10')
     expect(mocks.docIds).toEqual(['apiUsageStats/2026-10'])
     expect(r.totals.otpSent).toBe(30)
-    expect(r.totals.netIls).toBeCloseTo(20 * 0.06 + 10 * 0.12, 6)
+    expect(r.totals.netIls).toBeCloseTo(20 * 0.02 + 10 * 0.075, 6)
     expect(r.groups.map((g) => g.vendor)).toEqual(['google', 'gateway019', 'meta'])
     expect(reportLines(r).find((l) => l.skuId === 'translation')!.used).toBe(1200)
   })
@@ -106,5 +109,40 @@ describe('GET /api/admin/usage', () => {
     const res = await call()
     expect(res.status).toBe(502)
     expect(JSON.stringify(await res.json())).not.toContain('UNAVAILABLE')
+  })
+
+  it('reports the 019 package quota against lifetime sends, whichever month is shown', async () => {
+    mocks.monthIds = ['2026-11', '2026-10', '2026-09', 'quota019', 'notes']
+    mocks.listData = {
+      '2026-11': { projectId: 'landly-be752', gateway019: { smsOtpSent: 112, whatsappOtpSent: 17 } },
+      '2026-10': { projectId: 'landly-be752', gateway019: { smsOtpSent: 300, whatsappOtpSent: 20 } },
+      '2026-09': { projectId: 'landly-be752', gateway019: { smsOtpSent: 900, whatsappOtpSent: 900 } },
+      quota019: { projectId: 'landly-be752', smsQuota: 2000 },
+      notes: { gateway019: { smsOtpSent: 999 } },
+    }
+    for (const query of ['', '?month=2026-10']) {
+      const r = await report(query)
+      expect(r.quota.sms).toMatchObject({ sent: 412, quota: 2000, remaining: 1588 })
+      expect(r.quota.whatsapp).toMatchObject({ sent: 37, quota: 1000, remaining: 963 })
+      expect(r.months).not.toContain('quota019')
+    }
+  })
+
+  it('defaults to 1,000 each, with the history still counted, when no quota document exists', async () => {
+    mocks.monthIds = ['2026-10']
+    mocks.listData = { '2026-10': { projectId: 'landly-be752', gateway019: { smsOtpSent: 20, whatsappOtpSent: 10 } } }
+    const r = await report()
+    expect(r.quota.sms).toMatchObject({ sent: 20, quota: 1000 })
+    expect(r.quota.whatsapp).toMatchObject({ sent: 10, quota: 1000 })
+  })
+
+  it('leaves another project\'s documents out of the totals and the quota', async () => {
+    mocks.monthIds = ['2026-10', 'quota019']
+    mocks.listData = {
+      '2026-10': { projectId: 'landly-dev', gateway019: { smsOtpSent: 500, whatsappOtpSent: 500 } },
+      quota019: { projectId: 'landly-dev', smsQuota: 9000 },
+    }
+    const r = await report()
+    expect(r.quota.sms).toMatchObject({ sent: 0, quota: 1000 })
   })
 })

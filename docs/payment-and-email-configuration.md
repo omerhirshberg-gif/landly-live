@@ -182,9 +182,8 @@ Vercel for **both** `landly-dev` and `landly-be752`; `.env.example` lists them):
 | --- | --- |
 | `PHONE_VERIFICATION_ENABLED` | `true` turns verification on in production. Off (the default) saves phone edits directly, as before. In development it is on unless set to `false`. The older name `FIREBASE_PHONE_AUTH_ENABLED` is still read when this one is unset. |
 | `SMS_019_USERNAME` | The 019 account's user name. |
-| `SMS_019_PASSWORD` | The 019 account's password. Either this or `SMS_019_TOKEN` is enough. |
-| `SMS_019_TOKEN` | A 019 API token, used instead of the password when set. |
-| `SMS_019_SENDER` | The sender name members see on the SMS / WhatsApp message. |
+| `SMS_019_TOKEN` | A 019 API token (Settings > API Token Management in 019's web UI), sent as `Authorization: Bearer`. It expires on a fixed date: rotate it before then, and use a separate token for DEV and PROD. |
+| `SMS_019_SENDER` | The verified alphanumeric sender on the SMS (at most 11 letters/digits), `GoLandly`. WhatsApp codes go from 019's own business line, so no sender is sent. |
 | `OTP_019_LIVE` | Optional. `true` sends real messages outside production; otherwise the code is only logged to the `next dev` terminal. Production always sends once the settings above are complete. |
 
 Without a complete 019 configuration nothing is sent and nobody is blocked: in

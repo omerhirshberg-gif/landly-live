@@ -6,7 +6,6 @@ import { CLEAR_PENDING_PHONE, customerOrReply, heldByOther, logContactFailure, p
 import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
 import { resolveOtpChannel } from '@/lib/auth/otpChannel'
 import {
-  generateOtp,
   hashOtp,
   OTP_RESEND_COOLDOWN_MS,
   OTP_TTL_MS,
@@ -66,7 +65,21 @@ export async function POST(request: Request) {
     return reply({ error: 'Service unavailable.', reason: 'unavailable' }, 503)
   }
 
-  const code = generateOtp()
+  // 019 generates the code, so it goes out first and what comes back is hashed
+  // and stored. A send that fails leaves nothing pending, including a code sent
+  // before (a failed resend closes the dialog).
+  let code: string
+  try {
+    ;({ code } = await otpProvider().send({ phone, channel, lang }))
+  } catch (err) {
+    logContactFailure('change-phone', 'deliver', uid, err)
+    const rollback = db.batch()
+    rollback.delete(verificationRef)
+    rollback.update(userRef, CLEAR_PENDING_PHONE)
+    await rollback.commit().catch((e) => logContactFailure('change-phone', 'rollback', uid, e))
+    return reply({ error: 'Could not send the code.', reason: 'delivery', channel: err instanceof OtpDeliveryError ? err.channel : channel }, 502)
+  }
+
   try {
     const batch = db.batch()
     batch.set(verificationRef, {
@@ -82,18 +95,6 @@ export async function POST(request: Request) {
   } catch (err) {
     logContactFailure('change-phone', 'store', uid, err)
     return reply({ error: 'Could not save the change.', reason: 'failed' }, 503)
-  }
-
-  try {
-    await otpProvider().send({ phone, code, channel, lang })
-  } catch (err) {
-    logContactFailure('change-phone', 'deliver', uid, err)
-    // Nothing waits on a code that never arrived: no banner is left behind.
-    const batch = db.batch()
-    batch.delete(verificationRef)
-    batch.update(userRef, CLEAR_PENDING_PHONE)
-    await batch.commit().catch((e) => logContactFailure('change-phone', 'rollback', uid, e))
-    return reply({ error: 'Could not send the code.', reason: 'delivery', channel: err instanceof OtpDeliveryError ? err.channel : channel }, 502)
   }
   return reply({ ok: true, mode: 'otp', channel, resendIn: OTP_RESEND_SECONDS })
 }
