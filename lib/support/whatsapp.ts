@@ -24,6 +24,7 @@ const HIDDEN_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/unsubscribe',
   '/join',
 ]
 

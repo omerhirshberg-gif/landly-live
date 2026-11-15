@@ -9,6 +9,7 @@ import {
   listCountries,
   normalizePersonName,
   onboardingDraftKey,
+  onboardingPhoneToSave,
   parseOnboardingDraft,
   personaNote,
   serializeOnboardingDraft,
@@ -200,7 +201,28 @@ describe('onboarding draft', () => {
     country: 'IL',
     phone: '50 123 4567',
     phoneSkipped: false,
+    verifiedPhone: '',
   } as const
+
+  it('keeps the verified number, and resumes an older draft with none verified', () => {
+    const verified = { ...draft, verifiedPhone: '+972501234567' }
+    expect(parseOnboardingDraft(serializeOnboardingDraft(verified))?.verifiedPhone).toBe('+972501234567')
+    const { verifiedPhone: _omit, ...older } = draft
+    expect(parseOnboardingDraft(JSON.stringify(older))?.verifiedPhone).toBe('')
+  })
+
+  describe('the phone the wizard saves', () => {
+    it('saves only the verified number, never one typed after it', () => {
+      expect(onboardingPhoneToSave({ phoneSkipped: false, verifiedPhone: '+972501234567' })).toBe('+972501234567')
+      // Typed-but-unverified is not an input: the typed field never reaches the decision.
+      expect(onboardingPhoneToSave({ phoneSkipped: false, verifiedPhone: '' })).toBeUndefined()
+    })
+
+    it("saves '' for Skip, but keeps a number verified before the skip", () => {
+      expect(onboardingPhoneToSave({ phoneSkipped: true, verifiedPhone: '' })).toBe('')
+      expect(onboardingPhoneToSave({ phoneSkipped: true, verifiedPhone: '+972501234567' })).toBe('+972501234567')
+    })
+  })
 
   it('round-trips the card and the answers', () => {
     expect(parseOnboardingDraft(serializeOnboardingDraft(draft))).toEqual(draft)
@@ -230,6 +252,7 @@ describe('onboarding draft', () => {
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, countryOfOrigin: 'XX' }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, countryOfOrigin: 7 }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, phoneSkipped: 'no' }))).toBeNull()
+    expect(parseOnboardingDraft(JSON.stringify({ ...draft, verifiedPhone: 5 }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, phone: 42 }))).toBeNull()
     expect(parseOnboardingDraft(JSON.stringify({ ...draft, customerTypeOther: 'x'.repeat(500) }))).toBeNull()
   })

@@ -146,7 +146,6 @@ describe('joinWaitlist', () => {
     expect(code).toMatch(/^[a-z2-7]{10}$/)
     expect(store.read(`prelaunch_leads/${code}`)).toMatchObject({
       firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', status: 'interested', referredBy: 'abcdefgh23', persona: null,
-      ravMesserSync: { synced: false, syncedAt: null, error: null }, ravMesserSyncAttempts: 0,
       consent: { accepted: true, version: PRELAUNCH_CONSENT_VERSION, text: PRELAUNCH_COPY.he.consent },
     })
     expect(store.read(`prelaunch_lead_keys/${leadKeyId('phone', '+972501234567')}`)?.leadId).toBe(code)

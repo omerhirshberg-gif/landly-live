@@ -20,6 +20,7 @@ const PRIVATE_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/unsubscribe',
 ]
 
 export default function robots(): MetadataRoute.Robots {

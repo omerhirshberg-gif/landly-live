@@ -6,6 +6,8 @@ import { recordUsage } from '@/lib/usage/recordUsage'
 import { logMessages, MESSAGE_TTL_MS, snippetOf, type LoggedMessage } from './conversationLog'
 import { sendWhatsAppMessage, whatsappLive } from './graph'
 import {
+  AUTO_RESOLVE_SEND_WINDOW_MS,
+  autoResolvedMessage,
   currentStatus,
   CUSTOMER_SERVICE_WINDOW_MS,
   IDLE_GRACE_MS,
@@ -31,8 +33,11 @@ import { isBotLanguage } from './webhookPayload'
 //   when it was waiting for the member's request). Only inside Meta's
 //   24-hour window, so no template is needed.
 // - resolve: a check-in unanswered for IDLE_GRACE_MS resolves the
-//   conversation without a word to the member (resolvedBy: idle), and
-//   leaves the team a note in the transcript (AUTO_RESOLVED_NOTE).
+//   conversation (resolvedBy: idle). While the member's last message is
+//   younger than AUTO_RESOLVE_SEND_WINDOW_MS the member gets a closing
+//   message with Main Menu; past it nothing is sent (no template, no Meta
+//   error). Either way the team gets a note in the transcript
+//   (AUTO_RESOLVED_NOTE, with the outcome).
 // - team nudge: a conversation with the team whose last word was the team's
 //   (lastAdminReplyAt, not followed by the member) gets one follow-up
 //   (teamNudgeAt) after teamNudgeMs(), held inside Meta's window (see
@@ -40,8 +45,8 @@ import { isBotLanguage } from './webhookPayload'
 //   member wrote last, the team owes the reply and nothing is due.
 // - team resolve: teamResolveMs() after the follow-up, or after it was due
 //   when the window left no room for one, the conversation is resolved
-//   without a word (the window has closed by then: resolvedBy: team_idle),
-//   with TEAM_AUTO_RESOLVED_NOTE for the team. The member's next message
+//   (resolvedBy: team_idle) by the same rule as above: the window has usually
+//   closed by then, so it is usually silent. TEAM_AUTO_RESOLVED_NOTE tells the team. The member's next message
 //   starts over, as after any resolve.
 // - purge: a safety net behind the Firestore TTL policy on expiresAt (180
 //   days after the latest message): conversations PURGE_SLACK_MS past it are
@@ -68,9 +73,11 @@ export const SWEEP_DEADLINE_MS = 50_000
 const PURGE_LIMIT = 500
 export const PURGE_SLACK_MS = 3 * 24 * 60 * 60 * 1000
 const PHONE_NUMBER_ID = /^\d{1,32}$/
-/** What the team sees in the transcript when the sweep resolves a chat; the member gets nothing. */
+/** What the team sees in the transcript when the sweep resolves a chat; the outcome for the member follows it. */
 export const AUTO_RESOLVED_NOTE = 'Auto-resolved: no reply to the check-in'
 export const TEAM_AUTO_RESOLVED_NOTE = 'Auto-resolved: no reply to the team’s follow-up'
+export const CLOSING_SENT_NOTE_SUFFIX = '. Closing message sent.'
+export const CLOSING_SKIPPED_NOTE_SUFFIX = '. No message sent, outside WhatsApp’s 24-hour window.'
 
 const millis = (value: unknown) => (value instanceof Timestamp ? value.toMillis() : undefined)
 
@@ -158,8 +165,12 @@ export async function sweepIdleConversations(now = Date.now(), deadline = Date.n
         result.checkedIn++
       } else {
         result.resolved++
-        const note = expected === 'teamResolve' ? TEAM_AUTO_RESOLVED_NOTE : AUTO_RESOLVED_NOTE
-        await logMessages(doc.id, [{ direction: 'out', author: 'system', kind: 'note', text: note, at: now }])
+        const lastInbound = millis(claimed.lastInboundAt)
+        const inWindow = lastInbound !== undefined && now - lastInbound < AUTO_RESOLVE_SEND_WINDOW_MS
+        const base = expected === 'teamResolve' ? TEAM_AUTO_RESOLVED_NOTE : AUTO_RESOLVED_NOTE
+        // The note first, so the transcript reads: resolved, then the closing message.
+        await logMessages(doc.id, [{ direction: 'out', author: 'system', kind: 'note', text: base + (inWindow ? CLOSING_SENT_NOTE_SUFFIX : CLOSING_SKIPPED_NOTE_SUFFIX), at: now }])
+        if (inWindow) await followUp(doc.id, claimed, now, 'closing')
       }
     } catch (err) {
       console.error(`[whatsapp-idle] ${expected ?? 'rescheduling'} for ${maskPhone(`+${doc.id}`)} failed:`, err instanceof Error ? err.message : err)
@@ -213,7 +224,7 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
       // The bot stays quiet while the member may answer the team.
       tx.set(ref, { teamNudgeAt: at, escalatedAt: at, idleDueAt: Timestamp.fromMillis(now + teamResolveMs()) }, { merge: true })
     } else {
-      // Like the member's own All set, without a sign-off: they have gone.
+      // Like the member's own All set; the sign-off, if the window allows, is sent after the claim.
       tx.set(
         ref,
         {
@@ -236,11 +247,11 @@ async function claim(ref: DocumentReference, now: number, idle: number, action: 
   })
 }
 
-/** Sends the check-in or the team's follow-up from the number the member last wrote to (or logs it, when not live), and adds it to the transcript. */
-async function followUp(waId: string, data: DocumentData, now: number, action: 'checkIn' | 'teamNudge'): Promise<void> {
+/** Sends the check-in, the team's follow-up or the closing message from the number the member last wrote to (or logs it, when not live), and adds it to the transcript. */
+async function followUp(waId: string, data: DocumentData, now: number, action: 'checkIn' | 'teamNudge' | 'closing'): Promise<void> {
   const lang = isBotLanguage(data.lang) ? data.lang : 'en'
-  const message = action === 'teamNudge' ? teamNudgeMessage(lang) : idleCheckInMessage(lang)
-  const label = action === 'teamNudge' ? 'team follow-up' : 'check-in'
+  const message = action === 'teamNudge' ? teamNudgeMessage(lang) : action === 'closing' ? autoResolvedMessage(lang) : idleCheckInMessage(lang)
+  const label = action === 'teamNudge' ? 'team follow-up' : action === 'closing' ? 'closing message' : 'check-in'
   const phoneNumberId = typeof data.phoneNumberId === 'string' && PHONE_NUMBER_ID.test(data.phoneNumberId) ? data.phoneNumberId : undefined
   const entry: LoggedMessage = { direction: 'out', author: 'bot', kind: 'interactive', text: transcriptText(message), at: now }
   const to = maskPhone(`+${waId}`)
@@ -252,7 +263,7 @@ async function followUp(waId: string, data: DocumentData, now: number, action: '
     try {
       entry.id = await sendWhatsAppMessage(waId, message, phoneNumberId)
     } catch (err) {
-      // The claim stands: the conversation is resolved after the grace period rather than retried.
+      // The claim stands (a closing message is not retried either; the conversation is already resolved).
       entry.error = err instanceof Error ? err.message : String(err)
       console.error(`[whatsapp-idle] ${label} to ${to} not sent:`, entry.error)
     }

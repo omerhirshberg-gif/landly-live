@@ -64,8 +64,6 @@ export async function joinWaitlist(db: Firestore, lead: LeadSubmission): Promise
       referredBy: lead.referredBy,
       attribution: { ...attribution, clientTimestamp: clientTimestamp ? Timestamp.fromDate(clientTimestamp) : null },
       createdAt,
-      ravMesserSync: { synced: false, syncedAt: null, error: null },
-      ravMesserSyncAttempts: 0,
     })
     tx.create(phoneKey, { leadId, createdAt })
     tx.create(emailKey, { leadId, createdAt })

@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { RTL_LANGS, translations, type Lang } from '@/lib/i18n/translations'
 import { PRODUCTION_API_ORIGIN } from '@/lib/apiOrigin'
 import { SUPPORT_EMAIL } from '@/lib/config'
+import { recordUsage } from '@/lib/usage/recordUsage'
 
 // Shared shell for every transactional email we send ourselves via Resend
 // (password reset, email verification, order confirmation) so they stay
@@ -11,8 +12,39 @@ import { SUPPORT_EMAIL } from '@/lib/config'
 
 let resend: Resend | undefined
 
+/**
+ * Every email Resend accepts from this server, whichever module sent it
+ * (transactional, team alerts, contracts, waitlist, newsletters), adds to
+ * apiUsageStats `resend.emailsSent` so /admin/system/costs shows the whole
+ * month against the free tier. Counted here, at the one client, so no send
+ * path can forget it and none counts twice; a rejected send counts nothing,
+ * and the write never delays or fails the send (lib/usage/recordUsage.ts).
+ * (A retried send that Resend dedupes by idempotency key is counted again.)
+ */
+function counted(client: Resend): Resend {
+  const emails = client.emails
+  if (typeof emails?.send === 'function') {
+    const sendOne = emails.send.bind(emails)
+    emails.send = (async (...args: Parameters<typeof sendOne>) => {
+      const result = await sendOne(...args)
+      if (!result.error) recordUsage('resend.emailsSent')
+      return result
+    }) as typeof emails.send
+  }
+  const batch = client.batch
+  if (typeof batch?.send === 'function') {
+    const sendMany = batch.send.bind(batch)
+    batch.send = (async (...args: Parameters<typeof sendMany>) => {
+      const result = await sendMany(...args)
+      if (!result.error) recordUsage('resend.emailsSent', Array.isArray(args[0]) ? args[0].length : 1)
+      return result
+    }) as typeof batch.send
+  }
+  return client
+}
+
 export function getResend(): Resend {
-  if (!resend) resend = new Resend(process.env.RESEND_API_KEY)
+  if (!resend) resend = counted(new Resend(process.env.RESEND_API_KEY))
   return resend
 }
 

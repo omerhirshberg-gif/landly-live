@@ -32,6 +32,7 @@ const NAV_GROUPS = [
       { href: '/admin/support', label: 'nav.support', icon: 'fa-comments', exact: false },
       { href: '/admin/users', label: 'nav.users', icon: 'fa-users', exact: false },
       { href: '/admin/prelaunch', label: 'nav.prelaunch', icon: 'fa-rocket', exact: false },
+      { href: '/admin/newsletter', label: 'nav.newsletter', icon: 'fa-envelope', exact: false },
       { href: '/admin/search', label: 'nav.search', icon: 'fa-magnifying-glass', exact: false },
     ],
   },

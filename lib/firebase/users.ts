@@ -106,6 +106,8 @@ export function subscribeUserDocument(
     doc(db, 'users', uid),
     (snap) => onNext(snap.exists() ? toUserDocument(snap.data()) : null),
     (error) => {
+      // A dead listener leaves the screens on their last values; say so while developing.
+      if (process.env.NODE_ENV !== 'production') console.warn('[users] live users/{uid} listener failed:', error.code ?? error.message)
       recheckSessionIfDenied(error)
       onError(error)
     }
@@ -164,7 +166,8 @@ export async function updateUserName(user: User, names: { firstName: string; las
 export async function completeOnboardingProfile(
   uid: string,
   data: {
-    phone: string
+    /** Written only for '' (Skip) or a number accepted without a code; a verified number is already saved by the server, and an unverified one is never passed. */
+    phone?: string
     customerType: string
     customerTypeOther: string
     countryOfOrigin: string
@@ -183,11 +186,6 @@ export async function updateUserCountryOfOrigin(uid: string, countryOfOrigin: st
 /** One of ISRAEL_REGIONS (lib/profile/countryOfOrigin.ts). */
 export async function updateUserRegion(uid: string, israelRegion: string) {
   await updateDoc(doc(db, 'users', uid), { israelRegion })
-}
-
-/** E.164 (phoneToE164), or '' to remove the number. */
-export async function updateUserPhone(uid: string, phone: string) {
-  await updateDoc(doc(db, 'users', uid), { phone })
 }
 
 /**

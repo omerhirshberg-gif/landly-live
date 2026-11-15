@@ -3,7 +3,6 @@ import { clientIp } from '@/lib/auth/clientIp'
 import { sendNewLeadAlertEmail } from '@/lib/email/sendNewLeadAlertEmail'
 import { sendWaitlistWelcomeEmail } from '@/lib/email/sendWaitlistWelcomeEmail'
 import { getAdminDb } from '@/lib/firebase/admin'
-import { syncLeadToRavMesser } from '@/lib/marketing/ravMesser.server'
 import { joinWaitlist, newLeadId } from '@/lib/prelaunch/leads.server'
 import { reservePrelaunchAttempt } from '@/lib/prelaunch/throttle.server'
 import { parseLeadSubmission } from '@/lib/prelaunch/validation'
@@ -11,12 +10,11 @@ import { parseLeadSubmission } from '@/lib/prelaunch/validation'
 // Public: the /join waiting-list form. Bad requests are turned away before any
 // Firestore work, so garbage costs nothing; a sign-up then passes the IP window
 // and is written in one transaction. New and repeat sign-ups answer the same,
-// so this can't be used to learn who is on the list. A new lead goes to the
-// Rav Messer list and gets its welcome email after the response, then the team
-// gets its alert, so none of them can slow or fail the sign-up. The alert waits
-// its turn so a lead's two Resend calls can't trip the rate limit together: the
-// welcome email is the one that matters. /api/cron/prelaunch-sync picks up any
-// sync left unfinished; an email that fails is logged and not retried.
+// so this can't be used to learn who is on the list. A new lead gets its
+// welcome email after the response, then the team gets its alert, so neither
+// can slow or fail the sign-up. The alert waits its turn so a lead's two
+// Resend calls can't trip the rate limit together: the welcome email is the
+// one that matters. An email that fails is logged and not retried.
 const MAX_BODY_BYTES = 4096
 
 // Same-origin only. A request with no Origin is left to the other checks:
@@ -61,7 +59,7 @@ export async function POST(request: Request) {
     if (created) {
       const submittedAt = new Date()
       after(async () => {
-        await Promise.all([syncLeadToRavMesser(db, leadId), sendWaitlistWelcomeEmail(db, leadId)])
+        await sendWaitlistWelcomeEmail(db, leadId)
         await sendNewLeadAlertEmail(lead, leadId, submittedAt)
       })
     }

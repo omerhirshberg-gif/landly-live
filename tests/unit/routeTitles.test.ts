@@ -125,6 +125,8 @@ const EXPECTED: [string, string][] = [
   ['/admin/prelaunch', 'Pre-Launch Leads | GoLandly Admin'],
   ['/admin/system/costs', 'Usage & Costs | GoLandly Admin'],
   ['/admin/search', 'Search | GoLandly Admin'],
+  ['/admin/newsletter', 'Newsletter | GoLandly Admin'],
+  ['/unsubscribe', 'Unsubscribe | GoLandly'],
   ['/admin/support', 'Support Inbox | GoLandly Admin'],
   ['/join', 'GoLandly | Local deals for people new to Israel'],
 ]

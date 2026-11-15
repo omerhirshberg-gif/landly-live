@@ -31,7 +31,7 @@ describe('usage report', () => {
     expect(r.totals).toEqual({ grossIls: 0, netIls: 0, freeCoveragePct: 100, otpSent: 0 })
     expect(lines(r).map((l) => l.status)).toEqual(lines(r).map(() => 'ok'))
     // No simulated sends and no legacy Meta OTPs: neither row.
-    expect(lines(r).map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding', 'sms019Otp', 'wa019Otp', 'waService'])
+    expect(lines(r).map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding', 'sms019Otp', 'wa019Otp', 'waService', 'resendEmail'])
   })
 
   it('bills translation past 500k characters at $20 per million, detection included', () => {
@@ -152,12 +152,25 @@ describe('vendor groups', () => {
     c.whatsapp.serviceSent = 120
   })
 
-  it('splits the services into Google Cloud, 019 Gateway and Meta WhatsApp, in that order', () => {
+  it('splits the services into Google Cloud, 019 Gateway, Meta WhatsApp and Resend, in that order', () => {
     const r = report(busy)
-    expect(r.groups.map((g) => [g.vendor, g.label])).toEqual([['google', 'Google Cloud'], ['gateway019', '019 Gateway'], ['meta', 'Meta WhatsApp']])
+    expect(r.groups.map((g) => [g.vendor, g.label])).toEqual([['google', 'Google Cloud'], ['gateway019', '019 Gateway'], ['meta', 'Meta WhatsApp'], ['resend', 'Resend Email']])
     expect(r.groups[0]!.lines.map((l) => l.skuId)).toEqual(['translation', 'placesAutocomplete', 'placesDetails', 'geocoding'])
     expect(r.groups[1]!.lines.map((l) => l.skuId)).toEqual(['sms019Otp', 'wa019Otp'])
     expect(r.groups[2]!.lines.map((l) => l.skuId)).toEqual(['waService'])
+    expect(r.groups[3]!.lines.map((l) => l.skuId)).toEqual(['resendEmail'])
+  })
+
+  it('meters Resend newsletter emails against the 3,000 a month free tier', () => {
+    const used = line(report(counters((c) => { c.resend.emailsSent = 3_500 })), 'resendEmail')
+    expect(used).toMatchObject({ used: 3_500, freeAllowance: 3_000, billable: 500 })
+    expect(used.netIls).toBeGreaterThan(0)
+    expect(line(report(counters((c) => { c.resend.emailsSent = 2_000 })), 'resendEmail').netIls).toBe(0)
+    // The seeded November baseline: 60 of 3,000, shown as 2% with nothing billed.
+    const seeded = line(report(counters((c) => { c.resend.emailsSent = 60 })), 'resendEmail')
+    expect(seeded).toMatchObject({ used: 60, freeAllowance: 3_000, billable: 0, status: 'ok' })
+    expect(Math.round(seeded.coverage! * 100)).toBe(2)
+    expect(lines(report(counters((c) => { c.resend.simulated = 4 }))).some((l) => l.skuId === 'resendSim')).toBe(true)
   })
 
   it('subtotals each vendor, and the subtotals add up to the totals', () => {

@@ -20,7 +20,6 @@ interface LeadsResponse {
   leads: AdminLead[]
   stats: PrelaunchStats
   projectId: string
-  listId: string
   generatedAt: string
 }
 
@@ -45,8 +44,7 @@ function Breakdown({ rows, total }: { rows: { key: string; label: string; count:
 }
 
 // Who has saved a spot on /join: the totals, where they came from, and every
-// lead, searchable and filterable, with whether it reached the mailing list.
-// Retrying a failed sync is the only thing here that writes. Export downloads
+// lead, searchable and filterable. Read-only. Export downloads
 // what the filters show, so a Hebrew broadcast is one dropdown away. Leads are
 // personal data with a marketing consent attached: opt-outs go through
 // scripts/delete-prelaunch-lead.mjs.
@@ -194,7 +192,7 @@ export default function PrelaunchLeadsPage() {
           </div>
           <ResultCount shown={filtered.length} total={rows.length} noun={t('leads.noun')} />
           {filtered.length ? (
-            <PrelaunchTable rows={filtered} listId={data?.listId ?? ''} onRetried={load} onRetryError={setError} />
+            <PrelaunchTable rows={filtered} />
           ) : (
             <EmptyState icon="fa-magnifying-glass" title={t('leads.noMatchTitle')} description={t('leads.noMatchDesc')} />
           )}

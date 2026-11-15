@@ -7,12 +7,10 @@ import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-pho
 import { useLang } from '@/lib/i18n/useLang'
 import { updateUserName, updateUserProfileDetails, type UserDocument } from '@/lib/firebase/users'
 import { fullName, MAX_NAME_LENGTH, profileNameErrors, splitDisplayName, type NameFieldErrors } from '@/lib/auth/names'
-import { useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
+import { confirmPhoneVerified, useLiveUserDocument } from '@/lib/firebase/useLiveUserDocument'
 import { CONTACT_CHANGE_FAILED, cancelPendingChange, contactChangeErrorKey, requestPhoneChange } from '@/lib/account/contactChange'
 import type { OtpTarget } from '@/lib/auth/otp'
 import { otpCopyKeys, resolveOtpChannel } from '@/lib/auth/otpChannel'
-import { needsPhoneVerification } from '@/lib/profile/phoneNudge'
-import { usePhoneNudgeSnooze } from '@/lib/profile/usePhoneNudgeSnooze'
 import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, canonicalCustomerType, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
@@ -21,7 +19,6 @@ import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import AvatarUploader from './AvatarUploader'
 import ChangeEmailForm from './ChangeEmailForm'
 import OtpDialog from './OtpDialog'
-import PhoneVerifyBanner from './PhoneVerifyBanner'
 import PendingChangeNotice from './PendingChangeNotice'
 
 interface Details {
@@ -99,9 +96,6 @@ export default function ProfileSection({ user }: { user: User }) {
   const [pendingBusy, setPendingBusy] = useState<'cancelEmail' | 'cancelPhone' | null>(null)
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
-  const nudge = usePhoneNudgeSnooze(user.uid)
-  const [nudgeBusy, setNudgeBusy] = useState(false)
-  const [nudgeError, setNudgeError] = useState<string | null>(null)
 
   const countries = useMemo(() => listOriginCountries(lang), [lang])
 
@@ -122,31 +116,6 @@ export default function ProfileSection({ user }: { user: User }) {
     setEmailFormOpen(false)
     setEditing(true)
   }
-
-  // The card's "Verify now": a code already waiting for the pending number is
-  // entered as it is; a saved but unverified number is sent a code now (SMS
-  // for +972, WhatsApp elsewhere); with no number yet, the editor opens on it.
-  const verifyNow = async () => {
-    setNudgeError(null)
-    if (pendingPhone) {
-      setPhoneStatus(null)
-      setOtp({ target: { kind: 'phone', phone: pendingPhone }, resendIn: 0 })
-      return
-    }
-    if (!stored.phone) {
-      startEdit()
-      return
-    }
-    setNudgeBusy(true)
-    const idToken = await user.getIdToken().catch(() => null)
-    const start = idToken ? await requestPhoneChange(idToken, { phone: stored.phone, lang }).catch(() => CONTACT_CHANGE_FAILED) : CONTACT_CHANGE_FAILED
-    setNudgeBusy(false)
-    if (start.ok && start.mode === 'otp') setOtp({ target: { kind: 'phone', phone: stored.phone }, resendIn: start.resendIn })
-    else if (!start.ok && start.reason === 'rateLimited' && start.retryAfter) setOtp({ target: { kind: 'phone', phone: stored.phone }, resendIn: start.retryAfter })
-    else setNudgeError(t(contactChangeErrorKey(start.ok ? 'failed' : start.reason)))
-  }
-
-  const showNudge = !loadingDoc && needsPhoneVerification(profile) && nudge.ready && !nudge.snoozed && !editing && !otp
 
   const cancelEdit = () => {
     setEditing(false)
@@ -493,7 +462,6 @@ export default function ProfileSection({ user }: { user: User }) {
   // display:contents on phones, so their blocks keep the phone order above.
   return (
     <>
-    {showNudge && <PhoneVerifyBanner onVerify={verifyNow} onDismiss={nudge.snooze} busy={nudgeBusy} error={nudgeError} />}
     <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-card flex flex-col fold:grid fold:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] fold:items-start fold:gap-x-6 lg:grid-cols-12 lg:gap-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
       <div className="contents fold:block fold:min-w-0 fold:pe-6 fold:border-e fold:border-slate-100 lg:col-span-4 lg:rounded-3xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_rgb(15_23_42/0.05)]">
         <div className="order-1">
@@ -560,11 +528,14 @@ export default function ProfileSection({ user }: { user: User }) {
             setSaveMsg({ type: 'error', text: message })
           }}
           onVerified={() => {
-            const kind = otp.target.kind
+            const target = otp.target
+            const kind = target.kind
             setOtp(null)
             // The Auth record already shows the new address: the dialog
             // signed back in (finishEmailChange) after the server changed it.
             invalidateMemberProfile(user.uid)
+            // The confirmed number shows at once: the amber notice clears without waiting for the listener.
+            if (target.kind === 'phone') confirmPhoneVerified(user.uid, target.phone)
             setSaveMsg({ type: 'success', text: t(kind === 'email' ? 'otp_email_success' : 'otp_success') })
           }}
         />

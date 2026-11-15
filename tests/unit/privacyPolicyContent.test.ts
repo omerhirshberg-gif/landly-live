@@ -143,9 +143,9 @@ describe('privacy policy covers marketing emails', () => {
   it.each([
     ['web', web],
     ['app', shared],
-  ])('%s: names Responder and the one-click unsubscribe, which spares transactional email', (_, text) => {
-    expect(text).toContain('Responder (Rav-Masar): delivery of our marketing emails and newsletters to members who opted in and to people on our launch waiting list.')
-    expect(text).toContain('Responder receives only your email address, name and preferred language and, if you joined the waiting list, your phone number and the community you told us you belong to.')
+  ])('%s: names Resend for marketing email and the one-click unsubscribe, which spares transactional email', (_, text) => {
+    expect(text).toContain('Resend (marketing emails): delivery of our marketing emails and newsletters to members who opted in and to people on our launch waiting list.')
+    expect(text).toContain('For this, Resend receives only your email address, first name and preferred language.')
     expect(text).toContain('clicking the "Unsubscribe" link at the bottom of any marketing email')
     expect(text).toContain('Unsubscribing does not affect transactional emails')
     expect(text).toContain('email verification, password resets and voucher or order confirmations')

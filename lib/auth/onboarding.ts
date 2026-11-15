@@ -203,6 +203,13 @@ export interface OnboardingDraft {
   phone: string
   /** "Skip for now" on the WhatsApp card; cleared by continuing with a number. */
   phoneSkipped: boolean
+  /**
+   * The number the phone card was completed for, E.164: verified by its 6-digit
+   * code (the server has saved it with phoneVerified), or accepted as typed when
+   * verification is off. '' until then. Only this number is ever saved by
+   * the wizard, so a number edited after verifying is never persisted unverified.
+   */
+  verifiedPhone: string
 }
 
 const MAX_DRAFT_FIELD_LENGTH = 64
@@ -237,6 +244,8 @@ export function parseOnboardingDraft(raw: string | null | undefined): Onboarding
   const customerType = text(d.customerType)
   const customerTypeOther = text(d.customerTypeOther, MAX_PERSONA_NOTE_LENGTH)
   const phone = text(d.phone)
+  // Drafts saved before the phone card verified numbers resume with none verified.
+  const verifiedPhone = text(d.verifiedPhone ?? '')
   const country = typeof d.country === 'string' && isSupportedCountry(d.country) ? d.country : null
   // Drafts saved before the origin card have no countryOfOrigin: they resume with it unanswered.
   // One that's no longer offered (EXCLUDED_ORIGINS) resumes unanswered too.
@@ -246,6 +255,18 @@ export function parseOnboardingDraft(raw: string | null | undefined): Onboarding
     if (EXCLUDED_ORIGINS.includes(origin)) countryOfOrigin = ''
     else if (origin === '' || isSupportedCountry(origin)) countryOfOrigin = origin
   }
-  if (customerType === null || customerTypeOther === null || phone === null || country === null || countryOfOrigin === null || typeof d.phoneSkipped !== 'boolean') return null
-  return { step: step as OnboardingDraft['step'], customerType, customerTypeOther, countryOfOrigin, country, phone, phoneSkipped: d.phoneSkipped }
+  if (customerType === null || customerTypeOther === null || phone === null || verifiedPhone === null || country === null || countryOfOrigin === null || typeof d.phoneSkipped !== 'boolean') return null
+  return { step: step as OnboardingDraft['step'], customerType, customerTypeOther, countryOfOrigin, country, phone, phoneSkipped: d.phoneSkipped, verifiedPhone }
+}
+
+/**
+ * The phone the wizard writes when it finishes: the number the card was
+ * completed for (verified, or accepted while verification is off), '' for Skip,
+ * and undefined to leave `phone` alone. A number typed after verifying another
+ * is never saved, and Skip after verifying keeps the verified number rather
+ * than clearing it under a `phoneVerified` flag only the server can reset.
+ */
+export function onboardingPhoneToSave(draft: Pick<OnboardingDraft, 'phoneSkipped' | 'verifiedPhone'>): string | undefined {
+  if (draft.verifiedPhone) return draft.verifiedPhone
+  return draft.phoneSkipped ? '' : undefined
 }

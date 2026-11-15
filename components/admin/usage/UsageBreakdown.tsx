@@ -27,7 +27,7 @@ function LineQuota({ line, quota, onQuota, onStale }: { line: UsageLine } & Quot
   return <QuotaControl channel={channel} service={line.service} state={quota[channel]} onQuota={onQuota} onStale={onStale} />
 }
 
-const VENDOR_ICONS = { google: 'fa-cloud', gateway019: 'fa-comment-sms', meta: 'fa-comments' } as const
+const VENDOR_ICONS = { google: 'fa-cloud', gateway019: 'fa-comment-sms', meta: 'fa-comments', resend: 'fa-paper-plane' } as const
 
 function freeLabel(line: UsageLine, t: (key: AdminKey) => string): string {
   if (line.freeAllowance === null) return t('usage.alwaysFree')

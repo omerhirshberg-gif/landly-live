@@ -3,7 +3,7 @@ import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { getAdminDb, getAdminProjectId } from '@/lib/firebase/admin'
 import { buildUsageReport } from '@/lib/usage/usageReport'
 import { QUOTA_FIELD, sumLifetime } from '@/lib/usage/quota'
-import { countersOf, isMonthKey, monthKeyOf, QUOTA_DOC_ID, USAGE_COLLECTION } from '@/lib/usage/usageTypes'
+import { countersOf, isMonthKey, monthKeyOf, QUOTA_DOC_ID, USAGE_COLLECTION, usageEnvOf } from '@/lib/usage/usageTypes'
 
 // /admin/system/costs: one month of this deployment's own API usage counters
 // (lib/usage/recordUsage.ts), priced (lib/usage/usageReport.ts), plus the

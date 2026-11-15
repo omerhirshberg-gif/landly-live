@@ -68,7 +68,7 @@ describe('where the widget shows', () => {
   it.each(['/', '/categories', '/offers/abc', '/support', '/member', '/profile', '/business'])('shows on %s', (path) => {
     expect(showsWhatsAppWidget(path)).toBe(true)
   })
-  it.each(['/admin', '/admin/offers', '/business/dashboard', '/business/dashboard/offers', '/business/login', '/checkout', '/checkout/success', '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/join', '/join/he'])(
+  it.each(['/admin', '/admin/offers', '/business/dashboard', '/business/dashboard/offers', '/business/login', '/checkout', '/checkout/success', '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/unsubscribe', '/join', '/join/he'])(
     'stays off %s',
     (path) => {
       expect(showsWhatsAppWidget(path)).toBe(false)
