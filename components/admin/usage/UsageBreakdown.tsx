@@ -3,12 +3,29 @@ import { SECTION_HEADING } from '@/components/admin/formStyles'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { formatCount, formatIls } from '@/lib/usage/pricing'
 import type { UsageGroup, UsageLine } from '@/lib/usage/usageReport'
+import type { QuotaChannel, QuotaReport } from '@/lib/usage/quota'
 import FreeTierMeter from './FreeTierMeter'
+import QuotaControl from './QuotaControl'
 
 // Per-service usage and cost, grouped by vendor (Google Cloud, 019
 // Gateway, Meta WhatsApp) with each group's subtotal: a table from md, a stacked card per
 // service below it. Numbers sit in <bdi dir="ltr"> and end-aligned columns,
 // so they read the same whatever the surrounding direction.
+
+/** The 019 services whose purchased package is tracked (lifetime, not per month). */
+const QUOTA_CHANNEL: Partial<Record<UsageLine['skuId'], QuotaChannel>> = { sms019Otp: 'sms', wa019Otp: 'whatsapp' }
+
+export interface QuotaProps {
+  quota: QuotaReport
+  onQuota: (channel: QuotaChannel, quota: number) => void
+  onStale: () => void
+}
+
+function LineQuota({ line, quota, onQuota, onStale }: { line: UsageLine } & QuotaProps) {
+  const channel = QUOTA_CHANNEL[line.skuId]
+  if (!channel) return null
+  return <QuotaControl channel={channel} service={line.service} state={quota[channel]} onQuota={onQuota} onStale={onStale} />
+}
 
 const VENDOR_ICONS = { google: 'fa-cloud', gateway019: 'fa-comment-sms', meta: 'fa-comments' } as const
 
@@ -32,9 +49,12 @@ const hasMeter = (line: UsageLine): line is UsageLine & { coverage: number } => 
 function LineNote({ line, className = '' }: { line: UsageLine; className?: string }) {
   const { t } = useAdminT()
   if (!line.note && !line.isUpperBound) return null
+  // The note is translated by service (usage.note.<skuId>); its numbers are LTR-isolated like every other figure.
+  const params = Object.fromEntries(Object.entries(line.noteParams ?? {}).map(([key, value]) => [key, `\u2066${value}\u2069`]))
+  const note = line.note ? t(`usage.note.${line.skuId}` as AdminKey, params) : null
   return (
     <span className={`block text-xs text-adm-muted ${className}`}>
-      {line.note}
+      {note}
       {line.isUpperBound && <span className="text-adm-muted">{t('usage.upperBound')}</span>}
     </span>
   )
@@ -55,7 +75,7 @@ function GroupHeading({ group }: { group: UsageGroup }) {
   )
 }
 
-function MobileGroup({ group }: { group: UsageGroup }) {
+function MobileGroup({ group, ...quota }: { group: UsageGroup } & QuotaProps) {
   const { t } = useAdminT()
   return (
     <section aria-label={group.label}>
@@ -76,6 +96,7 @@ function MobileGroup({ group }: { group: UsageGroup }) {
               </div>
             </div>
             {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
+            <LineQuota line={line} {...quota} />
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
               {[
                 [t(`usage.unit.${line.unit}` as AdminKey), used(line)],
@@ -98,7 +119,7 @@ function MobileGroup({ group }: { group: UsageGroup }) {
   )
 }
 
-export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
+export default function UsageBreakdown({ groups, ...quota }: { groups: UsageGroup[] } & QuotaProps) {
   const { t } = useAdminT()
   return (
     <Card className="overflow-hidden">
@@ -109,7 +130,7 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
       {/* Phones and small tablets */}
       <div className="md:hidden">
         {groups.map((group) => (
-          <MobileGroup key={group.vendor} group={group} />
+          <MobileGroup key={group.vendor} group={group} {...quota} />
         ))}
       </div>
 
@@ -140,6 +161,7 @@ export default function UsageBreakdown({ groups }: { groups: UsageGroup[] }) {
                     <span className="font-semibold text-adm-text"><bdi>{line.service}</bdi></span>
                     <LineNote line={line} className="mt-0.5" />
                     {hasMeter(line) && <FreeTierMeter service={line.service} coverage={line.coverage} status={line.status} />}
+                    <LineQuota line={line} {...quota} />
                   </th>
                   <td className="px-3 py-4 text-adm-muted">{t(`usage.unit.${line.unit}` as AdminKey)}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-end text-adm-text">

@@ -15,7 +15,7 @@ import { OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel } from './otp'
 //
 // - production: PHONE_VERIFICATION_ENABLED=true (or the older
 //   FIREBASE_PHONE_AUTH_ENABLED) verifies through gateway019Provider (019
-//   delivers: an SMS to +972 numbers, a WhatsApp template to every other
+//   delivers: an SMS to +972 numbers, a WhatsApp message to every other
 //   country, lib/auth/otpChannel.ts); anything else saves the number
 //   directly, as before -- nobody is blocked or left with a pending banner
 //   that can never clear.
@@ -35,14 +35,14 @@ export type PhoneVerificationMode = 'direct' | 'otp'
 export interface OtpDispatch {
   /** E.164. */
   phone: string
-  code: string
   channel: OtpChannel
   lang: Lang
 }
 
 export interface OtpProvider {
   readonly name: 'dev' | 'gateway019'
-  send(dispatch: OtpDispatch): Promise<void>
+  /** Sends a code and resolves with it: 019 generates its own, so the caller hashes whatever comes back. Never log or return it. */
+  send(dispatch: OtpDispatch): Promise<{ code: string }>
 }
 
 /** The channel's provider refused or couldn't be reached; `code` is the provider's own error code. */
@@ -100,20 +100,24 @@ export function maskPhone(phone: string): string {
 // Simulated SMS / WhatsApp dispatch: the code goes to the `next dev` terminal only.
 export const devProvider: OtpProvider = {
   name: 'dev',
-  async send({ phone, code, channel }) {
+  async send({ phone, channel }) {
+    const code = generateOtp()
     console.info(`[phone-otp] simulated ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} to ${maskPhone(phone)}: code ${code}`)
     recordUsage('gateway019.simulated')
+    return { code }
   },
 }
 
-/** Delivery through 019: an SMS for an Israeli number, a WhatsApp template for any other. */
+/** Delivery through 019: an SMS for an Israeli number, a WhatsApp message for any other; 019 generates the code. */
 export const gateway019Provider: OtpProvider = {
   name: 'gateway019',
-  async send({ phone, code, channel, lang }) {
+  async send({ phone, channel }) {
     try {
-      await (channel === 'sms' ? sendVia019Sms : sendVia019WhatsApp)({ phone, code, lang })
-      // Only once 019 has accepted it; a refused or unreachable send costs nothing.
+      // The message is always English; `lang` only picks the on-screen copy.
+      const { code } = await (channel === 'sms' ? sendVia019Sms : sendVia019WhatsApp)({ phone })
+      // Only once 019 has accepted it (status 0 and a code); a refused or unreachable send costs nothing.
       recordUsage(channel === 'sms' ? 'gateway019.smsOtpSent' : 'gateway019.whatsappOtpSent')
+      return { code }
     } catch (err) {
       if (!(err instanceof Gateway019Error)) throw err
       console.error(`[phone-otp] 019 ${channel} delivery failed (${err.code}): ${err.message}`)

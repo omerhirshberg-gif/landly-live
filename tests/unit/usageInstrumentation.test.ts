@@ -111,12 +111,17 @@ describe('Google Maps', () => {
 })
 
 describe('019 Gateway', () => {
-  const sms = { phone: '+972501234567', code: '123456', channel: 'sms', lang: 'en' } as const
-  const whatsapp = { phone: '+33612345678', code: '123456', channel: 'whatsapp', lang: 'en' } as const
+  const sms = { phone: '+972501234567', channel: 'sms', lang: 'en' } as const
+  const whatsapp = { phone: '+33612345678', channel: 'whatsapp', lang: 'en' } as const
+
+  beforeEach(() => {
+    mocks.sendVia019Sms.mockResolvedValue({ code: '123456' })
+    mocks.sendVia019WhatsApp.mockResolvedValue({ code: '654321' })
+  })
 
   it('counts an accepted SMS and an accepted WhatsApp code under their own counters', async () => {
-    await gateway019Provider.send(sms)
-    await gateway019Provider.send(whatsapp)
+    expect(await gateway019Provider.send(sms)).toEqual({ code: '123456' })
+    expect(await gateway019Provider.send(whatsapp)).toEqual({ code: '654321' })
     expect(mocks.sendVia019Sms).toHaveBeenCalledOnce()
     expect(mocks.sendVia019WhatsApp).toHaveBeenCalledOnce()
     expect(mocks.recordUsage.mock.calls).toEqual([['gateway019.smsOtpSent'], ['gateway019.whatsappOtpSent']])
@@ -153,7 +158,8 @@ describe('WhatsApp', () => {
   })
 
   it('counts a simulated OTP at no cost', async () => {
-    await devProvider.send({ phone: '+972501234567', code: '123456', channel: 'whatsapp', lang: 'en' })
+    const { code } = await devProvider.send({ phone: '+972501234567', channel: 'whatsapp', lang: 'en' })
+    expect(code).toMatch(/^\d{6}$/)
     expect(mocks.recordUsage).toHaveBeenCalledExactlyOnceWith('gateway019.simulated')
     expect(fetchMock).not.toHaveBeenCalled()
   })

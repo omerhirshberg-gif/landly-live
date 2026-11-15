@@ -1,5 +1,5 @@
 import Card from '@/components/admin/Card'
-import { formatCount, formatIls } from '@/lib/usage/pricing'
+import { formatCount, formatIls, formatIlsRate } from '@/lib/usage/pricing'
 import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
 import { useAdminT } from '@/lib/admin/translations'
 
@@ -34,7 +34,7 @@ function SummaryCard({ label, value, hint, icon, accent }: { label: string; valu
 export default function UsageSummary({ report }: { report: UsageReport }) {
   const { t } = useAdminT()
   const { netIls, grossIls, freeCoveragePct, otpSent } = report.totals
-  // The blended price of a code: 0.06 ₪ by SMS, 0.12 ₪ by WhatsApp.
+  // The blended price of a code: 0.02 ₪ by SMS, 0.075 ₪ by WhatsApp.
   const otpCost = reportLines(report).filter((line) => line.skuId === 'sms019Otp' || line.skuId === 'wa019Otp').reduce((sum, line) => sum + line.netIls, 0)
   const coverageAccent = freeCoveragePct >= 90 ? 'emerald' : freeCoveragePct >= 50 ? 'amber' : 'red'
   return (
@@ -51,7 +51,7 @@ export default function UsageSummary({ report }: { report: UsageReport }) {
       <SummaryCard
         label={t('usage.sum.otp')}
         value={formatCount(otpSent)}
-        hint={otpSent > 0 ? t('usage.sum.otpEach', { price: formatIls(otpCost / otpSent) }) : t('usage.sum.otpHint')}
+        hint={otpSent > 0 ? t('usage.sum.otpEach', { price: formatIlsRate(otpCost / otpSent) }) : t('usage.sum.otpHint')}
         icon="fa-key"
         accent="amber"
       />

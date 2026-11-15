@@ -3,7 +3,10 @@ import type { UsageCounters } from './usageTypes'
 // What each metered service costs, for the estimates on /admin/system/costs
 // (lib/usage/usageReport.ts). Constants, not env vars, so DEV and PROD
 // always price alike. Google bills in USD and is converted at USD_TO_ILS;
-// the 019 OTP rates are configured in shekels. These are estimates from
+// the 019 OTP rates are flat shekel constants with no monthly free allowance:
+// 0.02 ₪ per SMS (Israeli numbers) and 0.075 ₪ per WhatsApp message (other
+// countries), as contracted with 019 (verified 2026-11). What 019 packages
+// were bought is tracked apart, as a lifetime quota (lib/usage/quota.ts). These are estimates from
 // our own counters, not an invoice: re-check the price pages below when
 // `verifiedAt` gets old.
 
@@ -35,6 +38,8 @@ export interface MeteredSku {
   /** The count can be higher than what Google bills (see placesAutocomplete). */
   isUpperBound?: boolean
   note?: (counters: UsageCounters) => string | null
+  /** Values for the translated note (admin translations `usage.note.<id>`), pre-formatted; the English `note` stays for tests and fallbacks. */
+  noteParams?: (counters: UsageCounters) => Record<string, string>
   sourceUrl?: string
 }
 
@@ -43,7 +48,7 @@ export const USD_TO_ILS = { rate: 3.7, verifiedAt: '2026-10' } as const
 /** Share of a free allowance at which the meter turns amber, and red. */
 export const THRESHOLDS = { warn: 0.8, over: 1 } as const
 
-export const PRICES_VERIFIED_AT = '2026-10'
+export const PRICES_VERIFIED_AT = '2026-11'
 
 const usd = (amount: number): Money => ({ amount, currency: 'USD' })
 const ils = (amount: number): Money => ({ amount, currency: 'ILS' })
@@ -73,6 +78,7 @@ export const SKUS: readonly MeteredSku[] = [
     freePerMonth: 500_000,
     tiers: [{ upTo: Infinity, unitPrice: usd(20 / 1_000_000) }],
     note: (c) => (c.google.translation.detectChars ? `incl. ${formatCount(c.google.translation.detectChars)} for language detection` : null),
+    noteParams: (c) => ({ chars: formatCount(c.google.translation.detectChars) }),
     sourceUrl: 'https://cloud.google.com/translate/pricing',
   },
   {
@@ -88,6 +94,7 @@ export const SKUS: readonly MeteredSku[] = [
     tiers: essentialsTiers([2.83, 2.27, 1.7, 1.13, 0.57]),
     isUpperBound: true,
     note: (c) => `${formatCount(c.google.places.sessionsCompleted)} sessions ended in a pick (their requests are free)`,
+    noteParams: (c) => ({ sessions: formatCount(c.google.places.sessionsCompleted) }),
     sourceUrl: MAPS_PRICING,
   },
   {
@@ -119,7 +126,7 @@ export const SKUS: readonly MeteredSku[] = [
     unit: 'messages',
     usage: (c) => c.gateway019.smsOtpSent,
     freePerMonth: 0,
-    tiers: [{ upTo: Infinity, unitPrice: ils(0.06) }],
+    tiers: [{ upTo: Infinity, unitPrice: ils(0.02) }],
     note: () => 'Israeli numbers · counted when 019 accepts the send',
   },
   {
@@ -129,7 +136,7 @@ export const SKUS: readonly MeteredSku[] = [
     unit: 'messages',
     usage: (c) => c.gateway019.whatsappOtpSent,
     freePerMonth: 0,
-    tiers: [{ upTo: Infinity, unitPrice: ils(0.12) }],
+    tiers: [{ upTo: Infinity, unitPrice: ils(0.075) }],
     note: () => 'International numbers · counted when 019 accepts the send',
   },
   {
@@ -163,6 +170,7 @@ export const SKUS: readonly MeteredSku[] = [
     freePerMonth: null,
     tiers: [],
     note: (c) => `Free inside the 24h service window · ${formatCount(c.whatsapp.inboundMessages)} member messages received`,
+    noteParams: (c) => ({ inbound: formatCount(c.whatsapp.inboundMessages) }),
   },
 ]
 
@@ -195,6 +203,13 @@ const COUNT = new Intl.NumberFormat('en-US')
 
 export function formatIls(amount: number): string {
   return ILS.format(amount)
+}
+
+const ILS_RATE = new Intl.NumberFormat('en-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 3 })
+
+/** A per-unit price: two decimals, three when needed (0.075 ₪, not 0.08). */
+export function formatIlsRate(amount: number): string {
+  return ILS_RATE.format(amount)
 }
 
 export function formatCount(value: number): string {

@@ -12,7 +12,7 @@ afterEach(() => {
 describe('PHONE_VERIFICATION_ENABLED', () => {
   const configure019 = () => {
     vi.stubEnv('SMS_019_USERNAME', 'landly')
-    vi.stubEnv('SMS_019_PASSWORD', 'secret')
+    vi.stubEnv('SMS_019_TOKEN', 'secret')
     vi.stubEnv('SMS_019_SENDER', 'GoLandly')
   }
 
@@ -21,7 +21,14 @@ describe('PHONE_VERIFICATION_ENABLED', () => {
     configure019()
     expect(phoneVerificationMode()).toBe('direct')
     vi.stubEnv('PHONE_VERIFICATION_ENABLED', 'true')
-    // 019's endpoints are not filled in yet, so even complete credentials keep saving directly.
+    expect(phoneVerificationMode()).toBe('otp')
+  })
+
+  it('keeps saving directly in production while the 019 settings are incomplete', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('PHONE_VERIFICATION_ENABLED', 'true')
+    vi.stubEnv('SMS_019_USERNAME', 'landly')
+    vi.stubEnv('SMS_019_SENDER', 'GoLandly')
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(phoneVerificationMode()).toBe('direct')
   })
