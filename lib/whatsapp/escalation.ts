@@ -2,7 +2,7 @@ import 'server-only'
 import { SUPPORT_EMAIL } from '@/lib/config'
 import { sendToTeamInbox } from '@/lib/email/teamInboxEmail'
 import type { Lang } from '@/lib/i18n/translations'
-import { INQUIRY_CATEGORY_LABELS, type InquiryCategory } from './supportBot'
+import { INQUIRY_CATEGORY_LABELS, isolateName, type InquiryCategory } from './supportBot'
 
 // "Talk to Team" in the WhatsApp support bot: once the member has described
 // their request, an email to the team inbox with what they wrote, who they
@@ -25,7 +25,8 @@ export interface Escalation {
 }
 
 export function escalationEmail({ waId, lang, origin, name, uid, email, inquiry, category = 'general' }: Escalation) {
-  const who = name || `+${waId}`
+  // Isolated, so a Hebrew name never reorders the subject line or the reply sentence around it.
+  const who = name?.trim() ? isolateName(name) : `+${waId}`
   return {
     subject: `WhatsApp: ${who} asked to talk to the team`,
     heading: 'A member asked to talk to the team on WhatsApp',

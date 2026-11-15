@@ -66,7 +66,7 @@ export function SystemNote({ message }: { message: TranscriptMessage }) {
   return (
     <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-adm-raised px-3 py-1 text-[11px] text-adm-muted ring-1 ring-adm-line">
       <i className="fa-solid fa-circle-check shrink-0 text-adm-muted" aria-hidden="true" />
-      <span className="min-w-0 truncate">{message.text}</span>
+      <span dir="auto" className="min-w-0 truncate">{message.text}</span>
       <bdi dir="ltr" className="shrink-0 tabular-nums text-adm-muted">
         {clockTime(message.at, locale)}
       </bdi>

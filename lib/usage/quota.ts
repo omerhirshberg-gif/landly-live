@@ -1,4 +1,4 @@
-import { COUNTERS_SINCE, DEFAULT_QUOTA, isMonthKey } from './usageTypes'
+import { COUNTERS_SINCE, DEFAULT_SMS_QUOTA, DEFAULT_WHATSAPP_QUOTA, isMonthKey } from './usageTypes'
 
 // The 019 package quota, pure maths shared by the server (the report) and
 // the browser (an optimistic update after a top-up). Lifetime sent is the sum
@@ -35,9 +35,11 @@ export interface QuotaChannelState {
 
 export type QuotaReport = Record<QuotaChannel, QuotaChannelState>
 
-/** A stored quota, or the default when missing or malformed. */
-export function quotaOf(value: unknown): number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : DEFAULT_QUOTA
+export const DEFAULT_QUOTA_BY_CHANNEL = { sms: DEFAULT_SMS_QUOTA, whatsapp: DEFAULT_WHATSAPP_QUOTA } as const
+
+/** A stored quota, or the channel's default when missing or malformed. */
+export function quotaOf(value: unknown, channel: QuotaChannel): number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : DEFAULT_QUOTA_BY_CHANNEL[channel]
 }
 
 export function quotaStatus(sent: number, quota: number): QuotaStatus {
@@ -63,7 +65,7 @@ export interface QuotaInput {
 }
 
 export function buildQuota({ sent = {}, quota = {} }: QuotaInput = {}): QuotaReport {
-  const state = (channel: QuotaChannel) => quotaState(Math.max(0, sent[channel] ?? 0), quotaOf(quota[channel]))
+  const state = (channel: QuotaChannel) => quotaState(Math.max(0, sent[channel] ?? 0), quotaOf(quota[channel], channel))
   return { sms: state('sms'), whatsapp: state('whatsapp') }
 }
 

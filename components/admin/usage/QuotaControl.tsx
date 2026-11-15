@@ -13,11 +13,11 @@ import QuotaMeter from './QuotaMeter'
 // in <bdi dir="ltr"> and spacing is logical, so it reads the same in Hebrew.
 
 const STATUS_TEXT = { ok: 'text-adm-text-2', warn: 'text-adm-warn', critical: 'text-adm-danger' } as const
-const BUTTON =
-  'inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-adm-accent/60 disabled:cursor-not-allowed disabled:opacity-60'
-const ADD_BUTTON = `${BUTTON} border border-adm-line/90 bg-adm-surface text-adm-text shadow-sm hover:border-adm-line-strong hover:bg-adm-raised`
-const CONFIRM_BUTTON = `${BUTTON} bg-adm-accent text-adm-on-accent hover:bg-adm-accent-hover`
-const CANCEL_BUTTON = `${BUTTON} text-adm-text-2 hover:bg-adm-raised`
+const BUTTON_BASE =
+  'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-adm-accent/60 disabled:cursor-not-allowed disabled:opacity-60'
+const ADD_BUTTON = `${BUTTON_BASE} border border-adm-line/90 bg-adm-surface text-adm-text shadow-sm hover:border-adm-line-strong hover:bg-adm-raised`
+const CONFIRM_BUTTON = `${BUTTON_BASE} bg-adm-accent text-adm-on-accent hover:bg-adm-accent-hover`
+const CANCEL_BUTTON = `${BUTTON_BASE} text-adm-text-2 hover:bg-adm-raised`
 
 type Phase = 'idle' | 'confirming' | 'saving'
 
