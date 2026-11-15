@@ -36,6 +36,7 @@ import {
   FOOTER_MAX,
   GREETING_COOLDOWN_MS,
   idleCheckInMessage,
+  isolateName,
   INQUIRY_TIMEOUT_MS,
   inquiryPromptMessage,
   isLanguageKeyword,
@@ -44,6 +45,7 @@ import {
   LIST_BUTTON_MAX,
   LIST_ROWS_MAX,
   menuMessage,
+  namedGreeting,
   resolvedMessage,
   teamNudgeMessage,
   teamResolvedMessage,
@@ -664,10 +666,63 @@ describe('support bot decisions', () => {
     expect(transcriptText(he)).toBe(`בחירת שפה:\n${LANGUAGE_NAMES_IN_ORDER.map((name) => `[${name}]`).join(' ')}`)
   })
 
+  describe('named greeting', () => {
+    const FSI = '\u2068'
+    const PDI = '\u2069'
+    const WJ = '\u2060'
+    const NAMES = ['עמית', 'Amit', 'עמית Cohen'] as const
+    const LANGS = ['en', 'he', 'ru', 'fr', 'es'] as const
+
+    it('isolates every name and keeps the punctuation outside it, in all five languages', () => {
+      for (const lang of LANGS) {
+        for (const name of NAMES) {
+          const text = namedGreeting(lang, name)
+          expect(text, `${lang} ${name}`).toContain(`${FSI}${name}${PDI}`)
+          expect(text).not.toContain('{name}')
+          // Nothing but the closing isolate, then the mark, sits between the name and its "!".
+          const after = text.slice(text.indexOf(PDI) + 1)
+          if (lang === 'fr') expect(after.startsWith('\u00A0!')).toBe(true)
+          else expect(after.startsWith(`${WJ}!`)).toBe(true)
+        }
+      }
+    })
+
+    it('keeps the "!" beside a Hebrew name in an English greeting', () => {
+      expect(namedGreeting('en', 'עמית')).toBe(`Hi ${FSI}עמית${PDI}${WJ}! This is GoLandly. How can we help?`)
+      expect(namedGreeting('he', 'Amit')).toBe(`היי ${FSI}Amit${PDI}${WJ}! כאן GoLandly. איך אפשר לעזור?`)
+      expect(namedGreeting('ru', 'Amit')).toBe(`Привет, ${FSI}Amit${PDI}${WJ}! Это GoLandly. Чем можем помочь?`)
+      expect(namedGreeting('es', 'עמית')).toBe(`¡Hola, ${FSI}עמית${PDI}${WJ}! Somos GoLandly. ¿Cómo podemos ayudarte?`)
+    })
+
+    it('puts a no-break space before "!" and "?" in French', () => {
+      expect(namedGreeting('fr', 'עמית')).toBe(`Bonjour ${FSI}עמית${PDI}\u00A0! Ici GoLandly. Comment pouvons-nous vous aider\u00A0?`)
+    })
+
+    it('trims the name, and a blank name falls back to the nameless greeting', () => {
+      expect(isolateName('  Amit ')).toBe(`${FSI}Amit${PDI}`)
+      for (const lang of LANGS) {
+        for (const memberFirstName of ['', '   ', undefined]) {
+          const menu = menuMessage(ctx({ lang, memberFirstName }))
+          if (menu.type !== 'interactive') throw new Error('expected an interactive message')
+          expect(menu.interactive.body.text).toBe(bidiSafe(lang, translations[lang].wa_bot_menu_body))
+          expect(menu.interactive.body.text).not.toContain(FSI)
+        }
+      }
+    })
+
+    it('stays within the body limit with a long name in every language', () => {
+      for (const lang of LANGS) {
+        const menu = menuMessage(ctx({ lang, memberFirstName: 'עמית'.repeat(20) }))
+        if (menu.type !== 'interactive') throw new Error('expected an interactive message')
+        expect(menu.interactive.body.text.length).toBeLessThanOrEqual(BODY_MAX)
+      }
+    })
+  })
+
   it('puts the language confirmation at the top of the menu it comes with', () => {
     const menu = menuMessage(ctx({ lang: 'fr', memberFirstName: 'Dana' }), { languageChanged: true })
     if (menu.type !== 'interactive' || menu.interactive.type !== 'list') throw new Error('expected a list message')
-    expect(menu.interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${translations.fr.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
+    expect(menu.interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${namedGreeting('fr', 'Dana')}`)
   })
 
   it('writes every kind of reply as plain text for the inbox', () => {
@@ -830,7 +885,7 @@ describe('support bot handler', () => {
 
     await handleInboundEvent(event({ kind: 'language', lang: 'fr' }))
     expect(replies()).toHaveLength(2)
-    expect(replies()[1].interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${translations.fr.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
+    expect(replies()[1].interactive.body.text).toBe(`${translations.fr.wa_bot_lang_changed}\n\n${namedGreeting('fr', 'Dana')}`)
     expect(lastIds()).toEqual(MENU_IDS)
   })
 
@@ -883,11 +938,11 @@ describe('support bot handler', () => {
     expect(lastIds()).toEqual(LANGUAGE_IDS)
     await handleInboundEvent(event({ kind: 'language', lang: 'he' }), now + 1000)
     expect(mocks.store.read('users/member-1')).toMatchObject({ preferredLanguage: 'he', firstName: 'Dana' })
-    expect(replies().at(-1).interactive.body.text).toBe(`${translations.he.wa_bot_lang_changed}\n\n${translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana')}`)
+    expect(replies().at(-1).interactive.body.text).toBe(`${translations.he.wa_bot_lang_changed}\n\n${namedGreeting('he', 'Dana')}`)
     // Even if the profile changes back on the site, the chat keeps the pick.
     mocks.store.seed('users/member-1', { phone: `+${WA_ID}`, firstName: 'Dana', preferredLanguage: 'fr' })
     await handleInboundEvent(event({ kind: 'text', text: 'menu' }), now + 2000)
-    expect(replies().at(-1).interactive.body.text).toBe(translations.he.wa_bot_menu_body_named.replace('{name}', 'Dana'))
+    expect(replies().at(-1).interactive.body.text).toBe(namedGreeting('he', 'Dana'))
   })
 
   it('shows the language list during an inquiry prompt without emailing it as the request', async () => {
@@ -1226,9 +1281,18 @@ describe('Firestore project for the bot', () => {
 })
 
 describe('escalation email', () => {
+  it('isolates the member name in the subject and the reply line', () => {
+    const mail = escalationEmail({ waId: '12025550123', lang: 'he', origin: 'https://landly.test', name: 'עמית' })
+    expect(mail.subject).toBe('WhatsApp: \u2068עמית\u2069 asked to talk to the team')
+    expect(mail.replyName).toBe('\u2068עמית\u2069')
+    expect(mail.rows.find((r) => r.label === 'Name')?.value).toBe('עמית')
+    expect(escalationEmail({ waId: '12025550123', lang: 'en', origin: 'https://landly.test', name: '  ' }).replyName).toBe('+12025550123')
+  })
+
   it('names an unknown sender by number and lets Reply reach the team inbox', () => {
     const mail = escalationEmail({ waId: '12025550123', lang: 'en', origin: 'https://landly.test' })
     expect(mail.replyTo).toBe('contact@golandly.com')
+    expect(mail.subject).toBe('WhatsApp: +12025550123 asked to talk to the team')
     expect(mail.rows.find((r) => r.label === 'WhatsApp')).toEqual({ label: 'WhatsApp', value: '+12025550123', href: 'https://wa.me/12025550123' })
     expect(mail.rows.find((r) => r.label === 'Member UID')?.value).toMatch(/No GoLandly account/)
     expect(mail.rows.find((r) => r.label === 'Support inbox')?.href).toBe('https://landly.test/admin/support?c=12025550123')

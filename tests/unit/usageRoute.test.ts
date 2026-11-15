@@ -128,11 +128,11 @@ describe('GET /api/admin/usage', () => {
     }
   })
 
-  it('defaults to 1,000 each, with the history still counted, when no quota document exists', async () => {
+  it('defaults to 1,005 SMS and 1,000 WhatsApp, with the history still counted, when no quota document exists', async () => {
     mocks.monthIds = ['2026-10']
     mocks.listData = { '2026-10': { projectId: 'landly-be752', gateway019: { smsOtpSent: 20, whatsappOtpSent: 10 } } }
     const r = await report()
-    expect(r.quota.sms).toMatchObject({ sent: 20, quota: 1000 })
+    expect(r.quota.sms).toMatchObject({ sent: 20, quota: 1005 })
     expect(r.quota.whatsapp).toMatchObject({ sent: 10, quota: 1000 })
   })
 
@@ -143,6 +143,6 @@ describe('GET /api/admin/usage', () => {
       quota019: { projectId: 'landly-dev', smsQuota: 9000 },
     }
     const r = await report()
-    expect(r.quota.sms).toMatchObject({ sent: 0, quota: 1000 })
+    expect(r.quota.sms).toMatchObject({ sent: 0, quota: 1005 })
   })
 })

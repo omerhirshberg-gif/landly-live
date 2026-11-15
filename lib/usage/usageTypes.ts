@@ -17,8 +17,9 @@ export const USAGE_COLLECTION = 'apiUsageStats'
 // (apiUsageStats/quota019: smsQuota, whatsappQuota; a missing field is the
 // default). Its id is not a month key, so month listings skip it.
 export const QUOTA_DOC_ID = 'quota019'
-/** Each channel starts with this many purchased messages. */
-export const DEFAULT_QUOTA = 1000
+/** What each channel starts with when no quota is stored: the packages bought from 019. */
+export const DEFAULT_SMS_QUOTA = 1005
+export const DEFAULT_WHATSAPP_QUOTA = 1000
 /** What one top-up adds: fixed on the server, never taken from the client. */
 export const TOPUP_AMOUNT = 1000
 /** Sends before this month were never counted, so lifetime totals start here. */

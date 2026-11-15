@@ -292,6 +292,25 @@ const tr = (lang: Lang, key: TranslationKey) => translations[lang][key] ?? trans
 // LRI…PDI: an address or number stays left-to-right inside a Hebrew sentence.
 const isolate = (value: string) => `\u2066${value}\u2069`
 
+/**
+ * FSI…PDI: a member's name takes its own direction (Hebrew, Latin or mixed)
+ * and cannot pull the punctuation next to it into its run.
+ */
+export const isolateName = (name: string) => `\u2068${name.trim()}\u2069`
+
+/**
+ * The named greeting ("Hi {name}! …") with the name isolated. The "!" stays
+ * outside the isolate, so it takes the greeting's direction and sits beside
+ * the name; a word joiner stops WhatsApp from wrapping it onto the next line.
+ * In French the "!" and "?" follow a no-break space, as French typography has them.
+ */
+export function namedGreeting(lang: Lang, name: string): string {
+  const template = tr(lang, 'wa_bot_menu_body_named')
+  const who = isolateName(name)
+  if (lang === 'fr') return template.replace(/ ([!?])/g, '\u00A0$1').replace('{name}', who)
+  return template.replace('{name}!', `${who}\u2060!`).replace('{name}', who)
+}
+
 // A number and its unit or word ("14 days", "100 ₪", "9 h") never split across lines.
 const NUMBER_SPACE = /(\d) (?=[%₪\p{L}])/gu
 const SHEKEL_SPACE = /₪ (?=\d)/gu
@@ -415,9 +434,7 @@ function rowDescription(lang: Lang, id: BotAction): { description?: string } {
  * English.") at the top of the same message.
  */
 export function menuMessage(ctx: BotContext, options: { languageChanged?: boolean } = {}): WhatsAppMessage {
-  const greeting = ctx.memberFirstName
-    ? tr(ctx.lang, 'wa_bot_menu_body_named').replace('{name}', ctx.memberFirstName)
-    : tr(ctx.lang, 'wa_bot_menu_body')
+  const greeting = ctx.memberFirstName?.trim() ? namedGreeting(ctx.lang, ctx.memberFirstName) : tr(ctx.lang, 'wa_bot_menu_body')
   const body = options.languageChanged ? `${tr(ctx.lang, 'wa_bot_lang_changed')}\n\n${greeting}` : greeting
   return choiceMessage(ctx.lang, body, choicesOf(ctx.lang, MENU_ROWS), { listButton: tr(ctx.lang, 'wa_bot_menu_button') })
 }

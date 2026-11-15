@@ -241,11 +241,10 @@ describe('translated service notes', () => {
 })
 
 describe('019 package quota', () => {
-  it('starts every channel at 1,000 purchased messages with nothing sent', () => {
+  it('starts SMS at 1,005 and WhatsApp at 1,000 purchased messages with nothing sent', () => {
     const q = buildQuota()
-    for (const channel of ['sms', 'whatsapp'] as const) {
-      expect(q[channel]).toEqual({ sent: 0, quota: 1000, remaining: 1000, over: 0, pct: 0, status: 'ok' })
-    }
+    expect(q.sms).toEqual({ sent: 0, quota: 1005, remaining: 1005, over: 0, pct: 0, status: 'ok' })
+    expect(q.whatsapp).toEqual({ sent: 0, quota: 1000, remaining: 1000, over: 0, pct: 0, status: 'ok' })
     expect(buildUsageReport({ month: '2026-11', months: [], projectId: 'landly-dev', counters: emptyCounters(), now: NOW }).quota).toEqual(q)
   })
 
@@ -267,9 +266,12 @@ describe('019 package quota', () => {
     expect(quotaStatus(1_900, 2000)).toBe('critical')
   })
 
-  it('takes a stored quota, and falls back to 1,000 for anything malformed', () => {
-    expect(quotaOf(3000)).toBe(3000)
-    for (const bad of [undefined, null, 0, -5, 1.5, '2000', NaN, Infinity]) expect(quotaOf(bad)).toBe(1000)
+  it('takes a stored quota, and falls back to the channel default for anything malformed', () => {
+    expect(quotaOf(3000, 'sms')).toBe(3000)
+    for (const bad of [undefined, null, 0, -5, 1.5, '2000', NaN, Infinity]) {
+      expect(quotaOf(bad, 'sms')).toBe(1005)
+      expect(quotaOf(bad, 'whatsapp')).toBe(1000)
+    }
     const q = buildQuota({ sent: { sms: 412, whatsapp: 37 }, quota: { sms: 2000, whatsapp: 'x' } })
     expect(q.sms).toMatchObject({ sent: 412, quota: 2000, remaining: 1588 })
     expect(q.whatsapp).toMatchObject({ sent: 37, quota: 1000, remaining: 963 })

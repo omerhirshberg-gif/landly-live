@@ -14,7 +14,7 @@ export type TopUpResult =
  * the quota the admin saw: when it is no longer the stored one (a double
  * click, a second admin) nothing is added and the current value comes back.
  * A missing document or field counts as the default, so the first top-up is
- * 1,000 -> 2,000, not 0 -> 1,000. Goes through getAdminDb() (DEV or PROD,
+ * 1,005 -> 2,005 (SMS) or 1,000 -> 2,000 (WhatsApp), not 0 -> default. Goes through getAdminDb() (DEV or PROD,
  * lib/firebase/envGuard.ts); a document that names another project is refused.
  */
 export async function topUpQuota(db: Firestore, request: Request, projectId: string, channel: QuotaChannel, from: number): Promise<TopUpResult> {
@@ -24,7 +24,7 @@ export async function topUpQuota(db: Firestore, request: Request, projectId: str
     const snap = await tx.get(ref)
     const data = snap.exists ? snap.data() : undefined
     if (data?.projectId && data.projectId !== projectId) return { ok: false, reason: 'project' }
-    const current = quotaOf(data?.[field])
+    const current = quotaOf(data?.[field], channel)
     if (current !== from) return { ok: false, reason: 'stale', quota: current }
     const next = current + TOPUP_AMOUNT
     tx.set(ref, { projectId, updatedAt: FieldValue.serverTimestamp(), [field]: next, lastTopUp: { channel, at: Timestamp.now() } }, { merge: true })
