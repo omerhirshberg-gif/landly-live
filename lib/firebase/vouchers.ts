@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
 import { db } from './config'
+import { parseVoucherStatus, type VoucherStatus } from '../vouchers/status'
 import { recheckSessionIfDenied } from './sessionCheck'
 import { normalizeRedemptionTerms } from '../payments/voucherTerms'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type RedemptionMethod } from '../offers/redemption'
@@ -12,7 +13,9 @@ import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type Participat
 
 // refunded: cancelled through support after purchase (set by an admin, never
 // by a client); it leaves the wallet like a redeemed one, but was never used.
-export type VoucherStatus = 'active' | 'redeemed' | 'refunded'
+// cancelled: cancelled because its owner's account was permanently deleted
+// (lib/users/deleteUserPermanently.server.ts); never redeemable, never settled.
+export type { VoucherStatus }
 
 export interface VoucherDocument {
   userId: string
@@ -83,7 +86,7 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
     savingsAgorot: typeof data.savingsAgorot === 'number' && Number.isFinite(data.savingsAgorot) && data.savingsAgorot >= 0 ? data.savingsAgorot : null,
     redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
-    status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
+    status: parseVoucherStatus(data.status),
     takenAt: data.takenAt instanceof Timestamp ? data.takenAt.toDate() : null,
     redeemedAt: data.redeemedAt instanceof Timestamp ? data.redeemedAt.toDate() : null,
     expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toDate() : null,

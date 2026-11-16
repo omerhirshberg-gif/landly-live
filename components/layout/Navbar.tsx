@@ -102,7 +102,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="navbar-safe-top fixed top-0 inset-x-0 z-[1000] bg-white/70 backdrop-blur-md border-b border-line/60 shadow-sm">
+      <nav className="navbar-safe-top fixed top-0 inset-x-0 z-[1000] bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
         {/* The bar's physical order is locked in every language: logo on the
             left, language switcher and hamburger on the right (below lg a
             member's bar is just the logo and the hamburger, language living

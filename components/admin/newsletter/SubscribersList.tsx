@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { adminFetch } from '@/lib/admin/adminSession'
+import InlineConfirmAction from '@/components/admin/InlineConfirmAction'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import { en } from '@/lib/admin/translations/en'
 import BidiText from '@/components/admin/BidiText'
@@ -9,6 +11,13 @@ import { ADMIN_INPUT, ADMIN_SELECT } from '@/components/admin/formStyles'
 import type { AudienceCount, SubscriberRow } from './types'
 
 const PAGE = 50
+
+interface SuppressionRow {
+  hash: string
+  email: string
+  reason: 'admin' | 'unsubscribe'
+  at: string | null
+}
 
 type Translate = (key: AdminKey, vars?: Record<string, string | number>) => string
 
@@ -27,12 +36,58 @@ function SourceBadge({ source }: { source: SubscriberRow['source'] }) {
 // The people the selected audience reaches, so nobody sends blind: searchable,
 // filterable by source, 50 at a time. An empty list says why (DEV has no
 // opted-in members; in Production it means nobody matches yet).
-export default function SubscribersList({ count }: { count: AudienceCount }) {
+export default function SubscribersList({ count, onChanged }: { count: AudienceCount; onChanged: () => void }) {
   const { t } = useAdminT()
   const [open, setOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [source, setSource] = useState<'all' | SubscriberRow['source']>('all')
   const [limit, setLimit] = useState(PAGE)
+  const [suppressions, setSuppressions] = useState<SuppressionRow[] | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const loadSuppressions = useCallback(async () => {
+    try {
+      const res = await adminFetch('/api/admin/newsletter/suppressions')
+      if (res.ok) setSuppressions(((await res.json()) as { suppressions: SuppressionRow[] }).suppressions)
+    } catch {
+      // The list stays as it was; the next action retries.
+    }
+  }, [])
+  useEffect(() => {
+    void loadSuppressions()
+  }, [loadSuppressions])
+
+  const suppress = async (email: string) => {
+    setActionError(null)
+    const res = await adminFetch('/api/admin/newsletter/suppressions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).catch(() => null)
+    if (!res?.ok) {
+      setActionError(t('newsletter.subs.suppressFailed'))
+      return
+    }
+    await loadSuppressions()
+    onChanged()
+  }
+
+  const restore = async (hash: string) => {
+    setActionError(null)
+    const res = await adminFetch(`/api/admin/newsletter/suppressions?hash=${encodeURIComponent(hash)}`, { method: 'DELETE' }).catch(() => null)
+    if (!res?.ok) {
+      setActionError(t('newsletter.subs.suppressed.restoreFailed'))
+      return
+    }
+    await loadSuppressions()
+    onChanged()
+  }
+
+  const rowAction = (r: SubscriberRow) => (
+    <InlineConfirmAction
+      label={t('newsletter.subs.suppress')}
+      confirmLabel={t('newsletter.subs.suppressConfirm')}
+      cancelLabel={t('newsletter.subs.suppressCancel')}
+      ariaLabel={t('newsletter.subs.suppressFor', { email: r.email })}
+      onConfirm={() => suppress(r.email)}
+    />
+  )
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -100,6 +155,7 @@ export default function SubscribersList({ count }: { count: AudienceCount }) {
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-adm-muted">
                             <SourceBadge source={r.source} />
                             <span>{segmentLabel(r.segment, t)}</span>
+                            <span className="ms-auto">{rowAction(r)}</span>
                           </div>
                         </li>
                       ))}
@@ -108,7 +164,7 @@ export default function SubscribersList({ count }: { count: AudienceCount }) {
                       <table className="w-full text-start text-sm">
                         <thead>
                           <tr className="border-b border-adm-line text-xs font-bold uppercase tracking-wider text-adm-muted">
-                            {(['name', 'email', 'source', 'segment', 'lang'] as const).map((col) => (
+                            {(['name', 'email', 'source', 'segment', 'lang', 'actions'] as const).map((col) => (
                               <th key={col} scope="col" className="px-6 py-3 text-start font-bold">{t(`newsletter.subs.col.${col}` as AdminKey)}</th>
                             ))}
                           </tr>
@@ -121,6 +177,7 @@ export default function SubscribersList({ count }: { count: AudienceCount }) {
                               <td className="px-6 py-3"><SourceBadge source={r.source} /></td>
                               <td className="px-6 py-3 text-adm-text-2">{segmentLabel(r.segment, t)}</td>
                               <td className="px-6 py-3 text-xs font-semibold uppercase tabular-nums text-adm-text-2">{r.lang}</td>
+                              <td className="px-3 py-1.5">{rowAction(r)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -138,6 +195,33 @@ export default function SubscribersList({ count }: { count: AudienceCount }) {
                 )}
               </>
             )}
+          </div>
+        )}
+        {open && actionError && <p role="alert" className="border-t border-adm-line/80 px-4 py-3 text-sm font-semibold text-adm-danger sm:px-6">{actionError}</p>}
+        {open && suppressions && suppressions.length > 0 && (
+          <div className="border-t border-adm-line/80 px-4 py-4 sm:px-6">
+            <h3 className="text-sm font-bold text-adm-text">{t('newsletter.subs.suppressed.title', { count: suppressions.length })}</h3>
+            <p className="mt-0.5 text-xs text-adm-muted">{t('newsletter.subs.suppressed.hint')}</p>
+            <ul className="mt-2 divide-y divide-adm-line-soft">
+              {suppressions.map((s) => (
+                <li key={s.hash} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1">
+                  <div className="min-w-0">
+                    <bdi dir="ltr" className="block truncate text-sm text-adm-text">{s.email}</bdi>
+                    <span className="text-xs text-adm-muted">{s.reason === 'admin' ? t('newsletter.subs.suppressed.admin') : t('newsletter.subs.suppressed.unsubscribed')}</span>
+                  </div>
+                  {s.reason === 'admin' && (
+                    <button
+                      type="button"
+                      aria-label={t('newsletter.subs.suppressed.restoreFor', { email: s.email })}
+                      onClick={() => void restore(s.hash)}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl px-3 text-sm font-semibold text-adm-accent hover:bg-adm-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent"
+                    >
+                      {t('newsletter.subs.suppressed.restore')}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </Card>

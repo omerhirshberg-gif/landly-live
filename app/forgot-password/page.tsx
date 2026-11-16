@@ -12,6 +12,7 @@ import TextField from '@/components/auth/entrance/TextField'
 import { ENTRANCE_VARS } from '@/components/auth/entrance/entranceVars'
 import styles from '@/components/auth/entrance/entrance.module.css'
 import { ONBOARDING_VARS } from '@/components/auth/onboarding/onboardingVars'
+import EmailTypoHint from '@/components/forms/EmailTypoHint'
 import { useLang } from '@/lib/i18n/useLang'
 
 // Asks /api/auth/forgot-password to email a reset link. The link opens our
@@ -31,6 +32,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [sent, setSent] = useState(false)
+  const [emailLeft, setEmailLeft] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +47,10 @@ export default function ForgotPasswordPage() {
         // than a spinner that never ends.
         signal: AbortSignal.timeout(20_000),
       })
+      if (res.status === 422) {
+        setError(t('email_domainInvalid'))
+        return
+      }
       if (!res.ok) throw new Error('request failed')
       setSent(true)
     } catch {
@@ -104,8 +110,22 @@ export default function ForgotPasswordPage() {
                 inputMode="email"
                 enterKeyHint="send"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setEmailLeft(false)
+                }}
+                onBlur={() => setEmailLeft(true)}
                 hint={t('forgot_privacyNote')}
+              />
+              <EmailTypoHint
+                value={emailLeft ? email : ''}
+                message={t('email_didYouMean')}
+                actionLabel={t('email_useSuggestion')}
+                onApply={(fixed) => {
+                  setEmail(fixed)
+                  setEmailLeft(false)
+                }}
+                className="mb-3"
               />
               <div className="mt-1">
                 <Button type="submit" label={t(submitting ? 'forgot_submitBtnBusy' : 'forgot_submitBtn')} busy={submitting} large />

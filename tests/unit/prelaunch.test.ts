@@ -8,6 +8,8 @@ import { TransactionStore } from '../helpers/transactionStore'
 const admin = vi.hoisted(() => ({ db: null as unknown }))
 vi.mock('@/lib/firebase/admin', () => ({ getAdminDb: () => admin.db }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/join' }))
+const mx = vi.hoisted(() => ({ status: 'ok' as 'ok' | 'invalid' }))
+vi.mock('@/lib/validation/emailDns.server', () => ({ checkMailDomain: async () => mx.status }))
 const after = vi.hoisted(() => vi.fn())
 vi.mock('next/server', async (importOriginal) => ({ ...(await importOriginal<typeof import('next/server')>()), after }))
 
@@ -243,6 +245,19 @@ describe('POST /api/prelaunch', () => {
     expect((await post({ ...VALID, email: 'bad' })).status).toBe(400)
     expect((await post({ ...VALID, pad: 'x'.repeat(5000) })).status).toBe(400)
     expect(Object.keys(store.snapshot())).toEqual([])
+  })
+  it('turns away an address whose domain cannot receive mail, before anything is stored', async () => {
+    const store = new TransactionStore()
+    admin.db = store.db
+    mx.status = 'invalid'
+    try {
+      const res = await post({ ...VALID, email: 'sysprof@icloiud.com' })
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({ error: 'email_domain' })
+      expect(Object.keys(store.snapshot()).filter((key) => key.includes('leads'))).toEqual([])
+    } finally {
+      mx.status = 'ok'
+    }
   })
   it('allows its own origin', async () => {
     admin.db = new TransactionStore().db

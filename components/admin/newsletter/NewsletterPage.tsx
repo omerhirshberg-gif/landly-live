@@ -64,7 +64,8 @@ export default function NewsletterPage() {
     [t]
   )
 
-  // The recipient count follows the audience, by the same rules the sender uses.
+  // The recipient count follows the audience, by the same rules the sender uses; a suppression re-runs it.
+  const [audienceVersion, setAudienceVersion] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
     setCount((c) => ({ ...c, status: 'loading' }))
@@ -79,7 +80,7 @@ export default function NewsletterPage() {
         if (err?.name !== 'AbortError') setCount((c) => ({ ...c, status: 'error' }))
       })
     return () => controller.abort()
-  }, [audience])
+  }, [audience, audienceVersion])
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true)
@@ -179,7 +180,7 @@ export default function NewsletterPage() {
         </div>
       </div>
       <div className="mt-6">
-        <SubscribersList count={count} />
+        <SubscribersList count={count} onChanged={() => setAudienceVersion((v) => v + 1)} />
       </div>
       <div className="mt-10">
         <CampaignHistory campaigns={campaigns} loading={historyLoading} onRefresh={loadHistory} />

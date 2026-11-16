@@ -1,5 +1,6 @@
 'use client'
 
+import EmailTypoHint from '@/components/forms/EmailTypoHint'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -113,6 +114,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   const [mode, setMode] = useState<Mode>(initialMode)
   const [rememberMe, setRememberMe] = useState(true)
   const [email, setEmail] = useState('')
+  // The sign-up typo hint ("Did you mean ...?") waits until the email field is left.
+  const [emailLeft, setEmailLeft] = useState(false)
   const [password, setPassword] = useState('')
   // Kept as a key so the message follows a language switch.
   const [error, setError] = useState<AuthErrorDescription | null>(null)
@@ -676,14 +679,26 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
                     }}
                     onChange={(e) => {
                       setEmail(e.target.value)
+                      setEmailLeft(false)
                       clearSignUpError('email')
                     }}
+                    onBlur={() => setEmailLeft(true)}
                     error={signUpErrorText('email')}
                     shake={signUpShake}
                     required
                     autoCapitalize="none"
                     autoComplete="email"
                     enterKeyHint="next"
+                  />
+                  <EmailTypoHint
+                    value={emailLeft ? email : ''}
+                    message={t('email_didYouMean')}
+                    actionLabel={t('email_useSuggestion')}
+                    onApply={(fixed) => {
+                      setEmail(fixed)
+                      setEmailLeft(false)
+                    }}
+                    className="-mt-2 mb-3"
                   />
                   <TextField
                     label={t('onb_createPasswordLabel')}

@@ -8,6 +8,8 @@ import Card, { CardSkeletons } from '@/components/admin/Card'
 import PageHeader from '@/components/admin/PageHeader'
 import { ButtonSpinner } from '@/components/admin/FormSection'
 import { ADMIN_INPUT, ADMIN_SELECT, SECONDARY_BUTTON } from '@/components/admin/formStyles'
+import FixedSubscriptions from '@/components/admin/usage/FixedSubscriptions'
+import GrandTotal from '@/components/admin/usage/GrandTotal'
 import UsageBreakdown from '@/components/admin/usage/UsageBreakdown'
 import UsageSummary from '@/components/admin/usage/UsageSummary'
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
@@ -59,6 +61,8 @@ export default function UsageCostsPage() {
   const [report, setReport] = useState<UsageReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendNotice, setSendNotice] = useState<{ tone: 'success' | 'warning' | 'error'; text: string } | null>(null)
   // Only the latest request may update the page (a month switch mid-refresh).
   const latest = useRef(0)
 
@@ -113,6 +117,33 @@ export default function UsageCostsPage() {
     },
     [load, month]
   )
+
+  // Emails the shown month's report (HTML + CSV) to the accounting inbox, in the admin's language.
+  const sendReport = useCallback(async () => {
+    if (!report) return
+    setSending(true)
+    setSendNotice(null)
+    try {
+      const res = await adminFetch('/api/admin/system/costs/send-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: report.month, lang: locale }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 429) return setSendNotice({ tone: 'warning', text: t('usage.sendReport.throttled') })
+      if (!res.ok) return setSendNotice({ tone: 'error', text: t('usage.sendReport.failed') })
+      const month = `\u2066${report.month}\u2069`
+      setSendNotice(
+        data.status === 'simulated'
+          ? { tone: 'warning', text: t('usage.sendReport.simulated', { month }) }
+          : { tone: 'success', text: t('usage.sendReport.sent', { month, to: `\u2066${data.to}\u2069` }) }
+      )
+    } catch {
+      setSendNotice({ tone: 'error', text: t('usage.sendReport.failed') })
+    } finally {
+      setSending(false)
+    }
+  }, [report, locale, t])
 
   const over = report ? reportLines(report).filter((line) => line.status === 'over') : []
 
@@ -189,8 +220,51 @@ export default function UsageCostsPage() {
             </Alert>
           )}
 
+          <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-adm-sunken text-adm-text-2">
+                <i className="fa-solid fa-coins" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-adm-text-2">
+                  <span className="font-semibold text-adm-text">{t('usage.rate.label')}</span>
+                  <bdi dir="ltr" className="text-lg font-bold tabular-nums text-adm-text">
+                    {report.fx.usdToIls.toFixed(4)}
+                  </bdi>
+                  {report.fx.updatedAt && (
+                    <span>
+                      {t('usage.rate.updated', {
+                        date: `\u2066${new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(report.fx.updatedAt))}\u2069`,
+                      })}
+                    </span>
+                  )}
+                </p>
+                <p className={`mt-0.5 text-xs ${report.fx.stale || report.fx.source === 'default' ? 'text-adm-warn' : 'text-adm-muted'}`}>
+                  {t(`usage.rate.source.${report.fx.source}` as AdminKey)}
+                  {report.fx.stale && <> · {t('usage.rate.stale')}</>}
+                </p>
+                <p className="mt-1 text-xs text-adm-muted">{t('usage.rate.hint')}</p>
+              </div>
+            </div>
+            <button type="button" className={`${SECONDARY_BUTTON} w-full sm:w-auto`} onClick={() => void sendReport()} disabled={sending}>
+              {sending ? <ButtonSpinner /> : <i className="fa-solid fa-envelope" aria-hidden="true" />}
+              {sending ? t('usage.sendReport.sending') : t('usage.sendReport.button')}
+            </button>
+          </Card>
+
+          {sendNotice && <Alert tone={sendNotice.tone}>{sendNotice.text}</Alert>}
+
           <UsageSummary report={report} />
           <UsageBreakdown groups={report.groups} quota={report.quota} onQuota={applyQuota} onStale={() => void load(month)} />
+
+          <FixedSubscriptions
+            report={report}
+            onSaved={(service) => {
+              setSendNotice({ tone: 'success', text: t('usage.fixed.saved', { service }) })
+              void load(month)
+            }}
+          />
+          <GrandTotal report={report} />
 
           <p className="px-1 text-xs leading-relaxed text-adm-muted">
             {t('usage.projectNote', { project: `\u2066${report.projectId}\u2069` })}
@@ -212,7 +286,7 @@ export default function UsageCostsPage() {
           </Card>
 
           <p className="text-xs text-adm-muted">
-            {t('usage.footer', { month: monthLabel(report.month, locale), date: `\u2066${report.pricesVerifiedAt}\u2069`, rate: `\u2066${report.fx.usdToIls.toFixed(2)}\u2069` })}
+            {t('usage.footer', { month: monthLabel(report.month, locale), date: `\u2066${report.pricesVerifiedAt}\u2069`, rate: `\u2066${report.fx.usdToIls.toFixed(4)}\u2069` })}
           </p>
         </div>
       )}

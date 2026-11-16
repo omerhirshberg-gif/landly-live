@@ -5,6 +5,7 @@ import { canonicalCustomerType } from '@/lib/customerTypes'
 import { LEADS_COLLECTION } from '@/lib/prelaunch/leads.server'
 import { newsletterLang, NEWSLETTER_LANGS, type NewsletterLang } from './unsubscribeCopy'
 import { normalizeEmail } from './unsubscribeToken'
+import { isValidEmail } from '@/lib/validation/email'
 
 // Who a newsletter may go to. Registered members need marketingOptIn === true
 // (the sign-up checkbox); pre-launch leads are only used when the admin picks
@@ -50,10 +51,8 @@ export function parseAudienceFilter(input: { kind?: unknown; segment?: unknown; 
   return { kind, segment, lang }
 }
 
-const EMAIL_RE = /^[^\s@<>"',;:()[\]\\]+@[^\s@<>"',;:()[\]\\]+\.[^\s@<>"',;:()[\]\\.]{2,}$/
-
 export function isDeliverableEmail(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= 254 && EMAIL_RE.test(value.trim())
+  return typeof value === 'string' && isValidEmail(value.trim())
 }
 
 export function emailHash(email: string): string {
@@ -82,10 +81,12 @@ export function subscriberRows(recipients: readonly NewsletterRecipient[]): Subs
 }
 
 /** Members eligible for marketing email under `filter`. Pure, for the tests. */
-export function eligibleUsers(docs: Doc[], filter: AudienceFilter): NewsletterRecipient[] {
+/** `adminBlocked` holds emailHash()es the team suppressed by hand; a member's own opt-out is the marketingOptIn flag. */
+export function eligibleUsers(docs: Doc[], filter: AudienceFilter, adminBlocked: ReadonlySet<string> = new Set()): NewsletterRecipient[] {
   const out: NewsletterRecipient[] = []
   for (const d of docs) {
     if (d.marketingOptIn !== true || d.unsubscribed === true || !isDeliverableEmail(d.email)) continue
+    if (adminBlocked.has(emailHash(d.email))) continue
     const lang = newsletterLang(d.preferredLanguage)
     if (!matches(filter, str(d.customerType), lang)) continue
     out.push({ email: normalizeEmail(d.email), firstName: str(d.firstName), lastName: str(d.lastName), segment: canonicalCustomerType(str(d.customerType)), lang, source: 'user' })
@@ -97,7 +98,7 @@ export function eligibleUsers(docs: Doc[], filter: AudienceFilter): NewsletterRe
 export function eligibleLeads(docs: Doc[], filter: AudienceFilter, suppressed: ReadonlySet<string>): NewsletterRecipient[] {
   const out: NewsletterRecipient[] = []
   for (const d of docs) {
-    if (d.unsubscribed === true || d.marketingOptIn === false || !isDeliverableEmail(d.email)) continue
+    if (d.unsubscribed === true || d.marketingOptIn === false || d.invalid === true || !isDeliverableEmail(d.email)) continue
     if (suppressed.has(emailHash(d.email))) continue
     const lang = newsletterLang(d.preferredLanguage ?? d.lang)
     if (!matches(filter, str(d.persona), lang)) continue
@@ -120,9 +121,9 @@ export function dedupeRecipients(...lists: NewsletterRecipient[][]): NewsletterR
   return out
 }
 
-async function suppressedHashes(): Promise<Set<string>> {
-  const snap = await getAdminDb().collection(SUPPRESSIONS_COLLECTION).select().get()
-  return new Set(snap.docs.map((doc) => doc.id))
+async function suppressedHashes(): Promise<{ all: Set<string>; admin: Set<string> }> {
+  const snap = await getAdminDb().collection(SUPPRESSIONS_COLLECTION).select('reason').get()
+  return { all: new Set(snap.docs.map((doc) => doc.id)), admin: new Set(snap.docs.filter((doc) => doc.get('reason') === 'admin').map((doc) => doc.id)) }
 }
 
 export async function resolveAudience(filter: AudienceFilter): Promise<NewsletterRecipient[]> {
@@ -133,7 +134,7 @@ export async function resolveAudience(filter: AudienceFilter): Promise<Newslette
       : db
           .collection(USERS_COLLECTION)
           .where('marketingOptIn', '==', true)
-          .select('email', 'firstName', 'lastName', 'preferredLanguage', 'customerType', 'unsubscribed', 'marketingOptIn')
+          .select('email', 'firstName', 'lastName', 'preferredLanguage', 'customerType', 'unsubscribed', 'marketingOptIn', 'invalid')
           .get()
           .then((snap) => snap.docs.map((d) => d.data())),
     filter.kind === 'users'
@@ -143,7 +144,7 @@ export async function resolveAudience(filter: AudienceFilter): Promise<Newslette
           .select('email', 'firstName', 'lastName', 'lang', 'preferredLanguage', 'persona', 'unsubscribed', 'marketingOptIn')
           .get()
           .then((snap) => snap.docs.map((d) => d.data())),
-    filter.kind === 'users' ? new Set<string>() : suppressedHashes(),
+    suppressedHashes(),
   ])
-  return dedupeRecipients(eligibleUsers(userDocs, filter), eligibleLeads(leadDocs, filter, suppressed))
+  return dedupeRecipients(eligibleUsers(userDocs, filter, suppressed.admin), eligibleLeads(leadDocs, filter, suppressed.all))
 }

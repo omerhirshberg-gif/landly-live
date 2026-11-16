@@ -8,6 +8,7 @@ import { PRELAUNCH_COPY, type Persona, type PrelaunchLang, type ReferralSource }
 import { useAdminT, type AdminKey } from '@/lib/admin/translations'
 import BidiText from './BidiText'
 import DataTable, { type Column } from './DataTable'
+import InlineConfirmAction from './InlineConfirmAction'
 
 type Translate = (key: AdminKey, vars?: Record<string, string | number>) => string
 
@@ -97,7 +98,7 @@ function Utm({ lead }: { lead: AdminLead }) {
   )
 }
 
-function LeadCard({ lead }: { lead: AdminLead }) {
+function LeadCard({ lead, action }: { lead: AdminLead; action?: React.ReactNode }) {
   return (
     <div className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -117,13 +118,39 @@ function LeadCard({ lead }: { lead: AdminLead }) {
         <bdi dir="ltr" className="shrink-0 whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>
       </div>
       {(lead.utmSource || lead.utmCampaign) && <div className="mt-2"><Utm lead={lead} /></div>}
+      {action && <div className="mt-1 flex justify-end">{action}</div>}
     </div>
   )
 }
 
 // The leads, as a table from lg and as cards below it.
-export default function PrelaunchTable({ rows }: { rows: readonly AdminLead[] }) {
+export default function PrelaunchTable({ rows, onFlag, onRestore }: {
+  rows: readonly AdminLead[]
+  /** Flags a lead as an invalid address (soft: hidden, never deleted). */
+  onFlag?: (lead: AdminLead) => Promise<void>
+  /** On the flagged list: brings a lead back. */
+  onRestore?: (lead: AdminLead) => Promise<void>
+}) {
   const { t } = useAdminT()
+  const actionFor = (lead: AdminLead): React.ReactNode =>
+    onFlag ? (
+      <InlineConfirmAction
+        label={t('leadTable.flag')}
+        confirmLabel={t('leadTable.flagConfirm')}
+        cancelLabel={t('leadTable.flagCancel')}
+        ariaLabel={t('leadTable.flagFor', { email: lead.email })}
+        onConfirm={() => onFlag(lead)}
+      />
+    ) : onRestore ? (
+      <InlineConfirmAction
+        tone="neutral"
+        label={t('leadTable.restore')}
+        confirmLabel={t('leadTable.flagConfirm')}
+        cancelLabel={t('leadTable.flagCancel')}
+        ariaLabel={t('leadTable.restoreFor', { email: lead.email })}
+        onConfirm={() => onRestore(lead)}
+      />
+    ) : null
 
   const columns = useMemo<readonly Column<AdminLead>[]>(() => (
     [
@@ -136,19 +163,21 @@ export default function PrelaunchTable({ rows }: { rows: readonly AdminLead[] })
       { id: 'date', header: t('leadTable.col.registered'), cell: (lead) => <bdi dir="ltr" className="whitespace-nowrap tabular-nums">{formatIsraeliDateTime(lead.createdAt)}</bdi>, sortValue: (lead) => lead.createdAt ?? '', width: 'w-40' },
       { id: 'referral', header: t('leadTable.col.referral'), cell: (lead) => <Referral lead={lead} />, width: 'w-32' },
       { id: 'utm', header: t('leadTable.col.utm'), cell: (lead) => <Utm lead={lead} />, width: 'w-28' },
+      ...(onFlag || onRestore ? [{ id: 'actions', header: t('leadTable.col.actions'), cell: (lead: AdminLead) => actionFor(lead), width: 'w-44' }] : []),
     ]
-  ), [t])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [t, onFlag, onRestore])
 
   return (
     // Nine columns need this width: narrower screens beside the sidebar scroll the table, not the page.
     <div className="lg:overflow-x-auto">
-      <div className="lg:min-w-[94rem]">
+      <div className={onFlag || onRestore ? 'lg:min-w-[106rem]' : 'lg:min-w-[94rem]'}>
         <DataTable
           label={t('leadTable.label')}
           rows={rows}
           rowKey={(lead) => lead.id}
           columns={columns}
-          card={(lead) => <LeadCard lead={lead} />}
+          card={(lead) => <LeadCard lead={lead} action={actionFor(lead)} />}
           initialSort={{ id: 'date', direction: 'desc' }}
         />
       </div>

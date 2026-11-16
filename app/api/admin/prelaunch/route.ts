@@ -14,6 +14,7 @@ import { LEADS_COLLECTION } from '@/lib/prelaunch/leads.server'
 const NO_STORE = { 'Cache-Control': 'no-store' }
 
 type StoredLead = AdminLead & {
+  invalid?: boolean
   attribution?: { utm_source?: string | null; utm_campaign?: string | null }
 }
 
@@ -35,6 +36,7 @@ const toAdminLead = (lead: StoredLead & { createdAtMs: number }): AdminLead => (
   foundingMember: lead.foundingMember,
   utmSource: lead.attribution?.utm_source ?? null,
   utmCampaign: lead.attribution?.utm_campaign ?? null,
+  invalid: lead.invalid === true,
 })
 
 export async function GET(request: Request) {
@@ -43,10 +45,15 @@ export async function GET(request: Request) {
 
   try {
     const snapshot = await getAdminDb().collection(LEADS_COLLECTION).get()
-    const leads = withReferrals(snapshot.docs.map((doc) => {
+    // Referral counts and founding-member order are worked out over every lead, flagged ones included,
+    // so flagging a mistyped address never changes anyone's history; flagged leads then leave the
+    // list, the totals and the CSV (they come back separately, to be restored).
+    const everyLead = withReferrals(snapshot.docs.map((doc) => {
       const lead = doc.data()
       return { ...lead, id: doc.id, createdAtMs: lead.createdAt?.toMillis?.() ?? 0 }
     })) as (StoredLead & { createdAtMs: number })[]
+    const leads = everyLead.filter((lead) => lead.invalid !== true)
+    const flagged = everyLead.filter((lead) => lead.invalid === true)
     const params = new URL(request.url).searchParams
 
     if (params.get('format') === 'csv') {
@@ -61,7 +68,7 @@ export async function GET(request: Request) {
     }
 
     const rows = leads.map(toAdminLead).reverse()
-    return NextResponse.json({ leads: rows, stats: prelaunchStats(rows), projectId: getAdminProjectId(), generatedAt: new Date().toISOString() }, { headers: NO_STORE })
+    return NextResponse.json({ leads: rows, flagged: flagged.map(toAdminLead).reverse(), stats: prelaunchStats(rows), projectId: getAdminProjectId(), generatedAt: new Date().toISOString() }, { headers: NO_STORE })
   } catch (error) {
     // The error alone: a lead's details never reach the log.
     console.error('Pre-launch leads failed', error instanceof Error ? error.message : 'unknown error')

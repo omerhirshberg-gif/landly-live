@@ -57,6 +57,8 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [filters, setFilters] = useState(NO_FILTERS)
+  // Back from permanently deleting a member (/admin/users/{uid}): say so, and skip the 5-minute cache.
+  const [justDeleted, setJustDeleted] = useState(false)
 
   const load = useCallback(async (fresh: boolean) => {
     setRefreshing(true)
@@ -75,7 +77,12 @@ export default function UsersPage() {
   }, [])
 
   useEffect(() => {
-    void load(false)
+    const deleted = new URLSearchParams(window.location.search).get('deleted') === '1'
+    if (deleted) {
+      setJustDeleted(true)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    void load(deleted)
   }, [load])
 
   const rows = useMemo(() => data?.users ?? [], [data])
@@ -115,6 +122,7 @@ export default function UsersPage() {
         }
       />
 
+      {justDeleted && <Alert tone="success" className="mb-6">{t('users.deletedBanner')}</Alert>}
       {error && <Alert className="mb-6">{error}</Alert>}
       {data?.truncated && (
         <Alert tone="warning" className="mb-6">

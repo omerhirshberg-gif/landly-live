@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { formatIsraeliDate, formatIsraeliDateTime } from '@/lib/admin/formatDate'
 import type { KycTier, UserStatus } from '@/lib/admin/userStatus'
 import Alert from '@/components/admin/Alert'
 import BidiText from '@/components/admin/BidiText'
 import Card, { CardSkeletons } from '@/components/admin/Card'
+import DeleteUserDialog from '@/components/admin/DeleteUserDialog'
 import PageHeader from '@/components/admin/PageHeader'
 import StatusBadge, { UserStatusBadge } from '@/components/admin/StatusBadge'
 import { ADMIN_INPUT, ADMIN_LABEL, DANGER_BUTTON, PRIMARY_BUTTON, SECONDARY_BUTTON, SECTION_HEADING } from '@/components/admin/formStyles'
@@ -43,6 +44,8 @@ export default function MemberPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [pending, setPending] = useState<UserStatus | null>(null)
   const [reason, setReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
@@ -117,6 +120,7 @@ export default function MemberPage() {
           ) : (
             <button type="button" className={PRIMARY_BUTTON} onClick={() => setPending('active')}>{t('member.restore')}</button>
           )}
+          <button type="button" className={`${DANGER_BUTTON} ms-auto`} onClick={() => setDeleting(true)}><i className="fa-solid fa-trash-can" aria-hidden="true" /> {t('member.delete')}</button>
         </div>
         {pending && (
           <form onSubmit={changeStatus} className="mt-5 space-y-3 rounded-2xl border border-adm-line bg-adm-sunken/60 p-4">
@@ -134,6 +138,8 @@ export default function MemberPage() {
           </form>
         )}
       </Card>
+
+      {deleting && <DeleteUserDialog uid={uid} onClose={() => setDeleting(false)} onDeleted={() => router.push('/admin/users?deleted=1')} />}
 
       <section aria-labelledby="passes-h">
         <h2 id="passes-h" className={SECTION_HEADING}>{t('member.passes')}</h2>

@@ -28,6 +28,7 @@ import { CARD_DELAY_MS, CARD_FADE_MS, CURVES, FROM } from '@shared/brand/entranc
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
+import EmailTypoHint from '../../components/EmailTypoHint'
 import ConsentText from '../../components/ConsentText'
 import { ENTRANCE_SPRING, useEntrance } from '../../components/Entrance'
 import Notice from '../../components/Notice'
@@ -108,6 +109,8 @@ export default function LoginScreen() {
   // email is already filled in, so only the password is left to type.
   const { prefillEmail, clearPrefillEmail } = useAppLock()
   const [email, setEmail] = useState(() => prefillEmail ?? '')
+  // The sign-up typo hint waits until the email field is left.
+  const [emailLeft, setEmailLeft] = useState(false)
   const [password, setPassword] = useState('')
   // Kept as a key so the message follows a language switch.
   const [error, setError] = useState<AuthErrorDescription | null>(null)
@@ -527,8 +530,10 @@ export default function LoginScreen() {
                           value={email}
                           onChangeText={(v) => {
                             setEmail(v)
+                            setEmailLeft(false)
                             clearSignUpError('email')
                           }}
+                          onBlur={() => setEmailLeft(true)}
                           ref={(el) => {
                             signUpRefs.current.email = el
                           }}
@@ -539,6 +544,15 @@ export default function LoginScreen() {
                           keyboardType="email-address"
                           textContentType="emailAddress"
                           returnKeyType="next"
+                        />
+                        <EmailTypoHint
+                          value={emailLeft ? email : ''}
+                          message={t('email_didYouMean')}
+                          actionLabel={t('email_useSuggestion')}
+                          onApply={(fixed) => {
+                            setEmail(fixed)
+                            setEmailLeft(false)
+                          }}
                         />
                         <TextField
                           label={t('onb_createPasswordLabel')}

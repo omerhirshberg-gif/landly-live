@@ -137,7 +137,7 @@ export default function VoucherPage() {
                       </>
                     ) : (
                       <p role="status" className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-semibold text-slate-600">
-                        {t('voucher_already_redeemed')}
+                        {t(voucher.status === 'cancelled' ? 'voucher_cancelled' : 'voucher_already_redeemed')}
                       </p>
                     )}
                     {/* Vouchers issued before order numbering have none to show. */}

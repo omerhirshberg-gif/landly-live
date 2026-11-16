@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 import { EMPTY_LANDING, toLandingData } from '@/lib/home/landingData'
@@ -14,7 +14,7 @@ import AudienceCards from '@/components/landing/AudienceCards'
 import StoreButtons from '@/components/landing/StoreButtons'
 import BottomCta from '@/components/landing/BottomCta'
 import LandingHero from '@/components/landing/LandingHero'
-import IsraelLifestyleCollage from '@/components/landing/IsraelLifestyleCollage'
+import DiagonalImageMarquee, { COL_PHOTOS, ROW_PHOTOS } from '@/components/landing/DiagonalImageMarquee'
 import { settledImage } from '@/components/discover/useDealImage'
 import { dealImageRole } from '@/lib/offers/dealImage'
 import { distinctDescription } from '@/lib/offers/offerText'
@@ -138,21 +138,24 @@ describe('luxury Bento surfaces', () => {
 })
 
 describe('hero', () => {
-  it('is a copy column and a photo collage column from lg, one stack on phones, with no glow blob', () => {
+  it('is a copy column and a photo marquee column from lg, one stack on phones, with no glow blob', () => {
     const html = withLang('he', createElement(LandingHero))
-    expect(html).toContain('lg:grid-cols-12')
-    expect(html).toContain('max-w-[1240px]')
-    expect(html.match(/lg:col-span-6/g)).toHaveLength(2)
+    expect(html).toContain('lg:grid-cols-2')
+    expect(html).toContain('lg:self-stretch')
+    expect(html).toContain('lg:min-h-[620px]')
+    expect(html).not.toContain('lg:end-0')
+    expect(html).toContain('border-b border-slate-200/70')
+    expect(html).toContain('lg:overflow-hidden')
+    expect(html).toContain('max-w-[1200px]')
     expect(html).not.toMatch(/hero-float|hero-flow|blur-3xl|radial-gradient/)
     expect(read('app/globals.css')).not.toMatch(/hero-float|hero-flow/)
   })
 
-  it('opens on the free-pass trust badge, over a pure four-photo gallery with no offer card in it', () => {
+  it('opens on the free-pass trust badge, beside a photo marquee with no offer card in it', () => {
     expect(withLang('en', createElement(LandingHero))).toContain(translations.en.landing_free_badge)
-    const collage = read('components/landing/IsraelLifestyleCollage.tsx')
-    expect(collage).not.toMatch(/OfferCard|deal/)
-    for (const name of ['beach', 'cafe', 'market', 'life']) expect(collage).toContain(`'${name}'`)
-    expect(collage).toContain('grid-cols-2 gap-3')
+    const marquee = read('components/landing/DiagonalImageMarquee.tsx')
+    expect(marquee).not.toMatch(/OfferCard|deal/)
+    expect(withLang('en', createElement(LandingHero))).toContain('class="marquee-frame')
   })
 
   it('draws the three value cards as white cards with a coloured start-edge corner bracket and no numbers', () => {
@@ -162,17 +165,142 @@ describe('hero', () => {
     expect(html).not.toMatch(/>0[123]<\/span>/)
   })
 
-  it('tilts the four photo prints (mirrored in RTL) and floats them without the forbidden class names or motion under Reduce Motion', () => {
-    const html = withLang('he', createElement(IsraelLifestyleCollage))
-    expect(html.match(/rtl:-?rotate-\[1\.\d+deg\]/g)).toHaveLength(4)
-    expect(html.match(/class="collage-drift[ "]/g)).toHaveLength(4)
-    expect(html).toContain('max-w-[640px]')
-    expect(html).not.toContain('alt=""')
-    expect(html).toContain(translations.he.landing_collage_alt_cafe)
-    expect(withLang('en', createElement(IsraelLifestyleCollage))).toContain(translations.en.landing_collage_alt_cafe)
+  it('runs three diagonal columns and two ribbons of the forty-two photos, each track twice for a seamless loop, under one localized label per variant', () => {
+    const html = withLang('he', createElement(DiagonalImageMarquee))
+    expect(html.match(/<ul class="marquee-copy"/g)).toHaveLength(6)
+    // Each diagonal column: fourteen distinct photos, twice = 28 cards.
+    for (const col of html.split('marquee-col marquee-col--').slice(1)) expect(col.split('marquee-ribbon')[0].match(/<img /g)!.length).toBeGreaterThanOrEqual(28)
+    expect(html.match(/<ul class="marquee-copy" aria-hidden="true"/g)).toHaveLength(3)
+    expect(html.match(/<ul class="marquee-rcopy"/g)).toHaveLength(4)
+    expect(html.match(/<ul class="marquee-rcopy" aria-hidden="true"/g)).toHaveLength(2)
+    // 3 columns x 28 cards + 2 ribbons x 42 cards.
+    expect(html.match(/<img /g)).toHaveLength(168)
+    expect(html.match(/loading="lazy"/g)).toHaveLength(168)
+    expect(new Set(html.match(/\/images\/hero-marquee\/[a-z-]+\.webp 720w/g)).size).toBe(42)
+    expect(html.match(/alt=""/g)).toHaveLength(168)
+    expect(html.match(new RegExp(`role="img" aria-label="${translations.he.landing_marquee_alt}"`, 'g'))).toHaveLength(2)
+    expect(html).toContain('marquee-col marquee-col--up"')
+    expect(html).toContain('marquee-col marquee-col--down"')
+    expect(html).toContain('marquee-col marquee-col--up2"')
+    expect(html).toContain('marquee-stage hidden lg:block')
+    expect(html).toContain('marquee-ribbon -mx-4 sm:-mx-6 lg:hidden')
+    expect(html).not.toMatch(/(?:src|srcSet|imageSrcSet)="https?:/i)
+    for (const lang of Object.keys(translations) as Lang[]) {
+      for (const key of ['landing_marquee_alt', 'landing_marquee_pause', 'landing_marquee_play', 'landing_tiles_label'] as const) expect(translations[lang][key], `${lang} ${key}`).toBeTruthy()
+    }
+  })
+
+  it('gives every desktop column and every mobile ribbon its own photos: 14/14/14 and 21/21, 42 unique, no photo in two tracks, every file on disk', () => {
+    const { up, down, up2 } = COL_PHOTOS
+    const { a, b } = ROW_PHOTOS
+    const cols = [up, down, up2]
+    for (const col of cols) {
+      expect(col).toHaveLength(14)
+      expect(new Set(col).size).toBe(14)
+    }
+    expect(a).toHaveLength(21)
+    expect(b).toHaveLength(21)
+    expect(new Set(a).size).toBe(21)
+    expect(new Set(b).size).toBe(21)
+    const overlap = (x: readonly string[], y: readonly string[]) => x.filter((id) => y.includes(id))
+    expect(overlap(up, down)).toEqual([])
+    expect(overlap(up, up2)).toEqual([])
+    expect(overlap(down, up2)).toEqual([])
+    expect(overlap(a, b)).toEqual([])
+    const all = [...up, ...down, ...up2]
+    expect(new Set(all).size).toBe(42)
+    expect([...all].sort()).toEqual([...a, ...b].sort())
+    for (const id of all) {
+      for (const file of [`${id}.webp`, `${id}-sm.webp`]) expect(existsSync(`public/images/hero-marquee/${file}`), file).toBe(true)
+    }
+  })
+
+  it('has a 44px pause button that names its action in the reader\'s language', () => {
+    const html = withLang('en', createElement(DiagonalImageMarquee))
+    expect(html).toContain(`aria-pressed="false" aria-label="${translations.en.landing_marquee_pause}"`)
+    expect(html).toContain('class="marquee-toggle"')
+    expect(read('app/globals.css')).toMatch(/\.marquee-toggle\{[^}]*height:44px;width:44px/)
+  })
+
+  it('moves the columns up / down / up at 119s, 140s and 130s by one copy, tilts them -11deg (mirrored in Hebrew) and a crisp, unmasked stage', () => {
     const css = read('app/globals.css')
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\{\.collage-drift\{animation:none/)
-    expect(css).toContain('translate3d(0,-5px,0)')
+    expect(css).toContain('@keyframes marquee-up{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-50%,0)}}')
+    expect(css).toContain('@keyframes marquee-down{from{transform:translate3d(0,-50%,0)}to{transform:translate3d(0,0,0)}}')
+    expect(css).toMatch(/\.marquee-col--down \.marquee-track\{animation-name:marquee-down;animation-duration:140s\}/)
+    expect(css).toMatch(/\.marquee-col--up2 \.marquee-track\{animation-duration:130s\}/)
+    expect(css).toMatch(/\.marquee-track\{[^}]*animation:marquee-up 119s linear infinite/)
+    expect(css).toMatch(/\.marquee-tilt\{[^}]*transform:rotate\(-11deg\)/)
+    expect(css).toContain('[dir="rtl"] .marquee-tilt{transform:rotate(11deg)}')
+    const stage = css.match(/\.marquee-stage\{[^}]*\}/)![0]
+    expect(stage).toContain('height:100%;overflow:hidden;isolation:isolate;contain:paint')
+    // Crisp, full-opacity photos edge to edge: no mask, fade, border, shadow or radius on the stage.
+    expect(stage).not.toMatch(/mask|gradient|opacity|border|radius|shadow/)
+    expect(css).toContain('.marquee-stage{margin-inline:-5rem;clip-path:polygon(0% 0%,79% 0%,100% 100%,21% 100%)}')
+    expect(css).toContain('[dir="rtl"] .marquee-stage{clip-path:polygon(21% 0%,100% 0%,79% 100%,0% 100%)}')
+    expect(css).toMatch(/\.marquee-toggle\{[^}]*background:#fff[^}]*\}/)
+    // The 44px pause button sits on the open canvas at the bottom-end corner (outside the slant from 1440px, at the empty start corner below that), never inside the stage.
+    expect(css).toContain('@media (min-width:1024px){.marquee-toggle{position:absolute;inset-inline-start:-4.5rem;bottom:.75rem;margin:0}}')
+    expect(css).toContain('@media (min-width:1440px){.marquee-toggle{inset-inline-start:auto;inset-inline-end:calc(-5rem - 44px - .5rem)}}')
+    expect(css).toContain('.marquee-tilt{position:absolute;inset-inline:-12%;top:-23%;bottom:-23%;')
+    const card = css.match(/\.marquee-card\{[^}]*\}/)![0]
+    expect(card).toContain('border-radius:.625rem')
+    expect(card).not.toMatch(/border:|box-shadow/)
+    expect(css.match(/\.marquee-ribbon\{[^}]*\}/)![0]).not.toMatch(/mask/)
+    expect(css).toContain('.marquee-col{flex:0 0 clamp(128px,10.5vw,160px)')
+    expect(css).toContain('gap:var(--marquee-gap)')
+    expect(css).toContain('.marquee-frame{--marquee-gap:.625rem')
+      })
+
+  it('drifts the two ribbons opposite ways (swapped in Hebrew), with no edge fade', () => {
+    const css = read('app/globals.css')
+    expect(css).toContain('@keyframes marquee-left{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}')
+    expect(css).toContain('@keyframes marquee-right{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}')
+    expect(css).toMatch(/\.marquee-row\{[^}]*animation:marquee-left 210s linear infinite/)
+    expect(css).toContain('.marquee-row--b{animation-name:marquee-right;animation-duration:238s}')
+    expect(css).toContain('[dir="rtl"] .marquee-row--a{animation-name:marquee-right}')
+    expect(css).toContain('[dir="rtl"] .marquee-row--b{animation-name:marquee-left}')
+    expect(css.match(/\.marquee-ribbon\{[^}]*\}/)![0]).not.toMatch(/mask/)
+  })
+
+  it('pauses on hover devices and by the button, and stands still without the second copy or the button under Reduce Motion', () => {
+    const css = read('app/globals.css')
+    expect(css).toContain('@media (hover:hover){.marquee-stage:hover .marquee-track,.marquee-ribbon:hover .marquee-row{animation-play-state:paused}}')
+    expect(css).toContain('.marquee-frame.is-paused .marquee-track,.marquee-frame.is-paused .marquee-row{animation-play-state:paused}')
+    const rm = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce){\n  .marquee-track'))
+    expect(rm).toContain('.marquee-track,.marquee-col--down .marquee-track,.marquee-row,.marquee-row--b{animation:none')
+    expect(rm).toContain('[dir="rtl"] .marquee-row--a,[dir="rtl"] .marquee-row--b{animation:none}')
+    expect(rm).toContain('.marquee-copy[aria-hidden="true"],.marquee-rcopy[aria-hidden="true"]{display:none}')
+    expect(rm).toContain('.marquee-toggle{display:none}')
+    // The button is the keyboard's way to pause: a :focus-within pause would stop Play from working.
+    expect(css).not.toMatch(/marquee[^{]*:focus-within/)
+    expect(css).not.toContain('collage-drift')
+  })
+
+  it('turns the value cards into a compact snap strip below sm, a three-column grid from sm, with room above the floating buttons', () => {
+    const hero = read('components/landing/LandingHero.tsx')
+    expect(hero).toContain('snap-x snap-mandatory')
+    expect(hero).toContain('overflow-x-auto')
+    expect(hero).toContain('basis-[78%] snap-start')
+    expect(hero).toContain('sm:grid sm:w-full sm:grid-cols-3')
+    expect(hero).toContain('h-10 w-10')
+    expect(hero).toContain('pb-[var(--floating-base)]')
+    expect(hero).toContain('mt-6 mb-10 lg:z-0')
+    expect(read('app/globals.css')).toContain('.marquee-rcopy .marquee-card{width:8.25rem}')
+    expect(withLang('he', createElement(LandingHero))).toContain(`aria-label="${translations.he.landing_tiles_label}"`)
+  })
+
+  it('ships both sizes of all twelve photos, and the old gallery is gone', () => {
+    const names = ['beach', 'mezze-plate', 'boutique-interior', 'life', 'dinner-wine', 'fashion-rack', 'cafe', 'wellness-studio', 'rooftop-bar', 'market', 'wellness-corner', 'cocktail-bar']
+    const licences = read('docs/IMAGE_LICENSES.md')
+    for (const name of names) {
+      for (const suffix of ['', '-sm']) {
+        expect(statSync(`public/images/hero-marquee/${name}${suffix}.webp`).size, `${name}${suffix}`).toBeGreaterThan(5_000)
+        expect(licences).toContain(`\`${name}${suffix}.webp\``)
+      }
+      expect(licences).toContain(`| \`${name}\` |`)
+    }
+    expect(existsSync('components/landing/IsraelLifestyleCollage.tsx')).toBe(false)
+    expect(existsSync('public/images/hero')).toBe(false)
   })
 
   it('accents the title’s second line in every language, with room for Hebrew descenders', () => {

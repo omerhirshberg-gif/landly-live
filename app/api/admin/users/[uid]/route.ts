@@ -3,7 +3,9 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { requireAdminAuth } from '@/lib/admin/adminAuth'
 import { UserActionError, changeUserStatus } from '@/lib/account/adminUserActions'
 import { USER_STATUSES, kycTierOf, parseUserStatus, passIdFor } from '@/lib/admin/userStatus'
-import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
+import { getAdminAuth, getAdminBucket, getAdminDb } from '@/lib/firebase/admin'
+import { deleteUserPermanently } from '@/lib/users/deleteUserPermanently.server'
+import { loadDeletionPreview } from '@/lib/users/deletionPreview.server'
 
 const iso = (value: unknown) => (value instanceof Timestamp ? value.toDate().toISOString() : null)
 
@@ -19,6 +21,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ uid:
   const { uid } = await params
   if (!/^[A-Za-z0-9_-]{6,128}$/.test(uid)) return NextResponse.json({ error: 'Invalid member.' }, { status: 400 })
   const db = getAdminDb()
+  // ?preview=1: what permanent deletion would do, for the confirmation dialog.
+  if (new URL(request.url).searchParams.get('preview') === '1') {
+    const preview = await loadDeletionPreview(db, getAdminAuth(), uid)
+    if (!preview) return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
+    return NextResponse.json({ ...preview, isBusiness: (await db.collection('businesses').doc(uid).get()).exists }, { headers: { 'Cache-Control': 'no-store' } })
+  }
   const userSnap = await db.collection('users').doc(uid).get()
   if (!userSnap.exists) return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
   const user = userSnap.data()!
@@ -60,5 +68,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
     if (err instanceof UserActionError) return NextResponse.json({ error: err.message }, { status: err.status })
     console.error('User status change failed', err)
     return NextResponse.json({ error: 'Could not change the status.' }, { status: 500 })
+  }
+}
+
+// DELETE {confirm: 'DELETE', refundAcknowledged}: permanent erasure of one member
+// (lib/users/deleteUserPermanently.server.ts). The typed word is checked here as
+// well as in the dialog, and a member with paid, unredeemed vouchers needs the
+// admin's refund acknowledgment (409 otherwise).
+export async function DELETE(request: Request, { params }: { params: Promise<{ uid: string }> }) {
+  const authError = requireAdminAuth(request)
+  if (authError) return authError
+  const { uid } = await params
+  const body = await request.json().catch(() => null)
+  if (!body || body.confirm !== 'DELETE') return NextResponse.json({ error: 'Type DELETE to confirm.' }, { status: 400 })
+  try {
+    const summary = await deleteUserPermanently(
+      { db: getAdminDb(), auth: getAdminAuth(), bucket: getAdminBucket() }, request, uid, { refundAcknowledged: body.refundAcknowledged === true },
+    )
+    return NextResponse.json({ ok: true, summary }, { headers: { 'Cache-Control': 'no-store' } })
+  } catch (err) {
+    if (err instanceof UserActionError) return NextResponse.json({ error: err.message }, { status: err.status })
+    console.error('Permanent user delete failed', err instanceof Error ? err.message : 'unknown error')
+    return NextResponse.json({ error: 'Could not delete the member. Nothing further was removed; try again.' }, { status: 500 })
   }
 }

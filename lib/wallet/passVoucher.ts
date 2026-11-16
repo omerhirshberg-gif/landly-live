@@ -5,6 +5,7 @@ import type { VoucherDocument } from '@/lib/firebase/vouchers'
 import { parseCoordinates, parsePlaceSnapshot } from '@/lib/geo'
 import { parseOfferTranslations } from '@/lib/offers/offerText'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '@/lib/offers/redemption'
+import { parseVoucherStatus } from '@/lib/vouchers/status'
 import { normalizeDisplayOrderNumber } from '@/lib/payments/orderNumber'
 import { normalizeRedemptionTerms } from '@/lib/payments/voucherTerms'
 
@@ -33,7 +34,7 @@ export function readPassVoucher(snap: DocumentSnapshot): PassVoucher | null {
     offerTitle: typeof data.offerTitle === 'string' ? data.offerTitle : '',
     redemptionCode: typeof data.redemptionCode === 'string' ? data.redemptionCode : '',
     redeemToken: typeof token === 'string' && REDEEM_TOKEN_PATTERN.test(token) ? token : null,
-    status: data.status === 'redeemed' || data.status === 'refunded' ? data.status : 'active',
+    status: parseVoucherStatus(data.status),
     expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toDate() : null,
     redemptionTerms: normalizeRedemptionTerms(data.redemptionTerms),
     redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),

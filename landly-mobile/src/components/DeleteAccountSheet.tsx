@@ -161,6 +161,7 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
             ) : (
               <>
                 <AppText style={styles.intro}>{t('del_intro')}</AppText>
+                <AppText style={styles.intro}>{t('del_vouchers_note')}</AppText>
                 {confirmWithApple && <AppText style={styles.intro}>{t('del_apple_note')}</AppText>}
 
                 <View style={styles.card}>

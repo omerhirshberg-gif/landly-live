@@ -31,6 +31,10 @@ vi.mock('@/lib/firebase/admin', () => ({
   }),
 }))
 
+vi.mock('@/lib/usage/exchangeRate.server', () => ({
+  getUsdIlsRate: async () => ({ usdToIls: 3.7, updatedAt: null, source: 'default', stale: false, verifiedAt: '2026-10' }),
+}))
+
 import { GET } from '@/app/api/admin/usage/route'
 import { reportLines, type UsageReport } from '@/lib/usage/usageReport'
 

@@ -280,3 +280,59 @@ throttle and the 24-hour silence after Talk to Team):
 node scripts/whatsapp-reset-conversation.mjs --project <projectId> --number=+9725XXXXXXXX          # dry run
 node scripts/whatsapp-reset-conversation.mjs --project <projectId> --number=+9725XXXXXXXX --apply
 ```
+
+## Monthly Usage & Costs email and the live USD/ILS rate
+
+On the 1st of every month at 05:00 UTC (08:00 in Israel) Vercel Cron
+(`vercel.json`, Production only) calls `/api/cron/monthly-costs-report`, which
+emails the Usage & Costs summary of the month that just ended (UTC) to
+`COSTS_REPORT_EMAIL` (default `contact@golandly.com`) through Resend: an HTML
+table (net, 18% VAT and total in shekels per service) and the attachment
+`golandly-costs-YYYY-MM.csv` (UTF-8 BOM, opens in Excel). A lock document
+`system_config/monthly_costs_report_YYYY-MM` makes a retried or duplicated
+trigger send once. `/admin/system/costs` has a "Send monthly report to email"
+button that sends any month on demand (no lock, one send per 30 s).
+
+| Variable | DEV (`landly-dev`) | PROD (`landly-be752`) |
+| --- | --- | --- |
+| `CRON_SECRET` | Only to run the route by hand against a local or Preview deployment. | Required (Vercel Cron sends it as a bearer token); without it the route answers 503. |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Optional: DEV never emails the report, it is simulated and counted as `resend.simulated`. | Required, with `EMAIL_FROM` a verified Resend sender. |
+| `COSTS_REPORT_EMAIL` | Not used. | Optional recipient, default `contact@golandly.com`. |
+
+Dollar prices (Google) are converted at a live USD/ILS rate: the Bank of
+Israel representative rate, then Frankfurter, cached 12 hours in memory and in
+`system_config/usd_ils_rate` of each environment's own Firebase project; if
+both fail the last stored rate is used, and 3.70 only if none was ever stored.
+The page and the email show the rate and its date. `firestore.rules` denies
+clients the whole `system_config` collection; deploy the rules to both
+projects (DEV and PROD) after review.
+
+### Fixed subscriptions and Tranzila in Usage & Costs
+
+`/admin/system/costs` and the monthly email also list the flat plan fees and
+platform tiers, so the totals cover the whole month's outlay (metered APIs,
+fixed subscriptions, and both together, each with 18% VAT):
+
+- **Vercel Pro** defaults to $20 a month, converted at the live USD/ILS rate and
+  counted in every month. Edit the amount, currency or on/off on the page; it is
+  saved (and audited) in `system_config/fixed_subscriptions` of that environment's
+  Firebase project, so DEV and PROD each keep their own. Label: plan fee only,
+  overages are not metered. Apple Developer, Google Play and the domain are not
+  monthly costs and are left out.
+- **Resend** shows the month's emails against the 3,000 free ones; past that the
+  extra emails are billed in the metered Resend line, not twice.
+- **Tranzila** shows "not configured" and ₪0.00 while `TRANZILA_TERMINAL` is
+  unset. Once it is set, the month's paid orders (sandbox ones excluded) are
+  counted and the fee is `TRANZILA_FEE` in `lib/usage/pricing.ts`
+  (`perTransactionIls` plus `percent` of the volume), both 0 until the contracted
+  rates are put in that file. This reads `orders` by `status` and `paidAt`, which
+  needs the index added to `firebase.indexes.json`:
+
+```
+firebase deploy --only firestore:indexes --project landly-dev
+firebase deploy --only firestore:indexes --project landly-be752
+```
+
+Until the index is built the Tranzila row says the orders could not be read
+(its fee shows as zero) instead of failing the page. Deploy `firestore.rules`
+the same way if the `system_config` rule from the monthly report is not live yet.

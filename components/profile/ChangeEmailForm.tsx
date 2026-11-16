@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { EmailAuthProvider, reauthenticateWithCredential, type User } from 'firebase/auth'
 import { CONTACT_CHANGE_FAILED, contactChangeErrorKey, requestEmailChange } from '@/lib/account/contactChange'
 import { getAuthErrorMessage } from '@/lib/firebase/authErrors'
+import EmailTypoHint from '@/components/forms/EmailTypoHint'
 import { useLang } from '@/lib/i18n/useLang'
+import { isValidEmail } from '@/lib/validation/email'
 
 // The panel behind "Change" in Edit profile's email box on /profile
 // (email+password members only; app: components/ChangeEmailForm.tsx).
@@ -28,12 +30,17 @@ export default function ChangeEmailForm({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [emailLeft, setEmailLeft] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const newEmail = email.trim()
     if (!newEmail || !password || busy) return
+    if (!isValidEmail(newEmail.toLowerCase())) {
+      setError(t('onb_emailInvalid'))
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -89,9 +96,20 @@ export default function ChangeEmailForm({
           value={email}
           onChange={(e) => {
             setEmail(e.target.value)
+            setEmailLeft(false)
             setError(null)
           }}
+          onBlur={() => setEmailLeft(true)}
           className={field}
+        />
+        <EmailTypoHint
+          value={emailLeft ? email : ''}
+          message={t('email_didYouMean')}
+          actionLabel={t('email_useSuggestion')}
+          onApply={(fixed) => {
+            setEmail(fixed)
+            setEmailLeft(false)
+          }}
         />
       </div>
       <div>

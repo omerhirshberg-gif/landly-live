@@ -90,6 +90,7 @@ export default function DeleteAccountForm({ user, onLeave }: { user: User; onLea
       ) : (
         <form onSubmit={submit} className="space-y-4">
           <p className="text-copy text-body">{t('del_intro')}</p>
+          <p className="text-copy text-body">{t('del_vouchers_note')}</p>
           {appleAccount && <p className="text-copy text-body">{t('del_apple_note')}</p>}
 
           <div>

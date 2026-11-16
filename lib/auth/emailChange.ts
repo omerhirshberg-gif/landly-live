@@ -12,11 +12,6 @@ import 'server-only'
 /** Changing the address needs a sign-in (password re-entry) this recent. */
 export const RECENT_SIGN_IN_SECONDS = 5 * 60
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Trimmed and lowercased, or null when it isn't a plausible address.
+export { normalizeEmail } from '@/lib/validation/email'
 
-/** Trimmed and lowercased, or null when it isn't a plausible address. */
-export function normalizeEmail(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const email = value.trim().toLowerCase()
-  return email.length <= 254 && EMAIL_PATTERN.test(email) ? email : null
-}

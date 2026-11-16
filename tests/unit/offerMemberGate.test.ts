@@ -76,7 +76,7 @@ describe('guest home background', () => {
     expect(read('app/globals.css')).toContain(':root{--canvas:#F8FAFC;')
     expect(read('components/home/HowItWorks.tsx')).toContain('<section id="how" className="bg-slate-50 py-8 sm:py-10 lg:py-12">')
     // The navbar is translucent, so the sky tone shows through at the top.
-    expect(read('components/layout/Navbar.tsx')).toContain('bg-white/70 backdrop-blur-md border-b border-line/60')
+    expect(read('components/layout/Navbar.tsx')).toContain('bg-white/80 backdrop-blur-md border-b border-slate-200/60')
     expect(read('components/home/Hero.tsx')).not.toContain('radial-gradient')
     expect(read('components/home/ValueProps.tsx')).toContain('<section id="deals" className="py-12 sm:py-14 lg:py-16">')
     expect(read('components/home/PerkExamples.tsx')).toContain('className="py-12 sm:py-14 lg:py-16"')

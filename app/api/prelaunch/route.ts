@@ -6,6 +6,7 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { joinWaitlist, newLeadId } from '@/lib/prelaunch/leads.server'
 import { reservePrelaunchAttempt } from '@/lib/prelaunch/throttle.server'
 import { parseLeadSubmission } from '@/lib/prelaunch/validation'
+import { checkMailDomain } from '@/lib/validation/emailDns.server'
 
 // Public: the /join waiting-list form. Bad requests are turned away before any
 // Firestore work, so garbage costs nothing; a sign-up then passes the IP window
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
     const db = getAdminDb()
     if (!(await reservePrelaunchAttempt(db, clientIp(request)))) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+    }
+    // A domain that cannot receive mail (a typo like icloiud.com) would only bounce the welcome email.
+    if ((await checkMailDomain(lead.email)) === 'invalid') {
+      return NextResponse.json({ error: 'email_domain' }, { status: 422 })
     }
     const { leadId, created } = await joinWaitlist(db, lead)
     if (created) {

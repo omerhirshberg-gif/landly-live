@@ -2,13 +2,9 @@
 // /api/business/inquiry) before their fields reach an email, and by the /join
 // form (lib/prelaunch/validation.ts), which also runs in the browser.
 
-// Same shape the browser's type="email" accepts, minus anything that could
-// break the reply-to header.
-const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]+$/
-
-export function isValidEmail(value: string, maxLength = 254): boolean {
-  return value.length <= maxLength && EMAIL_RE.test(value)
-}
+// The shape check is shared product-wide (lib/validation/email.ts); it also
+// rejects anything that could break a reply-to header.
+export { isValidEmail } from '@/lib/validation/email'
 
 /** One line: control characters (incl. CR/LF) become spaces, whitespace collapses. */
 export function singleLine(value: string): string {

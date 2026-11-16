@@ -15,6 +15,9 @@ import { WAITLIST_WELCOME_COPY, renderWaitlistWelcomeEmail, sendWaitlistWelcomeE
 import { escapeHtml } from '@/lib/email/brandedEmail'
 import { translations, type Lang } from '@/lib/i18n/translations'
 
+// Real DNS is never queried in tests.
+vi.mock('@/lib/validation/emailDns.server', () => ({ checkMailDomain: async () => 'ok' }))
+
 const LANGS: Lang[] = ['en', 'he', 'ru', 'fr', 'es']
 const LEAD = { firstName: 'Noa', lastName: 'Cohen', phone: '+972501234567', email: 'noa@example.com', lang: 'he' }
 const PATH = 'prelaunch_leads/lead1'
