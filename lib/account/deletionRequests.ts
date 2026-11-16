@@ -19,7 +19,8 @@ export interface DeletionRecord {
   /** What the member's device reported about their Sign in with Apple tokens; null for other accounts. */
   appleRevocation: AppleRevocation | null
   requestedAt: Date
-  status: 'pending'
+  /** 'completed' once an admin has permanently deleted the account (lib/users/deleteUserPermanently.server.ts). */
+  status: 'pending' | 'completed'
 }
 
 function millis(value: unknown): number | null {

@@ -7,6 +7,7 @@ import { LANGUAGES } from '@/lib/i18n/languages'
 import { isPrelaunchLang, PERSONAS, PRELAUNCH_COPY, REFERRAL_SOURCES, type Persona, type PrelaunchLang, type ReferralSource } from '@/lib/prelaunch/copy'
 import type { JoinedLead } from '@/lib/prelaunch/share'
 import type { ArrivalTelemetry } from '@/lib/prelaunch/telemetry'
+import EmailTypoHint from '@/components/forms/EmailTypoHint'
 import { leadFormErrors, MAX_NAME_LENGTH, MAX_PERSONA_OTHER_LENGTH, type LeadErrors, type LeadField, type LeadFormValues } from '@/lib/prelaunch/validation'
 
 const EMPTY_VALUES: LeadFormValues = { firstName: '', lastName: '', phone: '', email: '', consent: false }
@@ -100,6 +101,10 @@ export default function LeadForm({
   const [errors, setErrors] = useState<LeadErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // The server said the address's domain cannot receive mail (until the address is edited).
+  const [emailDomainError, setEmailDomainError] = useState(false)
+  // The typo hint waits until the field is left, so a half-typed domain never gets one.
+  const [emailLeft, setEmailLeft] = useState(false)
   const [persona, setPersona] = useState<Persona | ''>('')
   const [personaOther, setPersonaOther] = useState('')
   const [preferredLanguage, setPreferredLanguage] = useState<PrelaunchLang>(lang)
@@ -134,6 +139,10 @@ export default function LeadForm({
   const change = (patch: Partial<LeadFormValues>, field: LeadField) => {
     const next = { ...values, ...patch }
     setValues(next)
+    if (field === 'email') {
+      setEmailDomainError(false)
+      setEmailLeft(false)
+    }
     setFormError(null)
     // Only ever clears here: a half-typed field isn't wrong until it's left.
     if (errors[field] && !leadFormErrors(next)[field]) setErrors((current) => ({ ...current, [field]: undefined }))
@@ -171,6 +180,12 @@ export default function LeadForm({
       const result = await response.json().catch(() => null)
       if (response.ok && typeof result?.referralCode === 'string') {
         onJoined({ referralCode: result.referralCode, firstName: values.firstName.trim() })
+        return
+      }
+      if (response.status === 422 && result?.error === 'email_domain') {
+        setErrors((current) => ({ ...current, email: true }))
+        setEmailDomainError(true)
+        formRef.current?.querySelector<HTMLElement>('[data-field="email"]')?.focus()
         return
       }
       setFormError(response.status === 429 ? copy.errRateLimited : copy.errGeneric)
@@ -275,10 +290,20 @@ export default function LeadForm({
             aria-describedby={errors.email ? 'join-email-error' : undefined}
             value={values.email}
             onChange={(event) => change({ email: event.target.value }, 'email')}
-            onBlur={() => checkField('email')}
+            onBlur={() => {
+              setEmailLeft(true)
+              checkField('email')
+            }}
             className={`${FIELD_CLASS} ${errors.email ? INVALID_CLASS : VALID_CLASS}`}
           />
-          {errors.email && <FieldError id="join-email-error" message={copy.errEmail} />}
+          {errors.email && <FieldError id="join-email-error" message={emailDomainError ? copy.errEmailDomain : copy.errEmail} />}
+          <EmailTypoHint
+            id="join-email-hint"
+            value={emailLeft ? values.email : ''}
+            message={copy.emailDidYouMean}
+            actionLabel={copy.emailUseSuggestion}
+            onApply={(email) => change({ email }, 'email')}
+          />
         </div>
 
         <div>

@@ -24,6 +24,6 @@ export async function applyUnsubscribe(rawEmail: string): Promise<void> {
   const memberPatch = { marketingOptIn: false, unsubscribedAt: FieldValue.serverTimestamp() }
   for (const doc of users.docs) batch.set(doc.ref, memberPatch, { merge: true })
   for (const doc of leads.docs) batch.set(doc.ref, { ...memberPatch, unsubscribed: true }, { merge: true })
-  batch.set(db.collection(SUPPRESSIONS_COLLECTION).doc(emailHash(email)), { unsubscribedAt: FieldValue.serverTimestamp() }, { merge: true })
+  batch.set(db.collection(SUPPRESSIONS_COLLECTION).doc(emailHash(email)), { unsubscribedAt: FieldValue.serverTimestamp(), reason: 'unsubscribe' }, { merge: true })
   await batch.commit()
 }

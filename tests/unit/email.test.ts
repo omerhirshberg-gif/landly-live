@@ -30,6 +30,9 @@ import { POST as reset } from '@/app/api/auth/forgot-password/route'
 import { OPTIONS as verifyPreflight, POST as verify } from '@/app/api/auth/send-verification/route'
 import { RequestAuthError } from '@/lib/firebase/verifyRequestUser'
 
+// Real DNS is never queried in tests.
+vi.mock('@/lib/validation/emailDns.server', () => ({ checkMailDomain: async () => 'ok' }))
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('APP_URL', 'https://landly.test/')

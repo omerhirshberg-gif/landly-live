@@ -5,6 +5,9 @@ vi.mock('@/lib/email/sendPasswordResetEmail', () => ({ sendPasswordResetEmail: m
 vi.mock('@/lib/auth/passwordResetRateLimit', () => ({ isPasswordResetRateLimited: mocks.limited }))
 vi.mock('@/lib/auth/requestContext', () => ({ applicationOrigin: () => 'https://test.invalid', isValidLang: (value: unknown) => value === 'en' }))
 import { POST } from '@/app/api/auth/forgot-password/route'
+
+// Real DNS is never queried in tests.
+vi.mock('@/lib/validation/emailDns.server', () => ({ checkMailDomain: async () => 'ok' }))
 beforeEach(() => {
   vi.useFakeTimers(); vi.resetAllMocks()
   mocks.generate.mockResolvedValue('https://firebase.invalid/__/auth/action?mode=resetPassword&oobCode=code')

@@ -123,7 +123,7 @@ export default function VoucherScreen() {
                     <AddToAppleWallet voucher={voucher} />
                   </>
                 ) : (
-                  <AppText style={styles.redeemed} accessibilityLiveRegion="polite">{t('voucher_already_redeemed')}</AppText>
+                  <AppText style={styles.redeemed} accessibilityLiveRegion="polite">{t(voucher.status === 'cancelled' ? 'voucher_cancelled' : 'voucher_already_redeemed')}</AppText>
                 )}
                 {/* Vouchers issued before order numbering have none to show. */}
                 {voucher.displayOrderNumber && (

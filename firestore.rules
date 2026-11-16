@@ -213,6 +213,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Server-side configuration and locks (system_config/usd_ils_rate, the
+    // monthly costs report lock), written and read through the Admin SDK only.
+    match /system_config/{docId} {
+      allow read, write: if false;
+    }
+
     // Fixed-window request counters (lib/auth/durableRateLimit.server.ts) and the
     // sharded order counters (lib/payments/orderNumber.ts), written by the
     // servers only. No client may read or write them.

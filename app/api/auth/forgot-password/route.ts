@@ -4,6 +4,8 @@ import { sendPasswordResetEmail } from '@/lib/email/sendPasswordResetEmail'
 import type { Lang } from '@/lib/i18n/translations'
 import { isPasswordResetRateLimited } from '@/lib/auth/passwordResetRateLimit'
 import { isValidLang, applicationOrigin } from '@/lib/auth/requestContext'
+import { isValidEmail } from '@/lib/validation/email'
+import { checkMailDomain } from '@/lib/validation/emailDns.server'
 
 // A common response and minimum duration reduce account enumeration signals.
 // Upstream calls exceeding the floor can still reveal timing differences.
@@ -29,6 +31,12 @@ export async function POST(request: Request) {
   const lang: Lang = isValidLang(body?.lang) ? body.lang : 'en'
 
   if (!email) return delayedSuccess()
+
+  // A mistyped domain can never receive the link, and saying so reveals nothing
+  // about which accounts exist: it depends on the domain alone.
+  if (isValidEmail(email) && (await checkMailDomain(email)) === 'invalid') {
+    return NextResponse.json({ error: 'email_domain' }, { status: 422 })
+  }
 
   try {
     const origin = applicationOrigin()

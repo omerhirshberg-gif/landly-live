@@ -1,6 +1,8 @@
 // Field rules for merchant onboarding. Pure and client-safe: the form checks
 // as you type, the server checks again before anything is stored.
 
+import { isValidEmail } from '@/lib/validation/email'
+
 export const LEGAL_ENTITY_TYPES = ['osek_patur', 'osek_murshe', 'company', 'nonprofit'] as const
 export type LegalEntityType = (typeof LEGAL_ENTITY_TYPES)[number]
 export const isLegalEntityType = (v: unknown): v is LegalEntityType => typeof v === 'string' && (LEGAL_ENTITY_TYPES as readonly string[]).includes(v)
@@ -24,7 +26,7 @@ export const isBankCode = (v: string) => /^\d{2}$/.test(v)
 export const isBranchCode = (v: string) => /^\d{3}$/.test(v)
 export const isAccountNumber = (v: string) => /^\d{4,9}$/.test(v)
 
-export const isEmail = (v: string) => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+export const isEmail = (v: string) => isValidEmail(v)
 
 /** A phone as typed, reduced to digits and an optional leading +; null if it can't be a number. */
 export function normalizePhone(v: string): string | null {

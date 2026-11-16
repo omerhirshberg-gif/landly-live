@@ -4,6 +4,7 @@ import { COUNTRY_NAMES } from '@/lib/profile/countryNames'
 import { MAX_PERSONA_NOTE_LENGTH } from '@/lib/customerTypes'
 import { nameFieldErrors, normalizePersonName } from './names'
 import { isStrongPassword } from './passwordValidation'
+import { isValidEmail } from '@/lib/validation/email'
 
 // The post-sign-in onboarding rules, shared by the web AuthScreen and the
 // mobile login screen so both ask the same questions in the same order and
@@ -50,7 +51,7 @@ export { MAX_NAME_LENGTH, fullName, greetingName, nameFieldErrors, normalizePers
 // ── Identity ────────────────────────────────────────────────────────────
 // A shape check only; Firebase has the final word (auth/invalid-email).
 export function isPlausibleEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  return isValidEmail(email.trim())
 }
 
 // ── Password ────────────────────────────────────────────────────────────

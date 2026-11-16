@@ -18,6 +18,7 @@ import { useAdminT } from '@/lib/admin/translations'
 
 interface LeadsResponse {
   leads: AdminLead[]
+  flagged: AdminLead[]
   stats: PrelaunchStats
   projectId: string
   generatedAt: string
@@ -74,6 +75,18 @@ export default function PrelaunchLeadsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const flag = useCallback(async (lead: AdminLead, invalid: boolean) => {
+    setError(null)
+    const res = await adminFetch(`/api/admin/prelaunch/${encodeURIComponent(lead.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invalid }) }).catch(() => null)
+    if (!res?.ok) {
+      setError(t('leads.flagFailed'))
+      return
+    }
+    await load()
+  }, [load, t])
+  const onFlag = useCallback((lead: AdminLead) => flag(lead, true), [flag])
+  const onRestore = useCallback((lead: AdminLead) => flag(lead, false), [flag])
 
   const rows = useMemo(() => data?.leads ?? [], [data])
   const filtered = useMemo(() => filterLeads(rows, filters), [rows, filters])
@@ -192,11 +205,19 @@ export default function PrelaunchLeadsPage() {
           </div>
           <ResultCount shown={filtered.length} total={rows.length} noun={t('leads.noun')} />
           {filtered.length ? (
-            <PrelaunchTable rows={filtered} />
+            <PrelaunchTable rows={filtered} onFlag={onFlag} />
           ) : (
             <EmptyState icon="fa-magnifying-glass" title={t('leads.noMatchTitle')} description={t('leads.noMatchDesc')} />
           )}
         </>
+      )}
+
+      {data && data.flagged.length > 0 && (
+        <section className="mt-10" aria-labelledby="leads-flagged">
+          <h2 id="leads-flagged" className={SECTION_HEADING}>{t('leads.flaggedTitle', { count: data.flagged.length })}</h2>
+          <p className="mb-3 mt-1 text-sm text-adm-text-2">{t('leads.flaggedHint')}</p>
+          <PrelaunchTable rows={data.flagged} onRestore={onRestore} />
+        </section>
       )}
     </div>
   )

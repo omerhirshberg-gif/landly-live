@@ -2,7 +2,7 @@ import type { UsageCounters } from './usageTypes'
 
 // What each metered service costs, for the estimates on /admin/system/costs
 // (lib/usage/usageReport.ts). Constants, not env vars, so DEV and PROD
-// always price alike. Google bills in USD and is converted at USD_TO_ILS;
+// always price alike. Google bills in USD and is converted at the live USD/ILS rate (USD_TO_ILS is the fallback);
 // the 019 OTP rates are flat shekel constants with no monthly free allowance:
 // 0.02 ₪ per SMS (Israeli numbers) and 0.075 ₪ per WhatsApp message (other
 // countries), as contracted with 019 (verified 2026-11). What 019 packages
@@ -45,6 +45,7 @@ export interface MeteredSku {
   sourceUrl?: string
 }
 
+/** The last-resort rate, used only when no live or cached one exists (lib/usage/exchangeRate.server.ts). */
 export const USD_TO_ILS = { rate: 3.7, verifiedAt: '2026-10' } as const
 
 /** Share of a free allowance at which the meter turns amber, and red. */
@@ -198,28 +199,48 @@ export const SKUS: readonly MeteredSku[] = [
   },
 ]
 
-export function toIls(money: Money): number {
-  return money.currency === 'ILS' ? money.amount : money.amount * USD_TO_ILS.rate
+/** Israeli VAT, applied uniformly to every metered line (self-assessed on foreign USD services). */
+export const VAT_RATE = 0.18
+
+/** Shekels of `money`; USD converts at `rate` (the live rate, or the 3.70 default when none is given). */
+export function toIls(money: Money, rate: number = USD_TO_ILS.rate): number {
+  return money.currency === 'ILS' ? money.amount : money.amount * rate
 }
 
+/**
+ * Tranzila's fee on card payments (lib/usage/tranzilaCost.server.ts counts the
+ * month's paid orders): per transaction in shekels, plus `percent` percentage
+ * points of the volume (1.2 means 1.2%). Both are 0 until the contracted rates
+ * are final; update them here, in code. Charged only once TRANZILA_TERMINAL is set.
+ */
+export const TRANZILA_FEE = { perTransactionIls: 0, percent: 0 }
+
+export function tranzilaFeeIls(transactions: number, volumeIls: number, fee: { perTransactionIls: number; percent: number } = TRANZILA_FEE): number {
+  if (transactions <= 0) return 0
+  return transactions * fee.perTransactionIls + (volumeIls * fee.percent) / 100
+}
+
+export const vatIls = (netIls: number): number => netIls * VAT_RATE
+export const withVatIls = (netIls: number): number => netIls * (1 + VAT_RATE)
+
 /** The cost in shekels of `used` units: the free allowance, then each band in turn. */
-export function netCostIls(sku: MeteredSku, used: number): number {
+export function netCostIls(sku: MeteredSku, used: number, rate: number = USD_TO_ILS.rate): number {
   if (sku.freePerMonth === null || used <= 0) return 0
   let cost = 0
   let from = sku.freePerMonth
   for (const tier of sku.tiers) {
     if (used <= from) break
-    cost += (Math.min(used, tier.upTo) - from) * toIls(tier.unitPrice)
+    cost += (Math.min(used, tier.upTo) - from) * toIls(tier.unitPrice, rate)
     from = tier.upTo
   }
   return cost
 }
 
 /** What the same units would cost with no free allowance: the free ones at the first band's price. */
-export function grossCostIls(sku: MeteredSku, used: number): number {
+export function grossCostIls(sku: MeteredSku, used: number, rate: number = USD_TO_ILS.rate): number {
   const first = sku.tiers[0]
   if (sku.freePerMonth === null || !first || used <= 0) return 0
-  return Math.min(used, sku.freePerMonth) * toIls(first.unitPrice) + netCostIls(sku, used)
+  return Math.min(used, sku.freePerMonth) * toIls(first.unitPrice, rate) + netCostIls(sku, used, rate)
 }
 
 const ILS = new Intl.NumberFormat('en-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 })

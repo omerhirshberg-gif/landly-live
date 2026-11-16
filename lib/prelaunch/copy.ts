@@ -106,6 +106,11 @@ export interface PrelaunchCopy {
   errLastName: string
   errPhone: string
   errEmail: string
+  /** The typo hint: "{email}" is the suggested address; the button applies it. */
+  emailDidYouMean: string
+  emailUseSuggestion: string
+  /** The server found the address's domain cannot receive mail. */
+  errEmailDomain: string
   errConsent: string
   errRateLimited: string
   errGeneric: string
@@ -199,6 +204,9 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     errLastName: 'Enter your last name.',
     errPhone: 'Enter a valid WhatsApp number.',
     errEmail: 'Enter a valid email address.',
+    emailDidYouMean: 'Did you mean {email}?',
+    emailUseSuggestion: 'Use this',
+    errEmailDomain: 'This email domain can\'t receive mail. Check the spelling after the @.',
     errConsent: 'To sign up, please agree to receive updates.',
     errRateLimited: 'Too many attempts. Try again in a few minutes.',
     errGeneric: 'Something went wrong. Your details are still here, so please try again.',
@@ -297,6 +305,9 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     errLastName: 'נא להזין שם משפחה.',
     errPhone: 'נא להזין מספר וואטסאפ תקין.',
     errEmail: 'נא להזין כתובת אימייל תקינה.',
+    emailDidYouMean: 'האם התכוונת ל-{email}?',
+    emailUseSuggestion: 'השתמש בכתובת',
+    errEmailDomain: 'דומיין האימייל הזה לא מקבל הודעות. בדקו את האיות אחרי ה-@.',
     errConsent: 'כדי להירשם צריך לאשר קבלת עדכונים.',
     errRateLimited: 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.',
     errGeneric: 'משהו השתבש. הפרטים שלכם נשמרו בטופס, נסו שוב.',
@@ -394,6 +405,9 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     errLastName: 'Введите фамилию.',
     errPhone: 'Введите действительный номер WhatsApp.',
     errEmail: 'Введите действительный email.',
+    emailDidYouMean: 'Вы имели в виду {email}?',
+    emailUseSuggestion: 'Исправить',
+    errEmailDomain: 'Этот почтовый домен не принимает письма. Проверьте написание после @.',
     errConsent: 'Чтобы зарегистрироваться, подтвердите согласие на получение новостей.',
     errRateLimited: 'Слишком много попыток. Повторите через несколько минут.',
     errGeneric: 'Что-то пошло не так. Ваши данные сохранились в форме, попробуйте ещё раз.',
@@ -491,6 +505,9 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     errLastName: 'Saisissez votre nom.',
     errPhone: 'Saisissez un numéro WhatsApp valide.',
     errEmail: 'Saisissez une adresse e-mail valide.',
+    emailDidYouMean: 'Vouliez-vous dire {email} ?',
+    emailUseSuggestion: 'Utiliser',
+    errEmailDomain: 'Ce domaine e-mail ne peut pas recevoir de messages. Vérifiez ce qui suit le @.',
     errConsent: 'Pour vous inscrire, veuillez accepter de recevoir nos actualités.',
     errRateLimited: 'Trop de tentatives. Réessayez dans quelques minutes.',
     errGeneric: 'Une erreur s’est produite. Vos informations sont toujours là, réessayez.',
@@ -588,6 +605,9 @@ export const PRELAUNCH_COPY: Record<PrelaunchLang, PrelaunchCopy> = {
     errLastName: 'Escribe tu apellido.',
     errPhone: 'Escribe un número de WhatsApp válido.',
     errEmail: 'Escribe un correo electrónico válido.',
+    emailDidYouMean: '¿Querías decir {email}?',
+    emailUseSuggestion: 'Usar este',
+    errEmailDomain: 'Este dominio de correo no puede recibir mensajes. Revisa lo que va después de la @.',
     errConsent: 'Para registrarte, acepta recibir novedades.',
     errRateLimited: 'Demasiados intentos. Vuelve a intentarlo en unos minutos.',
     errGeneric: 'Algo salió mal. Tus datos siguen aquí, inténtalo de nuevo.',

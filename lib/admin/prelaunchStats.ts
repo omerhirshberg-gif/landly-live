@@ -22,6 +22,8 @@ export interface AdminLead {
   foundingMember: boolean
   utmSource: string | null
   utmCampaign: string | null
+  /** Flagged by the team as a bad address; hidden from the list, CSV and newsletter audiences. */
+  invalid?: boolean
 }
 
 export interface LeadFilters {

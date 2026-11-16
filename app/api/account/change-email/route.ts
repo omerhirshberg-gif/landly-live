@@ -4,6 +4,7 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { customerOrReply, logContactFailure, preflight, replyFor } from '@/lib/account/contactChangeServer'
 import { normalizeEmail, RECENT_SIGN_IN_SECONDS } from '@/lib/auth/emailChange'
 import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
+import { checkMailDomain } from '@/lib/validation/emailDns.server'
 import { generateOtp, hashOtp, OTP_RESEND_COOLDOWN_MS, OTP_TTL_MS } from '@/lib/auth/phoneVerification'
 import { accountLang, applicationOrigin } from '@/lib/auth/requestContext'
 import { emailConfigProblem } from '@/lib/email/brandedEmail'
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     const parsed = normalizeEmail(body?.newEmail)
     if (!parsed) return reply({ error: 'Invalid email.', reason: 'invalidEmail' }, 400)
     if (parsed === userRecord.email?.toLowerCase()) return reply({ error: 'Same email.', reason: 'sameEmail' }, 400)
+    if ((await checkMailDomain(parsed)) === 'invalid') return reply({ error: 'Email domain cannot receive mail.', reason: 'invalidEmailDomain' }, 422)
     try {
       await adminAuth.getUserByEmail(parsed)
       return reply({ error: 'Email in use.', reason: 'emailInUse' }, 409)

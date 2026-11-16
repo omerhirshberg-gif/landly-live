@@ -55,6 +55,9 @@ import {
 } from '@/lib/auth/phoneVerification'
 import { translations } from '@/lib/i18n/translations'
 
+// Real DNS is never queried in tests.
+vi.mock('@/lib/validation/emailDns.server', () => ({ checkMailDomain: async () => 'ok' }))
+
 const UID = 'member-1'
 const REVOKED_AT = 'Fri, 23 Oct 2026 10:00:05 GMT'
 const nowSeconds = () => Math.floor(Date.now() / 1000)

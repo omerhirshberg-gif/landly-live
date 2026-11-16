@@ -3,9 +3,11 @@ import { StyleSheet, View } from 'react-native'
 import { EmailAuthProvider, reauthenticateWithCredential, type User } from 'firebase/auth'
 import { CONTACT_CHANGE_FAILED, contactChangeErrorKey, requestEmailChange } from '@shared/account/contactChange'
 import { getAuthErrorMessage } from '@shared/firebase/authErrors'
+import { isValidEmail } from '@shared/validation/email'
 import AppText from './AppText'
 import Button from './Button'
 import Notice from './Notice'
+import EmailTypoHint from './EmailTypoHint'
 import TextField from './TextField'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
@@ -33,11 +35,16 @@ export default function ChangeEmailForm({
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [emailLeft, setEmailLeft] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async () => {
     const newEmail = email.trim()
     if (!newEmail || !password || busy) return
+    if (!isValidEmail(newEmail.toLowerCase())) {
+      setError(t('onb_emailInvalid'))
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -76,8 +83,10 @@ export default function ChangeEmailForm({
         value={email}
         onChangeText={(value) => {
           setEmail(value)
+          setEmailLeft(false)
           setError(null)
         }}
+        onBlur={() => setEmailLeft(true)}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -85,6 +94,15 @@ export default function ChangeEmailForm({
         textContentType="emailAddress"
         returnKeyType="next"
         autoFocus
+      />
+      <EmailTypoHint
+        value={emailLeft ? email : ''}
+        message={t('email_didYouMean')}
+        actionLabel={t('email_useSuggestion')}
+        onApply={(fixed) => {
+          setEmail(fixed)
+          setEmailLeft(false)
+        }}
       />
       <TextField
         label={t('profile_current_password_label')}

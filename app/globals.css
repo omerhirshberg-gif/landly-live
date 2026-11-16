@@ -720,8 +720,55 @@ html:has(.admin-scale.adm-light),html:has(.admin-scale.adm-light) body{backgroun
 .admin-he .truncate,.admin-he [class*="line-clamp"]{line-height:1.55;padding-block:0.06em;}
 .admin-he{line-height:1.55;}
 
-/* The guest hero gallery's photos drift up and down by a few pixels, each on its
-   own slow cycle (set inline), on the GPU (transform only). Still under Reduce Motion. */
-@keyframes collage-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-5px,0)}}
-.collage-drift{animation:collage-drift 5.5s ease-in-out infinite alternate;will-change:transform}
-@media (prefers-reduced-motion: reduce){.collage-drift{animation:none;will-change:auto}}
+/* The guest hero's photo marquee (components/landing/DiagonalImageMarquee.tsx).
+   From lg: three diagonal columns (up, down, up) with no frame: a full-bleed canvas the hero anchors to the viewport edge: photos run off the top,
+   bottom and outer edge, and a crisp parallelogram clip (parallel to the tilt), no fade or mask, and the pause button sits in the flow under the stage, at its end edge, never on a photo; every photo
+   stays sharp and full-opacity. Below lg: two horizontal ribbons drifting opposite ways, with no fade. A track holds its photos twice, so sliding -50% (one copy)
+   restarts without a seam. Transform only (GPU). Overflow, contain and isolation
+   keep the rotated columns from scrolling the page sideways. The tilt and the
+   ribbons' drift mirror in Hebrew. Paused by hover, by the toggle (.is-paused), and
+   absent under Reduce Motion (the first copy stands still, the button is hidden). */
+.marquee-frame{--marquee-gap:.625rem;position:relative}
+.marquee-stage{position:relative;height:100%;overflow:hidden;isolation:isolate;contain:paint;-webkit-transform:translateZ(0);transform:translateZ(0)}
+.marquee-frame{height:100%}
+@media (min-width:1024px){
+  .marquee-frame{container-type:size}
+  .marquee-stage{margin-inline:-5rem;clip-path:polygon(0% 0%,79% 0%,100% 100%,21% 100%)}
+  [dir="rtl"] .marquee-stage{clip-path:polygon(21% 0%,100% 0%,79% 100%,0% 100%)}
+}
+.marquee-tilt{position:absolute;inset-inline:-12%;top:-23%;bottom:-23%;display:flex;justify-content:center;gap:var(--marquee-gap);transform:rotate(-11deg);transform-origin:center}
+[dir="rtl"] .marquee-tilt{transform:rotate(11deg)}
+.marquee-col{flex:0 0 clamp(128px,10.5vw,160px);min-width:0;overflow:hidden}
+.marquee-col--down{margin-top:-2.5rem}
+.marquee-track{display:flex;flex-direction:column;will-change:transform;animation:marquee-up 119s linear infinite}
+.marquee-col--down .marquee-track{animation-name:marquee-down;animation-duration:140s}
+.marquee-col--up2 .marquee-track{animation-duration:130s}
+.marquee-copy{display:flex;flex-direction:column;gap:var(--marquee-gap);padding-block-end:var(--marquee-gap);margin:0;padding-inline:0;list-style:none}
+.marquee-card{position:relative;aspect-ratio:3/4;flex:none;overflow:hidden;border-radius:.625rem;background:#F1F5F9}
+.marquee-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none}
+@keyframes marquee-up{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-50%,0)}}
+@keyframes marquee-down{from{transform:translate3d(0,-50%,0)}to{transform:translate3d(0,0,0)}}
+.marquee-ribbon{display:flex;flex-direction:column;gap:var(--marquee-gap);overflow:hidden;isolation:isolate;contain:paint;direction:ltr;padding-block:.25rem}
+.marquee-row{display:flex;width:max-content;will-change:transform;animation:marquee-left 210s linear infinite}
+.marquee-row--b{animation-name:marquee-right;animation-duration:238s}
+[dir="rtl"] .marquee-row--a{animation-name:marquee-right}
+[dir="rtl"] .marquee-row--b{animation-name:marquee-left}
+.marquee-rcopy{display:flex;gap:var(--marquee-gap);padding-inline-end:var(--marquee-gap);margin:0;padding-inline-start:0;list-style:none}
+.marquee-rcopy .marquee-card{width:8.25rem}
+@media (min-width:640px){.marquee-rcopy .marquee-card{width:9.5rem}}
+@keyframes marquee-left{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+@keyframes marquee-right{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}
+.marquee-frame.is-paused .marquee-track,.marquee-frame.is-paused .marquee-row{animation-play-state:paused}
+@media (hover:hover){.marquee-stage:hover .marquee-track,.marquee-ribbon:hover .marquee-row{animation-play-state:paused}}
+.marquee-toggle{position:relative;z-index:10;display:flex;height:44px;width:44px;margin:.75rem auto 0;align-items:center;justify-content:center;border-radius:9999px;border:1px solid rgba(226,232,240,.8);background:#fff;color:#334155;box-shadow:0 1px 2px rgba(15,23,42,.05);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s ease,background-color .15s ease}
+@media (min-width:1024px){.marquee-toggle{position:absolute;inset-inline-start:-4.5rem;bottom:.75rem;margin:0}}
+@media (min-width:1440px){.marquee-toggle{inset-inline-start:auto;inset-inline-end:calc(-5rem - 44px - .5rem)}}
+.marquee-toggle:active{transform:scale(.96)}
+@media (hover:hover){.marquee-toggle:hover{background:#F8FAFC}}
+.marquee-toggle:focus-visible{outline:2px solid #0038B8;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){
+  .marquee-track,.marquee-col--down .marquee-track,.marquee-row,.marquee-row--b{animation:none;will-change:auto}
+  [dir="rtl"] .marquee-row--a,[dir="rtl"] .marquee-row--b{animation:none}
+  .marquee-copy[aria-hidden="true"],.marquee-rcopy[aria-hidden="true"]{display:none}
+  .marquee-toggle{display:none}
+}
