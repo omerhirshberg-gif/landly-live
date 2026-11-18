@@ -22,16 +22,16 @@ import { confirmLeave, useUnsavedGuard } from '@/lib/admin/useUnsavedGuard'
 import { manualOverridesOf } from '@/lib/offers/offerText'
 import { useAdminT } from '@/lib/admin/translations'
 
-/** Which store list the edit form offers: a multi-chain voucher's chains, a Multipass perk's optional stores, or a nationwide local offer's. */
+/** Which store list the edit form offers: a multi-chain voucher's chains, a Raayonit perk's optional stores, or a nationwide local offer's. */
 function storesModeOf(offer: OfferDocument, form: OfferFormValue): StoresMode | undefined {
   if (offer.perkScope === 'multi_chain') return 'chains'
-  if (offer.fulfillmentType === 'multipass_pool') return 'multipass'
+  if (offer.fulfillmentType === 'raayonit_pool') return 'raayonit'
   return form.isNationwide ? 'nationwide' : undefined
 }
 
 /** A perk with no business edits its issuer's name; a multi-chain pass its redemption guide too. */
 function issuerFieldsOf(offer: OfferDocument): 'brand' | 'chain' | undefined {
-  if (offer.fulfillmentType !== 'multipass_pool' && offer.perkScope !== 'multi_chain') return undefined
+  if (offer.fulfillmentType !== 'raayonit_pool' && offer.perkScope !== 'multi_chain') return undefined
   return offer.perkScope === 'multi_chain' ? 'chain' : 'brand'
 }
 

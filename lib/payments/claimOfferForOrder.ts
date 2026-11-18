@@ -1,10 +1,13 @@
+import { normalizeWebsiteUrl, parsePhones } from '@/lib/offers/contact'
+import { orderIdMatches } from '../offers/variants'
 import 'server-only'
 import { belongsToBusiness, frozenNationwide, frozenPerkScope } from '../offers/perkScope'
 import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore'
 import type { TranzilaNotification } from './parseTranzilaNotification'
 import { amountInAgorot, isDocumentId, PaymentError } from './paymentValidation'
-import { isValidValidityDays, normalizeRedemptionTerms, normalizeValidityDays, voucherExpiresAtMs } from './voucherTerms'
+import { addYearsEndOfIsraelDayMs, isValidValidityDays, normalizeRedemptionTerms, normalizeValidityDays, voucherExpiresAtMs } from './voucherTerms'
+import { RAAYONIT_ISSUER, RAAYONIT_VALIDITY_YEARS } from './issuer'
 import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
 import { applyPoolAllocation, planPoolAllocation } from '../inventory/poolAllocation'
 import { parseFulfillmentType } from '../inventory/types'
@@ -26,10 +29,10 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const [orderSnap, receiptSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)])
     if (!orderSnap.exists) throw new PaymentError('Order not found.', 404)
     const order = orderSnap.data()!
-    // Only a local-business order names a business; a Multipass order and a manual multi-chain pass carry their brand instead.
+    // Only a local-business order names a business; a Raayonit order and a manual multi-chain pass carry their brand instead.
     const direct = belongsToBusiness(order)
     if (!isDocumentId(order.userId) || !isDocumentId(order.offerId) || (direct && !isDocumentId(order.businessId))
-      || `${order.userId}_${order.offerId}` !== event.orderId
+      || !orderIdMatches(event.orderId, order)
       || order.terminal !== event.terminal || order.currency !== event.currency
       || order.amountAgorot !== event.amountAgorot || amountInAgorot(order.amount) !== event.amountAgorot) {
       throw new PaymentError('Payment does not match the order; reconciliation is required.')
@@ -104,7 +107,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const fulfillmentType = parseFulfillmentType(order.fulfillmentType ?? offer.fulfillmentType)
     const poolId = isDocumentId(order.poolId) ? order.poolId : isDocumentId(offer.poolId) ? offer.poolId : null
     // All reads (the pool and its next code) happen before the first write below.
-    const poolPlan = fulfillmentType === 'multipass_pool'
+    const poolPlan = fulfillmentType === 'raayonit_pool'
       ? await planPoolAllocation(db, tx, poolId ?? '', order.offerId, event.orderId, now) : null
     const terms = parseFrozenTerms(order) ?? (businessSnap ? parseFrozenTerms(businessSnap.data()) : null)
     // The terms frozen on the order at checkout; orders from before that read the offer's.
@@ -123,11 +126,17 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       // 128 random bits, unlike the voucher id, which anyone can derive.
       redeemToken: randomBytes(16).toString('hex'),
       status: 'active', takenAt: now, redeemedAt: null,
-      expiresAt: Timestamp.fromMillis(voucherExpiresAtMs(now.toMillis(), validityDays)),
+      // A Raayonit voucher lasts 5 calendar years from the moment of purchase; any other, the offer's validity days.
+      expiresAt: Timestamp.fromMillis(poolPlan
+        ? addYearsEndOfIsraelDayMs(now.toMillis(), RAAYONIT_VALIDITY_YEARS)
+        : voucherExpiresAtMs(now.toMillis(), validityDays)),
       redemptionTerms, redemptionMethod, redemptionInstructions,
       // The order's frozen copy; orders from before translations existed have none.
       translations: order.translations ?? null,
       businessTranslations: order.businessTranslations ?? null,
+      // The business's website and phone as at purchase (a Raayonit brand), so the voucher keeps them whatever the card later says.
+      ...(normalizeWebsiteUrl(offer.websiteUrl) ? { websiteUrl: normalizeWebsiteUrl(offer.websiteUrl) } : {}),
+      ...(parsePhones(offer.contactPhone).length > 0 ? { contactPhone: String(offer.contactPhone).trim() } : {}),
       businessAddress: order.businessAddress ?? null,
       businessGeo: order.businessGeo ?? null,
       paymentTransactionKey: receiptRef.id,
@@ -138,8 +147,10 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       savingsAgorot: savingsAgorotOf(order.originalPrice, event.amountAgorot),
       commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       payoutBatchId: null,
-      // A Multipass code is the member's entitlement, so the voucher (owner-readable) carries it.
+      // A Raayonit code is the member's entitlement, so the voucher (owner-readable) carries it.
       externalCode: poolPlan?.code ?? null,
+      // A Raayonit voucher is a code and nothing else (no QR code): who issued it and what it is worth, frozen with the sale.
+      ...(poolPlan ? { redemptionKind: 'code_only', issuer: RAAYONIT_ISSUER, faceValueAgorot: poolPlan.faceValueAgorot, poolId } : {}),
     })
     if (poolPlan) applyPoolAllocation(tx, poolPlan, event.orderId, order.userId, now)
     tx.set(shardRef, { count: issued + 1 })

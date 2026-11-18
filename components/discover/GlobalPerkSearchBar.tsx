@@ -2,11 +2,9 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import NearMeButton from '@/components/discover/NearMeButton'
 import PerksFilterMenu from '@/components/perks/PerksFilterMenu'
 import PerksSearchBar from '@/components/perks/PerksSearchBar'
 import { usePerksUrlContext } from '@/components/perks/PerksUrlStateContext'
-import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
 import { DEFAULT_PERK_SORT, type PerkMethodFilter, type PerkMinDiscount, type PerkSort } from '@/lib/perks/perksFilter'
 
 interface ViewProps {
@@ -26,26 +24,15 @@ interface ViewProps {
 }
 
 function BarView({ query, onQueryChange, onSubmit, onFilterDone, ...filters }: ViewProps) {
-  const { origin, setOrigin, areas, loadAreas } = usePerksSearch()
   const submit = (event: FormEvent) => {
     event.preventDefault()
     onSubmit?.()
   }
   return (
-    // The same row, in the same spot, on every discovery and member page: the pill search, Near Me, then Filter.
+    // The same row, in the same spot, on every discovery and member page: the pill search, then Filter (which holds the area and Near me).
     <form onSubmit={submit} data-global-search="" className="mx-auto flex w-full max-w-[760px] items-center gap-3">
       <div className="min-w-0 flex-1">
         <PerksSearchBar value={query} onChange={onQueryChange} />
-      </div>
-      {/* The area picker's offer list is read the first time Near Me is pressed. */}
-      <div onClickCapture={loadAreas} className="flex-shrink-0">
-        <NearMeButton
-          active={!!origin}
-          onLocate={(coords) => setOrigin({ coords, area: null })}
-          onClear={() => setOrigin(null)}
-          areas={areas}
-          onChooseArea={(area) => setOrigin({ coords: area.center, area })}
-        />
       </div>
       <PerksFilterMenu
         sort={filters.sort}

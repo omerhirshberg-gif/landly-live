@@ -12,7 +12,8 @@ export function cachedOffer(offerId: string): OfferDocument | undefined {
 // A perk card opens its offer on a native screen (app/offer/[offerId].tsx)
 // pushed over the current one, never the system browser -- and so is its
 // checkout (app/checkout/[offerId].tsx).
-export function openOffer(offer: OfferDocument) {
+export function openOffer(offer: OfferDocument, denomination?: number) {
   seen.set(offer.id, offer)
-  router.push({ pathname: '/offer/[offerId]', params: { offerId: offer.id } })
+  // A showcase card passes its value so the offer screen opens with it picked.
+  router.push({ pathname: '/offer/[offerId]', params: denomination ? { offerId: offer.id, denomination: String(denomination) } : { offerId: offer.id } })
 }

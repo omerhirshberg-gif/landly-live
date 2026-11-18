@@ -31,6 +31,12 @@ export function RailArrows({ edges, page }: { edges: { start: boolean; end: bool
 const FILL_SLOT = 'lg:grow lg:basis-[calc((100%-3*1rem)/4)] lg:max-w-[calc((100%-1rem)/2)]'
 const COMPACT_SLOT = 'lg:grow-0 lg:basis-[280px]'
 
+/** The heading row: its own member column on Home, or a plain row when the page's column already pads it (`nested`). */
+function HeadRow({ nested, children }: { nested: boolean; children: ReactNode }) {
+  const row = 'mb-1 flex items-center justify-between gap-2'
+  return nested ? <div className={row}>{children}</div> : <MemberColumn wide className={row}>{children}</MemberColumn>
+}
+
 // One rail of the member home: a heading on the member column, then full perk
 // cards in a row that reaches the screen's edges (.member-bleed) with its first
 // card on the column's line; from 1024px it sits inside the page's fluid column and, unless `compact`,
@@ -50,6 +56,8 @@ export default function OfferCardRail({
   autoAdvance = false,
   autoAdvanceOffsetMs = 0,
   compact = false,
+  priorityCount = 0,
+  nested = false,
 }: {
   id: string
   title: string
@@ -68,6 +76,10 @@ export default function OfferCardRail({
   autoAdvanceOffsetMs?: number
   /** Home's dense desktop rail: fixed 280px compact cards that never stretch. Off, the rail keeps its four-up fill. */
   compact?: boolean
+  /** How many leading cards are above the fold (the page's first rail only): their photos load first, the rest stay lazy. */
+  priorityCount?: number
+  /** The rail already sits inside a padded MemberColumn (/categories): its heading and first card start on that column's line instead of adding a second gutter. */
+  nested?: boolean
 }) {
   const { ref: railRef, index: active, scrollTo } = useSnapIndex<HTMLDivElement>(offers.length)
   const { edges, measure, page, overflowing } = useRailPaging(railRef, offers.length)
@@ -75,7 +87,7 @@ export default function OfferCardRail({
 
   return (
     <section aria-labelledby={id}>
-      <MemberColumn wide className="mb-1 flex items-center justify-between gap-2">
+      <HeadRow nested={nested}>
         <h2 id={id} className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink">
           {/* A bare 18px line icon on the title's line: no badge, so the title keeps the width. */}
           {glyph && <span aria-hidden="true" className="flex shrink-0 items-center">{glyph}</span>}
@@ -90,16 +102,16 @@ export default function OfferCardRail({
             </span>
           </Link>
         )}
-      </MemberColumn>
+      </HeadRow>
       <div className="offer-rail relative lg:mx-auto lg:max-w-[2200px]">
         <div
           ref={railRef}
           onScroll={measure}
-          className="member-bleed member-bleed-fill edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4"
+          className={`${nested ? 'member-bleed-nested' : 'member-bleed member-bleed-fill'} edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4`}
         >
-          {offers.map((offer) => (
+          {offers.map((offer, index) => (
             <div key={offer.id} className={`flex shrink-0 snap-start lg:min-w-0 ${compact ? COMPACT_SLOT : FILL_SLOT}`}>
-              <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} compact={compact} className="lg:w-full" />
+              <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} compact={compact} priority={index < priorityCount} className="lg:w-full" />
             </div>
           ))}
         </div>

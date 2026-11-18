@@ -19,7 +19,9 @@ vi.mock('@/lib/firebase/offers', () => ({
   sortFeaturedOffers: (o: unknown[]) => o,
   getOfferDiscountPercent: (original: number, price: number) => (original > 0 ? Math.round((1 - price / original) * 100) : 0),
 }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ wishlistIds: [], isWishlisted: () => false, toggleWishlist: () => {} }) }))
+// The shared catalog has nothing yet (lib/offers/useOffers.ts): Home shows its loading state.
+vi.mock('@/lib/offers/useOffers', () => ({ useOffers: () => ({ offers: null, failed: false, refresh: async () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ wishlistIds: [], isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 // The page's chrome and guest sections render as markers, so the test reads which sections a page composes.
 vi.mock('@/components/layout/Navbar', () => ({ default: () => 'NAVBAR' }))
 vi.mock('@/components/layout/Footer', () => ({ default: () => 'FOOTER' }))

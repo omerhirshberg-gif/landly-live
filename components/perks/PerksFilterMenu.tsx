@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { LocateFixed, SlidersHorizontal, X } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
+import { useGeolocation, type GeoStatus } from '@/lib/useGeolocation'
+import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
+import { citiesOfRegion, ISRAEL_REGIONS } from '@/lib/israelCities'
 import {
   DEFAULT_PERK_SORT,
   PERK_METHOD_FILTERS,
@@ -31,6 +34,8 @@ function useIsSheet(): boolean {
   )
 }
 
+const GEO_MESSAGES: Partial<Record<GeoStatus, TranslationKey>> = { denied: 'geo_denied', unavailable: 'geo_off', timeout: 'geo_timeout', unsupported: 'geo_unsupported' }
+
 const METHOD_LABELS: Record<PerkMethodFilter, TranslationKey> = {
   all: 'cats_filter_method_all',
   in_store: 'redeem_method_in_store',
@@ -56,7 +61,9 @@ interface Props {
 // with Reset and Done at the foot. The pill fills brand blue and shows how
 // many of the three are set. Escape closes and returns focus to the pill.
 export default function PerksFilterMenu({ sort, onSortChange, method, onMethodChange, minDiscount, onMinDiscountChange, onReset, onDone }: Props) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const { filter, setOrigin, setAreaPick } = usePerksSearch()
+  const geo = useGeolocation()
   const isSheet = useIsSheet()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -64,7 +71,16 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
   const panelId = useId()
   const titleId = useId()
 
-  const activeCount = Number(sort !== DEFAULT_PERK_SORT) + Number(method !== 'all') + Number(minDiscount !== 0)
+  const activeCount = Number(sort !== DEFAULT_PERK_SORT) + Number(method !== 'all') + Number(minDiscount !== 0) + Number(!!filter)
+  const clearLocation = () => { geo.reset(); setOrigin(null); setAreaPick(null) }
+  const nearMe = async () => {
+    if (filter?.kind === 'gps') return clearLocation()
+    const coords = await geo.locate()
+    if (coords) { setAreaPick(null); setOrigin({ coords, area: null }) }
+  }
+  const geoMessage = filter ? null : GEO_MESSAGES[geo.status]
+  const regionPicked = filter?.kind === 'area' && !filter.city ? filter.region : null
+  const cityPicked = filter?.kind === 'area' && filter.city ? filter.city : ''
 
   const close = useCallback((returnFocus = true) => {
     setOpen(false)
@@ -103,6 +119,24 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
   const body = (
     <>
       <div className="divide-y divide-slate-100">
+        {group(
+          t('filter_area_title'),
+          <>
+            {pill('near', filter?.kind === 'gps', nearMe, <><LocateFixed aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />{t('geo_near_me_current')}</>)}
+            {pill('all', !filter, clearLocation, t('loc_all_israel'))}
+            {ISRAEL_REGIONS.map((r) => pill(r.id, regionPicked === r.id, () => { geo.reset(); setOrigin(null); setAreaPick({ kind: 'area', region: r.id, city: null }) }, r.names[lang]))}
+            <select
+              aria-label={t('loc_other_city')}
+              value={cityPicked}
+              onChange={(e) => { if (e.target.value) { geo.reset(); setOrigin(null); setAreaPick({ kind: 'area', region: null, city: e.target.value }) } }}
+              className="min-h-9 max-w-full rounded-full border border-slate-200 bg-white px-3 text-base text-ink sm:text-[13px]"
+            >
+              <option value="">{t('loc_other_city')}</option>
+              {citiesOfRegion(null, lang).map((c) => <option key={c.he} value={c.he}>{c.label}</option>)}
+            </select>
+            {geoMessage && <p role="alert" className="w-full text-xs font-semibold text-red-600">{t(geoMessage)}</p>}
+          </>
+        )}
         {group(t('cats_sort_label'), PERK_SORTS.map((value) => pill(value, sort === value, () => onSortChange(value), t(PERK_SORT_LABELS[value]))))}
         {group(t('cats_filter_method'), PERK_METHOD_FILTERS.map((value) => pill(value, method === value, () => onMethodChange(value), t(METHOD_LABELS[value]))))}
         {group(
@@ -115,7 +149,7 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
       <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
         <button
           type="button"
-          onClick={onReset}
+          onClick={() => { onReset(); clearLocation() }}
           disabled={activeCount === 0}
           className="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-40 [@media(hover:hover)]:hover:bg-slate-100"
         >
@@ -146,7 +180,7 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
         aria-label={t('cats_filter_button')}
         onClick={() => (open ? close() : setOpen(true))}
         data-active={activeCount > 0 || undefined}
-        className={`tap-target inline-flex h-12 w-12 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 motion-reduce:transition-none sm:w-auto sm:px-5 ${
+        className={`tap-target relative inline-flex h-12 w-12 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 motion-reduce:transition-none sm:w-auto sm:px-5 ${
           activeCount > 0
             ? 'border-brand bg-brand text-white shadow-sm [@media(hover:hover)]:hover:bg-brandDark'
             : 'border-slate-200/90 bg-white text-ink shadow-sm [@media(hover:hover)]:hover:bg-slate-50'
@@ -156,8 +190,8 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
         {/* Hidden, not sr-only: Font Awesome's CDN CSS overrides not-sr-only; the aria-label names the button. */}
         <span className="hidden sm:inline">{t('cats_filter_button')}</span>
         {activeCount > 0 && (
-          <span aria-hidden="true" className="hidden h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-xs font-bold tabular-nums text-brand sm:inline-flex">
-            {activeCount}
+          <span aria-hidden="true" className="absolute -end-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[11px] font-bold tabular-nums leading-none text-white sm:static sm:border-0 sm:bg-white sm:text-xs sm:text-brand">
+            <bdi dir="ltr">{activeCount}</bdi>
           </span>
         )}
       </button>

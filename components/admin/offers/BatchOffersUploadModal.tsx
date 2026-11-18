@@ -91,9 +91,9 @@ export default function BatchOffersUploadModal({ onClose, onDone, embedded = fal
       setPhase('ready')
       return setError(body?.error ?? t('batch.failed'))
     }
-    const multipass = parsed?.rows.filter((r) => r.offer?.fulfillmentType === 'multipass_pool').length ?? 0
+    const raayonit = parsed?.rows.filter((r) => r.offer?.fulfillmentType === 'raayonit_pool').length ?? 0
     const failed = (body.failedRows?.length ?? 0) + (body.invalid ?? 0)
-    onDone(`${t('batch.result', { created: body.created, failed })}${multipass > 0 ? ` ${t('batch.resultPools', { n: multipass })}` : ''} ${t('batch.translationNote')}`)
+    onDone(`${t('batch.result', { created: body.created, failed })}${raayonit > 0 ? ` ${t('batch.resultPools', { n: raayonit })}` : ''} ${t('batch.translationNote')}`)
   }
 
   const showFile = parsed && (phase === 'ready' || phase === 'committing')

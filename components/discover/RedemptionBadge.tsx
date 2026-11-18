@@ -1,6 +1,6 @@
 'use client'
 
-import { Globe, Phone, Store, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, Globe, Phone, PhoneCall, Store, type LucideIcon } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { REDEMPTION_METHOD_LABEL_KEYS, type RedemptionMethod } from '@/lib/offers/redemption'
 
@@ -8,6 +8,8 @@ export const REDEMPTION_METHOD_ICONS: Record<RedemptionMethod, LucideIcon> = {
   in_store: Store,
   online: Globe,
   phone_booking: Phone,
+  advance_booking: CalendarCheck,
+  phone_order: PhoneCall,
 }
 
 /** "In store" / "Online" / "By phone" as a small chip; text only with `showIcon={false}` (the perk card). */

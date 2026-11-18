@@ -5,7 +5,7 @@ import { LangContext } from '@/lib/i18n/LangProvider'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i18n/translations'
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 
 import { isOfferAvailable, type OfferDocument } from '@/lib/firebase/offers'
 import { Sparkles } from 'lucide-react'
@@ -26,6 +26,7 @@ function offer(id: string, extra: Partial<OfferDocument> = {}): OfferDocument {
     businessName: `Biz ${id}`,
     location: '',
     imageUrl: '',
+    businessLogoUrl: 'https://cdn.example/biz-logo.png',
     title: `Deal ${id}`,
     description: '',
     originalPrice: 100,
@@ -47,7 +48,7 @@ function offer(id: string, extra: Partial<OfferDocument> = {}): OfferDocument {
 describe('Expo highlight rails', () => {
   it('draw their perks as Home’s carousel does: the same compact cards, width, snapping and dots', () => {
     const rail = readFileSync('landly-mobile/src/components/OfferTileRail.tsx', 'utf8')
-    expect(rail).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} />')
+    expect(rail).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} visible={visible} />')
     expect(readFileSync('landly-mobile/src/components/OfferCarousel.tsx', 'utf8')).toContain('<OfferCard offer={item} variant="carousel"')
     // The small sideways tile and its fixed slot are gone.
     expect(existsSync('landly-mobile/src/components/OfferTile.tsx')).toBe(false)
@@ -108,38 +109,46 @@ describe('PerksToolbar on the overview', () => {
 })
 
 describe('/categories overview order', () => {
-  it('stacks New on GoLandly over Best Sellers, then the full category grid', async () => {
+  it('stacks New on GoLandly over Best Sellers, then one rail per category', async () => {
     const { readFileSync } = await import('node:fs')
     const page = readFileSync('app/categories/page.tsx', 'utf8')
     const overview = page.slice(page.indexOf("title={t('row_new')}"))
     const newRail = overview.indexOf("title={t('row_new')}")
     const bestRail = overview.indexOf("title={t('row_bestsellers')}")
-    const grid = overview.indexOf('<CategoryGrid tiles={CATEGORY_TILES}')
+    const grid = overview.indexOf('categoryRails.map(')
     expect(newRail).toBeGreaterThan(-1)
     expect(bestRail).toBeGreaterThan(newRail)
     expect(grid).toBeGreaterThan(bestRail)
     const native = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
     const n = (s: string) => native.indexOf(s)
+    // The list's rows, in order: the showcase, the highlight rails, then one row per category.
+    expect(n("type: 'showcase'")).toBeGreaterThan(-1)
+    expect(n("type: 'showcase'")).toBeLessThan(n("type: 'highlights'"))
+    expect(n("type: 'highlights'")).toBeLessThan(n('categoryRails.forEach('))
     expect(n("title={t('row_new')}")).toBeLessThan(n("title={t('row_bestsellers')}"))
-    expect(n("title={t('row_bestsellers')}")).toBeLessThan(n('<CategoryGrid tiles={CATEGORY_TILES}'))
   })
 
-  it('separates the native overview with the website\'s hairlines: before the rails, between them, before the grid', async () => {
+  it('separates the native overview with the website\'s hairlines: before the rails, between them, before the category rails', async () => {
     const { readFileSync } = await import('node:fs')
     const native = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
     expect(native).toContain("import SectionDivider from '../../components/SectionDivider'")
-    const overview = native.slice(native.indexOf('{browsing && (\n'), native.indexOf('<CategoryGrid tiles={CATEGORY_TILES}'))
+    // The overview's rows draw the hairlines: one before the highlight rails, one between them, one before each category rail.
+    const overview = native.slice(native.indexOf("case 'highlights':"), native.indexOf("case 'tiles':"))
     const at = (s: string, from = 0) => overview.indexOf(s, from)
-    const beforeRails = at('<SectionDivider />')
+    const beforeRails = at('{item.divider && <SectionDivider />}')
     const newRail = at("title={t('row_new')}")
     const between = at('{newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}')
     const bestRail = at("title={t('row_bestsellers')}")
-    const beforeGrid = at('<SectionDivider />', bestRail)
+    const beforeCategoryRail = at('{item.divider && <SectionDivider />}', bestRail)
+    const categoryRail = at('<CategoryOfferRail', beforeCategoryRail)
     expect(beforeRails).toBeGreaterThan(-1)
     expect(newRail).toBeGreaterThan(beforeRails)
     expect(between).toBeGreaterThan(newRail)
     expect(bestRail).toBeGreaterThan(between)
-    expect(beforeGrid).toBeGreaterThan(bestRail)
-    expect(overview.indexOf("t('cats_all_categories_title')")).toBeGreaterThan(beforeGrid)
+    expect(beforeCategoryRail).toBeGreaterThan(bestRail)
+    expect(categoryRail).toBeGreaterThan(beforeCategoryRail)
+    // The highlights always follow a hairline; a category rail does after anything above it.
+    expect(native).toContain("list.push({ key: 'highlights', type: 'highlights', divider: true })")
+    expect(native).toContain('divider: index > 0 || superOffers.length > 0 || highlights')
   })
 })

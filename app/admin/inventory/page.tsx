@@ -3,15 +3,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { useAdminT } from '@/lib/admin/translations'
-import { buildInventoryRows, filterInventory, sortByUrgency, type HealthFilter, type InventoryOffer, type InventoryPool, type InventoryRow } from '@/lib/admin/inventoryRows'
+import type { InventoryOffer, InventoryPool } from '@/lib/admin/inventoryRows'
 import Alert from '@/components/admin/Alert'
 import { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
-import { FilterChips, ResultCount, SearchInput } from '@/components/admin/ListToolbar'
 import PageHeader from '@/components/admin/PageHeader'
-import InventoryTable, { UploadIcon } from '@/components/admin/inventory/InventoryTable'
-import SmartMultipassImportModal from '@/components/admin/offers/SmartMultipassImportModal'
-import { PRIMARY_BUTTON } from '@/components/admin/formStyles'
+import { UploadIcon } from '@/components/admin/inventory/InventoryTable'
+import RaayonitCardsPanel from '@/components/admin/inventory/RaayonitCardsPanel'
+import RaayonitStockModal, { type RaayonitStock } from '@/components/admin/inventory/RaayonitStockModal'
+import NewVoucherTypeSheet from '@/components/admin/inventory/NewVoucherTypeSheet'
+import StatusBadge from '@/components/admin/StatusBadge'
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 
 interface Payload {
   offers: InventoryOffer[]
@@ -19,18 +21,18 @@ interface Payload {
   encryptionConfigured: boolean
 }
 
-// Stock for every perk in one grid: Multipass perks draw from supplier codes (encrypted on
-// upload, handed out one per purchase inside the checkout transaction) and are restocked here
-// from a spreadsheet; local-business perks count claims against the perk's own limit.
+// Stock for every perk in one grid: Raayonit vouchers draw from shared stocks, one per voucher value
+// (codes encrypted on upload, handed out one per purchase inside the checkout transaction) that
+// every linked offer sells from, and are added here from Raayonit's Excel file; local-business perks
+// count claims against the perk's own limit.
 export default function InventoryPage() {
   const { t } = useAdminT()
   const [data, setData] = useState<Payload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [health, setHealth] = useState<HealthFilter>('all')
-  // 'any': the perk is chosen in the dialog; otherwise the row it was opened from.
-  const [restock, setRestock] = useState<{ offerId: string; title: string } | 'any' | null>(null)
+  // 'any': every stock, split by the sheet's amounts; otherwise the one stock it was opened from.
+  const [restock, setRestock] = useState<RaayonitStock | 'any' | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -47,28 +49,24 @@ export default function InventoryPage() {
     void load()
   }, [load])
 
-  const allRows = useMemo(() => (data ? sortByUrgency(buildInventoryRows(data.offers, data.pools)) : []), [data])
-  const rows = useMemo(() => filterInventory(allRows, { query, health }), [allRows, query, health])
-  const healthOptions = [
-    { value: 'all', label: t('inv.filter.all') },
-    { value: 'low', label: t('inv.filter.low') },
-    { value: 'out', label: t('inv.filter.out') },
-  ] as const
-
-  const clear = () => {
-    setQuery('')
-    setHealth('all')
-  }
-
+  const stocks = useMemo(
+    () => (data?.pools ?? []).filter((p) => p.faceValueAgorot != null).map((p) => ({ poolId: p.poolId, title: p.title || `₪${(p.faceValueAgorot ?? 0) / 100}`, faceValueAgorot: p.faceValueAgorot ?? null })),
+    [data],
+  )
   return (
     <>
       <PageHeader
         title={t('route.Inventory')}
         actions={
-          <button type="button" className={`${PRIMARY_BUTTON} w-full sm:w-auto`} onClick={() => setRestock('any')} aria-busy={!data}>
-            <UploadIcon />
-            {t('inv.uploadMultipass')}
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button type="button" className={`${SECONDARY_BUTTON} w-full sm:w-auto`} onClick={() => setCreating(true)} aria-busy={!data}>
+              {t('inv.raayonit.new')}
+            </button>
+            <button type="button" className={`${PRIMARY_BUTTON} w-full sm:w-auto`} onClick={() => setRestock('any')} aria-busy={!data} disabled={stocks.length === 0}>
+              <UploadIcon />
+              {t('inv.uploadRaayonit')}
+            </button>
+          </div>
         }
       />
       {error && <Alert className="mb-4">{error}</Alert>}
@@ -83,29 +81,52 @@ export default function InventoryPage() {
       )}
       {!data && !error && <CardSkeletons count={3} />}
 
-      {data && allRows.length === 0 && <EmptyState icon="fa-boxes-stacked" title={t('inv.noPerks')} description={t('inv.noPerksBody')} />}
-
-      {data && allRows.length > 0 && (
-        <div className="space-y-4">
-          <SearchInput label={t('inv.search')} placeholder={t('inv.searchPlaceholder')} value={query} onChange={setQuery} className="max-w-xl" />
-          <FilterChips label={t('inv.filterLabel')} options={healthOptions} value={health} onChange={setHealth} />
-          <ResultCount shown={rows.length} total={allRows.length} noun={t('inv.nounPerks')} />
-          {rows.length === 0 ? (
-            <EmptyState
-              icon="fa-magnifying-glass"
-              title={t('inv.noMatchTitle')}
-              description={t('inv.noMatchBody')}
-              action={<button type="button" className={PRIMARY_BUTTON} onClick={clear}>{t('list.clearFilters')}</button>}
-            />
+      {data && (
+        <section aria-labelledby="raayonit-stocks" className="mb-8">
+          <h2 id="raayonit-stocks" className="text-base font-bold tracking-tight text-adm-text">{t('inv.raayonit.title')}</h2>
+          <p className="mb-4 mt-1 text-sm text-adm-muted">{t('inv.raayonit.subtitle')}</p>
+          {stocks.length === 0 ? (
+            <EmptyState icon="fa-boxes-stacked" title={t('inv.raayonit.empty')} description={t('inv.raayonit.emptyBody')} action={<button type="button" className={PRIMARY_BUTTON} onClick={() => setCreating(true)}>{t('inv.raayonit.new')}</button>} />
           ) : (
-            <InventoryTable rows={rows} onRestock={(row: InventoryRow) => setRestock({ offerId: row.id, title: row.title })} />
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {data.pools.filter((p) => p.faceValueAgorot != null).map((pool) => {
+                const linked = data.offers.filter((o) => o.poolId === pool.poolId).length
+                const low = pool.remainingCount <= pool.warningThreshold
+                return (
+                  <li key={pool.poolId} className="flex flex-col gap-4 rounded-3xl border border-adm-line bg-adm-surface p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p dir="auto" className="line-clamp-2 break-words font-semibold text-adm-text">{pool.title}</p>
+                        <p className="mt-0.5 text-sm text-adm-muted">{t('inv.raayonit.worth', { value: (pool.faceValueAgorot ?? 0) / 100, price: (pool.priceAgorot ?? 0) / 100 })}</p>
+                      </div>
+                      {pool.status === 'archived' ? <StatusBadge tone="slate">{t('inv.archived')}</StatusBadge> : pool.remainingCount <= 0 ? <StatusBadge tone="rose" icon="fa-box-open">{t('inv.outBadge')}</StatusBadge> : low ? <StatusBadge tone="amber" icon="fa-triangle-exclamation">{t('inv.lowBadge')}</StatusBadge> : null}
+                    </div>
+                    <p className="flex items-baseline gap-4 text-sm text-adm-text-2">
+                      <span><bdi dir="ltr" className="text-2xl font-bold tabular-nums text-adm-text">{pool.remainingCount}</bdi> {t('inv.raayonit.available')}</span>
+                      <span><bdi dir="ltr" className="font-semibold tabular-nums">{pool.allocatedCount}</bdi> {t('inv.raayonit.sold')}</span>
+                    </p>
+                    <div className="mt-auto flex items-center justify-between gap-3">
+                      <span className="text-xs text-adm-muted">{t('inv.raayonit.offers', { n: linked })}</span>
+                      <button type="button" disabled={pool.status === 'archived'} className={SECONDARY_BUTTON} onClick={() => setRestock({ poolId: pool.poolId, title: pool.title ?? '', faceValueAgorot: pool.faceValueAgorot ?? null })}>
+                        <UploadIcon />
+                        {t('inv.raayonit.addCodes')}
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           )}
-        </div>
+        </section>
       )}
 
+      {data && <RaayonitCardsPanel onChanged={() => void load()} />}
+
+      {creating && <NewVoucherTypeSheet onClose={() => setCreating(false)} onDone={() => { setCreating(false); void load() }} />}
       {restock && (
-        <SmartMultipassImportModal
-          fixedPerk={restock === 'any' ? undefined : restock}
+        <RaayonitStockModal
+          stocks={stocks}
+          fixed={restock === 'any' ? undefined : restock}
           onClose={() => setRestock(null)}
           onDone={(message) => {
             setRestock(null)

@@ -46,8 +46,8 @@ describe('admin dictionary', () => {
   it('uses the approved Hebrew terms for the main sections', () => {
     expect(he['nav.dashboard']).toBe('לוח בקרה')
     expect(he['nav.businesses']).toBe('בתי עסק')
-    expect(he['nav.offers']).toBe('ניהול והעלאת הטבות')
-    expect(he['nav.inventory']).toBe('מעקב מלאי וקופונים')
+    expect(he['nav.offers']).toBe('תווים עצמאיים')
+    expect(he['nav.inventory']).toBe('תווי רעיונית')
     expect(he['nav.merchants']).toBe('הזמנת עסקים והסכמים')
     expect(he['nav.payouts']).toBe('תשלומי מס״ב')
     expect(he['nav.users']).toBe('ניהול חברים ומשתמשים')
@@ -107,10 +107,10 @@ describe('admin Hebrew coverage', () => {
     const heRoute = (label: string) => routeLabel('he', label)
     expect(adminDocumentTitle(heRoute, '/admin/businesses')).toBe('בתי עסק | GoLandly Admin')
     expect(adminDocumentTitle((l) => routeLabel('en', l), '/admin/businesses')).toBe('Businesses | GoLandly Admin')
-    expect(adminDocumentTitle(heRoute, '/admin/inventory')).toBe('מעקב מלאי וקופונים | GoLandly Admin')
+    expect(adminDocumentTitle(heRoute, '/admin/inventory')).toBe('תווי רעיונית | GoLandly Admin')
   })
 
   it('names the two catalog tabs', () => {
-    expect([en['nav.offers'], en['nav.inventory']]).toEqual(['Perk Management', 'Stock & Vouchers'])
+    expect([en['nav.offers'], en['nav.inventory']]).toEqual(['Direct Perks', 'Raayonit Vouchers'])
   })
 })

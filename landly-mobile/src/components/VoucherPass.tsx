@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { router } from 'expo-router'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { formatLongDate } from '@shared/format'
 import { voucherDestination } from '@shared/member/voucherDestination'
@@ -16,6 +15,7 @@ import ScalePressable from './ScalePressable'
 import TicketTear from './TicketTear'
 import VoucherCover from './VoucherCover'
 import { impact } from '../lib/haptics'
+import { openVoucher } from '../lib/openVoucher'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -54,11 +54,12 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
       accessibilityLabel={[name.text, title.text, validity, t('voucher_show_button')].filter(Boolean).join(', ')}
       onPress={() => {
         impact()
-        router.push({ pathname: '/voucher/[voucherId]', params: { voucherId: voucher.id } })
+        // Hands the pass over, so the voucher screen draws it at once (src/lib/openVoucher.ts).
+        openVoucher(voucher)
       }}
       style={styles.card}
     >
-      <VoucherCover voucher={voucher} name={name.text} maxHeight={148} />
+      <VoucherCover voucher={voucher} maxHeight={148} />
       <View style={styles.body}>
         <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
         <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>

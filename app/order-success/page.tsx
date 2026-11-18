@@ -2,11 +2,16 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, CircleAlert, Copy, LoaderCircle, Mail, PiggyBank, QrCode, Wallet, X } from 'lucide-react'
+import { Check, CircleAlert, Copy, LoaderCircle, Mail, PiggyBank, QrCode, Ticket, Wallet, X } from 'lucide-react'
+import IssuerAttribution from '@/components/member/IssuerAttribution'
+import { isPooled } from '@/lib/inventory/types'
+import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import Confetti from '@/components/checkout/Confetti'
+import MerchantBadge from '@/components/discover/MerchantBadge'
 import PerkImage from '@/components/discover/PerkImage'
+import { purchaseMediaProps } from '@/lib/offers/merchantLogoProps'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
@@ -76,8 +81,8 @@ function OrderSuccessContent() {
   }
 
   const pending = order === undefined || order?.status === 'pending'
+  const media = paid ? purchaseMediaProps({ order, offer }) : null
   const discount = paid && order.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
-  const voucherId = paid ? order.voucherId : null
 
   return (
     <>
@@ -122,9 +127,12 @@ function OrderSuccessContent() {
               <>
                 {/* What was bought: thumbnail, business and perk, paid and saved. */}
                 <div className="mt-6 flex items-center gap-4 rounded-2xl bg-brandTint p-4 text-start ring-1 ring-brandLight">
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/70">
-                    {offer && <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} />}
-                  </div>
+                  {media?.badge && <MerchantBadge size="lg" {...media.badge} />}
+                  {!media?.badge && !!media?.photoUrl && (
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/70">
+                      <PerkImage src={media.photoUrl} alt="" category={offer?.category ?? ''} businessName="" />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
                     <div className="mt-0.5 font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</div>
@@ -141,6 +149,10 @@ function OrderSuccessContent() {
                     </div>
                   </div>
                 </div>
+
+                {isPooled(order.fulfillmentType) && (
+                  <IssuerAttribution issuer={RAAYONIT_ISSUER} lang={lang} note={t('voucher_valid_years')} className="mt-4" />
+                )}
 
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-slate-100 px-4 py-3 text-start">
                   <div className="min-w-0">
@@ -162,18 +174,9 @@ function OrderSuccessContent() {
                 {/* Sticky above the home indicator on phones, in the flow from 640px.
                     The WhatsApp widget rises above it there (data-floating-clearance). */}
                 <div data-floating-clearance="" className="sticky bottom-0 -mx-6 mt-6 flex flex-col gap-2 bg-white px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:px-0 sm:pb-0">
-                  {voucherId && (
-                    <Link
-                      href={`/member/vouchers/${encodeURIComponent(voucherId)}`}
-                      className="ds-btn ds-btn-primary ds-btn-wrap w-full"
-                    >
-                      <QrCode aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
-                      <span>{t('success_view_voucher')}</span>
-                    </Link>
-                  )}
                   <Link
                     href="/member"
-                    className="ds-btn ds-btn-secondary ds-btn-wrap w-full"
+                    className="ds-btn ds-btn-primary ds-btn-wrap w-full"
                   >
                     {t('success_to_my_pass')}
                   </Link>

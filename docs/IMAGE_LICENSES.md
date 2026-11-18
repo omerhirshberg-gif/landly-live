@@ -151,3 +151,16 @@ The earlier 2x2 gallery (`public/images/hero/`, four 1200px and 640px landscape 
 | `bar-b-sm.webp` | `5a8cb76515cf6f79704f6dd6c6b3689ccd860d9255540b512380344906e23f02` |
 
 To change a photo: replace both files, update the rows and hashes here, and run `shasum -a 256 public/images/hero-marquee/*.webp`.
+
+## Raayonit brand images recovered from official sites
+
+Only the business's own website (`official_website`, or the website its Google Business listing names: `google_business_listing_website`) is a source. Social platforms (Instagram, Facebook, TikTok, Pinterest, X, LinkedIn, YouTube and their CDNs) and stock agencies are refused by `isBlockedImageSource` (lib/inventory/raayonitImageUtils.ts). Google's own listing photos are not downloaded.
+
+| Business | Key | Source URL | Origin |
+|---|---|---|---|
+| יו | `l-u-hotels` | https://assets.fattal.co.il/24_f75f04f310.jpg | official_website |
+| קאסה דל פפה | `l-8981` | https://casadelpepetlv.maxshop.co.il/uploads/4964e6c957198dee8/17502424110464.png | google_business_listing_website |
+| מלון סטאי תל אביב | `l-10319` | https://thesetaihotels.com/wp-content/uploads/2022/11/Logo-group-en3.svg | official_website |
+| מלון סטאי כנרת | `l-5062` | https://thesetaihotels.com/wp-content/uploads/2022/11/Logo-group-en3.svg | official_website |
+| Torta Loca | `l-7902` | https://mexicani.co.il/wp-content/uploads/2026/10/cropped-%D7%94%D7%9E%D7%A7%D7%A1%D7%99%D7%A7%D7%A0%D7%99-%D7%AA%D7%95%D7%9B%D7%9F-%D7%9C%D7%96%D7%9B%D7%99%D7%99%D7%A0%D7%99%D7%9D-scaled-2-192x192.png | google_business_listing_website |
+| VERT | `l-vert` | user_provided:vert.webp | user_provided |

@@ -83,7 +83,7 @@ describe('native screens follow the live window', () => {
     for (const file of sources('landly-mobile/src')) expect(readFileSync(file, 'utf8'), file).not.toMatch(/Dimensions\.get\(/)
   })
 
-  it.each(['app/(tabs)/perks.tsx', 'app/(tabs)/wishlist.tsx', 'app/category/[category].tsx', 'app/(tabs)/wallet.tsx'])(
+  it.each(['app/(tabs)/wallet.tsx'])(
     '%s remounts its feed when folding changes the column count',
     (path) => {
       const source = read(path)
@@ -93,6 +93,23 @@ describe('native screens follow the live window', () => {
       expect(source).toContain('<FeedCell>')
     }
   )
+
+  // The perk feeds are FlashLists (no columnWrapperStyle): each cell takes its column index and FeedCell shifts the card by
+  // column x gap / columns, which leaves exactly GRID_GAP between neighbours.
+  it.each(['app/(tabs)/perks.tsx', 'app/(tabs)/wishlist.tsx', 'app/category/[category].tsx'])(
+    '%s is a FlashList that remounts when folding changes the column count',
+    (path) => {
+      const source = read(path)
+      expect(source).toContain('<FlashList')
+      expect(source).toContain("key={'cols-' + columns}")
+      expect(source).toContain('numColumns={columns}')
+      expect(source).toMatch(/<FeedCell column=\{(item\.)?index\}>/)
+    }
+  )
+
+  it('spaces FlashList columns by an exact gap', () => {
+    expect(read('components/FeedCell.tsx')).toContain('(column % columns) * (GRID_GAP / columns)')
+  })
 
   it('only gives a multi-column list a column wrapper, which React Native rejects on one column', () => {
     expect(read('components/FeedCell.tsx')).toContain('return columns > 1 ? styles.row : undefined')

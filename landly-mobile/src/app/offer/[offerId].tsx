@@ -3,21 +3,27 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getOffer, getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
-import { hasUserClaimedOffer } from '@shared/firebase/vouchers'
+import { getClaimedPoolIds } from '@shared/firebase/vouchers'
+import { variantDiscountPercent } from '@shared/offers/variants'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { formatLongDate, formatPrice } from '@shared/format'
 import { redemptionSteps } from '@shared/offers/redemption'
+import { isolateNumbers } from '@shared/inventory/raayonitRedemption'
 import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
 import { navigationLinks } from '@shared/maps/navigation'
 import { distinctDescription, offerTextSources } from '@shared/offers/offerText'
 import { offerFullAddress } from '@shared/geo'
-import { locationNoticeKind, shouldShowLocationNavigation } from '@shared/offers/locationVisibility'
-import { ParticipatingChains, PerkReachLine } from '../../components/PerkReach'
+import { isSingleVenue, locationNoticeKind, shouldShowLocationNavigation } from '@shared/offers/locationVisibility'
+import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '../../components/PerkReach'
+import IssuerAttribution from '../../components/IssuerAttribution'
+import { isPooled } from '@shared/inventory/types'
+import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import Accordion from '../../components/Accordion'
 import AppText from '../../components/AppText'
 import ContentText from '../../components/ContentText'
 import DealMedia from '../../components/DealMedia'
+import VariantSelector from '../../components/VariantSelector'
 import TranslationNotice from '../../components/TranslationNotice'
 import Button from '../../components/Button'
 import LineIcon from '../../components/LineIcon'
@@ -29,7 +35,13 @@ import NavigationButtons from '../../components/NavigationButtons'
 import ScreenHeader, { goBack } from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { PANE_GAP } from '../../lib/layout'
-import { badgeLogoUri, businessInitial, secureImageUrl } from '../../lib/imageSource'
+import BrandStrip from '../../components/BrandStrip'
+import BranchStrip from '../../components/BranchStrip'
+import ContactActions from '../../components/ContactActions'
+import RedemptionCallout from '../../components/RedemptionCallout'
+import { variantForDenomination } from '@shared/home/superShowcase'
+import { heroLogoIsFallback, heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../../lib/logoHero'
+import { badgeLogoUri, secureImageUrl } from '../../lib/imageSource'
 import { cachedOffer } from '../../lib/openOffer'
 import { useDealImage } from '../../lib/useDealImage'
 import { useLayout } from '../../lib/useLayout'
@@ -64,14 +76,23 @@ export default function OfferScreen() {
   const { panes, paddingLeft, paddingRight, width } = useLayout()
   const heroShare = width >= WIDE_WIDTH ? WIDE_HERO_SHARE : 1
   const bar = panes ? detailsPaneBar(width, paddingLeft, paddingRight, isRtl, heroShare) : { paddingLeft, paddingRight }
-  const { offerId } = useLocalSearchParams<{ offerId: string }>()
+  const { offerId, denomination } = useLocalSearchParams<{ offerId: string; denomination?: string }>()
   const { user } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
   // The tapped card's data first (if any); undefined while loading, null when missing.
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(() => (offerId ? cachedOffer(offerId) : undefined))
   const [claimed, setClaimed] = useState<boolean | null>(null)
+  // A multi-denomination offer: the voucher value picked (a pool id); empty = the first one that isn't already owned.
+  const [pickedPool, setPickedPool] = useState('')
+  const [claimedPools, setClaimedPools] = useState<string[]>([])
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
+  // A showcase card opens this screen with its value (denomination=150): that value starts out picked.
+  useEffect(() => {
+    if (!offer?.variants?.length) return
+    const wanted = variantForDenomination(offer.variants, denomination)
+    if (wanted) setPickedPool((current) => current || wanted.poolId)
+  }, [offer, denomination])
 
   useEffect(() => {
     if (!offerId) return
@@ -90,17 +111,21 @@ export default function OfferScreen() {
   }, [offerId])
 
   const uid = user?.uid
+  // A voucher from before variants belongs to the offer's default (first, cheapest) stock.
+  const defaultPoolId = offer?.variants?.[0]?.poolId ?? null
   // A failed read leaves Buy available; checkout itself refuses a second claim.
   const fetchClaimed = useCallback(
-    () => (uid && offerId ? hasUserClaimedOffer(uid, offerId).catch(() => false) : Promise.resolve(false)),
-    [uid, offerId]
+    () => (uid && offerId ? getClaimedPoolIds(uid, offerId, defaultPoolId).catch(() => ({ any: false, pools: [] as string[] })) : Promise.resolve({ any: false, pools: [] as string[] })),
+    [uid, offerId, defaultPoolId]
   )
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false
       fetchClaimed().then((next) => {
-        if (!cancelled) setClaimed(next)
+        if (cancelled) return
+        setClaimed(next.any)
+        setClaimedPools(next.pools)
       })
       return () => {
         cancelled = true
@@ -108,11 +133,19 @@ export default function OfferScreen() {
     }, [fetchClaimed])
   )
 
+  // Multi-denomination: the picked value, else the first one not already owned; the price, saving and checkout follow it.
+  const variants = offer?.variants ?? []
+  const multi = variants.length > 1
+  const freeVariants = variants.filter((v) => !claimedPools.includes(v.poolId))
+  const selected = variants.length > 0 ? (freeVariants.find((v) => v.poolId === pickedPool) ?? freeVariants[0] ?? variants[0]) : undefined
+  const price = selected ? selected.priceAgorot / 100 : offer?.offerPrice ?? 0
+  const original = selected ? selected.faceValueAgorot / 100 : offer?.originalPrice ?? 0
+  const everyValueOwned = variants.length > 0 && freeVariants.length === 0
   const buy = () => {
-    if (offer) router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id } })
+    if (offer) router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id, ...(selected ? { variant: selected.poolId } : {}) } })
   }
 
-  const discount = offer ? getOfferDiscountPercent(offer.originalPrice, offer.offerPrice) : 0
+  const discount = offer ? (selected ? variantDiscountPercent(selected) : getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)) : 0
   const saved = offer ? isWishlisted(offer.id) : false
   const remaining = offer && offer.totalQuantity !== null ? Math.max(offer.totalQuantity - offer.claimedCount, 0) : null
   const expired = !!offer?.expiryDate && offer.expiryDate.getTime() < now
@@ -121,7 +154,7 @@ export default function OfferScreen() {
   // The business name has its own translations; one "Show original" switch flips both.
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
   const businessName = nameContent.text('businessName')
-  const image = useDealImage(offer?.imageUrl ?? '')
+  const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
   const machine = content.machine || nameContent.machine
   const showingOriginal = content.showingOriginal || nameContent.showingOriginal
   const toggleOriginal = () => {
@@ -139,12 +172,14 @@ export default function OfferScreen() {
   const place = offer && showLocation ? offerFullAddress(offer, lang) : ''
   const noticeKind = offer ? locationNoticeKind(offer) : null
   // The stores or chains that honour the perk, when the admin listed any.
-  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores'
+  // One venue: its address in the header and its own location section, never "1 store".
+  const singleVenue = !!offer && isSingleVenue(offer)
+  const venueLine = offer && singleVenue ? offerFullAddress(offer, lang) : ''
+  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (singleVenue && !!offer?.branches?.length)
   const destination = offer ? { geo: offer.geo, placeId: offer.address?.placeId, address: place || offer.location } : null
-  const logo = offer && (
+  const logo = offer && !heroLogoSource(offer) && !isRaayonitOffer(offer) && (
     <MerchantBadge
       logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
-      initial={businessInitial(businessName.text)}
       height={panes ? 64 : 56}
       large
       style={panes ? styles.logoPane : styles.logo}
@@ -171,7 +206,7 @@ export default function OfferScreen() {
             <View style={panes ? styles.cardPanes : undefined}>
               <View style={[styles.heroWrap, panes && styles.heroPane, panes && { flex: heroShare }]}>
                 {/* The same picture as the perk card: an offer image that is a logo goes to the badge instead. */}
-                <DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>
+                <DealMedia image={image} category={offer.category} logo={heroLogoSource(offer)} logoSmall={heroLogoIsFallback(offer)} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>
                   {!panes && (
                     <View style={styles.back}>
                       <GlassBackButton label={t('settings_back')} onPress={() => goBack('/perks')} />
@@ -195,19 +230,32 @@ export default function OfferScreen() {
 
               <View style={panes ? [styles.body, styles.bodyPane] : [styles.body, styles.sheet]}>
                 {!panes && logo}
-                <OfferTags category={offer.category} method={offer.redemptionMethod} />
+                <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} />
                 <AppText style={[styles.business, styles.businessAfterTags]}>{businessName.text}</AppText>
                 <ContentText contentLang={title.lang} style={styles.title} accessibilityRole="header">{title.text}</ContentText>
 
+                {multi && <VariantSelector variants={variants} value={selected?.poolId ?? ''} onChange={setPickedPool} claimed={claimedPools} />}
                 <View style={styles.priceRow}>
-                  <AppText ltr style={styles.price}>{formatPrice(offer.offerPrice)}</AppText>
-                  {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(offer.originalPrice)}</AppText>}
-                  {discount > 0 && <AppText style={styles.saving}>{t('offer_you_save').replace('{amount}', formatPrice(offer.originalPrice - offer.offerPrice))}</AppText>}
+                  <AppText ltr style={styles.price}>{formatPrice(price)}</AppText>
+                  {discount > 0 && <AppText ltr style={styles.original}>{formatPrice(original)}</AppText>}
+                  {discount > 0 && <AppText style={styles.saving}>{t('offer_you_save').replace('{amount}', formatPrice(original - price))}</AppText>}
                 </View>
 
+                {/* A Raayonit voucher: who issued it, and that it is a code (no QR) valid 5 years. Right under the title and price. */}
+                {isPooled(offer.fulfillmentType) && (
+                  <View style={styles.issuerTop}>
+                    <IssuerAttribution issuer={RAAYONIT_ISSUER} note={t('offer_code_only_info')} />
+                  </View>
+                )}
+
                 {/* Text-only pills of what the offer really states; they wrap. */}
-                {(!!offer.expiryDate || remaining !== null) && (
+                {(!!offer.expiryDate || remaining !== null || !!offer.kosherBranchCount) && (
                   <View style={styles.chips}>
+                    {!!offer.kosherBranchCount && (
+                      <View style={[styles.chip, styles.methodChip]}>
+                        <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</AppText>
+                      </View>
+                    )}
                     {offer.expiryDate && (
                       <View style={[styles.chip, expired ? styles.expiredChip : styles.methodChip]}>
                         <AppText style={[styles.chipText, expired ? styles.expired : styles.methodText]} numberOfLines={1}>
@@ -223,12 +271,22 @@ export default function OfferScreen() {
                   </View>
                 )}
 
+                <RedemptionCallout method={offer.redemptionMethod} instructions={instructions.text} contentLang={instructions.lang} />
+
                 {machine && <TranslationNotice showingOriginal={showingOriginal} onToggle={toggleOriginal} />}
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
                 {!showLocation && locationNoticeKind(offer) !== null && (
                   <View style={styles.location}>
                     <PerkReachLine offer={offer} />
+                  </View>
+                )}
+                {singleVenue && !showLocation && !!venueLine && (
+                  <View style={styles.location}>
+                    <View style={styles.address}>
+                      <LineIcon name="pin" size={14} color={colors.textFaint} strokeWidth={2} />
+                      <AppText autoDir style={styles.locationText}>{venueLine}</AppText>
+                    </View>
                   </View>
                 )}
                 {showLocation && (!!place || (destination && !!navigationLinks(destination))) && (
@@ -243,10 +301,21 @@ export default function OfferScreen() {
                   </View>
                 )}
 
+                {/* One full-width column: the website and the phone, 12pt apart. */}
+                <View style={styles.actions}>
+                  <ContactActions websiteUrl={offer.websiteUrl} phone={offer.contactPhone} stack />
+                </View>
+
                 <View style={styles.folds}>
                   {hasStoreList && (
-                    <Accordion title={t(noticeKind === 'chains' ? 'perk_chains_title' : 'perk_stores_title')} defaultOpen>
-                      <ParticipatingChains offer={offer} />
+                    <Accordion title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
+                      {offer.perkScope === 'multi_chain' && !!offer.brandIndex?.length ? (
+                        <View style={{ gap: 14 }}><BrandStrip entries={offer.brandIndex} /><RedemptionGuide offer={offer} /></View>
+                      ) : !!offer.branches?.length ? (
+                        <BranchStrip branches={offer.branches} brand={offer.brandName || offer.businessName || null} />
+                      ) : (
+                        <ParticipatingChains offer={offer} />
+                      )}
                     </Accordion>
                   )}
                   {!!descriptionText && (
@@ -256,7 +325,7 @@ export default function OfferScreen() {
                   )}
                   <Accordion title={t('offer_how_title')} defaultOpen>
                     {(() => {
-                      const steps = redemptionSteps(offer.redemptionMethod, instructions.text, t)
+                      const steps = redemptionSteps(offer.redemptionMethod, instructions.text, t, isPooled(offer.fulfillmentType))
                       // Numbers only for the merchant's own multi-line instructions, where order matters.
                       const numbered = instructions.text.trim() !== '' && steps.length > 1
                       return steps.map((step, i) => (
@@ -267,13 +336,13 @@ export default function OfferScreen() {
                           </View>
                         )}
                         {/* The merchant's own steps are in the content's language; the standard ones in the app's. */}
-                        <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{step}</ContentText>
+                        <ContentText contentLang={instructions.text.trim() ? instructions.lang : null} style={styles.stepText}>{isolateNumbers(step)}</ContentText>
                       </View>
                     ))
                     })()}
                   </Accordion>
                   {!!terms.text && (
-                    <Accordion title={t('offer_fine_print_title')}>
+                    <Accordion title={t('offer_fine_print_title')} defaultOpen>
                       <ContentText contentLang={terms.lang} style={styles.terms}>{terms.text}</ContentText>
                     </Accordion>
                   )}
@@ -284,7 +353,7 @@ export default function OfferScreen() {
 
           {/* Pinned above the home indicator, outside the scroll. */}
           <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12), ...bar }]}>
-            {claimed ? (
+            {claimed && (variants.length === 0 || everyValueOwned) ? (
               <View style={styles.claimed} accessibilityLiveRegion="polite">
                 <LineIcon name="check" size={20} color={colors.success} strokeWidth={2.4} />
                 <AppText style={styles.claimedTitle}>{t('offer_already_claimed_title')}</AppText>
@@ -299,7 +368,7 @@ export default function OfferScreen() {
               </View>
             ) : (
               <Button
-                label={t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}
+                label={t('offer_buy_button').replace('{price}', formatPrice(price))}
                 onPress={buy}
                 busy={claimed === null}
                 disabled={expired}
@@ -336,6 +405,8 @@ function detailsPaneBar(width: number, paddingLeft: number, paddingRight: number
 }
 
 const styles = StyleSheet.create({
+  actions: { alignSelf: 'stretch', gap: 12, marginTop: 24 },
+  issuerTop: { alignSelf: 'stretch', marginTop: 20 },
   safe: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: 48 },
   notFound: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
@@ -394,7 +465,7 @@ const styles = StyleSheet.create({
   // On the sheet's edge on a phone; in the picture's bottom start corner in two panes.
   logo: { position: 'absolute', top: -28, start: BODY_PADDING },
   logoPane: { position: 'absolute', bottom: 16, start: 16 },
-  chips: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  chips: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 18 },
   // The chips share one shape: compact, softly rounded, text only.
   chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 },
   chipText: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
@@ -403,23 +474,23 @@ const styles = StyleSheet.create({
   business: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.body },
   businessAfterTags: { marginTop: 8 },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '800', color: colors.heading, marginTop: 4 },
-  location: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 },
+  location: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20 },
   address: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   locationText: { flex: 1, fontSize: 14, color: colors.textFaint },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 16 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginTop: 20 },
   price: { fontSize: 28, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
   original: { fontSize: 17, color: colors.textFaint, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
   // Web: text-emerald-700.
   saving: { fontSize: 14, fontWeight: '600', color: colors.discount },
-  description: { fontSize: 15, lineHeight: 23, color: colors.body },
+  description: { fontSize: 15, lineHeight: 26, color: colors.body },
   expiredChip: { backgroundColor: '#FEF2F2' },
   expired: { color: colors.danger },
-  folds: { marginTop: 20 },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  folds: { marginTop: 28 },
+  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   stepNumber: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   stepNumberText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: colors.brand, textAlign: 'center' },
-  stepText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
-  terms: { fontSize: 13, lineHeight: 19, color: colors.textMuted },
+  stepText: { flex: 1, fontSize: 13, lineHeight: 22, color: colors.body },
+  terms: { fontSize: 13, lineHeight: 22, color: colors.textMuted },
   actionBar: {
     paddingHorizontal: 16,
     paddingTop: 12,

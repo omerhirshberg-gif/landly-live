@@ -7,7 +7,7 @@ import { OFFER_TEMPLATE_COLUMNS, type OfferColumn } from './offersBatch'
 const HEBREW_LABELS: Record<OfferColumn, string> = {
   title_he: 'כותרת בעברית', title_en: 'כותרת באנגלית', businessId: 'מזהה בית עסק', category: 'קטגוריה', fulfillmentType: 'ערוץ',
   originalPrice: 'מחיר מקורי', discountedPrice: 'מחיר אחרי הנחה', totalQuantity: 'כמות', commissionRate: 'עמלה', paymentTerms: 'תנאי תשלום',
-  howToRedeem_he: 'הוראות מימוש', imageUrl: 'קישור לתמונה', perkScope: 'סוג הטבת מולטיפאס', brandName: 'שם המותג', participatingChains: 'רשתות מכבדות', isNationwide: 'הטבה ארצית',
+  howToRedeem_he: 'הוראות מימוש', imageUrl: 'קישור לתמונה', perkScope: 'סוג התו', brandName: 'שם המותג', participatingChains: 'רשתות מכבדות', isNationwide: 'הטבה ארצית',
 }
 
 export const OFFERS_TEMPLATE_FILENAME = 'landly_offers_template.xlsx'
@@ -17,10 +17,10 @@ const EXAMPLE_ROW = [
   120, 79, 100, 10, 'net_30', 'מציגים את השובר בקופה', 'https://example.com/photo.jpg', '', '', '', '',
 ]
 
-// A Multipass perk names its brand (and, for a multi-chain voucher, its chains) instead of a business.
-const MULTIPASS_EXAMPLE_ROW = [
-  '<title in Hebrew>', '<title in English>', '', 'Fashion and Shopping', 'multipass_pool',
-  200, 180, '', '', '', 'מציגים את הקוד בקופה', '', 'multi_chain', '<brand name>', '<chain>; <chain>', '',
+// A Raayonit perk names its brand (and, for a multi-chain voucher, its chains) instead of a business.
+const RAAYONIT_EXAMPLE_ROW = [
+  '<title in Hebrew>', '<title in English>', '', 'Fashion and Shopping', 'raayonit_pool',
+  100, 89, '', '', '', 'מציגים את הקוד בקופה', '', 'multi_chain', '<brand name>', '<chain>; <chain>', '',
 ]
 
 const NOTES: (string | number)[][] = [
@@ -28,11 +28,11 @@ const NOTES: (string | number)[][] = [
   ['title_he / title_en', 'At least one. The other language is translated automatically when left empty.'],
   ['businessId', 'The business’s id (shown in its page address) or its company number.'],
   ['category', 'Optional. Defaults to the business’s category.'],
-  ['fulfillmentType', 'direct_merchant (default) or multipass_pool. Multipass codes are loaded afterwards on the Stock & Vouchers page.'],
-  ['perkScope / brandName', 'Multipass rows only. brandName is required and replaces the business. perkScope is single_business (default) or multi_chain; the category is required too.'],
-  ['participatingChains', 'Optional, separated by semicolons: the stores that honour a nationwide local offer (isNationwide = yes) or a Multipass perk, or the chains of a multi-chain voucher (required there). On a Multipass row with no perkScope, a list means multi_chain; set perkScope to single_business for a list of stores. Empty means every store.'],
-  ['isNationwide', 'Optional, local-business rows only: yes/true/1 hides the single address and Waze / Maps buttons for a chain honoured across its branches. Empty means a single location; Multipass rows are always multi-branch.'],
-  ['businessId', 'Leave empty on a Multipass row. Local-business rows need it.'],
+  ['fulfillmentType', 'direct_merchant (default) or raayonit_pool. A Raayonit row sells from the voucher stock of the same value and price (originalPrice 100 / discountedPrice 89), created on the Stock & Vouchers page together with its codes.'],
+  ['perkScope / brandName', 'Raayonit rows only. brandName is required and replaces the business. perkScope is single_business (default) or multi_chain; the category is required too.'],
+  ['participatingChains', 'Optional, separated by semicolons: the stores that honour a nationwide local offer (isNationwide = yes) or a Raayonit perk, or the chains of a multi-chain voucher (required there). On a Raayonit row with no perkScope, a list means multi_chain; set perkScope to single_business for a list of stores. Empty means every store.'],
+  ['isNationwide', 'Optional, local-business rows only: yes/true/1 hides the single address and Waze / Maps buttons for a chain honoured across its branches. Empty means a single location; Raayonit rows are always multi-branch.'],
+  ['businessId', 'Leave empty on a Raayonit row. Local-business rows need it.'],
   ['originalPrice / discountedPrice', 'In shekels. The discounted price must be lower.'],
   ['totalQuantity', 'Direct offers only. Empty means unlimited.'],
   ['commissionRate / paymentTerms', 'Optional, together. 10 or 0.1 for 10%; net_0, net_15, net_30, net_45 or net_60. Saved on the business.'],
@@ -42,7 +42,7 @@ const NOTES: (string | number)[][] = [
 export async function downloadOffersTemplate() {
   const XLSX = await import('xlsx')
   const book = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([OFFER_TEMPLATE_COLUMNS.map((name) => `${name} (${HEBREW_LABELS[name]})`), EXAMPLE_ROW, MULTIPASS_EXAMPLE_ROW])
+  const sheet = XLSX.utils.aoa_to_sheet([OFFER_TEMPLATE_COLUMNS.map((name) => `${name} (${HEBREW_LABELS[name]})`), EXAMPLE_ROW, RAAYONIT_EXAMPLE_ROW])
   sheet['!cols'] = OFFER_TEMPLATE_COLUMNS.map((name) => ({ wch: Math.max(22, name.length + HEBREW_LABELS[name].length + 6) }))
   XLSX.utils.book_append_sheet(book, sheet, 'Offers')
   const notes = XLSX.utils.aoa_to_sheet(NOTES)

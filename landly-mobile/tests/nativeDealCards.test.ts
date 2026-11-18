@@ -86,7 +86,7 @@ describe('native vector icons', () => {
 
   it('names the Perks rails and My Pass icons in one place', () => {
     expect(ALL_ICON).toBe('sparkles')
-    expect(RAIL_ICONS).toEqual({ new: 'sparkles', bestsellers: 'award' })
+    expect(RAIL_ICONS).toEqual({ new: 'sparkles', bestsellers: 'award', superTav: 'ticket' })
     expect(PASS_ICONS).toEqual({ activePerks: 'ticket', redeemed: 'gift', saved: 'piggyBank', emptyActive: 'gift', emptyRedeemed: 'receipt', validity: 'calendar', redeemedMark: 'circleCheck' })
     // One file per icon: the package's root would put the whole library in the bundle.
     expect(read('components/LineIcon.tsx')).toContain("from 'lucide-react-native/icons/globe'")
@@ -96,7 +96,7 @@ describe('native vector icons', () => {
   it('shows the redemption method as text only, with no emoji, on every native screen', () => {
     for (const path of ['components/OfferTags.tsx', 'components/OfferCard.tsx', 'components/RedeemedPass.tsx', 'app/voucher/[voucherId].tsx']) {
       const source = read(path)
-      expect(source, path).toContain('REDEMPTION_METHOD_LABEL_KEYS')
+      expect(source, path).toMatch(/REDEMPTION_METHOD_LABEL_KEYS|redemptionTagKey/)
       expect(source, path).not.toMatch(/redemptionGlyph|REDEMPTION_GLYPHS|REDEMPTION_METHOD_ICONS/)
     }
     expect(read('lib/categoryGlyphs.ts')).not.toContain('REDEMPTION')
@@ -143,14 +143,14 @@ describe('native perk card layout', () => {
     expect(card).not.toContain('<OfferTags')
     expect(card.indexOf('styles.method')).toBeLessThan(card.indexOf('</DealMedia>'))
     expect(card.indexOf('styles.method')).toBeGreaterThan(card.indexOf('<DealMedia'))
-    expect(read('app/offer/[offerId].tsx')).toContain('<OfferTags category={offer.category} method={offer.redemptionMethod} />')
+    expect(read('app/offer/[offerId].tsx')).toContain('<OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} />')
   })
 
   it('fades the photo in over 180ms, and floats the logo box on the hero’s corner, the title under it', () => {
     const media = read('components/DealMedia.tsx')
     const card = read('components/OfferCard.tsx')
     expect(read('lib/useDealImage.ts')).toContain('export const DEAL_FADE_MS = 180')
-    expect(card).toContain('useDealImage(offer.imageUrl)')
+    expect(card).toContain('useDealImage(offer.imageUrl, raayonitImageOpts(offer))')
     expect(media).not.toContain('<MerchantBadge')
     expect(card).toContain("logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}")
     expect(card.indexOf('<MerchantBadge')).toBeLessThan(card.indexOf('</DealMedia>'))
@@ -165,12 +165,12 @@ describe('native perk card layout', () => {
     expect(badge).toContain('const BADGE_RADIUS = 16')
     expect(badge).toContain('const BADGE_PADDING = 10')
     expect(badge).toContain('borderColor: colors.borderLight')
-    expect(badge).toContain('resizeMode="contain"')
+    expect(badge).toContain('contentFit="contain"')
     expect(badge).toContain('resizeMethod="scale"')
     expect(badge).not.toContain('borderRadius: size / 2')
     // Home's carousel is the compact card, and the Perks rails draw through it.
     expect(read('components/OfferCarousel.tsx')).toContain('variant="carousel"')
-    expect(read('components/OfferTileRail.tsx')).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} />')
+    expect(read('components/OfferTileRail.tsx')).toContain('<OfferCarousel offers={offers} onOpen={onOpen} autoAdvance={autoAdvance} autoAdvanceOffsetMs={autoAdvanceOffsetMs} visible={visible} />')
   })
 })
 
@@ -179,11 +179,11 @@ describe('the perk page’s logo badge', () => {
 
   it('picks the badge’s logo as the cards do, from the same image hook', () => {
     const offer = page()
-    expect(offer).toContain("const image = useDealImage(offer?.imageUrl ?? '')")
+    expect(offer).toContain("const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))")
     expect(offer).toContain("logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}")
-    expect(offer).toContain('initial={businessInitial(businessName.text)}')
+    expect(offer).not.toContain('initial=')
     // One picture with the cards: DealMedia draws only a photo, a logo in the offer's image goes to the badge.
-    expect(offer).toContain("<DealMedia image={image} category={offer.category} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>")
+    expect(offer).toContain("<DealMedia image={image} category={offer.category} logo={heroLogoSource(offer)} logoSmall={heroLogoIsFallback(offer)} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>")
     expect(offer).not.toContain('<PerkImage')
     expect(offer).not.toContain('resizeMode')
   })
@@ -220,7 +220,7 @@ describe('the perk page’s logo badge', () => {
   it('draws the chips compact, softly rounded and text only, in one shape', () => {
     const offer = page()
     expect(offer).toContain("chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 }")
-    expect(offer.match(/<View style=\{\[styles\.chip, /g)).toHaveLength(2)
+    expect(offer.match(/<View style=\{\[styles\.chip, /g)).toHaveLength(3)
     expect(offer).not.toContain('<Emoji')
   })
 })

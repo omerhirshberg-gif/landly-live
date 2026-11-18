@@ -21,15 +21,16 @@ function render(lang: Lang, element: ReturnType<typeof createElement>) {
 }
 
 describe('GlobalPerkSearchBar', () => {
-  it.each(LANGS)('is one row: the search pill, then Near Me, then Filter (%s)', (lang) => {
+  it.each(LANGS)('is one row: the search pill, then Filter, with no separate Near Me or Choose area button (%s)', (lang) => {
     const html = render(lang, createElement(GlobalPerkSearchBar))
     const search = html.indexOf('role="search"')
     const near = html.indexOf(`aria-label="${translations[lang].geo_near_me_btn}"`)
     const filter = html.indexOf(`aria-label="${translations[lang].cats_filter_button}"`)
     expect(html).toContain('data-global-search=""')
     expect(search).toBeGreaterThan(-1)
-    expect(near).toBeGreaterThan(search)
-    expect(filter).toBeGreaterThan(near)
+    expect(near).toBe(-1)
+    expect(html).not.toContain(translations[lang].geo_choose_area)
+    expect(filter).toBeGreaterThan(search)
     expect(html.match(/role="search"/g)).toHaveLength(1)
   })
 

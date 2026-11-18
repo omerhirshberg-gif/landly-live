@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
+import { isolateNumbers } from '@/lib/inventory/raayonitRedemption'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps, type RedemptionMethod } from '@/lib/offers/redemption'
 import { REDEMPTION_METHOD_ICONS } from '@/components/discover/RedemptionBadge'
 
@@ -19,20 +20,22 @@ interface HowToRedeemProps {
   /**
    * 'card': its own bordered card. 'section': a full-size section inside
    * another card. 'inline': compact, inside a wallet pass. 'accordion': the
-   * offer page's folds, the steps open and any conditions closed.
+   * offer page's folds, the steps and the fine print both open (each can be folded by its header).
    */
   variant?: 'card' | 'section' | 'inline' | 'accordion'
+  /** A Raayonit voucher: a code with no QR code, so the standard steps that mention one are swapped. */
+  codeOnly?: boolean
 }
 
 // "How to redeem" ("אופן המימוש"): the method, then numbered steps -- the
 // merchant's own instructions, or the method's standard steps -- then any
 // conditions. Shared by the offer page and the web wallet; the Expo wallet
 // (landly-mobile VoucherPass) shows the same content.
-export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, variant = 'card' }: HowToRedeemProps) {
+export default function HowToRedeem({ method, instructions, instructionsLang, terms = '', termsLang, variant = 'card', codeOnly = false }: HowToRedeemProps) {
   const { t } = useLang()
   const headingId = useId()
   const MethodIcon = REDEMPTION_METHOD_ICONS[method]
-  const steps = redemptionSteps(method, instructions, t)
+  const steps = redemptionSteps(method, instructions, t, codeOnly)
   // Numbers only where order matters: the merchant's own multi-line instructions.
   // The standard copy reads as plain lines, with no "1, 2" badges.
   const numbered = instructions.trim() !== '' && steps.length > 1
@@ -46,7 +49,7 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
     </span>
   )
   const stepList = (
-    <ol className="space-y-3">
+    <ol className="space-y-4">
       {steps.map((step, i) => (
         <li key={i} className="flex items-start gap-3">
           {numbered && (
@@ -57,15 +60,15 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
               {i + 1}
             </span>
           )}
-          <span className="text-sm leading-relaxed text-body" lang={stepLang} dir="auto">
-            {step}
+          <span className="text-sm leading-[1.75] text-body" lang={stepLang} dir="auto">
+            {isolateNumbers(step)}
           </span>
         </li>
       ))}
     </ol>
   )
   const termsText = (
-    <p className="whitespace-pre-line text-sm leading-relaxed text-body" lang={termsLang ?? undefined} dir="auto">
+    <p className="whitespace-pre-line text-sm leading-[1.75] text-body" lang={termsLang ?? undefined} dir="auto">
       {terms}
     </p>
   )
@@ -77,7 +80,7 @@ export default function HowToRedeem({ method, instructions, instructionsLang, te
           <div className="mb-4">{methodPill}</div>
           {stepList}
         </Fold>
-        {terms && <Fold title={t('offer_fine_print_title')}>{termsText}</Fold>}
+        {terms && <Fold title={t('offer_fine_print_title')} defaultOpen>{termsText}</Fold>}
       </div>
     )
   }

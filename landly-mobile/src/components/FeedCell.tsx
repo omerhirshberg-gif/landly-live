@@ -3,14 +3,20 @@ import { StyleSheet, View } from 'react-native'
 import { GRID_GAP } from '../lib/layout'
 import { useLayout } from '../lib/useLayout'
 
-// One card's slot in a feed FlatList laid out in columns (an unfolded foldable
-// or a tablet; src/lib/layout.ts): a fixed width, so a short last row keeps
-// its cards the size of the rest rather than one stretching across the
-// screen. On a phone (one column) the card renders as it always has.
-export default function FeedCell({ children }: { children: ReactNode }) {
+// One card's slot in a feed laid out in columns (an unfolded foldable or a
+// tablet; src/lib/layout.ts): a fixed width, so a short last row keeps its
+// cards the size of the rest rather than one stretching across the screen. On
+// a phone (one column) the card renders as it always has.
+//
+// In a FlashList (no columnWrapperStyle) every column gets an equal share of
+// the row; `column` shifts the card within its share by column x gap / columns,
+// which puts exactly GRID_GAP between neighbours and the last card flush with
+// the row's end edge. Start/end, so Hebrew mirrors it.
+export default function FeedCell({ children, column }: { children: ReactNode; column?: number }) {
   const { columns, cellWidth } = useLayout()
   if (columns <= 1) return <>{children}</>
-  return <View style={{ width: cellWidth }}>{children}</View>
+  const shift = column === undefined ? 0 : (column % columns) * (GRID_GAP / columns)
+  return <View style={{ width: cellWidth, marginStart: shift }}>{children}</View>
 }
 
 /**

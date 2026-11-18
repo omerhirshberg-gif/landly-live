@@ -46,7 +46,7 @@ Hosted Fields and the webhook with no code change.
 
 ## Other server secrets (both Firebase projects, separate values)
 
-- `POOL_CODES_KEY`: 32 random bytes, base64. Encrypts Multipass pool codes (AES-256-GCM).
+- `POOL_CODES_KEY`: 32 random bytes, base64. Encrypts Raayonit voucher codes (AES-256-GCM). Set it on both landly-dev and landly-be752.
 - `BUSINESS_FINANCIALS_KEY`: 32 random bytes, base64. Encrypts merchants' bank details.
 - `MASAV_INSTITUTION_CODE`: the bank-issued institution code. Unset, the payout file
   uses the fictitious test code `99999999` and is named `MASAV_MOCK_TEST_*`.
@@ -336,3 +336,64 @@ firebase deploy --only firestore:indexes --project landly-be752
 Until the index is built the Tranzila row says the orders could not be read
 (its fee shows as zero) instead of failing the page. Deploy `firestore.rules`
 the same way if the `system_config` rule from the monthly report is not live yet.
+
+## Raayonit vouchers: DEV and PROD parity
+
+Raayonit "Tav Al" vouchers are stored in the existing `couponPools` collection as shared stocks
+(`kind: 'shared'`, `provider: 'raayonit'`), so there is no new collection, no new Firestore rule
+(clients are already denied) and no new index. What has to match between `landly-dev` and `landly-be752`:
+
+- `POOL_CODES_KEY` set in both environments (separate keys are fine; a code encrypted with one key can only be read with it).
+- The Raayonit logo at `public/images/partners/raayonit-logo.png` and `landly-mobile/assets/images/raayonit-logo.png`.
+- Create the stocks (one per voucher value, e.g. 100 for 89 and 150 for 129) on Stock & Vouchers in each environment, then add the codes from Raayonit's Excel file there. Codes are never copied between environments.
+
+## Raayonit daily diff sync (`VoucherNum=253`)
+
+Every day at 04:00 Israel time, `/api/cron/raayonit-sync` reads Raayonit's "תו על" directory
+(`https://www.raayonit.co.il/Site/he/pages/inPage.asp?catID=3&MainCatNum=8&TopCatNum=22&CatNum=23&VoucherNum=253`,
+server-rendered UTF-8 HTML) and applies **only the difference** to the Raayonit offers (`lib/inventory/raayonitDailySync.ts`):
+
+| Raayonit page vs our cards | What is written |
+| --- | --- |
+| Unchanged (almost every run) | Nothing: no offer write, no translation call. Only the day's log document. |
+| New partner with a category rule, an official name (`raayonitBrandNames.ts`) and a bundled image | A live card (`published: true`, `raayonitSyncPending: false`), fine print translated once. |
+| New partner any of those is missing for | A staged draft (`published: false`, `raayonitSyncPending: true`, `pendingSince`). It reaches no member until approved in Admin > Inventory > Raayonit cards ("Pending review"). Rejecting keeps it hidden and the daily sync never stages it again. |
+| Partner no longer listed | Soft-archived: `published: false`, `archivedReason: 'removed_from_raayonit_catalog'`, `archivedAt`, `archivedSourceKey`, `sourceKey: 'retired:{id}'`. Never deleted, so vouchers and orders keep working. |
+| Archived partner listed again | The same card is reactivated. |
+
+`published: false` is the one flag every reader already honours (`/api/public/offers`, `publicOfferData`, the offer page, the web
+and the native app), so a staged or archived card cannot reach a member.
+
+**Safety guards** (a run that trips one writes no offer, logs `aborted_guard` and emails the admin): the page must answer
+`text/html` and mention `תו על`; at least 5 sections, 150 listing rows and 150 brands; no more than
+`min(15, 10% of the active cards)` archived and 25 added in one run. The admin's "Apply anyway" (`force`) overrides the size guards after a preview.
+
+Every run is logged in `raayonit_sync_logs/{YYYY-MM-DD}` (Asia/Jerusalem day; Admin SDK only, `firestore.rules` denies clients).
+That document is also the daily lock: a day that already succeeded is not run again.
+
+Schedule: Vercel Cron is UTC only, so `vercel.json` fires at `0 1 * * *` and `0 2 * * *`; the route runs the one that is
+04:00 in Asia/Jerusalem (winter UTC+2, summer UTC+3) and answers `{ "skipped": "wrong-hour" }` to the other.
+
+| Variable / step | DEV (`landly-dev`) | PROD (`landly-be752`) |
+| --- | --- | --- |
+| `CRON_SECRET` (16+ characters) | Only to call the route by hand. Vercel Cron does not run on Preview or locally. | Required on Vercel Production; without it the route answers 503. |
+| Firebase credentials | The DEV service account (or ADC) | The PROD service account |
+| Deploy `firestore.rules` | `firebase deploy --only firestore --project landly-dev` | `firebase deploy --only firestore --project landly-be752` |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `COSTS_REPORT_EMAIL` | Not needed: the alert is simulated (`resend.simulated`). | The alert goes to `COSTS_REPORT_EMAIL` (default `contact@golandly.com`), only when a guard stopped the run, the run failed, or a partner needs review. |
+| `LANDLY_TRANSLATION_ENABLED=true` | Optional | Needed for the one-time translation of a new partner's fine print |
+
+Run it by hand (no new index is needed):
+
+```
+# preview against a local or Preview deployment (any hour)
+curl -H "Authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron/raayonit-sync?dry=1"
+
+# CLI (same code); --dry writes nothing. A live run is refused unless the project is landly-dev or --allow-prod is passed.
+npx esbuild scripts/raayonit-daily-sync.mts --bundle --platform=node --format=esm --external:firebase-admin --external:sharp --external:resend \
+  --alias:@=. --alias:server-only=./scripts/lib/emptyModule.mjs --alias:next/server=./scripts/lib/nextServerStub.mjs --outfile=$TMPDIR/daily.mjs
+node $TMPDIR/daily.mjs --project landly-dev --dry
+node $TMPDIR/daily.mjs --project landly-dev
+```
+
+Admin > Inventory > Raayonit cards has the same flow: "Run sync now" previews the difference (nothing is written), then
+"Confirm and apply" writes it.

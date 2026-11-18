@@ -108,9 +108,9 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
 }
 
 const styles = StyleSheet.create({
-  divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 24 },
-  row: { alignItems: 'center', gap: 12 },
-  // The system button draws to this frame: 48 high like the web badge, never stretched to the card.
-  badge: { height: 48, width: 240 },
+  divider: { height: 1, backgroundColor: colors.borderLight, marginTop: 20, marginBottom: 16 },
+  row: { alignSelf: 'stretch', alignItems: 'stretch', gap: 12 },
+  // The system button draws to this frame: 52 high and as wide as the buttons above it.
+  badge: { height: 52, alignSelf: 'stretch' },
   spinner: { position: 'absolute', top: 14, end: -32 },
 })

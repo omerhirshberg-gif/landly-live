@@ -35,7 +35,7 @@ function HealthBadge({ row }: { row: InventoryRow }) {
 
 function RestockButton({ row, onRestock }: { row: InventoryRow; onRestock: (row: InventoryRow) => void }) {
   const { t } = useAdminT()
-  if (row.kind !== 'multipass') return <span className="text-xs text-adm-muted">—</span>
+  if (row.kind !== 'raayonit') return <span className="text-xs text-adm-muted">—</span>
   return (
     <button
       type="button"
@@ -76,10 +76,10 @@ function Identity({ row }: { row: InventoryRow }) {
 
 const LOW_EDGE = '[&>td:first-child]:border-s-4 [&>td:first-child]:border-s-[#DC2626] border-s-4 border-s-[#DC2626]'
 
-/** Every perk's stock in one grid; Multipass rows can be restocked, local-business rows show claims against their limit. */
+/** Every perk's stock in one grid; Raayonit rows can be restocked, local-business rows show claims against their limit. */
 export default function InventoryTable({ rows, onRestock }: { rows: InventoryRow[]; onRestock: (row: InventoryRow) => void }) {
   const { t } = useAdminT()
-  const typeLabel = (row: InventoryRow) => (row.kind === 'multipass' ? t('inv.type.multipass') : t('inv.type.direct'))
+  const typeLabel = (row: InventoryRow) => (row.kind === 'raayonit' ? t('inv.type.raayonit') : t('inv.type.direct'))
   const isAlert = (row: InventoryRow) => row.health === 'low' || row.health === 'out'
   return (
     <DataTable
@@ -89,7 +89,7 @@ export default function InventoryTable({ rows, onRestock }: { rows: InventoryRow
       rowClassName={(row) => (isAlert(row) ? LOW_EDGE : '')}
       columns={[
         { id: 'perk', header: t('inv.col.perk'), sortValue: (row) => row.title, cell: (row) => <Identity row={row} /> },
-        { id: 'type', header: t('inv.col.type'), sortValue: typeLabel, cell: (row) => <StatusBadge tone={row.kind === 'multipass' ? 'blue' : 'slate'} icon={row.kind === 'multipass' ? 'fa-boxes-stacked' : 'fa-store'}>{typeLabel(row)}</StatusBadge> },
+        { id: 'type', header: t('inv.col.type'), sortValue: typeLabel, cell: (row) => <StatusBadge tone={row.kind === 'raayonit' ? 'blue' : 'slate'} icon={row.kind === 'raayonit' ? 'fa-boxes-stacked' : 'fa-store'}>{typeLabel(row)}</StatusBadge> },
         {
           id: 'purchased',
           header: t('inv.col.purchased'),
@@ -123,7 +123,7 @@ export default function InventoryTable({ rows, onRestock }: { rows: InventoryRow
             <div><dt className="text-adm-muted">{t('inv.col.purchased')}</dt><dd className="font-semibold text-adm-text">{row.purchased === null ? t('common.unlimited') : <bdi dir="ltr" className="tabular-nums">{row.purchased}</bdi>}</dd></div>
             <div><dt className="text-adm-muted">{t('inv.col.claimed')}</dt><dd className="font-semibold text-adm-text"><bdi dir="ltr" className="tabular-nums">{row.claimed}</bdi></dd></div>
           </dl>
-          {row.kind === 'multipass' && <RestockButton row={row} onRestock={onRestock} />}
+          {row.kind === 'raayonit' && <RestockButton row={row} onRestock={onRestock} />}
         </div>
       )}
     />

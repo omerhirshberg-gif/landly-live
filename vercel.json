@@ -2,6 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     { "path": "/api/cron/whatsapp-idle", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/monthly-costs-report", "schedule": "0 5 1 * *" }
+    { "path": "/api/cron/monthly-costs-report", "schedule": "0 5 1 * *" },
+    { "path": "/api/cron/raayonit-sync", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/raayonit-sync", "schedule": "0 2 * * *" }
   ]
 }

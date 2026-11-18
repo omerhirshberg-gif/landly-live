@@ -7,6 +7,7 @@ import { type Firestore, Timestamp } from 'firebase-admin/firestore'
 import { getAdminAuth } from '@/lib/firebase/admin'
 import { applicationOrigin, isValidLang } from '@/lib/auth/requestContext'
 import { EmailProviderError, emailConfigProblem, renderBrandedEmail } from '@/lib/email/brandedEmail'
+import { parseIssuer, RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { buildOrderConfirmationEmail, sendOrderConfirmationEmail, type OrderConfirmationDetails } from '@/lib/email/sendOrderConfirmationEmail'
 import { localizedBusinessName, parseBusinessTranslations } from '@/lib/business/businessText'
 import { localizeText } from '@/lib/i18n/contentTranslation'
@@ -43,10 +44,11 @@ export async function sendOrderConfirmation(db: Firestore, orderId: string): Pro
       console.error('Order confirmation skipped', { orderId, reason: 'Order is not a settled, paid order' })
       return
     }
-    const [user, userSnap, offerSnap] = await Promise.all([
+    const [user, userSnap, offerSnap, voucherSnap] = await Promise.all([
       getAdminAuth().getUser(order.userId),
       db.collection('users').doc(order.userId).get(),
       db.collection('offers').doc(order.offerId).get(),
+      db.collection('vouchers').doc(order.voucherId).get(),
     ])
     if (!user.email) {
       console.error('Order confirmation skipped', { orderId, reason: 'Member has no email address' })
@@ -72,6 +74,14 @@ export async function sendOrderConfirmation(db: Firestore, orderId: string): Pro
       amount: order.amount,
       originalPrice: typeof order.originalPrice === 'number' && order.originalPrice > order.amount ? order.originalPrice : null,
       voucherLink: `${origin}/member/vouchers/${encodeURIComponent(order.voucherId)}`,
+      // Raayonit: the issuer frozen on the voucher, its logo as an absolute link, and the 5-year expiry.
+      ...(parseIssuer(voucherSnap.data()?.issuer)
+        ? {
+            issuer: parseIssuer(voucherSnap.data()?.issuer),
+            issuerLogoUrl: `${origin}${RAAYONIT_LOGO_PATH}`,
+            expiresAt: voucherSnap.data()?.expiresAt instanceof Timestamp ? voucherSnap.data()!.expiresAt.toDate() : null,
+          }
+        : {}),
     }
 
     const problem = emailConfigProblem()

@@ -37,12 +37,19 @@ describe('navbar layout lock', () => {
     const nav = html.slice(0, html.indexOf('</nav>'))
     expect(nav).toMatch(/<nav[^>]*><div dir="ltr"/)
 
-    const logo = nav.indexOf('alt="GoLandly"')
+    const logo = nav.indexOf(`aria-label="${translations[lang].brand_lockup_label}"`)
     const langSwitch = nav.indexOf('lucide-globe')
     const hamburger = nav.indexOf(`aria-label="${translations[lang].nav_menu_label}"`)
     expect(logo).toBeGreaterThan(-1)
     expect(logo).toBeLessThan(langSwitch)
     expect(langSwitch).toBeLessThan(hamburger)
+  })
+
+  it('wears the GoLandly x Raayonit lockup: both logos, a hairline between them', () => {
+    const nav = render('en')
+    expect(nav).toContain('src="/logo-mark.png"')
+    expect(nav).toContain('raayonit-logo.png')
+    expect(nav).toContain('opacity-20')
   })
 
   it('anchors the language menu under the right-hand trigger in every direction', () => {

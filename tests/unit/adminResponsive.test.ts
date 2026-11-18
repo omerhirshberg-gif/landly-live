@@ -251,7 +251,7 @@ describe('admin navigation: sidebar on desktop, drawer on phones', () => {
     expect(html).toMatch(/class="[^"]*h-12 w-12[^"]*"[^>]*aria-label="Close menu"/)
     expect(html).toContain('pt-[env(safe-area-inset-top)]')
     expect(html).toContain('env(safe-area-inset-bottom)')
-    for (const label of ['Dashboard', 'WhatsApp Support', 'Businesses', 'Perk Management']) expect(html).toContain(label)
+    for (const label of ['Dashboard', 'WhatsApp Support', 'Businesses', 'Direct Perks']) expect(html).toContain(label)
   })
 
   it('locks the page, closes on Escape, on growing past md and on navigation', () => {

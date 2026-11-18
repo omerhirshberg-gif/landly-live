@@ -13,6 +13,7 @@ export const ALL_ICON: LineIconName = 'sparkles'
 export const RAIL_ICONS = {
   new: 'sparkles',
   bestsellers: 'award',
+  superTav: 'ticket',
 } as const satisfies Record<string, LineIconName>
 
 export type RailGlyph = keyof typeof RAIL_ICONS

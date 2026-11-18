@@ -25,7 +25,7 @@ interface Offer {
   businessName: string
   imageUrl: string
   businessLogoUrl: string
-  fulfillmentType: 'direct_merchant' | 'multipass_pool'
+  fulfillmentType: 'direct_merchant' | 'raayonit_pool'
   originalPrice: number
   offerPrice: number
   expiryDate: string | null
@@ -35,7 +35,6 @@ interface Offer {
 }
 
 type StatusFilter = 'all' | 'active' | 'inactive'
-type ChannelFilter = 'all' | 'direct_merchant' | 'multipass_pool'
 
 const isExpired = (offer: Offer) => !!offer.expiryDate && new Date(offer.expiryDate).getTime() <= Date.now()
 
@@ -49,14 +48,13 @@ export default function OffersListPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
-  const [channel, setChannel] = useState<ChannelFilter>('all')
   const [catalogOpen, setCatalogOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(() => {
     adminFetch('/api/admin/offers')
       .then((res) => res.json())
-      .then((data) => setOffers(data.offers ?? []))
+      .then((data) => setOffers((data.offers ?? []).filter((o: Offer) => o.fulfillmentType !== 'raayonit_pool')))
       .catch(() => setError(t('offers.loadFailed')))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -69,11 +67,6 @@ export default function OffersListPage() {
     { value: 'active', label: t('offers.status.active') },
     { value: 'inactive', label: t('offers.status.inactive') },
   ] as const
-  const channelOptions = [
-    { value: 'all', label: t('offers.fulfillment.all') },
-    { value: 'direct_merchant', label: t('offers.fulfillment.direct') },
-    { value: 'multipass_pool', label: t('offers.fulfillment.multipass') },
-  ] as const
 
   const filtered = useMemo(() => {
     if (!offers) return []
@@ -81,15 +74,13 @@ export default function OffersListPage() {
     return offers.filter(
       (o) =>
         (status === 'all' || (status === 'active' && o.active) || (status === 'inactive' && !o.active)) &&
-        (channel === 'all' || o.fulfillmentType === channel) &&
         (!q || o.title.toLowerCase().includes(q) || o.businessName.toLowerCase().includes(q)),
     )
-  }, [offers, query, status, channel])
+  }, [offers, query, status])
 
   const clearFilters = () => {
     setQuery('')
     setStatus('all')
-    setChannel('all')
   }
 
   const deleteOffer = async (offer: Offer) => {
@@ -134,10 +125,6 @@ export default function OffersListPage() {
             <div>
               <p className="mb-1.5 text-xs font-semibold text-adm-muted">{t('offers.statusCaption')}</p>
               <FilterChips label={t('offers.filterStatus')} options={statusOptions} value={status} onChange={setStatus} />
-            </div>
-            <div>
-              <p className="mb-1.5 text-xs font-semibold text-adm-muted">{t('offers.channelCaption')}</p>
-              <FilterChips label={t('offers.filterFulfillment')} options={channelOptions} value={channel} onChange={setChannel} />
             </div>
           </div>
           <ResultCount shown={filtered.length} total={offers.length} noun={t('offers.nounOffers')} />
@@ -190,7 +177,6 @@ export default function OffersListPage() {
               sortValue: (offer) => offer.title,
               cell: (offer) => <OfferIdentity offer={offer} />,
             },
-            { id: 'channel', header: t('offers.col.channel'), width: 'min-w-[130px]', sortValue: (offer) => offer.fulfillmentType, cell: (offer) => <ChannelBadge type={offer.fulfillmentType} /> },
             { id: 'status', header: t('offers.col.status'), width: 'w-[120px] min-w-[120px]', sortValue: (offer) => (offer.active ? 0 : 1), cell: (offer) => <OfferStatus offer={offer} /> },
             {
               id: 'price',
@@ -223,7 +209,6 @@ export default function OffersListPage() {
           ]}
           actions={(offer) => [
             { label: t('offers.action.edit'), icon: 'fa-pen', href: `/admin/offers/${offer.id}/edit` },
-            ...(offer.fulfillmentType === 'multipass_pool' ? [{ label: t('offers.action.codes'), icon: 'fa-boxes-stacked', href: '/admin/inventory' }] : []),
             { label: t('offers.action.business'), icon: 'fa-store', href: `/admin/businesses/${offer.businessId}` },
             { label: t('offers.action.delete'), icon: 'fa-trash', danger: true, onSelect: () => void deleteOffer(offer) },
           ]}
@@ -236,7 +221,6 @@ export default function OffersListPage() {
               <div className="mt-3 flex items-end justify-between gap-3 border-t border-adm-line pt-3">
                 <span className="flex flex-col items-start gap-2">
                   <OfferPrice offerPrice={offer.offerPrice} originalPrice={offer.originalPrice} />
-                  <ChannelBadge type={offer.fulfillmentType} />
                 </span>
                 <span className="text-end text-xs text-adm-muted">
                   <Claimed offer={offer} /> {t('offers.claimedSuffix')}
@@ -279,12 +263,6 @@ function OfferIdentity({ offer }: { offer: Offer }) {
   )
 }
 
-function ChannelBadge({ type }: { type: Offer['fulfillmentType'] }) {
-  const { t } = useAdminT()
-  return type === 'multipass_pool'
-    ? <StatusBadge tone="blue" icon="fa-boxes-stacked">{t('channel.multipass')}</StatusBadge>
-    : <StatusBadge tone="slate" icon="fa-store">{t('channel.direct')}</StatusBadge>
-}
 
 /** Why an offer isn't live, same rules as OfferStatusBadge, in the admin's language. */
 function OfferStatus({ offer }: { offer: Offer }) {

@@ -300,3 +300,5 @@ export function isAddressStale(address: GeoAddress, now = Date.now()): boolean {
   if (!address.fetchedAt) return true
   return now - Date.parse(address.fetchedAt) > ADDRESS_REFRESH_DAYS * 24 * 60 * 60 * 1000
 }
+
+export { ISRAEL_CITY_COORDS, ISRAEL_REGIONS, citiesOfRegion, cityLabel, type IsraelCity, type Region, type RegionId } from './israelCities'

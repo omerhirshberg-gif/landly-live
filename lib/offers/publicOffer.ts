@@ -1,7 +1,7 @@
 import { normalizeImageUrl } from './imageUrl'
 import { parseOfferTranslations, type OfferTranslations } from './offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
-import { normalizeRedemptionMethod, type RedemptionMethod } from './redemption'
+import { normalizeRedemptionMethod, normalizeRedemptionModes, type RedemptionMethod, type RedemptionMode } from './redemption'
 import { localizeText } from '../i18n/contentTranslation'
 import { parseLocalizedName, parsePlaceSnapshot, type LocalizedName, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
 import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
@@ -27,12 +27,15 @@ export interface PublicOffer {
   // What the guest landing's cards and partner grid show (lib/home/landingData.ts).
   businessId?: string
   businessLogoUrl?: string
+  /** A Raayonit card's image kind (a trimmed logo, a photo, or none: the small Raayonit mark); see lib/offers/logoOnly.ts. */
+  logoKind?: 'logo' | 'photo' | 'fallback'
   location?: string
   isBestseller?: boolean
   /** null or missing = unlimited claims. */
   totalQuantity?: number | null
   claimedCount?: number
   redemptionMethod?: RedemptionMethod
+  redemptionModes?: RedemptionMode[]
   city?: LocalizedName
   address?: PlaceSnapshot | null
   // Where the perk is valid, so a guest card says "Valid at 3 stores" / "all stores" like a member's (lib/offers/locationVisibility.ts).
@@ -58,6 +61,8 @@ const str = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
 
 /** An offers/{id} document as a PublicOffer, or null when it has no title to show. */
 export function toPublicOffer(id: string, data: Record<string, unknown> | undefined): PublicOffer | null {
+  // A draft (published: false) is not public; a missing flag means published.
+  if (data?.published === false) return null
   if (!data) return null
   const title = str(data.title)
   if (!title) return null
@@ -76,11 +81,13 @@ export function toPublicOffer(id: string, data: Record<string, unknown> | undefi
     translations: parseOfferTranslations(data.translations),
     businessId: str(data.businessId),
     businessLogoUrl: normalizeImageUrl(str(data.businessLogoUrl)),
+    ...(data.logoKind === 'logo' || data.logoKind === 'photo' || data.logoKind === 'fallback' ? { logoKind: data.logoKind } : {}),
     location: str(data.location),
     isBestseller: !!data.isBestseller,
     totalQuantity: typeof data.totalQuantity === 'number' ? data.totalQuantity : null,
     claimedCount: Number(data.claimedCount) || 0,
     redemptionMethod: normalizeRedemptionMethod(data.redemptionMethod),
+    ...(normalizeRedemptionModes(data.redemptionModes).length ? { redemptionModes: normalizeRedemptionModes(data.redemptionModes) } : {}),
     city: parseLocalizedName(data.city),
     address: parsePlaceSnapshot(data.address),
     fulfillmentType: parseFulfillmentType(data.fulfillmentType),

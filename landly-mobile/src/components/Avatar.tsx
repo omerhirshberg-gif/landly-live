@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Image, PixelRatio, StyleSheet, Text, View } from 'react-native'
+import { PixelRatio, StyleSheet, Text, View } from 'react-native'
+import Image from './SafeImage'
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 import { sizedAvatarUrl } from '@shared/avatar/avatar'
 import { colors } from '../theme'
@@ -19,7 +20,7 @@ export default function Avatar({ uri, initials, size = 40 }: { uri: string | nul
       style={[styles.base, { width: size, height: size, borderRadius: size / 2 }]}
     >
       {showPhoto ? (
-        <Image source={{ uri: sizedAvatarUrl(uri, size * PixelRatio.get()) }} style={StyleSheet.absoluteFill} resizeMode="cover" onError={() => setFailedUri(uri)} />
+        <Image source={{ uri: sizedAvatarUrl(uri, size * PixelRatio.get()) }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={150} onError={() => setFailedUri(uri)} />
       ) : (
         <>
           <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">

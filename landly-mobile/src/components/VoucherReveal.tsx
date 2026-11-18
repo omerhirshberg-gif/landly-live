@@ -116,7 +116,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
 }
 
 /** The redemption code masked as dots until "Show Code"; the card turns over to the code and its copy button. */
-export function CodeReveal({ code }: { code: string }) {
+export function CodeReveal({ code, prominent = false }: { code: string; prominent?: boolean }) {
   const { t } = useLang()
   const { shown, revealed, toggle } = useFlip()
   return (
@@ -136,11 +136,17 @@ export function CodeReveal({ code }: { code: string }) {
         }
         back={
           <View style={styles.faceBody}>
-            {revealed && <AppText ltr style={styles.code} selectable>{code}</AppText>}
-            <View style={styles.codeActions}>
-              <RevealButton icon="close" label={t('voucher_hide_code')} expanded onPress={toggle} />
-              {revealed && <CopyCodeButton code={code} />}
-            </View>
+            {/* The code and a small circular copy button on one row (the order number's pattern), Hide Code quietly beneath. */}
+            {revealed && (
+              <View style={styles.codeRow}>
+                <AppText ltr style={[styles.codeInline, prominent && styles.codeInlineProminent]} selectable adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={2}>{code}</AppText>
+                <CopyCodeButton code={code} />
+              </View>
+            )}
+            <ScalePressable pressedScale={0.98} onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: true }} style={styles.hide}>
+              <LineIcon name="eyeOff" size={16} color={colors.textMuted} strokeWidth={2} />
+              <AppText style={styles.hideText}>{t('voucher_hide_code')}</AppText>
+            </ScalePressable>
           </View>
         }
       />
@@ -201,21 +207,21 @@ function CopyCodeButton({ code }: { code: string }) {
     }
   }
 
-  const label = status === 'copied' ? t('voucher_code_copied') : status === 'failed' ? t('voucher_copy_failed') : t('voucher_copy_code')
+  // A 36pt circle, the same as the order number's copy button; the check turns green for two seconds.
   return (
     <Pressable
       onPress={copy}
       accessibilityRole="button"
       accessibilityLabel={t('voucher_copy_code')}
-      style={({ pressed }) => [styles.button, styles.copy, pressed && styles.copyPressed]}
+      hitSlop={4}
+      style={({ pressed }) => [styles.copyCircle, status === 'copied' && styles.copyCircleDone, pressed && styles.copyCirclePressed]}
     >
       <LineIcon
         name={status === 'copied' ? 'check' : status === 'failed' ? 'close' : 'copy'}
-        size={16}
+        size={18}
         color={status === 'failed' ? colors.danger : status === 'copied' ? colors.success : colors.brand}
         strokeWidth={2.2}
       />
-      <AppText style={styles.copyText}>{label}</AppText>
     </Pressable>
   )
 }
@@ -245,15 +251,19 @@ const styles = StyleSheet.create({
   codeLabel: { fontSize: 12, color: colors.textMuted, textAlign: 'center', marginBottom: 8 },
   code: { fontSize: 30, fontWeight: '900', color: colors.textStrong, letterSpacing: 5, textAlign: 'center' },
   codeMasked: { color: colors.border },
+  // A code-only voucher is its code: larger, tighter tracking so a long code stays on one or two lines.
+  codeProminent: { fontSize: 34, letterSpacing: 3, writingDirection: 'ltr', textAlign: 'center', alignSelf: 'stretch' },
+  codeActionsProminent: { alignSelf: 'stretch', flexDirection: 'column', alignItems: 'stretch', marginTop: 4 },
   codeActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 8 },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    minHeight: 48,
+    alignSelf: 'stretch',
+    minHeight: 52,
     paddingHorizontal: 20,
-    marginTop: 14,
+    marginTop: 12,
     borderRadius: radius.action,
     borderCurve: 'continuous',
     ...webOnly({ cursor: 'pointer' }),
@@ -263,7 +273,13 @@ const styles = StyleSheet.create({
   buttonOutline: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   buttonText: { fontSize: 14, fontWeight: '700', color: colors.text },
   buttonTextPrimary: { color: colors.white },
-  copy: { backgroundColor: colors.brandTint },
-  copyPressed: { backgroundColor: colors.brandLight },
-  copyText: { fontSize: 14, fontWeight: '700', color: colors.brand },
+  codeRow: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  codeInline: { flexShrink: 1, fontSize: 26, fontWeight: '900', color: colors.textStrong, letterSpacing: 2, textAlign: 'center', writingDirection: 'ltr' },
+  // A code-only voucher is its code: the same row, a touch smaller so a long one stays on one or two lines.
+  codeInlineProminent: { fontSize: 22, letterSpacing: 1 },
+  copyCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...webOnly({ cursor: 'pointer' }) },
+  copyCircleDone: { borderColor: colors.successBorder, backgroundColor: colors.successBg },
+  copyCirclePressed: { backgroundColor: colors.brandTint },
+  hide: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 16, marginTop: 8 },
+  hideText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
 })

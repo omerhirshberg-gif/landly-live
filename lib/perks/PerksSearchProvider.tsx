@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { deriveAreas, localizedName, reverseGeocode, type Area, type Coordinates } from '@/lib/geo'
 import { getAllOffers, isOfferAvailable } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
+import { DEFAULT_RADIUS_KM, type LocationFilter, type RadiusKm } from './locationFilter'
 
 /** The location "Near me" applies: the member's own, or an area they picked instead. */
 export type PerksOrigin = { coords: Coordinates; area: Area | null }
@@ -17,9 +18,15 @@ interface PerksSearchValue {
   areas: Area[]
   /** Reads the offers once (the shared cached read) and derives the areas; a no-op after the first call. */
   loadAreas: () => void
+  /** The Near me radius (5 / 15 / 25 km) and a region or city picked by hand; `filter` is what the lists apply. */
+  radiusKm: RadiusKm
+  setRadiusKm: (km: RadiusKm) => void
+  areaPick: Extract<LocationFilter, { kind: 'area' }> | null
+  setAreaPick: (area: Extract<LocationFilter, { kind: 'area' }> | null) => void
+  filter: LocationFilter | null
 }
 
-const NOOP: PerksSearchValue = { origin: null, setOrigin: () => {}, placeName: null, areas: [], loadAreas: () => {} }
+const NOOP: PerksSearchValue = { origin: null, setOrigin: () => {}, placeName: null, areas: [], loadAreas: () => {}, radiusKm: DEFAULT_RADIUS_KM, setRadiusKm: () => {}, areaPick: null, setAreaPick: () => {}, filter: null }
 const PerksSearchContext = createContext<PerksSearchValue>(NOOP)
 
 // What the persistent search bar shares across pages: the Near Me location.
@@ -32,6 +39,8 @@ export function PerksSearchProvider({ children }: { children: ReactNode }) {
   const [origin, setOrigin] = useState<PerksOrigin | null>(null)
   const [geocodedPlace, setGeocodedPlace] = useState<string | null>(null)
   const [areas, setAreas] = useState<Area[]>([])
+  const [radiusKm, setRadiusKm] = useState<RadiusKm>(DEFAULT_RADIUS_KM)
+  const [areaPick, setAreaPick] = useState<Extract<LocationFilter, { kind: 'area' }> | null>(null)
   const areasRequested = useRef(false)
 
   const coords = origin?.coords ?? null
@@ -54,7 +63,8 @@ export function PerksSearchProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const placeName = origin?.area ? localizedName(origin.area.name, lang) : geocodedPlace
-  const value = useMemo(() => ({ origin, setOrigin, placeName, areas, loadAreas }), [origin, placeName, areas, loadAreas])
+  const filter = useMemo<LocationFilter | null>(() => areaPick ?? (coords ? { kind: 'gps', coords, radiusKm } : null), [areaPick, coords, radiusKm])
+  const value = useMemo(() => ({ origin, setOrigin, placeName, areas, loadAreas, radiusKm, setRadiusKm, areaPick, setAreaPick, filter }), [origin, placeName, areas, loadAreas, radiusKm, areaPick, filter])
   return <PerksSearchContext.Provider value={value}>{children}</PerksSearchContext.Provider>
 }
 

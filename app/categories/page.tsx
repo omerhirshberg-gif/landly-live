@@ -1,10 +1,14 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useDeferredValue, useMemo, useState } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import OfferTileRail from '@/components/discover/OfferTileRail'
+import MultiChainShowcase from '@/components/discover/MultiChainShowcase'
 import { Award, MapPin, Search, Sparkles, Tags } from 'lucide-react'
+import { buildCategoryRails, isSuperVoucher, railLabel, selectSuperVouchers } from '@/lib/home/categoryRails'
+import OfferCardRail from '@/components/discover/OfferCardRail'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import CategoryGrid from '@/components/perks/CategoryGrid'
 import PerksToolbar from '@/components/perks/PerksToolbar'
 import SectionDivider from '@/components/ui/SectionDivider'
@@ -15,8 +19,11 @@ import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
 import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
 import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
-import { getAllOffers, isOfferAvailable, isOfferNew, OfferDocument, sortFeaturedOffers } from '@/lib/firebase/offers'
-import { filterAndSortPerks, hasActivePerkFilters, normalizeQuery, offerDistanceKm, sortByNearest } from '@/lib/perks/perksFilter'
+import LocationFilterBar from '@/components/discover/LocationFilterBar'
+import { applyLocationFilter, badgeKm, sortByLocation } from '@/lib/perks/locationFilter'
+import { isOfferAvailable, isOfferNew, sortFeaturedOffers } from '@/lib/firebase/offers'
+import { useOffers } from '@/lib/offers/useOffers'
+import { categoryHref, DEFAULT_PERK_SORT, filterAndSortPerks, hasActivePerkFilters, normalizeQuery } from '@/lib/perks/perksFilter'
 
 const NEARBY_MAX = 12
 
@@ -33,44 +40,56 @@ function PerksBrowser() {
   const { t, lang } = useLang()
   // Search, Sort and the filters are edited by the persistent bar above (GlobalPerkSearchBar); this reads the same URL state.
   const { appliedQuery, category, setCategory, sort, method, minDiscount } = usePerksUrlContext()!
-  const { origin, placeName } = usePerksSearch()
-  const [offers, setOffers] = useState<OfferDocument[] | undefined>(undefined)
+  const { origin, filter, setRadiusKm, setAreaPick, setOrigin } = usePerksSearch()
+  // The shared catalog (lib/offers/offersStore.ts): a held or saved copy draws on the first frame, so coming back here
+  // never shows a skeleton; a stale copy refreshes behind it. A failed load with nothing to show offers a retry.
+  const { offers, failed, refresh } = useOffers()
+  const [retrying, setRetrying] = useState(false)
+  const retry = () => {
+    setRetrying(true)
+    refresh().finally(() => setRetrying(false))
+  }
 
-  useEffect(() => {
-    getAllOffers().then(setOffers)
-  }, [])
-
-  const filters = { query: appliedQuery, category, sort, method, minDiscount }
-  const filtering = hasActivePerkFilters(filters)
-  const normalizedQuery = normalizeQuery(appliedQuery)
+  // The chips and filters highlight on the click's frame; the grid is filtered against these deferred copies, in the background.
+  const listQuery = useDeferredValue(appliedQuery)
+  const listCategory = useDeferredValue(category)
+  const listSort = useDeferredValue(sort)
+  const listMethod = useDeferredValue(method)
+  const listMinDiscount = useDeferredValue(minDiscount)
+  const filtering = hasActivePerkFilters({ query: appliedQuery, category, sort, method, minDiscount })
+  const normalizedQuery = normalizeQuery(listQuery)
 
   const originCoords = origin?.coords ?? null
+  // Near me / a picked area narrows every list on the page (lib/perks/locationFilter.ts).
+  const located = useMemo(() => (offers ? applyLocationFilter(offers, filter) : undefined), [offers, filter])
+  const locEmpty = !!filter && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
   const results = useMemo(
-    () => (offers && filtering ? filterAndSortPerks(offers, filters, t, lang, originCoords) : []),
-    // `t` changes identity every render; `lang` covers what it depends on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [offers, filtering, appliedQuery, category, sort, method, minDiscount, lang, originCoords]
+    () =>
+      located && filtering
+        ? sortByLocation(
+            filterAndSortPerks(located, { query: listQuery, category: listCategory, sort: listSort, method: listMethod, minDiscount: listMinDiscount }, t, lang, null),
+            listSort === DEFAULT_PERK_SORT ? filter : null
+          )
+        : [],
+    [located, filtering, listQuery, listCategory, listSort, listMethod, listMinDiscount, t, lang, filter]
   )
   // A search across All also surfaces the categories it names.
-  const matchingTiles = normalizedQuery && category === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
+  const matchingTiles = normalizedQuery && listCategory === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   // The overview's two rails: one fetch, sold-out offers left out, bestsellers then newest.
-  const railOffers = useMemo(() => (offers ? sortFeaturedOffers(offers.filter(isOfferAvailable)) : []), [offers])
-  const newOffers = railOffers.filter((offer) => isOfferNew(offer.createdAt))
+  const railOffers = useMemo(() => (located ? sortFeaturedOffers(located.filter((o) => isOfferAvailable(o) && !isSuperVoucher(o))) : []), [located])
+  const categoryRails = useMemo(() => (located ? buildCategoryRails(located) : []), [located])
+  const superOffers = useMemo(() => (located ? selectSuperVouchers(located) : []), [located])
+  const newOffers = railOffers.filter((offer) => isOfferNew(offer.createdAt) && offer.fulfillmentType !== 'raayonit_pool')
   const bestsellerOffers = railOffers.filter((offer) => offer.isBestseller)
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
 
-  // The overview's Nearby section: claimable perks with a location, nearest first.
-  const nearby = useMemo(
-    () => (originCoords ? sortByNearest(railOffers.filter((offer) => offer.geo), originCoords).slice(0, NEARBY_MAX) : null),
-    [railOffers, originCoords]
-  )
 
   // The page heading carries the selected category, so the results heading
   // only names a search, or "All" for a sort over everything; a category on
   // its own shows just the count under the page heading.
   const pageTitle = selectedTile ? t(selectedTile.labelKey) : t('cats_page_title')
   const resultsTitle = normalizedQuery
-    ? t('cats_search_results_title').replace('{query}', appliedQuery.trim())
+    ? t('cats_search_results_title').replace('{query}', listQuery.trim())
     : selectedTile
       ? null
       : t('cats_filter_all')
@@ -88,6 +107,17 @@ function PerksBrowser() {
         </div>
       )}
 
+      <LocationFilterBar className="mb-6" filter={filter} onRadius={setRadiusKm} onClear={() => { setOrigin(null); setAreaPick(null) }} />
+
+      {failed && (
+        <div role="alert" className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <p className="text-sm font-medium text-body">{t('cats_load_error')}</p>
+          <button type="button" onClick={retry} disabled={retrying} className="min-h-11 rounded-full px-4 text-sm font-bold text-brand transition-colors hover:bg-brand/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50">
+            {t('err_retry')}
+          </button>
+        </div>
+      )}
+
       {filtering ? (
         <div className="mb-10 space-y-8">
           {matchingTiles.length > 0 && (
@@ -97,8 +127,8 @@ function PerksBrowser() {
             </section>
           )}
 
-          {offers === undefined ? (
-            <OfferGridSkeleton />
+          {offers === null ? (
+            !failed && <OfferGridSkeleton />
           ) : results.length > 0 ? (
             <section aria-live="polite">
               <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
@@ -107,7 +137,7 @@ function PerksBrowser() {
               </div>
               <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
                 {results.map((offer) => (
-                  <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={category === 'all'} distanceKm={offerDistanceKm(offer, originCoords)} />
+                  <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={listCategory === 'all'} distanceKm={badgeKm(offer, filter)} />
                 ))}
               </div>
             </section>
@@ -116,7 +146,7 @@ function PerksBrowser() {
               <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
                 {normalizedQuery ? <Search aria-hidden="true" strokeWidth={1.75} /> : <Tags aria-hidden="true" strokeWidth={1.75} />}
                 <div className="font-bold text-ink text-base mb-1">
-                  {normalizedQuery ? t('cats_search_no_results_title').replace('{query}', appliedQuery.trim()) : t('deals_empty_title')}
+                  {normalizedQuery ? t('cats_search_no_results_title').replace('{query}', listQuery.trim()) : t('deals_empty_title')}
                 </div>
                 <p className="text-sm text-body max-w-xs">{normalizedQuery ? t('cats_search_no_results_sub') : t('deals_empty_sub')}</p>
               </div>
@@ -125,35 +155,19 @@ function PerksBrowser() {
         </div>
       ) : (
         <>
-          {nearby && (
-            <section className="mb-8" aria-live="polite">
-              <h2 className={`text-base font-bold text-ink ${placeName ? 'mb-1' : 'mb-3'}`}>{t('discover_nearby_title')}</h2>
-              {placeName && (
-                <p className="text-sm text-body mb-3">
-                  {/* <bdi>: a Hebrew city inside an English sentence (or the reverse) keeps its own order. */}
-                  {t('discover_nearby_place').split('{place}').map((part, i) => (
-                    <span key={i}>
-                      {i > 0 && <bdi className="font-semibold text-ink">{placeName}</bdi>}
-                      {part}
-                    </span>
-                  ))}
-                </p>
+          {locEmpty && (
+            <div className="dash-empty-state mb-8 rounded-2xl border border-slate-100 bg-white" aria-live="polite">
+              <MapPin aria-hidden="true" strokeWidth={1.75} />
+              <div className="mb-1 text-base font-bold text-ink">{t('loc_empty_title').replace('{km}', String(filter?.kind === 'gps' ? filter.radiusKm : ''))}</div>
+              <p className="max-w-xs text-sm text-body">{t('loc_empty_sub')}</p>
+              {filter?.kind === 'gps' && filter.radiusKm < 25 && (
+                <button type="button" onClick={() => setRadiusKm(filter.radiusKm === 5 ? 15 : 25)} className="mt-3 min-h-11 text-sm font-bold text-brand hover:underline">{t('loc_expand').replace('{km}', String(filter.radiusKm === 5 ? 15 : 25))}</button>
               )}
-              {nearby.length === 0 ? (
-                <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
-                  <MapPin aria-hidden="true" strokeWidth={1.75} />
-                  <div className="font-bold text-ink text-base mb-1">{t('geo_nearby_empty_title')}</div>
-                  <p className="text-sm text-body max-w-xs">{t('geo_nearby_empty_sub')}</p>
-                </div>
-              ) : (
-                <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
-                  {nearby.map((offer) => (
-                    <OfferCard key={offer.id} offer={offer} layout="grid" distanceKm={offerDistanceKm(offer, originCoords)} />
-                  ))}
-                </div>
-              )}
-            </section>
+            </div>
           )}
+
+          {/* The flagship multi-chain voucher: one card per value, centred above everything else. */}
+          {superOffers[0] && <MultiChainShowcase offer={superOffers[0]} />}
 
           {(newOffers.length > 0 || bestsellerOffers.length > 0) && (
             <>
@@ -171,12 +185,27 @@ function PerksBrowser() {
             </>
           )}
 
-          <SectionDivider className="mb-8" />
-
-          <section className="mb-10">
-            <h2 className="text-base font-bold text-ink mb-3">{t('cats_all_categories_title')}</h2>
-            <CategoryGrid tiles={CATEGORY_TILES} />
-          </section>
+          {/* One horizontal rail per category that holds a claimable perk, each with "See all (N)" to its full list. */}
+          {categoryRails.length > 0 && (
+            <div className="mb-10">
+              {categoryRails.map((rail, index) => (
+                <div key={rail.category}>
+                  {(index > 0 || superOffers.length > 0 || newOffers.length > 0 || bestsellerOffers.length > 0) && <SectionDivider />}
+                  <OfferCardRail
+                    id={`cat-rail-${index}`}
+                    title={railLabel(rail, t)}
+                    glyph={<CategoryIcon category={rail.category} className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
+                    offers={rail.offers}
+                    href={rail.tile ? categoryHref(rail.tile.category) : undefined}
+                    seeAll={rail.tile ? t('cats_see_all').replace('{count}', String(rail.total)) : undefined}
+                    showCategoryBadge={false}
+                    compact
+                    nested
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </>

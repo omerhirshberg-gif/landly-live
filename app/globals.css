@@ -530,6 +530,11 @@ html.wa-hidden .wa-widget{display:none;}
 @media (min-width:1024px){.member-bleed{--bleed-gutter:32px;}}
 /* From 1024px a rail sits inside the member column instead (cards fill it edge to edge); its snap padding is the wide column's 32px gutter (MemberColumn `wide`). */
 @media (min-width:1024px){.member-bleed-fill{--bleed-inset:32px;}}
+/* The same row inside a page that already pads its column (/categories): it bleeds through that gutter on phones so a swipe scrolls cards out from under the screen's edge, and from 1024px it is exactly the column's width. */
+.member-bleed-nested{--nest:12px;margin-inline:calc(var(--nest) * -1);padding-inline:var(--nest);scroll-padding-inline:var(--nest);}
+@media (min-width:380px){.member-bleed-nested{--nest:16px;}}
+@media (min-width:640px){.member-bleed-nested{--nest:24px;}}
+@media (min-width:1024px){.member-bleed-nested{--nest:0px;}}
 /* Round paging arrows over the row's ends, for real mice only: they fade in on hover. */
 .offer-rail-arrow{display:none;}
 @media (min-width:640px) and (hover:hover) and (pointer:fine){

@@ -44,3 +44,18 @@ export function carouselPage(fromStart: number, starts: readonly number[]): numb
   }
   return last
 }
+
+/**
+ * A card's place in the carousel's list, for FlatList's getItemLayout, so the
+ * list never measures a card to know where the next one is. Each cell is its
+ * card plus the gap after it (the separator renders inside the cell), the
+ * last one only its card; `leading` is the row's start padding.
+ */
+export function carouselItemLayout(index: number, count: number, cardWidth: number, gap: number, leading: number): { length: number; offset: number; index: number } {
+  return { length: index === count - 1 ? cardWidth : cardWidth + gap, offset: leading + index * (cardWidth + gap), index }
+}
+
+/** How many cards the carousel mounts first: those that fit the viewport, plus the one peeking in. */
+export function carouselInitialCount(viewportWidth: number, cardWidth: number, count: number): number {
+  return Math.max(1, Math.min(count, Math.ceil(viewportWidth / Math.max(1, cardWidth)) + 1))
+}

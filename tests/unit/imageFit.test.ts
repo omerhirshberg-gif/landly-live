@@ -62,3 +62,33 @@ describe('the standalone logo rule is intact', () => {
     expect(dealImageRole('https://cdn.example/model.jpg', size(1200, 1800), false)).toBe('photo')
   })
 })
+
+describe('dealPhotoFit for a Raayonit card (ambient)', () => {
+  it.each([
+    ['2.46 wordmark', 320, 130, 'contain'],
+    ['1.01 square', 720, 715, 'contain'],
+    ['0.70 portrait', 251, 359, 'contain'],
+    ['1.30 under the band', 1300, 1000, 'contain'],
+    ['1.37 just under the band', 1370, 1000, 'contain'],
+    ['1.38 band start', 1380, 1000, 'cover'],
+    ['3:2', 720, 480, 'cover'],
+    ['16:9', 1920, 1080, 'cover'],
+    ['1.78 band end', 1780, 1000, 'cover'],
+    ['1.79 just over', 1790, 1000, 'contain'],
+  ] as const)('%s -> %s', (_n, w, h, fit) => {
+    expect(dealPhotoFit(size(w, h), { ambient: true })).toBe(fit)
+  })
+  it('leaves every other merchant on the 1.2 rule', () => {
+    expect(dealPhotoFit(size(1300, 1000))).toBe('cover')
+    expect(dealPhotoFit(size(2460, 1000))).toBe('cover')
+  })
+  it('a trimmed brand graphic is whole whatever its shape, even inside the band', () => {
+    expect(dealPhotoFit(size(720, 480), { ambient: true, graphic: true })).toBe('contain')
+    expect(dealPhotoFit(size(720, 480), { ambient: false, graphic: true })).toBe('cover')
+  })
+  it('never calls a Raayonit image a logo, whatever its size', () => {
+    expect(dealImageRole('/images/raayonit-brands/1.png', size(320, 320), false)).toBe('logo')
+    expect(dealImageRole('/images/raayonit-brands/1.png', size(320, 320), false, { raayonit: true })).toBe('photo')
+    expect(dealImageRole('/images/raayonit-brands/1.png', null, false, { raayonit: true })).toBe('pending')
+  })
+})

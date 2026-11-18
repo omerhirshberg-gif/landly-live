@@ -145,7 +145,7 @@ export interface PerkFilters {
 
 /** Kilometres from `origin` to the offer's business, or null when it has no coordinates (online-only, not geocoded). */
 export function offerDistanceKm(offer: Pick<OfferDocument, 'geo' | 'perkScope' | 'fulfillmentType' | 'isNationwide'>, origin: Coordinates | null | undefined): number | null {
-  // A multi-chain, Multipass or nationwide perk has no single place, so it is never ranked by distance.
+  // A multi-chain, Raayonit or nationwide perk has no single place, so it is never ranked by distance.
   if (!hasSinglePlace(offer)) return null
   return origin && offer.geo ? haversineDistanceKm(origin, offer.geo) : null
 }

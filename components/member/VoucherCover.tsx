@@ -1,6 +1,8 @@
 'use client'
 
 import DealMedia from '@/components/discover/DealMedia'
+import { isRaayonitOffer, logoOnlyHero, raayonitImageOpts } from '@/lib/offers/logoOnly'
+import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import MerchantBadge from '@/components/discover/MerchantBadge'
 import { useDealImage } from '@/components/discover/useDealImage'
 import { badgeLogoUri } from '@/lib/offers/dealImage'
@@ -29,12 +31,14 @@ export default function VoucherCover({
 }) {
   const offer = useVoucherOffer(voucher.offerId)
   const src = offer?.imageUrl ?? ''
-  const image = useDealImage(src)
+  const image = useDealImage(src, raayonitImageOpts(offer))
+  const hero = offer ? logoOnlyHero(offer) : null
+  const heroLogo = hero ? { src: hero.kind === 'issuer' ? RAAYONIT_LOGO_PATH : hero.logoUrl, alt: name } : null
   return (
-    <DealMedia src={src} image={image} alt="" category={offer?.category ?? ''} aspect={aspect} className={`rounded-t-[inherit] ${className}`}>
-      <span className={`absolute start-3 ${logoSize === 'sm' ? '-bottom-4' : '-bottom-5 sm:-bottom-6'}`}>
-        <MerchantBadge logoUrl={badgeLogoUri(offer?.businessLogoUrl ?? '', src, image.role) ?? ''} businessName={name} size={logoSize} />
-      </span>
+    <DealMedia src={src} image={image} alt="" category={offer?.category ?? ''} logo={heroLogo} aspect={aspect} className={`rounded-t-[inherit] ${className}`}>
+      {!heroLogo && !isRaayonitOffer(offer) && <span className={`absolute start-3 ${logoSize === 'sm' ? '-bottom-4' : '-bottom-5 sm:-bottom-6'}`}>
+        <MerchantBadge logoUrl={badgeLogoUri(offer?.businessLogoUrl ?? '', src, image.role) ?? ''} size={logoSize} />
+      </span>}
     </DealMedia>
   )
 }

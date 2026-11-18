@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@shared/i18n/translations'
 import { LangContext, type LangContextValue } from './LangContext'
 
@@ -33,18 +33,20 @@ export function LangProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true))
   }, [])
 
-  const setLang = (next: Lang) => {
+  const setLang = useCallback((next: Lang) => {
     picked.current = true
     setLangState(next)
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {
       // Storage unavailable — the choice just won't persist
     })
-  }
+  }, [])
 
-  const t = (key: TranslationKey): string => translations[lang][key] || translations.en[key]
+  // Stable per language, so memoized cards (OfferCard) and hooks keyed on `t` only re-run when the language changes.
+  const t = useCallback((key: TranslationKey): string => translations[lang][key] || translations.en[key], [lang])
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
+  const value = useMemo(() => ({ lang, setLang, t, isRtl, ready }), [lang, setLang, t, isRtl, ready])
 
-  return <LangContext.Provider value={{ lang, setLang, t, isRtl, ready }}>{children}</LangContext.Provider>
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>
 }
 
 // Outside a provider (only ever a dev-time hiccup), English, left to right,

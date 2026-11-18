@@ -4,12 +4,18 @@ const mocks = vi.hoisted(() => ({
   limit: vi.fn(),
   revalidateTag: vi.fn(),
   docs: [] as { id: string; data: () => Record<string, unknown> }[],
+  missing: [] as string[],
+  stock: {} as Record<string, number>,
 }))
 vi.mock('server-only', () => ({}))
 // unstable_cache needs a Next request context; here it just runs the function.
 vi.mock('next/cache', () => ({ unstable_cache: (fn: () => unknown) => fn, revalidateTag: mocks.revalidateTag, revalidatePath: vi.fn() }))
 vi.mock('@/lib/firebase/admin', () => ({
-  getAdminDb: () => ({ collection: () => ({ limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }) }),
+  getAdminDb: () => ({
+    collection: (name: string) => ({ doc: (id: string) => ({ id, name }), limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }),
+    // Pools hold stock and businesses exist, unless a test says otherwise.
+    getAll: async (...refs: { id: string; name: string }[]) => refs.map((r) => ({ id: r.id, exists: !mocks.missing.includes(r.id), data: () => (r.name === 'couponPools' ? { remainingCount: mocks.stock[r.id] ?? 5 } : {}) })),
+  }),
 }))
 
 const stamp = (ms: number) => ({ toDate: () => new Date(ms) })
@@ -21,6 +27,8 @@ beforeEach(() => {
   mocks.limit.mockClear()
   mocks.revalidateTag.mockClear()
   mocks.docs = []
+  mocks.missing = []
+  mocks.stock = {}
 })
 
 describe('GET /api/public/offers', () => {
@@ -41,6 +49,24 @@ describe('GET /api/public/offers', () => {
     mocks.docs = [doc('live', { expiryDate: stamp(Date.now() + 86_400_000) }), doc('old', { expiryDate: stamp(Date.now() - 86_400_000) })]
     const { GET } = await import('@/app/api/public/offers/route')
     expect((await (await GET(get())).json()).offers.map((o: { id: string }) => o.id)).toEqual(['live'])
+  })
+
+  it('lists only what is on sale: no drafts, no empty stock, no missing business, and only the values still in stock', async () => {
+    mocks.stock = { p100: 3, p150: 0 }
+    mocks.missing = ['gone']
+    const variants = [{ faceValueAgorot: 10000, priceAgorot: 8900, poolId: 'p100' }, { faceValueAgorot: 15000, priceAgorot: 12900, poolId: 'p150' }]
+    mocks.docs = [
+      doc('draft', { published: false }),
+      doc('brand', { fulfillmentType: 'raayonit_pool', poolId: 'p100', variants, offerPrice: 89, originalPrice: 100 }),
+      doc('empty', { fulfillmentType: 'raayonit_pool', poolId: 'p150', variants: [variants[1]] }),
+      doc('orphan', { fulfillmentType: 'direct_merchant', businessId: 'gone' }),
+      doc('shop', { fulfillmentType: 'direct_merchant', businessId: 'b1' }),
+    ]
+    const { GET } = await import('@/app/api/public/offers/route')
+    const offers = (await (await GET(get())).json()).offers
+    expect(offers.map((o: { id: string }) => o.id)).toEqual(['brand', 'shop'])
+    expect(offers[0].variants).toHaveLength(1)
+    expect(offers[0]).toMatchObject({ offerPrice: 89, originalPrice: 100 })
   })
 
   it('carries no member data: every field is one the public offer page already shows', async () => {

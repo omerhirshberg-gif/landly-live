@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppState, FlatList, StyleSheet, View } from 'react-native'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FlatList, Platform, StyleSheet, View, type ListRenderItem } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import Animated, { useAnimatedScrollHandler, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import type { OfferDocument } from '@shared/firebase/offers'
@@ -7,7 +7,8 @@ import { AUTO_ADVANCE_MS, nextAutoIndex } from '@shared/carouselAutoplay'
 import OfferCard from './OfferCard'
 import PagerDots from './PagerDots'
 import { useLang } from '../i18n/LangProvider'
-import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, PAGER_DOTS_MAX, carouselCardWidth, carouselPage, carouselSnapOffsets } from '../lib/carousel'
+import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, PAGER_DOTS_MAX, carouselCardWidth, carouselInitialCount, carouselItemLayout, carouselPage, carouselSnapOffsets } from '../lib/carousel'
+import { useAppActive } from '../lib/useAppActive'
 import { useLayout } from '../lib/useLayout'
 import { isWeb, webOnly } from '../lib/webStyles'
 
@@ -19,13 +20,22 @@ import { isWeb, webOnly } from '../lib/webStyles'
 // screen's side padding, whatever the fold makes it (src/lib/layout.ts).
 // Pagination dots underneath (PagerDots) follow the swipe, one per place the
 // row can come to rest; Home's category rails go without (`showDots`).
-export default function OfferCarousel({
+//
+// Windowed: left to right, every card's place is known up front
+// (carouselItemLayout), so the row mounts only the cards in view plus the next
+// and adds the rest as it scrolls. In Hebrew the row lays out right to left
+// through the root view's `direction`, which the list's windowing doesn't see
+// (it only knows I18nManager, kept left-to-right), so there it mounts its whole
+// row -- at most RAIL_MAX cards -- rather than risk a blank cell; the screen's
+// own list still mounts only the rails near the viewport.
+export default memo(function OfferCarousel({
   offers,
   onOpen,
   showDots = true,
   showCategoryBadge = true,
   autoAdvance = false,
   autoAdvanceOffsetMs = 0,
+  visible = true,
 }: {
   offers: OfferDocument[]
   onOpen: (offer: OfferDocument) => void
@@ -36,6 +46,8 @@ export default function OfferCarousel({
   autoAdvance?: boolean
   /** Added to the first wait, so two rails on one screen never move on the same beat. */
   autoAdvanceOffsetMs?: number
+  /** False while the rail is scrolled out of view: its autoplay holds still. */
+  visible?: boolean
 }) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
@@ -71,19 +83,15 @@ export default function OfferCarousel({
   // the app is in the background, and under Reduce Motion; every hold restarts the full 5s.
   const [dragging, setDragging] = useState(false)
   const [focused, setFocused] = useState(true)
-  const [appActive, setAppActive] = useState(AppState.currentState === 'active')
+  const appActive = useAppActive()
   useFocusEffect(
     useCallback(() => {
       setFocused(true)
       return () => setFocused(false)
     }, [])
   )
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'))
-    return () => sub.remove()
-  }, [])
   const count = starts.length
-  const running = autoAdvance && !reduced && !dragging && focused && appActive && count > 1
+  const running = autoAdvance && visible && !reduced && !dragging && focused && appActive && count > 1
   useEffect(() => {
     if (!running) return
     // The dots' own position (UI thread value, in resting places) says where the row is, by hand or by timer.
@@ -99,6 +107,23 @@ export default function OfferCarousel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, count, isRtl, maxOffset, autoAdvanceOffsetMs])
+
+  // Hebrew opens at the reading-direction start (the far end of the scroll), once, when the row first has its size.
+  const openedAtStart = useRef(false)
+  const windowed = !isRtl
+  const getItemLayout = useCallback(
+    (_: ArrayLike<OfferDocument> | null | undefined, index: number) => carouselItemLayout(index, offers.length, cardWidth, GAP, paddingLeft),
+    [offers.length, cardWidth, paddingLeft]
+  )
+  const renderItem = useCallback<ListRenderItem<OfferDocument>>(
+    ({ item }) => (
+      <View style={[styles.slot, { width: cardWidth }]}>
+        <OfferCard offer={item} variant="carousel" width={cardWidth} onOpen={onOpen} showCategoryBadge={showCategoryBadge} />
+      </View>
+    ),
+    [cardWidth, onOpen, showCategoryBadge]
+  )
+  const initialCount = carouselInitialCount(viewport || screenWidth, cardWidth, offers.length)
 
   return (
     <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
@@ -125,20 +150,23 @@ export default function OfferCarousel({
         ItemSeparatorComponent={Separator}
         onLayout={(e) => setViewport(e.nativeEvent.layout.width)}
         // Rows lay out right-to-left in Hebrew, but a horizontal list still
-        // opens at its left edge; jump to the reading-direction start.
-        onContentSizeChange={() => {
-          if (isRtl) list.current?.scrollToEnd({ animated: false })
+        // opens at its left edge; jump to the reading-direction start, once.
+        onContentSizeChange={(width) => {
+          if (!isRtl || openedAtStart.current || width <= 0) return
+          openedAtStart.current = true
+          list.current?.scrollToEnd({ animated: false })
         }}
-        renderItem={({ item }) => (
-          <View style={[styles.slot, { width: cardWidth }]}>
-            <OfferCard offer={item} variant="carousel" onPress={() => onOpen(item)} showCategoryBadge={showCategoryBadge} />
-          </View>
-        )}
+        getItemLayout={windowed ? getItemLayout : undefined}
+        initialNumToRender={windowed ? initialCount : offers.length}
+        maxToRenderPerBatch={windowed ? 2 : offers.length}
+        windowSize={windowed ? 3 : 21}
+        removeClippedSubviews={windowed && Platform.OS === 'android'}
+        renderItem={renderItem}
       />
       {showDots && starts.length > 1 && starts.length <= PAGER_DOTS_MAX && <PagerDots count={starts.length} position={position} onSelect={goTo} />}
     </View>
   )
-}
+})
 
 function Separator() {
   return <View style={styles.separator} />

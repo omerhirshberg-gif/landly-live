@@ -58,9 +58,9 @@ describe('payout batches', () => {
     store.seed('vouchers/v1', voucher())
     store.seed('vouchers/v2', voucher({ amountAgorot: 5000 }))
     store.seed('vouchers/v3', voucher({ businessId: 'b2', amountAgorot: 20000, commissionRate: 0.15 }))
-    // Never in a payout: not redeemed, multipass, already batched, refunded, not yet due.
+    // Never in a payout: not redeemed, raayonit, already batched, refunded, not yet due.
     store.seed('vouchers/x1', voucher({ status: 'active' }))
-    store.seed('vouchers/x2', voucher({ fulfillmentType: 'multipass_pool' }))
+    store.seed('vouchers/x2', voucher({ fulfillmentType: 'raayonit_pool' }))
     store.seed('vouchers/x3', voucher({ payoutBatchId: 'old' }))
     store.seed('vouchers/x4', voucher({ status: 'refunded' }))
     store.seed('vouchers/x5', voucher({ redeemedAt: day('2026-11-20') }))

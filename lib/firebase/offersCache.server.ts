@@ -1,6 +1,8 @@
 import 'server-only'
 import { revalidateTag, unstable_cache } from 'next/cache'
 import { getAdminDb } from './admin'
+import { isBusinessUnavailable, publicOfferData, withLiveBrandIndex } from '@/lib/offers/availability'
+import { parseVariants } from '@/lib/offers/variants'
 import { offerToWire, toOfferDocument, type OfferWire } from '@/lib/offers/offerDocument'
 
 // The live offers for GET /api/public/offers: read once with the Admin SDK
@@ -13,12 +15,25 @@ export const PUBLIC_OFFERS_LIMIT = 500
 export const PUBLIC_OFFERS_REVALIDATE_SECONDS = 60
 
 async function readLiveOffers(): Promise<OfferWire[]> {
-  const snap = await getAdminDb().collection('offers').limit(PUBLIC_OFFERS_LIMIT).get()
-  const now = Date.now()
-  return snap.docs
-    .map((d) => toOfferDocument(d.id, d.data()))
-    .filter((offer) => !offer.expiryDate || offer.expiryDate.getTime() >= now)
-    .map(offerToWire)
+  const db = getAdminDb()
+  const snap = await db.collection('offers').limit(PUBLIC_OFFERS_LIMIT).get()
+  const docs = snap.docs.filter((d) => d.data().published !== false)
+  // Voucher stock per pool, and which businesses still exist and may trade: an offer is public only while both hold.
+  const poolIds = [...new Set(docs.flatMap((d) => [d.data().poolId, ...parseVariants(d.data().variants).map((v) => v.poolId)]).filter((p): p is string => typeof p === 'string' && !!p))]
+  const businessIds = [...new Set(docs.map((d) => d.data().businessId).filter((b): b is string => typeof b === 'string' && !!b))]
+  const [pools, businesses, users] = await Promise.all([
+    poolIds.length ? db.getAll(...poolIds.map((id) => db.collection('couponPools').doc(id))) : [],
+    businessIds.length ? db.getAll(...businessIds.map((id) => db.collection('businesses').doc(id))) : [],
+    businessIds.length ? db.getAll(...businessIds.map((id) => db.collection('users').doc(id))) : [],
+  ])
+  const poolRemaining = new Map(pools.map((p) => [p.id, p.exists && p.data()?.status !== 'archived' ? Number(p.data()?.remainingCount) || 0 : 0]))
+  const userById = new Map(users.map((u) => [u.id, u.data()]))
+  const activeBusinesses = new Set(businesses.filter((b) => b.exists && !isBusinessUnavailable(b.data(), userById.get(b.id))).map((b) => b.id))
+  const listed = docs.flatMap((d) => {
+    const data = publicOfferData(d.data(), { poolRemaining, activeBusinesses })
+    return data ? [{ id: d.id, data }] : []
+  })
+  return withLiveBrandIndex(listed).map(({ id, data }) => offerToWire(toOfferDocument(id, data)))
 }
 
 export const getCachedPublicOffers = unstable_cache(readLiveOffers, ['public-offers-v1'], {

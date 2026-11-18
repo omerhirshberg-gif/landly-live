@@ -71,7 +71,7 @@ export default function AddToAppleWallet({ voucher }: {
   if (!eligible || !support) return null
 
   return (
-    <div className="mt-6 flex flex-col items-center gap-3 border-t border-slate-100 pt-6 text-center">
+    <div className="mt-6 flex flex-col items-center gap-3 border-t border-slate-100 pt-5 text-center">
       {support === 'handoff' ? (
         <IPhoneHandoff voucherId={voucher.id} />
       ) : (

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState, ReactNode } from 'react'
 import { translations, RTL_LANGS, Lang, TranslationKey } from './translations'
 
 interface LangContextValue {
@@ -36,7 +36,7 @@ export function LangProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const setLang = (next: Lang) => {
+  const setLang = useCallback((next: Lang) => {
     setLangState(next)
     applyDirection(next)
     try {
@@ -44,13 +44,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
     } catch {
       // localStorage unavailable — language choice just won't persist
     }
-  }
+  }, [])
 
-  const t = (key: TranslationKey): string => {
-    return translations[lang][key] || translations.en[key]
-  }
+  // Stable per language, so memoized cards and hooks that depend on `t` only re-run when the language changes.
+  const t = useCallback((key: TranslationKey): string => translations[lang][key] || translations.en[key], [lang])
 
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
+  const value = useMemo(() => ({ lang, setLang, t, isRtl }), [lang, setLang, t, isRtl])
 
-  return <LangContext.Provider value={{ lang, setLang, t, isRtl }}>{children}</LangContext.Provider>
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>
 }

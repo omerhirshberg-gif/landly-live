@@ -1,3 +1,4 @@
+import { normalizeWebsiteUrl, parsePhones } from '@/lib/offers/contact'
 import { collection, doc, getDocs, onSnapshot, query, where, limit, Timestamp } from 'firebase/firestore'
 import { db } from './config'
 import { parseVoucherStatus, type VoucherStatus } from '../vouchers/status'
@@ -7,6 +8,7 @@ import { normalizeRedemptionInstructions, normalizeRedemptionMethod, type Redemp
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { parseIssuer, type VoucherIssuer } from '../payments/issuer'
 import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
 import { readPerkScope, type PerkScope } from '../offers/perkScope'
 import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
@@ -24,8 +26,15 @@ export interface VoucherDocument {
   businessName: string // denormalized
   offerTitle: string // denormalized
   redemptionCode: string
-  // A Multipass voucher's own code, handed out at checkout (lib/inventory/poolAllocation.ts); null for merchant-honoured vouchers.
+  // A Raayonit voucher's own code, handed out at checkout (lib/inventory/poolAllocation.ts); null for merchant-honoured vouchers.
   externalCode?: string | null
+  // 'code_only': the voucher is its code alone (Raayonit): no QR code anywhere, and the member can mark it used. Absent = QR voucher.
+  redemptionKind?: 'code_only' | null
+  // Who issued a pre-bought voucher, shown with its logo (lib/payments/issuer.ts), and what it is worth in agorot.
+  issuer?: VoucherIssuer | null
+  faceValueAgorot?: number | null
+  // The Raayonit stock the voucher's code came from (set by the payment webhook); absent on older ones, which are the offer's default stock.
+  poolId?: string | null
   // What the member saved on this purchase, in agorot (set by the payment webhook; lib/member/savings.ts); absent on older vouchers.
   savingsAgorot?: number | null
   // What the QR code carries (redeemVoucherKey): 128 random bits, set by the
@@ -50,7 +59,7 @@ export interface VoucherDocument {
   businessTranslations?: BusinessTranslations | null
   businessAddress?: PlaceSnapshot | null
   businessGeo?: Coordinates | null
-  // A Multipass voucher has no business: its brand and, for a multi-chain one, the chains and shared guide as at purchase.
+  // A Raayonit voucher has no business: its brand and, for a multi-chain one, the chains and shared guide as at purchase.
   perkScope?: PerkScope
   isNationwide?: boolean // as at purchase; absent on vouchers from before the flag, which read as false
   fulfillmentType?: FulfillmentType
@@ -59,6 +68,8 @@ export interface VoucherDocument {
   participatingPlaces?: ParticipatingPlace[] // the branches picked from Google Places, as at purchase
   chainsCount?: number
   universalRedemptionGuide?: { he: string; en: string } | null
+  websiteUrl?: string // the business's website as at purchase (Raayonit)
+  contactPhone?: string // and its phone, for a single-location business
 }
 
 export { redeemVoucherKey, voucherRedeemUrl } from '../offers/redeemLink'
@@ -75,6 +86,16 @@ export async function hasUserClaimedOffer(uid: string, offerId: string): Promise
   return !(await getDocs(voucherForOfferQuery(uid, offerId))).empty
 }
 
+/**
+ * The stocks (pool ids) the member already holds a voucher for on this offer, for the denomination picker. A voucher without a
+ * pool predates variants and counts for `defaultPoolId`. `any` is whether they hold a voucher at all.
+ */
+export async function getClaimedPoolIds(uid: string, offerId: string, defaultPoolId: string | null): Promise<{ any: boolean; pools: string[] }> {
+  const snap = await getDocs(query(collection(db, 'vouchers'), where('userId', '==', uid), where('offerId', '==', offerId), limit(10)))
+  const pools = snap.docs.map((d) => (typeof d.data().poolId === 'string' && d.data().poolId ? (d.data().poolId as string) : defaultPoolId)).filter((p): p is string => !!p)
+  return { any: !snap.empty, pools: [...new Set(pools)] }
+}
+
 function toDoc(data: Record<string, unknown>): VoucherDocument {
   return {
     userId: (data.userId as string) ?? '',
@@ -84,6 +105,10 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     offerTitle: (data.offerTitle as string) ?? '',
     redemptionCode: (data.redemptionCode as string) ?? '',
     externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
+    redemptionKind: data.redemptionKind === 'code_only' ? 'code_only' : null,
+    issuer: parseIssuer(data.issuer),
+    faceValueAgorot: typeof data.faceValueAgorot === 'number' && Number.isInteger(data.faceValueAgorot) && data.faceValueAgorot > 0 ? data.faceValueAgorot : null,
+    poolId: typeof data.poolId === 'string' && data.poolId ? data.poolId : null,
     savingsAgorot: typeof data.savingsAgorot === 'number' && Number.isFinite(data.savingsAgorot) && data.savingsAgorot >= 0 ? data.savingsAgorot : null,
     redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
     status: parseVoucherStatus(data.status),
@@ -100,6 +125,8 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
     fulfillmentType: parseFulfillmentType(data.fulfillmentType),
+    ...(normalizeWebsiteUrl(data.websiteUrl) ? { websiteUrl: normalizeWebsiteUrl(data.websiteUrl) } : {}),
+    ...(parsePhones(data.contactPhone).length > 0 ? { contactPhone: String(data.contactPhone).trim() } : {}),
     ...readPerkScope(data),
   }
 }

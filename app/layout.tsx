@@ -10,6 +10,7 @@ import { WishlistProvider } from '@/lib/firebase/WishlistProvider'
 import { VouchersProvider } from '@/lib/firebase/VouchersProvider'
 import { PerksSearchProvider } from '@/lib/perks/PerksSearchProvider'
 import CookieNotice from '@/components/layout/CookieNotice'
+import WishlistErrorNotice from '@/components/layout/WishlistErrorNotice'
 import PasskeyPrompt from '@/components/auth/PasskeyPrompt'
 import WhatsAppWidget from '@/components/layout/WhatsAppWidget'
 import AccessibilityWidget from '@/components/layout/AccessibilityWidget'
@@ -133,6 +134,7 @@ export default function RootLayout({
               <div className="page-clip">{children}</div>
               <SectionBoundary name="whatsapp-widget"><WhatsAppWidget /></SectionBoundary>
               <SectionBoundary name="cookie-notice"><CookieNotice /></SectionBoundary>
+              <SectionBoundary name="wishlist-error"><WishlistErrorNotice /></SectionBoundary>
               {/* "Save a passkey" once after a password or Google sign-in (components/auth/PasskeyPrompt.tsx). */}
               <SectionBoundary name="passkey-prompt"><PasskeyPrompt /></SectionBoundary>
               </PerksSearchProvider>

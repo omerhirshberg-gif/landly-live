@@ -12,6 +12,8 @@ export interface PoolAllocationPlan {
   itemRef: DocumentReference
   code: string
   nextSeq: number
+  /** The stock's terms, frozen onto the voucher: what the voucher is worth, in agorot. */
+  faceValueAgorot: number | null
   skipped: { ref: DocumentReference; seq: number }[]
   allocated: number
   remaining: number
@@ -31,7 +33,8 @@ export async function planPoolAllocation(
   const poolRef = db.collection(POOL_COLLECTION).doc(poolId)
   const poolSnap = await tx.get(poolRef)
   const pool = poolSnap.data()
-  if (!poolSnap.exists || !pool || pool.offerId !== offerId || pool.status === 'archived') {
+  // A shared stock serves every offer linked to it (the offer's poolId, checked by the caller); an older one-offer stock only its own.
+  if (!poolSnap.exists || !pool || (pool.kind === 'shared' ? pool.provider !== 'raayonit' : pool.offerId !== offerId) || pool.status === 'archived') {
     throw new PaymentError('Offer inventory is unavailable; payment reconciliation is required.')
   }
   if (!Number.isInteger(pool.nextSeq) || !Number.isInteger(pool.lastSeq) || !Number.isInteger(pool.allocatedCount)
@@ -53,6 +56,7 @@ export async function planPoolAllocation(
     const remaining = pool.remainingCount - skipped.length - 1
     return {
       poolRef, itemRef, code: poolItemCode(poolId, seq, item),
+      faceValueAgorot: Number.isInteger(pool.faceValueAgorot) ? pool.faceValueAgorot : null,
       nextSeq: seq + 1, skipped, allocated, remaining: Math.max(0, remaining),
       lowStock: remaining <= (Number(pool.warningThreshold) || 0), depleted: remaining <= 0,
     }
@@ -60,11 +64,9 @@ export async function planPoolAllocation(
   throw new PaymentError('This offer is sold out; payment reconciliation is required.')
 }
 
-// The code a member sees: the code itself, with the supplier's PIN after it when the row had one.
+// The code a member sees.
 function poolItemCode(poolId: string, seq: number, item: DocumentData) {
-  const id = poolItemId(seq)
-  const code = decryptField('POOL_CODES_KEY', item.codeCipher, `${poolId}/${id}`)
-  return typeof item.pinCipher === 'string' ? `${code} · PIN ${decryptField('POOL_CODES_KEY', item.pinCipher, `${poolId}/${id}/pin`)}` : code
+  return decryptField('POOL_CODES_KEY', item.codeCipher, `${poolId}/${poolItemId(seq)}`)
 }
 
 // Phase 2: writes only, inside the same transaction.

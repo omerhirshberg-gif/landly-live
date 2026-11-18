@@ -36,12 +36,8 @@ const LABEL_MIN_WIDTH = 640
 // location" dialog is offered; off on iOS, the note says so. Problems go to
 // `onError` so the screen can show them, with the area picker, under the
 // row. Once the system won't ask again, a tap opens the app's Settings.
-export default function NearMeButton({
-  active,
-  onLocate,
-  onClear,
-  onError,
-}: {
+/** The locate request behind Near Me (permission, services check, timeout), shared by the button and the Filter sheet's "Near me" row. */
+export function useNearMe({ active, onLocate, onClear, onError }: {
   active: boolean
   onLocate: (coords: Coordinates) => void
   onClear: () => void
@@ -50,7 +46,6 @@ export default function NearMeButton({
   const { t } = useLang()
   const [state, setState] = useState<GeoState>('idle')
   const [canAskAgain, setCanAskAgain] = useState(true)
-
   const fail = (next: GeoState, message: string) => {
     setState(next)
     onError(message)
@@ -91,6 +86,24 @@ export default function NearMeButton({
       fail('unavailable', t(error instanceof Error && error.message === 'timeout' ? 'geo_timeout' : 'mobile_geo_unavailable'))
     }
   }
+
+  return { locate, state }
+}
+
+export default function NearMeButton({
+  active,
+  onLocate,
+  onClear,
+  onError,
+}: {
+  active: boolean
+  onLocate: (coords: Coordinates) => void
+  onClear: () => void
+  onError: (message: string | null) => void
+}) {
+
+  const { t } = useLang()
+  const { locate, state } = useNearMe({ active, onLocate, onClear, onError })
 
   const { width } = useWindowDimensions()
   const showLabel = Platform.OS !== 'web' && width >= LABEL_MIN_WIDTH

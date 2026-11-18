@@ -1,22 +1,16 @@
-import { collection, doc, documentId, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
+import { collection, getDocs, limit, query } from 'firebase/firestore'
 import { db } from './config'
 import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
 import { toOfferDocument, type OfferDocument } from '../offers/offerDocument'
 import { fetchOffersFromApi } from '../offers/offersApi'
+import { browserOffersStorage, createOffersStore, OFFERS_FRESH_MS, offersStorageKey } from '../offers/offersStore'
 
 export type { OfferDocument } from '../offers/offerDocument'
 
 // Offers are read in one shot and filtered on the device, so the read is
 // capped: hundreds of live offers is the design size (see /api/public/offers).
 export const OFFERS_READ_LIMIT = 500
-// Firestore's `in` takes at most 30 values.
-const IN_CHUNK = 30
-
 const toDoc = toOfferDocument
-
-function isNotExpired(offer: OfferDocument, now: number): boolean {
-  return !offer.expiryDate || offer.expiryDate.getTime() >= now
-}
 
 // Still claimable: unlimited, or not every voucher claimed yet. The Perks
 // rails show only these (sold-out offers stay reachable from search and links).
@@ -52,33 +46,30 @@ export function offerMatchesQuery(offer: OfferDocument, normalizedQuery: string)
 // Offers are admin-managed only (created manually, same as businesses/{uid})
 // — no writer here, just the readers the customer-facing pages need.
 export async function getOffer(offerId: string): Promise<OfferDocument | null> {
-  const snap = await getDoc(doc(db, 'offers', offerId))
-  if (!snap.exists()) return null
-  return toDoc(snap.id, snap.data())
+  // From the public list, which holds only offers that are on sale right now (published, unexpired, in stock, business active).
+  return (await getAllOffers()).find((offer) => offer.id === offerId) ?? null
 }
 
 // For a caller-supplied list of ids (e.g. a wishlist) — an id whose offer was
 // deleted since just comes back missing rather than throwing, so callers can
-// render "skip it" behavior for free. Read in chunks of 30 with one `in` query
-// each (not one read per id); the result keeps the order of `ids`.
+// render "skip it" behavior for free. Read from the shared list (no Firestore
+// read per id); the result keeps the order of `ids`.
 export async function getOffersByIds(ids: string[]): Promise<OfferDocument[]> {
-  const unique = [...new Set(ids)]
-  const found = new Map<string, OfferDocument>()
-  for (let i = 0; i < unique.length; i += IN_CHUNK) {
-    const snap = await getDocs(query(collection(db, 'offers'), where(documentId(), 'in', unique.slice(i, i + IN_CHUNK))))
-    for (const d of snap.docs) found.set(d.id, toDoc(d.id, d.data()))
-  }
+  // A saved offer that is no longer on sale (expired, sold out, suspended, deleted) is skipped, like a deleted one.
+  const live = new Map((await getAllOffers()).map((offer) => [offer.id, offer]))
+  const found = live
   return ids.flatMap((id) => {
     const offer = found.get(id)
     return offer ? [offer] : []
   })
 }
 
-// One shared, short-lived copy of the live offers: Home, Perks, categories and
-// the landing all read the same list, so within the TTL they cost one fetch
-// between them, and concurrent callers share one in-flight request.
-export const OFFERS_CACHE_TTL_MS = 60_000
-let offersCache: { at: number; promise: Promise<OfferDocument[]> } | null = null
+// One shared copy of the live offers (lib/offers/offersStore.ts): Home, Perks,
+// categories, the wishlist and the landing all read the same list, so they
+// cost one fetch between them and concurrent callers share one request. A held
+// copy is returned at once and refreshed quietly once it is a minute old; the
+// last good list is saved on the device, scoped to this Firebase project.
+export const OFFERS_CACHE_TTL_MS = OFFERS_FRESH_MS
 
 async function loadOffers(): Promise<OfferDocument[]> {
   try {
@@ -86,30 +77,34 @@ async function loadOffers(): Promise<OfferDocument[]> {
   } catch {
     // The CDN route is an optimization: if it is down or unreachable, read Firestore directly.
     const snap = await getDocs(query(collection(db, 'offers'), limit(OFFERS_READ_LIMIT)))
-    return snap.docs.map((d) => toDoc(d.id, d.data()))
+    return snap.docs.map((d) => toDoc(d.id, d.data())).filter((offer) => offer.published !== false)
   }
 }
 
-/** Drops the shared copy, e.g. after the member signs out or on a pull-to-refresh. */
+function projectId(): string | null {
+  try {
+    return (db as { app?: { options?: { projectId?: string } } }).app?.options?.projectId ?? null
+  } catch {
+    return null
+  }
+}
+
+const storageKey = projectId()
+export const offersStore = createOffersStore({
+  load: loadOffers,
+  storageKey: storageKey ? offersStorageKey(storageKey) : null,
+  // The website saves in localStorage; the app swaps in AsyncStorage at startup (landly-mobile/src/app/_layout.tsx).
+  storage: browserOffersStorage(),
+})
+
+/** Drops the shared copy, e.g. after the member signs out. */
 export function clearOffersCache() {
-  offersCache = null
+  offersStore.clear()
 }
 
-// The live offers (not expired). `force` skips the shared copy (pull-to-refresh).
-export async function getAllOffers({ force = false }: { force?: boolean } = {}): Promise<OfferDocument[]> {
-  const now = Date.now()
-  if (force || !offersCache || now - offersCache.at > OFFERS_CACHE_TTL_MS) {
-    const promise = loadOffers()
-    const entry = { at: now, promise }
-    offersCache = entry
-    // A failed load is never kept, so the next caller retries instead of replaying the error.
-    promise.catch(() => {
-      if (offersCache === entry) offersCache = null
-    })
-  }
-  const offers = await offersCache!.promise
-  const current = Date.now()
-  return offers.filter((offer) => isNotExpired(offer, current))
+// The live offers (not expired). `force` waits for a new load (pull-to-refresh).
+export function getAllOffers({ force = false }: { force?: boolean } = {}): Promise<OfferDocument[]> {
+  return offersStore.get({ force })
 }
 
 export async function getOffersByCategory(category: string): Promise<OfferDocument[]> {

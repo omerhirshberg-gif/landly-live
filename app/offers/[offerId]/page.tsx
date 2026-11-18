@@ -9,16 +9,28 @@ import { useLang } from '@/lib/i18n/useLang'
 import { Lang } from '@/lib/i18n/translations'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useWishlist } from '@/lib/firebase/useWishlist'
-import { hasUserClaimedOffer } from '@/lib/firebase/vouchers'
+import { getClaimedPoolIds } from '@/lib/firebase/vouchers'
+import { variantDiscountPercent } from '@/lib/offers/variants'
+import { variantForDenomination } from '@/lib/home/superShowcase'
+import VariantSelector from '@/components/offers/VariantSelector'
 import { getOffer, getOfferDiscountPercent, OfferDocument } from '@/lib/firebase/offers'
 import { formatPrice } from '@/lib/format'
 import DealMedia from '@/components/discover/DealMedia'
+import { isRaayonitOffer, logoOnlyHero, raayonitImageOpts } from '@/lib/offers/logoOnly'
+import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { useDealImage } from '@/components/discover/useDealImage'
 import MerchantBadge from '@/components/discover/MerchantBadge'
 import OfferTags from '@/components/discover/OfferTags'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem, { Fold } from '@/components/offers/HowToRedeem'
-import { ParticipatingChains, PerkReachLine } from '@/components/discover/PerkReach'
+import RedemptionCallout from '@/components/offers/RedemptionCallout'
+import IssuerAttribution from '@/components/member/IssuerAttribution'
+import { isPooled } from '@/lib/inventory/types'
+import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
+import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '@/components/discover/PerkReach'
+import BrandStrip from '@/components/offers/BrandStrip'
+import BranchStrip from '@/components/offers/BranchStrip'
+import ContactActions from '@/components/offers/ContactActions'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -28,7 +40,7 @@ import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { badgeLogoUri } from '@/lib/offers/dealImage'
 import { distinctDescription, offerTextSources } from '@/lib/offers/offerText'
 import { offerFullAddress } from '@/lib/geo'
-import { locationNoticeKind, shouldShowLocationNavigation } from '@/lib/offers/locationVisibility'
+import { isSingleVenue, locationNoticeKind, shouldShowLocationNavigation } from '@/lib/offers/locationVisibility'
 import NavigationLinks from '@/components/offers/NavigationLinks'
 import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
 
@@ -50,8 +62,17 @@ export default function OfferDetailPage() {
 
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(undefined)
   const [alreadyClaimed, setAlreadyClaimed] = useState<boolean | null>(null)
+  // A multi-denomination offer: the value picked (a pool id), and the stocks the member already owns.
+  const [pickedPool, setPickedPool] = useState('')
+  const [claimedPools, setClaimedPools] = useState<string[]>([])
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
+  // A showcase card links here with its value (?denomination=150): that value starts out picked.
+  useEffect(() => {
+    if (!offer?.variants?.length) return
+    const wanted = variantForDenomination(offer.variants, new URLSearchParams(window.location.search).get('denomination'))
+    if (wanted) setPickedPool((current) => current || wanted.poolId)
+  }, [offer])
 
   useEffect(() => {
     let cancelled = false
@@ -72,17 +93,20 @@ export default function OfferDetailPage() {
       return
     }
     let cancelled = false
-    hasUserClaimedOffer(user.uid, offerId).then((claimed) => {
-      if (!cancelled) setAlreadyClaimed(claimed)
+    // A voucher from before variants belongs to the offer's default (first, cheapest) stock.
+    getClaimedPoolIds(user.uid, offerId, offer?.variants?.[0]?.poolId ?? null).then((claimed) => {
+      if (cancelled) return
+      setAlreadyClaimed(claimed.any)
+      setClaimedPools(claimed.pools)
     })
     return () => { cancelled = true }
-  }, [user, offerId])
+  }, [user, offerId, offer?.variants])
 
   // Before the early returns below: hooks run on every render.
   const content = useLocalizedContent(offerTextSources(offer), offer?.translations, lang)
   // The business name has its own translations (and source language); one "Show original" switch flips both.
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
-  const image = useDealImage(offer?.imageUrl ?? '')
+  const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
 
   if (offer === undefined) {
     return (
@@ -125,6 +149,8 @@ export default function OfferDetailPage() {
   const instructions = content.text('redemptionInstructions')
   const terms = content.text('redemptionTerms')
   const businessName = nameContent.text('businessName')
+  const hero = offer ? logoOnlyHero(offer) : null
+  const heroLogo = hero ? { src: hero.kind === 'issuer' ? RAAYONIT_LOGO_PATH : hero.logoUrl, alt: businessName.text, small: hero.kind === 'brand' ? hero.fallback : hero.small } : null
   // Only a single-location perk shows its address and navigation; a multi-branch one shows a notice instead.
   const showLocation = shouldShowLocationNavigation(offer)
   const address = showLocation ? offerFullAddress(offer, lang) : ''
@@ -134,13 +160,26 @@ export default function OfferDetailPage() {
     content.toggleOriginal()
     nameContent.toggleOriginal()
   }
-  const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
+  // Multi-denomination: the picked value, else the first one not already owned; the price, saving and checkout follow it.
+  const variants = offer.variants ?? []
+  const multi = variants.length > 1
+  const freeVariants = variants.filter((v) => !claimedPools.includes(v.poolId))
+  const selected = variants.length > 0 ? (freeVariants.find((v) => v.poolId === pickedPool) ?? freeVariants[0] ?? variants[0]) : undefined
+  const price = selected ? selected.priceAgorot / 100 : offer.offerPrice
+  const original = selected ? selected.faceValueAgorot / 100 : offer.originalPrice
+  const everyValueOwned = variants.length > 0 && freeVariants.length === 0
+  const claimedHere = variants.length > 0 ? everyValueOwned : alreadyClaimed
+  const checkoutHref = `/checkout?offerId=${encodeURIComponent(offer.id)}${selected ? `&variant=${encodeURIComponent(selected.poolId)}` : ''}`
+  const discount = selected ? variantDiscountPercent(selected) : getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const expired = !!offer.expiryDate && offer.expiryDate.getTime() < now
   const saved = isWishlisted(offer.id)
   const guest = !user && !authLoading
   const noticeKind = locationNoticeKind(offer)
   // The stores or chains that honour the perk, when the admin listed any.
-  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores'
+  // One venue: its address in the header and its own location section, never "1 store".
+  const singleVenue = isSingleVenue(offer)
+  const venueLine = singleVenue ? offerFullAddress(offer, lang) : ''
+  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (singleVenue && !!offer.branches?.length)
 
   return (
     <>
@@ -172,7 +211,7 @@ export default function OfferDetailPage() {
           <article className="bg-white fold:bg-transparent">
             <div className="fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-12 lg:gap-x-10">
               <div className="relative fold:sticky fold:top-[calc(var(--header-offset)+1rem)] fold:row-span-3 lg:col-span-6 fold:rounded-2xl fold:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-                <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} aspect="aspect-video lg:aspect-[16/10] lg:min-h-[380px]" containAspect="aspect-[4/5] max-h-[380px] lg:aspect-auto lg:h-[480px] lg:max-h-[480px] lg:min-h-0" className="rounded-[inherit]">
+                <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} logo={heroLogo} aspect="aspect-video lg:aspect-[16/10] lg:min-h-[380px]" containAspect="aspect-[4/5] max-h-[380px] lg:aspect-auto lg:h-[480px] lg:max-h-[480px] lg:min-h-0" className="rounded-[inherit]">
                   <BackButton fallback={user ? '/' : '/categories'} contextLabel variant="glass" className="absolute start-1.5 top-1.5 fold:hidden" />
                   {/* The photo isn't clipped from 600px (the shadow, the sticky pane), so the ribbon rounds that corner itself. */}
                   <DiscountBadge percent={discount} className="fold:rounded-se-2xl" />
@@ -202,16 +241,16 @@ export default function OfferDetailPage() {
                     </button>
                   )}
                 </DealMedia>
-                <div className="absolute -bottom-2 start-5 z-20 fold:bottom-4 fold:start-4">
-                  <MerchantBadge size="lg" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={businessName.text} />
-                </div>
+                {!heroLogo && !isRaayonitOffer(offer) && <div className="absolute -bottom-2 start-5 z-20 fold:bottom-4 fold:start-4">
+                  <MerchantBadge size="lg" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} />
+                </div>}
               </div>
 
               {/* From 1024px the details are one elevated card beside the photo; below that the wrapper dissolves (contents) and the blocks sit as before. */}
               <div className="contents fold:block fold:col-start-2 lg:col-start-7 lg:col-span-6 lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-sm">
               {/* Its shadow falls upward only: below the sheet the page runs on in white. */}
               <div className="relative z-10 -mt-5 rounded-t-3xl bg-white px-5 pb-6 pt-11 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-8 fold:col-start-2 fold:mt-0 fold:rounded-none fold:bg-transparent fold:px-0 lg:px-0 fold:pb-5 fold:pt-0 fold:shadow-none">
-                <OfferTags category={offer.category} method={offer.redemptionMethod} className="mb-2" />
+                <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} className="mb-2" />
                 {/* The deal is the page's heading; the logo already carries the brand, named above it. */}
                 {/* <bdi>: a Latin name keeps its letters in order yet stays on the page's side in Hebrew. */}
                 <p className="break-words text-base font-bold leading-snug text-body lg:font-semibold lg:text-slate-500">
@@ -222,18 +261,25 @@ export default function OfferDetailPage() {
                 </h1>
 
                 {/* Prices in <bdi>, in the body font with their "₪" (app/layout.tsx loads its subset). */}
-                <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:rounded-xl lg:bg-slate-50/90 lg:p-4">
-                  <bdi className="text-price-lg tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
+                {multi && <VariantSelector variants={variants} value={selected?.poolId ?? ''} onChange={setPickedPool} claimed={claimedPools} />}
+                <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:rounded-xl lg:bg-slate-50/90 lg:p-4">
+                  <bdi className="text-price-lg tabular-nums text-brand">{formatPrice(price)}</bdi>
                   {discount > 0 && (
-                    <bdi className="text-price-was sm:text-base tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(offer.originalPrice)}</bdi>
+                    <bdi className="text-price-was sm:text-base tabular-nums text-slate-400 line-through decoration-slate-400/70">{formatPrice(original)}</bdi>
                   )}
                   {discount > 0 && (
-                    <span className="whitespace-nowrap text-sm font-semibold text-emerald-700 lg:rounded-full lg:bg-emerald-50 lg:px-3 lg:py-1">{t('offer_you_save').replace('{amount}', formatPrice(offer.originalPrice - offer.offerPrice))}</span>
+                    <span className="whitespace-nowrap text-sm font-semibold text-emerald-700 lg:rounded-full lg:bg-emerald-50 lg:px-3 lg:py-1">{t('offer_you_save').replace('{amount}', formatPrice(original - price))}</span>
                   )}
                 </div>
 
+                {/* A Raayonit voucher: who issued it, and that it is a code (no QR) valid 5 years. Right under the title and price. */}
+                {isPooled(offer.fulfillmentType) && <IssuerAttribution issuer={RAAYONIT_ISSUER} lang={lang} note={t('offer_code_only_info')} className="mt-6" />}
+
                 {/* Only what the offer really states. */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 empty:hidden">
+                <div className="mt-5 flex flex-wrap items-center gap-2 empty:hidden">
+                  {!!offer.kosherBranchCount && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</span>
+                  )}
                   {formattedExpiry && (
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold leading-4 ${expired ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-body'}`}>
                       <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
@@ -248,14 +294,27 @@ export default function OfferDetailPage() {
                   )}
                 </div>
 
+                {/* One full-width column: the website and the phone, 12px apart. */}
+                <div className="mt-6 space-y-3 empty:hidden">
+                  <ContactActions stack websiteUrl={offer.websiteUrl} phone={offer.contactPhone} />
+                </div>
+
+                <RedemptionCallout className="mt-5" method={offer.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} />
+
                 {machine && (
                   <TranslationNotice className="mt-3" showingOriginal={showingOriginal} onToggle={toggleOriginal} />
                 )}
 
                 {/* The header's last row, right above the folds: the address, with the ways to get there at its end. */}
-                <div className="mt-4 flex flex-wrap items-center gap-3 empty:hidden lg:mt-5">
+                <div className="mt-5 flex flex-wrap items-center gap-3 empty:hidden lg:mt-6">
                   {!showLocation && locationNoticeKind(offer) !== null && (
                     <PerkReachLine offer={offer} className="flex-1 text-sm text-muted" />
+                  )}
+                  {singleVenue && !showLocation && !!venueLine && (
+                    <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
+                      <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
+                      <span className="min-w-0 break-words" dir="auto">{venueLine}</span>
+                    </p>
                   )}
                   {showLocation && address && (
                     <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
@@ -276,6 +335,7 @@ export default function OfferDetailPage() {
                     </div>
                   )}
                 </div>
+                {/* A Raayonit voucher: who issued it, and that it is a code (no QR) valid 5 years. */}
               </div>
 
               {/* The folds. Everyone reads what the perk is, when that says more
@@ -288,8 +348,14 @@ export default function OfferDetailPage() {
                 <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0 lg:px-0">
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
                     {hasStoreList && (
-                      <Fold title={t(noticeKind === 'chains' ? 'perk_chains_title' : 'perk_stores_title')} defaultOpen>
-                        <ParticipatingChains offer={offer} />
+                      <Fold title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
+                        {offer.perkScope === 'multi_chain' && !!offer.brandIndex?.length ? (
+                          <div className="space-y-4"><BrandStrip entries={offer.brandIndex} /><RedemptionGuide offer={offer} /></div>
+                        ) : !!offer.branches?.length ? (
+                          <BranchStrip branches={offer.branches} brand={offer.brandName || offer.businessName || null} />
+                        ) : (
+                          <ParticipatingChains offer={offer} />
+                        )}
                       </Fold>
                     )}
                     {descriptionText && (
@@ -305,6 +371,7 @@ export default function OfferDetailPage() {
                         terms={terms.text}
                         termsLang={terms.lang}
                         includePurchaseStep={!alreadyClaimed}
+                        codeOnly={isPooled(offer.fulfillmentType)}
                         variant="accordion"
                       />
                     )}
@@ -329,7 +396,7 @@ export default function OfferDetailPage() {
                     </div>
                   )}
 
-                  {user && !authLoading && !claimLoading && alreadyClaimed && (
+                  {user && !authLoading && !claimLoading && claimedHere && (
                     <div className="flex items-start gap-3 rounded-2xl bg-canvas p-4">
                       <IconFrame icon={CircleCheck} size="sm" tone="success" />
                       <div>
@@ -340,16 +407,16 @@ export default function OfferDetailPage() {
                     </div>
                   )}
 
-                  {user && !authLoading && !claimLoading && !alreadyClaimed && (expired ? (
+                  {user && !authLoading && !claimLoading && !claimedHere && (expired ? (
                     // Gone past its date: the button stays in place, unusable, as in the app.
                     <button type="button" disabled className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
-                      <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
+                      <span>{t('offer_buy_button').replace('{price}', formatPrice(price))}</span>
                     </button>
                   ) : (
                     // A full page load, not a client-side Link: the accessibility widget
                     // script this page ran must not carry over beside the payment iframe.
-                    <a href={`/checkout?offerId=${encodeURIComponent(offer.id)}`} className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
-                      <span>{t('offer_buy_button').replace('{price}', formatPrice(offer.offerPrice))}</span>
+                    <a href={checkoutHref} className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
+                      <span>{t('offer_buy_button').replace('{price}', formatPrice(price))}</span>
                     </a>
                   ))}
                 </div>

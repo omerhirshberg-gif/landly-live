@@ -15,6 +15,10 @@ export interface CheckoutOrder {
   translations?: OfferTranslations | null
   /** The business name in other languages, frozen with the order; null for older orders. */
   businessTranslations?: BusinessTranslations | null
+  /** The business's logo and the offer's picture, frozen with the order; empty for older orders that never had them. */
+  businessLogoUrl?: string
+  offerImageUrl?: string
+  fulfillmentType?: string | null
   termsAccepted: boolean
   /** A local development sandbox order (lib/payments/devSandbox.ts). */
   sandbox: boolean
@@ -84,10 +88,10 @@ async function post<T>(apiBaseUrl: string, path: string, idToken: string, body: 
 export function initiateCheckout(
   idToken: string,
   offerId: string,
-  { acceptTerms = false }: { acceptTerms?: boolean } = {},
+  { acceptTerms = false, variantPoolId }: { acceptTerms?: boolean; variantPoolId?: string | null } = {},
   apiBaseUrl = ''
 ): Promise<CheckoutResult<CheckoutOrder>> {
-  return post<CheckoutOrder>(apiBaseUrl, '/api/payments/initiate', idToken, { offerId, ...(acceptTerms && { acceptTerms: true }) })
+  return post<CheckoutOrder>(apiBaseUrl, '/api/payments/initiate', idToken, { offerId, ...(acceptTerms && { acceptTerms: true }), ...(variantPoolId && { variantPoolId }) })
 }
 
 /**

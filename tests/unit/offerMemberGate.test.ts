@@ -50,7 +50,7 @@ describe('offer member gate', () => {
     expect(page).toContain('{!guest && (')
     expect(page).not.toContain('line-clamp-4')
     expect(page).not.toContain('href="/login"')
-    expect(page).toMatch(/\{user && !authLoading && !claimLoading && !alreadyClaimed && \([\s\S]*?\/checkout\?offerId=/)
+    expect(page).toMatch(/\{user && !authLoading && !claimLoading && !claimedHere && \([\s\S]*?href=\{checkoutHref\}/)
   })
 })
 
@@ -87,11 +87,10 @@ describe('guest home background', () => {
 describe('the offer page’s folds', () => {
   const props = { method: 'in_store' as const, instructions: '', variant: 'accordion' as const }
 
-  it('opens How to redeem and keeps the terms closed', () => {
+  it('opens How to redeem and the fine print by default (each can still be folded)', () => {
     const html = withLang('en', createElement(HowToRedeem, { ...props, terms: 'One per member' }))
-    expect(html.match(/aria-expanded="true"/g)).toHaveLength(1)
-    expect(html.match(/aria-expanded="false"/g)).toHaveLength(1)
-    expect(html.indexOf('aria-expanded="true"')).toBeLessThan(html.indexOf('aria-expanded="false"'))
+    expect(html.match(/aria-expanded="true"/g)).toHaveLength(2)
+    expect(html.match(/aria-expanded="false"/g)).toBeNull()
     expect(html).toContain('One per member')
   })
 

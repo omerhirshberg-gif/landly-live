@@ -1,0 +1,134 @@
+// The official commercial names of every Raayonit brand written in Hebrew letters, per language. Cloud Translation turns
+// names into words ("קפה קרמה" became "Coffee Cream"), so no brand name is ever machine-translated: it is looked up here,
+// and a Hebrew-letter brand missing from this table stops the sync. One row per brand, easy to tweak:
+//   [Hebrew name, English, Russian]  (French and Spanish use the English form, with "Cafe" written "Café")
+// Brands already written in Latin letters keep their name as written in every language. Pure; shared with the tests.
+
+type Row = readonly [string, string, string]
+
+const ROWS: readonly Row[] = [
+  ['6 במאי', '6 BeMai', '6 БеМай'],
+  ['אדם בוטיק', 'Adam Boutique', 'Адам Бутик'],
+  ['אהבה קטנה', 'Ahava Ktana', 'Ахава Ктана'],
+  ['אווז הזהב', 'Avaz HaZahav', 'Аваз ха-Захав'],
+  ['אווזי חיפה', 'Avazi Haifa', 'Авази Хайфа'],
+  ['אופק חדש - מוצרים לאורח חיים בריא', 'Ofek Hadash', 'Офек Хадаш'],
+  ['אורכידאה אילת', 'Orchidea Eilat', 'Орхидея Эйлат'],
+  ['אורכידאה תל אביב', 'Orchidea Tel Aviv', 'Орхидея Тель-Авив'],
+  ['איטלקיה בפשפשים', 'Italkia BaPishpeshim', 'Италкия ба-Пишпешим'],
+  ['איטלקיה בתחנה', 'Italkia BaTachana', 'Италкия ба-Тахана'],
+  ['אצה - סושי בר', 'Atza Sushi Bar', 'Аца Суши Бар'],
+  ['ארבל עיצוב פנים - מומלץ אמון הציבור', 'Arbel Interior Design', 'Arbel Interior Design'],
+  ['ארנקי עמנואל', 'Emanuel', 'Эмануэль'],
+  ['באשר פרומז\'רי', 'Basher Fromagerie', 'Башер Фромажери'],
+  ['בוטניקה', 'Botanica', 'Ботаника'],
+  ['בטבע קדרים בקתות גליליות', 'BeTeva Kadarim', 'Бетева Кадарим'],
+  ['ביאנקיני ים המלח', 'Bianchini Dead Sea', 'Бьянкини Мёртвое море'],
+  ['בין הזיתים', 'Bein HaZeitim', 'Бейн ха-Зейтим'],
+  ['ביר גרדן כפר סבא', 'Beer Garden Kfar Saba', 'Бир Гарден Кфар-Саба'],
+  ['ג\'אסט מיוזיק', 'Just Music', 'Джаст Мьюзик'],
+  ['גרג', 'Greg Cafe', 'Грэг Кафе'],
+  ['דה קרינה - בוטיק שוקולד', 'De Karina Chocolate Boutique', 'Де Карина — шоколадный бутик'],
+  ['דיאנא', 'Diana', 'Диана'],
+  ['האגדה', 'HaAgada', 'ха-Агада'],
+  ['הבוטקה', 'HaButka', 'ха-Бутка'],
+  ['הבקתות של סיון', 'HaBkaot Shel Sivan', 'ха-Бкаот шель Сиван'],
+  ['הדרל\'ה', 'Haderale', 'Хадерале'],
+  ['הטבעונית - J17', 'HaTivonit J17', 'ха-Тивъонит J17'],
+  ['הלובי', 'HaLobby', 'ха-Лобби'],
+  ['הלנה בנמל קיסריה', 'Helena Caesarea', 'Хелена Кейсария'],
+  ['המרחב הפנימי', 'HaMerchav HaPnimi', 'ха-Мерхав ха-Пними'],
+  ['הסושיה', 'HaSushia', 'ха-Сушия'],
+  ['הפינה החלבית', 'HaPina HaChalavit', 'ха-Пина ха-Халавит'],
+  ['הרודס', 'Herods', 'Хэродс'],
+  ['השיפודיה של שופן', 'HaShipudia Shel Shofan', 'ха-Шипудия шель Шофан'],
+  ['התרנגול הכחול', 'HaTarnegol HaKachol', 'ха-Тарнегол ха-Кахоль'],
+  ['חנל\'ה', 'Chanale', 'Ханале'],
+  ['חצר עין כרם', 'Chatzer Ein Kerem', 'Хацер Эйн-Керем'],
+  ['טיליה - קליניקה טיפולית', 'Tilia Therapeutic Clinic', 'Тилия — терапевтическая клиника'],
+  ['יו', 'U Hotels', 'U Hotels'],
+  ['טנדוקה', 'Tanduka', 'Тандука'],
+  ['טרקטורוני לכיש - טיולי טרקטורונים ללא מדריך', 'Lachish ATV Tours', 'Лахиш ATV Tours'],
+  ['טרקלין חשמל', 'Traklin Hashmal', 'Траклин Хашмаль'],
+  ['ישראל 2 גו - סיורים קולינריים בשווקים', 'Israel 2 Go', 'Israel 2 Go'],
+  ['כפר הנופש מסריק', 'Kfar HaNofesh Masaryk', 'Кфар ха-Нофеш Масарик'],
+  ['כרמא', 'Karma', 'Карма'],
+  ['לאונרדו', 'Leonardo', 'Леонардо'],
+  ['לוטונט - חודש הגרלות לוטו משולב', 'Lotonet', 'Лотонет'],
+  ['לחם ארז קריית ביאליק', 'Lechem Erez Kiryat Bialik', 'Лехем Эрез Кирьят-Бялик'],
+  ['מגדל דוד מוזיאון ירושלים', 'Tower of David Museum', 'Музей «Башня Давида»'],
+  ['מגה ספורט', 'Mega Sport', 'Мега Спорт'],
+  ['מוזיאון העמק', 'Emek Museum', 'Музей ха-Эмек'],
+  ['מועדון ארוחת בוקר', 'Breakfast Club', 'Брекфаст Клаб'],
+  ['מכלול', 'Michlol', 'Михлол'],
+  ['מלון 1935', 'Hotel 1935', 'Отель 1935'],
+  ['מלון איב', 'Eve Hotel', 'Отель Ив'],
+  ['מלון נס עמים', 'Nes Ammim Hotel', 'Отель Нес-Амим'],
+  ['מלון סטאי כנרת', 'Setai Kinneret Hotel', 'Отель Сетай Кинерет'],
+  ['מלון סטאי תל אביב', 'Setai Tel Aviv Hotel', 'Отель Сетай Тель-Авив'],
+  ['מלון פיורי 41', 'Fiori 41 Hotel', 'Отель Фиори 41'],
+  ['מזקקת אולגר - OLGAR DISTILLERY', 'Olgar Distillery', 'Olgar Distillery'],
+  ['מנטרה ספא', 'Mantra Spa', 'Мантра Спа'],
+  ['מרינה ביי', 'Marina Bay', 'Марина Бэй'],
+  ['מרקוס', 'Marcus', 'Маркус'],
+  ['נאבי יונה', 'Nabi Yona', 'Наби Йона'],
+  ['נגיסה עפולה', 'Nagisa Afula', 'Нагиса Афула'],
+  ['ניגון הנפש - עינבל ערד', 'Nigun HaNefesh - Einbal Arad', 'Нигун ха-Нефеш — Эйнбаль Арад'],
+  ['נמסטה', 'Namaste', 'Намасте'],
+  ['NYX תל אביב', 'NYX Tel Aviv', 'NYX Тель-Авив'],
+  ['סבון של פעם', 'SABON', 'SABON'],
+  ['סינטה בר אקספרס חיפה', 'Sinta Bar Express Haifa', 'Синта Бар Экспресс Хайфа'],
+  ['סינמה סיטי', 'Cinema City', 'Cinema City'],
+  ['סיציליאנו', 'Siciliano', 'Сицилиано'],
+  ['ספא אלוויט', 'Elvit Spa', 'Эльвит Спа'],
+  ['ספא דניאל', 'Daniel Spa', 'Даниэль Спа'],
+  ['ספא חמת קיסר', 'Hamat Keisar Spa', 'Хамат-Кейсар Спа'],
+  ['ספא קאנטרי גן עברון', 'Country Spa Gan Evron', 'Кантри Спа Ган-Эврон'],
+  ['פלאפל גבאי', 'Falafel Gabay', 'Фалафель Габай'],
+  ['פנה פסטה בר', 'Penne Pasta Bar', 'Пенне Паста Бар'],
+  ['פריחת הסחלב', 'Prichat HaSachlav', 'Прихат ха-Сахлав'],
+  ['צומת ספרים', 'Tzomet Sfarim', 'Цомет Сфарим'],
+  ['צמר - שטיחים יפים', 'Tzemer Carpets', 'Цемер — ковры'],
+  ['קאסה דל פפה', 'Casa del Pepe', 'Каса дель Пепе'],
+  ['קייקי כפר בלום', 'Kfar Blum Kayaks', 'Каяки Кфар-Блюм'],
+  ['קימל בגלבוע', 'Kimel BaGilboa', 'Кимель ба-Гильбоа'],
+  ['קיפצובה', 'Kiftzuba', 'Кифцуба'],
+  ['קפאין חיפה', 'Caffeine Haifa', 'Кафеин Хайфа'],
+  ['קפה אביבים', 'Cafe Avivim', 'Кафе Авивим'],
+  ['קפה אופטימי - italian&israeli kitchen', 'Cafe Optimi - Italian & Israeli Kitchen', 'Кафе Оптими — Italian & Israeli Kitchen'],
+  ['קפה בגולף', 'Cafe BaGolf', 'Кафе ба-Гольф'],
+  ['קפה גרנד ויסטה', 'Cafe Grand Vista', 'Кафе Гранд Виста'],
+  ['קפה נמרוד תל אביב', 'Cafe Nimrod Tel Aviv', 'Кафе Нимрод Тель-Авив'],
+  ['קפה פולה', 'Cafe Paula', 'Кафе Паула'],
+  ['קפה קרמה', 'Crema Cafe', 'Кафе Крема'],
+  ['קפה רוסטרס', 'Cafe Roasters', 'Кафе Роустерс'],
+  ['קקאו כרמיאל', 'Cacao Karmiel', 'Какао Кармиэль'],
+  ['קראון פלזה תל אביב', 'Crowne Plaza Tel Aviv', 'Crowne Plaza Тель-Авив'],
+  ['קראון פלזה תל אביב סיטי סנטר', 'Crowne Plaza Tel Aviv City Center', 'Crowne Plaza Тель-Авив Сити Центр'],
+  ['רוח דרומית', 'Ruach Dromit', 'Руах Дромит'],
+  ['רנה ראש פינה', 'Rene Rosh Pina', 'Рене Рош-Пина'],
+  ['רשת פיצה סטורי', 'Pizza Story', 'Пицца Стори'],
+  ['רשת פיצה עגבניה', 'Pizza Agvania', 'Пицца Агвания'],
+  ['רשת קרביץ', 'Kravitz', 'Кравиц'],
+  ['שילב', 'Shilav', 'Шилав'],
+  ['שלה ביער', 'Shaleh BaYaar', 'Шале ба-Яар'],
+  ['תו על רב-רשתי', 'Super Tav Multi-Chain', 'Super Tav — несколько сетей'],
+]
+
+export type BrandLang = 'en' | 'ru' | 'fr' | 'es'
+const accent = (s: string) => s.replace(/\bCafe\b/g, 'Café')
+const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
+
+export const OFFICIAL_BRAND_NAMES: ReadonlyMap<string, Record<BrandLang, string>> = new Map(
+  ROWS.map(([he, en, ru]) => [norm(he), { en, ru, fr: accent(en), es: accent(en) }]),
+)
+
+const HEBREW = /[֐-׿]/
+export const hasHebrew = (text: string): boolean => HEBREW.test(text)
+
+/** A brand's commercial name in a language: the glossary's, else the name as written when it has no Hebrew letters; null when it needs a glossary row. */
+export function officialBrandName(nameHe: string, lang: BrandLang): string | null {
+  const row = OFFICIAL_BRAND_NAMES.get(norm(nameHe))
+  if (row) return row[lang]
+  return hasHebrew(nameHe) ? null : nameHe
+}

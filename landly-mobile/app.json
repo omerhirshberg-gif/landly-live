@@ -50,6 +50,7 @@
       ],
       "expo-notifications",
       "expo-web-browser",
+      "expo-image",
       "expo-apple-authentication",
       "./plugins/withSceneLifecycle",
       [

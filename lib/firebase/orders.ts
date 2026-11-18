@@ -1,4 +1,5 @@
 import { collection, doc, documentId, getDoc, getDocs, onSnapshot, query, Timestamp, where } from 'firebase/firestore'
+import { parseFulfillmentType, type FulfillmentType } from '../inventory/types'
 import { db } from './config'
 import { recheckSessionIfDenied } from './sessionCheck'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
@@ -35,6 +36,11 @@ export interface OrderDocument {
   businessTranslations?: BusinessTranslations | null
   businessAddress?: PlaceSnapshot | null
   businessGeo?: Coordinates | null
+  // How it is fulfilled (lib/inventory/types.ts); a Raayonit order gets the issuer's attribution on its success page.
+  fulfillmentType?: FulfillmentType
+  // The business's logo and the offer's picture as they were at purchase (additive; '' for older orders).
+  businessLogoUrl?: string
+  offerImageUrl?: string
 }
 
 function toDoc(data: Record<string, unknown>): OrderDocument {
@@ -56,6 +62,9 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
+    fulfillmentType: parseFulfillmentType(data.fulfillmentType),
+    businessLogoUrl: typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : '',
+    offerImageUrl: typeof data.offerImageUrl === 'string' ? data.offerImageUrl : '',
   }
 }
 

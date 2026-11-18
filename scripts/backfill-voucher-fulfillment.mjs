@@ -3,7 +3,7 @@
 // (status redeemed, fulfillmentType direct_merchant, payoutBatchId null) would
 // never see them. For every voucher missing `fulfillmentType` this sets:
 //
-//   fulfillmentType  'direct_merchant'   (every sale before Multipass pools was honoured by the merchant)
+//   fulfillmentType  'direct_merchant'   (every sale before Raayonit pools was honoured by the merchant)
 //   payoutBatchId    null
 //   amountAgorot     the price paid, from its order (orders/{same id}.amountAgorot)
 //   commissionRate   the merchant's CURRENT commissionRate  } snapshots, as a purchase

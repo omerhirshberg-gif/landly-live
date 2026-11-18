@@ -29,7 +29,19 @@ export const PHOTO_COVER_MIN_RATIO = 1.2
  * would lose its head or its feet to a wide crop. Unknown size covers (the frame is
  * showing the category's panel until the bitmap has loaded anyway).
  */
-export function dealPhotoFit(size?: { width: number; height: number } | null): PerkImageFit {
+export function dealPhotoFit(size?: { width: number; height: number } | null, opts?: { ambient?: boolean; graphic?: boolean }): PerkImageFit {
   if (!size || size.width <= 0 || size.height <= 0) return 'cover'
-  return size.width / size.height >= PHOTO_COVER_MIN_RATIO ? 'cover' : 'contain'
+  const ratio = size.width / size.height
+  // Trimmed brand art (a logo or banner) is never cropped to fill: whole, over the blurred copy, whatever its shape.
+  if (opts?.ambient && opts.graphic) return 'contain'
+  if (opts?.ambient) return ratio >= AMBIENT_COVER_MIN_RATIO && ratio <= AMBIENT_COVER_MAX_RATIO ? 'cover' : 'contain'
+  return ratio >= PHOTO_COVER_MIN_RATIO ? 'cover' : 'contain'
 }
+
+/**
+ * Raayonit brand art is trimmed to its own shape, so it comes in every ratio. Only a true landscape scene photograph (1.38 to 1.78, 3:2
+ * to 16:9) fills the frame; anything squarer, taller or more panoramic, and every trimmed logo or banner (`graphic`), sits whole over a
+ * blurred copy of itself, never on white.
+ */
+export const AMBIENT_COVER_MIN_RATIO = 1.38
+export const AMBIENT_COVER_MAX_RATIO = 1.78

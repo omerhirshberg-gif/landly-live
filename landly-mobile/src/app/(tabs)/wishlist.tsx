@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { RefreshControl, StyleSheet, View } from 'react-native'
+import { FlashList } from '@shopify/flash-list'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { getOffersByIds, type OfferDocument } from '@shared/firebase/offers'
+import type { OfferDocument } from '@shared/firebase/offers'
+import { useOffers } from '@shared/offers/useOffers'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import AppText from '../../components/AppText'
-import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
+import FeedCell from '../../components/FeedCell'
 import Notice from '../../components/Notice'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import OfferCard from '../../components/OfferCard'
@@ -15,93 +17,47 @@ import { useLayout } from '../../lib/useLayout'
 import { colors, header } from '../../theme'
 
 // The saved perks (web: /wishlist), the Wishlist tab. The list follows the live wishlist in the order it was saved, as on the website:
-// un-hearting a card drops it at once, and only newly saved ids are fetched.
-// An id whose offer was deleted is skipped.
+// un-hearting a card drops it at once. An id whose offer is no longer on sale is skipped.
 export default function WishlistScreen() {
   const { t } = useLang()
   // Columns follow the window (two unfolded, three on a tablet); the key
-  // remounts the list when folding changes them, as numColumns requires.
-  const { columns, paddingLeft, paddingRight } = useLayout()
+  // remounts the list when folding changes them.
+  const { columns, cellWidth, paddingLeft, paddingRight } = useLayout()
   const { wishlistIds } = useWishlist()
-  // Every id looked up so far, found (an offer) or not (null).
-  const [cache, setCache] = useState<Map<string, OfferDocument | null> | null>(null)
-  const [failed, setFailed] = useState(false)
-  // Looking up newly saved ids (the cached cards stay up meanwhile).
-  const [pending, setPending] = useState(false)
+  // The saved ids against the shared catalog (lib/offers/offersStore.ts): drawn
+  // from the held copy on the first frame, no lookup per id. A heart un-saved
+  // anywhere drops its card on the tap's frame (the wishlist is optimistic).
+  const { offers: catalog, failed, refresh } = useOffers()
   const [refreshing, setRefreshing] = useState(false)
-  const cacheRef = useRef(cache)
-  // Kept current from an effect (render must not write refs); declared first,
-  // so it runs before the lookup effect below in the same commit.
-  useEffect(() => {
-    cacheRef.current = cache
-  }, [cache])
+  const byId = useMemo(() => (catalog ? new Map(catalog.map((offer) => [offer.id, offer])) : null), [catalog])
+  const offers = useMemo(() => (byId ? wishlistIds.flatMap((id) => byId.get(id) ?? []) : null), [byId, wishlistIds])
 
-  const fetchInto = async (ids: string[], base: Map<string, OfferDocument | null>) => {
-    const found = await getOffersByIds(ids)
-    const next = new Map(base)
-    for (const id of ids) next.set(id, found.find((offer) => offer.id === id) ?? null)
-    return next
-  }
-
-  useEffect(() => {
-    const known = cacheRef.current ?? new Map<string, OfferDocument | null>()
-    const missing = wishlistIds.filter((id) => !known.has(id))
-    if (cacheRef.current && missing.length === 0) {
-      // A lookup this replaced (e.g. a perk saved then un-saved) never settles.
-      setPending(false)
-      return
-    }
-    let cancelled = false
-    setPending(true)
-    fetchInto(missing, known)
-      .then((next) => {
-        if (cancelled) return
-        setCache(next)
-        setFailed(false)
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
-      })
-      .finally(() => {
-        if (!cancelled) setPending(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [wishlistIds])
-
-  // Pull-to-refresh looks every saved id up again.
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    try {
-      setCache(await fetchInto(wishlistIds, new Map()))
-      setFailed(false)
-    } catch {
-      setFailed(true)
-    }
+    await refresh()
     setRefreshing(false)
-  }
+  }, [refresh])
 
-  const offers = useMemo(
-    () => (cache ? wishlistIds.map((id) => cache.get(id)).filter((offer): offer is OfferDocument => !!offer) : null),
-    [cache, wishlistIds]
+  const cardWidth = columns > 1 ? cellWidth : undefined
+  const renderItem = useCallback(
+    ({ item, index }: { item: OfferDocument; index: number }) => (
+      <FeedCell column={index}>
+        <OfferCard offer={item} onOpen={openOffer} width={cardWidth} />
+      </FeedCell>
+    ),
+    [cardWidth]
   )
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <FlatList
+      <FlashList
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         key={'cols-' + columns}
         data={offers ?? []}
-        keyExtractor={(offer) => offer.id}
+        keyExtractor={offerKey}
         numColumns={columns}
-        columnWrapperStyle={feedColumnWrapper(columns)}
-        renderItem={({ item }) => (
-          <FeedCell>
-            <OfferCard offer={item} onPress={() => openOffer(item)} />
-          </FeedCell>
-        )}
+        renderItem={renderItem}
         contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
@@ -112,7 +68,7 @@ export default function WishlistScreen() {
           </>
         }
         ListEmptyComponent={
-          offers === null || pending ? (
+          offers === null ? (
             failed ? null : <OfferListSkeleton />
           ) : (
             <View style={styles.empty}>
@@ -125,6 +81,8 @@ export default function WishlistScreen() {
     </SafeAreaView>
   )
 }
+
+const offerKey = (offer: OfferDocument) => offer.id
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
