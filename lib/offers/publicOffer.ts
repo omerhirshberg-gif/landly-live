@@ -1,4 +1,4 @@
-import { normalizeImageUrl } from './imageUrl'
+import { normalizeImageUrl, relocateBundledImage } from './imageUrl'
 import { parseOfferTranslations, type OfferTranslations } from './offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
 import { normalizeRedemptionMethod, normalizeRedemptionModes, type RedemptionMethod, type RedemptionMode } from './redemption'
@@ -73,14 +73,14 @@ export function toPublicOffer(id: string, data: Record<string, unknown> | undefi
     businessName: str(data.businessName),
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     category: str(data.category),
-    imageUrl: normalizeImageUrl(str(data.imageUrl)),
+    imageUrl: relocateBundledImage(normalizeImageUrl(str(data.imageUrl))),
     offerPrice: Number(data.offerPrice) || 0,
     originalPrice: Number(data.originalPrice) || 0,
     createdAt: toDate(data.createdAt),
     expiryDate: toDate(data.expiryDate),
     translations: parseOfferTranslations(data.translations),
     businessId: str(data.businessId),
-    businessLogoUrl: normalizeImageUrl(str(data.businessLogoUrl)),
+    businessLogoUrl: relocateBundledImage(normalizeImageUrl(str(data.businessLogoUrl))),
     ...(data.logoKind === 'logo' || data.logoKind === 'photo' || data.logoKind === 'fallback' ? { logoKind: data.logoKind } : {}),
     location: str(data.location),
     isBestseller: !!data.isBestseller,

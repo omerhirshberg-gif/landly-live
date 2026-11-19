@@ -22,6 +22,16 @@ function decode(value: string): string {
   }
 }
 
+// Bundled pictures (public/images/raayonit-brands, public/images/raayonit) that a dev seed or a local sync stored with its own
+// origin. Another machine or a Vercel Preview can't load `localhost`, so on read they become root-relative and load from
+// whichever site (or the Expo bundle, see brandImageFile) is showing the card.
+const LOCAL_BUNDLED = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(\/images\/raayonit(?:-brands)?\/[\w-]+\.(?:png|jpe?g|webp)(?:[?#].*)?)$/i
+
+/** `http://localhost:3000/images/raayonit-brands/x.png` -> `/images/raayonit-brands/x.png`; any other link unchanged. Read paths only. */
+export function relocateBundledImage(url: string): string {
+  return url.match(LOCAL_BUNDLED)?.[1] ?? url
+}
+
 /** The direct image file behind a pasted link, or the link unchanged. */
 export function normalizeImageUrl(raw: string): string {
   const value = raw.trim()

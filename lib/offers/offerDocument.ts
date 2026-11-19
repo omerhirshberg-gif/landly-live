@@ -2,7 +2,7 @@ import { parseVariants, type OfferVariant } from './variants'
 import { normalizeWebsiteUrl, parsePhones } from './contact'
 import { parseBranches, parseBrandIndex, type BrandIndexEntry, type OfferBranch } from './branches'
 import { normalizeRedemptionTerms, normalizeValidityDays } from '../payments/voucherTerms'
-import { normalizeImageUrl } from '../offers/imageUrl'
+import { normalizeImageUrl, relocateBundledImage } from '../offers/imageUrl'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod, normalizeRedemptionModes, type RedemptionMethod, type RedemptionMode } from '../offers/redemption'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseCoordinates, parseLocalizedName, parsePlaceSnapshot, type Coordinates, type LocalizedName, type ParticipatingPlace, type PlaceSnapshot } from '../geo'
@@ -81,8 +81,8 @@ export function toOfferDocument(id: string, data: Record<string, unknown>): Offe
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     location: (data.location as string) ?? '',
     // Normalized on read too, so links saved before the admin routes did it still render.
-    imageUrl: normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : ''),
-    businessLogoUrl: normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : ''),
+    imageUrl: relocateBundledImage(normalizeImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : '')),
+    businessLogoUrl: relocateBundledImage(normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : '')),
     title: (data.title as string) ?? '',
     description: (data.description as string) ?? '',
     originalPrice: Number(data.originalPrice) || 0,
