@@ -228,3 +228,20 @@ describe('sandbox settlement route', () => {
     expect((await settle('refund')).status).toBe(400)
   })
 })
+
+describe('frozen picture links', () => {
+  it('freezes a dev-seeded localhost link root-relative, and reads it back the same', async () => {
+    store.seed('offers/offer', {
+      ...offer,
+      businessLogoUrl: 'http://localhost:3000/images/raayonit-brands/l-9012.png',
+      imageUrl: 'http://localhost:3000/images/raayonit/super-tav-multi-chain.jpg',
+    })
+    const request = () => new Request('https://test.invalid', { method: 'POST', body: JSON.stringify({ offerId: 'offer' }) })
+    const first = await (await initiate(request())).json()
+    expect(first).toMatchObject({ businessLogoUrl: '/images/raayonit-brands/l-9012.png', offerImageUrl: '/images/raayonit/super-tav-multi-chain.jpg' })
+    expect(store.read('orders/user_offer')).toMatchObject({ businessLogoUrl: '/images/raayonit-brands/l-9012.png', offerImageUrl: '/images/raayonit/super-tav-multi-chain.jpg' })
+    // An order frozen before this fix holds the raw link; the reload repairs it.
+    store.seed('orders/user_offer', { ...store.read('orders/user_offer')!, offerImageUrl: 'http://localhost:3000/images/raayonit/super-tav-multi-chain.jpg' })
+    expect(await (await initiate(request())).json()).toMatchObject({ offerImageUrl: '/images/raayonit/super-tav-multi-chain.jpg' })
+  })
+})

@@ -4,6 +4,7 @@
 import { isOfferActive } from '@/lib/admin/offerStatus'
 import { parseVariants, type OfferVariant } from './variants'
 import type { BrandIndexEntry } from './branches'
+import { relocateBundledImage } from './imageUrl'
 
 export interface AvailabilityContext {
   /** Remaining voucher codes per pool id. A pool that isn't listed is treated as empty. */
@@ -54,7 +55,7 @@ export function publicOfferData(data: Record<string, unknown>, ctx: Availability
 export function withLiveBrandIndex(entries: { id: string; data: Record<string, unknown> }[]): { id: string; data: Record<string, unknown> }[] {
   const brands: BrandIndexEntry[] = entries
     .filter((e) => e.data.fulfillmentType === 'raayonit_pool' && e.data.perkScope !== 'multi_chain')
-    .map((e) => ({ offerId: e.id, name: String(e.data.brandName ?? e.data.businessName ?? ''), nameTranslations: e.data.businessTranslations, logoUrl: String(e.data.businessLogoUrl || e.data.imageUrl || ''), branchCount: Number(e.data.chainsCount) || 0, ...(e.data.logoKind === 'photo' ? { photo: true } : {}) }))
+    .map((e) => ({ offerId: e.id, name: String(e.data.brandName ?? e.data.businessName ?? ''), nameTranslations: e.data.businessTranslations, logoUrl: relocateBundledImage(String(e.data.businessLogoUrl || e.data.imageUrl || '').trim()), branchCount: Number(e.data.chainsCount) || 0, ...(e.data.logoKind === 'photo' ? { photo: true } : {}) }))
     .filter((b) => b.name)
     .sort((a, b) => a.name.localeCompare(b.name, 'he'))
   return entries.map((e) => (e.data.fulfillmentType === 'raayonit_pool' && e.data.perkScope === 'multi_chain'

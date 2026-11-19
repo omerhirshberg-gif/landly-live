@@ -5,6 +5,7 @@ import { recheckSessionIfDenied } from './sessionCheck'
 import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNumber'
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
+import { relocateBundledImage } from '../offers/imageUrl'
 import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
 
 // refunded: a paid order cancelled through support (admin-set, Admin SDK only).
@@ -63,8 +64,9 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
     fulfillmentType: parseFulfillmentType(data.fulfillmentType),
-    businessLogoUrl: typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : '',
-    offerImageUrl: typeof data.offerImageUrl === 'string' ? data.offerImageUrl : '',
+    // An order frozen from a dev-seeded offer holds a localhost link; on read it loads from whichever site shows it.
+    businessLogoUrl: typeof data.businessLogoUrl === 'string' ? relocateBundledImage(data.businessLogoUrl.trim()) : '',
+    offerImageUrl: typeof data.offerImageUrl === 'string' ? relocateBundledImage(data.offerImageUrl.trim()) : '',
   }
 }
 

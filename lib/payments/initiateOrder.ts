@@ -8,6 +8,7 @@ import { belongsToBusiness, frozenNationwide, frozenPerkScope } from '@/lib/offe
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
 import { isBusinessUnavailable } from '../offers/availability'
+import { relocateBundledImage } from '../offers/imageUrl'
 import { findVariant, orderIdFor, parseVariants } from '../offers/variants'
 
 // Never paid and never issued a voucher: the only orders a sandbox may replace.
@@ -51,6 +52,8 @@ function originalPriceOf(value: unknown, amount: number): number | null {
 // sandbox terminal), or any unpaid order when `restart` is set, is archived to
 // supersededOrders and replaced. Without it, nothing is ever reopened.
 const stringOrEmpty = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
+// A frozen picture link: a dev-seeded localhost link is stored root-relative, so any site or device can load it.
+const frozenImage = (value: unknown): string => relocateBundledImage(stringOrEmpty(value))
 
 export async function initiateOrder(
   db: Firestore,
@@ -101,8 +104,8 @@ export async function initiateOrder(
         translations: order.translations ?? null,
         businessTranslations: order.businessTranslations ?? null,
         // Orders created before the logo was frozen read it from the offer.
-        businessLogoUrl: stringOrEmpty(order.businessLogoUrl ?? legacyOffer.businessLogoUrl),
-        offerImageUrl: stringOrEmpty(order.offerImageUrl ?? legacyOffer.imageUrl),
+        businessLogoUrl: frozenImage(order.businessLogoUrl ?? legacyOffer.businessLogoUrl),
+        offerImageUrl: frozenImage(order.offerImageUrl ?? legacyOffer.imageUrl),
         fulfillmentType: order.fulfillmentType ?? legacyOffer.fulfillmentType ?? null,
         termsAccepted: termsAccepted || acceptTerms,
       }
@@ -170,7 +173,7 @@ export async function initiateOrder(
       businessGeo: offer.geo ?? null,
       // The business's logo and the offer's picture as they were at purchase (additive, optional), so the order summary and
       // the confirmation draw the right logo at once, with no second read of the offer.
-      businessLogoUrl: stringOrEmpty(offer.businessLogoUrl), offerImageUrl: stringOrEmpty(offer.imageUrl),
+      businessLogoUrl: frozenImage(offer.businessLogoUrl), offerImageUrl: frozenImage(offer.imageUrl),
       status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
     }
@@ -188,7 +191,7 @@ export async function initiateOrder(
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',
       validityDays, redemptionTerms, translations: offer.translations ?? null,
       businessTranslations: offer.businessTranslations ?? null,
-      businessLogoUrl: stringOrEmpty(offer.businessLogoUrl), offerImageUrl: stringOrEmpty(offer.imageUrl), fulfillmentType,
+      businessLogoUrl: frozenImage(offer.businessLogoUrl), offerImageUrl: frozenImage(offer.imageUrl), fulfillmentType,
       termsAccepted: acceptTerms,
     }
   })
