@@ -37,6 +37,8 @@ export interface ChainBrandSubject {
   offerId?: string
   perkScope?: unknown
   participatingChains?: unknown
+  /** The subject is the live multi-chain offer itself, which honours every live brand: with no index and no chain names matched, all of them. */
+  allLiveBrands?: boolean
 }
 
 /** The brand tiles for a multi-chain offer or voucher: the live offer's own index, else its frozen chain names matched to live brand offers. Empty when nothing matches. */
@@ -58,5 +60,6 @@ export function resolveChainBrands(subject: ChainBrandSubject, offers: readonly 
     const entry = byName.get(brandNameKey(chain))
     if (entry) found.set(entry.offerId, entry)
   }
+  if (found.size === 0 && subject.allLiveBrands) return [...byName.values()].filter((entry, i, all) => all.findIndex((o) => o.offerId === entry.offerId) === i)
   return [...found.values()]
 }

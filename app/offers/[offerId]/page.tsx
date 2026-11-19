@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { CircleCheck, Clock, Heart, MapPin, Tags, Ticket } from 'lucide-react'
 import { useParams } from 'next/navigation'
@@ -29,6 +29,7 @@ import { isPooled } from '@/lib/inventory/types'
 import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
 import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '@/components/discover/PerkReach'
 import BrandStrip from '@/components/offers/BrandStrip'
+import { useChainBrands } from '@/lib/offers/useChainBrands'
 import BranchStrip from '@/components/offers/BranchStrip'
 import ContactActions from '@/components/offers/ContactActions'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
@@ -107,6 +108,10 @@ export default function OfferDetailPage() {
   // The business name has its own translations (and source language); one "Show original" switch flips both.
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
   const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
+  // The brand tiles of a multi-chain pass: the offer's own index, else its chain names matched to the live brand offers, so a missing index never drops to plain text boxes.
+  const chainSubject = useMemo(() => (offer ? { offerId: offer.id, perkScope: offer.perkScope, participatingChains: offer.participatingChains, allLiveBrands: true } : null), [offer])
+  const liveBrands = useChainBrands(chainSubject)
+  const chainBrands = offer?.brandIndex?.length ? offer.brandIndex : liveBrands
 
   if (offer === undefined) {
     return (
@@ -179,7 +184,7 @@ export default function OfferDetailPage() {
   // One venue: its address in the header and its own location section, never "1 store".
   const singleVenue = isSingleVenue(offer)
   const venueLine = singleVenue ? offerFullAddress(offer, lang) : ''
-  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (singleVenue && !!offer.branches?.length)
+  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (offer.perkScope === 'multi_chain' && chainBrands.length > 0) || (singleVenue && !!offer.branches?.length)
 
   return (
     <>
@@ -349,8 +354,8 @@ export default function OfferDetailPage() {
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
                     {hasStoreList && (
                       <Fold title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
-                        {offer.perkScope === 'multi_chain' && !!offer.brandIndex?.length ? (
-                          <div className="space-y-4"><BrandStrip entries={offer.brandIndex} /><RedemptionGuide offer={offer} /></div>
+                        {offer.perkScope === 'multi_chain' && chainBrands.length > 0 ? (
+                          <div className="space-y-4"><BrandStrip entries={chainBrands} /><RedemptionGuide offer={offer} /></div>
                         ) : !!offer.branches?.length ? (
                           <BranchStrip branches={offer.branches} brand={offer.brandName || offer.businessName || null} />
                         ) : (

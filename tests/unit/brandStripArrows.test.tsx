@@ -33,14 +33,14 @@ describe('rail scroll maths', () => {
 
 describe('BrandStrip', () => {
   const html = (l: 'en' | 'he') => { lang = l; return renderToStaticMarkup(createElement(BrandStrip, { entries })) }
-  it('puts the arrows in the header row (36px, hover pointers from md), never over the cards, the leading one disabled at the start', () => {
+  it('puts the arrows in the header row (36px, hover pointers from lg), never over the cards, the leading one disabled at the start', () => {
     lang = 'en'
     const out = renderToStaticMarkup(createElement(RailArrows, { edge: { atStart: true, atEnd: false, overflow: true }, page: () => undefined }))
     expect(out).toContain('data-rail-arrow="prev"')
     expect(out).toContain('data-rail-arrow="next"')
     expect(out).toContain('h-9 w-9')
     expect(out).toContain('border-[#E2E8F0]')
-    expect(out).toContain('[@media(hover:hover)]:md:flex')
+    expect(out).toContain('[@media(hover:hover)]:lg:flex')
     expect(out).toMatch(/<button[^>]*disabled=""[^>]*data-rail-arrow="prev"|<button[^>]*data-rail-arrow="prev"[^>]*disabled=""/)
     expect(out).not.toContain('absolute')
     expect(renderToStaticMarkup(createElement(RailArrows, { edge: { atStart: true, atEnd: false, overflow: false }, page: () => undefined }))).toBe('')

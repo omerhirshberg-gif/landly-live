@@ -27,6 +27,11 @@ describe('resolveChainBrands', () => {
     expect(resolveChainBrands({ perkScope: 'single_business', participatingChains: ['HOLMES PLACE'] }, [holmes])).toEqual([])
     expect(resolveChainBrands({ perkScope: 'multi_chain', participatingChains: ['nope'] }, [holmes])).toEqual([])
   })
+  it('falls back to every live brand for the live multi-chain offer itself when it has no index and no chain names', () => {
+    const got = resolveChainBrands({ offerId: 'g', perkScope: 'multi_chain', participatingChains: [], allLiveBrands: true }, [general, holmes, cafe, sabon])
+    expect(got.map((b) => b.offerId).sort()).toEqual(['c', 'h', 's'])
+    expect(resolveChainBrands({ offerId: 'g', perkScope: 'multi_chain', participatingChains: [] }, [general, holmes])).toEqual([])
+  })
   it('lists the biggest chains first', () => {
     const sorted = sortBrandsByReach([{ name: 'b', branchCount: 3 }, { name: 'a', branchCount: 42 }, { name: 'c', branchCount: 3 }])
     expect(sorted.map((b) => b.name)).toEqual(['a', 'b', 'c'])
