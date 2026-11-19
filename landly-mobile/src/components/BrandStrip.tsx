@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View, type ImageSourcePropType } from 'react-native'
+import { FlatList, Image, Modal, Pressable, StyleSheet, TextInput, View, type ImageSourcePropType } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { parseBusinessTranslations, localizedBusinessName } from '@shared/business/businessText'
 import type { BrandIndexEntry } from '@shared/offers/branches'
+import { sortBrandsByReach } from '@shared/offers/resolveChainBrand'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
 import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
@@ -23,7 +24,7 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
   const { t, lang, isRtl } = useLang()
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(false)
-  const named = useMemo(() => entries.map((e) => ({ ...e, label: localizedBusinessName({ businessName: e.name, businessTranslations: parseBusinessTranslations(e.nameTranslations) }, lang).text })), [entries, lang])
+  const named = useMemo(() => sortBrandsByReach(entries).map((e) => ({ ...e, label: localizedBusinessName({ businessName: e.name, businessTranslations: parseBusinessTranslations(e.nameTranslations) }, lang).text })), [entries, lang])
   const q = query.trim().toLowerCase()
   const shown = q ? named.filter((e) => e.label.toLowerCase().includes(q) || e.name.includes(query.trim())) : named
   const count = String(named.length)
@@ -41,9 +42,18 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
       {shown.length === 0 ? (
         <AppText style={styles.empty}>{t('brands_no_results')}</AppText>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rail} onContentSizeChange={() => undefined}>
-          {shown.slice(0, 40).map((b) => <Tile key={b.offerId} entry={b} label={b.label} />)}
-        </ScrollView>
+        <FlatList
+          horizontal
+          data={shown}
+          keyExtractor={(b) => b.offerId}
+          renderItem={({ item }) => <Tile entry={item} label={item.label} />}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.rail}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+        />
       )}
       <Pressable accessibilityRole="button" onPress={() => setAll(true)} style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}>
         <AppText style={styles.viewAllText}>{t('brands_show_all_cta').replace('{count}', `\u2066${count}\u2069`)}</AppText>

@@ -191,7 +191,6 @@ const IMAGES: Record<string, ImageSourcePropType> = {
   'l-7885.png': require('../../assets/raayonit-brands/l-7885.png'),
   'l-7897.jpg': require('../../assets/raayonit-brands/l-7897.jpg'),
   'l-7898.png': require('../../assets/raayonit-brands/l-7898.png'),
-  'l-7902.png': require('../../assets/raayonit-brands/l-7902.png'),
   'l-7906.jpg': require('../../assets/raayonit-brands/l-7906.jpg'),
   'l-7919.png': require('../../assets/raayonit-brands/l-7919.png'),
   'l-7927.jpg': require('../../assets/raayonit-brands/l-7927.jpg'),

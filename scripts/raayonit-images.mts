@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import sharp from 'sharp'
 import { fixSite, siteVariants, makeLogo, makePhoto, isBlockedImageSource } from '../lib/inventory/raayonitImageUtils'
 import { finalizeCatalog } from '../lib/inventory/raayonitSanitize'
-import { applyCanonical, CANONICAL_EXTRA_BRANDS } from '../lib/inventory/raayonitCanonicalCatalog'
+import { applyCanonical, CANONICAL_EXTRA_BRANDS, NO_IMAGE_BRAND_KEYS } from '../lib/inventory/raayonitCanonicalCatalog'
 import type { RaayonitBrand } from '../lib/inventory/raayonitCatalog'
 
 const WEB = 'public/images/raayonit-brands'
@@ -121,6 +121,7 @@ const stats = { raayonit: 0, site: 0, none: 0, logo: 0, photo: 0 }
 const queue = [...brands]
 await Promise.all(Array.from({ length: 6 }, async () => {
   for (let b = queue.shift(); b; b = queue.shift()) {
+    if (NO_IMAGE_BRAND_KEYS.includes(b.key)) continue // no picture of its own: the card shows the Raayonit mark
     const safe = b.key.replace(/[^\w-]+/g, '')
     let bytes: Buffer | null = null, source = '', icon = false
     const rawFile = `${RAW}/${safe}.bin`

@@ -22,7 +22,7 @@ import {
   branchLabel, indexUrl, logoFileName, networkUrl, showNetworksUrl, parseNetworkIndex, parseNetworkPage, type RaayonitBrand,
 } from './raayonitCatalog'
 import snapshot from './raayonitCatalog.snapshot.json'
-import { applyCanonical } from './raayonitCanonicalCatalog'
+import { applyCanonical, NO_IMAGE_BRAND_KEYS } from './raayonitCanonicalCatalog'
 
 // Builds Raayonit's "תו על" offers from its catalogue: one multi-chain card plus one card per participating brand or business,
 // each carrying a variant per voucher stock (100 for 89, 150 for 129, created when missing). New cards are drafts
@@ -137,7 +137,7 @@ export async function retiredRaayonitOfferIds(db: Firestore): Promise<string[]> 
 
 /** The logo a card shows: the bundled copy on this site when we have one, else the supplier's link. */
 function logoFor(brand: SnapshotBrand, origin: string): string {
-  const bundled = brand.logoFile ?? (bundledCatalog().find((b) => b.key === brand.key)?.logoFile)
+  const bundled = NO_IMAGE_BRAND_KEYS.includes(brand.key) ? undefined : brand.logoFile ?? (bundledCatalog().find((b) => b.key === brand.key)?.logoFile)
   // No image of its own: the Raayonit mark, never a broken or remote link.
   return bundled ? `${origin}/images/raayonit-brands/${bundled}` : `${origin}${RAAYONIT_LOGO_PATH}`
 }
@@ -238,7 +238,7 @@ export async function syncRaayonitCatalog(db: Firestore, input: { brands: Snapsh
             en: "Visit any participating chain or business and show or read out your voucher code at the till. Each one's own limits are on its perk page.",
           } }
         : { perkScope: 'single_business' }
-      const ownFile = brand ? brand.logoFile ?? bundledCatalog().find((b) => b.key === brand.key)?.logoFile : undefined
+      const ownFile = brand && !NO_IMAGE_BRAND_KEYS.includes(brand.key) ? brand.logoFile ?? bundledCatalog().find((b) => b.key === brand.key)?.logoFile : undefined
       const kind: 'logo' | 'photo' | 'fallback' = !ownFile ? 'fallback' : (brand?.logoKind ?? bundledCatalog().find((b) => b.key === brand?.key)?.logoKind ?? (ownFile.endsWith('.jpg') ? 'photo' : 'logo'))
       const sourceKey = brandSourceKey(card.key)
       const id = existing.get(sourceKey) ?? partial?.reuse?.get(card.key)

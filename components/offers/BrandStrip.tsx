@@ -7,6 +7,7 @@ import RailArrows, { useRail } from './RailArrows'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizedBusinessName, parseBusinessTranslations } from '@/lib/business/businessText'
 import type { BrandIndexEntry } from '@/lib/offers/branches'
+import { sortBrandsByReach } from '@/lib/offers/resolveChainBrand'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 
@@ -38,7 +39,7 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
   const { t, lang } = useLang()
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(false)
-  const named = useMemo(() => entries.map((e) => ({ ...e, label: localizedBusinessName({ businessName: e.name, businessTranslations: parseBusinessTranslations(e.nameTranslations) }, lang).text })), [entries, lang])
+  const named = useMemo(() => sortBrandsByReach(entries).map((e) => ({ ...e, label: localizedBusinessName({ businessName: e.name, businessTranslations: parseBusinessTranslations(e.nameTranslations) }, lang).text })), [entries, lang])
   const q = query.trim().toLowerCase()
   const match = (e: { label: string; name: string }) => !q || e.label.toLowerCase().includes(q) || e.name.includes(query.trim())
   const shown = named.filter(match)
@@ -60,7 +61,7 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
         <p className="py-3 text-center text-sm text-muted">{t('brands_no_results')}</p>
       ) : (
         <ul ref={rail.ref} onScroll={rail.measure} className="-mx-1 flex snap-x scroll-px-1 gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {shown.slice(0, 40).map((e) => (
+          {shown.map((e) => (
             <li key={e.offerId} className="w-[136px] shrink-0 snap-start sm:w-[144px]">
               <Link href={`/offers/${e.offerId}`} className="group block rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
                 <span className="flex h-[92px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-200 [@media(hover:hover)]:group-hover:-translate-y-0.5 [@media(hover:hover)]:group-hover:shadow-card-hover">
