@@ -1,3 +1,5 @@
+import { relocateBundledImage } from './imageUrl'
+
 // A participating branch as the offer carries it (Raayonit): a clean name, where it is, and whether it is kosher.
 export type BranchText = { name: string; city: string; address: string }
 /** A branch's name, city and street per reader language (Hebrew is the base text); written by the Raayonit sync. */
@@ -49,6 +51,6 @@ export function parseBrandIndex(raw: unknown): BrandIndexEntry[] {
   return raw.flatMap((r) => {
     const b = r as Record<string, unknown> | null
     const offerId = str(b?.offerId), name = str(b?.name)
-    return offerId && name ? [{ offerId, name, nameTranslations: b?.nameTranslations, logoUrl: str(b?.logoUrl), branchCount: Number(b?.branchCount) || 0, ...(b?.photo === true ? { photo: true } : {}) }] : []
+    return offerId && name ? [{ offerId, name, nameTranslations: b?.nameTranslations, logoUrl: relocateBundledImage(str(b?.logoUrl)), branchCount: Number(b?.branchCount) || 0, ...(b?.photo === true ? { photo: true } : {}) }] : []
   })
 }

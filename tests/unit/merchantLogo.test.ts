@@ -56,3 +56,18 @@ describe('purchaseMedia', () => {
     expect(purchaseMedia({ order: { fulfillmentType: 'raayonit_pool', offerImageUrl: '/images/raayonit/super-tav-multi-chain.jpg' } })).toEqual({ logo: null, photoUrl: '/images/raayonit/super-tav-multi-chain.jpg' })
   })
 })
+
+describe('brand index logos', () => {
+  it('relocates a dev-seeded localhost logo on parse and on the live index', async () => {
+    const { parseBrandIndex } = await import('@/lib/offers/branches')
+    const { withLiveBrandIndex } = await import('@/lib/offers/availability')
+    const local = 'http://localhost:3000/images/raayonit-brands/l-9012.png'
+    expect(parseBrandIndex([{ offerId: 'a', name: 'Pizza Story', logoUrl: local }])[0]!.logoUrl).toBe('/images/raayonit-brands/l-9012.png')
+    expect(parseBrandIndex([{ offerId: 'a', name: 'X', logoUrl: 'https://cdn.test/x.png' }])[0]!.logoUrl).toBe('https://cdn.test/x.png')
+    const [, multi] = withLiveBrandIndex([
+      { id: 'a', data: { fulfillmentType: 'raayonit_pool', brandName: 'Pizza Story', businessLogoUrl: local } },
+      { id: 'm', data: { fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain' } },
+    ])
+    expect((multi!.data.brandIndex as { logoUrl: string }[])[0]!.logoUrl).toBe('/images/raayonit-brands/l-9012.png')
+  })
+})
