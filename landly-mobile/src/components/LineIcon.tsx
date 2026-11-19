@@ -1,5 +1,6 @@
 import type { ColorValue, StyleProp, ViewStyle } from 'react-native'
 import ArrowDownWideNarrow from 'lucide-react-native/icons/arrow-down-wide-narrow'
+import ArrowUpRight from 'lucide-react-native/icons/arrow-up-right'
 import Award from 'lucide-react-native/icons/award'
 import Banknote from 'lucide-react-native/icons/banknote'
 import Calendar from 'lucide-react-native/icons/calendar'
@@ -18,6 +19,8 @@ import Globe from 'lucide-react-native/icons/globe'
 import Heart from 'lucide-react-native/icons/heart'
 import Locate from 'lucide-react-native/icons/locate'
 import Lock from 'lucide-react-native/icons/lock'
+import EyeOff from 'lucide-react-native/icons/eye-off'
+import Phone from 'lucide-react-native/icons/phone'
 import LogOut from 'lucide-react-native/icons/log-out'
 import Mail from 'lucide-react-native/icons/mail'
 import MapIcon from 'lucide-react-native/icons/map'
@@ -34,6 +37,7 @@ import ScanFace from 'lucide-react-native/icons/scan-face'
 import Search from 'lucide-react-native/icons/search'
 import Settings from 'lucide-react-native/icons/settings'
 import Shield from 'lucide-react-native/icons/shield'
+import Store from 'lucide-react-native/icons/store'
 import Smartphone from 'lucide-react-native/icons/smartphone'
 import Sparkles from 'lucide-react-native/icons/sparkles'
 import Tag from 'lucide-react-native/icons/tag'
@@ -53,12 +57,14 @@ const ICONS = {
   help: MessageCircleQuestionMark,
   file: FileText,
   lock: Lock,
+  eyeOff: EyeOff,
   flag: Flag,
   locate: Locate,
   pin: MapPin,
   navigation: Navigation,
   map: MapIcon,
   phone: Smartphone,
+  call: Phone,
   monitor: Monitor,
   signOut: LogOut,
   check: Check,
@@ -90,6 +96,8 @@ const ICONS = {
   ticket: Ticket,
   piggyBank: PiggyBank,
   circleCheck: CircleCheck,
+  store: Store,
+  arrowUpEnd: ArrowUpRight,
   clock: Clock,
 } as const
 

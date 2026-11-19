@@ -11,6 +11,7 @@ import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { belongsToBusiness, parsePerkScopeFields } from '@/lib/offers/perkScope'
 import { parseFulfillmentType } from '@/lib/inventory/types'
+import { poolPriceProblem, readSharedPoolTerms } from '@/lib/inventory/poolAdmin'
 import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { deleteBannerByUrl } from '@/lib/storage/banners'
 import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
@@ -33,8 +34,10 @@ interface PatchBody {
     redemptionMethod?: string
     redemptionInstructions?: string
   }
-  /** A perk with no business (Multipass or a manual multi-chain pass): its issuer's brand and, for a multi-chain pass, the guide. */
+  /** A perk with no business (Raayonit or a manual multi-chain pass): its issuer's brand and, for a multi-chain pass, the guide. */
   perk?: { brandName?: unknown; universalRedemptionGuide?: unknown }
+  /** A Raayonit offer's voucher stock; left out keeps the stored one. */
+  poolId?: string
   /** The admin's own translations; a field left out goes back to Cloud Translation. */
   translationOverrides?: unknown
 }
@@ -100,13 +103,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
   // Which stores honour the offer, and for a perk with no business its brand and guide, are editable; its
   // fulfillment, scope and business never change here.
   const stored = snap.data() ?? {}
-  const multipass = parseFulfillmentType(stored.fulfillmentType) === 'multipass_pool'
+  const raayonit = parseFulfillmentType(stored.fulfillmentType) === 'raayonit_pool'
   const noBusiness = !belongsToBusiness(stored)
   const multiChain = stored.perkScope === 'multi_chain'
   const brandEdited = noBusiness && body.perk?.brandName !== undefined
   const guideEdited = noBusiness && multiChain && body.perk?.universalRedemptionGuide !== undefined
+  // A Raayonit offer keeps selling exactly what its stock holds; the admin may point it at another stock of the same terms.
+  let poolId: string | null = null
+  if (raayonit) {
+    const wanted = typeof body.poolId === 'string' && body.poolId ? body.poolId : stored.poolId
+    const terms = await readSharedPoolTerms(getAdminDb(), wanted)
+    if (!terms) return badRequest('Choose a voucher stock for this offer.')
+    const mismatch = poolPriceProblem(terms, offer.originalPrice, offer.offerPrice)
+    if (mismatch) return badRequest(mismatch)
+    poolId = wanted
+  }
   const scope = parsePerkScopeFields({
-    fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
+    fulfillmentType: raayonit ? 'raayonit_pool' : 'direct_merchant',
     perkScope: stored.perkScope,
     businessId: noBusiness ? undefined : stored.businessId,
     brandName: noBusiness ? (brandEdited ? body.perk!.brandName : stored.brandName) : undefined,
@@ -129,9 +142,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ of
     offerPrice: offer.offerPrice,
     imageUrl,
     expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,
-    totalQuantity: offer.totalQuantity,
+    totalQuantity: raayonit ? null : offer.totalQuantity,
+    ...(poolId ? { poolId } : {}),
     isBestseller: !!offer.isBestseller,
-    // A Multipass perk is always multi-branch; only a local-business offer takes the switch.
+    // A Raayonit perk is always multi-branch; only a local-business offer takes the switch.
     ...(noBusiness ? {} : { isNationwide: scope.fields.isNationwide }),
     ...(brandEdited ? { brandName: scope.fields.brandName, businessName: scope.fields.brandName, businessTranslations: brandTranslations?.ok ? brandTranslations.translations : null } : {}),
     ...(guideEdited ? { universalRedemptionGuide: scope.fields.universalRedemptionGuide ?? FieldValue.delete() } : {}),

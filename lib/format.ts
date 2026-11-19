@@ -38,3 +38,9 @@ export function formatLongDate(date: Date, lang: string): string {
 export function priceDifference(original: number, paid: number): number {
   return (Math.round(original * 100) - Math.round(paid * 100)) / 100
 }
+
+/** 17.11.2031: a voucher's validity as plain digits, for showing in its own left-to-right run (<bdi dir="ltr"> / writingDirection: 'ltr'). */
+export function formatNumericDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`
+}

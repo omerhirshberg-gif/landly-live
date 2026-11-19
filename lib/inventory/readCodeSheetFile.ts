@@ -14,9 +14,22 @@ export async function readCodeSheetFile(file: File): Promise<unknown[][]> {
   if (!isSheetFile(file)) throw new Error('unsupported')
   if (file.size > MAX_SHEET_BYTES) throw new Error('too_large')
   const XLSX = await import('xlsx')
-  const book = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true, dense: true })
+  const bytes = await file.arrayBuffer()
+  // SheetJS reads a CSV with no byte-order mark as Windows-1252, which garbles Hebrew headings:
+  // decode it here, as UTF-8 when it is valid UTF-8 and as Windows-1255 (Excel's Hebrew CSV) when not.
+  const book = file.name.toLowerCase().endsWith('.csv')
+    ? XLSX.read(decodeCsv(bytes), { type: 'string', cellDates: true, dense: true })
+    : XLSX.read(bytes, { type: 'array', cellDates: true, dense: true })
   const sheet = book.Sheets[book.SheetNames[0] ?? '']
   if (!sheet) return []
   // raw: codes such as 0012345 must stay text; header: 1 gives plain rows.
   return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: '', blankrows: true })
+}
+
+function decodeCsv(bytes: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    return new TextDecoder('windows-1255').decode(bytes)
+  }
 }

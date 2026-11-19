@@ -51,16 +51,16 @@ export default function OfferTileRail({
   return (
     <section aria-labelledby={headingId} className="py-5 first:pt-0 last:pb-0">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id={headingId} className="flex min-w-0 flex-1 items-center gap-1.5 text-base font-bold text-slate-900">
+        <h2 id={headingId} className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink">
           {/* A bare 18px line icon at 1.5 stroke: no frame. */}
           <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink" strokeWidth={1.5} />
-          <span className="line-clamp-2 min-w-0 leading-tight">{title}</span>
+          <bdi className="line-clamp-2 min-w-0 text-balance leading-tight max-[420px]:text-[1.125rem]" dir="auto">{title}</bdi>
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">
           {href && seeMore && (
             // 32px to the eye, 44px to the finger: the link is the target, the pill is its look.
             <Link href={href} className="tap-target group/pill inline-flex items-center">
-              <span className="rounded-full border border-slate-200/70 bg-brandTint px-3.5 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
+              <span className="rounded-full border border-slate-200/70 bg-brandTint px-3 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
                 {seeMore}
               </span>
             </Link>

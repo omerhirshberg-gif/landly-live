@@ -6,7 +6,7 @@ import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@/lib/i
 
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 vi.mock('@/lib/firebase/offers', () => ({
   getAllOffers: () => new Promise(() => {}),
   sortFeaturedOffers: (o: unknown[]) => o,

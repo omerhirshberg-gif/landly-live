@@ -5,6 +5,8 @@ import GlassBackButton from './GlassBackButton'
 import { useLang } from '../i18n/LangProvider'
 import { colors } from '../theme'
 
+const DEV_SIDE = 132
+
 // The settings stack's header: the glass back button on the leading side
 // (components/GlassBackButton.tsx, its chevron mirrored in Hebrew), the title
 // centred, an equal spacer trailing. A screen that heads its own content leaves the title out.
@@ -19,13 +21,16 @@ export default function ScreenHeader({ title, fallback = '/settings', onBack }: 
 
   return (
     <View style={styles.bar}>
-      <GlassBackButton label={t('settings_back')} onPress={() => (onBack ? onBack() : goBack(fallback))} />
+      {/* A titled header holds equal side slots, so the centred title never reaches the back button or a development build's DEV pill. */}
+      <View style={title ? styles.side : undefined}>
+        <GlassBackButton label={t('settings_back')} onPress={() => (onBack ? onBack() : goBack(fallback))} />
+      </View>
       {!!title && (
         <>
-          <AppText accessibilityRole="header" numberOfLines={1} style={styles.title}>
+          <AppText accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.title}>
             {title}
           </AppText>
-          <View style={styles.spacer} />
+          <View style={styles.side} />
         </>
       )}
     </View>
@@ -42,5 +47,6 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 8 },
   // textAlign overrides AppText's reading-direction alignment: the title is centred in every language.
   title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center' },
-  spacer: { width: 48 },
+  // 48pt each side; development builds widen both so the DEV pill (components/DevEnvironmentBadge.tsx) has room at the trailing edge.
+  side: { width: __DEV__ ? DEV_SIDE : 48 },
 })

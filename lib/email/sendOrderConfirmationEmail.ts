@@ -2,6 +2,8 @@ import 'server-only'
 import { RTL_LANGS, translations, type Lang } from '@/lib/i18n/translations'
 import { priceDifference } from '@/lib/format'
 import { orderReference } from '@/lib/payments/orderNumber'
+import { issuerLine, type VoucherIssuer } from '@/lib/payments/issuer'
+import { formatNumericDate } from '@/lib/format'
 import { escapeHtml, FONT_STACK, sendBrandedEmail, type BrandedEmailContent } from './brandedEmail'
 
 export interface OrderConfirmationDetails {
@@ -17,6 +19,10 @@ export interface OrderConfirmationDetails {
   /** The pre-discount price frozen on the order, or null when there's none. */
   originalPrice: number | null
   voucherLink: string
+  /** A Raayonit voucher: who issued it, the absolute https URL of its logo, and when it expires (5 years from purchase). */
+  issuer?: VoucherIssuer | null
+  issuerLogoUrl?: string
+  expiresAt?: Date | null
 }
 
 // Whole shekels without decimals ("₪80"), anything else with two ("₪79.90").
@@ -96,7 +102,24 @@ function buildDetailsHtml(lang: Lang, order: OrderConfirmationDetails): string {
                 </tr>
               </table>`
 
-  return summary + perk
+  // Raayonit: the issuer's logo and line, and the date the code stops working, always left to right.
+  const issuer = order.issuer
+    ? `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" style="margin-top:16px;">
+                <tr>
+                  <td bgcolor="#F8FAFC" style="padding:12px 18px;background-color:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}">
+                      <tr>${order.issuerLogoUrl ? `
+                        <td width="56" valign="middle" style="width:56px;padding-${end}:14px;"><img src="${escapeHtml(order.issuerLogoUrl)}" alt="${escapeHtml(lang === 'he' ? order.issuer.nameHe : order.issuer.nameEn)}" width="56" style="display:block;width:56px;height:auto;border:0;outline:none;"></td>` : ''}
+                        <td valign="middle" style="${text}text-align:${start};color:#334155;font-weight:600;">${escapeHtml(issuerLine(order.issuer, lang))}${order.expiresAt ? `<br><span style="font-weight:400;color:#64748B;">${escapeHtml(t.wallet_pass_valid_until)} <span dir="ltr" style="unicode-bidi:isolate;font-weight:700;color:#0F172A;">${escapeHtml(formatNumericDate(order.expiresAt))}</span></span>` : ''}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>`
+    : ''
+
+  return summary + perk + issuer
 }
 
 /** The order confirmation's subject and shell content, built without sending. */

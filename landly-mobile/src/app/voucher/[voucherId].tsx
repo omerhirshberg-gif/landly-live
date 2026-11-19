@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
-import { formatLongDate } from '@shared/format'
+import { formatLongDate, formatNumericDate } from '@shared/format'
 import { voucherDestination } from '@shared/member/voucherDestination'
 import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
@@ -18,9 +18,13 @@ import LineIcon from '../../components/LineIcon'
 import NavigationButtons from '../../components/NavigationButtons'
 import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '../../components/PerkReach'
 import VoucherCover from '../../components/VoucherCover'
+import ContactActions from '../../components/ContactActions'
 import VoucherTicket from '../../components/VoucherTicket'
 import ScreenHeader from '../../components/ScreenHeader'
 import { CodeReveal, QrReveal } from '../../components/VoucherReveal'
+import IssuerAttribution from '../../components/IssuerAttribution'
+import MarkVoucherUsed from '../../components/MarkVoucherUsed'
+import { cachedVoucher } from '../../lib/openVoucher'
 import { useLang } from '../../i18n/LangProvider'
 import { colors, radius } from '../../theme'
 
@@ -41,7 +45,8 @@ export default function VoucherScreen() {
   const { t, lang } = useLang()
   const { voucherId } = useLocalSearchParams<{ voucherId: string }>()
   // undefined while loading; null when missing or someone else's (rules deny both alike).
-  const [voucher, setVoucher] = useState<Voucher | null | undefined>(undefined)
+  // A pass opened from My Pass draws at once from the copy handed over (src/lib/openVoucher.ts); the listener below keeps it live.
+  const [voucher, setVoucher] = useState<Voucher | null | undefined>(() => (voucherId ? cachedVoucher(voucherId) : undefined))
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
 
@@ -50,6 +55,7 @@ export default function VoucherScreen() {
     return subscribeToVoucher(voucherId, setVoucher)
   }, [voucherId])
 
+  const codeOnly = voucher?.redemptionKind === 'code_only'
   const expired = !!voucher?.expiresAt && voucher.expiresAt.getTime() < now
   // The voucher's own translation, frozen at purchase like its terms.
   const content = useLocalizedContent(offerTextSources(voucher), voucher?.translations, lang)
@@ -71,10 +77,16 @@ export default function VoucherScreen() {
           <VoucherTicket
             top={
               <>
-                <VoucherCover voucher={voucher} name={businessName} ratio={2} maxHeight={200} logoHeight={56} />
+                <VoucherCover voucher={voucher} ratio={2} maxHeight={200} logoHeight={56} />
                 <View style={styles.head}>
                   <AppText style={styles.business} accessibilityRole="header">{businessName}</AppText>
                   <ContentText contentLang={title.lang} style={styles.title}>{title.text}</ContentText>
+                  {codeOnly && voucher.issuer && (
+                    <View style={styles.issuer}>
+                      <IssuerAttribution issuer={voucher.issuer} note={t('voucher_valid_years')} />
+                    </View>
+                  )}
+                  <View style={styles.contact}><ContactActions websiteUrl={voucher.websiteUrl} phone={voucher.contactPhone} stack /></View>
                   {content.machine && <TranslationNotice showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />}
                   <View style={styles.chips}>
                     <View style={styles.methodChip}>
@@ -115,7 +127,20 @@ export default function VoucherScreen() {
             }
             stub={
               <>
-                {voucher.status === 'active' ? (
+                {voucher.status === 'active' && codeOnly ? (
+                  <>
+                    {/* Raayonit: the code is the voucher. No QR code, no QR reveal. */}
+                    <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} prominent />
+                    {voucher.expiresAt && (
+                      <View style={styles.expiryRow} accessible accessibilityLabel={t('voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}>
+                        <AppText style={styles.expiryLabel}>{t('voucher_valid_until').replace('{date}', '').trim()}</AppText>
+                        <AppText ltr style={styles.expiryDate}>{formatNumericDate(voucher.expiresAt)}</AppText>
+                      </View>
+                    )}
+                    <AddToAppleWallet voucher={voucher} />
+                    <MarkVoucherUsed voucherId={voucher.id} />
+                  </>
+                ) : voucher.status === 'active' ? (
                   <>
                     <QrReveal redeemKey={redeemVoucherKey(voucher)} />
                     <View style={styles.gap} />
@@ -141,7 +166,7 @@ export default function VoucherScreen() {
             {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
             {voucher.perkScope === 'multi_chain' && <View style={styles.guideBlock}><RedemptionGuide offer={voucher} /></View>}
             {(() => {
-              const steps = redemptionSteps(voucher.redemptionMethod, instructions.text, t)
+              const steps = redemptionSteps(voucher.redemptionMethod, instructions.text, t, codeOnly)
               // Numbers only for the merchant's own multi-line instructions, where order matters.
               const numbered = instructions.text.trim() !== '' && steps.length > 1
               return steps.map((step, i) => (
@@ -179,28 +204,33 @@ const styles = StyleSheet.create({
   // Clears the logo's overhang (56pt tile, 40% of it below the cover).
   head: { paddingHorizontal: 20, paddingTop: 34, paddingBottom: 18 },
   business: { fontSize: 26, lineHeight: 32, fontWeight: '800', letterSpacing: -0.3, color: colors.heading },
-  title: { fontSize: 15, lineHeight: 21, fontWeight: '500', color: colors.body, marginTop: 4 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 8, marginTop: 14 },
+  title: { fontSize: 15, lineHeight: 23, fontWeight: '500', color: colors.body, marginTop: 4 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 8, marginTop: 18 },
   methodChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.brandTint, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 4 },
   methodText: { fontSize: 12, fontWeight: '600', color: colors.brand },
   validityRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stores: { marginTop: 12 },
   guideBlock: { marginBottom: 14 },
-  address: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 14 },
-  addressText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.textMuted },
-  nav: { marginTop: 12 },
+  address: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 18 },
+  addressText: { flex: 1, fontSize: 13, lineHeight: 20, color: colors.textMuted },
+  nav: { marginTop: 16 },
   gap: { height: 16 },
+  expiryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 },
+  expiryLabel: { fontSize: 13, color: colors.textMuted },
+  expiryDate: { fontSize: 14, fontWeight: '700', color: colors.textStrong, fontVariant: ['tabular-nums'] },
+  contact: { marginTop: 20 },
+  issuer: { marginTop: 20 },
   redeemed: { padding: 16, borderRadius: radius.lg, backgroundColor: colors.background, fontSize: 14, fontWeight: '600', color: colors.body, textAlign: 'center' },
-  panel: { marginTop: 16, padding: 20, borderRadius: radius.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderLight },
+  panel: { marginTop: 20, padding: 20, borderRadius: radius.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderLight },
   howTitle: { fontSize: 15, fontWeight: '700', color: colors.heading, marginBottom: 12 },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   stepNumber: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   stepNumberText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: colors.brand, textAlign: 'center' },
-  stepText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
+  stepText: { flex: 1, fontSize: 13, lineHeight: 22, color: colors.body },
   validity: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   expired: { color: colors.danger },
-  termsLabel: { fontSize: 12, fontWeight: '700', color: colors.textStrong, marginTop: 14, marginBottom: 4 },
-  terms: { fontSize: 13, lineHeight: 19, color: colors.textMuted },
+  termsLabel: { fontSize: 12, fontWeight: '700', color: colors.textStrong, marginTop: 20, marginBottom: 4 },
+  terms: { fontSize: 13, lineHeight: 22, color: colors.textMuted },
   orderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.borderLight },
   orderLabel: { fontSize: 13, color: colors.textMuted },
   orderNumber: { fontSize: 14, fontWeight: '600', color: colors.text, fontVariant: ['tabular-nums'] },

@@ -10,15 +10,18 @@ import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import HowToRedeem from '@/components/offers/HowToRedeem'
 import NavigationLinks from '@/components/offers/NavigationLinks'
 import { voucherDestination } from '@/lib/member/voucherDestination'
+import ContactActions from '@/components/offers/ContactActions'
 import VoucherCover from '@/components/member/VoucherCover'
 import VoucherTicket from '@/components/member/VoucherTicket'
 import VoucherTerms from '@/components/member/VoucherTerms'
 import { CodeReveal, QrReveal } from '@/components/member/VoucherReveal'
 import AddToAppleWallet from '@/components/member/AddToAppleWallet'
+import IssuerAttribution from '@/components/member/IssuerAttribution'
+import MarkVoucherUsed from '@/components/member/MarkVoucherUsed'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
-import { formatLongDate } from '@/lib/format'
+import { formatLongDate, formatNumericDate } from '@/lib/format'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/vouchers'
 import TranslationNotice from '@/components/ui/TranslationNotice'
 import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
@@ -61,6 +64,7 @@ export default function VoucherPage() {
   const instructions = content.text('redemptionInstructions')
   const businessName = voucher ? localizedBusinessName(voucher, lang).text : ''
   const { place, destination } = voucher ? voucherDestination(voucher, lang) : { place: '', destination: null }
+  const codeOnly = voucher?.redemptionKind === 'code_only'
   const expired = !!voucher?.expiresAt && voucher.expiresAt.getTime() < Date.now()
 
   if (loading || !user || held || voucher === undefined) {
@@ -98,11 +102,13 @@ export default function VoucherPage() {
                     <VoucherCover voucher={voucher} name={businessName} aspect="aspect-[2/1] max-h-[220px]" logoSize="lg" />
                     <div className="px-5 pb-[18px] pt-10 sm:px-7 sm:pt-11">
                       <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink break-words sm:text-3xl" dir="auto">{businessName}</h1>
-                      <p className="mt-1 text-[15px] font-medium text-slate-600" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
+                      <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-slate-600" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
+                      {codeOnly && voucher.issuer && <IssuerAttribution issuer={voucher.issuer} lang={lang} note={t('voucher_valid_years')} className="mt-5" />}
+                      <ContactActions stack className="mt-5" websiteUrl={voucher.websiteUrl} phone={voucher.contactPhone} />
                       {content.machine && (
                         <TranslationNotice className="mt-1" showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />
                       )}
-                      <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
                         <RedemptionBadge method={voucher.redemptionMethod} />
                         {voucher.expiresAt && (
                           <span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
@@ -127,7 +133,20 @@ export default function VoucherPage() {
                 }
                 stub={
                   <>
-                    {voucher.status === 'active' ? (
+                    {voucher.status === 'active' && codeOnly ? (
+                      <>
+                        {/* Raayonit: the code is the voucher. No QR code, no QR reveal. */}
+                        <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} prominent />
+                        {voucher.expiresAt && (
+                          <p className="mt-3.5 flex items-center justify-center gap-1.5 text-[13px] text-slate-500">
+                            <span>{t('voucher_valid_until').replace('{date}', '').trim()}</span>
+                            <bdi dir="ltr" className="text-sm font-bold tabular-nums text-slate-900">{formatNumericDate(voucher.expiresAt)}</bdi>
+                          </p>
+                        )}
+                        <AddToAppleWallet voucher={voucher} />
+                        <MarkVoucherUsed voucherId={voucher.id} />
+                      </>
+                    ) : voucher.status === 'active' ? (
                       <>
                         <QrReveal redeemKey={redeemVoucherKey(voucher)} />
                         <div className="mt-4">
@@ -155,7 +174,7 @@ export default function VoucherPage() {
               <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
                 {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
                 {voucher.perkScope === 'multi_chain' && <div className="mb-5"><RedemptionGuide offer={voucher} /></div>}
-                <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" />
+                <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" codeOnly={codeOnly} />
                 {(voucher.expiresAt || voucher.redemptionTerms) && (
                   <div className="mt-5 border-t border-slate-100 pt-5">
                     <VoucherTerms voucher={voucher} terms={content.text('redemptionTerms')} />

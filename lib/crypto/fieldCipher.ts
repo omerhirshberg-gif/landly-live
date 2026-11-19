@@ -2,10 +2,10 @@ import 'server-only'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 // Field-level AES-256-GCM for secrets Firestore must not hold in the clear:
-// Multipass voucher codes and merchants' bank details. Each key is 32 random
+// Raayonit voucher codes and merchants' bank details. Each key is 32 random
 // bytes, base64, in its own environment variable and never in the repo:
 //
-//   POOL_CODES_KEY            Multipass pool codes
+//   POOL_CODES_KEY            Raayonit pool codes
 //   BUSINESS_FINANCIALS_KEY   businessFinancials/{businessId}
 //
 // Rotation: set `<NAME>_ID` to the new key's id (default "1") with the new key in

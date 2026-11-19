@@ -32,7 +32,7 @@ export interface OfferFormValue {
   isBestseller: boolean
   /** A direct-merchant chain redeemable across its branches: hides the offer's single address and Waze / Maps buttons. */
   isNationwide: boolean
-  /** The stores (or chains) that honour a nationwide or Multipass offer; empty means every store. */
+  /** The stores (or chains) that honour a nationwide or Raayonit offer; empty means every store. */
   participatingChains: string[]
   /** The branches picked from Google Places; `participatingChains` lists their names too, plus any typed names. */
   participatingPlaces: ParticipatingPlace[]
@@ -69,7 +69,7 @@ export function voucherTermsPayload(value: OfferFormValue) {
   }
 }
 
-const METHOD_ICONS: Record<RedemptionMethod, string> = { in_store: 'fa-store', online: 'fa-globe', phone_booking: 'fa-phone' }
+const METHOD_ICONS: Record<RedemptionMethod, string> = { in_store: 'fa-store', online: 'fa-globe', phone_booking: 'fa-phone', advance_booking: 'fa-calendar-check', phone_order: 'fa-phone-volume' }
 
 /**
  * The form's parts, one per tab of the offer forms (FormTabs.tsx): the text,
@@ -93,13 +93,13 @@ interface Props {
   /** The offer's stored translations (edit form), to show Google's wording; none for a new offer. */
   translations?: OfferTranslations | null
   section?: OfferFormSection
-  /** A Multipass offer's stock is its pool, so the quantity fields are left out. */
+  /** A Raayonit offer's stock is its pool, so the quantity fields are left out. */
   poolManaged?: boolean
   /** The nationwide switch, for a local-business offer being edited (the new-offer wizard puts it in its channel step). */
   showNationwide?: boolean
-  /** The list of participating stores or chains: for a nationwide local offer, an optional Multipass one, or a multi-chain voucher's chains; none to leave it out. */
+  /** The list of participating stores or chains: for a nationwide local offer, an optional Raayonit one, or a multi-chain voucher's chains; none to leave it out. */
   storesField?: StoresMode
-  /** The issuer's name (a Multipass or multi-chain perk), and with 'chain' the redemption guide too; none for a perk of a business. */
+  /** The issuer's name (a Raayonit or multi-chain perk), and with 'chain' the redemption guide too; none for a perk of a business. */
   issuerFields?: 'brand' | 'chain'
 }
 
@@ -136,7 +136,7 @@ function PriceInput({ id, value, onChange }: { id: string; value: string; onChan
   )
 }
 
-/** Hides the offer's single address and navigation buttons; a Multipass perk does this on its own, so it has no switch. */
+/** Hides the offer's single address and navigation buttons; a Raayonit perk does this on its own, so it has no switch. */
 export function NationwideField({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
   const { t } = useAdminT()
   return (
@@ -152,7 +152,7 @@ export function NationwideField({ checked, onChange }: { checked: boolean; onCha
 }
 
 /** The stores or chains that honour the offer. Empty means every store. */
-export type StoresMode = 'nationwide' | 'multipass' | 'chains'
+export type StoresMode = 'nationwide' | 'raayonit' | 'chains'
 
 export function StoresField({ mode, chains, places, onChange }: { mode: StoresMode; chains: string[]; places: ParticipatingPlace[]; onChange: (next: { chains: string[]; places: ParticipatingPlace[] }) => void }) {
   const { t } = useAdminT()
@@ -172,7 +172,7 @@ export function StoresField({ mode, chains, places, onChange }: { mode: StoresMo
   return (
     <BranchPlacesPicker
       id="offer-stores"
-      label={mode === 'multipass' ? t('form.storesMultipass') : t('form.stores')}
+      label={mode === 'raayonit' ? t('form.storesRaayonit') : t('form.stores')}
       value={branchesOf(chains, places)}
       onChange={(next) => onChange(chainsOf(next))}
     />

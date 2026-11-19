@@ -7,6 +7,8 @@ import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../o
 import { belongsToBusiness, frozenNationwide, frozenPerkScope } from '@/lib/offers/perkScope'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
+import { isBusinessUnavailable } from '../offers/availability'
+import { findVariant, orderIdFor, parseVariants } from '../offers/variants'
 
 // Never paid and never issued a voucher: the only orders a sandbox may replace.
 function isUnpaid(order: DocumentData, uid: string, offerId: string): boolean {
@@ -48,26 +50,31 @@ function originalPriceOf(value: unknown, amount: number): number | null {
 // an unpaid order that can't be resumed (a declined test payment, an older
 // sandbox terminal), or any unpaid order when `restart` is set, is archived to
 // supersededOrders and replaced. Without it, nothing is ever reopened.
+const stringOrEmpty = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
+
 export async function initiateOrder(
   db: Firestore,
   uid: string,
   offerId: string,
   terminal: string,
-  { acceptTerms = false, sandbox }: { acceptTerms?: boolean; sandbox?: { restart: boolean } } = {}
+  { acceptTerms = false, sandbox, variantPoolId = null }: { acceptTerms?: boolean; sandbox?: { restart: boolean }; variantPoolId?: string | null } = {}
 ) {
-  if (!isDocumentId(uid) || !isDocumentId(offerId) || !isDocumentId(`${uid}_${offerId}`)) {
+  if (!isDocumentId(uid) || !isDocumentId(offerId) || !isDocumentId(orderIdFor(uid, offerId, variantPoolId)) || (variantPoolId !== null && !isDocumentId(variantPoolId))) {
     throw new PaymentError('Invalid offer or user ID.', 400)
   }
-  const orderRef = db.collection('orders').doc(`${uid}_${offerId}`)
+  const orderRef = db.collection('orders').doc(orderIdFor(uid, offerId, variantPoolId))
   const voucherRef = db.collection('vouchers').doc(orderRef.id)
   const offerRef = db.collection('offers').doc(offerId)
 
   return db.runTransaction(async (tx) => {
-    const [orderSnap, voucherSnap, offerSnap, customerBusinessSnap] = await Promise.all([
+    const [orderSnap, voucherSnap, offerSnap, customerBusinessSnap, legacyVoucherSnap] = await Promise.all([
       tx.get(orderRef), tx.get(voucherRef), tx.get(offerRef), tx.get(db.collection('businesses').doc(uid)),
+      variantPoolId ? tx.get(db.collection('vouchers').doc(orderIdFor(uid, offerId))) : Promise.resolve(null),
     ])
     if (customerBusinessSnap.exists) throw new PaymentError('Business accounts cannot purchase customer offers.', 403)
     if (voucherSnap.exists) throw new PaymentError("You've already claimed this offer.")
+    // A legacy `${uid}_${offerId}` voucher already covers the offer's default pool.
+    if (variantPoolId && legacyVoucherSnap?.exists && offerSnap.data()?.poolId === variantPoolId) throw new PaymentError("You've already claimed this offer.")
     const existing = orderSnap.exists ? orderSnap.data()! : null
     const superseded = existing && sandbox && isUnpaid(existing, uid, offerId)
       && (sandbox.restart || !isResumable(existing, uid, offerId, terminal))
@@ -93,6 +100,10 @@ export async function initiateOrder(
         redemptionTerms: normalizeRedemptionTerms(order.redemptionTerms ?? legacyOffer.redemptionTerms),
         translations: order.translations ?? null,
         businessTranslations: order.businessTranslations ?? null,
+        // Orders created before the logo was frozen read it from the offer.
+        businessLogoUrl: stringOrEmpty(order.businessLogoUrl ?? legacyOffer.businessLogoUrl),
+        offerImageUrl: stringOrEmpty(order.offerImageUrl ?? legacyOffer.imageUrl),
+        fulfillmentType: order.fulfillmentType ?? legacyOffer.fulfillmentType ?? null,
         termsAccepted: termsAccepted || acceptTerms,
       }
     }
@@ -103,6 +114,7 @@ export async function initiateOrder(
       || (offer.expiryDate !== null && !(offer.expiryDate instanceof Timestamp))) {
       throw new PaymentError('Offer has invalid availability data.')
     }
+    if (offer.published === false) throw new PaymentError('This offer is no longer available.')
     if (!isOfferActive({
       totalQuantity: offer.totalQuantity, claimedCount: offer.claimedCount,
       expiryDate: offer.expiryDate?.toDate() ?? null,
@@ -110,8 +122,19 @@ export async function initiateOrder(
       throw new PaymentError('This offer is no longer available.')
     }
     const fulfillmentType = parseFulfillmentType(offer.fulfillmentType)
-    if (fulfillmentType === 'multipass_pool' && !isDocumentId(offer.poolId)) throw new PaymentError('Offer has no valid inventory pool.')
-    // Only a local-business perk belongs to a business. A Multipass perk and a manual multi-chain pass carry
+    // A multi-denomination offer sells the variant the member picked, priced from the offer's own list (never from the client).
+    const variants = parseVariants(offer.variants)
+    const variant = variants.length > 0 ? findVariant(variants, variantPoolId) : null
+    if (variantPoolId && !variant) throw new PaymentError('Unknown voucher value for this offer.', 400)
+    if (variants.length > 1 && !variant) throw new PaymentError('Choose a voucher value.', 400)
+    const chosenPoolId = variant ? variant.poolId : offer.poolId
+    if (fulfillmentType === 'raayonit_pool' && !isDocumentId(chosenPoolId)) throw new PaymentError('Offer has no valid inventory pool.')
+    // No stock, no sale: an empty voucher stock is never sold (the order would only fail at settlement).
+    if (fulfillmentType === 'raayonit_pool') {
+      const pool = await tx.get(db.collection('couponPools').doc(chosenPoolId))
+      if (!pool.exists || pool.data()?.status === 'archived' || !(Number(pool.data()?.remainingCount) > 0)) throw new PaymentError('This voucher value is out of stock.')
+    }
+    // Only a local-business perk belongs to a business. A Raayonit perk and a manual multi-chain pass carry
     // their brand instead, so they have no merchant to settle with and never appear in a business's portal or payouts.
     const hasBusiness = belongsToBusiness(offer)
     let terms: ReturnType<typeof parseFrozenTerms> = null
@@ -119,12 +142,13 @@ export async function initiateOrder(
       if (!isDocumentId(offer.businessId)) throw new PaymentError('Offer has no valid business.')
       const business = await tx.get(db.collection('businesses').doc(offer.businessId))
       if (!business.exists) throw new PaymentError('Offer business no longer exists.')
+      if (isBusinessUnavailable(business.data(), undefined)) throw new PaymentError('This offer is no longer available.')
       // Frozen with the order: settlement pays on the terms agreed at purchase, never on later edits.
       terms = parseFrozenTerms(business.data())
     }
-    const amountAgorot = amountInAgorot(offer.offerPrice)
+    const amountAgorot = variant ? variant.priceAgorot : amountInAgorot(offer.offerPrice)
     const amount = amountAgorot / 100
-    const originalPrice = originalPriceOf(offer.originalPrice, amount)
+    const originalPrice = originalPriceOf(variant ? variant.faceValueAgorot / 100 : offer.originalPrice, amount)
     const validityDays = normalizeValidityDays(offer.validityDays)
     const redemptionTerms = normalizeRedemptionTerms(offer.redemptionTerms)
     const redemptionMethod = normalizeRedemptionMethod(offer.redemptionMethod)
@@ -135,7 +159,7 @@ export async function initiateOrder(
       ...(hasBusiness ? { businessId: offer.businessId, ...frozenNationwide(offer) } : frozenPerkScope(offer)),
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
-      fulfillmentType, poolId: fulfillmentType === 'multipass_pool' ? offer.poolId : null,
+      fulfillmentType, poolId: fulfillmentType === 'raayonit_pool' ? chosenPoolId : null, variant: !!variant,
       commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
       // Frozen with the terms, so a later edit or re-translation never changes what was bought.
@@ -144,6 +168,9 @@ export async function initiateOrder(
       businessTranslations: offer.businessTranslations ?? null,
       businessAddress: offer.address ?? null,
       businessGeo: offer.geo ?? null,
+      // The business's logo and the offer's picture as they were at purchase (additive, optional), so the order summary and
+      // the confirmation draw the right logo at once, with no second read of the offer.
+      businessLogoUrl: stringOrEmpty(offer.businessLogoUrl), offerImageUrl: stringOrEmpty(offer.imageUrl),
       status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
     }
@@ -160,7 +187,9 @@ export async function initiateOrder(
       orderId: orderRef.id, amount, currency: 'ILS' as const, originalPrice,
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',
       validityDays, redemptionTerms, translations: offer.translations ?? null,
-      businessTranslations: offer.businessTranslations ?? null, termsAccepted: acceptTerms,
+      businessTranslations: offer.businessTranslations ?? null,
+      businessLogoUrl: stringOrEmpty(offer.businessLogoUrl), offerImageUrl: stringOrEmpty(offer.imageUrl), fulfillmentType,
+      termsAccepted: acceptTerms,
     }
   })
 }

@@ -22,6 +22,14 @@ export interface CategoryRailGroup {
   total: number
 }
 
+/** The multi-chain Raayonit vouchers ("Super Tav"): valid at every participating chain, so they get a rail of their own. */
+export const isSuperVoucher = (offer: Pick<OfferDocument, 'fulfillmentType' | 'perkScope'>): boolean => offer.fulfillmentType === 'raayonit_pool' && offer.perkScope === 'multi_chain'
+
+/** The super vouchers that can be bought, cheapest value first. */
+export function selectSuperVouchers(offers: readonly OfferDocument[]): OfferDocument[] {
+  return offers.filter((o) => isSuperVoucher(o) && isOfferAvailable(o)).sort((a, b) => a.originalPrice - b.originalPrice)
+}
+
 const TILE_ORDER = new Map<string, number>(CATEGORY_TILES.map((tile, index) => [tile.category, index]))
 
 // Rails keep the official category order, so they don't jump as counts change;
@@ -34,7 +42,7 @@ function compareRails(a: CategoryRailGroup, b: CategoryRailGroup): number {
 export function buildCategoryRails(offers: readonly OfferDocument[]): CategoryRailGroup[] {
   const rails = new Map<string, CategoryRailGroup>()
   for (const offer of [...offers].sort(compareFeatured)) {
-    if (!offer.category.trim()) continue
+    if (!offer.category.trim() || isSuperVoucher(offer)) continue
     const rail = rails.get(offer.category) ?? {
       category: offer.category,
       tile: CATEGORY_TILES.find((tile) => tile.category === offer.category) ?? null,
@@ -50,7 +58,7 @@ export function buildCategoryRails(offers: readonly OfferDocument[]): CategoryRa
 
 /** "Recommended for you": the featured claimable offers. */
 export function selectCurated(offers: readonly OfferDocument[]): OfferDocument[] {
-  return offers.filter(isOfferAvailable).sort(compareFeatured).slice(0, CURATED_COUNT)
+  return offers.filter((o) => isOfferAvailable(o) && !isSuperVoucher(o)).sort(compareFeatured).slice(0, CURATED_COUNT)
 }
 
 /**
@@ -58,9 +66,10 @@ export function selectCurated(offers: readonly OfferDocument[]): OfferDocument[]
  * offers only, bestsellers then newest first, each capped like a category rail.
  */
 export function selectHighlights(offers: readonly OfferDocument[]): { newOffers: OfferDocument[]; bestsellerOffers: OfferDocument[] } {
-  const available = sortFeaturedOffers(offers.filter(isOfferAvailable))
+  const available = sortFeaturedOffers(offers.filter((o) => isOfferAvailable(o) && !isSuperVoucher(o)))
   return {
-    newOffers: available.filter((offer) => isOfferNew(offer.createdAt)).slice(0, RAIL_MAX),
+    // The generated Raayonit catalogue is all "new" at once: it would crowd out everything else, so it stays out of this rail.
+    newOffers: available.filter((offer) => isOfferNew(offer.createdAt) && offer.fulfillmentType !== 'raayonit_pool').slice(0, RAIL_MAX),
     bestsellerOffers: available.filter((offer) => offer.isBestseller).slice(0, RAIL_MAX),
   }
 }

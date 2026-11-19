@@ -1,5 +1,5 @@
 // Who honours a perk. A local-business perk belongs to one onboarded business (`businessId`).
-// A Multipass perk belongs to no business document: it carries a brand's display name, and
+// A Raayonit perk belongs to no business document: it carries a brand's display name, and
 // a multi-chain voucher (BUYME All Style and the like) also lists the chains that honour it.
 // One pure validator for the admin API, the batch importer and the tests. Shared with Expo.
 
@@ -10,8 +10,8 @@ export const PERK_SCOPES = ['single_business', 'multi_chain'] as const
 export type PerkScope = (typeof PERK_SCOPES)[number]
 
 export const MAX_BRAND_NAME_LENGTH = 80
-export const MAX_CHAIN_NAME_LENGTH = 60
-export const MAX_CHAINS = 40
+export const MAX_CHAIN_NAME_LENGTH = 100
+export const MAX_CHAINS = 400
 export const MAX_GUIDE_LENGTH = 1000
 
 /** Offers from before scopes existed are all single-business. */
@@ -52,7 +52,7 @@ export interface PerkScopeInput {
 /** What gets stored on the offer (fields that don't apply are absent). */
 export interface PerkScopeFields {
   perkScope: PerkScope
-  /** A chain redeemable across its branches: hides the single address and navigation. Always true for Multipass. */
+  /** A chain redeemable across its branches: hides the single address and navigation. Always true for Raayonit. */
   isNationwide: boolean
   businessId?: string
   brandName?: string
@@ -90,7 +90,7 @@ export function parsePerkScopeFields(input: PerkScopeInput): PerkScopeResult {
   if (input.fulfillmentType === 'direct_merchant') {
     if (scope !== undefined && scope !== 'single_business') return { ok: false, error: 'perkScope must be single_business or multi_chain.' }
     if (!businessId) return { ok: false, error: 'A local-business perk needs a business.' }
-    if (brandName || hasGuide) return { ok: false, error: 'brandName and the redemption guide are for Multipass perks only.' }
+    if (brandName || hasGuide) return { ok: false, error: 'brandName and the redemption guide are for Raayonit perks only.' }
     const isNationwide = input.isNationwide === true
     // Participating stores narrow a nationwide offer; an offer at one location has none.
     if (chains.length > 0 && !isNationwide) return { ok: false, error: 'Participating stores need the nationwide switch.' }
@@ -99,8 +99,8 @@ export function parsePerkScopeFields(input: PerkScopeInput): PerkScopeResult {
   }
 
   if (scope !== undefined && !(PERK_SCOPES as readonly unknown[]).includes(scope)) return { ok: false, error: 'perkScope must be single_business or multi_chain.' }
-  if (businessId) return { ok: false, error: 'A Multipass perk is not tied to a business.' }
-  if (!brandName) return { ok: false, error: 'A Multipass perk needs a brand name.' }
+  if (businessId) return { ok: false, error: 'A Raayonit perk is not tied to a business.' }
+  if (!brandName) return { ok: false, error: 'A Raayonit perk needs a brand name.' }
   if (brandName.length > MAX_BRAND_NAME_LENGTH) return { ok: false, error: `The brand name is at most ${MAX_BRAND_NAME_LENGTH} characters.` }
   const perkScope = parsePerkScope(scope)
 
@@ -113,7 +113,7 @@ export function parsePerkScopeFields(input: PerkScopeInput): PerkScopeResult {
   return parseMultiChain({ businessId, brandName, chains, guide, hasGuide, listError })
 }
 
-/** A multi-chain pass, manual (direct) or Multipass: an issuer's name, 1..40 chains, an optional guide, and no business. */
+/** A multi-chain pass, manual (direct) or Raayonit: an issuer's name, 1..400 chains, an optional guide, and no business. */
 function parseMultiChain({ businessId, brandName, chains, guide, hasGuide, listError }: {
   businessId: string; brandName: string; chains: string[]; guide: { he: string; en: string }; hasGuide: boolean; listError: string | null
 }): PerkScopeResult {
@@ -163,11 +163,11 @@ export function readPerkScope(data: Record<string, unknown>): PerkScopeView {
   }
 }
 
-/** A multi-chain, Multipass or nationwide perk has no single place, so distance sorting never applies to it. */
+/** A multi-chain, Raayonit or nationwide perk has no single place, so distance sorting never applies to it. */
 export const hasSinglePlace = (offer: { perkScope?: unknown; fulfillmentType?: unknown; isNationwide?: unknown }) =>
-  parsePerkScope(offer.perkScope) !== 'multi_chain' && offer.fulfillmentType !== 'multipass_pool' && offer.isNationwide !== true
+  parsePerkScope(offer.perkScope) !== 'multi_chain' && offer.fulfillmentType !== 'raayonit_pool' && offer.isNationwide !== true
 
-/** The scope fields frozen onto a Multipass order and voucher, so a later offer edit never changes what was bought. */
+/** The scope fields frozen onto a Raayonit order and voucher, so a later offer edit never changes what was bought. */
 export function frozenPerkScope(offer: Record<string, unknown>): Record<string, unknown> {
   const view = readPerkScope(offer)
   return {
@@ -192,7 +192,7 @@ export function frozenNationwide(offer: Record<string, unknown>): Record<string,
 }
 
 /**
- * Whether the perk belongs to one business: a local-business perk that is not a multi-chain pass. A Multipass perk
+ * Whether the perk belongs to one business: a local-business perk that is not a multi-chain pass. A Raayonit perk
  * and a manual multi-chain pass carry a brand instead, so they have no merchant to redeem them, pay or settle with.
  */
 export const belongsToBusiness = (subject: { fulfillmentType?: unknown; perkScope?: unknown }) =>

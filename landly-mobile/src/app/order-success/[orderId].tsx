@@ -13,9 +13,12 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import Confetti from '../../components/Confetti'
+import IssuerAttribution from '../../components/IssuerAttribution'
+import { isPooled } from '@shared/inventory/types'
+import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import LineIcon from '../../components/LineIcon'
 import Notice from '../../components/Notice'
-import PerkImage from '../../components/PerkImage'
+import PurchaseMedia from '../../components/PurchaseMedia'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { success, tick } from '../../lib/haptics'
@@ -85,7 +88,6 @@ export default function OrderSuccessScreen() {
 
   const pending = order === undefined || order?.status === 'pending'
   const discount = paid && order.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
-  const voucherId = paid ? order.voucherId : null
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -117,14 +119,17 @@ export default function OrderSuccessScreen() {
             {/* What was bought: thumbnail, business and perk, paid and saved. */}
             <View style={styles.card}>
               <View style={styles.perkRow}>
-                <View style={styles.thumb}>
-                  {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
-                </View>
+                <PurchaseMedia source={{ order, offer }} category={offer?.category} />
                 <View style={styles.perkText}>
                   <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
                   <AppText style={styles.perkTitle}>{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
                 </View>
               </View>
+              {isPooled(order.fulfillmentType) && (
+                <View style={styles.issuer}>
+                  <IssuerAttribution issuer={RAAYONIT_ISSUER} note={t('voucher_valid_years')} />
+                </View>
+              )}
               <View style={styles.paidRow}>
                 <AppText style={styles.paidLabel}>{t('success_amount_paid_label')}</AppText>
                 <AppText ltr style={styles.paidValue}>{formatPrice(order.amount)}</AppText>
@@ -157,14 +162,7 @@ export default function OrderSuccessScreen() {
 
           {/* Pinned above the home indicator. */}
           <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-            {voucherId && (
-              <Button
-                label={t('success_view_voucher')}
-                onPress={() => router.push({ pathname: '/voucher/[voucherId]', params: { voucherId } })}
-                large
-              />
-            )}
-            <Button label={t('success_to_my_pass')} variant="secondary" onPress={() => router.navigate('/wallet')} />
+            <Button label={t('success_to_my_pass')} onPress={() => router.navigate('/wallet')} large />
             <Pressable
               accessibilityRole="link"
               onPress={() => router.navigate('/')}
@@ -222,6 +220,7 @@ function CopyOrderIdButton({ value }: { value: string }) {
 }
 
 const styles = StyleSheet.create({
+  issuer: { alignSelf: 'stretch', marginTop: 20 },
   safe: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 48 },
   // textAlign overrides AppText's reading-direction alignment: these states are centred.
@@ -244,7 +243,6 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, color: colors.body, textAlign: 'center', marginTop: 4 },
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, padding: 18, marginTop: 20 },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  thumb: { width: 64, height: 64, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.brandTint },
   perkText: { flex: 1, minWidth: 0 },
   business: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, textTransform: 'uppercase' },
   perkTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.heading, marginTop: 2 },

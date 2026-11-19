@@ -34,6 +34,33 @@ export function voucherExpiresAtMs(purchasedAtMs: number, validityDays: number):
   return purchasedAtMs + normalizeValidityDays(validityDays) * DAY_MS
 }
 
+const ISRAEL_TZ = 'Asia/Jerusalem'
+
+/** Y/M/D of an instant on the Israeli calendar. */
+function israelDate(ms: number) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: ISRAEL_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms))
+  const get = (type: string) => Number(parts.find((p) => p.type === type)!.value)
+  return { y: get('year'), m: get('month'), d: get('day') }
+}
+
+/**
+ * The last moment (23:59:59 Israel time) of the day `years` calendar years after a purchase, not
+ * `years * 365` days, so leap years don't shift it. A 29 February purchase ends on 28 February.
+ */
+export function addYearsEndOfIsraelDayMs(purchasedAtMs: number, years: number): number {
+  const { y, m, d } = israelDate(purchasedAtMs)
+  const ty = y + years
+  const lastDay = new Date(Date.UTC(ty, m, 0)).getUTCDate()
+  const day = Math.min(d, lastDay)
+  // Israel is UTC+2 / +3: probe both offsets and keep the one whose local time is 23:59:59.
+  for (const offset of [3, 2]) {
+    const ms = Date.UTC(ty, m - 1, day, 23 - offset, 59, 59)
+    const local = new Intl.DateTimeFormat('en-GB', { timeZone: ISRAEL_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(ms))
+    if (local === '23:59:59') return ms
+  }
+  return Date.UTC(ty, m - 1, day, 21, 59, 59)
+}
+
 /**
  * The most a cancellation can cost: 5% of the price or ₪100, whichever is
  * lower. Rounded down to the agora, so the fee never exceeds either cap.

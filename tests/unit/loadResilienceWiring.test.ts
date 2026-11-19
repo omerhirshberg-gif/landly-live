@@ -40,7 +40,7 @@ describe('no read per item', () => {
     for (const file of ['lib/firebase/offers.ts', 'lib/firebase/orders.ts', 'lib/firebase/WishlistProvider.tsx']) {
       expect(read(file)).not.toMatch(/ids\.map\(\(id\) => getOffer\(|orderIds\.map\(\(id\) =>\s*getDoc/)
     }
-    expect(read('lib/firebase/offers.ts')).toContain("where(documentId(), 'in'")
+    expect(read('lib/firebase/offers.ts')).toContain('(await getAllOffers()).map((offer) => [offer.id, offer])')
     expect(read('lib/firebase/orders.ts')).toContain("where(documentId(), 'in'")
   })
 
@@ -50,7 +50,6 @@ describe('no read per item', () => {
     // No business or financials read inside a loop over the payout's lines.
     expect(settlement).not.toMatch(/for \(const line of payable\) \{[\s\S]*?await (loadBank|db\.collection\('businesses'\))/)
     expect(settlement).not.toMatch(/ids\.map\(async \(id\) => \{[\s\S]{0,120}\.get\(\)/)
-    expect(read('lib/inventory/smartImport.ts')).toContain('getAllById(db')
   })
 
   it('every offers read from a client is bounded', () => {

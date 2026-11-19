@@ -25,14 +25,14 @@ describe('offers catalog sheet', () => {
     expect(a.rows[0]!.row).toBe(2)
   })
 
-  it('reads the optional isNationwide column: empty is a single location, Multipass is always multi-branch', () => {
-    const sheet = parseOffersSheet([HEADER, row(), row({ isNationwide: 'yes' }), row({ isNationwide: 'כן' }), row({ isNationwide: 'no' }), row({ isNationwide: 'maybe' }), row({ fulfillmentType: 'multipass_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox', isNationwide: 'no' })], lookup)
+  it('reads the optional isNationwide column: empty is a single location, Raayonit is always multi-branch', () => {
+    const sheet = parseOffersSheet([HEADER, row(), row({ isNationwide: 'yes' }), row({ isNationwide: 'כן' }), row({ isNationwide: 'no' }), row({ isNationwide: 'maybe' }), row({ fulfillmentType: 'raayonit_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox', isNationwide: 'no' })], lookup)
     expect(sheet.rows.map((r) => r.offer?.isNationwide)).toEqual([false, true, true, false, undefined, true])
     expect(sheet.rows[4]!.errors[0]).toMatchObject({ code: 'nationwide_invalid', cell: 'P6' })
   })
 
-  it('reads participating stores: needs isNationwide on a local row, optional on Multipass', () => {
-    const multi = { fulfillmentType: 'multipass_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox' }
+  it('reads participating stores: needs isNationwide on a local row, optional on Raayonit', () => {
+    const multi = { fulfillmentType: 'raayonit_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox' }
     const sheet = parseOffersSheet([HEADER, row({ participatingChains: 'Azrieli; Dizengoff Center' }), row({ isNationwide: 'yes', participatingChains: 'Azrieli; Dizengoff Center' }), row({ ...multi, perkScope: 'single_business', participatingChains: 'Azrieli' }), row({ ...multi, participatingChains: 'A; B' })], lookup)
     expect(sheet.rows[0]!.errors[0]).toMatchObject({ code: 'chains_need_nationwide', cell: 'O2' })
     expect(sheet.rows[1]!.offer).toMatchObject({ isNationwide: true, participatingChains: ['Azrieli', 'Dizengoff Center'] })
@@ -44,7 +44,7 @@ describe('offers catalog sheet', () => {
     const pass = { perkScope: 'multi_chain', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'BUYME All', category: 'Fashion and Shopping', participatingChains: 'FOX; Castro' }
     const sheet = parseOffersSheet([HEADER, row(pass), row({ ...pass, brandName: '' }), row({ ...pass, businessId: 'biz1' }), row({ ...pass, participatingChains: '' }), row({ ...pass, category: '' }), row({ ...pass, commissionRate: 10 }), row({ perkScope: 'nonsense' })], lookup)
     expect(sheet.rows[0]!.offer).toMatchObject({ fulfillmentType: 'direct_merchant', perkScope: 'multi_chain', brandName: 'BUYME All', businessUid: '', isNationwide: true, participatingChains: ['FOX', 'Castro'] })
-    expect(sheet.rows.slice(1).map((r) => r.errors[0]?.code)).toEqual(['brand_required', 'multipass_business', 'chains_required', 'multipass_category', 'multipass_terms', 'scope_invalid'])
+    expect(sheet.rows.slice(1).map((r) => r.errors[0]?.code)).toEqual(['brand_required', 'raayonit_business', 'chains_required', 'raayonit_category', 'raayonit_terms', 'scope_invalid'])
   })
 
   it('names the exact cell of every problem', () => {
@@ -53,24 +53,24 @@ describe('offers catalog sheet', () => {
     expect(sheet.rows.every((r) => r.offer === null)).toBe(true)
   })
 
-  it('reads Hebrew and short spellings of the channel, and ignores the quantity of a Multipass row', () => {
-    const sheet = parseOffersSheet([HEADER, row({ fulfillmentType: 'מולטיפאס', totalQuantity: 9, businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox Home' }), row({ fulfillmentType: 'direct' }), row({ fulfillmentType: 'x' })], lookup)
-    expect(sheet.rows[0]!.offer).toMatchObject({ fulfillmentType: 'multipass_pool', totalQuantity: null })
+  it('reads Hebrew and short spellings of the channel, and ignores the quantity of a Raayonit row', () => {
+    const sheet = parseOffersSheet([HEADER, row({ fulfillmentType: 'רעיונית', totalQuantity: 9, businessId: '', commissionRate: '', paymentTerms: '', brandName: 'Fox Home' }), row({ fulfillmentType: 'direct' }), row({ fulfillmentType: 'x' })], lookup)
+    expect(sheet.rows[0]!.offer).toMatchObject({ fulfillmentType: 'raayonit_pool', totalQuantity: null })
     expect(sheet.rows[1]!.offer?.fulfillmentType).toBe('direct_merchant')
     expect(sheet.rows[2]!.errors[0]).toMatchObject({ code: 'fulfillment_invalid', cell: 'E4' })
   })
 
-  it('takes a Multipass perk by brand, with no business, and keeps scope and chains apart', () => {
-    const multi = { fulfillmentType: 'multipass_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'BUYME All Style' }
+  it('takes a Raayonit perk by brand, with no business, and keeps scope and chains apart', () => {
+    const multi = { fulfillmentType: 'raayonit_pool', businessId: '', commissionRate: '', paymentTerms: '', brandName: 'BUYME All Style' }
     const sheet = parseOffersSheet([HEADER, row({ ...multi, participatingChains: 'Fox; Castro; fox' }), row({ ...multi, perkScope: 'single_business', brandName: 'Fox Home' }), row({ ...multi, businessId: 'biz1' }), row({ ...multi, brandName: '' }), row({ ...multi, perkScope: 'multi_chain' }), row({ ...multi, category: '' }), row({ ...multi, commissionRate: 10 }), row({ brandName: 'Fox' })], lookup)
-    expect(sheet.rows[0]!.offer).toMatchObject({ perkScope: 'multi_chain', brandName: 'BUYME All Style', participatingChains: ['Fox', 'Castro'], businessUid: '', fulfillmentType: 'multipass_pool' })
+    expect(sheet.rows[0]!.offer).toMatchObject({ perkScope: 'multi_chain', brandName: 'BUYME All Style', participatingChains: ['Fox', 'Castro'], businessUid: '', fulfillmentType: 'raayonit_pool' })
     expect(sheet.rows[1]!.offer).toMatchObject({ perkScope: 'single_business', brandName: 'Fox Home', participatingChains: [] })
-    expect(sheet.rows.slice(2).map((r) => r.errors[0]?.code)).toEqual(['multipass_business', 'brand_required', 'chains_required', 'multipass_category', 'multipass_terms', 'direct_brand'])
+    expect(sheet.rows.slice(2).map((r) => r.errors[0]?.code)).toEqual(['raayonit_business', 'brand_required', 'chains_required', 'raayonit_category', 'raayonit_terms', 'direct_brand'])
   })
 
-  it('accepts a sheet of Multipass perks that has no businessId column at all', () => {
+  it('accepts a sheet of Raayonit perks that has no businessId column at all', () => {
     const cols = HEADER.filter((c) => c !== 'businessId')
-    const line = cols.map((c) => ({ title_he: 'תו', title_en: '', category: 'Fashion and Shopping', fulfillmentType: 'multipass', originalPrice: 100, discountedPrice: 90, brandName: 'Fox Home' } as Record<string, unknown>)[c] ?? '')
+    const line = cols.map((c) => ({ title_he: 'תו', title_en: '', category: 'Fashion and Shopping', fulfillmentType: 'raayonit', originalPrice: 100, discountedPrice: 90, brandName: 'Fox Home' } as Record<string, unknown>)[c] ?? '')
     const sheet = parseOffersSheet([cols, line], lookup)
     expect(sheet.missingColumns).toEqual([])
     expect(sheet.rows[0]!.errors).toEqual([])

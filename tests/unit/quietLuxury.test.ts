@@ -12,7 +12,7 @@ import { pillarHref, toShowcase, VALUE_PILLARS } from '@/lib/home/showcase'
 
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 
 const { default: IconFrame } = await import('@/components/ui/IconFrame')
 const { default: OfferCard } = await import('@/components/discover/OfferCard')
@@ -46,21 +46,21 @@ describe('the shekel sign in the price font', () => {
       expect(html).not.toContain('fa-solid')
     }
     const page = read('app/offers/[offerId]/page.tsx')
-    expect(page).toContain('<bdi className="text-price-lg tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>')
+    expect(page).toContain('<bdi className="text-price-lg tabular-nums text-brand">{formatPrice(price)}</bdi>')
     expect(page).not.toMatch(/fa-(solid|regular)/)
   })
 
   it('runs the card photo edge to edge at 2:1 (capped at 172px), with the merchant on its own line under a two-line title and a plain pin for the place on a full-width line below', () => {
     const offer = {
       id: 'o1', businessName: 'Cafe Nadi', title: 'Two coffees', category: 'Restaurants and Cafes', location: 'Tel Aviv',
-      originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '',
+      originalPrice: 45, offerPrice: 29, redemptionMethod: 'in_store', imageUrl: '', businessLogoUrl: 'https://cdn.example/nadi-logo.png',
     } as never
     const html = withLang('en', createElement(OfferCard, { offer, layout: 'grid' }))
     // The hero fills the card with nothing tinting it; the logo box sits across its bottom start corner, the title and the business under it at full width.
     expect(html).toContain('<div class="relative z-[1] w-full aspect-[2/1] max-h-[172px] "><div class="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">')
     expect(html).not.toContain('to-black/')
     expect(html).toMatch(/<span class="absolute -bottom-4 start-3"><span aria-hidden="true" class="flex shrink-0 items-center justify-center overflow-hidden h-\[44px\] min-w-\[64px\] max-w-\[124px\] rounded-xl border border-slate-200\/90 bg-white px-1\.5 py-1 shadow-sm sm:h-\[48px\] sm:min-w-\[72px\] sm:max-w-\[140px\] sm:px-2"/)
-    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><bdi class="mt-\[3px\] block min-w-0 truncate[^"]*" dir="auto">Cafe Nadi<\/bdi><div class="mt-0\.5 flex min-w-0 items-start/)
+    expect(html).toMatch(/<p class="line-clamp-2[^"]*"><bdi dir="auto">Two coffees<\/bdi><\/p><bdi class="mt-\[3px\] block min-w-0 truncate[^"]*" dir="auto">Cafe Nadi<\/bdi><div class="mt-auto pt-2"><div class="flex min-w-0 items-center/)
     expect(html).toMatch(/<svg [^>]*class="lucide lucide-map-pin/)
   })
 })

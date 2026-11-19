@@ -33,7 +33,7 @@ describe('participating places in the perk scope', () => {
   })
   it('needs the nationwide switch, ignores places on a multi-chain pass, and drops unusable ones', () => {
     expect(parsePerkScopeFields({ fulfillmentType: 'direct_merchant', businessId: 'b1', participatingPlaces: [big] }).ok).toBe(false)
-    const multi = parsePerkScopeFields({ fulfillmentType: 'multipass_pool', perkScope: 'multi_chain', brandName: 'BUYME', participatingChains: ['FOX'], participatingPlaces: [big] })
+    const multi = parsePerkScopeFields({ fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', brandName: 'BUYME', participatingChains: ['FOX'], participatingPlaces: [big] })
     expect(multi.ok && multi.fields.participatingPlaces).toBeUndefined()
     expect(parseParticipatingPlaces([{ placeId: 'x', names: {}, lat: 1, lng: 1 }, { placeId: 'y', names: { he: 'א' }, lat: 99, lng: 1 }, big, big])).toHaveLength(1)
     expect(placeChainName({ names: { en: 'Only English' } })).toBe('Only English')

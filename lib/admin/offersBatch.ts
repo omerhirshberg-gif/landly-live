@@ -27,7 +27,7 @@ export type BatchErrorCode =
   | 'title_required' | 'title_long' | 'business_required' | 'business_unknown' | 'category_invalid' | 'fulfillment_invalid'
   | 'original_invalid' | 'discounted_invalid' | 'price_order' | 'quantity_invalid' | 'commission_invalid'
   | 'payment_terms_invalid' | 'terms_pair' | 'terms_conflict' | 'redeem_long' | 'image_invalid'
-  | 'brand_required' | 'brand_long' | 'scope_invalid' | 'chains_required' | 'multipass_business' | 'direct_brand' | 'multipass_terms' | 'multipass_category' | 'nationwide_invalid' | 'chains_need_nationwide'
+  | 'brand_required' | 'brand_long' | 'scope_invalid' | 'chains_required' | 'raayonit_business' | 'direct_brand' | 'raayonit_terms' | 'raayonit_category' | 'nationwide_invalid' | 'chains_need_nationwide'
 
 export interface BatchCellError {
   column: OfferColumn
@@ -39,10 +39,10 @@ export interface BatchCellError {
 export interface BatchOffer {
   titleHe: string
   titleEn: string
-  /** The business's document id once resolved (see `lookup`); empty for a Multipass perk, which has a brand instead. */
+  /** The business's document id once resolved (see `lookup`); empty for a Raayonit perk, which has a brand instead. */
   businessUid: string
   perkScope: PerkScope
-  /** A direct offer redeemable across its branches (hides the single address); always true for Multipass. */
+  /** A direct offer redeemable across its branches (hides the single address); always true for Raayonit. */
   isNationwide: boolean
   /** Whether the sheet's isNationwide cell was filled: an empty one lets a chain business default to nationwide. */
   nationwideGiven?: boolean
@@ -91,7 +91,7 @@ const ALIASES: Record<OfferColumn, string[]> = {
   paymentTerms: ['paymentterms', 'תנאיתשלום'],
   howToRedeem_he: ['howtoredeemhe', 'howtoredeem', 'redemptioninstructions', 'הוראותמימוש'],
   imageUrl: ['imageurl', 'image', 'תמונה', 'קישורלתמונה'],
-  perkScope: ['perkscope', 'scope', 'סוגהטבה', 'סוגמולטיפאס'],
+  perkScope: ['perkscope', 'scope', 'סוגהטבה', 'סוגרעיונית'],
   brandName: ['brandname', 'brand', 'שםהמותג', 'מותג'],
   participatingChains: ['participatingchains', 'chains', 'רשתותמכבדות', 'רשתות'],
   isNationwide: ['isnationwide', 'nationwide', 'הטבהארצית', 'ארצי'],
@@ -123,7 +123,7 @@ const SCOPE_ALIASES: Record<string, PerkScope> = {
 
 const FULFILLMENT_ALIASES: Record<string, FulfillmentType> = {
   directmerchant: 'direct_merchant', direct: 'direct_merchant', עסקמקומיישיר: 'direct_merchant', עסקמקומי: 'direct_merchant', ישיר: 'direct_merchant',
-  multipasspool: 'multipass_pool', multipass: 'multipass_pool', מולטיפאס: 'multipass_pool', הטבתמולטיפאס: 'multipass_pool',
+  raayonitpool: 'raayonit_pool', raayonit: 'raayonit_pool', רעיונית: 'raayonit_pool', הטבתרעיונית: 'raayonit_pool',
 }
 
 const TRUE_WORDS = new Set(['true', 'yes', 'y', '1', 'כן'])
@@ -161,7 +161,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     result.missingColumns = ['businessId', 'originalPrice', 'discountedPrice']
     return result
   }
-  // businessId is only for local-business rows, so a sheet of Multipass perks may leave the column out.
+  // businessId is only for local-business rows, so a sheet of Raayonit perks may leave the column out.
   result.missingColumns = (['businessId', 'originalPrice', 'discountedPrice'] as const).filter((column) => cols[column] < 0 && !(column === 'businessId' && cols.brandName >= 0))
   if (!(cols.title_he >= 0 || cols.title_en >= 0)) result.missingColumns.unshift('title_he')
   if (result.missingColumns.length > 0) return result
@@ -186,7 +186,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const fulfillmentRaw = text(get('fulfillmentType'))
     const fulfillmentType = fulfillmentRaw ? FULFILLMENT_ALIASES[norm(fulfillmentRaw)] : 'direct_merchant'
     if (!fulfillmentType) fail('fulfillmentType', 'fulfillment_invalid')
-    const multipass = fulfillmentType === 'multipass_pool'
+    const raayonit = fulfillmentType === 'raayonit_pool'
 
     const businessKey = text(get('businessId'))
     const brandName = text(get('brandName'))
@@ -195,14 +195,14 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     let perkScope: PerkScope = 'single_business'
     let businessUid = ''
     // A local-business row may name a scope: single_business is the default, multi_chain makes it a manual pass with no business.
-    const directScope = !multipass && scopeRaw ? SCOPE_ALIASES[norm(scopeRaw)] : undefined
-    if (!multipass && scopeRaw && !directScope) fail('perkScope', 'scope_invalid')
+    const directScope = !raayonit && scopeRaw ? SCOPE_ALIASES[norm(scopeRaw)] : undefined
+    if (!raayonit && scopeRaw && !directScope) fail('perkScope', 'scope_invalid')
     let manualChain = false
-    if (multipass) {
-      // A Multipass perk has a brand (and for a multi-chain voucher, its chains) in place of a business.
+    if (raayonit) {
+      // A Raayonit perk has a brand (and for a multi-chain voucher, its chains) in place of a business.
       if (scopeRaw && !SCOPE_ALIASES[norm(scopeRaw)]) fail('perkScope', 'scope_invalid')
       else perkScope = scopeRaw ? SCOPE_ALIASES[norm(scopeRaw)]! : chains.length > 0 ? 'multi_chain' : 'single_business'
-      if (businessKey) fail('businessId', 'multipass_business')
+      if (businessKey) fail('businessId', 'raayonit_business')
       if (!brandName) fail('brandName', 'brand_required')
       else if (brandName.length > 80) fail('brandName', 'brand_long')
       else if (perkScope === 'multi_chain' && chains.length === 0) fail('participatingChains', 'chains_required')
@@ -210,7 +210,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       // A manual multi-chain pass: redeemed with its issuer, so a brand and its chains stand in for the business.
       perkScope = 'multi_chain'
       manualChain = true
-      if (businessKey) fail('businessId', 'multipass_business')
+      if (businessKey) fail('businessId', 'raayonit_business')
       if (!brandName) fail('brandName', 'brand_required')
       else if (brandName.length > 80) fail('brandName', 'brand_long')
       else if (chains.length === 0) fail('participatingChains', 'chains_required')
@@ -227,9 +227,9 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const categoryRaw = text(get('category'))
     const category = categoryRaw ? (BUSINESS_CATEGORIES as readonly string[]).find((c) => norm(c) === norm(categoryRaw)) ?? null : null
     if (categoryRaw && !category) fail('category', 'category_invalid')
-    // Nothing to inherit it from: a Multipass perk has no business, so the sheet names its category.
-    const noBusiness = multipass || manualChain
-    if (noBusiness && !categoryRaw) fail('category', 'multipass_category')
+    // Nothing to inherit it from: a Raayonit perk has no business, so the sheet names its category.
+    const noBusiness = raayonit || manualChain
+    if (noBusiness && !categoryRaw) fail('category', 'raayonit_category')
 
     const originalPrice = toNumber(get('originalPrice'))
     const offerPrice = toNumber(get('discountedPrice'))
@@ -239,7 +239,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
 
     const quantityRaw = text(get('totalQuantity'))
     let totalQuantity: number | null = null
-    if (quantityRaw && fulfillmentType !== 'multipass_pool') {
+    if (quantityRaw && fulfillmentType !== 'raayonit_pool') {
       const quantity = toNumber(get('totalQuantity'))
       if (Number.isInteger(quantity) && quantity >= 1) totalQuantity = quantity
       else fail('totalQuantity', 'quantity_invalid')
@@ -259,7 +259,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
       paymentTerms = parsePaymentTerms(termsRaw)
       if (!paymentTerms) fail('paymentTerms', 'payment_terms_invalid')
     }
-    if (noBusiness && (commissionRaw || termsRaw)) fail(commissionRaw ? 'commissionRate' : 'paymentTerms', 'multipass_terms')
+    if (noBusiness && (commissionRaw || termsRaw)) fail(commissionRaw ? 'commissionRate' : 'paymentTerms', 'raayonit_terms')
     if (!commissionRaw !== !termsRaw && errors.every((e) => e.column !== 'commissionRate' && e.column !== 'paymentTerms')) fail(commissionRaw ? 'paymentTerms' : 'commissionRate', 'terms_pair')
     if (businessUid && commissionRate !== null && paymentTerms) {
       const seen = termsByBusiness.get(businessUid)
@@ -273,7 +273,7 @@ export function parseOffersSheet(matrix: readonly (readonly unknown[])[], lookup
     const imageUrl = normalizeImageUrl(text(get('imageUrl')))
     if (imageUrl && (!isValidImageUrl(imageUrl) || imageUrlProblem(imageUrl))) fail('imageUrl', 'image_invalid')
 
-    // Optional; empty means a single-location offer. A Multipass perk is multi-branch on its own.
+    // Optional; empty means a single-location offer. A Raayonit perk is multi-branch on its own.
     const nationwideRaw = norm(text(get('isNationwide')))
     let isNationwide = noBusiness
     if (nationwideRaw && !noBusiness) {

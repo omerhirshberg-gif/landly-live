@@ -13,7 +13,7 @@ export default function CuratedOffers({ offers }: { offers: OfferDocument[] | nu
   const { t } = useLang()
 
   if (offers && offers.length > 0) {
-    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots autoAdvance compact />
+    return <OfferCardRail id="home-curated-title" title={t('home_curated_title')} offers={offers} href="/categories" seeAll={t('home_see_all')} dots autoAdvance compact priorityCount={2} />
   }
 
   return (

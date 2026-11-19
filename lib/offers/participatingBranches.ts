@@ -1,6 +1,7 @@
 import { localizedName, parseParticipatingPlaces, placeChainName, type Coordinates, type ParticipatingPlace } from '../geo'
 import type { Lang } from '../i18n/translations'
 import { normalizeChains } from './perkScope'
+import { branchLine, type OfferBranch } from './branches'
 
 // The stores, malls or chains that honour a perk, as the branch cards show them. A branch the admin picked from
 // Google Places is named in the reader's language by Google itself (reader's language, else English, else Hebrew)
@@ -21,9 +22,14 @@ export interface Branch {
 export interface BranchSubject {
   participatingChains?: readonly string[] | null
   participatingPlaces?: readonly ParticipatingPlace[] | null
+  /** Raayonit's clean branch list: when present it replaces the typed chain names, each in the reader's language. */
+  branches?: readonly OfferBranch[] | null
 }
 
 export function participatingBranches(subject: BranchSubject | null | undefined, lang: Lang): Branch[] {
+  if (subject?.branches?.length) {
+    return subject.branches.map((b, i) => ({ key: `branch-${i}`, label: branchLine(b, lang), name: branchLine(b, 'he') }))
+  }
   const places = parseParticipatingPlaces(subject?.participatingPlaces ?? [])
   const known = new Set(places.map((place) => placeChainName(place).toLowerCase()))
   const picked: Branch[] = places.map((place) => ({

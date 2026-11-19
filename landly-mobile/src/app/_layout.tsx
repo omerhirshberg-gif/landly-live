@@ -8,7 +8,11 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTimi
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ONB, UNLOCK } from '@shared/brand/onboardingMotion'
 import { AuthProvider } from '@shared/firebase/AuthProvider'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { setOffersApiBase } from '@shared/offers/offersApi'
+import { offersStore } from '@shared/firebase/offers'
+import { useWishlistErrors } from '@shared/firebase/useWishlist'
+import { warning } from '../lib/haptics'
 import { WishlistProvider } from '@shared/firebase/WishlistProvider'
 import { VouchersProvider } from '@shared/firebase/VouchersProvider'
 import { useAuth } from '@shared/firebase/useAuth'
@@ -41,6 +45,10 @@ LogBox.ignoreLogs(['Linking found multiple possible URI schemes'])
 
 // The live offers come from the CDN-cached /api/public/offers on this origin (Firestore is the fallback).
 setOffersApiBase(API_BASE_URL)
+// The last good catalog is saved on the device (lib/offers/offersStore.ts, keyed by Firebase project) and read
+// while the splash plays, so Home and Perks draw it on their first frame; the network copy follows quietly.
+offersStore.setStorage(AsyncStorage)
+offersStore.get().catch(() => undefined)
 
 // A render error anywhere below shows the retry card instead of closing the app (each route can also export its own).
 export { RouteErrorBoundary as ErrorBoundary }
@@ -53,6 +61,12 @@ NativeSplash.setOptions({ fade: true, duration: 200 })
 NativeSplash.preventAutoHideAsync().catch(() => undefined)
 
 const UNLOCK_EASE = Easing.bezier(...UNLOCK.curve)
+
+// A heart flips on the tap's frame; if its save then fails it flips back, with the error buzz so the change is felt.
+function WishlistErrorHaptic() {
+  useWishlistErrors(warning)
+  return null
+}
 
 export default function RootLayout() {
   return (
@@ -72,6 +86,7 @@ export default function RootLayout() {
                     {/* Draws an avatar's long-press peek above every screen. */}
                     <AvatarPeekProvider>
                       <RootNavigator />
+                      <WishlistErrorHaptic />
                     </AvatarPeekProvider>
                   </EntranceProvider>
                 </AppLockProvider>

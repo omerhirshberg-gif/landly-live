@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Image, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import Image from './SafeImage'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { perkImageFit } from '@shared/offers/imageFit'
 import AppText from './AppText'
-import { businessInitial, secureImageUrl } from '../lib/imageSource'
+import { businessInitial, secureImageUrl, siteImageFile } from '../lib/imageSource'
+import { bundledBrandImage } from '../lib/raayonitBrandImages'
 import { colors, radius } from '../theme'
 import CategoryIcon from './CategoryIcon'
 
@@ -27,7 +29,9 @@ export default function PerkImage({
   size?: 'card' | 'thumb'
 }) {
   const thumb = size === 'thumb'
-  const uri = secureImageUrl(rawUri)
+  // One of the site's own pictures ships inside the app; its stored relative path is no link a device can load.
+  const bundled = siteImageFile(rawUri) ? bundledBrandImage(rawUri) : null
+  const uri = bundled ? rawUri.trim() : secureImageUrl(rawUri)
   // Keyed on the URL, so a changed image gets a fresh attempt.
   const [failedUri, setFailedUri] = useState<string | null>(null)
   const [measured, setMeasured] = useState<{ uri: string; width: number; height: number } | null>(null)
@@ -36,13 +40,16 @@ export default function PerkImage({
     const fit = perkImageFit(uri, measured?.uri === uri ? measured : null)
     return (
       <Image
-        source={{ uri }}
+        source={bundled ?? { uri }}
         style={[styles.fill, fit === 'contain' && (thumb ? styles.logoThumb : styles.logo)]}
-        resizeMode={fit}
+        contentFit={fit}
+        cachePolicy="memory-disk"
+        recyclingKey={uri}
+        transition={150}
         onError={() => setFailedUri(uri)}
         onLoad={(e) => {
-          const { width, height } = e.nativeEvent.source
-          setMeasured({ uri, width, height })
+          const { width, height } = e.source
+          if (measured?.uri !== uri || measured.width !== width || measured.height !== height) setMeasured({ uri, width, height })
         }}
         accessibilityIgnoresInvertColors
       />

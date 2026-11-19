@@ -9,63 +9,93 @@ export const MAX_CODE_LENGTH = 200
 // One transaction writes an item and a dedupe marker per code: 2 x 200 stays well under Firestore's 500-write limit.
 export const CODES_PER_TRANSACTION = 200
 
-export interface NewPoolInput {
-  offerId: string
-  warningThreshold: number
-  unitCostAgorot: number
-  retailPriceAgorot: number
-}
-
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
 
-/** One pool per offer; its document id is the offer's id. Links the offer to it. */
-export async function createPool(db: Firestore, input: NewPoolInput) {
-  const { offerId } = input
-  if (!isDocumentId(offerId)) throw new PaymentError('Invalid offerId.', 400)
-  if (!Number.isInteger(input.warningThreshold) || input.warningThreshold < 0) throw new PaymentError('Warning threshold must be a whole number, 0 or more.', 400)
-  for (const value of [input.unitCostAgorot, input.retailPriceAgorot]) {
-    if (!Number.isInteger(value) || value < 0) throw new PaymentError('Prices must be whole agorot.', 400)
-  }
-  const poolRef = db.collection(POOL_COLLECTION).doc(offerId)
+export const MAX_FACE_VALUE_AGOROT = 100_000_00
+
+export interface NewSharedPoolInput {
+  /** What admins see, e.g. "רעיונית - תו על 100 ₪". */
+  title: string
+  faceValueAgorot: number
+  priceAgorot: number
+  warningThreshold: number
+  /** The wholesale cost per voucher; 0 when unknown. */
+  unitCostAgorot: number
+}
+
+const wholeAgorot = (value: unknown, min: number): value is number => Number.isInteger(value) && (value as number) >= min
+
+/** A stock of Raayonit vouchers of one face value, shared by every offer linked to it. Returns its id. */
+export async function createSharedPool(db: Firestore, input: NewSharedPoolInput): Promise<string> {
+  const title = input.title.trim()
+  if (!title || title.length > 120) throw new PaymentError('Give the stock a name of up to 120 characters.', 400)
+  if (!wholeAgorot(input.faceValueAgorot, 1) || input.faceValueAgorot > MAX_FACE_VALUE_AGOROT) throw new PaymentError('Voucher value must be a positive whole amount.', 400)
+  if (!wholeAgorot(input.priceAgorot, 1) || input.priceAgorot > input.faceValueAgorot) throw new PaymentError('The sale price must be positive and no more than the voucher value.', 400)
+  if (!wholeAgorot(input.warningThreshold, 0)) throw new PaymentError('Warning threshold must be a whole number, 0 or more.', 400)
+  if (!wholeAgorot(input.unitCostAgorot, 0)) throw new PaymentError('Cost must be a whole number of agorot, 0 or more.', 400)
+  // One stock per face value: the Excel sheet's amount column picks it, and offers can't pick the wrong one.
+  const existing = await db.collection(POOL_COLLECTION).where('kind', '==', 'shared').where('faceValueAgorot', '==', input.faceValueAgorot).limit(1).get()
+  if (!existing.empty) throw new PaymentError('A stock for this voucher value already exists. Add codes to it instead.')
+  const ref = db.collection(POOL_COLLECTION).doc()
+  const now = Timestamp.now()
+  await ref.set({
+    kind: 'shared', provider: 'raayonit', title, faceValueAgorot: input.faceValueAgorot, priceAgorot: input.priceAgorot,
+    totalPurchased: 0, allocatedCount: 0, remainingCount: 0, warningThreshold: input.warningThreshold, lowStock: true,
+    unitCost: input.unitCostAgorot, retailPrice: input.faceValueAgorot, status: 'depleted', nextSeq: 1, lastSeq: 0, createdAt: now, updatedAt: now,
+  })
+  return ref.id
+}
+
+/** A shared stock's sale terms, and a check that an offer sells exactly what the stock holds. Null when there is no such shared stock. */
+export async function readSharedPoolTerms(db: Firestore, poolId: unknown): Promise<{ faceValueAgorot: number; priceAgorot: number; title: string } | null> {
+  if (!isDocumentId(poolId)) return null
+  const snap = await db.collection(POOL_COLLECTION).doc(poolId).get()
+  const data = snap.data()
+  if (!data || data.kind !== 'shared' || data.status === 'archived' || !Number.isInteger(data.faceValueAgorot) || !Number.isInteger(data.priceAgorot)) return null
+  return { faceValueAgorot: data.faceValueAgorot, priceAgorot: data.priceAgorot, title: typeof data.title === 'string' ? data.title : '' }
+}
+
+/** An error message when the offer's prices differ from the stock's (a 100 voucher can't be sold as a 150), else null. */
+export function poolPriceProblem(terms: { faceValueAgorot: number; priceAgorot: number }, originalPrice: unknown, offerPrice: unknown): string | null {
+  const ok = Math.round(Number(originalPrice) * 100) === terms.faceValueAgorot && Math.round(Number(offerPrice) * 100) === terms.priceAgorot
+  return ok ? null : `Prices must match the voucher stock: worth ₪${terms.faceValueAgorot / 100}, sold for ₪${terms.priceAgorot / 100}.`
+}
+
+/** Points an offer at a shared stock and gives it the sale terms the stock dictates. Throws when the stock is unknown. */
+export async function linkOfferToPool(db: Firestore, offerId: string, poolId: string): Promise<void> {
+  if (!isDocumentId(offerId) || !isDocumentId(poolId)) throw new PaymentError('Invalid offer or stock.', 400)
+  const poolRef = db.collection(POOL_COLLECTION).doc(poolId)
   const offerRef = db.collection('offers').doc(offerId)
   await db.runTransaction(async (tx) => {
     const [pool, offer] = await Promise.all([tx.get(poolRef), tx.get(offerRef)])
+    if (!pool.exists || pool.data()?.kind !== 'shared') throw new PaymentError('Voucher stock not found.', 404)
     if (!offer.exists) throw new PaymentError('Offer not found.', 404)
-    if (pool.exists) throw new PaymentError('This offer already has a pool.')
-    const now = Timestamp.now()
-    tx.create(poolRef, {
-      offerId, provider: 'multipass', totalPurchased: 0, allocatedCount: 0, remainingCount: 0,
-      warningThreshold: input.warningThreshold, lowStock: true, unitCost: input.unitCostAgorot,
-      retailPrice: input.retailPriceAgorot, status: 'depleted', nextSeq: 1, lastSeq: 0, createdAt: now, updatedAt: now,
-    })
-    // Sales now draw from the pool; claimed vs capacity mirrors the pool's size.
-    tx.update(offerRef, { fulfillmentType: 'multipass_pool', poolId: offerId, totalQuantity: null })
+    tx.update(offerRef, { fulfillmentType: 'raayonit_pool', poolId, totalQuantity: null })
   })
 }
 
 export interface AddCodesResult { added: number; duplicates: number; invalid: number }
 
-/** One supplier row: the code or barcode, its own expiry, and an optional serial or PIN. */
-export interface PoolEntry { code: string; expiresAt?: Date | null; pin?: string | null }
+/** One supplier row: the voucher code (it has no QR code and no expiry of its own: it lasts 5 years from purchase). */
+export interface PoolEntry { code: string }
 
 /** Encrypts and appends codes. Duplicates (by hash) and blank or oversize lines are skipped and counted. */
-export async function addPoolCodes(db: Firestore, poolId: string, rawCodes: readonly string[], expiresAt: Date | null = null): Promise<AddCodesResult> {
-  return addPoolEntries(db, poolId, rawCodes.map((code) => ({ code, expiresAt })))
+export async function addPoolCodes(db: Firestore, poolId: string, rawCodes: readonly string[]): Promise<AddCodesResult> {
+  return addPoolEntries(db, poolId, rawCodes.map((code) => ({ code })))
 }
 
-/** Same as addPoolCodes, for rows that carry their own expiry and PIN (a supplier spreadsheet). */
+/** Same as addPoolCodes, for the rows of a supplier spreadsheet. */
 export async function addPoolEntries(db: Firestore, poolId: string, rawEntries: readonly PoolEntry[]): Promise<AddCodesResult> {
   if (!isDocumentId(poolId)) throw new PaymentError('Invalid pool.', 400)
   const result: AddCodesResult = { added: 0, duplicates: 0, invalid: 0 }
   const seen = new Set<string>()
-  const entries: { code: string; expiresAt: Date | null; pin: string | null }[] = []
+  const entries: { code: string }[] = []
   for (const raw of rawEntries) {
     const code = raw.code.trim()
-    const pin = raw.pin?.trim() || null
-    if (!code || code.length > MAX_CODE_LENGTH || (pin && pin.length > MAX_CODE_LENGTH)) { result.invalid++; continue }
+    if (!code || code.length > MAX_CODE_LENGTH) { result.invalid++; continue }
     if (seen.has(code)) { result.duplicates++; continue }
     seen.add(code)
-    entries.push({ code, expiresAt: raw.expiresAt ?? null, pin })
+    entries.push({ code })
   }
   const poolRef = db.collection(POOL_COLLECTION).doc(poolId)
   for (let start = 0; start < entries.length; start += CODES_PER_TRANSACTION) {
@@ -86,9 +116,8 @@ export async function addPoolEntries(db: Firestore, poolId: string, rawEntries: 
         const itemId = poolItemId(seq)
         tx.create(poolRef.collection('items').doc(itemId), {
           seq, codeCipher: encryptField('POOL_CODES_KEY', entry.code, `${poolId}/${itemId}`), codeHash: sha256(entry.code),
-          ...(entry.pin ? { pinCipher: encryptField('POOL_CODES_KEY', entry.pin, `${poolId}/${itemId}/pin`) } : {}),
           status: 'available', orderId: null, userId: null, allocatedAt: null,
-          expiresAt: entry.expiresAt ? Timestamp.fromDate(entry.expiresAt) : null,
+          expiresAt: null,
         })
         tx.create(hashRefs[i]!, { seq, at: now })
       })

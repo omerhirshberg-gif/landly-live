@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams, type Href } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getOffer, type OfferDocument } from '@shared/firebase/offers'
 import { subscribeToOrder } from '@shared/firebase/orders'
-import { hasUserClaimedOffer } from '@shared/firebase/vouchers'
+import { getClaimedPoolIds } from '@shared/firebase/vouchers'
 import { useAuth } from '@shared/firebase/useAuth'
 import { formatPrice, priceDifference } from '@shared/format'
 import type { TranslationKey } from '@shared/i18n/translations'
@@ -13,12 +13,15 @@ import { cancellationFeeAgorot } from '@shared/payments/voucherTerms'
 import { checkoutBack, checkoutSwipeAllowed } from '@shared/navigation/backGuard'
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
+import { isPooled } from '@shared/inventory/types'
+import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
 import ConsentText from '../../components/ConsentText'
 import LineIcon from '../../components/LineIcon'
 import Notice from '../../components/Notice'
-import PerkImage from '../../components/PerkImage'
+import IssuerAttribution from '../../components/IssuerAttribution'
+import PurchaseMedia from '../../components/PurchaseMedia'
 import ScreenHeader from '../../components/ScreenHeader'
 import TranzilaPaymentStep from '../../components/TranzilaPaymentStep'
 import { useLang } from '../../i18n/LangProvider'
@@ -58,7 +61,9 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 export default function CheckoutScreen() {
   const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
-  const { offerId } = useLocalSearchParams<{ offerId: string }>()
+  const { offerId, variant } = useLocalSearchParams<{ offerId: string; variant?: string }>()
+  // The voucher value picked on a multi-denomination offer (a pool id); the server prices from its own list.
+  const variantPoolId = typeof variant === 'string' && variant ? variant : null
   const { user } = useAuth()
   // The photo and category are decoration from the live offer; the order holds what is bought.
   const [offer, setOffer] = useState<OfferDocument | undefined>(() => (offerId ? cachedOffer(offerId) : undefined))
@@ -91,8 +96,10 @@ export default function CheckoutScreen() {
   const uid = user?.uid
   // A refused order (409) is most often one the member already owns.
   const isClaimed = useCallback(
-    () => (uid && offerId ? hasUserClaimedOffer(uid, offerId).catch(() => false) : Promise.resolve(false)),
-    [uid, offerId]
+    () => (uid && offerId
+      ? getClaimedPoolIds(uid, offerId, null).then((c) => (variantPoolId ? c.pools.includes(variantPoolId) : c.any)).catch(() => false)
+      : Promise.resolve(false)),
+    [uid, offerId, variantPoolId]
   )
 
   useEffect(() => {
@@ -100,7 +107,7 @@ export default function CheckoutScreen() {
     let cancelled = false
     ;(async () => {
       try {
-        const result = await initiateCheckout(await user.getIdToken(), offerId, {}, API_BASE_URL)
+        const result = await initiateCheckout(await user.getIdToken(), offerId, { variantPoolId }, API_BASE_URL)
         if (cancelled) return
         if (result.ok) {
           setOrder(result.data)
@@ -119,7 +126,7 @@ export default function CheckoutScreen() {
     return () => {
       cancelled = true
     }
-  }, [user, offerId, attempt, isClaimed, failureMessage])
+  }, [user, offerId, attempt, isClaimed, failureMessage, variantPoolId])
 
   const retry = () => {
     setLoadError(null)
@@ -161,7 +168,7 @@ export default function CheckoutScreen() {
     setPayError(null)
     try {
       const idToken = await user.getIdToken()
-      const accepted = await initiateCheckout(idToken, offerId, { acceptTerms: true }, API_BASE_URL)
+      const accepted = await initiateCheckout(idToken, offerId, { acceptTerms: true, variantPoolId }, API_BASE_URL)
       if (!accepted.ok) {
         if (accepted.reason === 'conflict' && (await isClaimed())) setClaimed(true)
         else setPayError(failureMessage(accepted.reason))
@@ -232,14 +239,18 @@ export default function CheckoutScreen() {
             <View style={styles.card}>
               {/* Who and what: photo (or the category panel), business, offer. */}
               <View style={styles.offerRow}>
-                <View style={styles.thumb}>
-                  {offer && <PerkImage uri={offer.imageUrl} category={offer.category} businessName={offer.businessName} />}
-                </View>
+                <PurchaseMedia source={{ order, offer }} category={offer?.category} />
                 <View style={styles.offerText}>
                   <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
                   <AppText style={styles.offerTitle} accessibilityRole="header">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
                 </View>
               </View>
+
+              {(order.fulfillmentType === 'raayonit_pool' || (!!offer && isPooled(offer.fulfillmentType))) && (
+                <View style={styles.issuer}>
+                  <IssuerAttribution issuer={RAAYONIT_ISSUER} note={t('voucher_valid_years')} />
+                </View>
+              )}
 
               {/* The itemised price, VAT included, and what the member saves. */}
               <View style={styles.priceBox}>
@@ -271,7 +282,7 @@ export default function CheckoutScreen() {
               <AppText style={styles.sectionTitle} accessibilityRole="header">{t('checkout_voucher_details_title')}</AppText>
               <View style={styles.fact}>
                 <LineIcon name="calendar" size={15} color={colors.brand} strokeWidth={2} />
-                <AppText style={styles.factText}>{t('checkout_validity').replace('{days}', String(order.validityDays))}</AppText>
+                <AppText style={styles.factText}>{offer?.fulfillmentType === 'raayonit_pool' ? t('voucher_valid_years') : t('checkout_validity').replace('{days}', String(order.validityDays))}</AppText>
               </View>
               {!!order.redemptionTerms && (
                 <View style={styles.termsBox}>
@@ -329,12 +340,12 @@ const styles = StyleSheet.create({
   stateAction: { marginTop: 20, alignSelf: 'stretch' },
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
   card: { backgroundColor: colors.white, borderRadius: 24, borderWidth: 1, borderColor: colors.border, padding: 20 },
-  offerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  thumb: { width: 72, height: 72, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: colors.brandTint },
+  offerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  issuer: { marginTop: 20 },
   offerText: { flex: 1, minWidth: 0 },
   business: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, textTransform: 'uppercase' },
-  offerTitle: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: colors.heading, marginTop: 4 },
-  priceBox: { marginTop: 20, padding: 16, borderRadius: radius.lg, backgroundColor: colors.brandTint, borderWidth: 1, borderColor: colors.brandLight, gap: 8 },
+  offerTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },
+  priceBox: { marginTop: 24, padding: 20, borderRadius: radius.lg, backgroundColor: colors.brandTint, borderWidth: 1, borderColor: colors.brandLight, gap: 12 },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   priceLabel: { fontSize: 14, color: colors.textMuted },
   struck: { textDecorationLine: 'line-through' },
@@ -343,7 +354,7 @@ const styles = StyleSheet.create({
   totalRow: { alignItems: 'flex-end', paddingTop: 4 },
   totalLabel: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.heading },
   totalValue: { fontSize: 28, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
-  vatNote: { fontSize: 12, color: colors.textMuted },
+  vatNote: { fontSize: 12, lineHeight: 18, color: colors.textMuted },
   savings: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,22 +368,22 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   savingsText: { fontSize: 13, fontWeight: '700', color: colors.success, fontVariant: ['tabular-nums'] },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.heading, marginTop: 20, marginBottom: 8 },
-  fact: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.heading, marginTop: 28, marginBottom: 12 },
+  fact: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   factText: { flex: 1, fontSize: 14, color: colors.body },
-  termsBox: { marginTop: 12, padding: 12, borderRadius: radius.md, backgroundColor: colors.background },
+  termsBox: { marginTop: 16, padding: 16, borderRadius: radius.md, backgroundColor: colors.background },
   termsLabel: { fontSize: 12, fontWeight: '700', color: colors.textStrong, marginBottom: 4 },
-  terms: { fontSize: 13, lineHeight: 19, color: colors.body },
-  divider: { height: 1, backgroundColor: colors.borderLight, marginTop: 20 },
-  body: { fontSize: 14, lineHeight: 21, color: colors.body },
+  terms: { fontSize: 13, lineHeight: 22, color: colors.body },
+  divider: { height: 1, backgroundColor: colors.borderLight, marginTop: 28 },
+  body: { fontSize: 14, lineHeight: 22, color: colors.body },
   actionBar: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  consent: { fontSize: 12, lineHeight: 18, color: colors.body, textAlign: 'center', marginBottom: 10 },
+  consent: { fontSize: 12, lineHeight: 22, color: colors.body, textAlign: 'center', marginBottom: 16 },
   overlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

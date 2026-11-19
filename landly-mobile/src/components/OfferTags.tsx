@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native'
 import { CATEGORY_TILES } from '@shared/categories'
-import { REDEMPTION_METHOD_LABEL_KEYS, type RedemptionMethod } from '@shared/offers/redemption'
+import { redemptionTagKey, type RedemptionMethod, type RedemptionMode } from '@shared/offers/redemption'
 import AppText from './AppText'
 import CategoryIcon from './CategoryIcon'
 import { useLang } from '../i18n/LangProvider'
@@ -10,7 +10,7 @@ import { colors } from '../theme'
 // photo, on the card and the offer screen alike (web: components/discover/
 // OfferTags.tsx). A long category gives way to the method. `showCategory` is off
 // in a list already scoped to one category, where every card would repeat it.
-export default function OfferTags({ category, method, showCategory = true }: { category: string; method: RedemptionMethod; showCategory?: boolean }) {
+export default function OfferTags({ category, method, modes, showCategory = true }: { category: string; method: RedemptionMethod; modes?: RedemptionMode[]; showCategory?: boolean }) {
   const { t } = useLang()
   const tile = CATEGORY_TILES.find((c) => c.category === category)
   return (
@@ -24,7 +24,7 @@ export default function OfferTags({ category, method, showCategory = true }: { c
           <AppText style={[styles.text, styles.dot]} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
         </>
       )}
-      <AppText style={styles.text} numberOfLines={1}>{t(REDEMPTION_METHOD_LABEL_KEYS[method])}</AppText>
+      <AppText style={styles.text} numberOfLines={1}>{t(redemptionTagKey({ redemptionMethod: method, redemptionModes: modes }))}</AppText>
     </View>
   )
 }

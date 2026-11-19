@@ -1,3 +1,4 @@
+import { orderIdFor } from '@/lib/offers/variants'
 import { corsHeaders } from '@/lib/auth/cors'
 import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
 import { NextResponse } from 'next/server'
@@ -26,19 +27,21 @@ export async function POST(request: Request) {
     }
     const body = await request.json().catch(() => null)
     if (!isDocumentId(body?.offerId)) return json(errorBody('Invalid offerId.', 400), 400)
+    const variantPoolId = isDocumentId(body?.variantPoolId) ? body.variantPoolId : null
     const terminal = checkoutTerminal()
     const db = getAdminDb()
     if (terminal !== DEV_SANDBOX_TERMINAL) {
-      const order = await initiateOrder(db, uid, body.offerId, terminal, { acceptTerms: body.acceptTerms === true })
+      const order = await initiateOrder(db, uid, body.offerId, terminal, { acceptTerms: body.acceptTerms === true, variantPoolId })
       return json({ ...order, sandbox: false, resumed: false })
     }
     // Local dev sandbox: stale test orders are replaced instead of blocking
     // checkout, and `restart` discards an unfinished one on request.
     const restart = body.restart === true
-    const previous = isDocumentId(`${uid}_${body.offerId}`)
-      ? (await db.collection('orders').doc(`${uid}_${body.offerId}`).get()).data()
+    const previousId = orderIdFor(uid, body.offerId, variantPoolId)
+    const previous = isDocumentId(previousId)
+      ? (await db.collection('orders').doc(previousId).get()).data()
       : undefined
-    const order = await initiateOrder(db, uid, body.offerId, terminal, { acceptTerms: body.acceptTerms === true, sandbox: { restart } })
+    const order = await initiateOrder(db, uid, body.offerId, terminal, { acceptTerms: body.acceptTerms === true, sandbox: { restart }, variantPoolId })
     const resumed = !restart && previous?.status === 'pending' && previous.terminal === DEV_SANDBOX_TERMINAL
     return json({ ...order, sandbox: true, resumed })
   } catch (err) {

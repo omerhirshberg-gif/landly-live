@@ -7,6 +7,7 @@ import { parseOfferTranslations } from '@/lib/offers/offerText'
 import { normalizeRedemptionInstructions, normalizeRedemptionMethod } from '@/lib/offers/redemption'
 import { parseVoucherStatus } from '@/lib/vouchers/status'
 import { normalizeDisplayOrderNumber } from '@/lib/payments/orderNumber'
+import { parseIssuer } from '@/lib/payments/issuer'
 import { normalizeRedemptionTerms } from '@/lib/payments/voucherTerms'
 
 // The part of a voucher a Wallet pass is built from, read with the Admin SDK.
@@ -14,7 +15,7 @@ export type PassVoucher = Pick<
   VoucherDocument,
   | 'userId' | 'offerId' | 'businessName' | 'offerTitle' | 'redemptionCode' | 'redeemToken' | 'status' | 'expiresAt'
   | 'redemptionTerms' | 'redemptionMethod' | 'redemptionInstructions' | 'displayOrderNumber'
-  | 'translations' | 'businessTranslations' | 'businessAddress' | 'businessGeo'
+  | 'translations' | 'businessTranslations' | 'businessAddress' | 'businessGeo' | 'redemptionKind' | 'issuer' | 'externalCode'
 > & { id: string }
 
 const REDEEM_TOKEN_PATTERN = /^[0-9a-f]{32}$/
@@ -44,6 +45,9 @@ export function readPassVoucher(snap: DocumentSnapshot): PassVoucher | null {
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     businessAddress: parsePlaceSnapshot(data.businessAddress),
     businessGeo: parseCoordinates(data.businessGeo),
+    redemptionKind: data.redemptionKind === 'code_only' ? 'code_only' : null,
+    issuer: parseIssuer(data.issuer),
+    externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
   }
 }
 
@@ -53,6 +57,10 @@ export function readPassVoucher(snap: DocumentSnapshot): PassVoucher | null {
  * would keep that code long after the backfill replaced it.
  */
 export function isPassEligible(voucher: PassVoucher, nowMs = Date.now()): boolean {
-  if (voucher.status !== 'active' || !voucher.redeemToken || !voucher.redemptionCode) return false
+  if (voucher.status !== 'active') return false
+  // A code-only voucher (Raayonit) has no QR code, so no redeem token: it needs its own code instead.
+  if (voucher.redemptionKind === 'code_only') {
+    if (!voucher.externalCode) return false
+  } else if (!voucher.redeemToken || !voucher.redemptionCode) return false
   return !voucher.expiresAt || voucher.expiresAt.getTime() > nowMs
 }

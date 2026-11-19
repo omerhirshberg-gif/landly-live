@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Award, Sparkles } from 'lucide-react'
 import type { User } from 'firebase/auth'
@@ -10,15 +10,19 @@ import CategoryIcon from '@/components/ui/CategoryIcon'
 import OfferCardRail from '@/components/discover/OfferCardRail'
 import SectionBoundary from '@/components/errors/SectionBoundary'
 import ActivePassCard from './ActivePassCard'
+import MultiChainShowcase from '@/components/discover/MultiChainShowcase'
 import CategoryPhotoRail, { CategoryPhotoTitle } from './CategoryPhotoRail'
 import CuratedOffers from './CuratedOffers'
 import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/MemberPageShell'
-import { getAllOffers, type OfferDocument } from '@/lib/firebase/offers'
+import LocationFilterBar from '@/components/discover/LocationFilterBar'
+import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
+import { applyLocationFilter } from '@/lib/perks/locationFilter'
+import { useOffers } from '@/lib/offers/useOffers'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { useVouchers } from '@/lib/firebase/VouchersProvider'
 import { greetingKey } from '@/lib/auth/greeting'
 import { useGreetingPeriod } from '@/lib/home/useGreetingPeriod'
-import { buildCategoryRails, railLabel, selectCurated, selectHighlights } from '@/lib/home/categoryRails'
+import { buildCategoryRails, railLabel, selectCurated, selectHighlights, selectSuperVouchers } from '@/lib/home/categoryRails'
 import { useLang } from '@/lib/i18n/useLang'
 import { categoryHref } from '@/lib/perks/perksFilter'
 
@@ -47,27 +51,21 @@ export default function LoggedInHome({ user }: { user: User }) {
   // Live from the shared voucher listener: a purchase or a redemption updates the count without a reload.
   // null until the first snapshot (or if the read is refused): the card shows "–", never a fake 0.
   const activeCount = useVouchers().active?.length ?? null
-  const [offers, setOffers] = useState<OfferDocument[] | null>(null)
   const [photoOpen, setPhotoOpen] = useState(false)
 
-  // One read for the whole page; a failed read shows the empty state.
-  useEffect(() => {
-    let cancelled = false
-    getAllOffers()
-      .then((all) => {
-        if (!cancelled) setOffers(all)
-      })
-      .catch(() => {
-        if (!cancelled) setOffers([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // The shared catalog (lib/offers/offersStore.ts): a held or saved copy draws on the first frame, a stale one refreshes
+  // behind it, so coming back to Home never shows a skeleton. A failed read with nothing to show is the empty state.
+  const { offers: storeOffers, failed } = useOffers()
+  const offers = storeOffers ?? (failed ? [] : null)
 
-  const curated = useMemo(() => (offers ? selectCurated(offers) : null), [offers])
-  const highlights = useMemo(() => (offers ? selectHighlights(offers) : null), [offers])
-  const rails = useMemo(() => (offers ? buildCategoryRails(offers) : []), [offers])
+  // Near me (the bar's button) or a picked area narrows every list on Home (lib/perks/locationFilter.ts).
+  const { filter, setRadiusKm, setAreaPick, setOrigin } = usePerksSearch()
+  const located = useMemo(() => (offers ? applyLocationFilter(offers, filter) : null), [offers, filter])
+  const locEmpty = !!filter && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
+  const curated = useMemo(() => (located ? selectCurated(located) : null), [located])
+  const superOffers = useMemo(() => (located ? selectSuperVouchers(located) : []), [located])
+  const highlights = useMemo(() => (located ? selectHighlights(located) : null), [located])
+  const rails = useMemo(() => (located ? buildCategoryRails(located) : []), [located])
 
   return (
     <main className="member-canvas below-header min-h-[100dvh] overflow-x-clip">
@@ -84,6 +82,19 @@ export default function LoggedInHome({ user }: { user: User }) {
           </p>
         }
       >
+        <div className="mx-auto mb-4 w-full max-w-[760px] px-4 sm:px-0 lg:max-w-[1200px]">
+          <LocationFilterBar filter={filter} onRadius={setRadiusKm} onClear={() => { setOrigin(null); setAreaPick(null) }} />
+          {locEmpty && (
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-white px-5 py-6 text-center" aria-live="polite">
+              <p className="text-base font-bold text-ink">{t('loc_empty_title').replace('{km}', String(filter?.kind === 'gps' ? filter.radiusKm : ''))}</p>
+              <p className="mx-auto mt-1 max-w-xs text-sm text-body">{t('loc_empty_sub')}</p>
+              {filter?.kind === 'gps' && filter.radiusKm < 25 && (
+                <button type="button" onClick={() => setRadiusKm(filter.radiusKm === 5 ? 15 : 25)} className="mt-3 min-h-11 text-sm font-bold text-brand hover:underline">{t('loc_expand').replace('{km}', String(filter.radiusKm === 5 ? 15 : 25))}</button>
+              )}
+            </div>
+          )}
+        </div>
+
         <MemberColumn wide className="lg:hidden">
           {/* Phones and tablets (under 1024px): one centred hero, 16px (24px from 640px) under the search bar: the greeting row on the start edge, then the pass card (both up to 680px, so their start edges line up). From 1024px both go: My Pass is in the navbar, and a text-only welcome opens the category section below. */}
           <div className="mx-auto -mt-2 flex w-full max-w-[760px] flex-col items-center gap-5 sm:gap-6">
@@ -99,7 +110,7 @@ export default function LoggedInHome({ user }: { user: User }) {
               </Link>
             )}
             <div className="flex min-w-0 items-center self-center">
-              <h1 id="home-welcome" className={`${PAGE_TITLE} min-w-0 truncate`}>
+              <h1 id="home-welcome" className={`${PAGE_TITLE} min-w-0 line-clamp-2 break-words`}>
                 {greeting}
               </h1>
             </div>
@@ -111,13 +122,23 @@ export default function LoggedInHome({ user }: { user: User }) {
           </div>
         </MemberColumn>
 
+        {/* Desktop only: a plain text welcome on the start edge, in the page-title type (PAGE_TITLE, the same as /categories), with no avatar, badge or pass card (the navbar has them). */}
+        <MemberColumn wide>
+          <h1 id="home-welcome-lg" className={`hidden lg:block lg:-mt-2 lg:mb-6 ${PAGE_TITLE} ${loaded && period ? 'greet-in' : 'invisible'}`}>
+            {greeting}
+          </h1>
+        </MemberColumn>
+
+        {/* The flagship multi-chain voucher, one card per value (100 / 150), first under the welcome and above the categories. */}
+        {superOffers[0] && (
+          <SectionBoundary name="home-super-tav">
+            <MemberColumn wide className="mt-6 sm:mt-8 lg:mt-0"><MultiChainShowcase offer={superOffers[0]} /></MemberColumn>
+          </SectionBoundary>
+        )}
+
         <SectionBoundary name="home-category-photos">
-          <section aria-labelledby="home-categories-title" className="mt-6 sm:mt-8 lg:mt-0">
+          <section aria-labelledby="home-categories-title" className={superOffers[0] ? 'mt-8' : 'mt-6 sm:mt-8 lg:mt-0'}>
             <MemberColumn wide>
-              {/* Desktop only: a plain text welcome on the start edge, in the page-title type (PAGE_TITLE, the same as /categories), with no avatar, badge or pass card (the navbar has them). */}
-              <h1 id="home-welcome-lg" className={`hidden lg:block lg:-mt-2 lg:mb-6 ${PAGE_TITLE} ${loaded && period ? 'greet-in' : 'invisible'}`}>
-                {greeting}
-              </h1>
               <CategoryPhotoTitle id="home-categories-title" className="mb-3 text-xl font-bold text-ink" />
             </MemberColumn>
             <CategoryPhotoRail />

@@ -11,7 +11,7 @@ import type { PerkScope } from '@/lib/offers/perkScope'
 import type { ParticipatingPlace } from '@/lib/geo'
 import { PAYMENT_TERMS, paymentTermsDays, type PaymentTerms } from '@/lib/merchants/terms'
 
-export type Fulfillment = 'direct_merchant' | 'multipass_pool'
+export type Fulfillment = 'direct_merchant' | 'raayonit_pool'
 
 export interface WizardBusiness {
   uid: string
@@ -133,12 +133,12 @@ export function BusinessPicker({
   )
 }
 
-/** Direct local merchant or Multipass wholesale pool, as two large radio cards. */
+/** Direct local merchant or Raayonit wholesale pool, as two large radio cards. */
 export function FulfillmentPicker({ value, onChange }: { value: Fulfillment; onChange: (value: Fulfillment) => void }) {
   const { t } = useAdminT()
   const options: { value: Fulfillment; icon: string; title: AdminKey; hint: AdminKey }[] = [
     { value: 'direct_merchant', icon: 'fa-store', title: 'wizard.fulfillmentDirect', hint: 'wizard.fulfillmentDirectHint' },
-    { value: 'multipass_pool', icon: 'fa-boxes-stacked', title: 'wizard.fulfillmentMultipass', hint: 'wizard.fulfillmentMultipassHint' },
+    { value: 'raayonit_pool', icon: 'fa-boxes-stacked', title: 'wizard.fulfillmentRaayonit', hint: 'wizard.fulfillmentRaayonitHint' },
   ]
   return (
     <fieldset className="min-w-0">
@@ -223,18 +223,18 @@ export function TermsFields({
   )
 }
 
-export interface MultipassScopeValue {
+export interface RaayonitScopeValue {
   perkScope: PerkScope
   brandName: string
   chains: string[]
-  /** Branches picked from Google Places (a single-brand Multipass perk); `chains` lists their names too. */
+  /** Branches picked from Google Places (a single-brand Raayonit perk); `chains` lists their names too. */
   places: ParticipatingPlace[]
   guideHe: string
   guideEn: string
   category: string
 }
 
-export const EMPTY_MULTIPASS_SCOPE: MultipassScopeValue = { perkScope: 'single_business', brandName: '', chains: [], places: [], guideHe: '', guideEn: '', category: '' }
+export const EMPTY_RAAYONIT_SCOPE: RaayonitScopeValue = { perkScope: 'single_business', brandName: '', chains: [], places: [], guideHe: '', guideEn: '', category: '' }
 
 /** A local perk of one business, or a multi-chain / multi-brand pass with an issuer and no business, as two radio cards. */
 export function DirectScopePicker({ chain, onChange }: { chain: boolean; onChange: (chain: boolean) => void }) {
@@ -272,8 +272,8 @@ export function DirectScopePicker({ chain, onChange }: { chain: boolean; onChang
   )
 }
 
-/** The Multipass scope choice: one brand or store, or a voucher honoured by several chains. Replaces the business picker's place in step 1. */
-export function MultipassScopePicker({ value, onChange }: { value: PerkScope; onChange: (next: PerkScope) => void }) {
+/** The Raayonit scope choice: one brand or store, or a voucher honoured by several chains. Replaces the business picker's place in step 1. */
+export function RaayonitScopePicker({ value, onChange }: { value: PerkScope; onChange: (next: PerkScope) => void }) {
   const { t } = useAdminT()
   const options: { value: PerkScope; icon: string; title: AdminKey; hint: AdminKey }[] = [
     { value: 'single_business', icon: 'fa-store', title: 'wizard.scopeSingle', hint: 'wizard.scopeSingleHint' },
@@ -306,10 +306,10 @@ export function MultipassScopePicker({ value, onChange }: { value: PerkScope; on
   )
 }
 
-/** A Multipass perk's own details in place of a business: brand, category, and for a multi-chain voucher its chains and the shared redemption guide. */
-export function MultipassPerkFields({ value, onChange }: { value: MultipassScopeValue; onChange: (next: MultipassScopeValue) => void }) {
+/** A Raayonit perk's own details in place of a business: brand, category, and for a multi-chain voucher its chains and the shared redemption guide. */
+export function RaayonitPerkFields({ value, onChange }: { value: RaayonitScopeValue; onChange: (next: RaayonitScopeValue) => void }) {
   const { t } = useAdminT()
-  const set = <K extends keyof MultipassScopeValue>(key: K, v: MultipassScopeValue[K]) => onChange({ ...value, [key]: v })
+  const set = <K extends keyof RaayonitScopeValue>(key: K, v: RaayonitScopeValue[K]) => onChange({ ...value, [key]: v })
   const multi = value.perkScope === 'multi_chain'
   return (
     <div className="space-y-6">
@@ -328,7 +328,7 @@ export function MultipassPerkFields({ value, onChange }: { value: MultipassScope
         </div>
       </div>
       <StoresField
-        mode={multi ? 'chains' : 'multipass'}
+        mode={multi ? 'chains' : 'raayonit'}
         chains={value.chains}
         places={multi ? [] : value.places}
         onChange={(next) => onChange({ ...value, chains: next.chains, places: next.places })}

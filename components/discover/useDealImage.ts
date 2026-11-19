@@ -15,7 +15,7 @@ export function settledImage(img: Pick<HTMLImageElement, 'complete' | 'naturalWi
 // server-rendered image can finish before hydration attaches React's listeners,
 // and React never replays that load, so it's read off the element on mount too;
 // otherwise the photo stays hidden over the panel. Expo: src/lib/useDealImage.ts.
-export function useDealImage(src: string) {
+export function useDealImage(src: string, opts?: { raayonit?: boolean; graphic?: boolean }) {
   const [loaded, setLoaded] = useState<{ src: string; width: number; height: number } | null>(null)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -27,7 +27,11 @@ export function useDealImage(src: string) {
   }, [src])
 
   return {
-    role: dealImageRole(src, loaded?.src === src ? loaded : null, failedSrc === src),
+    role: dealImageRole(src, loaded?.src === src ? loaded : null, failedSrc === src, opts),
+    /** A Raayonit card: DealMedia widens the ambient-backdrop rule (lib/offers/imageFit.ts). */
+    ambient: opts?.raayonit === true,
+    /** A trimmed brand logo or banner: always shown whole over the backdrop. */
+    graphic: opts?.graphic === true,
     /** The loaded bitmap's size, or null until it has loaded (DealMedia reads its shape from it). */
     size: loaded?.src === src ? { width: loaded.width, height: loaded.height } : null,
     imgRef,

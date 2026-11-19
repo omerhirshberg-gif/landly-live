@@ -13,7 +13,7 @@ const authState = { user: null as { uid: string } | null, loading: true }
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ push: () => {}, replace: () => {} }) }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => authState }))
 vi.mock('@/lib/firebase/config', () => ({ auth: {}, db: {} }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 vi.mock('@/components/auth/useOnboardingGuard', () => ({ useOnboardingGuard: () => false }))
 vi.mock('@/components/layout/Navbar', () => ({ default: () => 'NAVBAR' }))
 vi.mock('@/components/layout/Footer', () => ({ default: () => 'FOOTER' }))

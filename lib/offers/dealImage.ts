@@ -16,8 +16,10 @@ export type DealImageRole = 'photo' | 'logo' | 'pending' | 'none'
  * What the offer's image is, from its link and (once loaded) its size;
  * 'none' when there is no usable link or it failed to load.
  */
-export function dealImageRole(url: string, size: { width: number; height: number } | null, failed: boolean): DealImageRole {
+export function dealImageRole(url: string, size: { width: number; height: number } | null, failed: boolean, opts?: { raayonit?: boolean }): DealImageRole {
   if (!url || failed) return 'none'
+  // A Raayonit card's image is always its hero (a photo or trimmed brand art over the ambient backdrop), never a logo for a corner badge.
+  if (opts?.raayonit) return size ? 'photo' : 'pending'
   const fit = perkImageFit(url, size)
   if (fit === 'contain') return 'logo'
   // A cover verdict without a size can still turn out to be a small square logo.

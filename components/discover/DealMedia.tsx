@@ -1,6 +1,7 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { dealPhotoFit } from '@/lib/offers/imageFit'
 import { CategoryPanel } from './PerkImage'
 import type { DealImage } from './useDealImage'
@@ -26,6 +27,8 @@ export default function DealMedia({
   className = '',
   aspect = 'aspect-video',
   containAspect,
+  logo,
+  priority = false,
   children,
 }: {
   src: string
@@ -38,20 +41,47 @@ export default function DealMedia({
   aspect?: string
   /** The frame's shape instead of `aspect` for a square or portrait photo shown whole (the offer page's taller hero). */
   containAspect?: string
+  /** A logo-only perk (lib/offers/logoOnly.ts): the logo is the hero, large on white. */
+  logo?: { src: string; alt: string; small?: boolean } | null
+  /** Above the fold: the photo is fetched first and eagerly (fetchPriority high); every other card stays lazy. */
+  priority?: boolean
   children?: ReactNode
 }) {
-  const { role, size, imgRef, onLoad, onError } = image
-  const whole = role === 'photo' && dealPhotoFit(size) === 'contain'
+  const { role, size, ambient, graphic, imgRef, onLoad, onError } = image
+  const whole = role === 'photo' && dealPhotoFit(size, { ambient, graphic }) === 'contain'
+  // The taller offer-page frame is for a portrait shot; a Raayonit graphic that is merely square or wide keeps the card's own frame.
+  const tall = whole && !!containAspect && (!ambient || (size != null && size.width < size.height))
+
+  // A logo that fails to load is replaced by the Raayonit mark, never a broken image icon.
+  const [logoFailed, setLogoFailed] = useState(false)
+
+  if (logo) {
+    return (
+      <div className={`relative z-[1] w-full ${aspect} ${className}`}>
+        <div className={`absolute inset-0 z-0 flex items-center justify-center overflow-hidden rounded-[inherit] border-b border-slate-100 ${logo.small ? 'bg-gradient-to-br from-[#F1F5F9] to-[#E2E8F0] px-[30%] py-[14%]' : 'bg-white px-5 py-4 sm:px-6'}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoFailed ? RAAYONIT_LOGO_PATH : logo.src} alt={logo.alt} onError={() => setLogoFailed(true)} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
+        </div>
+        {children}
+      </div>
+    )
+  }
 
   return (
-    <div className={`relative z-[1] w-full ${whole && containAspect ? containAspect : aspect} ${className}`}>
+    <div className={`relative z-[1] w-full ${tall ? containAspect : aspect} ${className}`}>
       <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
         <CategoryPanel category={category} size="hero" />
         {whole && (
           <>
+            {/* An opaque studio base, so a transparent logo never shows the category panel's icon through it. */}
+            <div aria-hidden="true" className="absolute inset-0 bg-[#F4F6F9]" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 z-0 h-full w-full scale-110 object-cover blur-xl" />
-            <div aria-hidden="true" className="absolute inset-0 z-[1] bg-[#F4F6F9]/50" />
+            {/* The blurred copy, drawn at an eighth of the frame (blur 3px) and scaled up 8.8x from the centre: the same look as a
+                full-size blur-xl at scale-110, with the blur run over 1/64 of the pixels. Centred by flexbox, so no side is involved. */}
+            <div aria-hidden="true" className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+              <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-[12.5%] w-[12.5%] flex-shrink-0 scale-[8.8] transform-gpu object-cover blur-[3px]" />
+            </div>
+            <div aria-hidden="true" className="absolute inset-0 z-[1] bg-[#F4F6F9]/45" />
           </>
         )}
         {(role === 'pending' || role === 'photo') && (
@@ -60,12 +90,13 @@ export default function DealMedia({
             ref={imgRef}
             src={src}
             alt={alt}
-            loading="lazy"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : undefined}
             decoding="async"
             referrerPolicy="no-referrer"
             onError={onError}
             onLoad={(e) => onLoad(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
-            className={`absolute inset-0 z-[2] h-full w-full ${whole ? 'object-contain' : 'object-cover'} transition-opacity duration-[180ms] ease-out-expo motion-reduce:transition-none ${role === 'photo' ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 z-[2] h-full w-full ${whole ? (ambient ? 'object-contain p-4' : 'object-contain') : 'object-cover'} transition-opacity duration-[180ms] ease-out-expo motion-reduce:transition-none ${role === 'photo' ? 'opacity-100' : 'opacity-0'}`}
           />
         )}
       </div>

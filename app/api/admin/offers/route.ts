@@ -12,10 +12,7 @@ import { imageUrlProblem, normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferRedemption } from '@/lib/offers/redemption'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { parseFulfillmentType } from '@/lib/inventory/types'
-import { addPoolEntries, createPool, deletePoolCascade } from '@/lib/inventory/poolAdmin'
-import { validateSheetEntry } from '@/lib/inventory/parseCodeSheet'
-import { CipherConfigError } from '@/lib/crypto/fieldCipher'
-import { PaymentError } from '@/lib/payments/paymentValidation'
+import { poolPriceProblem, readSharedPoolTerms } from '@/lib/inventory/poolAdmin'
 import { offerPlaceFields } from '@/lib/geo'
 import { parsePerkScopeFields } from '@/lib/offers/perkScope'
 import { BUSINESS_CATEGORIES } from '@/lib/categories'
@@ -24,9 +21,9 @@ import { parseBusinessTranslations } from '@/lib/business/businessText'
 import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 
 interface RequestBody {
-  /** A local-business perk's business. Absent for a Multipass perk, which has a brand instead. */
+  /** A local-business perk's business. Absent for a Raayonit perk, which has a brand instead. */
   businessUid?: string
-  /** A Multipass perk's brand and scope (lib/offers/perkScope.ts), plus its category. */
+  /** A Raayonit perk's brand and scope (lib/offers/perkScope.ts), plus its category. */
   perk?: { perkScope?: string; brandName?: string; participatingChains?: unknown; participatingPlaces?: unknown; universalRedemptionGuide?: unknown; category?: string }
   offer: {
     title: string
@@ -47,13 +44,9 @@ interface RequestBody {
   }
   /** The admin's own translations, per language and field (lib/translate/offerTranslations.ts). */
   translationOverrides?: unknown
-  /** A Multipass offer: its pool, created with the offer. */
-  pool?: { unitCost: number; warningThreshold: number }
-  /** The supplier sheet's rows (lib/inventory/parseCodeSheet), stored encrypted with the pool; re-checked here. */
-  codeRows?: unknown[]
+  /** A Raayonit offer: the shared voucher stock it draws from (stocks are created and filled on the inventory page). */
+  poolId?: string
 }
-
-const MAX_CODE_ROWS = 2000
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 })
@@ -113,10 +106,10 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as RequestBody | null
   if (!body?.offer) return badRequest('Missing offer data.')
   const { offer } = body
-  const multipass = !!body.pool
-  // A manual multi-chain pass is a direct perk with no business: its issuer's brand stands in, as for Multipass.
-  const manualChain = !multipass && body.perk?.perkScope === 'multi_chain'
-  const noBusiness = multipass || manualChain
+  const raayonit = typeof body.poolId === 'string' && body.poolId !== ''
+  // A manual multi-chain pass is a direct perk with no business: its issuer's brand stands in, as for Raayonit.
+  const manualChain = !raayonit && body.perk?.perkScope === 'multi_chain'
+  const noBusiness = raayonit || manualChain
   // The business is read first: a chain's new offer is nationwide unless the admin turned that off.
   let business: FirebaseFirestore.DocumentData = {}
   if (!noBusiness && typeof body.businessUid === 'string' && body.businessUid) {
@@ -125,7 +118,7 @@ export async function POST(request: Request) {
     business = businessSnap.data()!
   }
   const scope = parsePerkScopeFields({
-    fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
+    fulfillmentType: raayonit ? 'raayonit_pool' : 'direct_merchant',
     businessId: noBusiness ? undefined : body.businessUid,
     ...(noBusiness ? { ...body.perk, businessId: body.businessUid } : {}),
     isNationwide: offer.isNationwide === undefined ? !noBusiness && business.isChain === true : offer.isNationwide === true,
@@ -150,35 +143,27 @@ export async function POST(request: Request) {
   const redemption = parseOfferRedemption(offer)
   if (!redemption.ok) return badRequest(redemption.error)
 
-  // A Multipass perk and a manual multi-chain pass have no business document: the brand name stands in for the business name.
+  // A Raayonit perk and a manual multi-chain pass have no business document: the brand name stands in for the business name.
   const displayName: string = noBusiness ? scope.fields.brandName! : business.businessName ?? ''
   const translated = await translationsForSave(offerTextSource(offer, voucherTerms, redemption), null, body.translationOverrides)
   if (!translated.ok) return badRequest(translated.error)
   // The brand's name in the other languages, when it is written in Hebrew letters (a Latin-script brand stays as written).
   const brandTranslations = noBusiness ? await businessTranslationsForSave(displayName, null, undefined) : null
 
-  let poolInput: { unitCostAgorot: number; retailPriceAgorot: number; warningThreshold: number } | null = null
-  let codeEntries: { code: string; pin: string | null; expiresAt: Date | null }[] = []
-  if (body.pool) {
-    const unitCost = Number(body.pool.unitCost)
-    const warningThreshold = Number(body.pool.warningThreshold)
-    if (!Number.isFinite(unitCost) || unitCost < 0) return badRequest('pool.unitCost must be 0 or more.')
-    if (!Number.isInteger(warningThreshold) || warningThreshold < 0) return badRequest('pool.warningThreshold must be a whole number, 0 or more.')
-    poolInput = { unitCostAgorot: Math.round(unitCost * 100), retailPriceAgorot: Math.round(Number(offer.originalPrice) * 100), warningThreshold }
-    if (body.codeRows !== undefined) {
-      if (!Array.isArray(body.codeRows) || body.codeRows.length > MAX_CODE_ROWS) return badRequest(`Send at most ${MAX_CODE_ROWS} code rows.`)
-      codeEntries = body.codeRows.flatMap((raw) => {
-        const row = validateSheetEntry(raw)
-        return row ? [{ code: row.code, pin: row.pin, expiresAt: row.expiresAt ? endOfIsraelDay(row.expiresAt) : null }] : []
-      })
-      if (body.codeRows.length > 0 && codeEntries.length === 0) return badRequest('None of the code rows are valid.')
-    }
+  // A Raayonit offer sells exactly what its stock holds: same face value, same price.
+  let poolId: string | null = null
+  if (raayonit) {
+    const terms = await readSharedPoolTerms(adminDb, body.poolId)
+    if (!terms) return badRequest('Choose a voucher stock for this offer.')
+    const mismatch = poolPriceProblem(terms, offer.originalPrice, offer.offerPrice)
+    if (mismatch) return badRequest(mismatch)
+    poolId = body.poolId!
   }
 
   const offerRef = adminDb.collection('offers').doc()
   await offerRef.set({
     ...scope.fields,
-    fulfillmentType: multipass ? 'multipass_pool' : 'direct_merchant',
+    fulfillmentType: raayonit ? 'raayonit_pool' : 'direct_merchant',
     businessName: displayName,
     businessTranslations: noBusiness ? (brandTranslations?.ok ? brandTranslations.translations : null) : parseBusinessTranslations(business.translations),
     ...offerPlaceFields(business),
@@ -193,7 +178,8 @@ export async function POST(request: Request) {
     createdAt: Timestamp.now(),
     isBestseller: !!offer.isBestseller,
     expiryDate: offer.expiryDate ? Timestamp.fromDate(endOfIsraelDay(offer.expiryDate)) : null,
-    totalQuantity: offer.totalQuantity,
+    totalQuantity: raayonit ? null : offer.totalQuantity,
+    ...(poolId ? { poolId } : {}),
     claimedCount: 0,
     validityDays: voucherTerms.validityDays,
     redemptionTerms: voucherTerms.redemptionTerms,
@@ -202,27 +188,9 @@ export async function POST(request: Request) {
     translations: translated.translations,
   })
 
-  // A Multipass offer's pool and first codes follow the offer. If any of it fails, everything
-  // written so far is removed again, so a failed upload never leaves a sold-out offer behind.
-  let codes: { added: number; duplicates: number; invalid: number } | null = null
-  if (poolInput) {
-    try {
-      await createPool(adminDb, { offerId: offerRef.id, ...poolInput })
-      if (codeEntries.length > 0) codes = await addPoolEntries(adminDb, offerRef.id, codeEntries)
-      if (codeEntries.length > 0 && codes?.added === 0) throw new PaymentError('No new codes could be stored.', 400)
-    } catch (err) {
-      await deletePoolCascade(adminDb, offerRef.id).catch((e) => console.error('Pool rollback failed', e))
-      await offerRef.delete().catch((e) => console.error('Offer rollback failed', e))
-      if (err instanceof PaymentError) return NextResponse.json({ error: err.message, rolledBack: true }, { status: err.status })
-      if (err instanceof CipherConfigError) return NextResponse.json({ error: 'Code encryption key is not configured on the server.', rolledBack: true }, { status: 503 })
-      console.error('Multipass offer creation failed', err)
-      return NextResponse.json({ error: 'Could not store the codes. Nothing was created.', rolledBack: true }, { status: 500 })
-    }
-  }
   revalidateGuestHome()
 
   return NextResponse.json({
-    codes,
     offerId: offerRef.id,
     offerTitle: offer.title,
     businessName: displayName,

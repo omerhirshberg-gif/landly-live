@@ -53,13 +53,21 @@ describe('admin screens use the translation dictionary', () => {
 
 describe('perk hub wording', () => {
   it('names the two tabs as approved', () => {
-    expect([he['nav.offers'], he['nav.inventory']]).toEqual(['ניהול והעלאת הטבות', 'מעקב מלאי וקופונים'])
-    expect([en['nav.offers'], en['nav.inventory']]).toEqual(['Perk Management', 'Stock & Vouchers'])
+    expect([he['nav.offers'], he['nav.inventory']]).toEqual(['תווים עצמאיים', 'תווי רעיונית'])
+    expect([en['nav.offers'], en['nav.inventory']]).toEqual(['Direct Perks', 'Raayonit Vouchers'])
     expect(he['inv.restock']).toBe('הוספת קודים')
-    expect(he['inv.uploadMultipass']).toBe('טעינת קודי מולטיפאס באקסל')
-    expect(he['inv.pickPerk']).toBe('בחרו לאיזו הטבה להטעין את הקודים')
-    expect([he['import.catalog'], he['import.codes']]).toEqual(['קטלוג הטבות חדשות', 'קודי שוברים ממולטיפאס'])
-    expect([en['import.catalog'], en['import.codes']]).toEqual(['New perk catalog', 'Multipass voucher codes'])
+    expect(he['inv.uploadRaayonit']).toBe('הוספת תווי רעיונית (אקסל)')
+    expect([he['inv.raayonit.title'], en['inv.raayonit.title']]).toEqual(['תווי רעיונית — מלאי משותף', 'Raayonit Shared Vouchers'])
+    expect([he['import.catalog']]).toEqual(['קטלוג הטבות חדשות'])
+    expect([en['import.catalog']]).toEqual(['New perk catalog'])
+  })
+
+  it('offers exactly two channels and never names the removed supplier', () => {
+    expect([he['wizard.fulfillmentDirect'], he['wizard.fulfillmentRaayonit']]).toEqual(['עסק מקומי ישיר', 'רעיונית - תו על'])
+    for (const [key, value] of [...Object.entries(en), ...Object.entries(he)]) {
+      expect(value, key).not.toMatch(/multipass|מולטיפאס/i)
+      expect(key, key).not.toMatch(/multipass/i)
+    }
   })
 
   it('has no "pool" or "מאגר" in any user-visible string', () => {
@@ -72,9 +80,9 @@ describe('perk hub wording', () => {
     for (const [key, value] of [...Object.entries(en), ...Object.entries(he)]) expect(value, key).not.toMatch(/\p{Extended_Pictographic}/u)
   })
 
-  it('shows every perk in one grid, restocking only Multipass rows', () => {
+  it('shows every perk in one grid, restocking only Raayonit rows', () => {
     const table = read('components/admin/inventory/InventoryTable.tsx')
-    expect(table).toContain("row.kind !== 'multipass'")
+    expect(table).toContain("row.kind !== 'raayonit'")
     expect(table).toContain('<svg')
     const page = read('app/admin/inventory/page.tsx')
     expect(page).not.toContain('role="tablist"')

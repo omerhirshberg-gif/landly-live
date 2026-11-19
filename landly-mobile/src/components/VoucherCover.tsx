@@ -1,9 +1,10 @@
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { useVoucherOffer } from '@shared/member/useVoucherOffer'
+import { heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../lib/logoHero'
 import DealMedia from './DealMedia'
 import MerchantBadge from './MerchantBadge'
-import { badgeLogoUri, businessInitial, secureImageUrl } from '../lib/imageSource'
+import { badgeLogoUri, secureImageUrl } from '../lib/imageSource'
 import { useDealImage } from '../lib/useDealImage'
 
 // A pass's cover (My Pass cards, the voucher screen): the offer's photo, or
@@ -15,30 +16,26 @@ import { useDealImage } from '../lib/useDealImage'
 // Web: components/member/VoucherCover.tsx.
 export default function VoucherCover({
   voucher,
-  name,
   ratio = 16 / 9,
   maxHeight,
   logoHeight = 40,
   style,
 }: {
   voucher: Pick<VoucherDocument, 'offerId' | 'businessName'>
-  /** The business's name as shown (its translation); the logo's fallback initial. */
-  name: string
   ratio?: number
   maxHeight?: number
   logoHeight?: number
   style?: StyleProp<ViewStyle>
 }) {
   const offer = useVoucherOffer(voucher.offerId)
-  const image = useDealImage(offer?.imageUrl ?? '')
+  const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
   return (
-    <DealMedia image={image} category={offer?.category ?? ''} ratio={ratio} maxHeight={maxHeight}>
-      <MerchantBadge
+    <DealMedia image={image} category={offer?.category ?? ''} logo={heroLogoSource(offer)} ratio={ratio} maxHeight={maxHeight}>
+      {!heroLogoSource(offer) && !isRaayonitOffer(offer) && <MerchantBadge
         logoUri={badgeLogoUri(secureImageUrl(offer?.businessLogoUrl ?? ''), image.uri, image.role)}
-        initial={businessInitial(name)}
         height={logoHeight}
         style={[styles.logo, { bottom: -logoHeight * 0.4 }, style]}
-      />
+      />}
     </DealMedia>
   )
 }

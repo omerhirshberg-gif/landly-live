@@ -14,16 +14,16 @@ describe('stock health', () => {
 })
 
 describe('inventory rows', () => {
-  it('shows a Multipass perk from its supply, with the supply’s own threshold', () => {
-    const [row] = buildInventoryRows([offer({ fulfillmentType: 'multipass_pool', poolId: 'o1' })], [pool({ remainingCount: 4, warningThreshold: 5 })])
-    expect(row).toMatchObject({ kind: 'multipass', poolId: 'o1', purchased: 100, claimed: 40, remaining: 4, threshold: 5, health: 'low' })
+  it('shows a Raayonit perk from its supply, with the supply’s own threshold', () => {
+    const [row] = buildInventoryRows([offer({ fulfillmentType: 'raayonit_pool', poolId: 'o1' })], [pool({ remainingCount: 4, warningThreshold: 5 })])
+    expect(row).toMatchObject({ kind: 'raayonit', poolId: 'o1', purchased: 100, claimed: 40, remaining: 4, threshold: 5, health: 'low' })
   })
 
   it('falls back to the default threshold of 10 and treats a missing supply as out', () => {
-    const [a] = buildInventoryRows([offer({ fulfillmentType: 'multipass_pool' })], [pool({ warningThreshold: Number.NaN, remainingCount: 10 })])
+    const [a] = buildInventoryRows([offer({ fulfillmentType: 'raayonit_pool' })], [pool({ warningThreshold: Number.NaN, remainingCount: 10 })])
     expect(a!.threshold).toBe(DEFAULT_LOW_STOCK)
     expect(a!.health).toBe('low')
-    const [b] = buildInventoryRows([offer({ fulfillmentType: 'multipass_pool' })], [])
+    const [b] = buildInventoryRows([offer({ fulfillmentType: 'raayonit_pool' })], [])
     expect(b).toMatchObject({ remaining: 0, health: 'out', purchased: 0 })
   })
 

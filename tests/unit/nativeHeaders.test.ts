@@ -17,7 +17,7 @@ describe('native Home header', () => {
 
   it('sits close under the safe area without a second gap', () => {
     expect(home).toContain("<SafeAreaView style={styles.safe} edges={['top']}>")
-    expect(home).toContain('<ScreenTitleRow style={styles.greetingSlot}>')
+    expect(home).toMatch(/<ScreenTitleRow\n\s+style=\{styles\.greetingSlot\}/)
     expect(home).toContain('greetingSlot: { marginBottom: header.gap }')
   })
 })
@@ -126,8 +126,8 @@ describe('native Home', () => {
 
   it('has one source for its catalog, shared with the website', () => {
     expect(home).toContain("from '@shared/home/categoryRails'")
-    expect(home).toContain('selectCurated(offers ?? [])')
-    expect(home).toContain('buildCategoryRails(offers)')
+    expect(home).toContain('selectCurated(located ?? [])')
+    expect(home).toContain('buildCategoryRails(located)')
     expect(home).not.toContain('CURATED_COUNT')
   })
 })
@@ -149,7 +149,8 @@ describe('native Wishlist tab', () => {
     // The tab replaces the heart that used to end the Perks search row.
     const perks = read('app/(tabs)/perks.tsx')
     expect(perks).not.toContain('WishlistButton')
-    expect(perks).toMatch(/<PerksSearchField [^>]*\/>\s*<NearMeButton/)
+    expect(perks).toMatch(/<PerksSearchField [^>]*\/>\s*<FilterSheet/)
+    expect(perks).not.toContain('<NearMeButton')
   })
 })
 
@@ -191,7 +192,8 @@ describe('native offer card', () => {
   it('leads with a full-width hero carrying the badge and the discount, the price row below', () => {
     expect(card).not.toContain('height: 130')
     // The hero (components/DealMedia.tsx); the discount ribbon is tied to the hero's top end corner.
-    expect(card).toContain("<DealMedia image={image} category={offer.category} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>")
+    // Sized from the slot's known width on the first pass (minus the card's border), recycled by the perk's id.
+    expect(card).toContain("<DealMedia image={image} recyclingKey={offer.id} width={width ? width - CARD_BORDER * 2 : undefined} category={offer.category} logo={heroLogo} logoSmall={heroLogoIsFallback(offer)} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>")
     // 2:1 capped at 172pt on the feeds (16:9 in the carousel's slot, same cap); the offer screen's hero stays 16:9.
     expect(card).toContain('const HERO_MAX_HEIGHT = 172')
     expect(read('components/DealMedia.tsx')).toContain('ratio = 16 / 9')

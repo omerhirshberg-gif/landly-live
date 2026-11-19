@@ -1,19 +1,19 @@
-// The Stock & Vouchers table's rows: every perk, Multipass (a supply of supplier codes, restocked
+// The Stock & Vouchers table's rows: every perk, Raayonit (a supply of supplier codes, restocked
 // from a spreadsheet) and local-business (claims counted against the perk's own cap), in one
 // list with one stock-health rule. Pure, so the page and the unit tests share it.
 
-export type InventoryKind = 'multipass' | 'direct'
+export type InventoryKind = 'raayonit' | 'direct'
 export type StockHealth = 'out' | 'low' | 'ok' | 'unlimited'
 export type HealthFilter = 'all' | 'low' | 'out'
 
-/** A Multipass supply with no threshold of its own warns at this many codes or fewer. */
+/** A Raayonit supply with no threshold of its own warns at this many codes or fewer. */
 export const DEFAULT_LOW_STOCK = 10
 
 export interface InventoryOffer {
   id: string
   title: string
   businessName: string
-  fulfillmentType: 'direct_merchant' | 'multipass_pool'
+  fulfillmentType: 'direct_merchant' | 'raayonit_pool'
   poolId: string | null
   totalQuantity: number | null
   claimedCount: number
@@ -21,7 +21,11 @@ export interface InventoryOffer {
 
 export interface InventoryPool {
   poolId: string
-  offerId: string
+  /** Only an older one-offer stock has one; a shared stock serves every offer that points at it. */
+  offerId: string | null
+  title?: string
+  faceValueAgorot?: number | null
+  priceAgorot?: number | null
   status: 'active' | 'depleted' | 'archived'
   totalPurchased: number
   allocatedCount: number
@@ -36,7 +40,7 @@ export interface InventoryRow {
   kind: InventoryKind
   /** The supply to restock; null for a local-business perk. */
   poolId: string | null
-  /** Codes bought (Multipass) or the perk's cap (local; null = unlimited). */
+  /** Codes bought (Raayonit) or the perk's cap (local; null = unlimited). */
   purchased: number | null
   claimed: number
   /** Null when unlimited. */
@@ -55,14 +59,14 @@ export function stockHealth(remaining: number | null, threshold: number): StockH
 const finiteOr = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback)
 
 export function buildInventoryRows(offers: readonly InventoryOffer[], pools: readonly InventoryPool[]): InventoryRow[] {
-  const byOffer = new Map(pools.map((p) => [p.offerId, p]))
+  const byOffer = new Map(pools.flatMap((p) => (p.offerId ? [[p.offerId, p] as const] : [])))
   return offers.map((offer): InventoryRow => {
-    if (offer.fulfillmentType === 'multipass_pool') {
-      const pool = byOffer.get(offer.id) ?? (offer.poolId ? pools.find((p) => p.poolId === offer.poolId) : undefined)
+    if (offer.fulfillmentType === 'raayonit_pool') {
+      const pool = (offer.poolId ? pools.find((p) => p.poolId === offer.poolId) : undefined) ?? byOffer.get(offer.id)
       const remaining = pool ? Math.max(0, pool.remainingCount) : 0
       const threshold = finiteOr(pool?.warningThreshold, DEFAULT_LOW_STOCK)
       return {
-        id: offer.id, title: offer.title, businessName: offer.businessName, kind: 'multipass', poolId: pool?.poolId ?? offer.poolId ?? offer.id,
+        id: offer.id, title: offer.title, businessName: offer.businessName, kind: 'raayonit', poolId: pool?.poolId ?? offer.poolId,
         purchased: pool?.totalPurchased ?? 0, claimed: pool?.allocatedCount ?? 0, remaining, threshold,
         health: stockHealth(remaining, threshold), archived: pool?.status === 'archived',
       }

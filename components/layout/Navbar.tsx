@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import BrandLockup from './BrandLockup'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
@@ -116,8 +117,7 @@ export default function Navbar() {
             logo and the (wider) account controls. */}
         <div dir="ltr" className="relative w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_minmax(0,max-content)_1fr] lg:gap-6">
           <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} className="flex items-center gap-2 flex-shrink-0 tap-target justify-self-start">
-            <img src="/logo-mark.png" alt="GoLandly" className="h-9 sm:h-10 w-auto" />
-            <span className="font-black text-lg sm:text-xl text-brand tracking-tight">GoLandly</span>
+            <BrandLockup label={t('brand_lockup_label')} />
           </a>
 
           <div dir={contentDir} className="hidden lg:flex min-w-0 items-center justify-center gap-3 xl:gap-6 whitespace-nowrap text-meta font-semibold text-slate-600">

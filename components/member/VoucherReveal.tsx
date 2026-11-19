@@ -43,9 +43,9 @@ function useFlip(frontButton: RefObject<HTMLButtonElement | null>, backButton: R
 function FlipCard({ id, flipped, front, back, className = '' }: { id?: string; flipped: boolean; front: ReactNode; back: ReactNode; className?: string }) {
   return (
     <div id={id} className={`flip-card ${flipped ? 'is-flipped' : ''} ${className}`}>
-      <div className="flip-card-inner">
-        <div className="flip-face flip-face-front" inert={flipped} aria-hidden={flipped || undefined}>{front}</div>
-        <div className="flip-face flip-face-back" inert={!flipped} aria-hidden={!flipped || undefined}>{back}</div>
+      <div className="flip-card-inner min-w-0">
+        <div className="flip-face flip-face-front min-w-0" inert={flipped} aria-hidden={flipped || undefined}>{front}</div>
+        <div className="flip-face flip-face-back min-w-0" inert={!flipped} aria-hidden={!flipped || undefined}>{back}</div>
       </div>
     </div>
   )
@@ -93,7 +93,7 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
               onClick={toggle}
               aria-expanded={true}
               aria-controls={regionId}
-              className={`tap-target mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
+              className={`tap-target mt-3 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-6 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`}
             >
               <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
               <span>{t('voucher_hide_qr')}</span>
@@ -106,20 +106,20 @@ export function QrReveal({ redeemKey }: { redeemKey: string }) {
 }
 
 /** The redemption code masked as dots until "Show Code"; the card turns over to the code and its copy button. */
-export function CodeReveal({ code }: { code: string }) {
+export function CodeReveal({ code, prominent = false }: { code: string; prominent?: boolean }) {
   const { t } = useLang()
   const frontButton = useRef<HTMLButtonElement>(null)
   const backButton = useRef<HTMLButtonElement>(null)
   const { shown, revealed, toggle } = useFlip(frontButton, backButton)
   const masked = '•'.repeat(Math.max(code.length, 8))
-  const toggleClass = `tap-target inline-flex min-h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`
+  const toggleClass = `tap-target inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition [@media(hover:hover)]:hover:bg-slate-50 ${FOCUS}`
 
   return (
     <section className="flex flex-col items-center text-center">
       <div className="text-xs text-slate-500 mb-2">{t('voucher_redemption_code_label')}</div>
       <FlipCard
         flipped={shown}
-        className="w-[320px] max-w-full"
+        className={prominent ? 'w-full' : 'w-[320px] max-w-full'}
         front={
           <div className={`${FACE} ${WATERMARK} h-full min-h-[148px]`}>
             <div className="text-3xl font-black text-slate-300 tracking-[0.2em]" dir="ltr" role="img" aria-label={t('voucher_code_hidden')}>{masked}</div>
@@ -131,14 +131,17 @@ export function CodeReveal({ code }: { code: string }) {
         }
         back={
           <div className={`${FACE} h-full min-h-[148px] bg-white`}>
-            {revealed && <div className="text-3xl font-black text-slate-900 tracking-[0.2em] tabular-nums select-all" dir="ltr">{code}</div>}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              <button ref={backButton} type="button" onClick={toggle} aria-pressed={true} className={toggleClass}>
-                <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
-                <span>{t('voucher_hide_code')}</span>
-              </button>
-              {revealed && <CopyCodeButton code={code} />}
-            </div>
+            {/* The code and a small circular copy button on one row (the order number's pattern), Hide Code quietly beneath. */}
+            {revealed && (
+              <div className="flex w-full items-center justify-center gap-3">
+                <bdi dir="ltr" className={`block min-w-0 max-w-full select-all text-center font-black tabular-nums text-slate-900 ${prominent ? `[overflow-wrap:anywhere] leading-tight tracking-[0.04em] ${code.length > 22 ? 'text-[1.0625rem]' : code.length > 16 ? 'text-[1.25rem]' : 'text-[1.5rem] sm:text-[1.625rem]'}` : 'break-all text-2xl tracking-[0.12em] sm:text-3xl'}`}>{code}</bdi>
+                <CopyCodeButton code={code} />
+              </div>
+            )}
+            <button ref={backButton} type="button" onClick={toggle} aria-pressed={true} className={`tap-target mt-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold text-slate-500 transition [@media(hover:hover)]:hover:text-slate-800 ${FOCUS}`}>
+              <EyeOff aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />
+              <span>{t('voucher_hide_code')}</span>
+            </button>
           </div>
         }
       />
@@ -172,15 +175,16 @@ function CopyCodeButton({ code }: { code: string }) {
   }
 
   const [Icon, tone] = status === 'copied' ? [Check, 'text-emerald-600'] : status === 'failed' ? [X, 'text-red-600'] : [Copy, 'text-brand']
+  // A 36px circle, the same as the order number's copy button; the check turns green for two seconds.
   return (
     <>
       <button
         type="button"
         onClick={copy}
-        className={`tap-target inline-flex min-h-12 items-center gap-2 rounded-xl bg-brandTint px-5 text-sm font-bold text-brand transition [@media(hover:hover)]:hover:bg-[#E0EDFF] ${FOCUS}`}
+        aria-label={t('voucher_copy_code')}
+        className={`tap-target inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition ${status === 'copied' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white [@media(hover:hover)]:hover:bg-brandTint'} ${FOCUS}`}
       >
-        <Icon aria-hidden="true" className={`h-4 w-4 ${tone}`} strokeWidth={1.75} />
-        <span>{t('voucher_copy_code')}</span>
+        <Icon aria-hidden="true" className={`h-[18px] w-[18px] ${tone}`} strokeWidth={1.75} />
       </button>
       <span role="status" className="sr-only">
         {status === 'copied' ? t('voucher_code_copied') : status === 'failed' ? t('voucher_copy_failed') : ''}

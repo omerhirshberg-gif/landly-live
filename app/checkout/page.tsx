@@ -9,7 +9,12 @@ import TranzilaPaymentWidget from '@/components/checkout/TranzilaPaymentWidget'
 import DevSandboxPaymentWidget from '@/components/checkout/DevSandboxPaymentWidget'
 import CheckoutTrustBadges from '@/components/checkout/CheckoutTrustBadges'
 import ConsentText from '@/components/auth/entrance/ConsentText'
+import MerchantBadge from '@/components/discover/MerchantBadge'
+import IssuerAttribution from '@/components/member/IssuerAttribution'
 import PerkImage from '@/components/discover/PerkImage'
+import { purchaseMediaProps } from '@/lib/offers/merchantLogoProps'
+import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
+import { isPooled } from '@/lib/inventory/types'
 import RedemptionBadge from '@/components/discover/RedemptionBadge'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
@@ -34,6 +39,10 @@ interface OrderSummary {
   validityDays: number
   redemptionTerms: string
   translations?: OfferTranslations | null
+  /** The business's logo and the offer's picture, frozen with the order; empty for older orders. */
+  businessLogoUrl?: string
+  offerImageUrl?: string
+  fulfillmentType?: string | null
   termsAccepted: boolean
   /** A local development sandbox order (lib/payments/devSandbox.ts). */
   sandbox: boolean
@@ -42,11 +51,11 @@ interface OrderSummary {
 }
 
 // `restart` only means something to the local dev sandbox (lib/payments/devSandbox.ts).
-async function initiate(idToken: string, offerId: string, acceptTerms: boolean, restart = false) {
+async function initiate(idToken: string, offerId: string, acceptTerms: boolean, restart = false, variantPoolId: string | null = null) {
   const res = await fetch('/api/payments/initiate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ offerId, ...(acceptTerms && { acceptTerms: true }), ...(restart && { restart: true }) }),
+    body: JSON.stringify({ offerId, ...(acceptTerms && { acceptTerms: true }), ...(restart && { restart: true }), ...(variantPoolId && { variantPoolId }) }),
   })
   // A non-JSON error page (a proxy, a crashed dev server) still reads as an error.
   return { ok: res.ok, data: await res.json().catch(() => ({})) }
@@ -78,6 +87,8 @@ function CheckoutContent() {
   const [restarting, setRestarting] = useState(false)
 
   const offerId = searchParams.get('offerId')
+  // The voucher value picked on a multi-denomination offer (a pool id); the server prices from its own list.
+  const variantPoolId = searchParams.get('variant')
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -94,7 +105,7 @@ function CheckoutContent() {
     let cancelled = false
     ;(async () => {
       try {
-        const { ok, data } = await initiate(await user.getIdToken(), offerId, false)
+        const { ok, data } = await initiate(await user.getIdToken(), offerId, false, false, variantPoolId)
         if (cancelled) return
         if (!ok) {
           setError(localizedApiError(data, t, 'checkout_error_generic'))
@@ -107,7 +118,7 @@ function CheckoutContent() {
       }
     })()
     return () => { cancelled = true }
-  }, [user, held, offerId, router, t])
+  }, [user, held, offerId, variantPoolId, router, t])
 
   // The photo is decoration: without it the summary shows the category panel.
   useEffect(() => {
@@ -124,7 +135,7 @@ function CheckoutContent() {
     setPayError(null)
     setProceeding(true)
     try {
-      const { ok, data } = await initiate(await user.getIdToken(), offerId, true)
+      const { ok, data } = await initiate(await user.getIdToken(), offerId, true, false, variantPoolId)
       if (!ok) {
         setPayError(data.error ?? t('checkout_error_generic'))
         return
@@ -149,7 +160,7 @@ function CheckoutContent() {
     setPayError(null)
     setRestarting(true)
     try {
-      const { ok, data } = await initiate(await user.getIdToken(), offerId, false, true)
+      const { ok, data } = await initiate(await user.getIdToken(), offerId, false, true, variantPoolId)
       if (!ok) {
         setPayError(data.error ?? t('checkout_error_generic'))
         return
@@ -180,6 +191,7 @@ function CheckoutContent() {
     )
   }
 
+  const media = order ? purchaseMediaProps({ order, offer }) : null
   const discount = order?.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
   const fee = order ? cancellationFeeAgorot(Math.round(order.amount * 100)) / 100 : 0
   const payLabel = order ? t('checkout_pay_button').replace('{price}', formatPrice(order.amount)) : ''
@@ -237,12 +249,13 @@ function CheckoutContent() {
                 <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-brand to-emerald-500" />
                 <div className="p-5 sm:p-7">
                   {/* Who and what: photo (or the category panel), business, offer, method. */}
-                  <div className="flex items-start gap-4">
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brandTint ring-1 ring-slate-200/70">
-                      {offer && (
-                        <PerkImage src={offer.imageUrl} alt="" category={offer.category} businessName={offer.businessName} />
-                      )}
-                    </div>
+                  <div className="flex items-center gap-4">
+                    {media?.badge && <MerchantBadge size="lg" {...media.badge} />}
+                    {!media?.badge && !!media?.photoUrl && (
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brandTint ring-1 ring-slate-200/70">
+                        <PerkImage src={media.photoUrl} alt="" category={offer?.category ?? ''} businessName="" />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{localizedBusinessName(order, lang).text}</div>
                       <h2 className="mt-1 text-lg font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</h2>
@@ -250,9 +263,13 @@ function CheckoutContent() {
                     </div>
                   </div>
 
+                  {(order.fulfillmentType === 'raayonit_pool' || (!!offer && isPooled(offer.fulfillmentType))) && (
+                    <IssuerAttribution issuer={RAAYONIT_ISSUER} lang={lang} note={t('voucher_valid_years')} className="mt-6" />
+                  )}
+
                   {/* The itemised price, VAT included, and what the member saves. */}
-                  <div className="mt-6 rounded-2xl bg-gradient-to-br from-brandTint to-white p-4 sm:p-5 ring-1 ring-brandLight">
-                    <dl className="space-y-2">
+                  <div className="mt-7 rounded-2xl bg-gradient-to-br from-brandTint to-white p-5 sm:p-6 ring-1 ring-brandLight">
+                    <dl className="space-y-3">
                       {order.originalPrice !== null && discount > 0 && (
                         <>
                           <div className="flex items-center justify-between text-sm">
@@ -281,28 +298,29 @@ function CheckoutContent() {
                     </div>
                   </div>
 
-                  <section aria-labelledby="checkout-voucher-heading" className="mt-6">
-                    <h2 id="checkout-voucher-heading" className="text-sm font-bold text-ink mb-2">{t('checkout_voucher_details_title')}</h2>
+                  <section aria-labelledby="checkout-voucher-heading" className="mt-8">
+                    <h2 id="checkout-voucher-heading" className="text-sm font-bold text-ink mb-3">{t('checkout_voucher_details_title')}</h2>
                     <p className="flex items-center gap-2 text-sm text-slate-600">
                       <span aria-hidden="true" className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-sky-200/60 bg-brandTint text-brand">
                         <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                       </span>
-                      <span>{t('checkout_validity').replace('{days}', String(order.validityDays))}</span>
+                      <span>{offer?.fulfillmentType === 'raayonit_pool' ? t('voucher_valid_years') : t('checkout_validity').replace('{days}', String(order.validityDays))}</span>
                     </p>
                     {order.redemptionTerms && (
-                      <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                      <div className="mt-4 rounded-xl bg-slate-50 p-4">
                         <h3 className="text-xs font-bold text-slate-700 mb-1">{t('voucher_redemption_terms_label')}</h3>
-                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line" dir="auto">{localizeText(order.redemptionTerms, order.translations, lang, 'redemptionTerms').text}</p>
+                        <p className="text-sm text-slate-600 leading-[1.7] whitespace-pre-line" dir="auto">{localizeText(order.redemptionTerms, order.translations, lang, 'redemptionTerms').text}</p>
                       </div>
                     )}
                   </section>
 
-                  <section aria-labelledby="checkout-cancellation-heading" className="mt-6 border-t border-slate-100 pt-5">
-                    <h2 id="checkout-cancellation-heading" className="text-sm font-bold text-ink mb-2">{t('checkout_cancellation_title')}</h2>
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                  <section aria-labelledby="checkout-cancellation-heading" className="mt-8 border-t border-slate-100 pt-7">
+                    <h2 id="checkout-cancellation-heading" className="text-sm font-bold text-ink mb-3">{t('checkout_cancellation_title')}</h2>
+                    <p className="text-sm text-slate-600 leading-[1.7]">
                       {t('checkout_cancellation_body').replace('{fee}', formatPrice(fee))}
                     </p>
                   </section>
+
                 </div>
               </article>
 
@@ -310,7 +328,7 @@ function CheckoutContent() {
 
               {/* Sticky on phones (above the home indicator), in the flow from 640px. */}
               <div className="checkout-paybar sticky bottom-0 z-10 -mx-5 mt-5 px-5 pt-4 sm:static sm:mx-0 sm:px-0 sm:pt-0">
-                <p className="mb-3 text-center text-xs leading-5 text-slate-600">
+                <p className="mb-4 text-center text-xs leading-6 text-slate-600">
                   <ConsentText template={t('checkout_agree').replace('{price}', formatPrice(order.amount))} t={t} />
                 </p>
                 {payError && (

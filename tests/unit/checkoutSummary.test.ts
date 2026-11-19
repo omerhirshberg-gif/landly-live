@@ -24,7 +24,7 @@ describe('checkout terms are clickwrap', () => {
     expect(page).not.toMatch(/Checkbox|agreeMissing|setAgreed|checkout_agree_required/)
   })
   it('accepts the terms with Pay, recorded on the order', () => {
-    expect(page).toMatch(/initiate\(await user\.getIdToken\(\), offerId, true\)/)
+    expect(page).toMatch(/initiate\(await user\.getIdToken\(\), offerId, true, false, variantPoolId\)/)
     expect(page).toContain("t('checkout_agree').replace('{price}'")
   })
   it.each(LANGS)('names the Pay price and links the Terms (%s)', (lang) => {

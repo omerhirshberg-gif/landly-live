@@ -21,6 +21,8 @@ export interface LocationSubject {
   participatingChains?: unknown
   /** Stores picked from Google Places; counted with the typed names (a store in both lists counts once). */
   participatingPlaces?: unknown
+  /** Raayonit's clean branch list: when present it is what the venues are counted from. */
+  branches?: unknown
 }
 
 const isNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
@@ -35,7 +37,7 @@ function hasAddressText(value: unknown): boolean {
 
 /** True when the perk spans several branches, so no single address or navigation applies. */
 export function isMultiBranch(subject: LocationSubject): boolean {
-  return parseFulfillmentType(subject.fulfillmentType) === 'multipass_pool' || parsePerkScope(subject.perkScope) === 'multi_chain' || subject.isNationwide === true
+  return parseFulfillmentType(subject.fulfillmentType) === 'raayonit_pool' || parsePerkScope(subject.perkScope) === 'multi_chain' || subject.isNationwide === true
 }
 
 /** Single address and Waze / Google Maps only for a single-location direct perk that actually has a place. */
@@ -52,16 +54,24 @@ const listLength = (subject: LocationSubject) =>
     {
       participatingChains: Array.isArray(subject.participatingChains) ? subject.participatingChains.filter((n): n is string => typeof n === 'string') : [],
       participatingPlaces: Array.isArray(subject.participatingPlaces) ? subject.participatingPlaces : [],
+      branches: Array.isArray(subject.branches) ? (subject.branches as never[]) : [],
     },
     'en',
   ).length
+
+/** A multi-branch-style perk (a Raayonit brand) with exactly one venue: its card and page show that venue's address, . */
+export function isSingleVenue(subject: LocationSubject): boolean {
+  return isMultiBranch(subject) && parsePerkScope(subject.perkScope) !== 'multi_chain' && listLength(subject) === 1
+}
 
 /** Which replacement notice a multi-branch perk shows; null for a single-location perk. */
 export function locationNoticeKind(subject: LocationSubject): LocationNoticeKind | null {
   if (parsePerkScope(subject.perkScope) === 'multi_chain') return 'chains'
   if (!isMultiBranch(subject)) return null
+  // One venue is a place, not a notice: it shows its address (or "In store"), never "valid at 1 store".
+  if (isSingleVenue(subject)) return null
   if (listLength(subject) > 0) return 'stores'
-  return parseFulfillmentType(subject.fulfillmentType) === 'multipass_pool' ? 'participating' : 'nationwide'
+  return parseFulfillmentType(subject.fulfillmentType) === 'raayonit_pool' ? 'participating' : 'nationwide'
 }
 
 /**
@@ -73,13 +83,12 @@ export function locationNotice(subject: LocationSubject): { key: LocationNoticeK
   if (!kind) return null
   const count = listLength(subject)
   if (kind === 'chains') return { key: 'perk_honoured_at_chains', count }
-  if (kind === 'stores') return { key: count === 1 ? 'perk_valid_one_store' : 'perk_valid_n_stores', count }
+  if (kind === 'stores') return { key: 'perk_valid_n_stores', count }
   return { key: kind === 'nationwide' ? 'perk_valid_all_stores' : 'perk_valid_participating_stores', count }
 }
 
 export type LocationNoticeKey =
   | 'perk_honoured_at_chains'
-  | 'perk_valid_one_store'
   | 'perk_valid_n_stores'
   | 'perk_valid_all_stores'
   | 'perk_valid_participating_stores'

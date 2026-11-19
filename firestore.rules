@@ -259,12 +259,13 @@ service cloud.firestore {
     // Money, contracts and secrets. All of these are read and written only by the
     // Admin SDK behind the admin session or a one-time invite token; no client
     // may touch them, so a stolen member or business login can't reach any of it.
-    //  - couponPools (+ items, codeHashes): Multipass codes, encrypted (lib/inventory/)
+    //  - couponPools (+ items, codeHashes): Raayonit voucher codes, encrypted (lib/inventory/)
     //  - merchantInvites, merchantInviteBatches: onboarding links, stored as hashes (lib/merchants/)
     //  - businessFinancials: tax ID and bank details, AES-256-GCM (lib/merchants/onboarding.ts)
     //  - businessContracts: the signed agreement record, write-once
     //  - payoutBatches (+ lines): settlement batches and MASAV file metadata (lib/finance/)
     //  - adminAuditLog: append-only record of admin actions (lib/admin/auditLog.ts)
+    //  - raayonit_sync_logs: the daily Raayonit sync's run log (lib/inventory/raayonitDailySync.ts)
     match /couponPools/{poolId} {
       allow read, write: if false;
     }
@@ -290,6 +291,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /adminAuditLog/{entryId} {
+      allow read, write: if false;
+    }
+    // raayonit_sync_logs/{YYYY-MM-DD, Asia/Jerusalem}: one document per daily Raayonit sync run (counts and brand names, no
+    // secrets). Written and read only by the Admin SDK (lib/inventory/raayonitDailySync.ts).
+    match /raayonit_sync_logs/{day} {
       allow read, write: if false;
     }
 

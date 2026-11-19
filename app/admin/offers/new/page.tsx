@@ -14,8 +14,8 @@ import BidiText from '@/components/admin/BidiText'
 import { ButtonSpinner, FormSection, StickyActionBar } from '@/components/admin/FormSection'
 import PageHeader from '@/components/admin/PageHeader'
 import { ADMIN_HINT, ADMIN_INPUT, ADMIN_LABEL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
-import { BusinessPicker, DirectScopePicker, EMPTY_MULTIPASS_SCOPE, FulfillmentPicker, MultipassPerkFields, MultipassScopePicker, TermsFields, WizardStepper, type MultipassScopeValue, Fulfillment, type WizardBusiness } from '@/components/admin/offers/WizardParts'
-import WizardCodeDropzone, { type WizardCodes } from '@/components/admin/offers/WizardCodeDropzone'
+import { BusinessPicker, DirectScopePicker, EMPTY_RAAYONIT_SCOPE, RaayonitPerkFields, RaayonitScopePicker, TermsFields, WizardStepper, type RaayonitScopeValue, Fulfillment, type WizardBusiness } from '@/components/admin/offers/WizardParts'
+import { ADMIN_SELECT } from '@/components/admin/formStyles'
 import { useAdminT } from '@/lib/admin/translations'
 import { isCommissionRate, type PaymentTerms } from '@/lib/merchants/terms'
 import { validateOfferPrices } from '@/lib/admin/validateOfferPrices'
@@ -59,22 +59,31 @@ function NewOfferForm() {
   const [fulfillment, setFulfillment] = useState<Fulfillment>('direct_merchant')
   // A local perk that is a multi-chain pass: an issuer and its chains instead of a business.
   const [chainPass, setChainPass] = useState(false)
-  const [scope, setScope] = useState<MultipassScopeValue>(EMPTY_MULTIPASS_SCOPE)
+  const [scope, setScope] = useState<RaayonitScopeValue>(EMPTY_RAAYONIT_SCOPE)
   const [offer, setOffer] = useState<OfferFormValue>(emptyOffer)
   const [commission, setCommission] = useState('')
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerms | ''>('')
   const [termsSeededFor, setTermsSeededFor] = useState<string | null>(null)
-  const [pool, setPool] = useState({ unitCost: '', warningThreshold: '10' })
-  const [codes, setCodes] = useState<WizardCodes | null>(null)
+  // The shared voucher stocks a Raayonit offer can draw from, and the one chosen (it dictates the value and price).
+  const [stocks, setStocks] = useState<{ poolId: string; title: string; faceValueAgorot: number; priceAgorot: number; remainingCount: number }[]>([])
+  const [poolId, setPoolId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string; translationWarning?: string | null; warnings: string[]; multipass: boolean; noBusiness: boolean; codesAdded: number } | null>(null)
+  const [result, setResult] = useState<{ offerId: string; offerTitle: string; businessName: string; translationWarning?: string | null; warnings: string[]; raayonit: boolean; noBusiness: boolean } | null>(null)
 
   useEffect(() => {
     adminFetch('/api/admin/businesses')
       .then((res) => res.json())
       .then((data) => setBusinesses(data.businesses ?? []))
       .catch(() => setLoadError(t('wizard.loadBusinessesFailed')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    adminFetch('/api/admin/pools')
+      .then((res) => res.json())
+      .then((data) => setStocks((data.pools ?? []).filter((p: { faceValueAgorot?: number | null; priceAgorot?: number | null; status?: string }) => p.faceValueAgorot != null && p.priceAgorot != null && p.status !== 'archived')))
+      .catch(() => setLoadError(t('inv.loadFailed')))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -105,16 +114,16 @@ function NewOfferForm() {
     )
   )
   const backHref = useAdminParent()?.href ?? '/admin/offers'
-  const dirty = !result && (JSON.stringify(offer) !== JSON.stringify(emptyOffer) || selectedUid !== null || JSON.stringify(scope) !== JSON.stringify(EMPTY_MULTIPASS_SCOPE))
+  const dirty = !result && (JSON.stringify(offer) !== JSON.stringify(emptyOffer) || selectedUid !== null || JSON.stringify(scope) !== JSON.stringify(EMPTY_RAAYONIT_SCOPE))
   useUnsavedGuard(dirty && !submitting)
 
   const updateOffer = <K extends keyof OfferFormValue>(key: K, value: OfferFormValue[K]) =>
     setOffer((prev) => ({ ...prev, [key]: value }))
 
-  const multipass = fulfillment === 'multipass_pool'
-  const manualChain = !multipass && chainPass
-  // A Multipass perk and a manual multi-chain pass have no business: whatever was picked for a local one is ignored.
-  const noBusiness = multipass || manualChain
+  const raayonit = fulfillment === 'raayonit_pool'
+  const manualChain = !raayonit && chainPass
+  // A Raayonit perk and a manual multi-chain pass have no business: whatever was picked for a local one is ignored.
+  const noBusiness = raayonit || manualChain
   const perkScope = manualChain ? 'multi_chain' : scope.perkScope
   const termsChanged = !!selected && !noBusiness && (
     (commission === '' ? null : Number((Number(commission) / 100).toFixed(4))) !== selected.commissionRate ||
@@ -138,10 +147,7 @@ function NewOfferForm() {
       if (!noBusiness && commission !== '' && !isCommissionRate(Number((Number(commission) / 100).toFixed(4)))) return t('wizard.commissionHint')
       if (termsChanged && (commission === '' || !paymentTerms)) return t('wizard.commissionHint')
     }
-    if (n >= 3 && multipass) {
-      if (pool.unitCost === '' || !(Number(pool.unitCost) >= 0)) return t('wizard.unitCostHint')
-      if (!Number.isInteger(Number(pool.warningThreshold)) || Number(pool.warningThreshold) < 0) return t('wizard.warningAt')
-    }
+    if (n >= 3 && raayonit && !poolId) return t('wizard.stockNeeded')
     return null
   }
 
@@ -185,15 +191,13 @@ function NewOfferForm() {
             offerPrice: Number(offer.offerPrice),
             imageUrl: offer.imageUrl,
             expiryDate: offer.expiryDate || null,
-            totalQuantity: multipass || offer.unlimited || !offer.totalQuantity ? null : Number(offer.totalQuantity),
+            totalQuantity: raayonit || offer.unlimited || !offer.totalQuantity ? null : Number(offer.totalQuantity),
             isBestseller: offer.isBestseller,
             ...(noBusiness ? {} : { isNationwide: offer.isNationwide, participatingChains: offer.isNationwide ? offer.participatingChains : [], participatingPlaces: offer.isNationwide ? offer.participatingPlaces : [] }),
             ...voucherTermsPayload(offer),
           },
           translationOverrides: offer.translationOverrides,
-          ...(multipass
-            ? { pool: { unitCost: Number(pool.unitCost), warningThreshold: Number(pool.warningThreshold) }, codeRows: codes?.sheet.entries ?? [] }
-            : {}),
+          ...(raayonit ? { poolId } : {}),
         }),
       })
       const data = await res.json()
@@ -212,7 +216,7 @@ function NewOfferForm() {
         }).catch(() => null)
         if (!termsRes?.ok) warnings.push(t('wizard.termsFailed', { error: (await termsRes?.json().catch(() => null))?.error ?? t('wizard.somethingWrong') }))
       }
-      setResult({ ...data, warnings, multipass, noBusiness, codesAdded: data.codes?.added ?? 0 })
+      setResult({ ...data, warnings, raayonit, noBusiness })
     } catch {
       setError(t('wizard.somethingWrong'))
       setSubmitting(false)
@@ -230,7 +234,7 @@ function NewOfferForm() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-adm-text">{t('wizard.created')}</h1>
-              <p className="mt-0.5 text-sm text-adm-ok">{result.multipass && result.warnings.length === 0 && result.codesAdded === 0 ? t('wizard.poolReady') : t('wizard.live')}</p>
+              <p className="mt-0.5 text-sm text-adm-ok">{result.raayonit && result.warnings.length === 0 ? t('wizard.poolReady') : t('wizard.live')}</p>
             </div>
           </div>
           <dl className="divide-y divide-adm-line">
@@ -260,23 +264,17 @@ function NewOfferForm() {
           </Alert>
         ))}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          {result.multipass && result.codesAdded === 0 && (
-            <Link href="/admin/inventory" className={PRIMARY_BUTTON}>
-              <i className="fa-solid fa-file-arrow-up text-xs" aria-hidden="true" />
-              {t('wizard.uploadCodes')}
-            </Link>
-          )}
           <button
             type="button"
-            className={result.multipass && result.codesAdded === 0 ? SECONDARY_BUTTON : PRIMARY_BUTTON}
+            className={PRIMARY_BUTTON}
             onClick={() => {
               setOffer(emptyOffer)
               setResult(null)
               setStep(1)
               setMaxReached(1)
               setSelectedUid(null)
-              setScope(EMPTY_MULTIPASS_SCOPE)
-              setCodes(null)
+              setScope(EMPTY_RAAYONIT_SCOPE)
+              setPoolId('')
               setTermsSeededFor(null)
               setSubmitting(false)
             }}
@@ -317,10 +315,9 @@ function NewOfferForm() {
             <div className="space-y-8 p-5 sm:p-6">
               <section aria-labelledby="wiz-sec-channel" className="space-y-5">
                 <h3 id="wiz-sec-channel" className="text-sm font-bold text-adm-text">{t('wizard.sectionChannel')}</h3>
-                <FulfillmentPicker value={fulfillment} onChange={setFulfillment} />
-                {!multipass && <DirectScopePicker chain={chainPass} onChange={setChainPass} />}
-                {multipass && <MultipassScopePicker value={scope.perkScope} onChange={(perkScope) => setScope((prev) => ({ ...prev, perkScope }))} />}
-                {multipass && <p className="rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.multipassNoBusiness')} {t('wizard.multipassNavHidden')}</p>}
+                {!raayonit && <DirectScopePicker chain={chainPass} onChange={setChainPass} />}
+                {raayonit && <RaayonitScopePicker value={scope.perkScope} onChange={(perkScope) => setScope((prev) => ({ ...prev, perkScope }))} />}
+                {raayonit && <p className="rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.raayonitNoBusiness')} {t('wizard.raayonitNavHidden')}</p>}
                 {manualChain && <p className="rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.chainNoBusiness')}</p>}
                 {!noBusiness && <NationwideField checked={offer.isNationwide} onChange={(v) => updateOffer('isNationwide', v)} />}
                 {!noBusiness && offer.isNationwide && <StoresField mode="nationwide" chains={offer.participatingChains} places={offer.participatingPlaces} onChange={(next) => { updateOffer('participatingChains', next.chains); updateOffer('participatingPlaces', next.places) }} />}
@@ -328,7 +325,7 @@ function NewOfferForm() {
               <section aria-labelledby="wiz-sec-perk" className="space-y-5 border-t border-adm-line pt-8">
                 <h3 id="wiz-sec-perk" className="text-sm font-bold text-adm-text">{t('wizard.sectionPerk')}</h3>
                 {noBusiness ? (
-                  <MultipassPerkFields value={{ ...scope, perkScope }} onChange={setScope} />
+                  <RaayonitPerkFields value={{ ...scope, perkScope }} onChange={setScope} />
                 ) : (
                   <div>
                     <p className={ADMIN_LABEL}>{t('wizard.business')}</p>
@@ -354,24 +351,39 @@ function NewOfferForm() {
         {step === 3 && (
           <FormSection icon="fa-boxes-stacked" title={t('wizard.step3')}>
             <div className="space-y-8">
-              <OfferFormFields value={offer} onChange={updateOffer} section="inventory" poolManaged={multipass} />
-              {multipass && (
+              <OfferFormFields value={offer} onChange={updateOffer} section="inventory" poolManaged={raayonit} />
+              {raayonit && (
                 <fieldset className="min-w-0">
-                  <legend className="mb-4 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.fulfillmentMultipass')}</legend>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="wiz-unit-cost" className={ADMIN_LABEL}>{t('wizard.unitCost')}</label>
-                      <input id="wiz-unit-cost" required inputMode="decimal" dir="ltr" className={`${ADMIN_INPUT} tabular-nums`} value={pool.unitCost} onChange={(e) => setPool((p) => ({ ...p, unitCost: e.target.value }))} />
-                      <p className={ADMIN_HINT}>{t('wizard.unitCostHint')}</p>
-                    </div>
-                    <div>
-                      <label htmlFor="wiz-warn" className={ADMIN_LABEL}>{t('wizard.warningAt')}</label>
-                      <input id="wiz-warn" required inputMode="numeric" dir="ltr" className={`${ADMIN_INPUT} tabular-nums`} value={pool.warningThreshold} onChange={(e) => setPool((p) => ({ ...p, warningThreshold: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <WizardCodeDropzone value={codes} onChange={setCodes} />
-                  </div>
+                  <legend className="mb-1 text-xs font-semibold uppercase tracking-wider text-adm-muted">{t('wizard.stock')}</legend>
+                  <p className={`${ADMIN_HINT} mb-3`}>{t('wizard.stockHint')}</p>
+                  {stocks.length === 0 ? (
+                    <Alert tone="warning">
+                      {t('wizard.stockNone')} <Link href="/admin/inventory" className="font-semibold underline">{t('route.Inventory')}</Link>
+                    </Alert>
+                  ) : (
+                    <>
+                      <label htmlFor="wiz-stock" className={ADMIN_LABEL}>{t('wizard.stockPick')}</label>
+                      <select
+                        id="wiz-stock"
+                        required
+                        className={ADMIN_SELECT}
+                        value={poolId}
+                        onChange={(e) => {
+                          const stock = stocks.find((x) => x.poolId === e.target.value)
+                          setPoolId(e.target.value)
+                          // The stock dictates what the voucher is worth and what it sells for.
+                          if (stock) setOffer((prev) => ({ ...prev, originalPrice: String(stock.faceValueAgorot / 100), offerPrice: String(stock.priceAgorot / 100) }))
+                        }}
+                      >
+                        <option value="">{t('wizard.stockPick')}</option>
+                        {stocks.map((stock) => (
+                          <option key={stock.poolId} value={stock.poolId}>
+                            {t('wizard.stockOption', { name: stock.title, value: stock.faceValueAgorot / 100, price: stock.priceAgorot / 100, n: stock.remainingCount })}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                   <p className="mt-4 rounded-xl border border-adm-line bg-adm-sunken px-4 py-3 text-sm text-adm-text-2">{t('wizard.poolNote')}</p>
                 </fieldset>
               )}

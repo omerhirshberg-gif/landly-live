@@ -47,7 +47,7 @@ describe('getAllOffers', () => {
     expect(fs.getDocs).not.toHaveBeenCalled()
   })
 
-  it('fetches again after the TTL, and when forced (pull-to-refresh)', async () => {
+  it('fetches again behind the held copy after the TTL, and when forced (pull-to-refresh)', async () => {
     const { offers } = await load()
     vi.useFakeTimers()
     const fetchMock = vi.fn(async () => okResponse([wire('a')]))
@@ -56,7 +56,9 @@ describe('getAllOffers', () => {
     await offers.getAllOffers({ force: true })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     vi.advanceTimersByTime(offers.OFFERS_CACHE_TTL_MS + 1)
-    await offers.getAllOffers()
+    // Stale-while-revalidate: the held list comes back at once, and the refresh starts behind it.
+    expect((await offers.getAllOffers()).map((o) => o.id)).toEqual(['a'])
+    for (let i = 0; i < 5; i++) await Promise.resolve()
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
@@ -110,20 +112,20 @@ describe('offers API client', () => {
   })
 })
 
-describe('getOffersByIds', () => {
-  it('reads 30 ids per query (not one read each), asks for each id once, and keeps the caller order', async () => {
+describe('getOffersByIds and getOffer', () => {
+  it('read the public list once, keep the caller order, and skip an offer that is no longer on sale', async () => {
     const { offers } = await load()
+    const fetchMock = vi.fn(async () => okResponse(Array.from({ length: 65 }, (_, i) => wire(`o${i}`)).filter((o) => o.id !== 'o3')))
+    vi.stubGlobal('fetch', fetchMock)
     const ids = Array.from({ length: 65 }, (_, i) => `o${i}`)
-    fs.getDocs.mockImplementation(async (q: { parts: [unknown, { where: [string, string, string[]] }] }) => {
-      const requested = q.parts[1].where[2]
-      // o3 has been deleted.
-      return snap(requested.filter((id) => id !== 'o3').map((id) => ({ id, data: { title: id } })))
-    })
     const result = await offers.getOffersByIds([...ids, 'o0'])
-    expect(fs.getDocs).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fs.getDocs).not.toHaveBeenCalled()
     expect(fs.getDoc).not.toHaveBeenCalled()
-    // One per requested id (o0 was asked for twice), minus the deleted o3.
+    // One per requested id (o0 was asked for twice), minus the one that is gone (o3).
     expect(result).toHaveLength(65)
     expect(result.map((o) => o.id).slice(0, 5)).toEqual(['o0', 'o1', 'o2', 'o4', 'o5'])
+    expect(await offers.getOffer('o3')).toBeNull()
+    expect((await offers.getOffer('o4'))?.id).toBe('o4')
   })
 })

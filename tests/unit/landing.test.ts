@@ -21,7 +21,7 @@ import { distinctDescription } from '@/lib/offers/offerText'
 
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: null, loading: false }) }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 
 const read = (path: string) => readFileSync(path, 'utf8')
 function withLang(lang: Lang, element: ReturnType<typeof createElement>) {
@@ -355,7 +355,7 @@ describe('deal images and logos', () => {
     expect(web).toContain('rounded-2xl [corner-shape:squircle] border border-slate-100 bg-white')
     expect(web).toContain("`h-full w-auto object-contain ${size === 'lg' ? 'min-w-0 max-w-full' : 'max-w-[96px]'}`")
     const native = read('landly-mobile/src/components/MerchantBadge.tsx')
-    expect(native).toContain('resizeMode="contain"')
+    expect(native).toContain('contentFit="contain"')
     expect(native).toContain('width: Math.min(logoMaxWidth, inner * aspect)')
     // A feed card's badge is one fixed tile for every logo (wide, square, round or tall), initial fallback included.
     expect(web).toContain('h-[44px] min-w-[64px] max-w-[124px] rounded-xl border border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:h-[48px] sm:min-w-[72px] sm:max-w-[140px] sm:px-2')
@@ -379,7 +379,7 @@ describe('offer page', () => {
   })
 
   it('picks the badge’s logo as the cards do, and sits it beside the business’s name', () => {
-    expect(page).toContain("<MerchantBadge size=\"lg\" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} businessName={businessName.text} />")
+    expect(page).toContain("<MerchantBadge size=\"lg\" logoUrl={badgeLogoUri(offer.businessLogoUrl ?? '', offer.imageUrl, image.role) ?? ''} />")
     expect(page.indexOf('<MerchantBadge')).toBeLessThan(page.indexOf('<h1'))
   })
 

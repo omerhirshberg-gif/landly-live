@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { locationNotice, locationNoticeKind, shouldShowLocationNavigation, withCount } from '@/lib/offers/locationVisibility'
+import { isSingleVenue, locationNotice, locationNoticeKind, shouldShowLocationNavigation, withCount } from '@/lib/offers/locationVisibility'
 import { voucherDestination } from '@/lib/member/voucherDestination'
 import { offerDistanceKm } from '@/lib/perks/perksFilter'
 import { frozenPerkScope } from '@/lib/offers/perkScope'
@@ -17,8 +18,8 @@ describe('shouldShowLocationNavigation', () => {
     expect(shouldShowLocationNavigation({ businessGeo: geo })).toBe(true)
     expect(shouldShowLocationNavigation({ businessAddress: address })).toBe(true)
   })
-  it('hides Multipass, multi-chain and nationwide perks even with a place', () => {
-    expect(shouldShowLocationNavigation({ fulfillmentType: 'multipass_pool', geo, address })).toBe(false)
+  it('hides Raayonit, multi-chain and nationwide perks even with a place', () => {
+    expect(shouldShowLocationNavigation({ fulfillmentType: 'raayonit_pool', geo, address })).toBe(false)
     expect(shouldShowLocationNavigation({ perkScope: 'multi_chain', geo })).toBe(false)
     expect(shouldShowLocationNavigation({ fulfillmentType: 'direct_merchant', isNationwide: true, geo, address })).toBe(false)
   })
@@ -35,18 +36,18 @@ describe('shouldShowLocationNavigation', () => {
 
 describe('locationNoticeKind', () => {
   it('picks the replacement notice', () => {
-    expect(locationNoticeKind({ perkScope: 'multi_chain', fulfillmentType: 'multipass_pool' })).toBe('chains')
-    expect(locationNoticeKind({ fulfillmentType: 'multipass_pool' })).toBe('participating')
+    expect(locationNoticeKind({ perkScope: 'multi_chain', fulfillmentType: 'raayonit_pool' })).toBe('chains')
+    expect(locationNoticeKind({ fulfillmentType: 'raayonit_pool' })).toBe('participating')
     expect(locationNoticeKind({ fulfillmentType: 'direct_merchant', isNationwide: true })).toBe('nationwide')
     expect(locationNoticeKind({ fulfillmentType: 'direct_merchant', geo })).toBeNull()
   })
 })
 
 describe('locationNotice', () => {
-  it('names the stores when some are listed, with a singular for one', () => {
+  it('names the stores when two or more are listed; one venue is a place, never a notice', () => {
     expect(locationNotice({ fulfillmentType: 'direct_merchant', isNationwide: true })).toEqual({ key: 'perk_valid_all_stores', count: 0 })
-    expect(locationNotice({ fulfillmentType: 'multipass_pool' })).toEqual({ key: 'perk_valid_participating_stores', count: 0 })
-    expect(locationNotice({ fulfillmentType: 'multipass_pool', participatingChains: ['A'] })).toEqual({ key: 'perk_valid_one_store', count: 1 })
+    expect(locationNotice({ fulfillmentType: 'raayonit_pool' })).toEqual({ key: 'perk_valid_participating_stores', count: 0 })
+    expect(locationNotice({ fulfillmentType: 'raayonit_pool', participatingChains: ['A'] })).toBeNull()
     expect(locationNotice({ isNationwide: true, participatingChains: ['A', ' ', 'B', 'C'] })).toEqual({ key: 'perk_valid_n_stores', count: 3 })
     expect(locationNotice({ perkScope: 'multi_chain', participatingChains: ['A', 'B'] })).toEqual({ key: 'perk_honoured_at_chains', count: 2 })
     expect(locationNotice({ fulfillmentType: 'direct_merchant', geo })).toBeNull()
@@ -54,14 +55,14 @@ describe('locationNotice', () => {
   it('counts stores picked from Google Places, once even when also typed', () => {
     const place = (id: string, he: string) => ({ placeId: id, names: { he }, lat: 32, lng: 34 })
     expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א'), place('b', 'פוקס ב')] })).toEqual({ key: 'perk_valid_n_stores', count: 2 })
-    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')] })).toEqual({ key: 'perk_valid_one_store', count: 1 })
-    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')], participatingChains: ['פוקס א'] })?.count).toBe(1)
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')] })).toBeNull()
+    expect(locationNotice({ isNationwide: true, participatingPlaces: [place('a', 'פוקס א')], participatingChains: ['פוקס א'] })).toBeNull()
     expect(locationNotice({ isNationwide: true, participatingPlaces: [], participatingChains: [] })).toEqual({ key: 'perk_valid_all_stores', count: 0 })
   })
   it('has every notice line in all five languages, with {n} only where a count is shown', () => {
     for (const lang of ['en', 'he', 'ru', 'fr', 'es'] as const) {
       const t = translations[lang] as Record<string, string>
-      for (const key of ['perk_valid_all_stores', 'perk_valid_participating_stores', 'perk_valid_one_store', 'perk_valid_n_stores', 'perk_stores_title']) expect(t[key], `${lang}.${key}`).toBeTruthy()
+      for (const key of ['perk_valid_all_stores', 'perk_valid_participating_stores', 'perk_business_location', 'perk_valid_n_stores', 'perk_stores_title']) expect(t[key], `${lang}.${key}`).toBeTruthy()
       expect(t.perk_valid_n_stores).toContain('{n}')
       expect(t.perk_valid_all_stores).not.toContain('{n}')
       expect(t.perk_valid_all_stores).not.toMatch(/branch|סניפי הרשת/i)
@@ -74,16 +75,69 @@ describe('surfaces that follow the rule', () => {
   it('a voucher drops its address and destination', () => {
     expect(voucherDestination({ businessAddress: address as never, businessGeo: geo }, 'en').destination).not.toBeNull()
     expect(voucherDestination({ businessAddress: address as never, businessGeo: geo, isNationwide: true }, 'en')).toEqual({ place: '', destination: null })
-    expect(voucherDestination({ businessAddress: address as never, businessGeo: geo, fulfillmentType: 'multipass_pool' }, 'en')).toEqual({ place: '', destination: null })
+    expect(voucherDestination({ businessAddress: address as never, businessGeo: geo, fulfillmentType: 'raayonit_pool' }, 'en')).toEqual({ place: '', destination: null })
   })
   it('Near Me never gives a multi-branch perk a distance', () => {
     const origin = { lat: 32.0, lng: 34.8 }
     expect(offerDistanceKm({ geo, perkScope: 'single_business', fulfillmentType: 'direct_merchant' }, origin)).toBeGreaterThan(0)
     expect(offerDistanceKm({ geo, isNationwide: true }, origin)).toBeNull()
-    expect(offerDistanceKm({ geo, fulfillmentType: 'multipass_pool' }, origin)).toBeNull()
+    expect(offerDistanceKm({ geo, fulfillmentType: 'raayonit_pool' }, origin)).toBeNull()
   })
-  it('freezes isNationwide onto a Multipass snapshot only when set', () => {
+  it('freezes isNationwide onto a Raayonit snapshot only when set', () => {
     expect(frozenPerkScope({ perkScope: 'single_business', brandName: 'Fox', isNationwide: true })).toMatchObject({ isNationwide: true })
     expect(frozenPerkScope({ perkScope: 'single_business', brandName: 'Fox' })).not.toHaveProperty('isNationwide')
+  })
+})
+
+describe('a single venue', () => {
+  const raay = { fulfillmentType: 'raayonit_pool', perkScope: 'single_business' }
+  it('is not a notice and never reads "valid at 1 store"', () => {
+    expect(isSingleVenue({ ...raay, branches: [{ name: 'A', address: 'x', city: 'y' }] })).toBe(true)
+    expect(locationNoticeKind({ ...raay, branches: [{ name: 'A', address: 'x', city: 'y' }] })).toBeNull()
+    expect(locationNotice({ ...raay, participatingChains: ['A'] })).toBeNull()
+    for (const lang of ['en', 'he', 'ru', 'fr', 'es'] as const) expect(Object.keys(translations[lang])).not.toContain('perk_valid_one_store')
+    expect(JSON.stringify(translations.he)).not.toContain('תקף בסניף אחד')
+    expect(JSON.stringify(translations.en)).not.toContain('Valid at 1 store')
+  })
+  it('counts a brand\'s branches, so a four-hotel brand shows a count', () => {
+    const branches = ['a', 'b', 'c', 'd'].map((n) => ({ name: 'VERT', address: n, city: n }))
+    expect(isSingleVenue({ ...raay, branches })).toBe(false)
+    expect(locationNotice({ ...raay, branches })).toEqual({ key: 'perk_valid_n_stores', count: 4 })
+  })
+  it('the cards and pages show the address, never the redemption method as the place', () => {
+    for (const f of ['components/discover/OfferCard.tsx', 'landly-mobile/src/components/OfferCard.tsx']) {
+      const src = readFileSync(f, 'utf8')
+      expect(src).toContain('const place = offerPlaceLabel(offer, lang)\n')
+      expect(src).not.toContain("t('redeem_method_in_store') : ''")
+    }
+    for (const f of ['app/offers/[offerId]/page.tsx', 'landly-mobile/src/app/offer/[offerId].tsx']) {
+      const src = readFileSync(f, 'utf8')
+      expect(src).toContain('offerFullAddress(offer, lang) : \'\'')
+      expect(src).not.toContain("offerFullAddress(offer, lang) || t('redeem_method_in_store')")
+      expect(src).toContain("'perk_business_location'")
+    }
+  })
+  it('every card pins its price row to the foot: stretch + mt-auto on web, grow + marginTop auto on native', () => {
+    const web = readFileSync('components/discover/OfferCard.tsx', 'utf8')
+    expect(web).toContain('group flex h-full flex-col')
+    // The address and the price are one footer block pinned to the card's bottom edge, so addresses line up across a row.
+    expect(web).toContain('<div className="mt-auto pt-2">')
+    expect(web).toContain('mt-1.5 flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap')
+    const native = readFileSync('landly-mobile/src/components/OfferCard.tsx', 'utf8')
+    expect(native).toContain("style={variant === 'carousel' ? styles.fill : styles.grow}")
+    expect(native).toContain("foot: { marginTop: 'auto', paddingTop: 8 }")
+
+    expect(translations.he.perk_business_location).toBe('מיקום בית העסק')
+    expect(translations.en.perk_business_location).toBe('Business location')
+  })
+})
+
+describe('single-venue coordinates', () => {
+  it('keeps only precise points inside Israel', () => {
+    const geo = JSON.parse(readFileSync('lib/inventory/raayonitVenueGeo.json', 'utf8')) as Record<string, { lat: number; lng: number } | null>
+    const points = Object.values(geo).filter((p): p is { lat: number; lng: number } => !!p)
+    expect(points.length).toBeGreaterThan(40)
+    for (const p of points) { expect(p.lat).toBeGreaterThan(29); expect(p.lat).toBeLessThan(34); expect(p.lng).toBeGreaterThan(34); expect(p.lng).toBeLessThan(36) }
+    expect(readFileSync('lib/inventory/raayonitCatalogSync.ts', 'utf8')).toContain('singleVenuePlace(brand, brand.branches[0]!)')
   })
 })

@@ -13,7 +13,7 @@ import type { OfferDocument } from '@/lib/firebase/offers'
 
 vi.mock('@/lib/firebase/config', () => ({ db: {}, auth: {} }))
 vi.mock('@/lib/firebase/useAuth', () => ({ useAuth: () => ({ user: { uid: 'u1' }, loading: false }) }))
-vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }) }))
+vi.mock('@/lib/firebase/useWishlist', () => ({ useWishlist: () => ({ isWishlisted: () => false, toggleWishlist: () => {} }), useIsWishlisted: () => false, useToggleWishlist: () => () => {}, useWishlistErrors: () => {} }))
 
 const { CURATED_COUNT, RAIL_MAX, buildCategoryRails, passCountMessage, railLabel, selectCurated } = await import('@/lib/home/categoryRails')
 const { default: OfferCardRail } = await import('@/components/discover/OfferCardRail')
@@ -149,9 +149,15 @@ describe('Recommended for you', () => {
 
 describe('OfferCardRail', () => {
   it('shows no deal count beside a title, on the web or in the app', () => {
-    for (const file of ['components/discover/OfferCardRail.tsx', 'landly-mobile/src/components/SectionHeader.tsx', 'landly-mobile/src/components/CategoryOfferRail.tsx', 'components/home/LoggedInHome.tsx']) {
+    for (const file of ['components/discover/OfferCardRail.tsx', 'landly-mobile/src/components/SectionHeader.tsx', 'components/home/LoggedInHome.tsx']) {
       expect(readFileSync(file, 'utf8'), file).not.toMatch(/count\?: number|typeof count|rail\.total/)
     }
+  })
+
+  it("states a category's count only in the Perks tab's \"See all (N)\" action, never beside the title", () => {
+    const rail = readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')
+    expect(rail.match(/rail\.total/g)).toHaveLength(1)
+    expect(rail).toContain("t('cats_see_all').replace('{count}', String(rail.total))")
   })
 
   const offers = ['1', '2', '3'].map((id) => offer(id))
@@ -231,6 +237,6 @@ describe('mirroring', () => {
     const carousel = readFileSync('landly-mobile/src/components/OfferCarousel.tsx', 'utf8')
     expect(carousel).toContain('snapToOffsets={snapToOffsets}')
     expect(carousel).not.toContain('snapToInterval')
-    expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).toContain('<OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} showCategoryBadge={false} />')
+    expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).toContain('<OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} showCategoryBadge={false} visible={visible} />')
   })
 })

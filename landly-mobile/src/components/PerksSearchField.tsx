@@ -7,7 +7,7 @@ import { colors, radius } from '../theme'
 // The 44pt search pill on the Perks tab and a category folder (web:
 // components/perks/PerksSearchBar.tsx): icon at the start edge, text aligned
 // to the reading direction, iOS's own clear button while editing.
-export default function PerksSearchField({ value, onChangeText }: { value: string; onChangeText: (next: string) => void }) {
+export default function PerksSearchField({ value, onChangeText, autoFocus = false }: { value: string; onChangeText: (next: string) => void; autoFocus?: boolean }) {
   const { t, isRtl } = useLang()
   return (
     <View style={styles.search}>
@@ -24,6 +24,7 @@ export default function PerksSearchField({ value, onChangeText }: { value: strin
         returnKeyType="search"
         clearButtonMode="while-editing"
         autoCorrect={false}
+        autoFocus={autoFocus}
         style={[styles.input, { textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' }]}
       />
     </View>

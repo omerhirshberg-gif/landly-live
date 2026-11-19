@@ -5,7 +5,7 @@ import { writeAudit } from '@/lib/admin/auditLog'
 import { revalidateGuestHome } from '@/lib/admin/revalidateHome'
 import { BATCH_COMMIT_CHUNK, parseOffersSheet, type BatchOffer, type BatchRow } from '@/lib/admin/offersBatch'
 import { getAdminDb } from '@/lib/firebase/admin'
-import { createPool } from '@/lib/inventory/poolAdmin'
+import { POOL_COLLECTION } from '@/lib/inventory/types'
 import { offerPlaceFields } from '@/lib/geo'
 import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { parseBusinessTranslations } from '@/lib/business/businessText'
@@ -22,7 +22,6 @@ import { offerTextSource, translationsForSave } from '@/lib/translate/translateO
 // the response, so a large upload isn't held up by Cloud Translation; an admin-written English
 // title (both title columns filled) is stored at once.
 const MAX_MATRIX_ROWS = 1000
-const DEFAULT_POOL_WARNING = 10
 
 const summarize = (row: BatchRow) => ({ row: row.row, title: row.title, ok: row.errors.length === 0, errors: row.errors })
 const overridesOf = (offer: BatchOffer) => (offer.titleHe && offer.titleEn ? { en: { title: offer.titleEn } } : {})
@@ -48,6 +47,14 @@ export async function POST(request: Request) {
   for (const doc of businessSnap.docs) byKey.set(doc.id.toLowerCase(), doc.id)
   const businesses = new Map(businessSnap.docs.map((doc) => [doc.id, doc.data()]))
 
+  // Raayonit rows draw from the shared stock whose voucher value they sell: the sheet's original price is the face value.
+  const poolSnap = await db.collection(POOL_COLLECTION).where('kind', '==', 'shared').get()
+  const poolByValue = new Map<number, { id: string; priceAgorot: number }>()
+  for (const doc of poolSnap.docs) {
+    const d = doc.data()
+    if (d.status !== 'archived' && Number.isInteger(d.faceValueAgorot) && Number.isInteger(d.priceAgorot)) poolByValue.set(d.faceValueAgorot, { id: doc.id, priceAgorot: d.priceAgorot })
+  }
+
   const parsed = parseOffersSheet(matrix as unknown[][], (key) => byKey.get(key.trim().toLowerCase()) ?? null)
   const rows = parsed.rows.map(summarize)
   const valid = parsed.rows.filter((r) => r.offer)
@@ -66,9 +73,20 @@ export async function POST(request: Request) {
     const pending: { row: number; offerId: string; offer: BatchOffer }[] = []
     for (const row of chunk) {
       const offer = row.offer!
-      const multipass = offer.fulfillmentType === 'multipass_pool'
-      // A Multipass perk and a manual multi-chain pass have no business: the brand stands in for the name, and they carry no place or logo.
-      const noBusiness = multipass || offer.perkScope === 'multi_chain'
+      const raayonit = offer.fulfillmentType === 'raayonit_pool'
+      // Raayonit vouchers are generated from the Raayonit Vouchers tab, never from the direct catalog sheet.
+      if (raayonit) {
+        failedRows.push(row.row)
+        continue
+      }
+      // A Raayonit perk and a manual multi-chain pass have no business: the brand stands in for the name, and they carry no place or logo.
+      const noBusiness = raayonit || offer.perkScope === 'multi_chain'
+      const stock = raayonit ? poolByValue.get(Math.round(offer.originalPrice * 100)) : undefined
+      // No stock of that value, or a price that differs from it: the row is not created.
+      if (raayonit && (!stock || stock.priceAgorot !== Math.round(offer.offerPrice * 100))) {
+        failedRows.push(row.row)
+        continue
+      }
       const business = noBusiness ? {} : businesses.get(offer.businessUid)!
       const ref = db.collection('offers').doc()
       const built = await buildOfferTranslations(sourceOf(offer), null, overridesOf(offer), null)
@@ -92,7 +110,8 @@ export async function POST(request: Request) {
         createdAt: Timestamp.now(),
         isBestseller: false,
         expiryDate: null,
-        totalQuantity: offer.fulfillmentType === 'multipass_pool' ? null : offer.totalQuantity,
+        totalQuantity: raayonit ? null : offer.totalQuantity,
+        ...(stock ? { poolId: stock.id } : {}),
         claimedCount: 0,
         validityDays: DEFAULT_VOUCHER_VALIDITY_DAYS,
         redemptionTerms: '',
@@ -111,16 +130,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // Multipass rows get their (empty) pool; codes are loaded from Stock & Pools. A failure is reported, not hidden.
   const warnings: { row: number; offerId: string }[] = []
-  for (const item of created.filter((c) => c.offer.fulfillmentType === 'multipass_pool')) {
-    try {
-      await createPool(db, { offerId: item.offerId, warningThreshold: DEFAULT_POOL_WARNING, unitCostAgorot: 0, retailPriceAgorot: Math.round(item.offer.originalPrice * 100) })
-    } catch (err) {
-      console.error('Batch pool creation failed', err)
-      warnings.push({ row: item.row, offerId: item.offerId })
-    }
-  }
 
   // The sheet's commission and payment terms are the business's agreed terms (the wizard saves them the same way).
   const terms = new Map<string, { commissionRate: number; paymentTerms: string }>()

@@ -118,7 +118,7 @@ describe('native checkout screen', () => {
   it('opens checkout from the offer screen inside the app, never a browser', () => {
     const offer = read('app/offer/[offerId].tsx')
     expect(offer).not.toMatch(/WebBrowser|openBrowserAsync|Linking/)
-    expect(offer).toContain("router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id } })")
+    expect(offer).toContain("router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id, ...(selected ? { variant: selected.poolId } : {}) } })")
     expect(read('app/_layout.tsx')).toContain('<Stack.Screen name="checkout/[offerId]" options={pageFlipOptions(isRtl)} />')
   })
 
@@ -142,8 +142,10 @@ describe('native checkout screen', () => {
 describe('category badge in filtered views', () => {
   it('is hidden on cards in a single-category list, on the app and the website', () => {
     expect(read('app/category/[category].tsx')).toContain('showCategoryBadge={false}')
-    expect(read('app/(tabs)/perks.tsx')).toContain("showCategoryBadge={category === 'all'}")
-    expect(readFileSync('app/categories/page.tsx', 'utf8')).toContain("showCategoryBadge={category === 'all'}")
+    // Keyed on the category the list is showing (deferred, so it matches the cards on screen).
+    expect(read('app/(tabs)/perks.tsx')).toContain("const showBadge = listCategory === 'all'")
+    expect(read('app/(tabs)/perks.tsx')).toContain('showCategoryBadge={showBadge}')
+    expect(readFileSync('app/categories/page.tsx', 'utf8')).toContain("showCategoryBadge={listCategory === 'all'}")
   })
 })
 
@@ -151,7 +153,10 @@ describe('swipe back from the Perks tab', () => {
   it('pushes a tile as the category screen, like Home, instead of filtering in place', () => {
     const perks = read('app/(tabs)/perks.tsx')
     expect(perks).toContain("router.push({ pathname: '/category/[category]', params: { category: next } })")
-    expect(perks.match(/onSelect={openCategory}/g)).toHaveLength(2)
+    expect(perks.match(/onSelect={openCategory}/g)).toHaveLength(1)
+    // One stable opener for every rail; the rail passes its own category (components/CategoryOfferRail.tsx).
+    expect(perks).toContain('onSeeAll={item.rail.tile ? openCategory : undefined}')
+    expect(read('components/CategoryOfferRail.tsx')).toContain('onAction={onSeeAll ? () => onSeeAll(rail.category) : undefined}')
     expect(perks).not.toContain('onSelect={(next) => setCategory(')
     expect(read('app/(tabs)/index.tsx')).toContain("router.push({ pathname: '/category/[category]', params: { category } })")
   })

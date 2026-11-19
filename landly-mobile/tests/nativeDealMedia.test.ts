@@ -9,12 +9,15 @@ describe('native DealMedia', () => {
 
   it('judges the photo with the shared rule (1.2) once its size is known', () => {
     expect(media).toContain("import { dealPhotoFit } from '@shared/offers/imageFit'")
-    expect(media).toContain("const whole = role === 'photo' && dealPhotoFit(size) === 'contain'")
+    expect(media).toContain("const whole = role === 'photo' && dealPhotoFit(size, { ambient, graphic }) === 'contain'")
   })
 
   it('shows a square or portrait photo whole, over a blurred copy with the #F4F6F9 studio tint', () => {
-    expect(media).toContain("resizeMode={whole ? 'contain' : 'cover'}")
-    expect(media).toContain('{whole && <Image source={{ uri }} style={styles.backdrop} resizeMode="cover" blurRadius={24}')
+    expect(media).toContain("contentFit={whole ? 'contain' : 'cover'}")
+    // The blurred copy: an eighth of the frame (blur 24 / 8), scaled back up, once the frame's size is known.
+    expect(media).toContain('{whole && width > 0 && height != null && (')
+    expect(media).toContain('<View pointerEvents="none" style={styles.backdrop}')
+    expect(media).toContain('blurRadius={24 / BACKDROP_SCALE}')
     expect(media).toContain('{whole && <View pointerEvents="none" style={styles.studio} />}')
     // #F4F6F9 = rgb(244, 246, 249).
     expect(media).toContain("backgroundColor: 'rgba(244, 246, 249, 0.45)'")
@@ -28,9 +31,9 @@ describe('native DealMedia', () => {
       expect(style(name), name).toContain(`zIndex: ${z}`)
     }
     // Neither the foreground nor anything but the backdrop is blurred, and nothing keeps the old in-flow "fill" style.
-    const photo = media.match(/<Image source=\{\{ uri \}\} style=\{styles\.photo\}[^>]*>/)![0]
+    const photo = media.match(/<Image\s+source=\{source\}\s+style=\{styles\.photoImage\}[^>]*>/)![0]
     expect(photo).not.toContain('blurRadius')
-    expect(photo).toContain("resizeMode={whole ? 'contain' : 'cover'}")
+    expect(photo).toContain("contentFit={whole ? 'contain' : 'cover'}")
     expect(media.match(/blurRadius/g)).toHaveLength(2) // the comment's mention excluded below
     expect(media).not.toContain('styles.fill')
     // The backdrop comes first in the tree, the photo last, so the crisp one is on top even where zIndex is ignored.
@@ -49,8 +52,8 @@ describe('native DealMedia', () => {
   })
 
   it('lets the offer screen reshape the frame for a whole photo, and leaves the cards on their ratio', () => {
-    expect(media).toContain('const frameRatio = whole && containRatio ? containRatio : ratio')
-    expect(media).toContain('const frameMax = whole && containRatio ? containMaxHeight : maxHeight')
+    expect(media).toContain('const frameRatio = tall ? containRatio! : ratio')
+    expect(media).toContain('const frameMax = tall ? containMaxHeight : maxHeight')
     expect(media).toContain('Math.min(width / frameRatio, frameMax ?? Infinity)')
     const offer = read('landly-mobile/src/app/offer/[offerId].tsx')
     expect(offer).toContain('containRatio={4 / 5} containMaxHeight={380}')
@@ -58,7 +61,10 @@ describe('native DealMedia', () => {
   })
 
   it('reports the loaded size from the hook, keyed on the URL', () => {
-    expect(read('landly-mobile/src/lib/useDealImage.ts')).toContain('size: loaded?.uri === uri ? { width: loaded.width, height: loaded.height } : null')
+    const hook = read('landly-mobile/src/lib/useDealImage.ts')
+    // `loaded` is this URL's own measurement (or the session's earlier one for the same URL), never another image's.
+    expect(hook).toContain('const loaded = loadedState?.uri === uri ? loadedState : known && uri ? { uri, ...known } : null')
+    expect(hook).toContain('size: loaded ? { width: loaded.width, height: loaded.height } : null')
   })
 
   it('leaves the adaptive logo badge alone', () => {

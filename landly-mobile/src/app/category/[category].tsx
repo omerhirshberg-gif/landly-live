@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { useCallback, useDeferredValue, useMemo, useState } from 'react'
+import { RefreshControl, StyleSheet, View } from 'react-native'
+import { FlashList } from '@shopify/flash-list'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
 import { deriveAreas, type Area, type Coordinates } from '@shared/geo'
-import { getOffersByCategory, type OfferDocument } from '@shared/firebase/offers'
+import type { OfferDocument } from '@shared/firebase/offers'
+import { useOffers } from '@shared/offers/useOffers'
 import { DEFAULT_PERK_SORT, filterAndSortPerks, offerDistanceKm, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
-import { useDebouncedValue } from '@shared/useDebouncedValue'
 import AppText from '../../components/AppText'
 import AreaPicker from '../../components/AreaPicker'
 import NearMeButton from '../../components/NearMeButton'
-import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
+import FeedCell from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
@@ -32,7 +33,7 @@ export default function CategoryScreen() {
   const { t, lang } = useLang()
   // Columns follow the window (two unfolded, three on a tablet); the key
   // remounts the list when folding changes them, as numColumns requires.
-  const { columns, paddingLeft, paddingRight } = useLayout()
+  const { columns, cellWidth, paddingLeft, paddingRight } = useLayout()
   // The back bar sits outside the list, so it steps in from a side cutout itself.
   const insets = useSafeAreaInsets()
   const { category: rawCategory } = useLocalSearchParams<{ category: string }>()
@@ -41,13 +42,14 @@ export default function CategoryScreen() {
   const parsedCategory = parseCategoryFilter(rawCategory)
   const category = parsedCategory === 'all' ? (rawCategory ?? '') : parsedCategory
   const tile = CATEGORY_TILES.find((c) => c.category === category)
-  const [offers, setOffers] = useState<OfferDocument[] | null>(null)
-  const [failed, setFailed] = useState(false)
+  // This category's slice of the shared catalog (lib/offers/offersStore.ts), drawn from the held copy on the first frame.
+  const { offers: catalog, failed, refresh } = useOffers()
+  const offers = useMemo(() => (catalog ? catalog.filter((offer) => offer.category === category) : null), [catalog, category])
   const [refreshing, setRefreshing] = useState(false)
   const [query, setQuery] = useState('')
-  // Filters as you type, settled by a short debounce; clearing is instant.
-  const debouncedQuery = useDebouncedValue(query, 200)
-  const appliedQuery = query ? debouncedQuery : ''
+  // The field updates on the keystroke's frame; the list filters against the deferred copy; clearing is instant.
+  const deferredQuery = useDeferredValue(query)
+  const appliedQuery = query ? deferredQuery : ''
   const [sort, setSort] = useState<PerkSort>(DEFAULT_PERK_SORT)
   // Near me, within this category only: the member's location (or an area
   // picked when there is none) orders the list nearest-first and puts a
@@ -57,41 +59,26 @@ export default function CategoryScreen() {
   const originCoords = origin?.coords ?? null
   const areas = useMemo(() => deriveAreas(offers ?? []), [offers])
 
-  const fetchOffers = useCallback(() => getOffersByCategory(category), [category])
-  // The fetch is already one category, so the pipeline only searches and sorts.
+  // Already one category, so the pipeline only searches and sorts.
   const visible = useMemo(
     () => (offers ? filterAndSortPerks(offers, { query: appliedQuery, category: 'all', sort }, t, lang, originCoords) : []),
-    // `t` changes identity every render; `lang` covers what it depends on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [offers, appliedQuery, sort, lang, originCoords]
+    [offers, appliedQuery, sort, t, lang, originCoords]
   )
 
-  useEffect(() => {
-    let cancelled = false
-    fetchOffers()
-      .then((next) => {
-        if (cancelled) return
-        setOffers(next)
-        setFailed(false)
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [fetchOffers])
-
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    try {
-      setOffers(await fetchOffers())
-      setFailed(false)
-    } catch {
-      setFailed(true)
-    }
+    await refresh()
     setRefreshing(false)
-  }
+  }, [refresh])
+  const cardWidth = columns > 1 ? cellWidth : undefined
+  const renderItem = useCallback(
+    ({ item, index }: { item: OfferDocument; index: number }) => (
+      <FeedCell column={index}>
+        <OfferCard offer={item} onOpen={openOffer} showCategoryBadge={false} distanceKm={offerDistanceKm(item, originCoords)} width={cardWidth} />
+      </FeedCell>
+    ),
+    [originCoords, cardWidth]
+  )
 
   // Opened from a deep link with nothing under it: back lands on the grid.
   const goBack = () => {
@@ -104,19 +91,14 @@ export default function CategoryScreen() {
       <View style={[styles.bar, { paddingLeft: insets.left + 8, paddingRight: insets.right + 8 }]}>
         <GlassBackButton label={t('cats_detail_back')} onPress={goBack} />
       </View>
-      <FlatList
+      <FlashList
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         key={'cols-' + columns}
         data={visible}
-        keyExtractor={(offer) => offer.id}
+        keyExtractor={offerKey}
         numColumns={columns}
-        columnWrapperStyle={feedColumnWrapper(columns)}
-        renderItem={({ item }) => (
-          <FeedCell>
-            <OfferCard offer={item} onPress={() => openOffer(item)} showCategoryBadge={false} distanceKm={offerDistanceKm(item, originCoords)} />
-          </FeedCell>
-        )}
+        renderItem={renderItem}
         contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -188,6 +170,8 @@ export default function CategoryScreen() {
     </SafeAreaView>
   )
 }
+
+const offerKey = (offer: OfferDocument) => offer.id
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { Image, Platform, ScrollView, StyleSheet, View } from 'react-native'
+import { Platform, ScrollView, StyleSheet, View } from 'react-native'
+import Image from './SafeImage'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { CATEGORY_TILES } from '@shared/categories'
 import AppText from './AppText'
@@ -63,7 +64,7 @@ export default function CategoryPhotoRail({ onSelect }: { onSelect: (category: s
             onPress={() => onSelect(tile.category)}
             style={[styles.card, card]}
           >
-            <Image source={CATEGORY_PHOTOS[tile.photo]} style={[styles.photo, card]} resizeMode="cover" accessibilityIgnoresInvertColors />
+            <Image source={CATEGORY_PHOTOS[tile.photo]} style={[styles.photo, card]} contentFit="cover" cachePolicy="memory" accessibilityIgnoresInvertColors />
             <View pointerEvents="none" style={styles.scrim}>
               <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
                 <Defs>

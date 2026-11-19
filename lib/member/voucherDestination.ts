@@ -11,7 +11,7 @@ export function voucherDestination(
   voucher: { businessAddress?: PlaceSnapshot | null; businessGeo?: Coordinates | null } & Pick<LocationSubject, 'fulfillmentType' | 'perkScope' | 'isNationwide'>,
   lang: Lang,
 ): { place: string; destination: NavigationDestination | null } {
-  // A Multipass, multi-chain or nationwide pass has no single place: no address, no navigation.
+  // A Raayonit, multi-chain or nationwide pass has no single place: no address, no navigation.
   if (!shouldShowLocationNavigation(voucher)) return { place: '', destination: null }
   const address = voucher.businessAddress
   // The reader's own language first (short, then full), then whichever language the address has.
