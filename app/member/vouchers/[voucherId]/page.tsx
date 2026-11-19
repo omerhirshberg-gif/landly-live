@@ -28,7 +28,9 @@ import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
 import { localizedBusinessName } from '@/lib/business/businessText'
 import { offerTextSources } from '@/lib/offers/offerText'
 import { locationNoticeKind } from '@/lib/offers/locationVisibility'
+import BrandStrip from '@/components/offers/BrandStrip'
 import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '@/components/discover/PerkReach'
+import { useChainBrands } from '@/lib/offers/useChainBrands'
 
 type Voucher = VoucherDocument & { id: string }
 
@@ -57,6 +59,9 @@ export default function VoucherPage() {
     if (!user || !voucherId) return
     return subscribeToVoucher(voucherId, setVoucher)
   }, [user, voucherId])
+
+  // A multi-chain pass shows its brands as logo tiles, found among the live brand offers (the voucher froze only the names).
+  const brands = useChainBrands(voucher)
 
   // The voucher's own frozen translation, not the live offer's.
   const content = useLocalizedContent(offerTextSources(voucher), voucher?.translations, lang)
@@ -119,7 +124,7 @@ export default function VoucherPage() {
                       </div>
                       {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-3.5 text-sm text-muted" />}
                       {!place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
-                        <div className="mt-3"><ParticipatingChains offer={voucher} guide={false} /></div>
+                        <div className="mt-3">{brands.length > 0 ? <BrandStrip entries={brands} /> : <ParticipatingChains offer={voucher} guide={false} />}</div>
                       )}
                       {place && (
                         <p className="mt-3.5 flex items-start gap-1.5 text-sm text-muted">

@@ -27,6 +27,13 @@ export const CANONICAL_EXTRA_BRANDS: RaayonitBrand[] = [
 /** Wording fixes by snapshot key. */
 export const CANONICAL_RENAMES: Record<string, string> = { '161': 'טיליה - קליניקה טיפולית', '4': 'HOLMES PLACE' }
 
+/**
+ * Brands that must never get a picture of their own: the only one found for them belonged to another business (Torta Loca's site
+ * image was the Mexicani restaurant's logo). Every sync and the image build leave them without a logo, so their card shows the
+ * Raayonit mark ('fallback') instead.
+ */
+export const NO_IMAGE_BRAND_KEYS: readonly string[] = ['l-7902'] // Torta Loca
+
 /** Rows that must never reach a card: suspended or closed (brand or branch text). */
 export const SUSPENDED_BRAND_KEYS: readonly string[] = ['235'] // Brown Hotels Spa: the site honours no vouchers until further notice
 export const CLOSED_BRANCH_PATTERNS: readonly RegExp[] = [/מחנה יהודה.*רוסטרס|רוסטרס.*מחנה יהודה|האפרסק 20/, /לאונרדו אין ים המלח/]  // the closed Leonardo Jerusalem spa row is caught as junk text ("האתר סגור באופן זמני")
@@ -42,11 +49,18 @@ export const EXPECTED_BRANCH_COUNTS: ReadonlyArray<[string, RegExp, number]> = [
   ['VERT', /^VERT$/, 4], ['Herods', /הרודס/, 4], ['Cafe Roasters', /קפה רוסטרס/, 2], ['U Hotels', /^יו$/, 3], ['La Borsa', /לה בורסה|BORSA|Bourse/i, 2],
 ]
 
+/** The brand with no image reference at all (the bundled file, its kind and its source). */
+function withoutImage<T extends RaayonitBrand>(brand: T): T {
+  const { logoFile: _file, logoKind: _kind, logoSource: _source, ...rest } = brand as T & { logoFile?: string; logoKind?: string; logoSource?: string }
+  return { ...rest, logoUrl: '' } as unknown as T
+}
+
 /** The scraped catalogue with the canonical corrections applied (idempotent). */
 export function applyCanonical<T extends RaayonitBrand>(brands: readonly T[]): T[] {
   const out = brands
     .filter((b) => !SUSPENDED_BRAND_KEYS.includes(b.key))
     .map((b) => (CANONICAL_RENAMES[b.key] ? { ...b, nameHe: CANONICAL_RENAMES[b.key]!, nameEn: b.nameEn === b.nameHe ? CANONICAL_RENAMES[b.key]! : b.nameEn } : b))
+    .map((b) => (NO_IMAGE_BRAND_KEYS.includes(b.key) ? withoutImage(b) : b))
     .map((b) => ({ ...b, branches: b.branches.filter((br) => !CLOSED_BRANCH_PATTERNS.some((re) => re.test(`${br.name} ${br.address}`))) }))
   const have = new Set(out.map((b) => b.key))
   return [...out, ...(CANONICAL_EXTRA_BRANDS.filter((b) => !have.has(b.key)) as T[])]

@@ -16,7 +16,9 @@ import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
 import LineIcon from '../../components/LineIcon'
 import NavigationButtons from '../../components/NavigationButtons'
+import BrandStrip from '../../components/BrandStrip'
 import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '../../components/PerkReach'
+import { useChainBrands } from '@shared/offers/useChainBrands'
 import VoucherCover from '../../components/VoucherCover'
 import ContactActions from '../../components/ContactActions'
 import VoucherTicket from '../../components/VoucherTicket'
@@ -55,6 +57,8 @@ export default function VoucherScreen() {
     return subscribeToVoucher(voucherId, setVoucher)
   }, [voucherId])
 
+  // A multi-chain pass shows its brands as logo tiles, found among the live brand offers (the voucher froze only the names).
+  const brands = useChainBrands(voucher)
   const codeOnly = voucher?.redemptionKind === 'code_only'
   const expired = !!voucher?.expiresAt && voucher.expiresAt.getTime() < now
   // The voucher's own translation, frozen at purchase like its terms.
@@ -108,7 +112,7 @@ export default function VoucherScreen() {
                   )}
                   {!destination && !place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
                     <View style={styles.stores}>
-                      <ParticipatingChains offer={voucher} guide={false} />
+                      {brands.length > 0 ? <BrandStrip entries={brands} /> : <ParticipatingChains offer={voucher} guide={false} />}
                     </View>
                   )}
                   {!!place && (
