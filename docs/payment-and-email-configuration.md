@@ -37,9 +37,33 @@ app). Orders settle through the same `claimOfferForOrder` transaction the webhoo
 uses, so vouchers, pool codes and payout fields are real.
 
 - Local `next dev`: on by default.
-- Vercel Preview (`landly-dev`): on only with `PAYMENT_SANDBOX=1`.
+- Vercel Preview: on only with `PAYMENT_SANDBOX=1` **and** both
+  `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_ADMIN_PROJECT_ID` equal to
+  `landly-dev`. A `landly-be752` or missing ID keeps it off.
 - Vercel Production (`landly-be752`): never, whatever is set.
 - Any environment with `TRANZILA_TERMINAL` set: off.
+
+### Vercel environment checklist
+
+| Variable | Preview (`landly-dev`) | Production (`landly-be752`) |
+| --- | --- | --- |
+| `PAYMENT_SANDBOX` | `1` | unset |
+| `TRANZILA_TERMINAL` | unset (sandbox) | the live terminal |
+| `NEXT_PUBLIC_FIREBASE_*` | `landly-dev` web config | `landly-be752` web config |
+| `FIREBASE_ADMIN_PROJECT_ID` | `landly-dev` | `landly-be752` |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` / `FIREBASE_ADMIN_PRIVATE_KEY` | the `landly-dev` service account (`…@landly-dev.iam.gserviceaccount.com`) | the `landly-be752` one |
+| `POOL_CODES_KEY` | own value; needed to settle Raayonit orders (not to start checkout) | own value |
+
+`NEXT_PUBLIC_*`, `LANDLY_VERCEL` and `LANDLY_VERCEL_ENV` are inlined at build
+time, so a changed value needs a new build, not just a redeploy of the old one.
+
+When checkout shows "The service is unavailable right now", every 5xx looks
+alike to the member; the cause is in Vercel Runtime Logs for
+`/api/payments/initiate` ("Token verification unavailable", "Payment initiation
+refused" or "Payment initiation failed", with the error text). Dry-run the
+environment with `vercel env pull <file> --environment=preview` (outside the
+repo; secret values come back masked) and
+`node scripts/check-firebase-env.mjs --target=preview --env-file=<file>`.
 
 Setting `TRANZILA_TERMINAL` and `TRANZILA_WEBHOOK_SECRET` later switches to live
 Hosted Fields and the webhook with no code change.

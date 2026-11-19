@@ -46,21 +46,55 @@ describe('sandbox gate', () => {
     expect(isPaymentSandboxEnabled()).toBe(false)
     expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
   })
-  it('is off on Vercel Preview unless PAYMENT_SANDBOX=1', () => {
-    vi.stubEnv('NODE_ENV', 'production')
-    vi.stubEnv('LANDLY_VERCEL', '1')
-    vi.stubEnv('LANDLY_VERCEL_ENV', 'preview')
-    expect(isPaymentSandboxEnabled()).toBe(false)
-    expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
-    vi.stubEnv('PAYMENT_SANDBOX', '1')
-    expect(isPaymentSandboxEnabled()).toBe(true)
-    expect(checkoutTerminal()).toBe(DEV_SANDBOX_TERMINAL)
+  describe('on Vercel Preview', () => {
+    beforeEach(() => {
+      vi.stubEnv('NODE_ENV', 'production')
+      vi.stubEnv('LANDLY_VERCEL', '1')
+      vi.stubEnv('LANDLY_VERCEL_ENV', 'preview')
+      vi.stubEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'landly-dev')
+      vi.stubEnv('FIREBASE_ADMIN_PROJECT_ID', 'landly-dev')
+    })
+    it('is off unless PAYMENT_SANDBOX=1', () => {
+      vi.stubEnv('PAYMENT_SANDBOX', '')
+      expect(isPaymentSandboxEnabled()).toBe(false)
+      expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
+    })
+    it('is on with PAYMENT_SANDBOX=1 and both project IDs landly-dev', () => {
+      vi.stubEnv('PAYMENT_SANDBOX', '1')
+      expect(isPaymentSandboxEnabled()).toBe(true)
+      expect(checkoutTerminal()).toBe(DEV_SANDBOX_TERMINAL)
+    })
+    it.each([
+      ['client project is landly-be752', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'landly-be752'],
+      ['admin project is landly-be752', 'FIREBASE_ADMIN_PROJECT_ID', 'landly-be752'],
+      ['client project is unset', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID', ''],
+      ['admin project is unset', 'FIREBASE_ADMIN_PROJECT_ID', ''],
+    ])('is off when the %s', (_label, key, value) => {
+      vi.stubEnv('PAYMENT_SANDBOX', '1')
+      vi.stubEnv(key, value)
+      expect(isPaymentSandboxEnabled()).toBe(false)
+      expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
+    })
+    it('is off once a real terminal is configured', () => {
+      vi.stubEnv('PAYMENT_SANDBOX', '1')
+      vi.stubEnv('TRANZILA_TERMINAL', 'landly_real')
+      expect(isPaymentSandboxEnabled()).toBe(false)
+    })
+    it('serves initiation and settlement', async () => {
+      vi.stubEnv('PAYMENT_SANDBOX', '1')
+      const res = await initiate(new Request('https://test.invalid', { method: 'POST', body: JSON.stringify({ offerId: 'offer' }) }))
+      expect(res.status).toBe(200)
+      expect(store.read('orders/user_offer')?.terminal).toBe(DEV_SANDBOX_TERMINAL)
+      expect((await settle('approve')).status).toBe(200)
+    })
   })
   it('is never on in Production, even with PAYMENT_SANDBOX=1', () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('LANDLY_VERCEL', '1')
     vi.stubEnv('LANDLY_VERCEL_ENV', 'production')
     vi.stubEnv('PAYMENT_SANDBOX', '1')
+    vi.stubEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'landly-dev')
+    vi.stubEnv('FIREBASE_ADMIN_PROJECT_ID', 'landly-dev')
     expect(isPaymentSandboxEnabled()).toBe(false)
     expect(() => checkoutTerminal()).toThrow('Payment terminal is not configured.')
   })
@@ -149,7 +183,7 @@ describe('stale sandbox orders', () => {
 describe('sandbox settlement route', () => {
   beforeEach(() => store.seed('orders/user_offer', sandboxOrder))
 
-  it('does not exist outside local development', async () => {
+  it('does not exist outside local development and the landly-dev Preview', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     expect((await settle('approve')).status).toBe(404)
     expect(mocks.verifiedUid).not.toHaveBeenCalled()

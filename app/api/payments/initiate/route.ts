@@ -45,8 +45,13 @@ export async function POST(request: Request) {
     const resumed = !restart && previous?.status === 'pending' && previous.terminal === DEV_SANDBOX_TERMINAL
     return json({ ...order, sandbox: true, resumed })
   } catch (err) {
-    if (err instanceof PaymentError || err instanceof RequestAuthError) return json(errorBody(err.message, err.status), err.status)
-    console.error('Payment initiation failed')
+    if (err instanceof PaymentError || err instanceof RequestAuthError) {
+      // Name the cause for Vercel Runtime Logs; 5xx all read alike to the member.
+      if (err.status >= 500) console.error('Payment initiation refused:', err.status, err.message)
+      return json(errorBody(err.message, err.status), err.status)
+    }
+    // Error text only: never the request, token or credentials.
+    console.error('Payment initiation failed:', err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error')
     return json(errorBody('Could not initiate payment.', 503), 503)
   }
 }
