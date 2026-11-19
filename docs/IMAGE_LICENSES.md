@@ -164,3 +164,7 @@ Only the business's own website (`official_website`, or the website its Google B
 | מלון סטאי כנרת | `l-5062` | https://thesetaihotels.com/wp-content/uploads/2022/11/Logo-group-en3.svg | official_website |
 | Torta Loca | `l-7902` | https://mexicani.co.il/wp-content/uploads/2026/10/cropped-%D7%94%D7%9E%D7%A7%D7%A1%D7%99%D7%A7%D7%A0%D7%99-%D7%AA%D7%95%D7%9B%D7%9F-%D7%9C%D7%96%D7%9B%D7%99%D7%99%D7%A0%D7%99%D7%9D-scaled-2-192x192.png | google_business_listing_website |
 | VERT | `l-vert` | user_provided:vert.webp | user_provided |
+| CAFÉ NAPO | `l-9012` | https://static.wixstatic.com/media/217572_2a604253fe044adf8f929c5804179234~mv2.png (cafenapo.co.il) | official_website |
+| קפה בגולף | `l-7906` | https://static.wixstatic.com/media/8cd186_cf997b82062a4e42937320e5fc27caa1~mv2.jpg (cafebagolf.co.il) | official_website |
+| Eye Glow | `l-8951` | https://www.eyeglow.co.il/wp-content/uploads/2026/04/69e4da6f66188661e6334a92.jpeg | official_website |
+| FOX home | `65` | https://www.foxhome.co.il/cdn/shop/files/foxhomelogo_t_4e2369ef-5350-4de1-98c6-d43a50493a16.webp | official_website |

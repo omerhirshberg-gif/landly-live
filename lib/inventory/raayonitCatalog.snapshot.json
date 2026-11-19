@@ -502,7 +502,10 @@
    "methods": [
     "in_store"
    ],
-   "branches": []
+   "branches": [],
+   "logoFile": "65.png",
+   "logoKind": "logo",
+   "logoSource": "site"
   },
   {
    "key": "81",
@@ -3018,7 +3021,10 @@
    "section": "מסעדות שף",
    "kosher": false,
    "branchCount": 1,
-   "suspendedSkipped": 0
+   "suspendedSkipped": 0,
+   "logoFile": "l-9012.png",
+   "logoKind": "logo",
+   "logoSource": "site"
   },
   {
    "key": "l-2273",
@@ -3716,7 +3722,10 @@
    "section": "בתי קפה ומסעדות",
    "kosher": false,
    "branchCount": 1,
-   "suspendedSkipped": 0
+   "suspendedSkipped": 0,
+   "logoFile": "l-7906.jpg",
+   "logoKind": "photo",
+   "logoSource": "site"
   },
   {
    "key": "l-8985",
@@ -8478,7 +8487,10 @@
    "section": "מזוודות, גאדג'טים, מוצרים לבית, משקפיים וצעצועים",
    "kosher": false,
    "branchCount": 1,
-   "suspendedSkipped": 0
+   "suspendedSkipped": 0,
+   "logoFile": "l-8951.jpg",
+   "logoKind": "photo",
+   "logoSource": "site"
   },
   {
    "key": "l-10335",

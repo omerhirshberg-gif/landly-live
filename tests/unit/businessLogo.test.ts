@@ -255,7 +255,7 @@ describe('logo wiring', () => {
 
   it('reads the logo with every offer, normalized like its image, on web and in the app', () => {
     expect(read('lib/offers/offerDocument.ts')).toContain(
-      "businessLogoUrl: normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : ''),"
+      "businessLogoUrl: relocateBundledImage(normalizeImageUrl(typeof data.businessLogoUrl === 'string' ? data.businessLogoUrl : '')),"
     )
   })
 })

@@ -48,3 +48,14 @@ describe('imageUrlProblem', () => {
     expect(imageUrlProblem('https://media.easy.co.il/images/a.jpg')).toBeNull()
   })
 })
+
+import { relocateBundledImage } from '@/lib/offers/imageUrl'
+describe('relocateBundledImage', () => {
+  it('turns a bundled image stored with a local origin into a root-relative path', () => {
+    expect(relocateBundledImage('http://localhost:3000/images/raayonit-brands/l-9012.png')).toBe('/images/raayonit-brands/l-9012.png')
+    expect(relocateBundledImage('http://127.0.0.1:3001/images/raayonit/super-tav-multi-chain.jpg?v=2')).toBe('/images/raayonit/super-tav-multi-chain.jpg?v=2')
+  })
+  it('leaves every other link alone', () => {
+    for (const u of ['https://golandly.com/images/raayonit-brands/4.png', 'http://localhost:3000/other/x.png', 'https://cdn.example.com/a.jpg', '']) expect(relocateBundledImage(u)).toBe(u)
+  })
+})
