@@ -6,6 +6,7 @@ import AudienceCards from '@/components/landing/AudienceCards'
 import BottomCta from '@/components/landing/BottomCta'
 import LandingHero from '@/components/landing/LandingHero'
 import LiveDeals from '@/components/landing/LiveDeals'
+import GuestSuperShowcase from '@/components/landing/GuestSuperShowcase'
 import { LANDING_COLUMN } from '@/components/landing/landingColumn'
 import CategoryPhotoRail, { CategoryPhotoTitle } from '@/components/home/CategoryPhotoRail'
 import Faq from '@/components/home/Faq'
@@ -96,6 +97,7 @@ function GuestLanding({ landing }: { landing: LandingData }) {
             <CategoryPhotoRail contained />
           </section>
         </SectionBoundary>
+        <SectionBoundary name="super-showcase"><GuestSuperShowcase /></SectionBoundary>
         {landing.deals.length > 0 && (
           <SectionBoundary name="live-deals"><LiveDeals deals={landing.deals} /></SectionBoundary>
         )}

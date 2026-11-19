@@ -6,7 +6,7 @@ import { useLang } from '@/lib/i18n/useLang'
 import { railState, railStep } from '@/lib/offers/railScroll'
 
 // Desktop paging for a horizontal rail, kept in the section's header row so the arrows never sit on the cards. Two 36px buttons, shown
-// only where a real mouse is the pointer (hover: hover, from md) and only when the row overflows. The leading one dims at the start and
+// only where a real mouse is the pointer (hover: hover, from lg, 1024px) and only when the row overflows. The leading one dims at the start and
 // the trailing one at the end, in either reading direction (scrollLeft runs negative in RTL). Phones keep the touch swipe.
 export function useRail<T extends HTMLElement>(dep: unknown) {
   const { isRtl } = useLang()
@@ -31,7 +31,7 @@ export function useRail<T extends HTMLElement>(dep: unknown) {
   return { ref, edge, measure, page }
 }
 
-const BUTTON = 'hidden h-9 w-9 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand disabled:pointer-events-none disabled:opacity-40 [@media(hover:hover)]:md:flex'
+const BUTTON = 'hidden h-9 w-9 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand disabled:pointer-events-none disabled:opacity-40 [@media(hover:hover)]:lg:flex'
 
 export default function RailArrows({ edge, page }: { edge: { atStart: boolean; atEnd: boolean; overflow: boolean }; page: (way: 'next' | 'prev') => void }) {
   const { t, isRtl } = useLang()

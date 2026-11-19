@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getOffer, getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
 import { getClaimedPoolIds } from '@shared/firebase/vouchers'
 import { variantDiscountPercent } from '@shared/offers/variants'
+import { useChainBrands } from '@shared/offers/useChainBrands'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { formatLongDate, formatPrice } from '@shared/format'
@@ -155,6 +156,10 @@ export default function OfferScreen() {
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
   const businessName = nameContent.text('businessName')
   const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
+  // The brand tiles of a multi-chain pass: the offer's own index, else its chain names matched to the live brand offers, so a missing index never drops to plain text boxes.
+  const chainSubject = useMemo(() => (offer ? { offerId: offer.id, perkScope: offer.perkScope, participatingChains: offer.participatingChains, allLiveBrands: true } : null), [offer])
+  const liveBrands = useChainBrands(chainSubject)
+  const chainBrands = offer?.brandIndex?.length ? offer.brandIndex : liveBrands
   const machine = content.machine || nameContent.machine
   const showingOriginal = content.showingOriginal || nameContent.showingOriginal
   const toggleOriginal = () => {
@@ -175,7 +180,7 @@ export default function OfferScreen() {
   // One venue: its address in the header and its own location section, never "1 store".
   const singleVenue = !!offer && isSingleVenue(offer)
   const venueLine = offer && singleVenue ? offerFullAddress(offer, lang) : ''
-  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (singleVenue && !!offer?.branches?.length)
+  const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (offer?.perkScope === 'multi_chain' && chainBrands.length > 0) || (singleVenue && !!offer?.branches?.length)
   const destination = offer ? { geo: offer.geo, placeId: offer.address?.placeId, address: place || offer.location } : null
   const logo = offer && !heroLogoSource(offer) && !isRaayonitOffer(offer) && (
     <MerchantBadge
@@ -309,8 +314,8 @@ export default function OfferScreen() {
                 <View style={styles.folds}>
                   {hasStoreList && (
                     <Accordion title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
-                      {offer.perkScope === 'multi_chain' && !!offer.brandIndex?.length ? (
-                        <View style={{ gap: 14 }}><BrandStrip entries={offer.brandIndex} /><RedemptionGuide offer={offer} /></View>
+                      {offer.perkScope === 'multi_chain' && chainBrands.length > 0 ? (
+                        <View style={{ gap: 14 }}><BrandStrip entries={chainBrands} /><RedemptionGuide offer={offer} /></View>
                       ) : !!offer.branches?.length ? (
                         <BranchStrip branches={offer.branches} brand={offer.brandName || offer.businessName || null} />
                       ) : (
