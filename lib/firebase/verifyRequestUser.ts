@@ -20,6 +20,8 @@ export async function getDecodedTokenFromRequest(request: Request): Promise<Deco
     return await getAdminAuth().verifyIdToken(token, true)
   } catch (error) {
     if (INVALID_SESSION_CODES.has((error as { code?: string })?.code ?? '')) return null
+    // The SDK/env-guard message (e.g. a missing service account) holds no secret; it's what Runtime Logs need.
+    console.error('Token verification unavailable:', error instanceof Error ? error.message : 'unknown error')
     throw new RequestAuthError('Authentication service unavailable.', 503)
   }
 }

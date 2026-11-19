@@ -1,12 +1,13 @@
 import 'server-only'
 import { randomInt } from 'node:crypto'
-import { currentFirebaseDeployTarget } from '@/lib/firebase/envGuard'
+import { currentFirebaseDeployTarget, STAGING_FIREBASE_PROJECT_ID } from '@/lib/firebase/envGuard'
 
 // A payment sandbox for environments with no live gateway: orders are stamped
 // with this terminal and settled by app/api/payments/dev-sandbox through the
 // same claimOfferForOrder transaction the webhook runs.
 //  - Local `next dev` without Tranzila credentials: on by default.
-//  - Vercel Preview (the dev Firebase project): on only when PAYMENT_SANDBOX=1 is set.
+//  - Vercel Preview: on only when PAYMENT_SANDBOX=1 is set AND both the client and
+//    Admin Firebase project IDs are the staging project (never production, never unset).
 //  - Vercel Production: never, whatever else is set.
 //  - Never once a real terminal is configured.
 export const DEV_SANDBOX_TERMINAL = 'landly_sandbox'
@@ -15,7 +16,11 @@ export function isPaymentSandboxEnabled(): boolean {
   if (process.env.TRANZILA_TERMINAL) return false
   const target = currentFirebaseDeployTarget()
   if (target === 'local') return process.env.NODE_ENV === 'development'
-  if (target === 'preview') return process.env.PAYMENT_SANDBOX === '1'
+  if (target === 'preview') {
+    return process.env.PAYMENT_SANDBOX === '1'
+      && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === STAGING_FIREBASE_PROJECT_ID
+      && process.env.FIREBASE_ADMIN_PROJECT_ID === STAGING_FIREBASE_PROJECT_ID
+  }
   return false
 }
 

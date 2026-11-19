@@ -9,7 +9,7 @@ import { DEV_SANDBOX_TERMINAL, isPaymentSandboxEnabled, sandboxTransactionId } f
 import { isDocumentId, PaymentError } from '@/lib/payments/paymentValidation'
 import { errorBody } from '@/lib/api/errorCode'
 
-// Local development only (lib/payments/devSandbox.ts): stands in for the
+// Local development and the staging Vercel Preview only (lib/payments/devSandbox.ts): stands in for the
 // Tranzila notification so a sandbox order settles through the webhook's own
 // claimOfferForOrder transaction. Anywhere else this route doesn't exist.
 // CORS for the app's Expo web build (lib/auth/cors.ts).
@@ -51,8 +51,11 @@ export async function POST(request: Request) {
     if (approved && !alreadyProcessed) scheduleOrderConfirmation(db, body.orderId)
     return json({ orderId: body.orderId })
   } catch (err) {
-    if (err instanceof PaymentError || err instanceof RequestAuthError) return json(errorBody(err.message, err.status), err.status)
-    console.error('Sandbox payment failed', err)
+    if (err instanceof PaymentError || err instanceof RequestAuthError) {
+      if (err.status >= 500) console.error('Sandbox payment refused:', err.status, err.message)
+      return json(errorBody(err.message, err.status), err.status)
+    }
+    console.error('Sandbox payment failed:', err instanceof Error ? `${err.name}: ${err.message}` : 'unknown error')
     return json(errorBody('Sandbox payment could not complete.', 503), 503)
   }
 }
