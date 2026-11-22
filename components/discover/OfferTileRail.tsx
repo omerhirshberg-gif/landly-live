@@ -58,11 +58,10 @@ export default function OfferTileRail({
         </h2>
         <div className="flex flex-shrink-0 items-center gap-2">
           {href && seeMore && (
-            // 32px to the eye, 44px to the finger: the link is the target, the pill is its look.
-            <Link href={href} className="tap-target group/pill inline-flex items-center">
-              <span className="rounded-full border border-slate-200/70 bg-brandTint px-3 py-1.5 text-sm font-semibold text-brand transition-colors duration-200 group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-brand/40 [@media(hover:hover)]:group-hover/pill:bg-brandLight">
-                {seeMore}
-              </span>
+            // Plain text and a chevron pointing the reading way: no pill, no border (44px target).
+            <Link href={href} className="tap-target inline-flex items-center gap-0.5 text-sm font-semibold text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand [@media(hover:hover)]:hover:underline">
+              {seeMore}
+              <ChevronRight aria-hidden="true" className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2} />
             </Link>
           )}
           {/* Mouse users have no swipe and no scrollbar: these page the rail. Hidden from AT (the cards are all in the tab order). */}
@@ -81,7 +80,7 @@ export default function OfferTileRail({
       <div
         ref={railRef}
         onScroll={measure}
-        className={`offer-tile-rail scrollbar-none edge-fade -mx-4 grid grid-flow-col auto-cols-[260px] gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom snap-x snap-mandatory scroll-px-4 px-4 pb-1 sm:mx-0 sm:auto-cols-[280px] sm:gap-4 sm:scroll-px-0 sm:px-0 ${compact ? 'lg:auto-cols-[280px]' : ''}`}
+        className={`offer-tile-rail scrollbar-none edge-fade -mx-4 grid grid-flow-col auto-cols-[clamp(150px,calc((100vw-36px)/2.15),232px)] gap-2.5 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom snap-x snap-mandatory scroll-px-4 px-4 pb-1 sm:mx-0 sm:auto-cols-[232px] sm:gap-4 sm:scroll-px-0 sm:px-0`}
       >
         {offers.map((offer) => (
           <div key={offer.id} className="flex snap-start">

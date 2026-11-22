@@ -4,6 +4,9 @@ import { priceDifference } from '@/lib/format'
 import { orderReference } from '@/lib/payments/orderNumber'
 import { issuerLine, type VoucherIssuer } from '@/lib/payments/issuer'
 import { formatNumericDate } from '@/lib/format'
+import { formatValueRatio, type VoucherValue } from '@/lib/vouchers/voucherValue'
+import { superTavHeadline } from '@/lib/offers/superTav'
+import { keyFor } from '@/lib/i18n/neutralAliases'
 import { escapeHtml, FONT_STACK, sendBrandedEmail, type BrandedEmailContent } from './brandedEmail'
 
 export interface OrderConfirmationDetails {
@@ -23,6 +26,12 @@ export interface OrderConfirmationDetails {
   issuer?: VoucherIssuer | null
   issuerLogoUrl?: string
   expiresAt?: Date | null
+  /** What was paid against the voucher's full worth ("₪79 / ₪100"); null for a free perk. */
+  value?: VoucherValue | null
+  /** A Raayonit (multi-chain) voucher: the note that it is honoured at hundreds of other chains too. */
+  multiChain?: boolean
+  /** Raayonit's name may be shown (the display flag). False: the neutral multi-chain wording and no issuer block. */
+  raayonitDisplay?: boolean
 }
 
 // Whole shekels without decimals ("₪80"), anything else with two ("₪79.90").
@@ -44,6 +53,8 @@ function formatPaidAt(date: Date, lang: Lang): string {
 // palette, mirrored for RTL, every value escaped.
 function buildDetailsHtml(lang: Lang, order: OrderConfirmationDetails): string {
   const t = translations[lang]
+  // A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below.
+  const headline = order.multiChain ? superTavHeadline({ fulfillmentType: 'raayonit_pool', originalPrice: order.originalPrice }, t[keyFor('super_tav_headline', order.raayonitDisplay === true)]) : null
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
   const dir = isRtl ? 'rtl' : 'ltr'
   const start = isRtl ? 'right' : 'left'
@@ -85,6 +96,17 @@ function buildDetailsHtml(lang: Lang, order: OrderConfirmationDetails): string {
                           <p style="margin:10px 0 0 0;"><span style="display:inline-block;background-color:#DCFCE7;color:#15803D;font-family:${FONT_STACK};font-size:13px;line-height:18px;font-weight:700;padding:4px 12px;border-radius:999px;">${escapeHtml(t.orderEmail_savings.replace('{amount}', formatEmailPrice(savings, lang)))}</span></p>`
     : ''
 
+  // "Paid / Voucher value": the ratio always runs left to right, isolated from the surrounding RTL text.
+  const valueLine = order.value
+    ? `
+                          <p style="${text}margin:8px 0 0 0;color:#64748B;">${escapeHtml(t.value_ratio_label)}: <span dir="ltr" style="unicode-bidi:isolate;font-weight:700;color:#0F172A;font-variant-numeric:tabular-nums;">${escapeHtml(formatValueRatio(order.value))}</span></p>`
+    : ''
+  // A Raayonit voucher is a Multi-Chain Super Tav: valid at the chosen brand and at hundreds of other chains.
+  const multiChainNote = order.multiChain
+    ? `
+                          <p style="${text}margin:0 0 10px 0;color:#475569;">${escapeHtml(t.order_multi_chain_note)}</p>`
+    : ''
+
   const perk = `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" style="margin-top:16px;">
                 <tr>
@@ -92,9 +114,12 @@ function buildDetailsHtml(lang: Lang, order: OrderConfirmationDetails): string {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}">
                       <tr>${thumbnail}
                         <td valign="top" style="text-align:${start};">
-                          <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#64748B;">${escapeHtml(order.businessName)}</p>
-                          <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:16px;line-height:22px;font-weight:700;color:#0F172A;">${escapeHtml(order.offerTitle)}</p>
-                          <p style="${text}margin:0;color:#475569;">${escapeHtml(t.orderEmail_pricePaid)}: <strong style="font-size:16px;color:#0F172A;">${escapeHtml(formatEmailPrice(order.amount, lang))}</strong></p>${originalLine}
+${headline
+                            ? `<p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:16px;line-height:22px;font-weight:700;color:#0F172A;">${escapeHtml(headline)}</p>
+                          <p style="margin:0 0 ${order.multiChain ? 6 : 10}px 0;font-family:${FONT_STACK};font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#64748B;">${escapeHtml(order.businessName)}</p>`
+                            : `<p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#64748B;">${escapeHtml(order.businessName)}</p>
+                          <p style="margin:0 0 ${order.multiChain ? 6 : 10}px 0;font-family:${FONT_STACK};font-size:16px;line-height:22px;font-weight:700;color:#0F172A;">${escapeHtml(order.offerTitle)}</p>`}${multiChainNote}
+                          <p style="${text}margin:0;color:#475569;">${escapeHtml(t.orderEmail_pricePaid)}: <strong style="font-size:16px;color:#0F172A;">${escapeHtml(formatEmailPrice(order.amount, lang))}</strong></p>${originalLine}${valueLine}
                         </td>
                       </tr>
                     </table>
@@ -117,7 +142,15 @@ function buildDetailsHtml(lang: Lang, order: OrderConfirmationDetails): string {
                   </td>
                 </tr>
               </table>`
-    : ''
+    : order.multiChain && order.expiresAt
+      // Display off: no logo or issuer, only the neutral label and the date the code stops working.
+      ? `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="${dir}" style="margin-top:16px;">
+                <tr>
+                  <td bgcolor="#F8FAFC" style="padding:12px 18px;background-color:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;${text}text-align:${start};color:#334155;font-weight:600;">${escapeHtml(t.multi_chain_voucher_label)}<br><span style="font-weight:400;color:#64748B;">${escapeHtml(t.wallet_pass_valid_until)} <span dir="ltr" style="unicode-bidi:isolate;font-weight:700;color:#0F172A;">${escapeHtml(formatNumericDate(order.expiresAt))}</span></span></td>
+                </tr>
+              </table>`
+      : ''
 
   return summary + perk + issuer
 }

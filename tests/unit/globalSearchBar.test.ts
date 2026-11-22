@@ -21,16 +21,16 @@ function render(lang: Lang, element: ReturnType<typeof createElement>) {
 }
 
 describe('GlobalPerkSearchBar', () => {
-  it.each(LANGS)('is one row: the search pill, then Filter, with no separate Near Me or Choose area button (%s)', (lang) => {
+  it.each(LANGS)('is one row: the search pill, the location button (which opens the Location sheet), then Filter (%s)', (lang) => {
     const html = render(lang, createElement(GlobalPerkSearchBar))
     const search = html.indexOf('role="search"')
     const near = html.indexOf(`aria-label="${translations[lang].geo_near_me_btn}"`)
-    const filter = html.indexOf(`aria-label="${translations[lang].cats_filter_button}"`)
+    const filter = html.indexOf(`aria-label="${translations[lang].filter_sort_trigger.replace(/&/g, '&amp;')}"`)
     expect(html).toContain('data-global-search=""')
     expect(search).toBeGreaterThan(-1)
-    expect(near).toBe(-1)
+    expect(near).toBeGreaterThan(search)
+    expect(filter).toBeGreaterThan(near)
     expect(html).not.toContain(translations[lang].geo_choose_area)
-    expect(filter).toBeGreaterThan(search)
     expect(html.match(/role="search"/g)).toHaveLength(1)
   })
 
@@ -82,7 +82,7 @@ describe('/categories', () => {
   it('offers Back inside a selected category, which clears it and keeps the rest', () => {
     expect(page).toContain("onBack={() => setCategory('all')}")
     expect(page).toContain("label={t('nav_back')}")
-    expect(page.indexOf('{selectedTile && (')).toBeLessThan(page.indexOf('<PageHeading title={pageTitle} />'))
+    expect(page.indexOf('{selectedTile && (')).toBeLessThan(page.indexOf('<PageHeading title='))
     for (const lang of LANGS) expect(translations[lang].nav_back.length).toBeGreaterThan(0)
     expect(translations.he.nav_back).toBe('חזרה')
   })
@@ -95,18 +95,18 @@ describe('/categories', () => {
 
 describe('native tab bar', () => {
   const order = (source: string, pattern: RegExp) => [...source.matchAll(pattern)].map((m) => m[1])
-  it('declares all five tabs, in order, on iOS/Android and on web', () => {
+  it('declares the tabs, in order, on iOS/Android and on web', () => {
     const native = read('landly-mobile/src/app/(tabs)/_layout.tsx')
-    expect(order(native, /<NativeTabs\.Trigger name="(\w+)"/g)).toEqual(['index', 'perks', 'wishlist', 'wallet', 'profile'])
-    expect(native).toContain('wishlistCount > 0 &&')
+    expect(order(native, /<NativeTabs\.Trigger name="(\w+)"/g)).toEqual(['index', 'perks', 'raayonit', 'wallet', 'profile'])
+    expect(native).toContain('{raayonit && (')
     const web = read('landly-mobile/src/app/(tabs)/_layout.web.tsx')
-    expect(order(web, /<Tabs\.Screen\s+name="(\w+)"/g)).toEqual(['index', 'perks', 'wishlist', 'wallet', 'profile'])
-    expect(web).toContain('wishlistCount > 0 ? wishlistCount : undefined')
+    expect(order(web, /<Tabs\.Screen\s+name="(\w+)"/g)).toEqual(['index', 'perks', 'raayonit', 'wallet', 'profile'])
+    expect(web).toContain('href: raayonit ? undefined : null')
   })
 
   it('names every tab in all five languages', () => {
     for (const lang of LANGS) {
-      for (const key of ['mobile_tab_home', 'mobile_tab_perks', 'wishlist_title', 'mobile_tab_wallet', 'nav_profile'] as const) {
+      for (const key of ['mobile_tab_home', 'mobile_tab_perks', 'nav_raayonit', 'mobile_tab_wallet', 'nav_profile'] as const) {
         expect(translations[lang][key], `${lang}.${key}`).toBeTruthy()
       }
     }

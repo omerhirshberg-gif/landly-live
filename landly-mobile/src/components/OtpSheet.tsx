@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated'
 import * as Clipboard from 'expo-clipboard'
@@ -9,23 +9,27 @@ import {
   contactChangeErrorKey,
   finishEmailChange,
   requestPhoneChange,
+  requestSignupOtp,
   resendEmailChange,
   resendEndsChange,
   verifyEmailCode,
   verifyPhoneCode,
+  verifySignupCode,
   type ContactChangeFailure,
   type ContactChangeResult,
   type EmailChangeStart,
   type PhoneChangeStart,
+  type SignupOtpStart,
 } from '@shared/account/contactChange'
 import { auth } from '@shared/firebase/config'
 import { formatPhone } from '@shared/auth/onboarding'
-import { normalizeOtpInput, OTP_LENGTH, type OtpChannel, type OtpTarget } from '@shared/auth/otp'
+import { formatOtpCountdown, normalizeOtpInput, OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel, type OtpTarget } from '@shared/auth/otp'
 import { otpCopyKeys, resolveOtpChannel, splitAtPlaceholder } from '@shared/auth/otpChannel'
 import { useResendCountdown } from '@shared/auth/useResendCountdown'
 import AppText from './AppText'
 import { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import Button from './Button'
+import OtpCodeInput, { type OtpCodeInputHandle } from './OtpCodeInput'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
@@ -45,26 +49,37 @@ const FOCUS_DELAY_MS = ENTER_MS + 20
 // out has finished. A Modal is its own layout root, so the language's
 // direction is set again on the sheet; the digits are always left-to-right.
 //
-// One real TextInput lies over six drawn boxes, so the iOS/Android
-// one-time-code suggestion, a pasted message and screen readers all meet a
-// single field; the sixth digit submits. "Paste" reads the clipboard for a
-// code copied out of WhatsApp or the email. "Resend code" counts down 60 seconds. The
-// whole sheet fits above the keyboard on a 4.7" iPhone SE.
+// The code field is OtpCodeInput: one real TextInput over six drawn boxes, so
+// the iOS/Android one-time-code suggestion, a pasted message and screen
+// readers all meet a single field; the sixth digit submits, and a wrong code
+// shakes the boxes, clears them and keeps the keyboard up. "Paste" reads the clipboard for a
+// code copied out of WhatsApp or the email. "Resend code" counts down 60 seconds
+// (m:ss). The whole sheet fits above the keyboard on a 4.7" iPhone SE.
+//
+// With `signup` it confirms a brand-new account instead of a profile change:
+// the session is the sign-up's own ID token (the member is signed out until
+// the code is right), the code goes through /api/auth/verify-signup-otp, and
+// `onVerified` receives the custom token the server mints so a caller without
+// the password can still sign in.
 export default function OtpSheet({
   user,
+  signup,
   target,
   resendIn,
   onClose,
   onVerified,
   onEnded,
 }: {
-  user: User
+  /** The signed-in member (profile changes); a sign-up has none and passes `signup`. */
+  user?: User
+  /** Confirms a new account: where the ID token comes from, and the send (or cooldown lookup) already in flight. */
+  signup?: { getIdToken: () => Promise<string>; initialSend?: Promise<ContactChangeResult<SignupOtpStart>> }
   /** The pending E.164 number or email address. */
   target: OtpTarget
   /** Seconds before "Resend code" is allowed (from the send that opened this). */
   resendIn: number
   onClose: () => void
-  onVerified: () => void
+  onVerified: (customToken?: string) => void
   /** A resend ended the change (resendEndsChange): closes here, and the profile screen shows `message`. */
   onEnded: (message: string) => void
 }) {
@@ -72,10 +87,10 @@ export default function OtpSheet({
   const insets = useSafeAreaInsets()
   // A centred card no wider than a dialog from 600pt (the scrim already covers the whole screen).
   const bounds = useSheetBounds()
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<OtpCodeInputHandle>(null)
+  const inFlight = useRef(false)
   const [shown, setShown] = useState(true)
   const [code, setCode] = useState('')
-  const [focused, setFocused] = useState(false)
   const [busy, setBusy] = useState(false)
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +100,8 @@ export default function OtpSheet({
   const copy = otpCopyKeys(channel)
   const { secondsLeft, restart } = useResendCountdown(resendIn)
   const closing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const getToken = () => (signup ? signup.getIdToken() : user!.getIdToken())
+  const errorKind = signup ? 'signup' : target.kind
 
   // Focused once the sheet has slid in, so the keyboard doesn't race the animation.
   useEffect(() => {
@@ -94,6 +111,26 @@ export default function OtpSheet({
       clearTimeout(closing.current)
     }
   }, [])
+
+  // A sign-up's first code is still being sent when the sheet opens (or the cooldown is being looked up).
+  const initialSend = signup?.initialSend
+  useEffect(() => {
+    if (!initialSend) return
+    let live = true
+    initialSend.then((result) => {
+      if (!live) return
+      if (result.ok) {
+        restart(result.resendIn)
+        return
+      }
+      restart(result.retryAfter ?? 0)
+      if (result.reason !== 'rateLimited') setError(t(contactChangeErrorKey(result.reason, 'signup')))
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per send
+  }, [initialSend])
 
   const dismiss = (then: () => void) => {
     inputRef.current?.blur()
@@ -109,33 +146,37 @@ export default function OtpSheet({
   const display = target.kind === 'email' ? target.email : formatPhone(target.phone)
 
   const failure = (result: ContactChangeFailure) => {
-    const message = t(contactChangeErrorKey(result.reason, target.kind))
+    const message = t(contactChangeErrorKey(result.reason, errorKind))
     return result.reason === 'invalidCode' && result.attemptsLeft
       ? `${message} ${t('otp_attempts_left').replace('{count}', String(result.attemptsLeft))}`
       : message
   }
 
   const verify = async (value: string) => {
-    if (value.length !== OTP_LENGTH || busy) return
+    if (value.length !== OTP_LENGTH || busy || inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setError(null)
     setNotice(null)
-    const result = await user
-      .getIdToken()
-      .then<ContactChangeResult<{ customToken?: string }>>((idToken) => (isEmail ? verifyEmailCode(idToken, value, API_BASE_URL) : verifyPhoneCode(idToken, value, API_BASE_URL)))
+    const result = await getToken()
+      .then<ContactChangeResult<{ customToken?: string }>>((idToken) =>
+        signup ? verifySignupCode(idToken, value, API_BASE_URL) : isEmail ? verifyEmailCode(idToken, value, API_BASE_URL) : verifyPhoneCode(idToken, value, API_BASE_URL)
+      )
       .catch(() => CONTACT_CHANGE_FAILED)
+    inFlight.current = false
     if (result.ok) {
       // Every session just ended with the email change; this one signs back in.
-      if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})
+      if (!signup && isEmail) await finishEmailChange(auth, user!, 'customToken' in result ? result.customToken : undefined).catch(() => {})
       setBusy(false)
       successHaptic()
-      dismiss(onVerified)
+      dismiss(() => onVerified(signup && 'customToken' in result ? result.customToken : undefined))
       return
     }
+    // Wrong, expired or unreachable: shake, empty the boxes; the field takes the keyboard back once it is enabled.
     setBusy(false)
     setError(failure(result))
     setCode('')
-    inputRef.current?.focus()
+    inputRef.current?.shake()
   }
 
   const resend = async () => {
@@ -143,12 +184,13 @@ export default function OtpSheet({
     setResending(true)
     setError(null)
     setNotice(null)
-    const result = await user
-      .getIdToken()
-      .then<ContactChangeResult<EmailChangeStart> | ContactChangeResult<PhoneChangeStart>>((idToken) =>
-        target.kind === 'email'
-          ? resendEmailChange(idToken, lang, API_BASE_URL)
-          : requestPhoneChange(idToken, { phone: target.phone, lang }, API_BASE_URL)
+    const result = await getToken()
+      .then<ContactChangeResult<EmailChangeStart> | ContactChangeResult<PhoneChangeStart> | ContactChangeResult<SignupOtpStart>>((idToken) =>
+        signup
+          ? requestSignupOtp(idToken, { lang }, API_BASE_URL)
+          : target.kind === 'email'
+            ? resendEmailChange(idToken, lang, API_BASE_URL)
+            : requestPhoneChange(idToken, { phone: target.phone, lang }, API_BASE_URL)
       )
       .catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
@@ -157,7 +199,7 @@ export default function OtpSheet({
         dismiss(onClose)
         return
       }
-      restart('resendIn' in result ? result.resendIn : 0)
+      restart(('resendIn' in result && result.resendIn) || OTP_RESEND_SECONDS)
       const sentVia = 'channel' in result ? result.channel : channel
       setChannel(sentVia)
       setCode('')
@@ -166,7 +208,7 @@ export default function OtpSheet({
       inputRef.current?.focus()
       return
     }
-    if (resendEndsChange(result.reason)) {
+    if (!signup && resendEndsChange(result.reason)) {
       dismiss(() => onEnded(failure(result)))
       return
     }
@@ -174,8 +216,7 @@ export default function OtpSheet({
     setError(failure(result))
   }
 
-  const onChange = (raw: string) => {
-    const next = normalizeOtpInput(raw)
+  const onChange = (next: string) => {
     setCode(next)
     setError(null)
     if (next.length === OTP_LENGTH) verify(next)
@@ -184,6 +225,7 @@ export default function OtpSheet({
   const paste = async () => {
     const text = await Clipboard.getStringAsync().catch(() => '')
     const pasted = normalizeOtpInput(text)
+    // A pasted code replaces whatever was typed.
     if (pasted) onChange(pasted)
     else inputRef.current?.focus()
   }
@@ -208,7 +250,7 @@ export default function OtpSheet({
               <View style={[styles.badge, (isEmail || channel === 'sms') && styles.badgeEmail]}>
                 <LineIcon name={isEmail ? 'mail' : 'chat'} size={20} color={isEmail || channel === 'sms' ? colors.brand : colors.whatsapp} />
               </View>
-              <AppText accessibilityRole="header" style={styles.title}>{t(isEmail ? 'otp_email_title' : copy.title)}</AppText>
+              <AppText accessibilityRole="header" style={styles.title}>{t(signup ? 'otp_signup_title' : isEmail ? 'otp_email_title' : copy.title)}</AppText>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('otp_close')}
@@ -223,7 +265,7 @@ export default function OtpSheet({
             <AppText style={styles.subtitle}>
               {isEmail ? (
                 <>
-                  {t('otp_email_subtitle')}{' '}
+                  {t(signup ? 'otp_signup_subtitle' : 'otp_email_subtitle')}{' '}
                   <AppText style={styles.number}>{`⁦${display}⁩`}</AppText>
                 </>
               ) : (
@@ -236,31 +278,7 @@ export default function OtpSheet({
             </AppText>
 
             <View style={styles.boxesWrap}>
-              <View style={styles.boxes} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-                {Array.from({ length: OTP_LENGTH }, (_, i) => {
-                  const active = focused && (i === code.length || (i === OTP_LENGTH - 1 && code.length === OTP_LENGTH))
-                  return (
-                    <View key={i} style={[styles.box, !!code[i] && styles.boxFilled, active && styles.boxActive, !!error && styles.boxError]}>
-                      <AppText ltr style={styles.digit}>{code[i] ?? ''}</AppText>
-                    </View>
-                  )
-                })}
-              </View>
-              <TextInput
-                ref={inputRef}
-                value={code}
-                onChangeText={onChange}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                editable={!busy}
-                caretHidden
-                contextMenuHidden={false}
-                accessibilityLabel={t('otp_input_label')}
-                style={styles.hiddenInput}
-              />
+              <OtpCodeInput ref={inputRef} value={code} onChange={onChange} error={!!error} disabled={busy} label={t('otp_input_label')} />
             </View>
 
             {error ? (
@@ -286,7 +304,7 @@ export default function OtpSheet({
                 style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
               >
                 <AppText style={[styles.linkText, (secondsLeft > 0 || resending) && styles.linkDisabled]}>
-                  {resending ? '…' : secondsLeft > 0 ? t('otp_resend_in').replace('{seconds}', String(secondsLeft)) : t('otp_resend_btn')}
+                  {resending ? '…' : secondsLeft > 0 ? t('otp_resend_in').replace('{time}', formatOtpCountdown(secondsLeft)) : t('otp_resend_btn')}
                 </AppText>
               </Pressable>
             </View>
@@ -317,36 +335,7 @@ const styles = StyleSheet.create({
   closePressed: { backgroundColor: colors.borderLight },
   subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.textMuted },
   number: { fontWeight: '700', color: colors.text },
-  boxesWrap: { marginTop: 18, position: 'relative' },
-  // Digits read left-to-right in every language.
-  boxes: { flexDirection: 'row', direction: 'ltr', gap: 8 },
-  box: {
-    flex: 1,
-    height: 54,
-    maxWidth: 56,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boxFilled: { borderColor: colors.textFaint },
-  boxActive: { borderColor: colors.brand, backgroundColor: colors.brandTint },
-  boxError: { borderColor: colors.dangerBorder },
-  digit: { fontSize: 24, fontWeight: '700', color: colors.heading },
-  // Covers the boxes, so a tap anywhere on them focuses it; 16px so the Expo web build never zooms.
-  hiddenInput: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    start: 0,
-    end: 0,
-    opacity: 0,
-    color: 'transparent',
-    fontSize: 16,
-    ...webOnly({ cursor: 'text' }),
-  },
+  boxesWrap: { marginTop: 18 },
   error: { marginTop: 10, fontSize: 13, fontWeight: '600', color: colors.danger },
   notice: { marginTop: 10, fontSize: 13, fontWeight: '600', color: colors.success },
   verify: { marginTop: 16 },

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Gift, Handshake, Headset, House, Info, ListChecks, LogOut, QrCode, Settings, type LucideIcon } from 'lucide-react'
+import { ChevronRight, CreditCard, Gift, Handshake, Headset, House, Info, ListChecks, LogOut, QrCode, Settings, type LucideIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type { TranslationKey } from '@/lib/i18n/translations'
 import { isNavLinkActive } from '@/lib/navActive'
@@ -10,6 +10,7 @@ import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { useLang } from '@/lib/i18n/useLang'
+import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
 
 // The phone/tablet drawer (below lg), where the bar is only the logo and the
 // hamburger. A member's drawer, top to bottom: who they are (a card that
@@ -39,6 +40,7 @@ export default function MobileMenu({
   activeAnchorId: string | null
 }) {
   const pathname = usePathname()
+  const raayonit = useRaayonitDisplay()
 
   const linkClass = (href: string) =>
     `${rowBase} text-copy font-semibold ${isNavLinkActive(pathname, href, activeAnchorId) ? 'text-brand bg-brandLight' : 'text-ink'}`
@@ -83,6 +85,7 @@ export default function MobileMenu({
               {/* My Pass opens /member, where the active passes and their QR codes are */}
               <IconLink href="/member" icon={QrCode} label={t('nav_my_pass')} onClose={onClose} className={linkClass('/member')} />
               <IconLink href="/categories" icon={Gift} label={t('nav_cta')} onClose={onClose} className={linkClass('/categories')} />
+              {raayonit && <IconLink href="/raayonit" icon={CreditCard} label={t('nav_raayonit')} onClose={onClose} className={linkClass('/raayonit')} />}
             </div>
 
             {settingsLink}

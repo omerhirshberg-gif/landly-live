@@ -5,12 +5,13 @@ import { CONTENT_LANGS, localizeText } from '@/lib/i18n/contentTranslation'
 import { hasSinglePlace } from '@/lib/offers/perkScope'
 import { haversineDistanceKm, type Coordinates } from '@/lib/geo'
 import { businessNameVariants } from '@/lib/business/businessText'
+import { offerKind, type OfferKind } from '@/lib/offers/offerKind'
 
 // The perks filter & sort pipeline shared by the website (/categories) and
 // the Expo Perks tab: pure functions only (no React, no Firebase), so both
 // apps run the same matching and ordering over their fetched offer lists.
 
-export const PERK_SORTS = ['recommended', 'savings', 'newest', 'az'] as const
+export const PERK_SORTS = ['recommended', 'savings', 'newest', 'expiring', 'az'] as const
 export type PerkSort = (typeof PERK_SORTS)[number]
 export const DEFAULT_PERK_SORT: PerkSort = 'recommended'
 
@@ -18,6 +19,7 @@ export const PERK_SORT_LABELS: Record<PerkSort, TranslationKey> = {
   recommended: 'cats_sort_recommended',
   savings: 'cats_sort_savings',
   newest: 'cats_sort_newest',
+  expiring: 'cats_sort_expiring',
   az: 'cats_sort_az',
 }
 
@@ -44,6 +46,13 @@ type Translate = (key: TranslationKey) => string
 // URL / route params are user-editable: anything unknown falls back to the default.
 export function parsePerkSort(raw: string | null | undefined): PerkSort {
   return (PERK_SORTS as readonly string[]).includes(raw ?? '') ? (raw as PerkSort) : DEFAULT_PERK_SORT
+}
+
+// Explore Perks' source segment (?src=): everything, GoLandly's own perks, or Raayonit's chains. `all` is the default and is left out of the URL.
+export const PERK_SOURCES = ['all', 'landly', 'raayonit'] as const
+export type PerkSource = (typeof PERK_SOURCES)[number]
+export function parsePerkSource(raw: string | null | undefined): PerkSource {
+  return (PERK_SOURCES as readonly string[]).includes(raw ?? '') ? (raw as PerkSource) : 'all'
 }
 
 // Forgiving about how a hand-edited or shared link spells the category
@@ -119,6 +128,13 @@ function compareNewest(a: OfferDocument, b: OfferDocument): number {
   return createdTime(b) - createdTime(a)
 }
 
+// Soonest expiry first; perks that never expire go last.
+function compareExpiring(a: OfferDocument, b: OfferDocument): number {
+  const at = a.expiryDate?.getTime() ?? Infinity
+  const bt = b.expiryDate?.getTime() ?? Infinity
+  return at === bt ? 0 : at < bt ? -1 : 1
+}
+
 export function sortPerks(offers: readonly OfferDocument[], sort: PerkSort, locale = 'en'): OfferDocument[] {
   const sorted = [...offers]
   switch (sort) {
@@ -126,6 +142,8 @@ export function sortPerks(offers: readonly OfferDocument[], sort: PerkSort, loca
       return sorted.sort(compareSavings)
     case 'newest':
       return sorted.sort(compareNewest)
+    case 'expiring':
+      return sorted.sort(compareExpiring)
     case 'az': {
       const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true })
       return sorted.sort((a, b) => collator.compare(shownTitle(a, locale), shownTitle(b, locale)))
@@ -141,7 +159,14 @@ export interface PerkFilters {
   sort: PerkSort
   method?: PerkMethodFilter
   minDiscount?: PerkMinDiscount
+  /** Offer type (derived, lib/offers/offerKind.ts); 'all' or absent = no narrowing. */
+  kind?: OfferKind | 'all'
+  /** One brand (its brandName, else business name); '' or absent = every brand. */
+  brand?: string
 }
+
+/** The brand a perk belongs to, as the filter's chips name it. */
+export const perkBrand = (offer: Pick<OfferDocument, 'brandName' | 'businessName'>): string => (offer.brandName || offer.businessName || '').trim()
 
 /** Kilometres from `origin` to the offer's business, or null when it has no coordinates (online-only, not geocoded). */
 export function offerDistanceKm(offer: Pick<OfferDocument, 'geo' | 'perkScope' | 'fulfillmentType' | 'isNationwide'>, origin: Coordinates | null | undefined): number | null {
@@ -169,7 +194,7 @@ export function sortByNearest(offers: readonly OfferDocument[], origin: Coordina
 // nearest-first; an explicit sort the member chose still wins.
 export function filterAndSortPerks(
   offers: readonly OfferDocument[],
-  { query, category, sort, method = 'all', minDiscount = 0 }: PerkFilters,
+  { query, category, sort, method = 'all', minDiscount = 0, kind = 'all', brand = '' }: PerkFilters,
   t?: Translate,
   locale?: string,
   origin?: Coordinates | null
@@ -180,6 +205,8 @@ export function filterAndSortPerks(
       (category === 'all' || offer.category === category) &&
       (method === 'all' || offer.redemptionMethod === method) &&
       (minDiscount === 0 || discountPercent(offer.originalPrice, offer.offerPrice) >= minDiscount) &&
+      (kind === 'all' || offerKind(offer) === kind) &&
+      (!brand || perkBrand(offer) === brand) &&
       offerMatchesSearch(offer, normalizedQuery, t, locale)
   )
   const sorted = sortPerks(matched, sort, locale)
@@ -187,6 +214,6 @@ export function filterAndSortPerks(
 }
 
 // True once anything moves the view off the resting overview.
-export function hasActivePerkFilters({ query, category, sort, method = 'all', minDiscount = 0 }: PerkFilters): boolean {
-  return normalizeQuery(query) !== '' || category !== 'all' || sort !== DEFAULT_PERK_SORT || method !== 'all' || minDiscount !== 0
+export function hasActivePerkFilters({ query, category, sort, method = 'all', minDiscount = 0, kind = 'all', brand = '' }: PerkFilters): boolean {
+  return kind !== 'all' || !!brand || normalizeQuery(query) !== '' || category !== 'all' || sort !== DEFAULT_PERK_SORT || method !== 'all' || minDiscount !== 0
 }

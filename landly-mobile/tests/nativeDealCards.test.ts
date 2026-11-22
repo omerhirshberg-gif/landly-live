@@ -85,8 +85,8 @@ describe('native vector icons', () => {
   })
 
   it('names the Perks rails and My Pass icons in one place', () => {
-    expect(ALL_ICON).toBe('sparkles')
-    expect(RAIL_ICONS).toEqual({ new: 'sparkles', bestsellers: 'award', superTav: 'ticket' })
+    expect(ALL_ICON).toBe('layoutGrid')
+    expect(RAIL_ICONS).toEqual({ new: 'circlePlus', bestsellers: 'award', superTav: 'ticket' })
     expect(PASS_ICONS).toEqual({ activePerks: 'ticket', redeemed: 'gift', saved: 'piggyBank', emptyActive: 'gift', emptyRedeemed: 'receipt', validity: 'calendar', redeemedMark: 'circleCheck' })
     // One file per icon: the package's root would put the whole library in the bundle.
     expect(read('components/LineIcon.tsx')).toContain("from 'lucide-react-native/icons/globe'")
@@ -94,7 +94,7 @@ describe('native vector icons', () => {
   })
 
   it('shows the redemption method as text only, with no emoji, on every native screen', () => {
-    for (const path of ['components/OfferTags.tsx', 'components/OfferCard.tsx', 'components/RedeemedPass.tsx', 'app/voucher/[voucherId].tsx']) {
+    for (const path of ['components/OfferTags.tsx', 'components/RedeemedPass.tsx', 'app/voucher/[voucherId].tsx']) {
       const source = read(path)
       expect(source, path).toMatch(/REDEMPTION_METHOD_LABEL_KEYS|redemptionTagKey/)
       expect(source, path).not.toMatch(/redemptionGlyph|REDEMPTION_GLYPHS|REDEMPTION_METHOD_ICONS/)
@@ -139,10 +139,9 @@ describe('native perk card layout', () => {
     const tags = read('components/OfferTags.tsx')
     expect(tags).toMatch(/<CategoryIcon category=\{tile\.category\}[^>]*\/>\}\s*<AppText style=\{\[styles\.text, styles\.categoryText/)
     const card = read('components/OfferCard.tsx')
-    // On the card the method (and category) is a small tag over the photo's top start corner, not a row under it.
+    // The card carries no method or category tag (it would crowd the discount badge); the offer page and the pass state it.
     expect(card).not.toContain('<OfferTags')
-    expect(card.indexOf('styles.method')).toBeLessThan(card.indexOf('</DealMedia>'))
-    expect(card.indexOf('styles.method')).toBeGreaterThan(card.indexOf('<DealMedia'))
+    expect(card).not.toContain('styles.method')
     expect(read('app/offer/[offerId].tsx')).toContain('<OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} />')
   })
 
@@ -211,16 +210,18 @@ describe('the perk page’s logo badge', () => {
 
   it('keeps the expiry and what remains in one row, with the address the header’s last row', () => {
     const offer = page()
+    // The expiry has its own calendar row (five years for a Raayonit voucher); the chips hold what remains.
+    expect(offer).toContain('<View style={styles.expiryRow}')
     expect(offer).toContain('<View style={styles.chips}>')
     expect(offer).toContain('methodChip: { flexShrink: 0,')
     expect(offer.indexOf('<NavigationButtons')).toBeGreaterThan(offer.indexOf('<View style={styles.chips}>'))
-    expect(offer.indexOf('<NavigationButtons')).toBeLessThan(offer.indexOf('<View style={styles.folds}>'))
+    expect(offer.indexOf('<NavigationButtons')).toBeLessThan(offer.indexOf('style={styles.folds}>'))
   })
 
   it('draws the chips compact, softly rounded and text only, in one shape', () => {
     const offer = page()
     expect(offer).toContain("chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 }")
-    expect(offer.match(/<View style=\{\[styles\.chip, /g)).toHaveLength(3)
+    expect(offer.match(/<View style=\{\[styles\.chip, /g)).toHaveLength(2)
     expect(offer).not.toContain('<Emoji')
   })
 })

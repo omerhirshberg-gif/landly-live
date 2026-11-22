@@ -50,3 +50,18 @@ export function variantForDenomination(variants: readonly OfferVariant[], raw: u
 
 /** Wraps a value (a price, a percentage) so a right-to-left sentence keeps it in reading order (LRI ... PDI). */
 export const isolateLtr = (text: string): string => `⁦${text}⁩`
+
+export const BANNER_FALLBACK_PERCENT = 13
+export const BANNER_FALLBACK_COUNT = 230
+
+/**
+ * The figures on Home's Raayonit entry banner, from live data: the best discount among the flagship's values and the
+ * number of participating chains (rounded down to a whole ten). Each falls back to its usual value while data is missing.
+ */
+export function bannerFigures(offer: { id: string; variants?: readonly OfferVariant[] | null } | null, chainCount: number): { percent: number; count: number } {
+  const percent = Math.max(0, ...(offer ? showcaseCards(offer).map((c) => c.discountPercent) : []))
+  return {
+    percent: percent > 0 ? percent : BANNER_FALLBACK_PERCENT,
+    count: chainCount >= 10 ? Math.floor(chainCount / 10) * 10 : chainCount > 0 ? chainCount : BANNER_FALLBACK_COUNT,
+  }
+}

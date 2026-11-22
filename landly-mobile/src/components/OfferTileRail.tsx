@@ -10,7 +10,7 @@ import LineIcon from './LineIcon'
 // One of the Perks tab's highlight rails (New on GoLandly, Best Sellers,
 // stacked above the category grid; web: components/discover/OfferTileRail.tsx):
 // a SectionHeader (the same title type, icon slot and reading-direction alignment as Home's category rails) led by a bare 18pt line icon at 1.5 stroke, no frame (RAIL_ICONS:
-// Sparkles for New, Award for Best Sellers), then the perks as Home's carousel
+// a plus for New, Award for Best Sellers), then the perks as Home's carousel
 // draws them (OfferCarousel.tsx): the same compact cards about 72% of the screen
 // wide, settling on a card's edge, with page dots underneath. It bleeds
 // through the screen's side padding and mirrors in Hebrew as Home's does.

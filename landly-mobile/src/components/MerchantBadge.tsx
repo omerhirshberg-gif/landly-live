@@ -3,6 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import Image from './SafeImage'
 import { colors } from '../theme'
 import { bundledBrandImage } from '../lib/raayonitBrandImages'
+import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const RAAYONIT_LOGO = require('../../assets/images/raayonit-logo.png')
@@ -15,8 +16,8 @@ const BADGE_MIN_WIDTH = 56
 const LOGO_MAX_WIDTH = 96
 /** An offer's own page (web: size="lg"): the tile's side room, narrowest width and widest. */
 const LARGE = { padding: 12, minWidth: 72, maxWidth: 160 }
-/** A feed card's tile (web: h-[44px] min-w-[64px] max-w-[124px] px-1.5 py-1): its height, side room, widest, and the room left for the mark. */
-const FIXED = { height: 44, minWidth: 64, maxWidth: 124, paddingX: 6, paddingY: 4, innerHeight: 44 - 2 - 8, maxInnerWidth: 124 - 2 - 12 }
+/** A feed card's tile (web: h-[44px] w-[72px] px-1.5 py-1): one size for every logo, so wide and square marks align down a row of cards. */
+const FIXED = { height: 44, minWidth: 72, maxWidth: 72, paddingX: 6, paddingY: 4, innerHeight: 44 - 2 - 8, maxInnerWidth: 72 - 2 - 12 }
 
 // The business on a perk card (OfferCard.tsx) and its page: a white rounded tile
 // with a hairline edge, of one height and as wide as its logo needs: a square or
@@ -51,7 +52,8 @@ export default function MerchantBadge({
   const [loaded, setLoaded] = useState<{ uri: string; aspect: number } | null>(null)
   const own = logoUri && failedUri !== logoUri ? logoUri : null
   // The Raayonit logo is bundled, so it needs no loading; it stands in only where the offer has no logo that loads.
-  const logo = own ?? (raayonit ? RAAYONIT_KEY : null)
+  const display = useRaayonitDisplay()
+  const logo = own ?? (raayonit && display ? RAAYONIT_KEY : null)
   const inner = height - 2
   const logoMaxWidth = large ? LARGE.maxWidth - LARGE.padding * 2 - 2 : LOGO_MAX_WIDTH
   const aspect = loaded && loaded.uri === logo ? loaded.aspect : 1

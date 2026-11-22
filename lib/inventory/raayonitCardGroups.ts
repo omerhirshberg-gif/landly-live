@@ -6,7 +6,7 @@ export type GroupLocale = 'he' | 'en'
 
 /** Category (the canonical English key stored on every card) -> the slug of its admin label `rc.cat.<slug>`. */
 export const CATEGORY_SLUGS: Record<(typeof BUSINESS_CATEGORIES)[number], string> = {
-  'Restaurants and Cafes': 'restaurants', 'Beach and Sea': 'beach', 'Attractions and Tours': 'attractions', 'Fashion and Shopping': 'fashion',
+  'Restaurants and Cafes': 'restaurants', 'Chef Restaurants': 'chef', 'Beach and Sea': 'beach', 'Attractions and Tours': 'attractions', 'Fashion and Shopping': 'fashion',
   'Sport and Fitness': 'sport', 'Israel and Global Tourism': 'tourism', 'Pampering Bundles': 'pampering', 'Beauty and Skincare': 'beauty',
   'Home and Furnishing': 'home', 'Kids and Baby': 'kids', 'Insurance and Savings': 'insurance', 'Cars and Transport': 'cars',
 }

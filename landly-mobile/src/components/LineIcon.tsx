@@ -39,9 +39,13 @@ import Settings from 'lucide-react-native/icons/settings'
 import Shield from 'lucide-react-native/icons/shield'
 import Store from 'lucide-react-native/icons/store'
 import Smartphone from 'lucide-react-native/icons/smartphone'
-import Sparkles from 'lucide-react-native/icons/sparkles'
+import SlidersHorizontal from 'lucide-react-native/icons/sliders-horizontal'
+import Share from 'lucide-react-native/icons/share'
+import CirclePlus from 'lucide-react-native/icons/circle-plus'
+import LayoutGrid from 'lucide-react-native/icons/layout-grid'
 import Tag from 'lucide-react-native/icons/tag'
 import Ticket from 'lucide-react-native/icons/ticket'
+import Layers from 'lucide-react-native/icons/layers'
 import X from 'lucide-react-native/icons/x'
 
 // The app's outline glyphs, lucide-react-native (24px grid, 2px stroke), each
@@ -87,13 +91,17 @@ const ICONS = {
   // The app lock: Face ID / face unlock, and Touch ID / fingerprint.
   faceId: ScanFace,
   fingerprint: Fingerprint,
-  // The Perks tab's rail headings: Sparkles (New on GoLandly), Award (Best Sellers).
-  sparkles: Sparkles,
+  // The Perks tab's rail headings: a plus (New on GoLandly), Award (Best Sellers); the filter chips' All and trigger, share.
+  circlePlus: CirclePlus,
+  layoutGrid: LayoutGrid,
+  sliders: SlidersHorizontal,
+  share: Share,
   award: Award,
   heart: Heart,
   gear: Settings,
   // My Pass: its stats, empty states and pass marks.
   ticket: Ticket,
+  layers: Layers,
   piggyBank: PiggyBank,
   circleCheck: CircleCheck,
   store: Store,

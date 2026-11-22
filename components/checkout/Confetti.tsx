@@ -18,14 +18,15 @@ interface Piece {
   wide: boolean
 }
 
-// One celebratory burst for the order confirmation (app/order-success): a
-// full-window canvas over the page that ignores the pointer, fires paper
-// pieces up from the lower centre, lets them fall and fade, then removes
+// One celebration for the order confirmation (app/order-success): a
+// full-window canvas over the page that ignores the pointer, showers paper
+// pieces from the top of the window (`fromTop`) or fires them up from the
+// lower centre, lets them fall and fade, then removes
 // itself after 3.5s. No library, no listeners left behind. Skipped entirely
 // under prefers-reduced-motion. The Expo app's counterpart is
 // landly-mobile/src/components/Confetti.tsx. `count` makes a smaller burst
 // (onboarding's finish is a quieter moment than a purchase).
-export default function Confetti({ count = COUNT }: { count?: number }) {
+export default function Confetti({ count = COUNT, fromTop = false }: { count?: number; fromTop?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [done, setDone] = useState(false)
 
@@ -43,20 +44,26 @@ export default function Confetti({ count = COUNT }: { count?: number }) {
     canvas.height = height * dpr
     ctx.scale(dpr, dpr)
 
-    const pieces: Piece[] = Array.from({ length: count }, () => {
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.6
-      const speed = 9 + Math.random() * 9
-      return {
-        x: width / 2 + (Math.random() - 0.5) * width * 0.3,
-        y: height * 0.75,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
+    // `fromTop`: a shower across the full width, starting above the window and
+    // falling fast through it (the order confirmation). Otherwise the burst
+    // rises from the lower centre.
+    const gravity = fromTop ? 0.28 : 0.32
+    const drag = fromTop ? 0.992 : 0.985
+
+    const pieces: Piece[] = Array.from({ length: fromTop ? count * 2 : count }, () => {
+      const common = {
         size: 6 + Math.random() * 6,
         rotation: Math.random() * Math.PI,
         spin: (Math.random() - 0.5) * 0.3,
         color: COLORS[Math.floor(Math.random() * COLORS.length)],
         wide: Math.random() > 0.5,
       }
+      if (fromTop) {
+        return { ...common, x: Math.random() * width, y: -20 - Math.random() * height * 0.6, vx: (Math.random() - 0.5) * 5, vy: 5 + Math.random() * 7 }
+      }
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.6
+      const speed = 9 + Math.random() * 9
+      return { ...common, x: width / 2 + (Math.random() - 0.5) * width * 0.3, y: height * 0.75, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed }
     })
 
     const start = performance.now()
@@ -66,9 +73,9 @@ export default function Confetti({ count = COUNT }: { count?: number }) {
       // Fade over the last second.
       ctx.globalAlpha = Math.max(0, Math.min(1, (DURATION_MS - elapsed) / 1000))
       for (const p of pieces) {
-        p.vy += 0.32
-        p.vx *= 0.985
-        p.vy *= 0.985
+        p.vy += gravity
+        p.vx *= drag
+        p.vy *= drag
         p.x += p.vx
         p.y += p.vy
         p.rotation += p.spin
@@ -83,7 +90,7 @@ export default function Confetti({ count = COUNT }: { count?: number }) {
       else setDone(true)
     })
     return () => cancelAnimationFrame(frame)
-  }, [count])
+  }, [count, fromTop])
 
   if (done) return null
   return <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-50 h-dvh w-screen" />

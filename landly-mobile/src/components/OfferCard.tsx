@@ -1,24 +1,20 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import { getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
 import { formatPrice } from '@shared/format'
 import { useIsWishlisted, useToggleWishlist } from '@shared/firebase/useWishlist'
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
-import { formatDistance, offerPlaceLabel } from '@shared/geo'
 import AppText from './AppText'
 import ContentText from './ContentText'
 import DealMedia from './DealMedia'
 import LineIcon from './LineIcon'
 import MerchantBadge from './MerchantBadge'
-import CategoryIcon from './CategoryIcon'
-import { CATEGORY_TILES } from '@shared/categories'
-import { redemptionChannel, redemptionTagKey } from '@shared/offers/redemption'
 import ScalePressable from './ScalePressable'
-import { isMultiChain, PerkReachLine } from './PerkReach'
-import { locationNoticeKind } from '@shared/offers/locationVisibility'
+import { expiryPill } from '@shared/offers/cardExpiry'
 import { useLang } from '../i18n/LangProvider'
 import { impact, tick } from '../lib/haptics'
+import { displayTitle } from '@shared/offers/superTav'
 import { heroLogoIsFallback, heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../lib/logoHero'
 import { badgeLogoUri, secureImageUrl } from '../lib/imageSource'
 import { useDealImage } from '../lib/useDealImage'
@@ -61,40 +57,37 @@ const HERO_MAX_HEIGHT = 172
 export default memo(function OfferCard({
   offer,
   onOpen,
-  showCategoryBadge = true,
   variant = 'standard',
-  distanceKm,
+  nationwide = false,
   width,
 }: {
   offer: OfferDocument
   /** Opens the perk; called with this card's offer, so a list can pass one stable function to every card. */
   onOpen: (offer: OfferDocument) => void
+  /** Kept so callers need no change; the redemption and category tag no longer sits on the card (it lives on the offer page). */
   showCategoryBadge?: boolean
   variant?: OfferCardVariant
-  /** Kilometres from the member's location (Near me); shown before the place. */
+  /** Kept so callers need no change; the card shows no place or distance (the offer page does). */
   distanceKm?: number | null
+  /** A nationwide chain with no placeable branch, listed under a location filter: a subtle "Nationwide chain" tag, no distance. */
+  nationwide?: boolean
   /** The card's outer width when the list knows it: the picture is sized on the first pass. */
   width?: number
 }) {
   const { t, lang } = useLang()
   const title = localizeText(offer.title, offer.translations, lang, 'title')
   const name = localizedBusinessName(offer, lang)
-  // A single venue says where it is, from its address, else its city (never "valid at 1 store" or the redemption method).
-  const place = offerPlaceLabel(offer, lang)
-  const distance = typeof distanceKm === 'number' ? formatDistance(distanceKm, lang) : null
   const compact = variant !== 'standard'
-  const multiChain = isMultiChain(offer)
-  // Online, online and in store, or in store: the tag over the photo; an online store has no street to show.
-  const channel = redemptionChannel(offer)
-  const onlineOnly = channel === 'online'
-  // A multi-branch perk has no street address: the chains or the branch-validity notice say where it works.
-  const reach = locationNoticeKind(offer) !== null
-  const tile = CATEGORY_TILES.find((c) => c.category === offer.category)
   // A multi-denomination offer reads "From ₪89" with its values; the classic fields are its cheapest variant.
   const multiValue = (offer.variants?.length ?? 0) > 1
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
   const image = useDealImage(offer.imageUrl, raayonitImageOpts(offer))
   const heroLogo = heroLogoSource(offer)
+  // Read once per mount, since render must stay pure.
+  const [now] = useState(Date.now)
+  const pill = expiryPill(offer.expiryDate, now)
+  // Rail and grid cards keep two title lines so neighbours line up; a full-width feed card only takes what it needs.
+  const reserveTitle = compact || !!width
   const saved = useIsWishlisted(offer.id)
   const toggleWishlist = useToggleWishlist()
   const wishlistLabel = saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')
@@ -118,11 +111,11 @@ export default memo(function OfferCard({
     >
       <View style={[styles.card, variant === 'carousel' && styles.cardCarousel]}>
         <DealMedia image={image} recyclingKey={offer.id} width={width ? width - CARD_BORDER * 2 : undefined} category={offer.category} logo={heroLogo} logoSmall={heroLogoIsFallback(offer)} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>
-          <View style={styles.method}>
-            {showCategoryBadge && tile && <CategoryIcon category={tile.category} size={12} color={colors.body} strokeWidth={1.5} />}
-            {!multiChain && (offer.redemptionMethod === 'in_store' || offer.redemptionMethod === 'online') && <LineIcon name={channel === 'in_store' ? 'store' : 'globe'} size={12} color={colors.body} strokeWidth={1.75} />}
-            <AppText style={styles.methodText} numberOfLines={1}>{multiChain ? t('perk_multi_chain_badge') : t(redemptionTagKey(offer))}</AppText>
-          </View>
+          {pill && pill.kind !== 'expired' && (
+            <View style={[styles.expiry, pill.kind === 'urgent' && styles.expiryUrgent]}>
+              <AppText style={styles.expiryText} numberOfLines={1}>{t(pill.key).replace('{date}', `\u2066${pill.date}\u2069`)}</AppText>
+            </View>
+          )}
           {discount > 0 && (
             <View style={styles.ribbon}>
               <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={[styles.ribbonText, compact && styles.ribbonTextCompact]}>{`-${discount}%`}</AppText>
@@ -159,41 +152,21 @@ export default memo(function OfferCard({
         </DealMedia>
 
         <View style={[styles.body, compact && styles.bodyCompact, !!heroLogo && styles.bodyLogoHero]}>
-          <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
-            {title.text}
+          <ContentText contentLang={title.lang} style={[styles.title, compact && styles.titleCompact, reserveTitle && (compact ? styles.titleSlotCompact : styles.titleSlot)]} numberOfLines={2}>
+            {displayTitle(offer, title.text, t('super_tav_headline'))}
           </ContentText>
           {/* The business on its own line, then where (or how far) on a full-width line below, so a long notice wraps whole. */}
           <AppText style={[styles.business, compact && styles.businessCompact]} numberOfLines={1}>
             {name.text}
           </AppText>
+          {nationwide && (
+            <View style={styles.nationwide}>
+              <LineIcon name="globe" size={12} color={colors.textMuted} strokeWidth={1.75} />
+              <AppText style={styles.nationwideText} numberOfLines={1}>{t('loc_nationwide_badge')}</AppText>
+            </View>
+          )}
           {/* The foot: where it is, then the price, pinned together to the card's bottom edge so every card in a row lines up. */}
           <View style={styles.foot}>
-            {onlineOnly ? (
-              <View style={styles.metaFoot}>
-                <View style={styles.pin}>
-                  <LineIcon name="globe" size={12} color={colors.brand} strokeWidth={1.75} />
-                </View>
-                <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>{t('perk_online_store')}</AppText>
-              </View>
-            ) : reach ? (
-              <View style={styles.metaFoot}>
-                <PerkReachLine offer={offer} compact={compact} />
-              </View>
-            ) : (!!place || !!distance) ? (
-              <View style={styles.metaFoot}>
-                <View style={styles.pin}>
-                  <LineIcon name="pin" size={12} color={distance ? colors.brand : colors.textFaint} strokeWidth={1.75} />
-                </View>
-                {/* The distance keeps its own run ("1.2 ק״מ") inside either direction. */}
-                {!!distance && <AppText style={[styles.locationText, styles.distanceText, compact && styles.metaTextCompact]}>{`\u2068${distance}\u2069`}</AppText>}
-                {!!place && (
-                  <AppText style={[styles.locationText, compact && styles.metaTextCompact]} numberOfLines={1}>
-                    {distance ? `· ${place}` : place}
-                  </AppText>
-                )}
-              </View>
-            ) : null}
-
           {/* One baseline: the price, then the struck-through original. Digits and "₪" run left to right in Hebrew. */}
           <View style={styles.priceRow}>
             {multiValue ? (
@@ -201,9 +174,6 @@ export default memo(function OfferCard({
                 <AppText style={[styles.price, compact && styles.priceCompact]}>
                   {t('offer_card_from').split('{price}').map((part, i) => (i === 0 ? part : [<AppText key="p" ltr style={[styles.price, compact && styles.priceCompact]}>{formatPrice(offer.offerPrice)}</AppText>, part]))}
                 </AppText>
-                <View style={styles.valuesBadge}>
-                  <AppText ltr style={styles.valuesText}>{offer.variants!.map((v) => v.faceValueAgorot / 100).join(' / ')} ₪</AppText>
-                </View>
               </>
             ) : (
               <>
@@ -266,39 +236,25 @@ const styles = StyleSheet.create({
   bodyLogoHero: { paddingTop: 12 },
   title: { fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.heading },
   titleCompact: { fontSize: 14, lineHeight: 19 },
+  // Two lines of room, whatever the title needs, so a row of cards shares one baseline for the brand and the foot.
+  titleSlot: { minHeight: 40 },
+  titleSlotCompact: { minHeight: 38 },
+  // The expiry pill at the photo's top start: dark and translucent, crimson inside 48 hours.
+  expiry: { position: 'absolute', top: 10, start: 10, maxWidth: '78%', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, borderCurve: 'continuous', backgroundColor: 'rgba(15, 23, 42, 0.78)' },
+  expiryUrgent: { backgroundColor: '#B91C1C' },
+  expiryText: { fontSize: 11, lineHeight: 15, fontWeight: '700', color: colors.white },
+  nationwide: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%', marginTop: 6, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: colors.borderLight },
+  nationwideText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: '600', color: colors.textMuted },
   business: { flexShrink: 1, fontSize: 13, lineHeight: 18, color: colors.body },
   businessCompact: { fontSize: 12, lineHeight: 17 },
-  metaTextCompact: { fontSize: 12, lineHeight: 16 },
   meta: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 2 },
-  pin: { marginTop: 0 },
-  // The method (and category) tag over the photo's top start corner.
-  method: {
-    position: 'absolute',
-    top: 10,
-    start: 10,
-    maxWidth: '78%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    borderCurve: 'continuous',
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  },
-  methodText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600', color: colors.body },
-  locationText: { fontSize: 12, lineHeight: 16, color: colors.textFaint, flexShrink: 2 },
-  distanceText: { flexShrink: 0, fontWeight: '600', color: colors.brand },
   // The price row rides the card's foot (`marginTop: auto`), on one baseline.
   foot: { marginTop: 'auto', paddingTop: 8 },
-  metaFoot: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', columnGap: 8 },
   price: { fontSize: 18, fontWeight: '800', color: colors.brand, fontVariant: ['tabular-nums'] },
   priceCompact: { fontSize: 16 },
   original: { fontSize: 14, color: colors.textFaint, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
   originalCompact: { fontSize: 12 },
-  valuesBadge: { borderRadius: 8, borderCurve: 'continuous', backgroundColor: colors.borderLight, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'center' },
-  valuesText: { fontSize: 11, lineHeight: 15, fontWeight: '700', color: colors.body, fontVariant: ['tabular-nums'] },
   // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text.
   // The card doesn't clip (its shadow), so the ribbon rounds the card's corner itself, inside the 1pt border.
   ribbon: {

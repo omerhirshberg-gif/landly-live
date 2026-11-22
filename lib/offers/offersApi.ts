@@ -9,6 +9,9 @@ export function setOffersApiBase(base: string) {
   apiBase = base.replace(/\/+$/, '')
 }
 
+/** The API origin set at startup ('' = same origin, the website). */
+export const getOffersApiBase = () => apiBase
+
 export const OFFERS_API_TIMEOUT_MS = 8000
 
 /** Throws on a bad answer or no answer, so the caller can fall back to Firestore. */

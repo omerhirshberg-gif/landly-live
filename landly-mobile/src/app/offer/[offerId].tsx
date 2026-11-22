@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { getOffer, getOfferDiscountPercent, type OfferDocument } from '@shared/firebase/offers'
+import { getOffer, getOfferDiscountPercent, isOfferAvailable, type OfferDocument } from '@shared/firebase/offers'
 import { getClaimedPoolIds } from '@shared/firebase/vouchers'
 import { variantDiscountPercent } from '@shared/offers/variants'
 import { useChainBrands } from '@shared/offers/useChainBrands'
+import { useOffers } from '@shared/offers/useOffers'
+import { isRaayonitMultiChain } from '@shared/offers/multiChainNote'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useWishlist } from '@shared/firebase/useWishlist'
 import { formatLongDate, formatPrice } from '@shared/format'
@@ -32,18 +35,26 @@ import GlassBackButton from '../../components/GlassBackButton'
 import GlassHeartButton from '../../components/GlassHeartButton'
 import MerchantBadge from '../../components/MerchantBadge'
 import OfferTags from '../../components/OfferTags'
+import FlagshipEyebrow from '../../components/FlagshipEyebrow'
 import NavigationButtons from '../../components/NavigationButtons'
 import ScreenHeader, { goBack } from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { PANE_GAP } from '../../lib/layout'
 import BrandStrip from '../../components/BrandStrip'
+import { isChain, isFlagship, landlyOffers } from '@shared/offers/discoverTab'
+import RaayonitChainNotes from '../../components/RaayonitChainNotes'
 import BranchStrip from '../../components/BranchStrip'
-import ContactActions from '../../components/ContactActions'
 import RedemptionCallout from '../../components/RedemptionCallout'
 import { variantForDenomination } from '@shared/home/superShowcase'
 import { heroLogoIsFallback, heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../../lib/logoHero'
 import { badgeLogoUri, secureImageUrl } from '../../lib/imageSource'
-import { cachedOffer } from '../../lib/openOffer'
+import { cachedOffer, openOffer } from '../../lib/openOffer'
+import OfferCarousel from '../../components/OfferCarousel'
+import { superTavHeadline } from '@shared/offers/superTav'
+import SectionHeader from '../../components/SectionHeader'
+import BrandSpotlight from '../../components/BrandSpotlight'
+import ChainOfferView from '../../components/ChainOfferView'
+import { ChainsAccordion, MultiChainBonus } from '../../components/MultiChainCredit'
 import { useDealImage } from '../../lib/useDealImage'
 import { useLayout } from '../../lib/useLayout'
 import { webOnly } from '../../lib/webStyles'
@@ -83,17 +94,37 @@ export default function OfferScreen() {
   // The tapped card's data first (if any); undefined while loading, null when missing.
   const [offer, setOffer] = useState<OfferDocument | null | undefined>(() => (offerId ? cachedOffer(offerId) : undefined))
   const [claimed, setClaimed] = useState<boolean | null>(null)
+  // The hero stretches when the sheet is pulled down past the top (iOS rubber-band), and trails the scroll a little going up.
+  // Android and the web build have no overscroll offset to follow, so they only get the trailing motion.
+  const scrollY = useSharedValue(0)
+  const heroHeight = useSharedValue(0)
+  const reducedMotion = useReducedMotion()
+  const onScroll = useAnimatedScrollHandler((e) => { scrollY.set(e.contentOffset.y) })
+  const heroStyle = useAnimatedStyle(() => {
+    if (reducedMotion) return {}
+    const y = scrollY.get()
+    const h = Math.max(heroHeight.get(), 1)
+    if (y < 0) return { transformOrigin: 'bottom', transform: [{ scale: 1 + Math.min(-y, h) / h }] }
+    return { transform: [{ translateY: y * 0.35 }] }
+  })
+  const scroller = useRef<Animated.ScrollView>(null)
+  const chainsAt = useRef<View>(null)
+  // "See the chains": scrolls to the participating-chains fold and opens it.
+  const [chainsOpen, setChainsOpen] = useState(false)
+  const seeChains = () => {
+    setChainsOpen(true)
+    const target = chainsAt.current
+    const list = scroller.current
+    if (target && list) target.measureLayout(list as unknown as number, (_x, y) => (list as unknown as { scrollTo: (o: { y: number; animated: boolean }) => void }).scrollTo({ y: Math.max(0, y - 80), animated: true }), () => {})
+  }
   // A multi-denomination offer: the voucher value picked (a pool id); empty = the first one that isn't already owned.
-  const [pickedPool, setPickedPool] = useState('')
+  const [pickedChoice, setPickedPool] = useState('')
   const [claimedPools, setClaimedPools] = useState<string[]>([])
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
   // A showcase card opens this screen with its value (denomination=150): that value starts out picked.
-  useEffect(() => {
-    if (!offer?.variants?.length) return
-    const wanted = variantForDenomination(offer.variants, denomination)
-    if (wanted) setPickedPool((current) => current || wanted.poolId)
-  }, [offer, denomination])
+  const denominationPool = offer?.variants?.length ? variantForDenomination(offer.variants, denomination)?.poolId ?? '' : ''
+  const pickedPool = pickedChoice || denominationPool
 
   useEffect(() => {
     if (!offerId) return
@@ -110,6 +141,12 @@ export default function OfferScreen() {
       cancelled = true
     }
   }, [offerId])
+
+  // The Raayonit Card has no offer screen of its own: it is bought from the hub (and Home) in one tap. A direct link lands there.
+  const flagshipHere = !!offer && isFlagship(offer)
+  useEffect(() => {
+    if (flagshipHere) router.replace('/raayonit')
+  }, [flagshipHere])
 
   const uid = user?.uid
   // A voucher from before variants belongs to the offer's default (first, cheapest) stock.
@@ -155,6 +192,8 @@ export default function OfferScreen() {
   // The business name has its own translations; one "Show original" switch flips both.
   const nameContent = useLocalizedContent({ businessName: offer?.businessName ?? '' }, offer?.businessTranslations, lang)
   const businessName = nameContent.text('businessName')
+  const headline = superTavHeadline(offer, t('super_tav_headline'))
+  const chainPage = !!offer && isChain(offer)
   const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
   // The brand tiles of a multi-chain pass: the offer's own index, else its chain names matched to the live brand offers, so a missing index never drops to plain text boxes.
   const chainSubject = useMemo(() => (offer ? { offerId: offer.id, perkScope: offer.perkScope, participatingChains: offer.participatingChains, allLiveBrands: true } : null), [offer])
@@ -166,6 +205,13 @@ export default function OfferScreen() {
     content.toggleOriginal()
     nameContent.toggleOriginal()
   }
+  const { offers: allOffers } = useOffers()
+  // Other perks in the same category, never this one or a sold-out one. The brand's own are one tap away on its brand page.
+  const moreInCategory = useMemo(() => {
+    // A category is a GoLandly notion: a Raayonit voucher or chain has no "more in category", and a direct perk never lists Raayonit's.
+    if (!offer || !allOffers || offer.fulfillmentType === 'raayonit_pool') return []
+    return landlyOffers(allOffers).filter((o) => o.id !== offer.id && isOfferAvailable(o) && o.category === offer.category).slice(0, 12)
+  }, [offer, allOffers])
   const title = content.text('title')
   const description = content.text('description')
   const descriptionText = distinctDescription(title.text, description.text)
@@ -191,6 +237,9 @@ export default function OfferScreen() {
     />
   )
 
+  // A participating chain is not a voucher for one store: its screen sends the visitor to the Raayonit Card (/raayonit).
+  if (offer && chainPage) return <ChainOfferView offer={offer} />
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Held landscape, the header steps in from a side cutout like the content below it. */}
@@ -198,7 +247,7 @@ export default function OfferScreen() {
         {/* On a phone a found offer floats its back button over the picture. */}
         {(panes || !offer) && <ScreenHeader fallback="/perks" />}
       </View>
-      {offer === undefined ? (
+      {offer === undefined || (!!offer && isFlagship(offer)) ? (
         <ActivityIndicator color={colors.brand} style={styles.spinner} />
       ) : offer === null ? (
         <View style={styles.notFound}>
@@ -207,9 +256,9 @@ export default function OfferScreen() {
         </View>
       ) : (
         <>
-          <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={panes ? [styles.content, { paddingLeft, paddingRight }] : undefined} contentInsetAdjustmentBehavior="automatic">
+          <Animated.ScrollView ref={scroller} onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={panes ? [styles.content, { paddingLeft, paddingRight }] : undefined} contentInsetAdjustmentBehavior="automatic">
             <View style={panes ? styles.cardPanes : undefined}>
-              <View style={[styles.heroWrap, panes && styles.heroPane, panes && { flex: heroShare }]}>
+              <Animated.View onLayout={(e) => heroHeight.set(e.nativeEvent.layout.height)} style={[styles.heroWrap, panes && styles.heroPane, panes && { flex: heroShare }, !panes && heroStyle]}>
                 {/* The same picture as the perk card: an offer image that is a logo goes to the badge instead. */}
                 <DealMedia image={image} category={offer.category} logo={heroLogoSource(offer)} logoSmall={heroLogoIsFallback(offer)} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>
                   {!panes && (
@@ -231,14 +280,31 @@ export default function OfferScreen() {
                   />
                   {panes && logo}
                 </DealMedia>
-              </View>
+              </Animated.View>
 
               <View style={panes ? [styles.body, styles.bodyPane] : [styles.body, styles.sheet]}>
                 {!panes && logo}
-                <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} />
-                <AppText style={[styles.business, styles.businessAfterTags]}>{businessName.text}</AppText>
-                <ContentText contentLang={title.lang} style={styles.title} accessibilityRole="header">{title.text}</ContentText>
+                {isFlagship(offer) ? <FlagshipEyebrow /> : <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} />}
+                {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+                {chainPage ? (
+                  <>
+                    {/* A participating chain's page is the chain's: its name is the heading, with the note that it honours Super Tav. */}
+                    <AppText style={[styles.title, styles.titleAfterTags]} accessibilityRole="header">{businessName.text}</AppText>
+                    <View style={styles.honors}><LineIcon name="ticket" size={14} color={colors.brand} strokeWidth={1.75} /><AppText style={styles.honorsText}>{t('raayonit_honors_badge')}</AppText></View>
+                  </>
+                ) : headline ? (
+                  <>
+                    <AppText style={[styles.title, styles.titleAfterTags]} accessibilityRole="header">{headline}</AppText>
+                    <AppText style={[styles.business, styles.businessBelow]}>{businessName.text}</AppText>
+                  </>
+                ) : (
+                  <>
+                    <AppText style={[styles.business, styles.businessAfterTags]}>{businessName.text}</AppText>
+                    <ContentText contentLang={title.lang} style={styles.title} accessibilityRole="header">{title.text}</ContentText>
+                  </>
+                )}
 
+                {chainPage && !!headline && <AppText style={styles.valueLine}>{headline}</AppText>}
                 {multi && <VariantSelector variants={variants} value={selected?.poolId ?? ''} onChange={setPickedPool} claimed={claimedPools} />}
                 <View style={styles.priceRow}>
                   <AppText ltr style={styles.price}>{formatPrice(price)}</AppText>
@@ -252,20 +318,25 @@ export default function OfferScreen() {
                     <IssuerAttribution issuer={RAAYONIT_ISSUER} note={t('offer_code_only_info')} />
                   </View>
                 )}
+                {/* Bought through one brand, it is still a Multi-Chain Super Tav: also redeemable across the network. */}
+                {isPooled(offer.fulfillmentType) && offer.perkScope !== 'multi_chain' && <MultiChainBonus onSeeChains={seeChains} />}
+
+                {/* When it stops working: five years from purchase for a Raayonit voucher, else the offer's own date. */}
+                {(isPooled(offer.fulfillmentType) || !!offer.expiryDate) && (
+                  <View style={styles.expiryRow} accessible>
+                    <LineIcon name="calendar" size={16} color={expired ? colors.danger : colors.textMuted} strokeWidth={1.75} />
+                    <AppText style={[styles.expiryRowText, expired && styles.expired]}>
+                      {isPooled(offer.fulfillmentType) ? t('card_valid_5_years') : t('offer_detail_expires').replace('{date}', formatLongDate(offer.expiryDate!, lang))}
+                    </AppText>
+                  </View>
+                )}
 
                 {/* Text-only pills of what the offer really states; they wrap. */}
-                {(!!offer.expiryDate || remaining !== null || !!offer.kosherBranchCount) && (
+                {(remaining !== null || !!offer.kosherBranchCount) && (
                   <View style={styles.chips}>
                     {!!offer.kosherBranchCount && (
                       <View style={[styles.chip, styles.methodChip]}>
                         <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</AppText>
-                      </View>
-                    )}
-                    {offer.expiryDate && (
-                      <View style={[styles.chip, expired ? styles.expiredChip : styles.methodChip]}>
-                        <AppText style={[styles.chipText, expired ? styles.expired : styles.methodText]} numberOfLines={1}>
-                          {t('offer_detail_expires').replace('{date}', formatLongDate(offer.expiryDate, lang))}
-                        </AppText>
                       </View>
                     )}
                     {remaining !== null && (
@@ -273,6 +344,16 @@ export default function OfferScreen() {
                         <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>{t('offer_detail_remaining').replace('{count}', String(remaining))}</AppText>
                       </View>
                     )}
+                  </View>
+                )}
+
+                {/* Signed out: the way in, as a plain divider row with the action at its end. */}
+                {!user && (
+                  <View style={styles.loginRow}>
+                    <AppText style={styles.loginText}>{t('offer_login_prompt')}</AppText>
+                    <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.navigate('/login')} style={styles.loginLink}>
+                      <AppText style={styles.loginAction}>{t('offer_login_action')}</AppText>
+                    </Pressable>
                   </View>
                 )}
 
@@ -286,7 +367,7 @@ export default function OfferScreen() {
                     <PerkReachLine offer={offer} />
                   </View>
                 )}
-                {singleVenue && !showLocation && !!venueLine && (
+                {singleVenue && !showLocation && !!venueLine && !hasStoreList && (
                   <View style={styles.location}>
                     <View style={styles.address}>
                       <LineIcon name="pin" size={14} color={colors.textFaint} strokeWidth={2} />
@@ -294,7 +375,7 @@ export default function OfferScreen() {
                     </View>
                   </View>
                 )}
-                {showLocation && (!!place || (destination && !!navigationLinks(destination))) && (
+                {showLocation && (!hasStoreList && !!place || (destination && !!navigationLinks(destination))) && (
                   <View style={styles.location}>
                     {!!place && (
                       <View style={styles.address}>
@@ -306,12 +387,8 @@ export default function OfferScreen() {
                   </View>
                 )}
 
-                {/* One full-width column: the website and the phone, 12pt apart. */}
-                <View style={styles.actions}>
-                  <ContactActions websiteUrl={offer.websiteUrl} phone={offer.contactPhone} stack />
-                </View>
-
-                <View style={styles.folds}>
+                <RaayonitChainNotes offer={offer} />
+                <View ref={chainsAt} collapsable={false} style={styles.folds}>
                   {hasStoreList && (
                     <Accordion title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
                       {offer.perkScope === 'multi_chain' && chainBrands.length > 0 ? (
@@ -351,10 +428,20 @@ export default function OfferScreen() {
                       <ContentText contentLang={terms.lang} style={styles.terms}>{terms.text}</ContentText>
                     </Accordion>
                   )}
+                  {isPooled(offer.fulfillmentType) && offer.perkScope !== 'multi_chain' && <ChainsAccordion key={chainsOpen ? 'open' : 'closed'} defaultOpen={chainsOpen} />}
                 </View>
+
+                {/* The category rail between two hairline dividers (1pt, 24pt of air each side). */}
+                {moreInCategory.length > 0 && (
+                  <View style={styles.categoryRail}>
+                    <SectionHeader title={t('offer_more_in_category')} action={t('perk_see_all_perks')} onAction={() => router.navigate({ pathname: '/perks', params: { cat: offer.category, brand: '', sort: '', kind: '' } })} />
+                    <OfferCarousel offers={moreInCategory} onOpen={openOffer} showDots={false} />
+                  </View>
+                )}
+                <BrandSpotlight offer={offer} image={image} />
               </View>
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
 
           {/* Pinned above the home indicator, outside the scroll. */}
           <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12), ...bar }]}>
@@ -410,7 +497,7 @@ function detailsPaneBar(width: number, paddingLeft: number, paddingRight: number
 }
 
 const styles = StyleSheet.create({
-  actions: { alignSelf: 'stretch', gap: 12, marginTop: 24 },
+  categoryRail: { marginTop: 24, paddingVertical: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#E2E8F0' },
   issuerTop: { alignSelf: 'stretch', marginTop: 20 },
   safe: { flex: 1, backgroundColor: colors.background },
   spinner: { marginTop: 48 },
@@ -477,7 +564,12 @@ const styles = StyleSheet.create({
   methodChip: { flexShrink: 0, backgroundColor: colors.borderLight },
   methodText: { color: colors.body },
   business: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.body },
+  honors: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  honorsText: { fontSize: 13, fontWeight: '600', color: colors.brand },
+  valueLine: { marginTop: 14, fontSize: 14, fontWeight: '700', color: colors.heading },
   businessAfterTags: { marginTop: 8 },
+  businessBelow: { marginTop: 4 },
+  titleAfterTags: { marginTop: 8 },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '800', color: colors.heading, marginTop: 4 },
   location: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20 },
   address: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
@@ -491,6 +583,12 @@ const styles = StyleSheet.create({
   expiredChip: { backgroundColor: '#FEF2F2' },
   expired: { color: colors.danger },
   folds: { marginTop: 28 },
+  expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+  expiryRowText: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: colors.body },
+  loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 20, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.borderLight },
+  loginText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.body },
+  loginLink: { minHeight: 44, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  loginAction: { fontSize: 14, fontWeight: '800', color: colors.heading, textDecorationLine: 'underline' },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   stepNumber: { width: 24, height: 24, borderRadius: radius.pill, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   stepNumberText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: colors.brand, textAlign: 'center' },

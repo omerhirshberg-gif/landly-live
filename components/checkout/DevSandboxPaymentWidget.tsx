@@ -56,7 +56,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
   const buttonBase = 'tap-target min-h-12 w-full inline-flex items-center justify-center gap-2 font-bold py-3 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60'
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-card text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 lg:p-12 shadow-card text-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8 lg:pb-12">
       <p className="inline-flex items-center gap-2 rounded-full bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 mb-4">
         <FlaskConical aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
         <span>{t('checkout_sandbox_badge')}</span>
@@ -72,7 +72,7 @@ export default function DevSandboxPaymentWidget({ orderId, offerTitle, amount, o
       </div>
       {error && <p role="alert" className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
 
-      <div className="flex flex-col gap-3 mt-4">
+      <div className="flex flex-col gap-3 mt-4 lg:mx-auto lg:max-w-xl lg:flex-row lg:mt-6">
         <button
           type="button"
           onClick={() => simulate('approve')}

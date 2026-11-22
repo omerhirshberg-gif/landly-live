@@ -5,6 +5,7 @@ import type { ImageSourcePropType } from 'react-native'
 // only from literal paths, so they're listed one by one.
 export const CATEGORY_PHOTOS: Record<string, ImageSourcePropType> = {
   restaurants: require('../../assets/categories/restaurants.webp'),
+  chef: require('../../assets/categories/chef.webp'),
   beach: require('../../assets/categories/beach.webp'),
   attractions: require('../../assets/categories/attractions.webp'),
   fashion: require('../../assets/categories/fashion.webp'),

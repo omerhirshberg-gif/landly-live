@@ -33,7 +33,7 @@ export default memo(function CategoryOfferRail({
       <SectionHeader
         leading={<CategoryIcon category={rail.category} size={18} strokeWidth={1.5} color={colors.textStrong} />}
         title={railLabel(rail, t)}
-        action={onSeeAll ? (withCount ? t('cats_see_all').replace('{count}', String(rail.total)) : t('home_see_all')) : undefined}
+        action={onSeeAll ? (withCount ? t('cats_see_all').replace('{count}', String(rail.total)) : t('perk_see_all_perks')) : undefined}
         onAction={onSeeAll ? () => onSeeAll(rail.category) : undefined}
       />
       <OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} showCategoryBadge={false} visible={visible} />

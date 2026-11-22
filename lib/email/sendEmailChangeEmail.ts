@@ -7,7 +7,11 @@ import { escapeHtml, FONT_STACK, sendBrandedEmail, type BrandedEmailContent } fr
  * in their own left-to-right box (Hebrew too), large and spaced so they read
  * at a glance and copy cleanly; there's nothing to click.
  */
-export function buildEmailChangeCodeEmail(lang: Lang, code: string): { subject: string } & BrandedEmailContent {
+export function buildEmailChangeCodeEmail(
+  lang: Lang,
+  code: string,
+  copy?: { subject: string; heading: string; body: string; footnote: string }
+): { subject: string } & BrandedEmailContent {
   const t = translations[lang]
   const detailsHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
@@ -18,11 +22,11 @@ export function buildEmailChangeCodeEmail(lang: Lang, code: string): { subject: 
                 </tr>
               </table>`
   return {
-    subject: t.emailChange_subject,
-    heading: t.emailChange_heading,
-    body: t.emailChange_body,
+    subject: copy?.subject ?? t.emailChange_subject,
+    heading: copy?.heading ?? t.emailChange_heading,
+    body: copy?.body ?? t.emailChange_body,
     detailsHtml,
-    footnote: t.emailChange_ignoreNote,
+    footnote: copy?.footnote ?? t.emailChange_ignoreNote,
   }
 }
 

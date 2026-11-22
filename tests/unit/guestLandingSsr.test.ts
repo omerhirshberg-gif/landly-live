@@ -78,7 +78,7 @@ describe('member hint plumbing', () => {
   })
 
   it('wraps every section under the hero, and the floating widgets, in a SectionBoundary', () => {
-    for (const name of ['audience-cards', 'live-deals', 'how-it-works', 'pass-showcase', 'faq', 'bottom-cta']) {
+    for (const name of ['audience-cards', 'guest-discover', 'how-it-works', 'pass-showcase', 'faq', 'bottom-cta']) {
       expect(home).toContain(`<SectionBoundary name="${name}">`)
     }
     expect(home).toMatch(/<LandingHero \/>\n\s*<SectionBoundary/)

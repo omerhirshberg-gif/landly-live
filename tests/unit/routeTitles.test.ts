@@ -72,6 +72,8 @@ beforeEach(() => {
 const EXPECTED: [string, string][] = [
   ['/', 'GoLandly — Aliyah Benefits & Perks for Olim and Lone Soldiers'],
   ['/categories', 'Perks & Discounts in Israel | GoLandly'],
+  ['/raayonit', 'Raayonit Card | GoLandly'],
+  ['/raayonit/card', 'Raayonit Card voucher | GoLandly'],
   ['/categories/new', 'New Perks | GoLandly'],
   ['/categories/bestsellers', 'Bestsellers | GoLandly'],
   ['/member', 'My Pass | GoLandly'],

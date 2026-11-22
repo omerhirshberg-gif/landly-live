@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import type { BrandIndexEntry } from './branches'
-import { resolveChainBrands, type ChainBrandSubject } from './resolveChainBrand'
+import { liveRaayonitBrands, resolveChainBrands, type ChainBrandSubject } from './resolveChainBrand'
 import { useOffers } from './useOffers'
 
 /** The brand tiles of a bought multi-chain voucher (see resolveChainBrand.ts): empty for any other perk, or while the live offers load. */
@@ -10,4 +10,10 @@ export function useChainBrands(subject: ChainBrandSubject | null | undefined): B
   const { offers } = useOffers()
   const multi = subject?.perkScope === 'multi_chain'
   return useMemo(() => (multi && subject && offers ? resolveChainBrands(subject, offers) : []), [multi, subject, offers])
+}
+
+/** The whole Raayonit network as brand tiles (every live brand), for "where else can I redeem?"; empty while the offers load. */
+export function useChainNetwork(): BrandIndexEntry[] {
+  const { offers } = useOffers()
+  return useMemo(() => (offers ? liveRaayonitBrands(offers) : []), [offers])
 }

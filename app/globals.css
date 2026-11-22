@@ -512,9 +512,10 @@ html.wa-hidden .wa-widget{display:none;}
 /* Momentum scrolling on older iOS; the 2px top/bottom keeps card shadows unclipped. */
 .offer-tile-rail{-webkit-overflow-scrolling:touch;padding-top:2px;}
 /* Paging chevrons for real mice from 640px, the chip rail's arrow look. */
-.tile-rail-arrow{display:none;}
+.tile-rail-arrow,.tile-rail-bar{display:none;}
 @media (min-width:640px) and (hover:hover) and (pointer:fine){
   .tile-rail-arrow{display:flex;flex-shrink:0;width:36px;height:36px;align-items:center;justify-content:center;border-radius:9999px;border:1px solid #E2E8F0;background:#fff;color:#0B1B3D;font-size:12px;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05);transition:background-color .15s ease-out,opacity .15s ease-out;}
+  .tile-rail-bar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;}
   .tile-rail-arrow:hover{background:#F8FAFC;}
   .tile-rail-arrow[data-hidden]{opacity:0;pointer-events:none;}
 }
@@ -536,15 +537,6 @@ html.wa-hidden .wa-widget{display:none;}
 @media (min-width:640px){.member-bleed-nested{--nest:24px;}}
 @media (min-width:1024px){.member-bleed-nested{--nest:0px;}}
 /* Round paging arrows over the row's ends, for real mice only: they fade in on hover. */
-.offer-rail-arrow{display:none;}
-@media (min-width:640px) and (hover:hover) and (pointer:fine){
-  .offer-rail-arrow{display:flex;position:absolute;z-index:2;top:50%;width:44px;height:44px;margin-top:-22px;align-items:center;justify-content:center;border-radius:9999px;border:1px solid #E2E8F0;background:#fff;color:#0B1B3D;box-shadow:0 4px 12px rgb(15 23 42 / .14);opacity:0;pointer-events:none;transition:background-color .15s ease-out,opacity .15s ease-out;}
-  .offer-rail-arrow[data-side="start"]{inset-inline-start:16px;}
-  .offer-rail-arrow[data-side="end"]{inset-inline-end:16px;}
-  .offer-rail-arrow:hover{background:#F8FAFC;}
-  .offer-rail:hover .offer-rail-arrow:not([data-hidden]){opacity:1;pointer-events:auto;}
-}
-@media (prefers-reduced-motion:reduce){.offer-rail-arrow{transition:none;}}
 /* ── Pending email/phone change (components/profile/PendingChangeNotice.tsx) ── */
 /* Opens and closes by its own height (grid rows 0fr↔1fr) with a fade, so the rows below glide instead of jumping. */
 .pending-notice{display:grid;grid-template-rows:1fr;opacity:1;transition:grid-template-rows .2s ease-out,opacity .2s ease-out;}
@@ -562,6 +554,10 @@ html.wa-hidden .wa-widget{display:none;}
 @media (prefers-reduced-motion:reduce){.otp-dialog{animation:none;}}
 /* One real input over six drawn boxes: autofill (one-time-code), paste and screen readers all see one field. */
 .otp-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;color:transparent;caret-color:transparent;background:transparent;border:0;letter-spacing:0;}
+/* A wrong code: the six boxes shake sideways (OtpCodeInput); still under Reduce Motion. */
+@keyframes otp-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+.otp-shake{animation:otp-shake .3s ease-out;}
+@media (prefers-reduced-motion:reduce){.otp-shake{animation:none;}}
 /* Scroll reveal (components/home/Reveal.tsx): visible unless armed, i.e. only
    once JS has seen it start below the fold. Fade and a 12px rise, staggered
    by --reveal-delay; reduced motion keeps only the fade. */
@@ -753,6 +749,12 @@ html:has(.admin-scale.adm-light),html:has(.admin-scale.adm-light) body{backgroun
 .marquee-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;user-select:none;-webkit-user-drag:none}
 @keyframes marquee-up{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-50%,0)}}
 @keyframes marquee-down{from{transform:translate3d(0,-50%,0)}to{transform:translate3d(0,0,0)}}
+.logo-rail{overflow:hidden;direction:ltr;-webkit-mask-image:linear-gradient(to right,transparent,#000 5%,#000 95%,transparent);mask-image:linear-gradient(to right,transparent,#000 5%,#000 95%,transparent)}
+.logo-rail-track{display:flex;width:max-content;will-change:transform;animation:logo-rail 70s linear infinite}
+.logo-rail:hover .logo-rail-track,.logo-rail:focus-within .logo-rail-track{animation-play-state:paused}
+.logo-rail-copy{display:flex;gap:.625rem;padding-inline-end:.625rem;margin:0;padding-block:0;padding-inline-start:0;list-style:none}
+@keyframes logo-rail{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+@media (prefers-reduced-motion:reduce){.logo-rail{overflow-x:auto;-webkit-mask-image:none;mask-image:none}.logo-rail-track{animation:none}.logo-rail-copy[aria-hidden="true"]{display:none}}
 .marquee-ribbon{display:flex;flex-direction:column;gap:var(--marquee-gap);overflow:hidden;isolation:isolate;contain:paint;direction:ltr;padding-block:.25rem}
 .marquee-row{display:flex;width:max-content;will-change:transform;animation:marquee-left 210s linear infinite}
 .marquee-row--b{animation-name:marquee-right;animation-duration:238s}

@@ -73,9 +73,9 @@ describe('passkey prompt', () => {
     }
   })
 
-  it('is offered after a password or Google sign-in, never after a passkey one', async () => {
+  it('is offered after a password (form or the sign-up code), Google or Apple sign-in, never after a passkey one', async () => {
     const src = await readFile('components/auth/entrance/AuthScreen.tsx', 'utf8')
-    expect(src.match(/markPasskeyOfferDue\(result\.user\.uid\)/g)).toHaveLength(2)
+    expect(src.match(/markPasskeyOfferDue\(result\.user\.uid\)/g)).toHaveLength(3)
     expect(src).not.toMatch(/markPasskeyOfferDue\(outcome/)
   })
 

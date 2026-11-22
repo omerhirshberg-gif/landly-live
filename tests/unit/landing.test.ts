@@ -358,9 +358,9 @@ describe('deal images and logos', () => {
     expect(native).toContain('contentFit="contain"')
     expect(native).toContain('width: Math.min(logoMaxWidth, inner * aspect)')
     // A feed card's badge is one fixed tile for every logo (wide, square, round or tall), initial fallback included.
-    expect(web).toContain('h-[44px] min-w-[64px] max-w-[124px] rounded-xl border border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:h-[48px] sm:min-w-[72px] sm:max-w-[140px] sm:px-2')
+    expect(web).toContain('h-[44px] w-[72px] rounded-xl border border-slate-200/90 bg-white px-1.5 py-1 shadow-sm sm:h-[48px] sm:px-2')
     expect(web).toContain("size === 'sm' ? 'h-full w-auto max-w-full object-contain'")
-    expect(native).toContain('const FIXED = { height: 44, minWidth: 64, maxWidth: 124, paddingX: 6, paddingY: 4,')
+    expect(native).toContain('const FIXED = { height: 44, minWidth: 72, maxWidth: 72, paddingX: 6, paddingY: 4,')
     expect(native).toMatch(/fixedTile: \{\s+height: FIXED\.height,\s+minWidth: FIXED\.minWidth,\s+maxWidth: FIXED\.maxWidth,\s+borderRadius: 12,/)
     for (const c of ["borderColor: '#E2E8F0'", "shadowColor: '#0B1B3D'", 'shadowOpacity: 0.08', 'paddingHorizontal: FIXED.paddingX', 'paddingVertical: FIXED.paddingY', 'overflow: \'hidden\'']) expect(native).toContain(c)
     expect(native).toContain('width: Math.min(FIXED.maxInnerWidth, FIXED.innerHeight * aspect)')

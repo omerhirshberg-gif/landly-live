@@ -87,7 +87,7 @@ describe('/business and /support', () => {
     const t = translations[lang]
     const html = withLang(lang, createElement(BusinessPage))
     for (const key of ['biz_stats_title', 'biz_stat_perks', 'biz_stat_categories', 'biz_stat_languages', 'biz_stat_segments'] as const) expect(html).toContain(t[key].replace(/'/g, '&#x27;'))
-    expect(html).toContain('<span class="sr-only">12</span>')
+    expect(html).toContain('<span class="sr-only">13</span>')
     expect(html).toContain('<span class="sr-only">5</span>')
     expect(html).toContain('<span class="sr-only">7</span>')
     // The page's mark: a handshake in the shared frame, not a solid blue tile.

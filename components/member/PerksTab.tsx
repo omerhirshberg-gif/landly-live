@@ -12,6 +12,8 @@ import { VoucherListSkeleton } from '@/components/ui/Skeleton'
 import { voucherDestination } from '@/lib/member/voucherDestination'
 import { locationNoticeKind } from '@/lib/offers/locationVisibility'
 import { PerkReachLine } from '@/components/discover/PerkReach'
+import VoucherBalance from './VoucherBalance'
+import { superTavHeadline } from '@/lib/offers/superTav'
 import TicketTear from './TicketTear'
 import VoucherCover from './VoucherCover'
 
@@ -73,6 +75,7 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
   const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < now
   const soon = !!voucher.expiresAt && !expired && voucher.expiresAt.getTime() - now < 7 * DAY_MS
   const name = localizedBusinessName(voucher, lang).text
+  const headline = superTavHeadline(voucher, t('super_tav_headline'))
   const { place } = voucherDestination(voucher, lang)
 
   return (
@@ -82,15 +85,28 @@ function VoucherCard({ voucher }: { voucher: ActiveVoucher }) {
     >
       <VoucherCover voucher={voucher} name={name} />
       <div className="px-3.5 pb-3 pt-6">
-        <div className="truncate text-[17px] font-extrabold leading-snug text-ink" dir="auto">{name}</div>
-        <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</h3>
-        {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-2 text-xs text-muted" />}
+        {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+        {headline ? (
+          <>
+            <h3 className="line-clamp-2 text-[17px] font-extrabold leading-snug text-ink" dir="auto">{headline}</h3>
+            {voucher.perkScope !== 'multi_chain' && <div className="mt-0.5 truncate text-sm leading-snug text-body" dir="auto">{name}</div>}
+          </>
+        ) : (
+          <>
+            <div className="truncate text-[17px] font-extrabold leading-snug text-ink" dir="auto">{name}</div>
+            <h3 className="mt-0.5 line-clamp-2 text-sm leading-snug text-body" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</h3>
+          </>
+        )}
+        {/* A multi-chain pass's title already names it and its chains live on the voucher page, so the card stays clean. */}
+        {!place && voucher.perkScope !== 'multi_chain' && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-2 text-xs text-muted" />}
         {place && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
             <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
             <span className="truncate" dir="auto">{place}</span>
           </p>
         )}
+        {/* What is left on the voucher, before it is opened. */}
+        <VoucherBalance voucher={voucher} className="mt-2.5" />
       </div>
       <TicketTear />
       <div className="flex items-center justify-between gap-2.5 px-3.5 pb-3.5 pt-2.5">

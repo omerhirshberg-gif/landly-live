@@ -174,7 +174,7 @@ describe('OfferCardRail', () => {
   it('leaves out "See all" for a category with no page, and mounts arrows only once it measures as overflowing', () => {
     const html = render('en', createElement(OfferCardRail, { id: 'r', title: 'Pets', offers }))
     expect(html).not.toContain('tap-target')
-    expect(html).not.toContain('offer-rail-arrow')
+    expect(html).not.toContain('tile-rail-arrow')
   })
 
   it('isolates a title’s direction and shows the heart to a signed-in member', () => {

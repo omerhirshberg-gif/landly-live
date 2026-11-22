@@ -2,21 +2,22 @@ import 'server-only'
 import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
 import { officialBrandName } from './raayonitBrandNames'
 import { indexUrl, networkUrl, parseNetworkIndex, parseNetworkPage, RAAYONIT_BASE, RAAYONIT_VOUCHER_NUM, type RaayonitBrand } from './raayonitCatalog'
-import { bundledCatalog, syncRaayonitCatalog, type PartialSyncOptions, type SnapshotBrand, type TranslateBatch } from './raayonitCatalogSync'
+import { bundledCatalog, type SnapshotBrand, type TranslateBatch } from './raayonitCatalogSync'
 import { classifyAdded, diffCatalog, parseLiveDirectory, type AddedKind, type CatalogDiff, type ExistingCard, type LiveDirectory, type LiveEntry } from './raayonitLiveDiff'
 import { brandOfRow, groupListing, isSuspended, parseSupplierInfo, type SupplierInfo } from './raayonitListing'
 import { finalizeCatalog } from './raayonitSanitize'
 import { sendSyncAlert, type AlertOutcome } from './raayonitSyncAlert'
 import { brandSourceKey } from './raayonitMigration'
+import { methodChanges, methodFingerprint, recordBusinessChanges, snapshotOf, SNAPSHOT_DOC, type MethodSnapshot, type RecordedChange } from './ledger/businessChanges'
 
 // The daily Raayonit "תו על" sync, shared by the cron route, the admin button and the CLI. It reads the one live directory page,
 // diffs it against the cards we hold, and writes ONLY the difference:
 //   unchanged            nothing (no offer write, no translation call);
-//   added, known         a live card (category from CATEGORY_RULES, glossary names, a bundled image), translated once;
-//   added, unknown       a staged draft (published:false, raayonitSyncPending:true) for an admin to approve, translated once;
-//   removed              soft-archived (published:false, archivedReason, archivedAt, sourceKey retired:{id}), never deleted,
-//                        so vouchers and orders that point at the card keep working;
-//   back after removal   the same card is reactivated.
+//   added / back after removal / removed / redemption method changed
+//                        recorded in businessChanges as PENDING. Nothing is published, archived or rewritten by the sync itself:
+//                        an admin approves each change (lib/inventory/ledger/businessChangeApproval.ts), and only while
+//                        isRaayonitDisplayEnabled(). Approving an addition publishes a known brand or stages an unknown one as
+//                        a draft; approving a removal soft-archives the card (never deleted, so vouchers keep working).
 // A safety guard stops the run, with no offer written, when the page looks wrong or the change is implausibly large.
 
 export const MIN_LIVE_ROWS = 150
@@ -27,7 +28,6 @@ export const MAX_ADDITIONS = 25
 export const LOG_COLLECTION = 'raayonit_sync_logs'
 const LOCK_STALE_MS = 15 * 60 * 1000
 const UA = 'Mozilla/5.0 (compatible; GoLandlyCatalogSync)'
-const ARCHIVED_REASON = 'removed_from_raayonit_catalog'
 const CHUNK = 200
 
 export type SyncStatus = 'ok' | 'aborted_guard' | 'error' | 'skipped'
@@ -41,7 +41,7 @@ export interface SyncReport {
   skipped?: 'already-ran' | 'in-progress'
   startedAt: string
   finishedAt: string
-  counts: { rows: number; liveBrands: number; existing: number; added: number; addedKnown: number; pendingReview: number; reactivated: number; archived: number; unchanged: number }
+  counts: { rows: number; liveBrands: number; existing: number; added: number; addedKnown: number; pendingReview: number; reactivated: number; archived: number; unchanged: number; changesRecorded?: number }
   added: { key: string; nameHe: string; nameEn: string; kind: AddedKind; category: string }[]
   reactivated: { key: string; nameHe: string; kind: AddedKind }[]
   archived: { id: string; nameHe: string }[]
@@ -51,8 +51,6 @@ export interface SyncReport {
 export interface DailySyncDeps {
   fetcher?: typeof fetch
   now?: () => Date
-  /** Writes the new and returning brands. The default is syncRaayonitCatalog in partial mode. */
-  apply?: (brands: SnapshotBrand[], partial: PartialSyncOptions) => Promise<void>
   /** Cloud Translation for the new brands' fine print; unset leaves it in Hebrew. */
   translateBatch?: TranslateBatch
   notify?: (report: SyncReport) => Promise<AlertOutcome>
@@ -90,10 +88,16 @@ async function readExisting(db: Firestore): Promise<ExistingCard[]> {
   return snap.docs.map((d) => cardOf(d.id, d.data()))
 }
 
+// Raayonit's site belongs to a third party: real requests to it leave at least a second apart (a promise chain, so the parallel detail
+// fetches below queue up too). An injected fetcher (the tests) is not throttled.
+let lastRequest: Promise<void> = Promise.resolve()
+const politely = () => { const turn = lastRequest.then(() => new Promise<void>((r) => setTimeout(r, 1000))); lastRequest = turn; return turn }
+
 async function getText(fetcher: typeof fetch, url: string, init?: RequestInit): Promise<{ text: string; contentType: string }> {
   let last: unknown
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      if (fetcher === globalThis.fetch) await politely()
       const res = await fetcher(url, { ...init, headers: { 'user-agent': UA, ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(30_000) })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return { text: await res.text(), contentType: res.headers.get('content-type') ?? '' }
@@ -234,32 +238,28 @@ export async function runDailySync(db: Firestore, options: DailySyncOptions = {}
     report.counts.archived = diff.removed.length
     if (dry) return finish(report)
 
-    // 4. Write only the difference.
+    // 4. Record the difference; publish nothing. Every change waits in businessChanges for an admin's approval
+    // (lib/inventory/ledger/businessChanges.ts), and approval itself needs isRaayonitDisplayEnabled().
     // A restored partner Raayonit lists again no longer needs its protection: a later removal archives it as usual.
     for (let i = 0; i < diff.relisted.length; i += CHUNK) {
       const batch = db.batch()
       for (const card of diff.relisted.slice(i, i + CHUNK)) batch.update(db.collection('offers').doc(card.id), { restoredAt: FieldValue.delete(), restoredBy: FieldValue.delete() })
       await batch.commit()
     }
-    for (let i = 0; i < diff.removed.length; i += CHUNK) {
-      const batch = db.batch()
-      for (const card of diff.removed.slice(i, i + CHUNK)) {
-        batch.update(db.collection('offers').doc(card.id), { published: false, raayonitSyncPending: false, archivedReason: ARCHIVED_REASON, archivedAt: Timestamp.now(), archivedSourceKey: card.sourceKey, sourceKey: `retired:${card.id}`, retiredAt: Timestamp.now(), retiredReason: 'not in the Raayonit catalogue' })
-      }
-      await batch.commit()
-    }
-    if (built.length > 0) {
-      const partial: PartialSyncOptions = {
-        decide: (b) => (kinds.get(b.key) === 'known' ? { published: true, pending: false } : { published: false, pending: true }),
-        reuse,
-      }
-      const apply = deps.apply ?? (async (brands: SnapshotBrand[], opts: PartialSyncOptions) => {
-        const later: (() => Promise<void>)[] = []
-        await syncRaayonitCatalog(db, { brands, origin: deps.origin ?? 'https://golandly.com', partial: opts, translateBatch: deps.translateBatch, after: (t) => { later.push(t) } })
-        for (const t of later) await t()
-      })
-      await apply(built, partial)
-    }
+    const rowsOf = (e: LiveEntry) => live.rows.filter((r) => !isSuspended(r.title) && brandOfRow(r).key === e.key)
+    const nextSnapshot = snapshotOf(entries, (e) => methodFingerprint(e, live, rowsOf))
+    const snapRef = db.collection(SNAPSHOT_DOC[0]).doc(SNAPSHOT_DOC[1])
+    const previous = (await snapRef.get()).data()?.entries as MethodSnapshot | undefined
+    const recorded: RecordedChange[] = [
+      ...built.flatMap((b) => {
+        const entry = [...diff.added, ...diff.reactivated.map((r) => r.entry)].find((e) => e.key === b.key)
+        return entry ? [{ kind: 'added' as const, key: b.key, nameHe: b.nameHe, nameEn: b.nameEn, after: kinds.get(b.key) ?? 'unknown', payload: { brand: JSON.parse(JSON.stringify(b)), reuseOfferId: reuse.get(b.key) ?? null, known: kinds.get(b.key) === 'known' } }] : []
+      }),
+      ...diff.removed.map((c) => ({ kind: 'removed' as const, key: c.sourceKey, nameHe: c.brandName, nameEn: c.nameEn ?? '', payload: { offerId: c.id, sourceKey: c.sourceKey } })),
+      ...methodChanges(previous ?? null, nextSnapshot).map((m) => ({ kind: 'method_changed' as const, key: m.key, nameHe: m.nameHe, before: m.before, after: m.after })),
+    ]
+    report.counts.changesRecorded = await recordBusinessChanges(db, date, recorded)
+    await snapRef.set({ entries: nextSnapshot, updatedAt: Timestamp.now() })
     return finish(report)
   } catch (err) {
     console.error('[raayonit-sync] failed', err)

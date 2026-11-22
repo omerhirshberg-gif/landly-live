@@ -14,9 +14,12 @@ import { localizeText, type LocalizedText } from '@/lib/i18n/contentTranslation'
 export default function VoucherTerms({
   voucher,
   terms: shownTerms,
+  hideExpiry = false,
 }: {
   voucher: Pick<VoucherDocument, 'expiresAt' | 'redemptionTerms' | 'translations'>
   terms?: LocalizedText
+  /** The page already shows the expiry (the voucher page's ticket), so only the terms are drawn. */
+  hideExpiry?: boolean
 }) {
   const { t, lang } = useLang()
   const terms = shownTerms ?? localizeText(voucher.redemptionTerms, voucher.translations, lang, 'redemptionTerms')
@@ -24,14 +27,14 @@ export default function VoucherTerms({
 
   return (
     <>
-      {voucher.expiresAt && (
+      {voucher.expiresAt && !hideExpiry && (
         <p className={`flex items-center gap-2 text-xs font-semibold ${expired ? 'text-red-600' : 'text-slate-600'}`}>
           {expired ? <CalendarX aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.75} /> : <CalendarCheck aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={1.75} />}
           <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
         </p>
       )}
       {terms.text && (
-        <div className="mt-3">
+        <div className={hideExpiry ? '' : 'mt-3'}>
           <h3 className="text-xs font-bold text-slate-700 mb-1">{t('voucher_redemption_terms_label')}</h3>
           <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line" lang={terms.lang ?? undefined} dir="auto">{terms.text}</p>
         </div>

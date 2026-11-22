@@ -47,7 +47,7 @@ describe('order confirmation (web)', () => {
   it('celebrates only a paid order read from Firestore, with the order number, the voucher and My Pass', () => {
     const page = read('app/order-success/page.tsx')
     expect(page).toContain('subscribeToOrder(orderId, setOrder)')
-    expect(page).toContain('{paid && <Confetti />}')
+    expect(page).toContain('{paid && <Confetti fromTop />}')
     // The sequential order number (#1001, ...) is shown and copied; the document id only for orders from before it.
     expect(page).toContain('{orderReference(order.displayOrderNumber, orderId)}')
     expect(page).toContain('<CopyOrderIdButton value={order.displayOrderNumber ?? orderId} />')

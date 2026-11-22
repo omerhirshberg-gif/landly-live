@@ -4,6 +4,9 @@ import { checkUidRateLimit } from '@/lib/auth/uidRateLimit'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { RequestAuthError, requireVerifiedCustomerUid } from '@/lib/firebase/verifyRequestUser'
 import { discountPercent } from '@/lib/perks/perksFilter'
+import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
+import { isRaayonitDisplayEnabled } from '@/lib/flags/featureFlags.server'
+import { liveChainNetworkCount } from '@/lib/offers/networkCount.server'
 import { buildPkpass, PassBuildError, PKPASS_MIME_TYPE } from '@/lib/wallet/applePass'
 import { getPassConfig } from '@/lib/wallet/passConfig'
 import { createPassTicket, verifyPassTicket } from '@/lib/wallet/passTicket'
@@ -82,7 +85,11 @@ export async function GET(request: Request, { params }: Params) {
     if (!voucher || voucher.userId !== uid) return NextResponse.json({ error: 'Voucher not found.' }, { status: 404 })
     if (!isPassEligible(voucher)) return NextResponse.json({ error: 'This voucher can\'t be added.' }, { status: 409 })
 
+    // Raayonit's name and logo stay off the pass until the display flag is on (written approval); the pass then reads as a plain multi-chain voucher.
+    if (voucher.issuer && !(await isRaayonitDisplayEnabled())) voucher.issuer = null
     const db = getAdminDb()
+    // A Raayonit voucher's back says how many chains honour it: the live network size (0 leaves the count out).
+    if (isRaayonitMultiChain(voucher)) voucher.chainCount = await liveChainNetworkCount()
     // Decoration: the frozen order gives the discount, the offer its photo, the
     // member their name. A pass works without any of them.
     const [order, offer, member] = await Promise.all([

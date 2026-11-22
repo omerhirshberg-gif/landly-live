@@ -19,7 +19,7 @@ const MARK = require('../../assets/images/raayonit-logo.png') as ImageSourceProp
 
 // The brands a multi-chain pass works at, as a row of logo tiles: each shows its logo on a white stage, its name and how many
 // branches honour the voucher, and opens that brand's own offer. A search narrows the row and "View all" lists every brand in
-// a sheet. Web: components/offers/BrandStrip.tsx.
+// a sheet. Each tile opens that chain's own page. Web: components/offers/BrandStrip.tsx.
 export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) {
   const { t, lang, isRtl } = useLang()
   const [query, setQuery] = useState('')
@@ -63,20 +63,27 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
   )
 }
 
-function Logo({ entry, style, backdrop = false }: { entry: BrandIndexEntry; style: object; backdrop?: boolean }) {
+// Every brand image is shown whole, with an even margin inside its rounded box, so nothing touches or crosses the border.
+// A photo, or any image in the sheet, sits in front of a soft blurred copy of itself (as the offer cards draw it);
+// a logo in the row sits on the white stage.
+function Logo({ entry, backdrop = false }: { entry: BrandIndexEntry; backdrop?: boolean }) {
   const [failed, setFailed] = useState(false)
-  const source = failed || !entry.logoUrl ? MARK : bundledBrandImage(entry.logoUrl) ?? { uri: secureImageUrl(entry.logoUrl) }
-  if (backdrop && !failed && entry.logoUrl) {
-    // The artwork whole in front of a soft blurred copy of itself, as the offer cards draw it.
-    return (
-      <View style={styles.backdrop}>
-        <Image source={source} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={24} accessibilityIgnoresInvertColors />
-        <View style={[StyleSheet.absoluteFill, styles.tint]} />
-        <Image source={source} style={styles.inset} resizeMode="contain" onError={() => setFailed(true)} accessibilityIgnoresInvertColors />
+  const own = !failed && !!entry.logoUrl
+  const source = own ? bundledBrandImage(entry.logoUrl) ?? { uri: secureImageUrl(entry.logoUrl) } : MARK
+  const blurred = own && (backdrop || !!entry.photo)
+  return (
+    <View style={blurred ? styles.backdrop : styles.fill}>
+      {blurred && (
+        <>
+          <Image source={source} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={24} accessibilityIgnoresInvertColors />
+          <View style={[StyleSheet.absoluteFill, styles.tint]} />
+        </>
+      )}
+      <View style={styles.inset}>
+        <Image source={source} style={styles.image} resizeMode="contain" onError={() => setFailed(true)} accessibilityIgnoresInvertColors />
       </View>
-    )
-  }
-  return <Image source={source} style={style} resizeMode={failed || !entry.logoUrl ? 'contain' : entry.photo ? 'cover' : 'contain'} onError={() => setFailed(true)} accessibilityIgnoresInvertColors />
+    </View>
+  )
 }
 
 const countLabel = (t: (k: never) => string, n: number) => (n === 1 ? t('brands_one_branch' as never) : t('brands_branch_count' as never).replace('{count}', String(n)))
@@ -87,7 +94,7 @@ function Tile({ entry, label }: { entry: BrandIndexEntry; label: string }) {
   return (
     <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={() => router.push({ pathname: '/offer/[offerId]', params: { offerId: entry.offerId } })} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
       <View style={styles.stage}>
-        <Logo entry={entry} style={entry.photo ? styles.photo : styles.logo} />
+        <Logo entry={entry} />
       </View>
       <AppText autoDir numberOfLines={1} style={styles.name}>{label}</AppText>
       {entry.branchCount > 0 && <AppText style={styles.count}>{countLabel(t as never, entry.branchCount)}</AppText>}
@@ -127,7 +134,7 @@ function AllBrands({ visible, onClose, entries }: { visible: boolean; onClose: (
             ListEmptyComponent={<AppText style={styles.empty}>{t('brands_no_results')}</AppText>}
             renderItem={({ item }) => (
               <Pressable accessibilityRole="link" accessibilityLabel={item.label} onPress={() => { onClose(); router.push({ pathname: '/offer/[offerId]', params: { offerId: item.offerId } }) }} style={({ pressed }) => [styles.gridCell, pressed && styles.pressed]}>
-                <View style={styles.gridStage}><Logo entry={item} backdrop style={item.photo ? styles.photo : styles.logo} /></View>
+                <View style={styles.gridStage}><Logo entry={item} backdrop /></View>
                 <AppText autoDir numberOfLines={1} style={styles.name}>{item.label}</AppText>
                 {item.branchCount > 0 && <AppText style={styles.count}>{countLabel(t as never, item.branchCount)}</AppText>}
               </Pressable>
@@ -148,8 +155,8 @@ const styles = StyleSheet.create({
   tile: { width: 136, gap: 4, ...webOnly({ cursor: 'pointer' }) },
   pressed: { opacity: 0.7 },
   stage: { width: 136, height: 92, borderRadius: 16, borderCurve: 'continuous', borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  logo: { width: '100%', height: '100%' },
-  photo: { width: '100%', height: '100%' },
+  fill: { width: '100%', height: '100%' },
+  image: { width: '100%', height: '100%' },
   name: { fontSize: 14, lineHeight: 19, fontWeight: '600', color: colors.textStrong },
   count: { fontSize: 12, lineHeight: 16, color: colors.textMuted },
   empty: { fontSize: 14, lineHeight: 20, color: colors.textMuted, paddingVertical: 12, textAlign: 'center' },

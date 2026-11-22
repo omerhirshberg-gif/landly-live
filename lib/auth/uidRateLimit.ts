@@ -10,7 +10,7 @@ import { isDurablyLimited } from '@/lib/auth/durableRateLimit.server'
 // Email/phone changes from the profile share one budget across their routes.
 // The passkey Settings routes (add, list, remove) share one too.
 const WINDOW_MS = 60 * 1000
-const limits = { payment: 10, business: 60, sessions: 5, contact: 10, passkeys: 20, wallet: 10 } as const
+const limits = { payment: 10, business: 60, sessions: 5, contact: 10, passkeys: 20, wallet: 10, balance: 10 } as const
 const counts = {
   payment: new Map<string, { count: number; resetAt: number }>(),
   business: new Map<string, { count: number; resetAt: number }>(),
@@ -18,10 +18,12 @@ const counts = {
   contact: new Map<string, { count: number; resetAt: number }>(),
   passkeys: new Map<string, { count: number; resetAt: number }>(),
   wallet: new Map<string, { count: number; resetAt: number }>(),
+  balance: new Map<string, { count: number; resetAt: number }>(),
 }
 
-// Starting a payment, and the OTP and session routes: each can charge, text or mail someone.
-const DURABLE_SCOPES: ReadonlySet<keyof typeof limits> = new Set(['payment', 'contact', 'sessions'])
+// Starting a payment, and the OTP and session routes: each can charge, text or mail someone. A voucher balance lookup can reach a supplier
+// (and, if left open, be used to probe codes), so it is durable too.
+const DURABLE_SCOPES: ReadonlySet<keyof typeof limits> = new Set(['payment', 'contact', 'sessions', 'balance'])
 
 function tooMany(retryAfterSeconds: number) {
   return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } })

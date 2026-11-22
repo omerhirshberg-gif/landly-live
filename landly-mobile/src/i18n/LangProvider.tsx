@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { RTL_LANGS, translations, type Lang, type TranslationKey } from '@shared/i18n/translations'
+import { keyFor } from '@shared/i18n/neutralAliases'
+import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import { LangContext, type LangContextValue } from './LangContext'
 
 // Native counterpart of lib/i18n/LangProvider.tsx: same dictionary, same
@@ -19,6 +21,8 @@ const DEFAULT_LANG: Lang = 'en'
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(DEFAULT_LANG)
   const [ready, setReady] = useState(false)
+  // Raayonit's name is read from its neutral twin until the display flag says otherwise (lib/i18n/neutralAliases.ts).
+  const raayonitDisplay = useRaayonitDisplay()
   // A pick made while the read is in flight wins over what it returns.
   const picked = useRef(false)
 
@@ -42,7 +46,10 @@ export function LangProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Stable per language, so memoized cards (OfferCard) and hooks keyed on `t` only re-run when the language changes.
-  const t = useCallback((key: TranslationKey): string => translations[lang][key] || translations.en[key], [lang])
+  const t = useCallback((requested: TranslationKey): string => {
+    const key = keyFor(requested, raayonitDisplay)
+    return translations[lang][key] || translations.en[key]
+  }, [lang, raayonitDisplay])
   const isRtl = (RTL_LANGS as readonly string[]).includes(lang)
   const value = useMemo(() => ({ lang, setLang, t, isRtl, ready }), [lang, setLang, t, isRtl, ready])
 

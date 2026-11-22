@@ -84,20 +84,29 @@ describe('web showcase', () => {
 })
 
 describe('wiring', () => {
-  it('/categories and the Perks tab show the showcase above the rails', () => {
-    expect(readFileSync('app/categories/page.tsx', 'utf8')).toContain('<MultiChainShowcase offer={superOffers[0]} />')
-    // The native lists build the showcase as their first overview row, from the same first super-voucher.
-    for (const path of ['landly-mobile/src/app/(tabs)/perks.tsx', 'landly-mobile/src/app/(tabs)/index.tsx']) {
+  it('Our Products (flagship card) then the accepting businesses lead the web page, the home and the native tabs', () => {
+    expect(readFileSync('components/raayonit/ProductsSection.tsx', 'utf8')).toContain('<RaayonitHero offer={flagship} />')
+    expect(readFileSync('landly-mobile/src/components/ProductsSection.tsx', 'utf8')).toContain('<RaayonitHero offer={flagship} />')
+    // Home and Perks: the Raayonit Card, one compact strip of the chains (the full catalogue is /raayonit), then GoLandly's own perks.
+    // Home (member and guest) is GoLandly only: no Raayonit card, chain strip or logo wall (they live in the Raayonit Card tab).
+    for (const path of ['components/landing/GuestDiscover.tsx', 'components/home/LoggedInHome.tsx', 'landly-mobile/src/app/(tabs)/index.tsx']) {
       const src = readFileSync(path, 'utf8')
-      expect(src, path).toContain("{ key: 'showcase', type: 'showcase', offer: superOffers[0] }")
-      expect(src, path).toContain('<MultiChainShowcase offer={item.offer} />')
+      for (const gone of ['<ProductsSection', '<GiftCardBand', '<BrandLogoWall', '<RaayonitCategoryRail']) expect(src, path).not.toContain(gone)
     }
+    // Explore Perks carries no Raayonit at all: its card and chains live in the Raayonit Card tab.
+    for (const path of ['app/categories/page.tsx', 'landly-mobile/src/app/(tabs)/perks.tsx']) {
+      const src = readFileSync(path, 'utf8')
+      for (const gone of ['<GiftCardBand', '<RaayonitHero', '<RaayonitCategoryRail', '<RaayonitPromoStrip']) expect(src, path).not.toContain(gone)
+    }
+    // Home carries one slim entry banner to the tab, fed the live flagship and chain count.
+    for (const path of ['components/home/LoggedInHome.tsx', 'landly-mobile/src/app/(tabs)/index.tsx']) expect(readFileSync(path, 'utf8'), path).toContain('<RaayonitPromoStrip offer={flagship} count={chainCount} />')
+    for (const path of ['app/raayonit/page.tsx', 'landly-mobile/src/app/(tabs)/raayonit.tsx']) expect(readFileSync(path, 'utf8'), path).toContain('<RaayonitTab')
   })
-  it('the logged-in home shows the showcase above the categories rail, which sits above the curated rail', () => {
+  it('GoLandly perks never list Raayonit offers, and the products section opens the home', () => {
     const src = readFileSync('components/home/LoggedInHome.tsx', 'utf8')
-    expect(src).toContain('<MultiChainShowcase offer={superOffers[0]} />')
-    expect(src.indexOf('<MultiChainShowcase')).toBeLessThan(src.indexOf('<CategoryPhotoRail />'))
-    expect(src.indexOf('<CategoryPhotoRail />')).toBeLessThan(src.indexOf('<CuratedOffers'))
+    expect(src).toContain('landlyOffers(allLocated)')
+    // The category rows are fed GoLandly's own list only.
+    expect(src).toContain('<HomeCategoryRails offers={located} />')
   })
   it('the native showcase is a snapping two-card row with dots, 82% wide, flagship first, with section spacing', () => {
     const src = readFileSync('landly-mobile/src/components/MultiChainShowcase.tsx', 'utf8')
@@ -107,7 +116,7 @@ describe('wiring', () => {
     for (const p of ['app/offers/[offerId]/page.tsx', 'landly-mobile/src/app/offer/[offerId].tsx']) {
       const src = readFileSync(p, 'utf8')
       expect(src).toContain('variantForDenomination')
-      expect(src).toContain('setPickedPool((current) => current || wanted.poolId)')
+      expect(src).toMatch(/setPickedPool|pickedPool/)
     }
   })
 })

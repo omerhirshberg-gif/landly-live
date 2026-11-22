@@ -17,13 +17,13 @@ describe('native Home header', () => {
 
   it('sits close under the safe area without a second gap', () => {
     expect(home).toContain("<SafeAreaView style={styles.safe} edges={['top']}>")
-    expect(home).toMatch(/<ScreenTitleRow\n\s+style=\{styles\.greetingSlot\}/)
+    expect(home).toMatch(/<ScreenTitleRow\s+style=\{styles\.greetingSlot\}/)
     expect(home).toContain('greetingSlot: { marginBottom: header.gap }')
   })
 })
 
 describe('native tab headers share one rhythm', () => {
-  const TABS = ['index', 'perks', 'wishlist', 'wallet', 'profile']
+  const TABS = ['index', 'perks', 'raayonit', 'wallet', 'profile']
 
   it('fixes the header metrics in the theme', () => {
     expect(read('theme.ts')).toContain('export const header = { top: 12, row: 48, gap: 16, avatar: 48, action: 44 } as const')
@@ -41,7 +41,7 @@ describe('native tab headers share one rhythm', () => {
 
   it('keeps the Settings gear a 44pt target at the end of the Profile title row', () => {
     const profile = read('app/(tabs)/profile.tsx')
-    expect(profile).toMatch(/<ScreenTitleRow\s+title=\{t\('nav_profile'\)\}[\s\S]*?trailing=\{\s*<Pressable[\s\S]*?settings_gear_label/)
+    expect(profile).toMatch(/<ScreenTitleRow\s+title=\{t\('nav_profile'\)\}[\s\S]*?trailing=\{\s*<View style=\{styles\.actions\}>[\s\S]*?settings_gear_label/)
     expect(profile).toContain('gear: { width: header.action, height: header.action,')
   })
 })
@@ -118,39 +118,51 @@ describe('native Home', () => {
     expect(home).not.toContain('<Button ')
   })
 
-  it('orders the pass, the category pills, the curated perks, then the category rails', () => {
-    const at = ['<ActivePassCard', '<CategoryPhotoRail', "t('home_curated_title')", '<CategoryOfferRail'].map((s) => home.indexOf(s))
+  it('orders the pass, then a row for every GoLandly category; no Raayonit gift card, chain rail or logo wall', () => {
+    const at = ['<ActivePassCard', "case 'category'"].map((s) => home.indexOf(s))
     expect(at.every((i) => i > -1)).toBe(true)
     expect([...at].sort((a, b) => a - b)).toEqual(at)
+    for (const gone of ['<GiftCardBand', '<RaayonitCategoryRail', '<BrandLogoWall', '<CategoryPhotoRail']) expect(home).not.toContain(gone)
+  })
+
+  it('shows every category row with ten slots, real perks first and inert placeholders after', () => {
+    expect(home).toContain('buildHomeCategorySlots(located)')
+    expect(home).toContain('placeholders={HOME_SLOT_COUNT - real.length}')
+    expect(home).not.toContain('<ProductsSection')
+    expect(home).not.toContain("type: 'divider'")
   })
 
   it('has one source for its catalog, shared with the website', () => {
     expect(home).toContain("from '@shared/home/categoryRails'")
-    expect(home).toContain('selectCurated(located ?? [])')
-    expect(home).toContain('buildCategoryRails(located)')
+    expect(home).not.toContain('buildCategoryRails')
+    expect(home).not.toContain('<CategoryOfferRail')
     expect(home).not.toContain('CURATED_COUNT')
   })
 })
 
-describe('native Wishlist tab', () => {
-  it('is the third of five tabs on the native and web bars, with the live count as its badge', () => {
+describe('native Raayonit Card tab', () => {
+  it('is the third of five tabs on the native and web bars, shown only while Raayonit display is on', () => {
     const native = read('app/(tabs)/_layout.tsx')
     const web = read('app/(tabs)/_layout.web.tsx')
     for (const layout of [native, web]) {
-      const order = ['"index"', '"perks"', '"wishlist"', '"wallet"', '"profile"'].map((name) => layout.indexOf(`name=${name}`))
+      const order = ['"index"', '"perks"', '"raayonit"', '"wallet"', '"profile"'].map((name) => layout.indexOf(`name=${name}`))
       expect(order.every((i) => i > -1)).toBe(true)
       expect([...order].sort((a, b) => a - b)).toEqual(order)
+      expect(layout).not.toContain('name="wishlist"')
     }
-    expect(native).toContain("sf={{ default: 'heart', selected: 'heart.fill' }}")
-    // An empty Badge still draws a dot, so the element itself only renders with saved perks.
-    expect(native).toContain('{wishlistCount > 0 && <NativeTabs.Trigger.Badge>{String(wishlistCount)}</NativeTabs.Trigger.Badge>}')
-    expect(native).not.toContain(': undefined}</NativeTabs.Trigger.Badge>')
-    expect(web).toContain('tabBarBadge: wishlistCount > 0 ? wishlistCount : undefined')
+    expect(native).toContain("sf={{ default: 'creditcard', selected: 'creditcard.fill' }} md=\"credit_card\"")
+    expect(native).toContain('{raayonit && (')
+    expect(web).toContain('href: raayonit ? undefined : null')
+  })
+
+  it('keeps the saved perks one tap from Profile, on a screen of their own', () => {
+    expect(read('app/(tabs)/profile.tsx')).toContain("router.push('/wishlist')")
+    expect(read('app/wishlist.tsx')).toContain('<ScreenHeader fallback="/profile" />')
     // The tab replaces the heart that used to end the Perks search row.
     const perks = read('app/(tabs)/perks.tsx')
     expect(perks).not.toContain('WishlistButton')
-    expect(perks).toMatch(/<PerksSearchField [^>]*\/>\s*<FilterSheet/)
-    expect(perks).not.toContain('<NearMeButton')
+    // Search, then the location button (the Location sheet), then Filter & sort.
+    expect(perks).toMatch(/<PerksSearchField [^>]*\/>\s*\{!landlyEmpty && <NearMeButton [^>]*\/>\}\s*\{!landlyEmpty && <FilterSheet/)
   })
 })
 

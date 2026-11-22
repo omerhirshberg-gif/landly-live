@@ -69,6 +69,6 @@ describe('native DealMedia', () => {
 
   it('leaves the adaptive logo badge alone', () => {
     const badge = read('landly-mobile/src/components/MerchantBadge.tsx')
-    expect(badge).toContain('const FIXED = { height: 44, minWidth: 64, maxWidth: 124')
+    expect(badge).toContain('const FIXED = { height: 44, minWidth: 72, maxWidth: 72')
   })
 })

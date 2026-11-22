@@ -10,6 +10,10 @@ import { parseFrozenTerms } from '../merchants/terms'
 import { isBusinessUnavailable } from '../offers/availability'
 import { relocateBundledImage } from '../offers/imageUrl'
 import { findVariant, orderIdFor, parseVariants } from '../offers/variants'
+import { isRaayonitBrandCard } from '../offers/raayonitGate'
+import { releaseReservation, reserveForCheckout } from '../inventory/ledger/stock'
+import { ensureSandboxDemoStock } from './sandboxDemoStock'
+import { resolveLedgerProduct, type LedgerProduct } from '../inventory/ledger/prepareSale'
 
 // Never paid and never issued a voucher: the only orders a sandbox may replace.
 function isUnpaid(order: DocumentData, uid: string, offerId: string): boolean {
@@ -69,7 +73,15 @@ export async function initiateOrder(
   const voucherRef = db.collection('vouchers').doc(orderRef.id)
   const offerRef = db.collection('offers').doc(offerId)
 
-  return db.runTransaction(async (tx) => {
+  // A ledger product holds its code for the buyer for 15 minutes (IN_STOCK -> RESERVED) before the order exists, so two
+  // checkouts can never be promised the same code. The same order asking again gets the same reservation. Released on any failure.
+  const offerPreview = (await offerRef.get()).data()
+  // Dev sandbox only: an empty Raayonit stock (a value with no uploaded codes) gets a few fake RAAYONIT-DEMO codes, so a test purchase can complete.
+  if (sandbox) await ensureSandboxDemoStock(db, offerPreview, variantPoolId)
+  const product: LedgerProduct | null = await resolveLedgerProduct(db, offerPreview, variantPoolId)
+  const reservation = product && product.mode === 'stock' ? await reserveForCheckout(db, product.productId, orderRef.id) : null
+  try {
+  return await db.runTransaction(async (tx) => {
     const [orderSnap, voucherSnap, offerSnap, customerBusinessSnap, legacyVoucherSnap] = await Promise.all([
       tx.get(orderRef), tx.get(voucherRef), tx.get(offerRef), tx.get(db.collection('businesses').doc(uid)),
       variantPoolId ? tx.get(db.collection('vouchers').doc(orderIdFor(uid, offerId))) : Promise.resolve(null),
@@ -94,6 +106,8 @@ export async function initiateOrder(
       const legacyOffer = offerSnap.exists ? offerSnap.data()! : {}
       const termsAccepted = order.termsAcceptedAt instanceof Timestamp
       if (acceptTerms && !termsAccepted) tx.update(orderRef, { termsAcceptedAt: Timestamp.now() })
+      // A reload after the 15 minutes may hold a different code now: the order follows it.
+      if (reservation && order.reservedVoucherId !== reservation.voucherId) tx.update(orderRef, { reservedVoucherId: reservation.voucherId })
       // A reload is an idempotent read, never a new payment attempt or reprice.
       return {
         orderId: orderRef.id, amount: order.amount, currency: 'ILS' as const,
@@ -133,9 +147,9 @@ export async function initiateOrder(
     const chosenPoolId = variant ? variant.poolId : offer.poolId
     if (fulfillmentType === 'raayonit_pool' && !isDocumentId(chosenPoolId)) throw new PaymentError('Offer has no valid inventory pool.')
     // No stock, no sale: an empty voucher stock is never sold (the order would only fail at settlement).
-    if (fulfillmentType === 'raayonit_pool') {
+    if (fulfillmentType === 'raayonit_pool' && !product) {
       const pool = await tx.get(db.collection('couponPools').doc(chosenPoolId))
-      if (!pool.exists || pool.data()?.status === 'archived' || !(Number(pool.data()?.remainingCount) > 0)) throw new PaymentError('This voucher value is out of stock.')
+      if (!pool.exists || pool.data()?.status === 'archived' || pool.data()?.migrating === true || !(Number(pool.data()?.remainingCount) > 0)) throw new PaymentError('This voucher value is out of stock.')
     }
     // Only a local-business perk belongs to a business. A Raayonit perk and a manual multi-chain pass carry
     // their brand instead, so they have no merchant to settle with and never appear in a business's portal or payouts.
@@ -163,6 +177,8 @@ export async function initiateOrder(
       businessName: offer.businessName ?? '', offerTitle: offer.title ?? '',
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
       fulfillmentType, poolId: fulfillmentType === 'raayonit_pool' ? chosenPoolId : null, variant: !!variant,
+      // The ledger product this order sells and the code held for it (see lib/inventory/ledger/).
+      ...(product ? { inventoryProductId: product.productId } : {}), ...(reservation ? { reservedVoucherId: reservation.voucherId } : {}),
       commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
       // Frozen with the terms, so a later edit or re-translation never changes what was bought.
@@ -195,4 +211,8 @@ export async function initiateOrder(
       termsAccepted: acceptTerms,
     }
   })
+  } catch (error) {
+    if (reservation) await releaseReservation(db, orderRef.id).catch(() => 0)
+    throw error
+  }
 }

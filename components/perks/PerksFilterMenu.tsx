@@ -1,40 +1,27 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { LocateFixed, SlidersHorizontal, X } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
-import { useGeolocation, type GeoStatus } from '@/lib/useGeolocation'
-import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
-import { citiesOfRegion, ISRAEL_REGIONS } from '@/lib/israelCities'
+import { useIsSheet } from '@/lib/useIsSheet'
+import { landlyOffers } from '@/lib/offers/discoverTab'
+import { useOffers } from '@/lib/offers/useOffers'
+import { CATEGORY_TILES } from '@/lib/categories'
+import { OFFER_KINDS, OFFER_KIND_LABELS, offerKind, type OfferKind } from '@/lib/offers/offerKind'
 import {
   DEFAULT_PERK_SORT,
   PERK_METHOD_FILTERS,
   PERK_MIN_DISCOUNTS,
   PERK_SORTS,
   PERK_SORT_LABELS,
+  type CategoryFilter,
   type PerkMethodFilter,
   type PerkMinDiscount,
   type PerkSort,
 } from '@/lib/perks/perksFilter'
 import type { TranslationKey } from '@/lib/i18n/translations'
-
-const SHEET_QUERY = '(max-width: 767px)'
-
-function useIsSheet(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const media = window.matchMedia(SHEET_QUERY)
-      media.addEventListener('change', onChange)
-      return () => media.removeEventListener('change', onChange)
-    },
-    () => window.matchMedia(SHEET_QUERY).matches,
-    () => false
-  )
-}
-
-const GEO_MESSAGES: Partial<Record<GeoStatus, TranslationKey>> = { denied: 'geo_denied', unavailable: 'geo_off', timeout: 'geo_timeout', unsupported: 'geo_unsupported' }
 
 const METHOD_LABELS: Record<PerkMethodFilter, TranslationKey> = {
   all: 'cats_filter_method_all',
@@ -49,21 +36,25 @@ interface Props {
   onMethodChange: (next: PerkMethodFilter) => void
   minDiscount: PerkMinDiscount
   onMinDiscountChange: (next: PerkMinDiscount) => void
+  kind: OfferKind | 'all'
+  onKindChange: (next: OfferKind | 'all') => void
+  /** Set only by a brand page's deep link (?brand=): no picker here, but it counts and Reset clears it. */
+  brand: string
+  category: CategoryFilter
+  onCategoryChange: (next: CategoryFilter) => void
   onReset: () => void
   /** Runs when Done is pressed (off /categories the bar navigates there with the chosen filters). */
   onDone?: () => void
 }
 
-// The "Filter" pill beside Near Me on /categories. From 768px it opens a
+// The "Filter" pill beside the location button on /categories. From 768px it opens a
 // popover under the pill's end edge; on phones the same groups rise as a
 // bottom sheet. Three single-choice groups (Sort by, Redemption type, Minimum
 // discount) of pill radios, applied as they are tapped (they live in the URL),
 // with Reset and Done at the foot. The pill fills brand blue and shows how
 // many of the three are set. Escape closes and returns focus to the pill.
-export default function PerksFilterMenu({ sort, onSortChange, method, onMethodChange, minDiscount, onMinDiscountChange, onReset, onDone }: Props) {
-  const { t, lang } = useLang()
-  const { filter, setOrigin, setAreaPick } = usePerksSearch()
-  const geo = useGeolocation()
+export default function PerksFilterMenu({ sort, onSortChange, method, onMethodChange, minDiscount, onMinDiscountChange, kind, onKindChange, brand, category, onCategoryChange, onReset, onDone }: Props) {
+  const { t } = useLang()
   const isSheet = useIsSheet()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -71,17 +62,23 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
   const panelId = useId()
   const titleId = useId()
 
-  const activeCount = Number(sort !== DEFAULT_PERK_SORT) + Number(method !== 'all') + Number(minDiscount !== 0) + Number(!!filter)
-  const clearLocation = () => { geo.reset(); setOrigin(null); setAreaPick(null) }
-  const nearMe = async () => {
-    if (filter?.kind === 'gps') return clearLocation()
-    const coords = await geo.locate()
-    if (coords) { setAreaPick(null); setOrigin({ coords, area: null }) }
-  }
-  const geoMessage = filter ? null : GEO_MESSAGES[geo.status]
-  const regionPicked = filter?.kind === 'area' && !filter.city ? filter.region : null
-  const cityPicked = filter?.kind === 'area' && filter.city ? filter.city : ''
-
+  const activeCount = Number(sort !== DEFAULT_PERK_SORT) + Number(method !== 'all') + Number(minDiscount !== 0) + Number(kind !== 'all') + Number(!!brand) + Number(category !== 'all')
+  // What the offer type and category chips can narrow by, with how many perks each leaves (the shared catalogue).
+  const { offers } = useOffers()
+  const [allCategories, setAllCategories] = useState(false)
+  const facets = useMemo(() => {
+    const kinds: Record<OfferKind, number> = { voucher: 0, discount: 0, deal: 0 }
+    const cats = new Map<string, number>()
+    // GoLandly's own perks only: Raayonit's catalogue has its own domains and never counts toward a category or type.
+    for (const offer of landlyOffers(offers ?? [])) {
+      kinds[offerKind(offer)] += 1
+      cats.set(offer.category, (cats.get(offer.category) ?? 0) + 1)
+    }
+    return {
+      kinds,
+      categories: CATEGORY_TILES.filter((tile) => cats.has(tile.category)).map((tile) => ({ key: tile.category as CategoryFilter, label: t(tile.labelKey), count: cats.get(tile.category) ?? 0 })),
+    }
+  }, [offers, t])
   const close = useCallback((returnFocus = true) => {
     setOpen(false)
     if (returnFocus) triggerRef.current?.focus()
@@ -119,24 +116,11 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
   const body = (
     <>
       <div className="divide-y divide-slate-100">
-        {group(
-          t('filter_area_title'),
-          <>
-            {pill('near', filter?.kind === 'gps', nearMe, <><LocateFixed aria-hidden="true" className="h-4 w-4" strokeWidth={1.75} />{t('geo_near_me_current')}</>)}
-            {pill('all', !filter, clearLocation, t('loc_all_israel'))}
-            {ISRAEL_REGIONS.map((r) => pill(r.id, regionPicked === r.id, () => { geo.reset(); setOrigin(null); setAreaPick({ kind: 'area', region: r.id, city: null }) }, r.names[lang]))}
-            <select
-              aria-label={t('loc_other_city')}
-              value={cityPicked}
-              onChange={(e) => { if (e.target.value) { geo.reset(); setOrigin(null); setAreaPick({ kind: 'area', region: null, city: e.target.value }) } }}
-              className="min-h-9 max-w-full rounded-full border border-slate-200 bg-white px-3 text-base text-ink sm:text-[13px]"
-            >
-              <option value="">{t('loc_other_city')}</option>
-              {citiesOfRegion(null, lang).map((c) => <option key={c.he} value={c.he}>{c.label}</option>)}
-            </select>
-            {geoMessage && <p role="alert" className="w-full text-xs font-semibold text-red-600">{t(geoMessage)}</p>}
-          </>
-        )}
+        {group(t('filter_offer_type'), OFFER_KINDS.filter((k) => facets.kinds[k] > 0 || kind === k).map((k) => pill(k, kind === k, () => onKindChange(kind === k ? 'all' : k), <>{t(OFFER_KIND_LABELS[k])} <bdi dir="ltr" className="tabular-nums text-muted">({facets.kinds[k]})</bdi></>)))}
+        {facets.categories.length > 0 && group(t('filter_category'), <>
+          {(allCategories ? facets.categories : facets.categories.slice(0, 8)).map((c) => pill(c.key, category === c.key, () => onCategoryChange(category === c.key ? 'all' : c.key), <>{c.label} <bdi dir="ltr" className="tabular-nums text-muted">({c.count})</bdi></>))}
+          {facets.categories.length > 8 && <button type="button" onClick={() => setAllCategories((v) => !v)} className="min-h-9 px-2 text-sm font-bold text-brand">{t(allCategories ? 'filter_show_fewer' : 'filter_show_all')}</button>}
+        </>)}
         {group(t('cats_sort_label'), PERK_SORTS.map((value) => pill(value, sort === value, () => onSortChange(value), t(PERK_SORT_LABELS[value]))))}
         {group(t('cats_filter_method'), PERK_METHOD_FILTERS.map((value) => pill(value, method === value, () => onMethodChange(value), t(METHOD_LABELS[value]))))}
         {group(
@@ -149,14 +133,14 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
       <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
         <button
           type="button"
-          onClick={() => { onReset(); clearLocation() }}
+          onClick={onReset}
           disabled={activeCount === 0}
           className="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 transition-colors disabled:opacity-40 [@media(hover:hover)]:hover:bg-slate-100"
         >
-          {t('cats_filter_reset')}
+          {t('filter_reset')}
         </button>
         <button type="button" onClick={() => { close(false); onDone?.() }} className="ds-btn ds-btn-primary min-h-11 rounded-xl px-6 text-sm">
-          {t('cats_filter_show')}
+          {t('filter_show_results')}
         </button>
       </div>
     </>
@@ -177,20 +161,20 @@ export default function PerksFilterMenu({ sort, onSortChange, method, onMethodCh
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={t('cats_filter_button')}
+        aria-label={t('filter_sort_trigger')}
         onClick={() => (open ? close() : setOpen(true))}
         data-active={activeCount > 0 || undefined}
         className={`tap-target relative inline-flex h-12 w-12 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-0 text-sm font-semibold [-webkit-tap-highlight-color:transparent] transition-colors duration-150 motion-reduce:transition-none sm:w-auto sm:px-5 ${
           activeCount > 0
-            ? 'border-brand bg-brand text-white shadow-sm [@media(hover:hover)]:hover:bg-brandDark'
+            ? 'border-brand bg-white text-brand shadow-sm [@media(hover:hover)]:hover:bg-brandTint'
             : 'border-slate-200/90 bg-white text-ink shadow-sm [@media(hover:hover)]:hover:bg-slate-50'
         }`}
       >
         <SlidersHorizontal aria-hidden="true" className="h-[18px] w-[18px] sm:h-4 sm:w-4" strokeWidth={1.75} />
         {/* Hidden, not sr-only: Font Awesome's CDN CSS overrides not-sr-only; the aria-label names the button. */}
-        <span className="hidden sm:inline">{t('cats_filter_button')}</span>
+        <span className="hidden sm:inline">{t('filter_sort_trigger')}</span>
         {activeCount > 0 && (
-          <span aria-hidden="true" className="absolute -end-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[11px] font-bold tabular-nums leading-none text-white sm:static sm:border-0 sm:bg-white sm:text-xs sm:text-brand">
+          <span aria-hidden="true" className="absolute -end-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[11px] font-bold tabular-nums leading-none text-white sm:static sm:border-0 sm:bg-brand sm:text-xs sm:text-white">
             <bdi dir="ltr">{activeCount}</bdi>
           </span>
         )}

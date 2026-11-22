@@ -1,3 +1,4 @@
+import { isRaayonitCategoryId, type RaayonitCategoryId } from './raayonitCategories'
 import { parseVariants, type OfferVariant } from './variants'
 import { normalizeWebsiteUrl, parsePhones } from './contact'
 import { parseBranches, parseBrandIndex, type BrandIndexEntry, type OfferBranch } from './branches'
@@ -65,6 +66,8 @@ export interface OfferDocument {
   // Raayonit: the clean branch list, and (multi-chain card only) the live brand strip.
   branches?: OfferBranch[]
   brandIndex?: BrandIndexEntry[]
+  /** Raayonit: which of Raayonit's 18 filter categories the card sits in (lib/offers/raayonitCategories.ts). */
+  raayonitCategory?: RaayonitCategoryId
   /** Raayonit: the business's own website (cleaned) and, for a single-location business, its phone as listed. */
   websiteUrl?: string
   contactPhone?: string
@@ -109,6 +112,7 @@ export function toOfferDocument(id: string, data: Record<string, unknown>): Offe
     ...(parsePhones(data.contactPhone).length > 0 ? { contactPhone: String(data.contactPhone).trim() } : {}),
     ...(parseBrandIndex(data.brandIndex).length > 0 ? { brandIndex: parseBrandIndex(data.brandIndex) } : {}),
     ...(data.logoKind === 'logo' || data.logoKind === 'photo' || data.logoKind === 'fallback' ? { logoKind: data.logoKind } : {}),
+    ...(isRaayonitCategoryId(data.raayonitCategory) ? { raayonitCategory: data.raayonitCategory } : {}),
     ...(typeof data.kosherBranchCount === 'number' && data.kosherBranchCount > 0 ? { kosherBranchCount: data.kosherBranchCount } : {}),
     ...readPerkScope(data),
     ...(data.published === false ? { published: false } : {}),

@@ -84,15 +84,26 @@ export default function ProfileScreen() {
           title={t('nav_profile')}
           style={styles.header}
           trailing={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('settings_gear_label')}
-              onPress={() => router.push('/settings')}
-              hitSlop={6}
-              style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
-            >
-              <LineIcon name="gear" size={24} color={colors.heading} />
-            </Pressable>
+            <View style={styles.actions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('wishlist_title')}
+                onPress={() => router.push('/wishlist')}
+                hitSlop={6}
+                style={({ pressed }) => [styles.gear, styles.heart, pressed && styles.gearPressed]}
+              >
+                <LineIcon name="heart" size={24} color={colors.heading} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('settings_gear_label')}
+                onPress={() => router.push('/settings')}
+                hitSlop={6}
+                style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
+              >
+                <LineIcon name="gear" size={24} color={colors.heading} />
+              </Pressable>
+            </View>
           }
         />
 
@@ -599,6 +610,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24 },
   header: { marginBottom: header.gap },
   // 44pt target at the header's trailing edge; the root view's direction puts it top left in Hebrew.
+  actions: { flexDirection: 'row', alignItems: 'center' },
+  heart: { marginEnd: 0 },
   gear: { width: header.action, height: header.action, borderRadius: header.action / 2, marginEnd: -8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
   gearPressed: { backgroundColor: colors.borderLight },
   card: {

@@ -53,7 +53,7 @@ describe('home page composition', () => {
   it('guests get the landing in its order, ending on the questions', () => {
     authState.user = null
     const html = withLang('en', createElement(Home, { landing }))
-    const order = ['GUEST_HERO', 'LIVE_DEALS', 'AUDIENCES', 'HOW_IT_WORKS', 'id="home-pass-title"', 'BOTTOM_CTA', 'FAQ_SECTION', 'FOOTER'].map((marker) => html.indexOf(marker))
+    const order = ['GUEST_HERO', 'LIVE_DEALS', 'id="home-pass-title"', 'AUDIENCES', 'HOW_IT_WORKS', 'BOTTOM_CTA', 'FAQ_SECTION', 'FOOTER'].map((marker) => html.indexOf(marker))
     expect(order).not.toContain(-1)
     expect(order).toEqual([...order].sort((x, y) => x - y))
     expect(html).not.toContain(translations.en.home_curated_title)
@@ -72,7 +72,7 @@ describe('home page composition', () => {
     for (const marker of ['GUEST_HERO', 'AUDIENCES', 'HOW_IT_WORKS']) expect(html).not.toContain(marker)
     expect(html).not.toContain('href="/olim"')
     expect(html).not.toContain('id="how"')
-    expect(html).toContain(translations.en.home_curated_title)
+    expect(html).not.toContain(translations.en.products_title)
   })
 
   it('members get no marketing footer: support closes the dashboard, with safe-area bottom padding', () => {
@@ -118,11 +118,12 @@ describe('member dashboard', () => {
     expect(html).toContain('max-w-member')
   })
 
-  it('leads with the greeting, then the always-present pass card, the recommended perks and support', () => {
+  it('leads with the greeting, then the always-present pass card, then support (no Raayonit gift card band)', () => {
     const html = withLang('en', createElement(LoggedInHome, { user: member as never }))
-    const order = ['<h1 id="home-welcome"', 'href="/member"', 'id="home-curated-title"', 'href="/support"'].map((s) => html.indexOf(s))
+    const order = ['<h1 id="home-welcome"', 'href="/member"', 'href="/support"'].map((s) => html.indexOf(s))
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(html).not.toContain('id="gift-cards-title"')
     expect(html).not.toContain('segment-badge')
     expect(html).toMatch(/<a aria-labelledby="home-pass-count home-pass-cta" class="[^"]*" href="\/member">/)
     const card = html.match(/<a aria-labelledby="home-pass-count home-pass-cta" class="([^"]*)"/)!
@@ -135,8 +136,8 @@ describe('member dashboard', () => {
     expect(html).toMatch(/<span aria-hidden="true" class="relative z-10 -mx-5 my-4 flex items-center sm:-mx-6 md:hidden">.*border-dashed border-white\/35/)
     // The clump beside the rail and the fixed category tiles are gone.
     expect(html).not.toContain('lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]')
-    // The curated rail holds its shape on the full-width row while offers load.
-    expect(html).toContain('member-bleed flex gap-3 overflow-hidden')
+    // While offers load there is no empty perks box: the exclusive-perks rail appears only once GoLandly has perks of its own.
+    expect(html).not.toContain('id="home-curated-title"')
   })
 
   it('fits phones: dynamic viewport height, no sideways drift, a full-width My Pass button and a tap-target avatar', () => {
@@ -161,14 +162,12 @@ describe('member dashboard', () => {
     expect(line[2]).toBe('Welcome, Dana')
     for (const c of ['hidden', 'lg:block', 'text-start', 'text-page', 'lg:text-3xl', 'font-bold', 'text-ink']) expect(line[1].split(' ')).toContain(c)
     // The same page-title type as the other signed-in pages' h1 (the /categories title).
-    expect(html.indexOf('id="home-welcome-lg"')).toBeLessThan(html.indexOf('id="home-categories-title"'))
     expect(html.indexOf('id="home-welcome-lg"')).toBeGreaterThan(html.indexOf('href="/member"'))
     expect(html.match(/ds-avatar-fallback/g)).toHaveLength(1)
     expect(html).not.toContain('segment-badge')
     expect(html.match(/home-pass-count home-pass-cta/g)).toHaveLength(1)
     // 24px under the search bar on desktop (the shell's 32 less 8), and the category section adds no extra margin there.
     expect(line[1]).toContain('lg:-mt-2')
-    expect(html).toContain('class="mt-6 sm:mt-8 lg:mt-0"')
   })
 
   it('has no generic welcome for a member without a name on desktop either', () => {
@@ -202,12 +201,13 @@ describe('member dashboard: category rail and perk cards', () => {
     redemptionInstructions: '',
   }
 
-  it.each(['en', 'he'] as const)('a perk card shows merchant, category badge, "% OFF" banner and one baseline price row, with no CTA line (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('a perk card shows merchant, "% OFF" banner and one baseline price row, with no CTA line (%s)', (lang) => {
     const t = translations[lang]
     const html = withLang(lang, createElement(OfferCard, { offer }))
     expect(html).toContain('href="/offers/o1"')
     expect(html).toContain('>Cafe Nadi<')
-    expect(html).toContain(`>${t.row_restaurants}<`)
+    // No redemption or category tag over the photo: it would crowd the discount badge.
+    expect(html).not.toContain(`>${t.row_restaurants}<`)
     // A -15% pill on the photo, read out in words, and nothing repeating it by the price.
     expect(html).toContain('<bdi aria-hidden="true" dir="ltr">-15%</bdi>')
     expect(html).toContain(`<span class="sr-only">${t.offer_percent_off.replace('{n}', '15')}</span>`)
@@ -218,12 +218,11 @@ describe('member dashboard: category rail and perk cards', () => {
     expect(html).toContain('<bdi dir="ltr" class="text-price tabular-nums text-brand">')
   })
 
-  it('shows how the perk is redeemed, and a branded panel instead of a broken image when there is no photo', () => {
+  it('carries no redemption tag, and a branded panel instead of a broken image when there is no photo', () => {
     const html = withLang('he', createElement(OfferCard, { offer: { ...offer, imageUrl: '', redemptionMethod: 'phone_booking' as const } }))
-    expect(html).toContain(translations.he.redeem_method_phone_booking)
+    expect(html).not.toContain(translations.he.redeem_method_phone_booking)
     // The category's Lucide glyph in a white frame, never a broken-image icon; the tag line leads with it too.
     expect(html).toMatch(/<svg [^>]*stroke-width="1.5"[^>]*class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-9 w-9"/)
-    expect(html).toMatch(/class="lucide lucide-utensils-crossed lucide-fork-knife-crossed h-3 w-3 shrink-0"/)
     expect(html).not.toContain('<img')
     // The method is text only.
     expect(html).not.toContain('lucide-phone')
@@ -251,10 +250,10 @@ describe('guest home section dividers', () => {
       const d = html.indexOf(divider, at(a))
       return d > at(a) && d < at(b)
     }
-    expect(between('LIVE_DEALS', 'HOW_IT_WORKS')).toBe(true)
-    expect(between('HOW_IT_WORKS', 'id="home-pass-title"')).toBe(true)
-    expect(between('id="home-pass-title"', 'FAQ_SECTION')).toBe(true)
-    expect(between('GUEST_HERO', 'AUDIENCES')).toBe(false)
+    expect(between('id="home-pass-title"', 'AUDIENCES')).toBe(true)
+    expect(between('AUDIENCES', 'HOW_IT_WORKS')).toBe(true)
+    expect(between('HOW_IT_WORKS', 'FAQ_SECTION')).toBe(true)
+    expect(between('GUEST_HERO', 'id="home-pass-title"')).toBe(false)
   })
 
   it('keeps the same hairlines with no live data', () => {

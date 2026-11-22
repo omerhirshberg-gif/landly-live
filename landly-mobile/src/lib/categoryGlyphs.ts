@@ -7,11 +7,11 @@ import type { LineIconName } from '../components/LineIcon'
 export { CATEGORY_TINTS, categoryTint } from '@shared/categoryGlyphs'
 
 /** The Perks filter's "All" chip. */
-export const ALL_ICON: LineIconName = 'sparkles'
+export const ALL_ICON: LineIconName = 'layoutGrid'
 
 /** The Perks tab's highlight rails (OfferTileRail.tsx). */
 export const RAIL_ICONS = {
-  new: 'sparkles',
+  new: 'circlePlus',
   bestsellers: 'award',
   superTav: 'ticket',
 } as const satisfies Record<string, LineIconName>

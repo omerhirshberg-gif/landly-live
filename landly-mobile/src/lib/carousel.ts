@@ -1,15 +1,21 @@
 // Layout math for components/OfferCarousel.tsx, kept free of React Native so
 // the web test suite can check it (tests/unit/offerCarousel.test.ts).
 
-export const CAROUSEL_GAP = 12
+export const CAROUSEL_GAP = 10
 // The screen's gutter: the rail bleeds through it, so cards scroll out from under it.
 export const CAROUSEL_EDGE = 16
 // Past this many resting places a row of dots stops reading as a position: longer rows go without (web: SNAP_DOTS_MAX).
 export const PAGER_DOTS_MAX = 8
 
-/** About 72% of the screen, held between 240 and 260pt, so the next card always peeks in. */
+/** Cards in view at once: two whole ones and a sliver (0.15) of the third, inviting the swipe. */
+export const CAROUSEL_VISIBLE = 2.15
+
+/**
+ * Two cards and a clean peek of a third: the gutter, two gaps and 2.15 cards fill the screen
+ * (about 165pt at 390, 188pt at 440). Held between 150 and 232pt, so a wide screen never stretches a card.
+ */
 export function carouselCardWidth(screenWidth: number): number {
-  return Math.round(Math.min(260, Math.max(240, screenWidth * 0.72)))
+  return Math.round(Math.min(232, Math.max(150, (screenWidth - CAROUSEL_EDGE - 2 * CAROUSEL_GAP) / CAROUSEL_VISIBLE)))
 }
 
 /**

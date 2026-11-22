@@ -134,6 +134,31 @@ export function cancelPendingChange(idToken: string, kind: 'email' | 'phone', ap
   return post('/api/account/cancel-pending', idToken, { kind }, apiBaseUrl)
 }
 
+export type SignupOtpStart = { resendIn: number }
+
+/**
+ * Sends the 6-digit code that confirms a new email+password account (the
+ * first request after sign-up also carries the names and consents the
+ * profile is created from; a resend sends just the language).
+ */
+export function requestSignupOtp(
+  idToken: string,
+  params: { lang: Lang; firstName?: string; lastName?: string; agreedToTerms?: boolean; marketingOptIn?: boolean },
+  apiBaseUrl = ''
+) {
+  return post<SignupOtpStart>('/api/auth/send-signup-otp', idToken, params, apiBaseUrl)
+}
+
+/** How long the resend cooldown still runs for an unverified account, without sending anything. */
+export function signupOtpStatus(idToken: string, lang: Lang, apiBaseUrl = '') {
+  return post<SignupOtpStart>('/api/auth/send-signup-otp', idToken, { status: true, lang }, apiBaseUrl)
+}
+
+/** Confirms the sign-up code; `customToken` is the way back in for a client that doesn't hold the password. */
+export function verifySignupCode(idToken: string, code: string, apiBaseUrl = '') {
+  return post<{ customToken?: string }>('/api/auth/verify-signup-otp', idToken, { code }, apiBaseUrl)
+}
+
 /**
  * A resend that leaves nothing to verify: the code could not be delivered
  * (the server dropped the pending change, and with it the code sent before),
@@ -149,7 +174,11 @@ export function resendEndsChange(reason: ContactChangeReason): boolean {
  * An expired or used-up code tells the member to change the same thing again,
  * so those two name the email for an email change.
  */
-export function contactChangeErrorKey(reason: ContactChangeReason, kind: 'email' | 'phone' = 'phone') {
+export function contactChangeErrorKey(reason: ContactChangeReason, kind: 'email' | 'phone' | 'signup' = 'phone') {
+  // A sign-up code is simply asked for again: nothing was being changed.
+  if (kind === 'signup' && reason === 'expired') return 'signupOtp_err_expired'
+  if (kind === 'signup' && reason === 'tooManyAttempts') return 'signupOtp_err_tooManyAttempts'
+  if (kind === 'signup' && reason === 'noPending') return 'signupOtp_err_expired'
   if (kind === 'email' && reason === 'expired') return 'contact_err_expired_email'
   if (kind === 'email' && reason === 'tooManyAttempts') return 'contact_err_tooManyAttempts_email'
   switch (reason) {

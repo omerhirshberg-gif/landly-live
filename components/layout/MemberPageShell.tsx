@@ -29,12 +29,13 @@ export const PAGE_TITLE_GAP = 'mb-6'
 // `globalSearch` puts the persistent search bar (components/discover/GlobalPerkSearchBar.tsx)
 // first in the column, in the same spot on every page that has it: the Mami-style
 // pill search, Near Me and Filter, right under the navbar. Home, Perks, Wishlist and My Pass use it.
-export default function MemberPageShell({ children, footer, fluid = false, globalSearch = false }: { children: ReactNode; footer?: ReactNode; fluid?: boolean; globalSearch?: boolean }) {
+// `contained` (Home, Perks) holds the whole fluid column, search bar included, in one centred 1152px box (the wide columns inside keep their own gutters), so the greeting, search and sections share the same start and end edges.
+export default function MemberPageShell({ children, footer, fluid = false, globalSearch = false, contained = false }: { children: ReactNode; footer?: ReactNode; fluid?: boolean; globalSearch?: boolean; contained?: boolean }) {
   const searchRow = globalSearch ? <GlobalPerkSearchRow wide={fluid} /> : null
   if (fluid) {
     return (
       <div className="pt-8 sm:pt-10 lg:pt-12 pb-[env(safe-area-inset-bottom)] flex min-h-[calc(100dvh-var(--header-offset))] flex-col">
-        <div className="min-w-0 flex-1">
+        <div className={contained ? 'min-w-0 flex-1 mx-auto w-full max-w-6xl' : 'min-w-0 flex-1'}>
           {searchRow}
           {children}
         </div>

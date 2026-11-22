@@ -11,6 +11,8 @@ import { buildOfferTranslations } from '@/lib/translate/offerTranslations'
 import { businessTranslationsForSave } from '@/lib/translate/translateBusinessOnSave'
 import { offerTextSource, translationsForSave } from '@/lib/translate/translateOfferOnSave'
 import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
+import { raayonitCategoryOf } from '@/lib/offers/raayonitCategories'
+import categoryByKey from '@/lib/offers/raayonitCategoryByKey.json'
 import { createSharedPool } from './poolAdmin'
 import { finalizeCatalog } from './raayonitSanitize'
 import { POOL_COLLECTION } from './types'
@@ -25,14 +27,15 @@ import snapshot from './raayonitCatalog.snapshot.json'
 import { applyCanonical, NO_IMAGE_BRAND_KEYS } from './raayonitCanonicalCatalog'
 
 // Builds Raayonit's "תו על" offers from its catalogue: one multi-chain card plus one card per participating brand or business,
-// each carrying a variant per voucher stock (100 for 89, 150 for 129, created when missing). New cards are drafts
+// each carrying a variant per voucher stock (100 for 89, 150 for 132, 200 for 174, created when missing). New cards are drafts
 // (published: false) until an admin publishes them, unless `publish` is set (the dev seed, which also sets `purgeRetired`). Re-running updates the cards in
 // place (matched by sourceKey) and never touches their published flag, counters or creation date.
 
 /** The stocks the product sells: face value and sale price, in agorot. */
 export const DEFAULT_STOCKS = [
-  { faceValueAgorot: 10000, priceAgorot: 8900 },
-  { faceValueAgorot: 15000, priceAgorot: 12900 },
+  { faceValueAgorot: 10000, priceAgorot: 8900 }, // -11%
+  { faceValueAgorot: 15000, priceAgorot: 13200 }, // -12%
+  { faceValueAgorot: 20000, priceAgorot: 17400 }, // -13%: the pre-selected "Best value"
 ] as const
 
 export const GENERAL_BRAND_HE = 'תו על רב-רשתי'
@@ -58,6 +61,9 @@ export function titleIn(lang: (typeof OTHER_LANGS)[number], card: { general: boo
 const titleOverrides = (card: { general: boolean; names: Partial<Record<(typeof OTHER_LANGS)[number], string>>; fallback: string }) =>
   Object.fromEntries(OTHER_LANGS.map((lang) => [lang, { title: titleIn(lang, { general: card.general, name: card.names[lang] || card.fallback }) }]))
 const CHUNK = 200
+/** The pause between two requests to raayonit.co.il, and the largest page accepted. */
+export const MIN_REQUEST_GAP_MS = 1000
+export const MAX_PAGE_CHARS = 3_000_000
 
 export type SnapshotBrand = RaayonitBrand & { logoFile?: string; logoKind?: 'logo' | 'photo' }
 export const bundledCatalog = (): SnapshotBrand[] => applyCanonical((snapshot as { brands: SnapshotBrand[] }).brands)
@@ -67,23 +73,25 @@ export async function scrapeRaayonitCatalog(fetcher: typeof fetch = fetch): Prom
   const get = async (url: string) => {
     const res = await fetcher(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; GoLandlyCatalogSync)' }, signal: AbortSignal.timeout(15_000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return res.text()
+    const body = await res.text()
+    if (body.length > MAX_PAGE_CHARS) throw new Error('page too large')
+    return body
   }
   const list = parseNetworkIndex(await get(showNetworksUrl()))
   const brands: SnapshotBrand[] = []
   const failed: string[] = []
   const queue = [...list]
-  await Promise.all(Array.from({ length: 4 }, async () => {
-    for (let item = queue.shift(); item; item = queue.shift()) {
-      try {
-        const brand = parseNetworkPage(await get(networkUrl(item.key)), item.key, item.logoUrl)
-        if (brand) brands.push(brand)
-        else failed.push(item.key)
-      } catch {
-        failed.push(item.key)
-      }
+  // One request at a time, at most one per second (Raayonit's site is a third party's), and a page past the size cap is refused.
+  for (let item = queue.shift(); item; item = queue.shift()) {
+    await new Promise((r) => setTimeout(r, MIN_REQUEST_GAP_MS))
+    try {
+      const brand = parseNetworkPage(await get(networkUrl(item.key)), item.key, item.logoUrl)
+      if (brand) brands.push(brand)
+      else failed.push(item.key)
+    } catch {
+      failed.push(item.key)
     }
-  }))
+  }
   return { brands: brands.sort((a, b) => Number(a.key) - Number(b.key) || a.key.localeCompare(b.key)), failed }
 }
 export { indexUrl }
@@ -280,6 +288,7 @@ export async function syncRaayonitCatalog(db: Firestore, input: { brands: Snapsh
         redemptionModes: [...modes],
         redemptionInstructions: instructions,
         sourceKey,
+        ...(brand ? { raayonitCategory: raayonitCategoryOf({ sourceKey }, categoryByKey as Record<string, string>) } : {}),
         source: 'raayonit-sync',
         ...(brand ? { sourceUrl: brand.siteUrl, websiteUrl: normalizeWebsiteUrl(brand.siteUrl), contactPhone: brand.branches.length === 1 ? firstPhone(brand.branches[0]!.phone)?.display ?? '' : '' } : {}),
         ...(input.publish && !partial ? { published: true } : {}),

@@ -58,7 +58,7 @@ describe('WishlistPopover', () => {
     expect(src).toMatch(/<bdi dir="ltr" className="tabular-nums">\{wishlistBadgeLabel\(wishlistCount\)\}<\/bdi>/)
   })
   it('rows link to the offer and close, show discounted and struck original prices in LTR islands, and can be removed', () => {
-    expect(src).toContain('href={`/offers/${offer.id}`} onClick={onNavigate}')
+    expect(src).toContain('href={webOfferHref(offer)} onClick={onNavigate}')
     expect(src).toMatch(/<bdi dir="ltr" className="text-sm font-bold tabular-nums text-brand">\{formatPrice\(offer\.offerPrice\)\}/)
     expect(src).toMatch(/text-xs tabular-nums text-slate-400 line-through/)
     expect(src).toContain('h-12 w-12 flex-shrink-0')

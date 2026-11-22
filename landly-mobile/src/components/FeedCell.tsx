@@ -12,8 +12,10 @@ import { useLayout } from '../lib/useLayout'
 // the row; `column` shifts the card within its share by column x gap / columns,
 // which puts exactly GRID_GAP between neighbours and the last card flush with
 // the row's end edge. Start/end, so Hebrew mirrors it.
-export default function FeedCell({ children, column }: { children: ReactNode; column?: number }) {
-  const { columns, cellWidth } = useLayout()
+/** `grid` overrides the feed's columns, for a screen that lays its cards out in its own grid (the category screen: two on a phone). */
+export default function FeedCell({ children, column, grid }: { children: ReactNode; column?: number; grid?: { columns: number; cellWidth: number } }) {
+  const feed = useLayout()
+  const { columns, cellWidth } = grid ?? feed
   if (columns <= 1) return <>{children}</>
   const shift = column === undefined ? 0 : (column % columns) * (GRID_GAP / columns)
   return <View style={{ width: cellWidth, marginStart: shift }}>{children}</View>

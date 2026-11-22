@@ -62,6 +62,9 @@ export default function SegmentedControl<T extends string>({
               style={styles.segment}
             >
               <AppText
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 style={[
                   styles.label,
                   { color: active ? (brand ? colors.white : colors.brand) : brand ? colors.body : colors.textMuted },

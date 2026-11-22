@@ -10,30 +10,31 @@ import { useLang } from '@/lib/i18n/useLang'
 // a centred header, then one large card per voucher value side by side. The top value is the midnight-navy "Best Value" card. Each card
 // opens the multi-chain offer with its value already picked (?denomination=). Prices and percentages sit in <bdi dir="ltr"> so Hebrew
 // keeps them in reading order.
-export default function MultiChainShowcase({ offer }: { offer: OfferDocument }) {
+export default function MultiChainShowcase({ offer, uniform = false }: { offer: OfferDocument; uniform?: boolean }) {
   const { t } = useLang()
   const cards = showcaseCards(offer)
   if (cards.length === 0) return null
 
   return (
-    <section aria-labelledby="super-showcase-title" className="mx-auto mb-10 w-full max-w-4xl">
+    <section aria-labelledby="super-showcase-title" className={`mx-auto mb-10 w-full ${uniform ? 'max-w-5xl' : 'max-w-4xl'}`}>
       <div className="mx-auto mb-6 max-w-2xl text-center">
-        <h2 id="super-showcase-title" className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{t('super_showcase_title')}</h2>
+        <h2 id="super-showcase-title" className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{t(uniform ? 'guest_raayonit_title' : 'super_showcase_title')}</h2>
         <p className="mt-2 text-sm leading-relaxed text-body sm:text-base">{t('super_showcase_sub')}</p>
       </div>
-      <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
-        {cards.map((card) => <VoucherCard key={card.pool} card={card} />)}
+      <div className={`grid grid-cols-1 items-stretch gap-5 ${uniform ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        {cards.map((card) => <VoucherCard key={card.pool} card={card} uniform={uniform} />)}
       </div>
     </section>
   )
 }
 
-function VoucherCard({ card }: { card: ShowcaseCard }) {
+function VoucherCard({ card, uniform }: { card: ShowcaseCard; uniform: boolean }) {
   const { t } = useLang()
-  const dark = card.best
+  // `uniform` (the guest landing): all values in one row, one look, with the card's own name as the eyebrow.
+  const dark = card.best && !uniform
   const value = isolateLtr(`₪${card.value}`)
   const cta = t('super_card_cta').replace('{value}', value)
-  const eyebrow = t('super_card_title')
+  const eyebrow = uniform ? t('products_card_name') : t('super_card_title')
   return (
     <Link
       href={card.href}

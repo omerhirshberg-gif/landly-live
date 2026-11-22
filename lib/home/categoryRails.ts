@@ -83,3 +83,32 @@ export function railLabel(rail: CategoryRailGroup, t: (key: TranslationKey) => s
 export function passCountMessage(count: number, t: (key: TranslationKey) => string): string {
   return count === 1 ? t('home_vouchers_message_one') : t('home_vouchers_message').replace('{count}', String(count))
 }
+
+/** How many cards each GoLandly category row on Home holds: real perks first, then placeholders. */
+export const HOME_SLOT_COUNT = 10
+
+export type HomeSlot = { kind: 'offer'; key: string; offer: OfferDocument } | { kind: 'placeholder'; key: string }
+
+export interface HomeCategorySlots {
+  tile: CategoryTile
+  slots: HomeSlot[]
+}
+
+/**
+ * Home's category rows: every official category, in tile order, each with exactly
+ * HOME_SLOT_COUNT slots. Claimable GoLandly offers (featured first) take the first
+ * slots; placeholders fill the rest, so a newly published perk replaces one by itself.
+ * Pass GoLandly's own offers only (landlyOffers): Raayonit never appears here.
+ */
+export function buildHomeCategorySlots(offers: readonly OfferDocument[]): HomeCategorySlots[] {
+  const sorted = offers.filter((o) => isOfferAvailable(o) && !isSuperVoucher(o) && o.fulfillmentType !== 'raayonit_pool').sort(compareFeatured)
+  return CATEGORY_TILES.map((tile) => {
+    const real: HomeSlot[] = sorted
+      .filter((o) => o.category === tile.category)
+      .slice(0, HOME_SLOT_COUNT)
+      .map((offer) => ({ kind: 'offer', key: offer.id, offer }))
+    const slots = [...real]
+    for (let i = real.length; i < HOME_SLOT_COUNT; i++) slots.push({ kind: 'placeholder', key: `ph:${tile.category}:${i}` })
+    return { tile, slots }
+  })
+}

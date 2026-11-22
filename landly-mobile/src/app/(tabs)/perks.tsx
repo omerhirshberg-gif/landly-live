@@ -5,10 +5,9 @@ import { Pressable, RefreshControl, StyleSheet, View, type ViewToken } from 'rea
 import { FlashList } from '@shopify/flash-list'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@shared/categories'
+import { CATEGORY_TILES, filterCategoryTiles } from '@shared/categories'
 import { isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useOffers } from '@shared/offers/useOffers'
-import type { Area, Coordinates } from '@shared/geo'
 import {
   filterAndSortPerks,
   hasActivePerkFilters,
@@ -23,20 +22,25 @@ import AppText from '../../components/AppText'
 import LocationFilterBar from '../../components/LocationFilterBar'
 import CategoryGrid from '../../components/CategoryGrid'
 import FeedCell from '../../components/FeedCell'
-import FilterSheet from '../../components/FilterSheet'
-import { applyLocationFilter, badgeKm, sortByLocation, type LocationFilter, type RadiusKm } from '@shared/perks/locationFilter'
+import SortSheet from '../../components/SortSheet'
+import FilterSheet, { type FilterFacets, type FilterValues } from '../../components/FilterSheet'
+import { OFFER_KINDS, offerKind, type OfferKind } from '@shared/offers/offerKind'
+import { applyLocationFilterWithNationwide, badgeKm, partitionByLocation, sortByLocation } from '@shared/perks/locationFilter'
+import NearMeButton from '../../components/NearMeButton'
+import { useLocationFilter } from '../../lib/useLocationFilter'
 import Notice from '../../components/Notice'
 import OfferCard from '../../components/OfferCard'
 import OfferTileRail from '../../components/OfferTileRail'
-import { buildCategoryRails, isSuperVoucher, selectSuperVouchers, type CategoryRailGroup } from '@shared/home/categoryRails'
+import { buildCategoryRails, isSuperVoucher, type CategoryRailGroup } from '@shared/home/categoryRails'
 import PerksCategoryChips from '../../components/PerksCategoryChips'
 import PerksSearchField from '../../components/PerksSearchField'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionDivider from '../../components/SectionDivider'
 import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
+import { locationCountLabel } from '@shared/perks/locationCount'
 import { openOffer } from '../../lib/openOffer'
-import MultiChainShowcase from '../../components/MultiChainShowcase'
+import { landlyOffers } from '@shared/offers/discoverTab'
 import { useLayout } from '../../lib/useLayout'
 import { colors, header } from '../../theme'
 
@@ -55,13 +59,15 @@ import { colors, header } from '../../theme'
 // header, so FlashList mounts only those near the viewport and typing in the
 // search never re-renders a rail scrolled out of sight.
 type PerksRow =
-  | { key: 'showcase'; type: 'showcase'; offer: OfferDocument }
+  | { key: 'landlyLabel'; type: 'landlyLabel' }
   | { key: 'highlights'; type: 'highlights'; divider: boolean }
   | { key: string; type: 'rail'; rail: CategoryRailGroup; divider: boolean }
   | { key: 'tiles'; type: 'tiles' }
   | { key: 'heading'; type: 'heading' }
-  | { key: string; type: 'offer'; offer: OfferDocument; index: number }
+  | { key: 'nationwide'; type: 'nationwide' }
+  | { key: string; type: 'offer'; offer: OfferDocument; index: number; nationwide?: boolean }
   | { key: 'empty'; type: 'empty' }
+  | { key: 'soon'; type: 'soon' }
 
 const VIEWABILITY = { itemVisiblePercentThreshold: 5 }
 const rowKey = (row: PerksRow) => row.key
@@ -72,7 +78,7 @@ export default function PerksScreen() {
   const router = useRouter()
   // One card per row on a phone, two unfolded, three on a tablet.
   const { columns, cellWidth, paddingLeft, paddingRight } = useLayout()
-  const params = useLocalSearchParams<{ cat?: string; sort?: string; focus?: string }>()
+  const params = useLocalSearchParams<{ cat?: string; sort?: string; focus?: string; kind?: string; brand?: string; src?: string }>()
   // The chip and the sort live in the route; a pick shows on the tap's frame (held here until the route catches up).
   const routeCategory = parseCategoryFilter(params.cat)
   const routeSort = parsePerkSort(params.sort)
@@ -81,32 +87,27 @@ export default function PerksScreen() {
   const [pickedSort, setPickedSort] = useState<{ value: PerkSort; over: PerkSort } | null>(null)
   const category = pickedCategory && pickedCategory.over === routeCategory ? pickedCategory.value : routeCategory
   const sort = pickedSort && pickedSort.over === routeSort ? pickedSort.value : routeSort
+  // Offer type and brand live in the route as well (the brand spotlight's "To brand page" opens ?brand=…).
+  const kind: OfferKind | 'all' = (OFFER_KINDS as readonly string[]).includes(params.kind ?? '') ? (params.kind as OfferKind) : 'all'
+  const brand = typeof params.brand === 'string' ? params.brand.trim() : ''
   const [query, setQuery] = useState('')
   // The field, the chips and Sort update at once; the catalog is filtered against these deferred copies, in the background.
   const deferredQuery = useDeferredValue(query)
   const appliedQuery = query ? deferredQuery : ''
   const listCategory = useDeferredValue(category)
   const listSort = useDeferredValue(sort)
-  const { offers, failed, refresh } = useOffers()
+  const { offers: allOffers, failed, refresh } = useOffers()
+  // Explore Perks is GoLandly's own perks only; Raayonit's "תו על" has its own tab.
+  const offers = useMemo(() => (allOffers ? landlyOffers(allOffers) : null), [allOffers])
+  const landlyEmpty = offers !== null && offers.length === 0
   const [refreshing, setRefreshing] = useState(false)
-  // Near me (web: /categories): the member's location, or an area picked
-  // when there is none. It orders the list nearest-first and shows a Nearby
-  // section on the overview; it never leaves the device except rounded to
-  // ~1 km for the city name (lib/geo.ts reverseGeocode).
-  const [origin, setOrigin] = useState<{ coords: Coordinates; area: Area | null } | null>(null)
-  const [geoError, setGeoError] = useState<string | null>(null)
-  // The radius around the member's position (5 / 15 / 25 km), or a region / city picked by hand; either narrows every list below.
-  const [radiusKm, setRadiusKm] = useState<RadiusKm>(5)
-  const [areaPick, setAreaPick] = useState<Extract<LocationFilter, { kind: 'area' }> | null>(null)
-  const originCoords = origin?.coords ?? null
-  const loc = useMemo<LocationFilter | null>(
-    () => areaPick ?? (originCoords ? { kind: 'gps', coords: originCoords, radiusKm } : null),
-    [areaPick, originCoords, radiusKm]
-  )
-
-  const located = useMemo(() => (offers ? applyLocationFilter(offers, loc) : null), [offers, loc])
-  // Only a multi-chain pass is left: nothing real in this radius or area.
-  const locEmpty = !!loc && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
+  // Near me / a picked area (lib/perks/locationFilter.ts): one filter shared with Home and the category screens
+  // (lib/useLocationFilter.ts). It narrows every list below, and nationwide chains that can't be placed are kept, listed apart.
+  const location = useLocationFilter()
+  const loc = location.filter
+  const located = useMemo(() => (offers ? applyLocationFilterWithNationwide(offers, loc) : null), [offers, loc])
+  // Nothing real in this radius or area: only multi-chain passes and unplaceable nationwide chains are left.
+  const locEmpty = !!loc && !!offers && !partitionByLocation(offers, loc).nearby.some((o) => o.perkScope !== 'multi_chain')
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -118,10 +119,6 @@ export default function PerksScreen() {
     setPickedCategory({ value: next, over: routeCategory })
     startTransition(() => router.setParams({ cat: next === 'all' ? '' : next }))
   }
-  const setSort = (next: PerkSort) => {
-    setPickedSort({ value: next, over: routeSort })
-    startTransition(() => router.setParams({ sort: next === DEFAULT_PERK_SORT ? '' : next }))
-  }
   // A tile opens its category folder pushed over the tabs, as Home's rail
   // does, so a full-screen swipe (lib/pageFlip.ts) or Android's back turns it
   // back to this grid with the search intact. The chips and Sort below only
@@ -130,28 +127,48 @@ export default function PerksScreen() {
 
   const normalizedQuery = normalizeQuery(appliedQuery)
   // Nothing chosen: the screen is the overview.
-  const browsing = !hasActivePerkFilters({ query, category, sort })
-  const listBrowsing = !hasActivePerkFilters({ query: appliedQuery, category: listCategory, sort: listSort })
+  const browsing = !hasActivePerkFilters({ query, category, sort, kind, brand })
+  const listBrowsing = !hasActivePerkFilters({ query: appliedQuery, category: listCategory, sort: listSort, kind, brand })
   // A search across All also surfaces the categories it names.
   const matchingTiles = useMemo(
     () => (normalizedQuery && listCategory === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []),
     [normalizedQuery, listCategory, t]
   )
-  const visible = useMemo(
-    () => (listBrowsing || !located ? [] : sortByLocation(filterAndSortPerks(located, { query: appliedQuery, category: listCategory, sort: listSort }, t, lang, null), listSort === DEFAULT_PERK_SORT ? loc : null)),
-    [listBrowsing, located, appliedQuery, listCategory, listSort, t, lang, loc]
-  )
+  const { nearbyList, nationwideList } = useMemo(() => {
+    if (listBrowsing || !offers) return { nearbyList: [] as OfferDocument[], nationwideList: [] as OfferDocument[] }
+    const matched = filterAndSortPerks(offers, { query: appliedQuery, category: listCategory, sort: listSort, kind, brand }, t, lang, null)
+    const parts = partitionByLocation(matched, loc)
+    return { nearbyList: sortByLocation(parts.nearby, listSort === DEFAULT_PERK_SORT ? loc : null), nationwideList: parts.nationwide }
+  }, [listBrowsing, offers, appliedQuery, listCategory, listSort, kind, brand, t, lang, loc])
+  const visible = useMemo(() => [...nearbyList, ...nationwideList], [nearbyList, nationwideList])
+  // What the filter sheet can narrow by, with how many perks each choice leaves.
+  const facets = useMemo<FilterFacets>(() => {
+    const kinds: Record<OfferKind, number> = { voucher: 0, discount: 0, deal: 0 }
+    const cats = new Map<string, number>()
+    for (const offer of offers ?? []) {
+      kinds[offerKind(offer)] += 1
+      cats.set(offer.category, (cats.get(offer.category) ?? 0) + 1)
+    }
+    return {
+      kinds,
+      categories: CATEGORY_TILES.filter((tile) => cats.has(tile.category)).map((tile) => ({ key: tile.category as CategoryFilter, label: t(tile.labelKey), count: cats.get(tile.category) ?? 0 })),
+    }
+  }, [offers, t])
+  const applyFilters = (next: FilterValues) => {
+    setPickedCategory({ value: next.category, over: routeCategory })
+    setPickedSort({ value: next.sort, over: routeSort })
+    startTransition(() => router.setParams({ cat: next.category === 'all' ? '' : next.category, sort: next.sort === DEFAULT_PERK_SORT ? '' : next.sort, kind: next.kind === 'all' ? '' : next.kind, brand: next.brand }))
+  }
   // The overview's two rails: sold-out offers left out, bestsellers then newest.
   const railOffers = useMemo(() => (located ? sortFeaturedOffers(located.filter((offer) => isOfferAvailable(offer) && !isSuperVoucher(offer))) : []), [located])
   const categoryRails = useMemo(() => (located ? buildCategoryRails(located) : []), [located])
-  const superOffers = useMemo(() => (located ? selectSuperVouchers(located) : []), [located])
   const newOffers = useMemo(() => railOffers.filter((offer) => isOfferNew(offer.createdAt) && offer.fulfillmentType !== 'raayonit_pool'), [railOffers])
   const bestsellerOffers = useMemo(() => railOffers.filter((offer) => offer.isBestseller), [railOffers])
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
   // The screen title names the selected category (web: the /categories h1),
   // so the results heading only names a search, or "All" for a sort over
   // everything; a category on its own shows just the count.
-  const screenTitle = selectedTile ? t(selectedTile.labelKey) : t('mobile_tab_perks')
+  const screenTitle = selectedTile ? t(selectedTile.labelKey) : t('perks_explore_title')
   const listTile = CATEGORY_TILES.find((tile) => tile.category === listCategory)
   const resultsTitle = normalizedQuery
     ? t('cats_search_results_title').replace('{query}', appliedQuery.trim())
@@ -161,23 +178,26 @@ export default function PerksScreen() {
 
   const rows = useMemo<PerksRow[]>(() => {
     const list: PerksRow[] = []
+    // Explore Perks is GoLandly's own perks: the direct perks, or a calm note while there are none. A search or a filter narrows them alone.
+    if (landlyEmpty) return [{ key: 'soon', type: 'soon' }]
     if (listBrowsing) {
-      // Soft hairlines between the overview's sections, as on the website's /categories.
-      if (superOffers[0]) list.push({ key: 'showcase', type: 'showcase', offer: superOffers[0] })
       const highlights = newOffers.length > 0 || bestsellerOffers.length > 0
-      if (highlights) list.push({ key: 'highlights', type: 'highlights', divider: true })
-      categoryRails.forEach((rail, index) => list.push({ key: `c:${rail.category}`, type: 'rail', rail, divider: index > 0 || superOffers.length > 0 || highlights }))
+      if (highlights || categoryRails.length > 0) list.push({ key: 'landlyLabel', type: 'landlyLabel' })
+      if (highlights) list.push({ key: 'highlights', type: 'highlights', divider: false })
+      categoryRails.forEach((rail, index) => list.push({ key: `c:${rail.category}`, type: 'rail', rail, divider: index > 0 || highlights }))
       return list
     }
     if (matchingTiles.length > 0) list.push({ key: 'tiles', type: 'tiles' })
     if (visible.length > 0) {
       list.push({ key: 'heading', type: 'heading' })
-      visible.forEach((offer, index) => list.push({ key: `o:${offer.id}`, type: 'offer', offer, index }))
+      nearbyList.forEach((offer, index) => list.push({ key: `o:${offer.id}`, type: 'offer', offer, index }))
+      if (nationwideList.length > 0) list.push({ key: 'nationwide', type: 'nationwide' })
+      nationwideList.forEach((offer, index) => list.push({ key: `o:${offer.id}`, type: 'offer', offer, index, nationwide: true }))
     } else if (offers !== null && matchingTiles.length === 0) {
       list.push({ key: 'empty', type: 'empty' })
     }
     return list
-  }, [listBrowsing, superOffers, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, offers])
+  }, [landlyEmpty, listBrowsing, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, nearbyList, nationwideList, offers])
 
   // Which rows are on screen: a rail's autoplay runs only while it is.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(() => new Set(['highlights']))
@@ -190,9 +210,8 @@ export default function PerksScreen() {
   const cardWidth = columns > 1 ? cellWidth : undefined
   const renderRow = ({ item }: { item: PerksRow }) => {
     switch (item.type) {
-      case 'showcase':
-        // The flagship multi-chain voucher: one card per value, centred above the rails.
-        return <MultiChainShowcase offer={item.offer} />
+      case 'landlyLabel':
+        return <AppText style={styles.landlyLabel}>{t('perks_landly_label')}</AppText>
       case 'highlights':
         return (
           <>
@@ -232,14 +251,26 @@ export default function PerksScreen() {
                 {resultsTitle}
               </AppText>
             )}
-            <AppText style={styles.resultsCount}>{perksCountLabel(visible.length, t)}</AppText>
+            <AppText style={styles.resultsCount}>{locationCountLabel(nearbyList.length, nationwideList.length, t)}</AppText>
+          </View>
+        )
+      case 'nationwide':
+        return (
+          <View style={styles.block}>
+            <AppText accessibilityRole="header" style={styles.sectionTitle}>{t('loc_more_nationwide')}</AppText>
           </View>
         )
       case 'offer':
         return (
           <FeedCell column={item.index}>
-            <OfferCard offer={item.offer} onOpen={openOffer} showCategoryBadge={showBadge} distanceKm={badgeKm(item.offer, loc)} width={cardWidth} />
+            <OfferCard offer={item.offer} onOpen={openOffer} showCategoryBadge={showBadge} distanceKm={badgeKm(item.offer, loc)} nationwide={item.nationwide} width={cardWidth} />
           </FeedCell>
+        )
+      case 'soon':
+        return (
+          <View style={styles.empty} accessibilityLiveRegion="polite">
+            <AppText style={styles.emptyTitle}>{t('perks_landly_soon')}</AppText>
+          </View>
         )
       case 'empty':
         return (
@@ -257,45 +288,31 @@ export default function PerksScreen() {
       <ScreenTitleRow title={screenTitle} />
       <View style={styles.searchRow}>
         <PerksSearchField value={query} onChangeText={setQuery} autoFocus={params.focus === '1'} />
-        <FilterSheet
-          sort={sort}
-          onSort={setSort}
-          location={{
-            filter: loc,
-            onLocate: (coords) => { setAreaPick(null); setOrigin({ coords, area: null }) },
-            onArea: (area) => { setGeoError(null); setAreaPick(area) },
-            onClear: () => { setOrigin(null); setAreaPick(null) },
-            onError: setGeoError,
-          }}
-        />
+        {!landlyEmpty && <NearMeButton filter={loc} onApply={location.apply} />}
+        {!landlyEmpty && <FilterSheet values={{ sort, kind, category, brand }} onApply={applyFilters} facets={facets} />}
       </View>
-      {geoError && !loc && (
-        <AppText accessibilityLiveRegion="polite" style={styles.geoError}>
-          {geoError}
-        </AppText>
-      )}
-      <LocationFilterBar
+      {!landlyEmpty && <LocationFilterBar
         filter={loc}
-        onRadius={setRadiusKm}
-        onClear={() => { setOrigin(null); setAreaPick(null) }}
-      />
-      {locEmpty && (
+        onRadius={location.setRadiusKm}
+        onClear={location.clear}
+      />}
+      {!landlyEmpty && locEmpty && (
         <View style={styles.nearbyEmpty} accessibilityLiveRegion="polite">
           <AppText style={styles.emptyTitle}>{t('loc_empty_title').replace('{km}', String(loc?.kind === 'gps' ? loc.radiusKm : ''))}</AppText>
           <AppText style={styles.emptySub}>{t('loc_empty_sub')}</AppText>
           {loc?.kind === 'gps' && loc.radiusKm < 25 && (
-            <Pressable accessibilityRole="button" onPress={() => setRadiusKm(loc.radiusKm === 5 ? 15 : 25)} style={styles.expand}>
+            <Pressable accessibilityRole="button" onPress={() => location.setRadiusKm(loc.radiusKm === 5 ? 15 : 25)} style={styles.expand}>
               <AppText style={styles.expandText}>{t('loc_expand').replace('{km}', String(loc.radiusKm === 5 ? 15 : 25))}</AppText>
             </Pressable>
           )}
         </View>
       )}
 
-      {/* Listing only. Chips scroll out from under the start edge; Sort stays
-          pinned at the end, past a hairline divider. */}
-      {!browsing && (
-        <View style={styles.filterRow}>
-          <PerksCategoryChips value={category} onChange={setCategory} style={[styles.chips, { marginStart: -(isRtl ? paddingRight : paddingLeft) }]} />
+      {/* Chips (listing only) scroll out from under the start edge; Sort is always there, pinned at the end. */}
+      {!landlyEmpty && (
+        <View style={[styles.filterRow, browsing && styles.filterRowEnd]}>
+          {!browsing && <PerksCategoryChips value={category} onChange={setCategory} style={[styles.chips, { marginStart: -(isRtl ? paddingRight : paddingLeft) }]} />}
+          <SortSheet value={sort} onChange={(next) => applyFilters({ sort: next, kind, category, brand })} />
         </View>
       )}
 
@@ -336,7 +353,7 @@ export default function PerksScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
+  content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 110, flexGrow: 1 },
   // The title row, search and filters as one group (14 apart), then header.gap before the results.
   header: { marginBottom: header.gap, gap: 14 },
   // Search and Near Me share one 44pt row; the 44pt Near Me square sits at the
@@ -347,10 +364,13 @@ const styles = StyleSheet.create({
   expandText: { fontSize: 14, fontWeight: '700', color: colors.brand },
   geoError: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },
   nearbyEmpty: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
-  filterRow: { flexDirection: 'row', alignItems: 'center' },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  filterRowEnd: { justifyContent: 'flex-end' },
   // Bleed to the start edge only (by that side's padding, set inline: the right in Hebrew); the rail's own end padding is the gap before the divider.
   chips: { flex: 1, minWidth: 0, marginEnd: 0 },
   rails: { gap: 16, marginTop: 4 },
+  channelTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5, color: colors.heading, marginBottom: 14 },
+  landlyLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 0.4, color: colors.brand, marginBottom: 6 },
   // A row after the header keeps the header's 14pt rhythm.
   block: { marginBottom: 14 },
   filterDivider: { width: 1, height: 24, flexShrink: 0, marginEnd: 12, backgroundColor: colors.border },

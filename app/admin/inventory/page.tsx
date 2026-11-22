@@ -12,6 +12,7 @@ import { UploadIcon } from '@/components/admin/inventory/InventoryTable'
 import RaayonitCardsPanel from '@/components/admin/inventory/RaayonitCardsPanel'
 import RaayonitStockModal, { type RaayonitStock } from '@/components/admin/inventory/RaayonitStockModal'
 import NewVoucherTypeSheet from '@/components/admin/inventory/NewVoucherTypeSheet'
+import LedgerPanel from '@/components/admin/inventory/LedgerPanel'
 import StatusBadge from '@/components/admin/StatusBadge'
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/formStyles'
 
@@ -119,6 +120,8 @@ export default function InventoryPage() {
           )}
         </section>
       )}
+
+      {data && <LedgerPanel />}
 
       {data && <RaayonitCardsPanel onChanged={() => void load()} />}
 

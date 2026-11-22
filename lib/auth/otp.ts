@@ -24,5 +24,26 @@ export function normalizeOtpInput(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, OTP_LENGTH)
 }
 
+/**
+ * The next value of a code field after an edit. Typing, deleting and an OS
+ * autofill arrive as the whole new text, so their digits are the answer. A
+ * paste lands after the digits already there ("12" + "482 913" reads
+ * "12482913"): when the field then holds more than a code and still begins
+ * with the old value, only what was added counts, so the paste replaces a
+ * partial code instead of running into it.
+ */
+export function mergeOtpInput(prev: string, raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length <= OTP_LENGTH) return digits
+  if (prev && digits.startsWith(prev) && digits.length - prev.length > 1) return digits.slice(prev.length, prev.length + OTP_LENGTH)
+  return digits.slice(0, OTP_LENGTH)
+}
+
+/** The resend countdown as minutes and seconds: 60 -> "1:00", 42 -> "0:42". */
+export function formatOtpCountdown(seconds: number): string {
+  const total = Math.max(0, Math.ceil(seconds))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
 /** What a verification dialog or sheet confirms: a pending phone number (WhatsApp) or a pending email address. */
 export type OtpTarget = { kind: 'phone'; phone: string } | { kind: 'email'; email: string }

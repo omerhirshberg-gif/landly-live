@@ -6,6 +6,7 @@ import BrandLockup from './BrandLockup'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { useLang } from '@/lib/i18n/useLang'
+import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
 import { useAuth } from '@/lib/firebase/useAuth'
 import WishlistPopover from './WishlistPopover'
 import { isNavLinkActive } from '@/lib/navActive'
@@ -26,6 +27,7 @@ const HOME_ANCHOR_IDS = ['how'] as const
 
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLang()
+  const raayonit = useRaayonitDisplay()
   const { user } = useAuth()
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -127,6 +129,7 @@ export default function Navbar() {
                     "How it works" is a guest section they never see */}
                 <a href="/" onClick={(e) => { e.preventDefault(); goHome() }} aria-current={ariaCurrent('/')} className={navLinkClass('/')}>{t('nav_home')}</a>
                 <Link href="/categories" aria-current={ariaCurrent('/categories')} className={navLinkClass('/categories')}>{t('nav_cta')}</Link>
+                {raayonit && <Link href="/raayonit" aria-current={ariaCurrent('/raayonit')} className={navLinkClass('/raayonit')}>{t('nav_raayonit')}</Link>}
                 <Link href="/member" aria-current={ariaCurrent('/member')} className={navLinkClass('/member')}>{t('nav_my_pass')}</Link>
                 <Link href="/support" aria-current={ariaCurrent('/support')} className={navLinkClass('/support')}>{t('nav_support')}</Link>
               </>
