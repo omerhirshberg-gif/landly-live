@@ -6,15 +6,16 @@ const mocks = vi.hoisted(() => ({
   docs: [] as { id: string; data: () => Record<string, unknown> }[],
   missing: [] as string[],
   stock: {} as Record<string, number>,
+  display: true,
 }))
 vi.mock('server-only', () => ({}))
 // unstable_cache needs a Next request context; here it just runs the function.
 vi.mock('next/cache', () => ({ unstable_cache: (fn: () => unknown) => fn, revalidateTag: mocks.revalidateTag, revalidatePath: vi.fn() }))
 vi.mock('@/lib/firebase/admin', () => ({
   getAdminDb: () => ({
-    collection: (name: string) => ({ doc: (id: string) => ({ id, name }), limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }),
+    collection: (name: string) => ({ doc: (id: string) => ({ id, name, get: async () => ({ data: () => (name === 'system_config' ? { raayonitDisplay: mocks.display } : undefined) }) }), limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }),
     // Pools hold stock and businesses exist, unless a test says otherwise.
-    getAll: async (...refs: { id: string; name: string }[]) => refs.map((r) => ({ id: r.id, exists: !mocks.missing.includes(r.id), data: () => (r.name === 'couponPools' ? { remainingCount: mocks.stock[r.id] ?? 5 } : {}) })),
+    getAll: async (...refs: { id: string; name: string }[]) => refs.map((r) => ({ id: r.id, exists: r.name === 'inventoryProducts' ? false : !mocks.missing.includes(r.id), data: () => (r.name === 'couponPools' ? { remainingCount: mocks.stock[r.id] ?? 5 } : {}) })),
   }),
 }))
 
@@ -29,6 +30,7 @@ beforeEach(() => {
   mocks.docs = []
   mocks.missing = []
   mocks.stock = {}
+  mocks.display = true
 })
 
 describe('GET /api/public/offers', () => {
@@ -57,7 +59,7 @@ describe('GET /api/public/offers', () => {
     const variants = [{ faceValueAgorot: 10000, priceAgorot: 8900, poolId: 'p100' }, { faceValueAgorot: 15000, priceAgorot: 12900, poolId: 'p150' }]
     mocks.docs = [
       doc('draft', { published: false }),
-      doc('brand', { fulfillmentType: 'raayonit_pool', poolId: 'p100', variants, offerPrice: 89, originalPrice: 100 }),
+      doc('brand', { fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', poolId: 'p100', variants, offerPrice: 89, originalPrice: 100 }),
       doc('empty', { fulfillmentType: 'raayonit_pool', poolId: 'p150', variants: [variants[1]] }),
       doc('orphan', { fulfillmentType: 'direct_merchant', businessId: 'gone' }),
       doc('shop', { fulfillmentType: 'direct_merchant', businessId: 'b1' }),

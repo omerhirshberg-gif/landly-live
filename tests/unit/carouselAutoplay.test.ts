@@ -3,19 +3,15 @@ import { readFileSync } from 'node:fs'
 import { AUTO_ADVANCE_MS, nextAutoIndex } from '@/lib/carouselAutoplay'
 
 describe('carousel auto-advance', () => {
-  it('puts New on GoLandly and Best Sellers on Home, on web and native, on staggered beats', () => {
-    const web = readFileSync('components/home/LoggedInHome.tsx', 'utf8')
-    expect(web).toContain('selectHighlights')
-    expect(web).toContain('href="/categories/new"')
-    expect(web).toContain('href="/categories/bestsellers"')
-    expect(web).toContain('autoAdvanceOffsetMs={1500}')
-    expect(web).toContain('autoAdvanceOffsetMs={3000}')
+  it('Home is the ten-slot category rows, which hold still: no auto-advancing curated, New or Best Sellers rail', () => {
+    const web = readFileSync('components/home/HomeCategoryRails.tsx', 'utf8')
+    expect(web).toContain('buildHomeCategorySlots')
+    expect(web).not.toContain('autoAdvance')
+    expect(readFileSync('components/home/LoggedInHome.tsx', 'utf8')).toContain('<HomeCategoryRails')
     const native = readFileSync('landly-mobile/src/app/(tabs)/index.tsx', 'utf8')
-    expect(native).toContain('selectHighlights')
-    expect(native).toContain("RAIL_ICONS.new")
-    expect(native).toContain("RAIL_ICONS.bestsellers")
-    // One highlight row component draws both, New 1.5s and Best Sellers 3s behind the curated row.
-    expect(native).toContain('autoAdvanceOffsetMs={isNew ? 1500 : 3000}')
+    expect(native).toContain('buildHomeCategorySlots')
+    expect(native).not.toContain('selectHighlights')
+    expect(native).not.toMatch(/<OfferCarousel[^>]*autoAdvance/)
   })
 
   it('moves every 5 seconds', () => expect(AUTO_ADVANCE_MS).toBe(5000))
@@ -34,7 +30,7 @@ describe('carousel auto-advance', () => {
   })
 
   it('moves the Perks highlight rails too, the second two seconds behind the first, so they never jump together', () => {
-    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Sparkles\}[^\n]*autoAdvance compact \/>/)
+    expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{CirclePlus\}[^\n]*autoAdvance compact \/>/)
     expect(readFileSync('app/categories/page.tsx', 'utf8')).toMatch(/OfferTileRail icon=\{Award\}[^\n]*autoAdvance autoAdvanceOffsetMs=\{2000\} compact/)
     const perks = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
     expect(perks).toMatch(/glyph="new"[^\n]*autoAdvance visible=/)
@@ -49,7 +45,6 @@ describe('carousel auto-advance', () => {
     for (const needle of ['AUTO_ADVANCE_MS', 'onScrollBeginDrag', 'onMomentumScrollEnd', 'onScrollEndDrag', 'useReducedMotion', 'clearInterval', 'useFocusEffect', 'useAppActive']) expect(native).toContain(needle)
     // One shared AppState subscription for every carousel (landly-mobile/src/lib/useAppActive.ts).
     expect(readFileSync('landly-mobile/src/lib/useAppActive.ts', 'utf8')).toContain("AppState.addEventListener('change'")
-    expect(readFileSync('landly-mobile/src/app/(tabs)/index.tsx', 'utf8')).toMatch(/<OfferCarousel[^>]*autoAdvance/)
     // The category rails don't move by themselves.
     expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).not.toContain('autoAdvance')
   })

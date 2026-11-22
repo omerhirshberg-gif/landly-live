@@ -51,6 +51,7 @@ function DealsRail({ deals }: { deals: OfferDocument[] }) {
   return (
     <>
       <div className={`offer-rail relative ${LANDING_COLUMN}`}>
+        {overflowing && <RailArrows bar edges={edges} page={page} />}
         <div ref={railRef} onScroll={measure} className={`${LANDING_RAIL} edge-fade flex flex-row gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4`}>
           {deals.map((offer) => (
             <div key={offer.id} className="flex shrink-0 grow-0 snap-start">
@@ -58,7 +59,6 @@ function DealsRail({ deals }: { deals: OfferDocument[] }) {
             </div>
           ))}
         </div>
-        {overflowing && <RailArrows edges={edges} page={page} />}
       </div>
       {slots <= SNAP_DOTS_MAX && <SnapDots count={slots} active={active} onSelect={scrollTo} className="sm:hidden" />}
     </>

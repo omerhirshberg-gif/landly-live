@@ -15,7 +15,7 @@ export type LocationFilter =
   | { kind: 'gps'; coords: Coordinates; radiusKm: RadiusKm }
   | { kind: 'area'; region: RegionId | null; city: string | null }
 
-type Placed = Pick<OfferDocument, 'geo' | 'perkScope' | 'branches'>
+type Placed = Pick<OfferDocument, 'geo' | 'perkScope' | 'branches'> & Partial<Pick<OfferDocument, 'isNationwide' | 'fulfillmentType'>>
 
 /** Everywhere the offer can be redeemed that we can place: its own address and each branch's city. */
 export function offerPoints(offer: Placed): Coordinates[] {
@@ -71,4 +71,31 @@ export function badgeKm(offer: Placed, filter: LocationFilter | null): number | 
   const km = closestKm(offer, filter.coords)
   if (km === null) return null
   return offer.geo ? km : Math.max(km, 1)
+}
+
+/**
+ * A nationwide or Raayonit chain with no branch we can place (no address, no branch city): a location filter can't judge it,
+ * so it is listed apart ("More nationwide chains") rather than dropped. A multi-chain pass is not one: it always stays.
+ */
+export function isUnmappedNationwideChain(offer: Placed): boolean {
+  if (offer.perkScope === 'multi_chain') return false
+  return (offer.isNationwide === true || offer.fulfillmentType === 'raayonit_pool') && offerPoints(offer).length === 0
+}
+
+/** Under a location filter: what matches it by place (`nearby`), and the unplaceable nationwide chains (`nationwide`). Without a filter, everything is `nearby`. */
+export function partitionByLocation<T extends Placed>(offers: readonly T[], filter: LocationFilter | null): { nearby: T[]; nationwide: T[] } {
+  if (!filter) return { nearby: [...offers], nationwide: [] }
+  const nearby: T[] = []
+  const nationwide: T[] = []
+  for (const offer of offers) {
+    if (matchesLocation(offer, filter)) nearby.push(offer)
+    else if (isUnmappedNationwideChain(offer)) nationwide.push(offer)
+  }
+  return { nearby, nationwide }
+}
+
+/** Nearby and nationwide together, nearby first: what a list under a location filter shows. */
+export function applyLocationFilterWithNationwide<T extends Placed>(offers: readonly T[], filter: LocationFilter | null): T[] {
+  const { nearby, nationwide } = partitionByLocation(offers, filter)
+  return [...nearby, ...nationwide]
 }

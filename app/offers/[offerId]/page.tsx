@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CircleCheck, Clock, Heart, MapPin, Tags, Ticket } from 'lucide-react'
-import { useParams } from 'next/navigation'
+import { CalendarDays, CircleCheck, Heart, MapPin, Tags, Ticket } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
 import { Lang } from '@/lib/i18n/translations'
@@ -21,17 +21,20 @@ import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { useDealImage } from '@/components/discover/useDealImage'
 import MerchantBadge from '@/components/discover/MerchantBadge'
 import OfferTags from '@/components/discover/OfferTags'
+import FlagshipEyebrow from '@/components/offers/FlagshipEyebrow'
+import { superTavHeadline } from '@/lib/offers/superTav'
 import DiscountBadge from '@/components/discover/DiscountBadge'
 import HowToRedeem, { Fold } from '@/components/offers/HowToRedeem'
 import RedemptionCallout from '@/components/offers/RedemptionCallout'
 import IssuerAttribution from '@/components/member/IssuerAttribution'
+import { isChain, isFlagship, landlyOffers } from '@/lib/offers/discoverTab'
+import RaayonitChainNotes from '@/components/raayonit/RaayonitChainNotes'
 import { isPooled } from '@/lib/inventory/types'
 import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
 import { ParticipatingChains, PerkReachLine, RedemptionGuide } from '@/components/discover/PerkReach'
 import BrandStrip from '@/components/offers/BrandStrip'
 import { useChainBrands } from '@/lib/offers/useChainBrands'
 import BranchStrip from '@/components/offers/BranchStrip'
-import ContactActions from '@/components/offers/ContactActions'
 import OfferMemberGate from '@/components/offers/OfferMemberGate'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -44,6 +47,13 @@ import { offerFullAddress } from '@/lib/geo'
 import { isSingleVenue, locationNoticeKind, shouldShowLocationNavigation } from '@/lib/offers/locationVisibility'
 import NavigationLinks from '@/components/offers/NavigationLinks'
 import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
+import { ChainsFold, MultiChainBonus } from '@/components/offers/MultiChainCredit'
+import BrandSpotlight from '@/components/offers/BrandSpotlight'
+import ChainOfferView from '@/components/offers/ChainOfferView'
+import OfferCardRail from '@/components/discover/OfferCardRail'
+import { useOffers } from '@/lib/offers/useOffers'
+import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
+import { isOfferAvailable } from '@/lib/firebase/offers'
 
 const DATE_LOCALE: Record<Lang, string> = {
   en: 'en-US',
@@ -56,6 +66,7 @@ const DATE_LOCALE: Record<Lang, string> = {
 export default function OfferDetailPage() {
   const { t, lang } = useLang()
   const { offerId } = useParams<{ offerId: string }>()
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { isWishlisted, toggleWishlist } = useWishlist()
   // The heart pops only when the member saves it here, not on load.
@@ -82,6 +93,13 @@ export default function OfferDetailPage() {
     })
     return () => { cancelled = true }
   }, [offerId])
+
+  // The Raayonit Card has no offer page of its own: it is bought from /raayonit (and Home) in one click. An old link lands there, with its
+  // ?denomination= pick kept.
+  const flagshipHere = !!offer && isFlagship(offer)
+  useEffect(() => {
+    if (flagshipHere) router.replace(`/raayonit${window.location.search}`)
+  }, [flagshipHere, router])
 
   useEffect(() => {
     if (!user) {
@@ -112,6 +130,34 @@ export default function OfferDetailPage() {
   const chainSubject = useMemo(() => (offer ? { offerId: offer.id, perkScope: offer.perkScope, participatingChains: offer.participatingChains, allLiveBrands: true } : null), [offer])
   const liveBrands = useChainBrands(chainSubject)
   const chainBrands = offer?.brandIndex?.length ? offer.brandIndex : liveBrands
+  // The hero stretches when the page is pulled down past the top (iOS rubber-band) and trails the scroll a little going up.
+  // Only on a phone (the picture is a pane from 600px) and never under Reduce Motion; Chrome and Firefox have no overscroll offset, so they only trail.
+  const heroRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const pane = window.matchMedia('(min-width: 600px)')
+    let frame = 0
+    const apply = () => {
+      frame = 0
+      if (still.matches || pane.matches) { el.style.transform = ''; return }
+      const y = window.scrollY
+      const h = el.offsetHeight || 1
+      if (y < 0) { el.style.transformOrigin = 'bottom'; el.style.transform = `scale(${1 + Math.min(-y, h) / h})` }
+      else { el.style.transformOrigin = ''; el.style.transform = y > 0 ? `translate3d(0, ${Math.round(y * 0.35)}px, 0)` : '' }
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(apply) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); if (frame) cancelAnimationFrame(frame); el.style.transform = '' }
+  }, [offer])
+  const { offers: allOffers } = useOffers()
+  // "See the chains": opens and scrolls to the chains fold (the fold remounts open).
+  const [chainsOpen, setChainsOpen] = useState(false)
+  const seeChains = () => {
+    setChainsOpen(true)
+    requestAnimationFrame(() => document.getElementById('perk-chains')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }))
+  }
 
   if (offer === undefined) {
     return (
@@ -142,6 +188,11 @@ export default function OfferDetailPage() {
     )
   }
 
+  // A participating chain is not a voucher for one store: its own page sends the visitor to the Raayonit Card.
+  if (isChain(offer)) return <ChainOfferView offer={offer} hint={<OpenInAppHint className="mb-3" />} />
+  // Handed on to /raayonit above; nothing to draw meanwhile.
+  if (isFlagship(offer)) return null
+
   const remaining = offer.totalQuantity !== null ? Math.max(offer.totalQuantity - offer.claimedCount, 0) : null
   const formattedExpiry = offer.expiryDate
     ? new Intl.DateTimeFormat(DATE_LOCALE[lang], { year: 'numeric', month: 'long', day: 'numeric' }).format(offer.expiryDate)
@@ -154,6 +205,8 @@ export default function OfferDetailPage() {
   const instructions = content.text('redemptionInstructions')
   const terms = content.text('redemptionTerms')
   const businessName = nameContent.text('businessName')
+  const headline = superTavHeadline(offer, t('super_tav_headline'))
+  const chainPage = isChain(offer)
   const hero = offer ? logoOnlyHero(offer) : null
   const heroLogo = hero ? { src: hero.kind === 'issuer' ? RAAYONIT_LOGO_PATH : hero.logoUrl, alt: businessName.text, small: hero.kind === 'brand' ? hero.fallback : hero.small } : null
   // Only a single-location perk shows its address and navigation; a multi-branch one shows a notice instead.
@@ -179,6 +232,13 @@ export default function OfferDetailPage() {
   const expired = !!offer.expiryDate && offer.expiryDate.getTime() < now
   const saved = isWishlisted(offer.id)
   const guest = !user && !authLoading
+  // Other perks in the same category, never this one or a sold-out one. The brand's own are one tap away on its brand page.
+  const moreInCategory = (() => {
+    // A category is a GoLandly notion: a Raayonit voucher or chain has no "more in category", and a direct perk never lists Raayonit's.
+    if (!allOffers || offer.fulfillmentType === 'raayonit_pool') return []
+    return landlyOffers(allOffers).filter((o) => o.id !== offer.id && isOfferAvailable(o) && o.category === offer.category).slice(0, 12)
+  })()
+  const brandOffer = isPooled(offer.fulfillmentType) && offer.perkScope !== 'multi_chain'
   const noticeKind = locationNoticeKind(offer)
   // The stores or chains that honour the perk, when the admin listed any.
   // One venue: its address in the header and its own location section, never "1 store".
@@ -190,7 +250,7 @@ export default function OfferDetailPage() {
     <>
       <Navbar />
       <div className="member-canvas below-header">
-        <div className="mx-auto w-full max-w-2xl fold:max-w-6xl lg:max-w-[1520px] pb-[env(safe-area-inset-bottom)] fold:px-6 fold:pb-12 lg:px-10">
+        <div className={`mx-auto w-full max-w-2xl fold:max-w-6xl ${chainPage ? 'lg:max-w-5xl' : 'lg:max-w-[1520px]'} pb-[env(safe-area-inset-bottom)] fold:px-6 fold:pb-12 lg:px-10`}>
           <OpenInAppHint className="mx-4 my-3 fold:mx-0 fold:mt-0" />
           {/* The persistent search row, where it sits on every other page. Not on phones: there the photo runs under the navbar with the back button on it. */}
           <div className="hidden fold:block fold:pt-8 sm:pt-10 lg:pt-12">
@@ -215,7 +275,7 @@ export default function OfferDetailPage() {
               here clips, which would stop the purchase bar from sticking. */}
           <article className="bg-white fold:bg-transparent">
             <div className="fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-12 lg:gap-x-10">
-              <div className="relative fold:sticky fold:top-[calc(var(--header-offset)+1rem)] fold:row-span-3 lg:col-span-6 fold:rounded-2xl fold:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+              <div ref={heroRef} className="relative will-change-transform fold:sticky fold:top-[calc(var(--header-offset)+1rem)] fold:row-span-3 lg:col-span-6 fold:rounded-2xl fold:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                 <DealMedia src={offer.imageUrl} image={image} alt={title.text} category={offer.category} logo={heroLogo} aspect="aspect-video lg:aspect-[16/10] lg:min-h-[380px]" containAspect="aspect-[4/5] max-h-[380px] lg:aspect-auto lg:h-[480px] lg:max-h-[480px] lg:min-h-0" className="rounded-[inherit]">
                   <BackButton fallback={user ? '/' : '/categories'} contextLabel variant="glass" className="absolute start-1.5 top-1.5 fold:hidden" />
                   {/* The photo isn't clipped from 600px (the shadow, the sticky pane), so the ribbon rounds that corner itself. */}
@@ -255,17 +315,36 @@ export default function OfferDetailPage() {
               <div className="contents fold:block fold:col-start-2 lg:col-start-7 lg:col-span-6 lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:p-8 lg:shadow-sm">
               {/* Its shadow falls upward only: below the sheet the page runs on in white. */}
               <div className="relative z-10 -mt-5 rounded-t-3xl bg-white px-5 pb-6 pt-11 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-8 fold:col-start-2 fold:mt-0 fold:rounded-none fold:bg-transparent fold:px-0 lg:px-0 fold:pb-5 fold:pt-0 fold:shadow-none">
-                <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} className="mb-2" />
+                {isFlagship(offer) ? <FlagshipEyebrow className="mb-2" /> : <OfferTags category={offer.category} method={offer.redemptionMethod} modes={offer.redemptionModes} className="mb-2" />}
                 {/* The deal is the page's heading; the logo already carries the brand, named above it. */}
                 {/* <bdi>: a Latin name keeps its letters in order yet stays on the page's side in Hebrew. */}
-                <p className="break-words text-base font-bold leading-snug text-body lg:font-semibold lg:text-slate-500">
-                  <bdi lang={businessName.lang ?? undefined} dir="auto">{businessName.text}</bdi>
-                </p>
-                <h1 className="mt-1 break-words text-2xl font-black leading-tight tracking-tight text-ink sm:text-3xl">
-                  <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
-                </h1>
+                {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+                {chainPage ? (
+                  <>
+                    {/* A participating chain's page is the chain's: its name is the heading, with the note that it honours Super Tav. */}
+                    <h1 className="break-words text-2xl font-black leading-tight tracking-tight text-ink sm:text-3xl"><bdi lang={businessName.lang ?? undefined} dir="auto">{businessName.text}</bdi></h1>
+                    <p className="mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand"><Ticket aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />{t('raayonit_honors_badge')}</p>
+                  </>
+                ) : headline ? (
+                  <>
+                    <h1 className="break-words text-2xl font-black leading-tight tracking-tight text-ink tabular-nums sm:text-3xl"><bdi dir="auto">{headline}</bdi></h1>
+                    <p className="mt-1 break-words text-base font-bold leading-snug text-body lg:font-semibold lg:text-slate-500">
+                      <bdi lang={businessName.lang ?? undefined} dir="auto">{businessName.text}</bdi>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="break-words text-base font-bold leading-snug text-body lg:font-semibold lg:text-slate-500">
+                      <bdi lang={businessName.lang ?? undefined} dir="auto">{businessName.text}</bdi>
+                    </p>
+                    <h1 className="mt-1 break-words text-2xl font-black leading-tight tracking-tight text-ink sm:text-3xl">
+                      <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
+                    </h1>
+                  </>
+                )}
 
                 {/* Prices in <bdi>, in the body font with their "₪" (app/layout.tsx loads its subset). */}
+                {chainPage && !!headline && <p className="mt-5 text-sm font-bold text-ink tabular-nums"><bdi dir="auto">{headline}</bdi></p>}
                 {multi && <VariantSelector variants={variants} value={selected?.poolId ?? ''} onChange={setPickedPool} claimed={claimedPools} />}
                 <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-2 lg:rounded-xl lg:bg-slate-50/90 lg:p-4">
                   <bdi className="text-price-lg tabular-nums text-brand">{formatPrice(price)}</bdi>
@@ -279,17 +358,29 @@ export default function OfferDetailPage() {
 
                 {/* A Raayonit voucher: who issued it, and that it is a code (no QR) valid 5 years. Right under the title and price. */}
                 {isPooled(offer.fulfillmentType) && <IssuerAttribution issuer={RAAYONIT_ISSUER} lang={lang} note={t('offer_code_only_info')} className="mt-6" />}
+                {/* Bought through one brand, it is still a Multi-Chain Super Tav: also redeemable across the network. */}
+                {brandOffer && <MultiChainBonus className="mt-4" onSeeChains={seeChains} />}
+
+                {/* When it stops working: five years from purchase for a Raayonit voucher, else the offer's own date. */}
+                {(isPooled(offer.fulfillmentType) || formattedExpiry) && (
+                  <p className={`mt-5 flex items-center gap-2 text-sm font-semibold ${expired ? 'text-red-700' : 'text-body'}`}>
+                    <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                    <span>{isPooled(offer.fulfillmentType) ? t('card_valid_5_years') : t('offer_detail_expires').replace('{date}', formattedExpiry!)}</span>
+                  </p>
+                )}
+
+                {/* Signed out: the way in, as a plain divider row with the action at its end. */}
+                {guest && (
+                  <div className="mt-5 flex items-center justify-between gap-3 border-y border-slate-100 py-3">
+                    <p className="min-w-0 text-[13px] leading-[19px] text-body">{t('offer_login_prompt')}</p>
+                    <Link href={`/login?redirect=${encodeURIComponent(`/offers/${offer.id}`)}`} className="tap-target inline-flex shrink-0 items-center text-sm font-extrabold text-ink underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{t('offer_login_action')}</Link>
+                  </div>
+                )}
 
                 {/* Only what the offer really states. */}
                 <div className="mt-5 flex flex-wrap items-center gap-2 empty:hidden">
                   {!!offer.kosherBranchCount && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</span>
-                  )}
-                  {formattedExpiry && (
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold leading-4 ${expired ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-body'}`}>
-                      <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                      <span>{t('offer_detail_expires').replace('{date}', formattedExpiry)}</span>
-                    </span>
                   )}
                   {remaining !== null && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">
@@ -297,11 +388,6 @@ export default function OfferDetailPage() {
                       <span>{t('offer_detail_remaining').replace('{count}', String(remaining))}</span>
                     </span>
                   )}
-                </div>
-
-                {/* One full-width column: the website and the phone, 12px apart. */}
-                <div className="mt-6 space-y-3 empty:hidden">
-                  <ContactActions stack websiteUrl={offer.websiteUrl} phone={offer.contactPhone} />
                 </div>
 
                 <RedemptionCallout className="mt-5" method={offer.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} />
@@ -315,13 +401,13 @@ export default function OfferDetailPage() {
                   {!showLocation && locationNoticeKind(offer) !== null && (
                     <PerkReachLine offer={offer} className="flex-1 text-sm text-muted" />
                   )}
-                  {singleVenue && !showLocation && !!venueLine && (
+                  {singleVenue && !showLocation && !!venueLine && !hasStoreList && (
                     <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
                       <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
                       <span className="min-w-0 break-words" dir="auto">{venueLine}</span>
                     </p>
                   )}
-                  {showLocation && address && (
+                  {showLocation && address && !hasStoreList && (
                     <p className="flex min-w-0 flex-1 items-start gap-1.5 text-sm text-muted">
                       <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={1.5} />
                       {/* The full address as Google writes it in the reader's language. */}
@@ -351,6 +437,7 @@ export default function OfferDetailPage() {
                   member's own voucher pages. */}
               {(descriptionText || user || hasStoreList) && (
                 <div className="border-t border-slate-100 px-5 py-1 sm:px-8 fold:col-start-2 fold:border-slate-200/80 fold:px-0 lg:px-0">
+                  <RaayonitChainNotes offer={offer} className="py-4" />
                   <div className="divide-y divide-slate-100 fold:divide-slate-200/80">
                     {hasStoreList && (
                       <Fold title={t(noticeKind === 'chains' ? 'perk_chains_title' : singleVenue ? 'perk_business_location' : 'perk_stores_title')} defaultOpen>
@@ -368,6 +455,7 @@ export default function OfferDetailPage() {
                         <p className="whitespace-pre-line text-copy leading-relaxed text-body lg:text-base lg:text-slate-700" lang={description.lang ?? undefined} dir="auto">{descriptionText}</p>
                       </Fold>
                     )}
+                    {brandOffer && <ChainsFold key={chainsOpen ? 'open' : 'closed'} id="perk-chains" defaultOpen={chainsOpen} />}
                     {user && (
                       <HowToRedeem
                         method={offer.redemptionMethod}
@@ -383,6 +471,15 @@ export default function OfferDetailPage() {
                   </div>
                 </div>
               )}
+              {/* The category rail between two hairline dividers (1px, 24px of air each side), then the business's own card. */}
+              {moreInCategory.length > 0 && (
+                <div className="mx-5 border-y border-[#E2E8F0] py-6 sm:mx-8 fold:col-start-2 fold:mx-0 lg:mx-0" data-testid="offer-category-rail">
+                  <OfferCardRail nested id="offer-more-in-category" title={t('offer_more_in_category')} offers={moreInCategory} href={`/categories?cat=${encodeURIComponent(offer.category)}`} seeAll={t('perk_see_all_perks')} />
+                </div>
+              )}
+              <div className="px-5 pb-6 pt-6 empty:hidden sm:px-8 fold:col-start-2 fold:px-0 lg:px-0">
+                <BrandSpotlight offer={offer} image={image} alt={title.text} />
+              </div>
               {guest && (
                 <div className="border-t border-slate-100 px-5 py-6 sm:px-8 fold:col-start-2 fold:border-0 fold:px-0 lg:px-0 fold:pb-0 fold:pt-4">
                   <OfferMemberGate offerId={offer.id} />

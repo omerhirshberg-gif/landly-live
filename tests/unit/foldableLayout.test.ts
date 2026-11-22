@@ -90,7 +90,7 @@ describe('foldable web layout', () => {
 
   it('splits the offer page into photo and details panes from 600px, desktop included, leaving phones alone', () => {
     const page = read('app/offers/[offerId]/page.tsx')
-    expect(page).toContain('mx-auto w-full max-w-2xl fold:max-w-6xl lg:max-w-[1520px]')
+    expect(page).toContain('mx-auto w-full max-w-2xl fold:max-w-6xl ${chainPage ? \'lg:max-w-5xl\' : \'lg:max-w-[1520px]\'}')
     expect(page).toContain('fold:grid fold:grid-cols-2 fold:items-start fold:gap-x-8 lg:grid-cols-12 lg:gap-x-10')
   })
 
@@ -103,7 +103,7 @@ describe('foldable web layout', () => {
     const home = read('components/home/LoggedInHome.tsx')
     expect(home).toContain('<MemberPageShell\n        fluid')
     expect(home.indexOf('<ActivePassCard')).toBeLessThan(home.indexOf('</MemberColumn>'))
-    expect(home.indexOf('<OfferCardRail')).toBeGreaterThan(home.indexOf('</MemberColumn>'))
+    expect(home.indexOf('<HomeCategoryRails')).toBeGreaterThan(home.indexOf('</MemberColumn>'))
     const css = read('app/globals.css')
     expect(css).toContain('--bleed-inset:max(var(--bleed-gutter),calc((100% - 1240px)/2 + var(--bleed-gutter)))')
     expect(css).toContain('padding-inline:var(--bleed-inset);scroll-padding-inline:var(--bleed-inset);')
@@ -123,7 +123,7 @@ describe('two-pane profile and offer from 600px, desktop included', () => {
     const page = read('app/offers/[offerId]/page.tsx')
     expect(page).not.toContain('fold:max-lg:')
     expect(page).toContain('fold:row-span-3')
-    expect(page.match(/fold:col-start-2/g)).toHaveLength(5)
+    expect(page.match(/fold:col-start-2/g)).toHaveLength(7)
   })
 
   it('keeps the fixed widgets clear of the side safe areas', () => {

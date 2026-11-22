@@ -1,21 +1,13 @@
 import { useState } from 'react'
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
-import * as Location from 'expo-location'
-import type { Coordinates } from '@shared/geo'
+import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native'
+import type { LocationFilter } from '@shared/perks/locationFilter'
+import LocationSheet from './LocationSheet'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
 import { impact } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
-
-type GeoState = 'idle' | 'requesting' | 'denied' | 'unavailable'
-
-// The whole request, permission prompt included, gives up after this.
-const GUARD_MS = 20_000
-
-const withTimeout = <T,>(promise: Promise<T>): Promise<T> =>
-  Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), GUARD_MS))])
 
 // Dark ink like the rails' and categories' line icons, on white: no blue tint.
 const tint = { bg: colors.white, bgPressed: colors.borderLight, border: colors.border, text: colors.textStrong }
@@ -24,110 +16,39 @@ const tint = { bg: colors.white, bgPressed: colors.borderLight, border: colors.b
 // `sm` breakpoint on components/discover/NearMeButton.tsx).
 const LABEL_MIN_WIDTH = 640
 
-// "Near Me" at the end of the Perks search row. On phones it's an icon-only
-// 44pt square (the label is its accessibilityLabel) so the search field keeps
-// the width; on wide native windows (tablets, landscape) it shows the label
-// too. Not on the Expo web build: there every screen sits in a 480px phone
-// column ((tabs)/_layout.web.tsx) however wide the browser is. It asks for
-// the location while the app is in use (never in the background), and is
-// solid brand blue while the screen has a location (`active`: the member's,
-// or an area they picked); a tap then clears it. Before asking, it checks
-// the device's location services: off on Android, the system's "turn on
-// location" dialog is offered; off on iOS, the note says so. Problems go to
-// `onError` so the screen can show them, with the area picker, under the
-// row. Once the system won't ask again, a tap opens the app's Settings.
-/** The locate request behind Near Me (permission, services check, timeout), shared by the button and the Filter sheet's "Near me" row. */
-export function useNearMe({ active, onLocate, onClear, onError }: {
-  active: boolean
-  onLocate: (coords: Coordinates) => void
-  onClear: () => void
-  onError: (message: string | null) => void
-}) {
+// The location button at the end of the Perks, Home and category search rows. On phones it's an icon-only 44pt
+// square (the label is its accessibilityLabel) so the search field keeps the width; on wide native windows (tablets,
+// landscape) it shows the label too. Not on the Expo web build: there every screen sits in a 480px phone column
+// ((tabs)/_layout.web.tsx). It opens the Location sheet (LocationSheet.tsx: Near me with its radius, or a region or city,
+// then Apply) and is solid brand blue while a location filter is applied. Web: components/discover/NearMeButton.tsx.
+export default function NearMeButton({ filter, onApply }: { filter: LocationFilter | null; onApply: (next: LocationFilter | null) => void }) {
   const { t } = useLang()
-  const [state, setState] = useState<GeoState>('idle')
-  const [canAskAgain, setCanAskAgain] = useState(true)
-  const fail = (next: GeoState, message: string) => {
-    setState(next)
-    onError(message)
-  }
-
-  const locate = async () => {
-    impact()
-    if (active) {
-      setState('idle')
-      onError(null)
-      onClear()
-      return
-    }
-    if (!canAskAgain && Platform.OS !== 'web') {
-      Linking.openSettings().catch(() => {})
-      return
-    }
-    setState('requesting')
-    onError(null)
-    try {
-      if (Platform.OS !== 'web' && !(await Location.hasServicesEnabledAsync())) {
-        // Android can switch location on from a system dialog; iOS only from Settings.
-        const enabled = Platform.OS === 'android' && (await Location.enableNetworkProviderAsync().then(() => true, () => false))
-        if (!enabled) return fail('unavailable', t('geo_off'))
-      }
-      const permission = await withTimeout(Location.requestForegroundPermissionsAsync())
-      if (!permission.granted) {
-        setCanAskAgain(permission.canAskAgain)
-        return fail('denied', t('mobile_geo_denied'))
-      }
-      // A recent fix answers instantly; otherwise wait for a fresh one.
-      const position =
-        (await Location.getLastKnownPositionAsync({ maxAge: 5 * 60_000 })) ??
-        (await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })))
-      setState('idle')
-      onLocate({ lat: position.coords.latitude, lng: position.coords.longitude })
-    } catch (error) {
-      fail('unavailable', t(error instanceof Error && error.message === 'timeout' ? 'geo_timeout' : 'mobile_geo_unavailable'))
-    }
-  }
-
-  return { locate, state }
-}
-
-export default function NearMeButton({
-  active,
-  onLocate,
-  onClear,
-  onError,
-}: {
-  active: boolean
-  onLocate: (coords: Coordinates) => void
-  onClear: () => void
-  onError: (message: string | null) => void
-}) {
-
-  const { t } = useLang()
-  const { locate, state } = useNearMe({ active, onLocate, onClear, onError })
+  const [open, setOpen] = useState(false)
+  // Each opening mounts the sheet afresh, so its draft starts from what is applied.
+  const [session, setSession] = useState(0)
+  const active = !!filter
 
   const { width } = useWindowDimensions()
   const showLabel = Platform.OS !== 'web' && width >= LABEL_MIN_WIDTH
   return (
+    <>
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t('geo_near_me_btn')}
-      accessibilityState={{ selected: active, busy: state === 'requesting' }}
-      disabled={state === 'requesting'}
+      accessibilityState={{ selected: active, expanded: open }}
       hitSlop={4}
-      onPress={locate}
+      onPress={() => { impact(); setSession((n) => n + 1); setOpen(true) }}
       style={({ pressed }) => [styles.button, showLabel && styles.buttonLabeled, active ? styles.active : pressed && styles.pressed]}
     >
-      {state === 'requesting' ? (
-        <ActivityIndicator size="small" color={active ? colors.white : tint.text} style={showLabel ? styles.iconSmall : styles.icon} />
-      ) : (
-        <LineIcon name="locate" size={showLabel ? 16 : 20} color={active ? colors.white : tint.text} strokeWidth={1.75} style={showLabel ? styles.iconSmall : styles.icon} />
-      )}
+      <LineIcon name="locate" size={showLabel ? 16 : 20} color={active ? colors.white : tint.text} strokeWidth={1.75} style={showLabel ? styles.iconSmall : styles.icon} />
       {showLabel && (
         <AppText style={[styles.label, active && styles.labelActive]} importantForAccessibility="no" accessibilityElementsHidden>
           {t('geo_near_me_btn')}
         </AppText>
       )}
     </Pressable>
+    <LocationSheet key={session} visible={open} filter={filter} onApply={onApply} onClose={() => setOpen(false)} />
+    </>
   )
 }
 

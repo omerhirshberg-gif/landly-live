@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer'
 import AudienceCards from '@/components/landing/AudienceCards'
 import BottomCta from '@/components/landing/BottomCta'
 import LandingHero from '@/components/landing/LandingHero'
-import LiveDeals from '@/components/landing/LiveDeals'
+import GuestDiscover from '@/components/landing/GuestDiscover'
 import GuestSuperShowcase from '@/components/landing/GuestSuperShowcase'
 import { LANDING_COLUMN } from '@/components/landing/landingColumn'
 import CategoryPhotoRail, { CategoryPhotoTitle } from '@/components/home/CategoryPhotoRail'
@@ -76,9 +76,9 @@ export default function HomePage({ landing = EMPTY_LANDING }: { landing?: Landin
 }
 
 function GuestLanding({ landing }: { landing: LandingData }) {
-  // The hero, the category photos, then real deals and who GoLandly is for, which
+  // The hero, the category photos, then real deals, the member pass those deals live in, and who GoLandly is for, which
   // their own card surfaces keep apart; hairlines only mark the longer sections
-  // after them: How it works, the member pass those steps lead to, both stores
+  // after them: How it works, both stores
   // once more, and the questions everyone asks. A section with nothing live to show is left out. The site's one
   // canvas (.home-ambient, the same as .member-canvas in globals.css) runs
   // behind the sections, under the translucent navbar too. Everything under
@@ -97,15 +97,13 @@ function GuestLanding({ landing }: { landing: LandingData }) {
             <CategoryPhotoRail contained />
           </section>
         </SectionBoundary>
-        <SectionBoundary name="super-showcase"><GuestSuperShowcase /></SectionBoundary>
-        {landing.deals.length > 0 && (
-          <SectionBoundary name="live-deals"><LiveDeals deals={landing.deals} /></SectionBoundary>
-        )}
+        <SectionBoundary name="guest-super-showcase"><GuestSuperShowcase /></SectionBoundary>
+        <SectionBoundary name="guest-discover"><GuestDiscover deals={landing.deals} /></SectionBoundary>
+        <SectionBoundary name="pass-showcase"><PassShowcase /></SectionBoundary>
+        <SectionDivider />
         <SectionBoundary name="audience-cards"><Reveal><AudienceCards /></Reveal></SectionBoundary>
         <SectionDivider />
         <SectionBoundary name="how-it-works"><Reveal><HowItWorks /></Reveal></SectionBoundary>
-        <SectionDivider />
-        <SectionBoundary name="pass-showcase"><PassShowcase /></SectionBoundary>
         <SectionDivider />
         <SectionBoundary name="bottom-cta"><Reveal><BottomCta /></Reveal></SectionBoundary>
         <SectionBoundary name="faq"><Reveal><Faq /></Reveal></SectionBoundary>

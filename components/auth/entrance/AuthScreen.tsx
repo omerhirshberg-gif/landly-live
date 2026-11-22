@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { describeAuthError, logAuthError, type AuthErrorDescription, type AuthErrorProvider } from '@/lib/firebase/authErrors'
-import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
+import { resumeCustomerSession, signInCustomerWithCustomToken, signInCustomerWithEmail, type CustomerSignInResult } from '@/lib/auth/signInCustomer'
 import { isAppleMobileWeb, providerOrder, type AuthProvider } from '@/lib/auth/appleDevice'
 import {
   completeOAuthRedirect,
@@ -37,7 +37,9 @@ import {
   type SignUpFieldErrors,
 } from '@/lib/auth/onboarding'
 import { ONB } from '@/lib/brand/onboardingMotion'
-import { signUpCustomer } from '@/lib/auth/signUpCustomer'
+import { signUpCustomer, type PendingVerification } from '@/lib/auth/signUpCustomer'
+import { signupOtpStatus } from '@/lib/account/contactChange'
+import { OTP_RESEND_SECONDS } from '@/lib/auth/otp'
 import { safeRedirectPath } from '@/lib/auth/safeRedirect'
 import { isStrongPassword } from '@/lib/auth/passwordValidation'
 import type { SignInMethod } from '@/lib/auth/brandPanelSteps'
@@ -47,7 +49,7 @@ import type { Lang, TranslationKey } from '@/lib/i18n/translations'
 import { useLang } from '@/lib/i18n/useLang'
 import BackToHomeLink from '../BackToHomeLink'
 import BusinessAccountNotice from '../BusinessAccountNotice'
-import VerifyEmailNotice, { type PendingVerification } from '../VerifyEmailNotice'
+import OtpDialog from '@/components/profile/OtpDialog'
 import OnboardingWizard, { readOnboardingDraft } from '../onboarding/OnboardingWizard'
 import PasswordRequirements from '../onboarding/PasswordRequirements'
 import AuthBrandPanel from './AuthBrandPanel'
@@ -366,7 +368,8 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
         return
       }
       if (result.status === 'unverified') {
-        setPending({ variant: 'login', email: result.email, idToken: result.idToken })
+        // The code dialog opens at once; whether a code is already on its way (and its cooldown) is looked up, nothing is sent.
+        setPending({ variant: 'login', email: result.email, idToken: result.idToken, send: signupOtpStatus(result.idToken, lang) })
         setSubmitting(false)
         return
       }
@@ -380,10 +383,12 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   }
 
   // Credentials only. Email+password accounts stay locked until the emailed
-  // link is clicked: signUpCustomer creates the account and signs straight
-  // back out, and the "check your inbox" card replaces the form at once while
-  // the verification email is still on its way (that request also creates
-  // the profile doc). The wizard runs on the first verified sign-in.
+  // 6-digit code is typed back: signUpCustomer creates the account and signs
+  // straight back out, and the code dialog opens at once while the code is
+  // still on its way (that request also creates the profile doc). The code
+  // verifies the account; the password still in this form signs the member
+  // back in (handleOtpVerified), and the wizard runs on that first verified
+  // sign-in.
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -399,7 +404,7 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
     setSubmitting(true)
     try {
       const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang)
-      setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
+      setPending({ variant: 'signup', email: result.email, idToken: result.idToken, send: result.send })
     } catch (err) {
       showAuthError(err)
     } finally {
@@ -517,7 +522,44 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
   // (whose greeting fades in on arrival), or back to the ?redirect= page.
   const handleWizardComplete = () => fadeOutThen(goToDestination)
 
-  // Back from "check your inbox": land on Sign In with the email filled in.
+  // The code was right, so the account is verified. The password still in the form signs in again
+  // (a real password session, so changing the password or the email later works); an unverified
+  // sign-in retry may not hold it, and then the custom token the server minted does it. If that
+  // sign-in fails, the member lands on Sign In with a notice.
+  const handleOtpVerified = async (customToken?: string) => {
+    const verified = pending
+    if (!verified) return
+    setPending(null)
+    setError(null)
+    setSubmitting(true)
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+      const result = password
+        ? await signInCustomerWithEmail(verified.email, password, lang)
+        : customToken
+          ? await signInCustomerWithCustomToken(customToken, lang)
+          : null
+      if (!result || result.status === 'unverified') throw new Error('sign-in after verification failed')
+      if (result.status === 'businessAccount') {
+        setBusinessAccount(true)
+        setSubmitting(false)
+        return
+      }
+      markPasskeyOfferDue(result.user.uid)
+      await afterSignIn(result.user.uid, result.preferredLanguage)
+      setSubmitting(false)
+    } catch (err) {
+      logAuthError(err)
+      setEmail(verified.email)
+      setPassword('')
+      setConfirm('')
+      switchMode('signIn')
+      setError({ key: 'signupOtp_signInFailed', code: null })
+      setSubmitting(false)
+    }
+  }
+
+  // Back from the code dialog: land on Sign In with the email filled in.
   const handleBackToSignIn = () => {
     if (pending) setEmail(pending.email)
     setPassword('')
@@ -592,14 +634,6 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
             </div>
           ) : wizard ? (
             <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onStepChange={setOnbStep} onComplete={handleWizardComplete} />
-          ) : pending ? (
-            <VerifyEmailNotice
-              variant={pending.variant}
-              email={pending.email}
-              idToken={pending.idToken}
-              initialSend={pending.initialSend}
-              onBack={handleBackToSignIn}
-            />
           ) : (
             <>
               <SegmentedControl
@@ -866,6 +900,16 @@ export default function AuthScreen({ initialMode }: { initialMode: Mode }) {
           </div>
         )}
       </main>
+      {pending && (
+        <OtpDialog
+          signup={{ getIdToken: () => Promise.resolve(pending.idToken), initialSend: pending.send }}
+          target={{ kind: 'email', email: pending.email }}
+          resendIn={OTP_RESEND_SECONDS}
+          onClose={handleBackToSignIn}
+          onVerified={handleOtpVerified}
+          onEnded={handleBackToSignIn}
+        />
+      )}
     </div>
   )
 }

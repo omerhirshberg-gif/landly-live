@@ -15,8 +15,10 @@ import {
 } from '@shared/auth/onboarding'
 import { EASE_FADE, EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { isAppleMobileWeb, providerOrder } from '@shared/auth/appleDevice'
-import { resumeCustomerSession, signInCustomerWithEmail, type CustomerSignInResult } from '@shared/auth/signInCustomer'
-import { signUpCustomer } from '@shared/auth/signUpCustomer'
+import { resumeCustomerSession, signInCustomerWithCustomToken, signInCustomerWithEmail, type CustomerSignInResult } from '@shared/auth/signInCustomer'
+import { signUpCustomer, type PendingVerification } from '@shared/auth/signUpCustomer'
+import { signupOtpStatus } from '@shared/account/contactChange'
+import { OTP_RESEND_SECONDS } from '@shared/auth/otp'
 import { isStrongPassword } from '@shared/auth/passwordValidation'
 import { authBack } from '@shared/navigation/backGuard'
 import { auth, devicePersistence } from '@shared/firebase/config'
@@ -30,6 +32,7 @@ import Button from '../../components/Button'
 import Checkbox from '../../components/Checkbox'
 import EmailTypoHint from '../../components/EmailTypoHint'
 import ConsentText from '../../components/ConsentText'
+import OtpSheet from '../../components/OtpSheet'
 import { ENTRANCE_SPRING, useEntrance } from '../../components/Entrance'
 import Notice from '../../components/Notice'
 import ProviderTile from '../../components/ProviderTile'
@@ -43,7 +46,6 @@ import { GOOGLE_SIGN_IN_CONFIGURED, signInWithGoogle } from '../../auth/googleSi
 import OnboardingWizard from '../../auth/onboarding/OnboardingWizard'
 import { loadOnboardingDraft } from '../../auth/onboarding/draftStorage'
 import PasswordRequirements from '../../auth/onboarding/PasswordRequirements'
-import VerifyEmailCard, { type PendingVerification } from '../../auth/VerifyEmailCard'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
 import { warning as warningHaptic } from '../../lib/haptics'
@@ -264,7 +266,8 @@ export default function LoginScreen() {
         setBusinessAccount(true)
         setSubmitting(false)
       } else if (result.status === 'unverified') {
-        setPending({ variant: 'login', email: result.email, idToken: result.idToken })
+        // The code dialog opens at once; whether a code is already on its way (and its cooldown) is looked up, nothing is sent.
+        setPending({ variant: 'login', email: result.email, idToken: result.idToken, send: signupOtpStatus(result.idToken, lang, API_BASE_URL) })
         setSubmitting(false)
       } else {
         await afterSignIn(result.user.uid, result.preferredLanguage)
@@ -279,10 +282,12 @@ export default function LoginScreen() {
   }
 
   // Credentials only. Email+password accounts stay locked until the emailed
-  // link is clicked: signUpCustomer creates the account and signs straight
-  // back out, and the "check your inbox" card replaces the form at once while
-  // the verification email is still on its way (that request also creates
-  // the profile doc). The wizard runs on the first verified sign-in.
+  // 6-digit code is typed back: signUpCustomer creates the account and signs
+  // straight back out, and the code sheet opens at once while the code is
+  // still on its way (that request also creates the profile doc). The code
+  // verifies the account; the password still in this form signs the member
+  // back in (handleOtpVerified), and the wizard runs on that first verified
+  // sign-in.
   const handleSignUp = async () => {
     setError(null)
     const errors = signUpFieldErrors({ firstName, lastName, email, password, confirm, agreedToTerms })
@@ -299,7 +304,7 @@ export default function LoginScreen() {
     setChecking(true)
     try {
       const result = await signUpCustomer({ firstName, lastName, agreedToTerms, marketingOptIn }, email.trim(), password, lang, API_BASE_URL)
-      setPending({ variant: 'signup', email: result.email, idToken: result.idToken, initialSend: result.send })
+      setPending({ variant: 'signup', email: result.email, idToken: result.idToken, send: result.send })
     } catch (err) {
       showAuthError(err)
     } finally {
@@ -398,7 +403,45 @@ export default function LoginScreen() {
     })
   }
 
-  // Back from "check your inbox": land on Sign In with the email filled in.
+  // The code was right, so the account is verified. The password still in the form signs in again
+  // (a real password session, so changing the password or the email later works); an unverified
+  // sign-in retry may not hold it, and then the custom token the server minted does it. If that
+  // sign-in fails, the member lands on Sign In with a notice.
+  const handleOtpVerified = async (customToken?: string) => {
+    const verified = pending
+    if (!verified) return
+    setPending(null)
+    setError(null)
+    setSubmitting(true)
+    setChecking(true)
+    try {
+      await setPersistence(auth, rememberMe ? devicePersistence : inMemoryPersistence)
+      const result = password
+        ? await signInCustomerWithEmail(verified.email, password, lang)
+        : customToken
+          ? await signInCustomerWithCustomToken(customToken, lang)
+          : null
+      if (!result || result.status === 'unverified') throw new Error('sign-in after verification failed')
+      if (result.status === 'businessAccount') {
+        setBusinessAccount(true)
+        setSubmitting(false)
+        return
+      }
+      await afterSignIn(result.user.uid, result.preferredLanguage)
+    } catch (err) {
+      logAuthError(err)
+      setEmail(verified.email)
+      setPassword('')
+      setConfirm('')
+      switchMode('signIn')
+      setError({ key: 'signupOtp_signInFailed', code: null })
+      setSubmitting(false)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  // Back from the code sheet: land on Sign In with the email filled in.
   const handleBackToSignIn = () => {
     if (pending) setEmail(pending.email)
     setPassword('')
@@ -452,8 +495,6 @@ export default function LoginScreen() {
               <Animated.View style={[styles.card, bounded && styles.cardBounded, riseStyle]} onLayout={reportHero}>
                 {wizardShown && wizard ? (
                   <OnboardingWizard uid={wizard.uid} name={onboardingName} draft={wizard.draft} onComplete={handleWizardComplete} />
-                ) : pending ? (
-                  <VerifyEmailCard pending={pending} onBack={handleBackToSignIn} />
                 ) : (
                   <>
                     <SegmentedControl
@@ -728,6 +769,16 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {pending && (
+        <OtpSheet
+          signup={{ getIdToken: () => Promise.resolve(pending.idToken), initialSend: pending.send }}
+          target={{ kind: 'email', email: pending.email }}
+          resendIn={OTP_RESEND_SECONDS}
+          onClose={handleBackToSignIn}
+          onVerified={handleOtpVerified}
+          onEnded={handleBackToSignIn}
+        />
+      )}
     </SafeAreaView>
   )
 }

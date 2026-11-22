@@ -5,6 +5,7 @@ import Animated, { useAnimatedScrollHandler, useReducedMotion, useSharedValue } 
 import type { OfferDocument } from '@shared/firebase/offers'
 import { AUTO_ADVANCE_MS, nextAutoIndex } from '@shared/carouselAutoplay'
 import OfferCard from './OfferCard'
+import OfferCardPlaceholder from './OfferCardPlaceholder'
 import PagerDots from './PagerDots'
 import { useLang } from '../i18n/LangProvider'
 import { CAROUSEL_EDGE as EDGE, CAROUSEL_GAP as GAP, PAGER_DOTS_MAX, carouselCardWidth, carouselInitialCount, carouselItemLayout, carouselPage, carouselSnapOffsets } from '../lib/carousel'
@@ -28,6 +29,9 @@ import { isWeb, webOnly } from '../lib/webStyles'
 // (it only knows I18nManager, kept left-to-right), so there it mounts its whole
 // row -- at most RAIL_MAX cards -- rather than risk a blank cell; the screen's
 // own list still mounts only the rails near the viewport.
+type Placeholder = { placeholder: true; id: string }
+type CarouselItem = OfferDocument | Placeholder
+
 export default memo(function OfferCarousel({
   offers,
   onOpen,
@@ -36,6 +40,7 @@ export default memo(function OfferCarousel({
   autoAdvance = false,
   autoAdvanceOffsetMs = 0,
   visible = true,
+  placeholders = 0,
 }: {
   offers: OfferDocument[]
   onOpen: (offer: OfferDocument) => void
@@ -48,22 +53,28 @@ export default memo(function OfferCarousel({
   autoAdvanceOffsetMs?: number
   /** False while the rail is scrolled out of view: its autoplay holds still. */
   visible?: boolean
+  /** Inert "Coming soon" cards after the offers (Home's category rows pad to ten). */
+  placeholders?: number
 }) {
   const { isRtl } = useLang()
   const { width: screenWidth, paddingLeft, paddingRight } = useLayout()
-  const list = useRef<FlatList<OfferDocument>>(null)
+  const data = useMemo<CarouselItem[]>(
+    () => (placeholders > 0 ? [...offers, ...Array.from({ length: placeholders }, (_, i): Placeholder => ({ placeholder: true, id: `ph:${i}` }))] : offers),
+    [offers, placeholders]
+  )
+  const list = useRef<FlatList<CarouselItem>>(null)
   const [viewport, setViewport] = useState(0)
 
   const cardWidth = carouselCardWidth(screenWidth)
   const interval = cardWidth + GAP
-  const contentWidth = paddingLeft + paddingRight + offers.length * cardWidth + Math.max(0, offers.length - 1) * GAP
+  const contentWidth = paddingLeft + paddingRight + data.length * cardWidth + Math.max(0, data.length - 1) * GAP
   const maxOffset = Math.max(0, contentWidth - viewport)
   const snapToOffsets = useMemo(
-    () => (isWeb || !viewport ? undefined : carouselSnapOffsets(offers.length, interval, maxOffset, isRtl)),
-    [offers.length, interval, maxOffset, isRtl, viewport]
+    () => (isWeb || !viewport ? undefined : carouselSnapOffsets(data.length, interval, maxOffset, isRtl)),
+    [data.length, interval, maxOffset, isRtl, viewport]
   )
   // The resting places counted from the start edge, whichever way the row reads.
-  const starts = useMemo(() => (viewport ? carouselSnapOffsets(offers.length, interval, maxOffset, false) : []), [offers.length, interval, maxOffset, viewport])
+  const starts = useMemo(() => (viewport ? carouselSnapOffsets(data.length, interval, maxOffset, false) : []), [data.length, interval, maxOffset, viewport])
   const reduced = useReducedMotion()
   const position = useSharedValue(0)
   // contentOffset.x counts from the left on native (so from the far end in
@@ -112,25 +123,29 @@ export default memo(function OfferCarousel({
   const openedAtStart = useRef(false)
   const windowed = !isRtl
   const getItemLayout = useCallback(
-    (_: ArrayLike<OfferDocument> | null | undefined, index: number) => carouselItemLayout(index, offers.length, cardWidth, GAP, paddingLeft),
-    [offers.length, cardWidth, paddingLeft]
+    (_: ArrayLike<CarouselItem> | null | undefined, index: number) => carouselItemLayout(index, data.length, cardWidth, GAP, paddingLeft),
+    [data.length, cardWidth, paddingLeft]
   )
-  const renderItem = useCallback<ListRenderItem<OfferDocument>>(
+  const renderItem = useCallback<ListRenderItem<CarouselItem>>(
     ({ item }) => (
       <View style={[styles.slot, { width: cardWidth }]}>
-        <OfferCard offer={item} variant="carousel" width={cardWidth} onOpen={onOpen} showCategoryBadge={showCategoryBadge} />
+        {'placeholder' in item ? (
+          <OfferCardPlaceholder width={cardWidth} />
+        ) : (
+          <OfferCard offer={item} variant="carousel" width={cardWidth} onOpen={onOpen} showCategoryBadge={showCategoryBadge} />
+        )}
       </View>
     ),
     [cardWidth, onOpen, showCategoryBadge]
   )
-  const initialCount = carouselInitialCount(viewport || screenWidth, cardWidth, offers.length)
+  const initialCount = carouselInitialCount(viewport || screenWidth, cardWidth, data.length)
 
   return (
     <View style={[styles.frame, { marginLeft: -paddingLeft, marginRight: -paddingRight }]}>
       <Animated.FlatList
         showsVerticalScrollIndicator={false}
         ref={list}
-        data={offers}
+        data={data}
         keyExtractor={(offer) => offer.id}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -157,8 +172,8 @@ export default memo(function OfferCarousel({
           list.current?.scrollToEnd({ animated: false })
         }}
         getItemLayout={windowed ? getItemLayout : undefined}
-        initialNumToRender={windowed ? initialCount : offers.length}
-        maxToRenderPerBatch={windowed ? 2 : offers.length}
+        initialNumToRender={windowed ? initialCount : data.length}
+        maxToRenderPerBatch={windowed ? 2 : data.length}
         windowSize={windowed ? 3 : 21}
         removeClippedSubviews={windowed && Platform.OS === 'android'}
         renderItem={renderItem}

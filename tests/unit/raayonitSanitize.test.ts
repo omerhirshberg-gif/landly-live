@@ -7,30 +7,33 @@ import type { RaayonitBrand } from '@/lib/inventory/raayonitCatalog'
 
 // The approved placement of all 231 Raayonit businesses (the official directory's sections), one list per GoLandly category.
 const EXPECTED: Record<string, string[]> = {
+  'Chef Restaurants': [
+    'הדרל\'ה', 'דיאנא', 'הלנה בנמל קיסריה', 'קימל בגלבוע', 'BAR ITALIA', 'KYOTO', 'capri', 'התרנגול הכחול', 'LUNEL', 'Baba Yaga', 'POMO', 'CAFÉ NAPO', 'כרמא', 'Sheyan',
+  ],
   'Restaurants and Cafes': [
-    '6 במאי', 'AIR CAFFE', 'Alpaca Bar', 'Baba Yaga',
-    'Bali BURGERS', 'BAR ITALIA', 'BARDAK', 'BISCOTTI',
+    '6 במאי', 'AIR CAFFE', 'Alpaca Bar', 
+    'Bali BURGERS', 'BARDAK', 'BISCOTTI',
     'BLEECKER Bakery', 'Bread and Breakfast', 'Butchery', 'Café LUGANO',
-    'CAFÉ NAPO', 'CaféCafé', 'capri', 'CAPTAIN HOOK',
+    'CaféCafé', 'CAPTAIN HOOK',
     'CASA DO BRASIL', 'CASINO SAN REMO', 'EISAN THAI KITCHEN', 'ENTRECOTE',
     'frangelico', 'fratelli', 'GATOS', 'GiORGiO CAFFE',
     'Gorilla', 'indira', 'iz café', 'JAPAN JAPAN',
-    'joya', 'KYOTO', 'La Vaca Loca', 'LUNEL',
+    'joya', 'La Vaca Loca', 
     'MANDARIN', 'MAX BRENNER', 'MEXICANA', 'Milano Bakery',
     'MILKA BAR', 'mood', 'Mr Pretzels', 'OLIVE KORNER',
-    'PATRICK\'S', 'PIATTO', 'POMO', 'Reef Cafe',
-    'SAI SUSHI BAR', 'SCUBAR', 'Sheyan', 'SHTROUDL',
+    'PATRICK\'S', 'PIATTO', 'Reef Cafe',
+    'SAI SUSHI BAR', 'SCUBAR', 'SHTROUDL',
     'SINTA', 'THE VIEW', 'Torta Loca', 'TORTUGA',
     'ZETZ', 'אווז הזהב', 'אווזי חיפה', 'איטלקיה בפשפשים',
     'איטלקיה בתחנה', 'אצה - סושי בר', 'באשר פרומז\'רי', 'ביאנקיני ים המלח',
-    'ביר גרדן כפר סבא', 'גרג', 'דה קרינה - בוטיק שוקולד', 'דיאנא',
-    'האגדה', 'הבוטקה', 'הדרל\'ה', 'הטבעונית - J17',
-    'הלובי', 'הלנה בנמל קיסריה', 'הסושיה', 'הפינה החלבית',
-    'השיפודיה של שופן', 'התרנגול הכחול', 'חנל\'ה', 'חצר עין כרם',
-    'טנדוקה', 'כרמא', 'לחם ארז קריית ביאליק', 'מועדון ארוחת בוקר',
+    'ביר גרדן כפר סבא', 'גרג', 'דה קרינה - בוטיק שוקולד', 
+    'האגדה', 'הבוטקה', 'הטבעונית - J17',
+    'הלובי', 'הסושיה', 'הפינה החלבית',
+    'השיפודיה של שופן', 'חנל\'ה', 'חצר עין כרם',
+    'טנדוקה', 'לחם ארז קריית ביאליק', 'מועדון ארוחת בוקר',
     'מזקקת אולגר - OLGAR DISTILLERY', 'מרינה ביי', 'מרקוס', 'נאבי יונה',
     'נגיסה עפולה', 'נמסטה', 'סינטה בר אקספרס חיפה', 'סיציליאנו',
-    'פלאפל גבאי', 'פנה פסטה בר', 'קאסה דל פפה', 'קימל בגלבוע',
+    'פלאפל גבאי', 'פנה פסטה בר', 'קאסה דל פפה', 
     'קפאין חיפה', 'קפה אביבים', 'קפה אופטימי - italian&israeli kitchen', 'קפה בגולף',
     'קפה גרנד ויסטה', 'קפה נמרוד תל אביב', 'קפה פולה', 'קפה קרמה',
     'קפה רוסטרס', 'קקאו כרמיאל', 'רנה ראש פינה', 'רשת פיצה סטורי',
@@ -42,13 +45,14 @@ const EXPECTED: Record<string, string[]> = {
     'ShareSpa', 'Spa - My Touch', 'Spa by CLARINS', 'המרחב הפנימי',
     'טיליה - קליניקה טיפולית', 'מנטרה ספא', 'ניגון הנפש - עינבל ערד', 'ספא אלוויט',
     'ספא דניאל', 'ספא חמת קיסר', 'ספא קאנטרי גן עברון',
+    'לאונרדו',
   ],
   'Israel and Global Tourism': [
     'Acco Beach', 'ADAM HOTELS', 'BROWN', 'GORDONIA',
     'NYX תל אביב', 'PIAZZA DEL SOL', 'VERT', 'אדם בוטיק',
     'אורכידאה אילת', 'אורכידאה תל אביב', 'בוטניקה', 'בטבע קדרים בקתות גליליות',
     'בין הזיתים', 'הבקתות של סיון', 'הרודס', 'יו',
-    'כפר הנופש מסריק', 'לאונרדו', 'מלון 1935', 'מלון איב',
+    'כפר הנופש מסריק', 'מלון 1935', 'מלון איב',
     'מלון נס עמים', 'מלון סטאי כנרת', 'מלון סטאי תל אביב', 'מלון פיורי 41',
     'קראון פלזה תל אביב', 'קראון פלזה תל אביב סיטי סנטר', 'רוח דרומית', 'שלה ביער',
   ],
@@ -63,7 +67,7 @@ const EXPECTED: Record<string, string[]> = {
     'Eye Glow', 'Food Appeal', 'FOX home', 'GOLF & CO',
     'Kitan', 'LA FLEUR BOUTIQUE', 'MY DIGO design', 'Naaman',
     'simplybibo', 'TITANIUM', 'VARDINON', 'אהבה קטנה',
-    'אופק חדש - מוצרים לאורח חיים בריא', 'ארבל עיצוב פנים - מומלץ אמון הציבור', 'טרקלין חשמל', 'מכלול',
+    'אופק חדש - מוצרים לאורח חיים בריא', 'טרקלין חשמל', 'מכלול',
     'פריחת הסחלב', 'צומת ספרים', 'צמר - שטיחים יפים', 'רשת קרביץ',
   ],
   'Kids and Baby': [
@@ -72,6 +76,7 @@ const EXPECTED: Record<string, string[]> = {
   ],
   'Beauty and Skincare': [
     'Dr. Dabour', 'LALINE', 'ROSE BEAUTY BY NATURE', 'סבון של פעם',
+    'ארבל עיצוב פנים - מומלץ אמון הציבור',
   ],
   'Fashion and Shopping': [
     'aerie', 'ALDO', 'AMERICAN EAGLE', 'BILLABONG',
@@ -141,7 +146,11 @@ describe('catalogue finalising', () => {
     expect(cat('MAX BRENNER', 'MAX BRENNER')).toBe('Restaurants and Cafes')
     expect(cat('ביאנקיני ים המלח')).toBe('Restaurants and Cafes')
     expect(cat('יו', 'U Hotels')).toBe('Israel and Global Tourism')
-    for (const chef of ["הדרל'ה", 'דיאנא', 'הלנה בנמל קיסריה', 'קימל בגלבוע', 'BAR ITALIA', 'KYOTO', 'capri', 'התרנגול הכחול', 'LUNEL', 'Baba Yaga', 'POMO', 'CAFÉ NAPO', 'מרקוס', 'Sheyan']) expect(cat(chef), chef).toBe('Restaurants and Cafes')
+    for (const chef of ["הדרל'ה", 'דיאנא', 'הלנה בנמל קיסריה', 'קימל בגלבוע', 'BAR ITALIA', 'KYOTO', 'capri', 'התרנגול הכחול', 'LUNEL', 'Baba Yaga', 'POMO', 'CAFÉ NAPO', 'כרמא', 'Sheyan']) expect(cat(chef), chef).toBe('Chef Restaurants')
+    // Raayonit lists these two under "בתי קפה ומסעדות", not its chef section.
+    for (const cafe of ['מרקוס', "PATRICK'S"]) expect(cat(cafe), cafe).toBe('Restaurants and Cafes')
+    expect(cat('לאונרדו')).toBe('Pampering Bundles')
+    expect(cat('ארבל עיצוב פנים - מומלץ אמון הציבור')).toBe('Beauty and Skincare')
     for (const food of ['joya', 'טנדוקה', 'הסושיה', 'iz café', 'הפינה החלבית', 'הלובי']) expect(cat(food), food).toBe('Restaurants and Cafes')
     expect(cat('מגה ספורט')).toBe('Sport and Fitness')
     expect(cat('FOX')).toBe('Fashion and Shopping')

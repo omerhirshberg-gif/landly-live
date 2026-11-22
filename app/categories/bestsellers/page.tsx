@@ -3,6 +3,7 @@
 import Navbar from '@/components/layout/Navbar'
 import { Award } from 'lucide-react'
 import OfferListView from '@/components/discover/OfferListView'
+import { landlyOffers } from '@/lib/offers/discoverTab'
 import { useLang } from '@/lib/i18n/useLang'
 import { getBestsellerOffers } from '@/lib/firebase/offers'
 
@@ -13,7 +14,7 @@ export default function BestsellerOffersPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas">
-        <OfferListView icon={Award} title={t('row_bestsellers')} depKey="bestsellers" fetchOffers={getBestsellerOffers} />
+        <OfferListView icon={Award} title={t('row_bestsellers')} depKey="bestsellers" fetchOffers={() => getBestsellerOffers().then(landlyOffers)} />
       </div>
     </>
   )

@@ -84,7 +84,7 @@ describe('web offer page', () => {
     expect(page).toContain('aspect="aspect-video lg:aspect-[16/10] lg:min-h-[380px]"')
   })
   it('leaves the adaptive logo badge alone', () => {
-    expect(read('components/discover/MerchantBadge.tsx')).toContain('h-[44px] min-w-[64px] max-w-[124px]')
+    expect(read('components/discover/MerchantBadge.tsx')).toContain('h-[44px] w-[72px]')
   })
 })
 

@@ -6,15 +6,15 @@ const read = (p: string) => readFileSync(p, 'utf8')
 // The web perk cards: 260px on phones, 280px from 640px, never narrower, with a 160px 16:10 photo.
 describe('web offer card size', () => {
   const card = read('components/discover/OfferCard.tsx')
-  it('rail cards are 260px (clamped on narrow phones) and 280px from sm, with a 16:10 photo capped at 160px', () => {
-    expect(card).toContain('w-[clamp(240px,72vw,260px)] flex-shrink-0 sm:w-[280px]')
+  it('rail cards show 2.15 per phone screen (150-232px) and 232px from sm, with a 16:10 photo capped at 160px', () => {
+    expect(card).toContain('w-[clamp(150px,calc((100vw-36px)/2.15),232px)] flex-shrink-0 sm:w-[232px]')
     expect(card).toContain("'aspect-[16/10] max-h-40'")
     expect(card).not.toMatch(/lg:max-h-\[118px\]|lg:p-2\.5|lg:text-sm/)
   })
-  it('tile rails snap 260px then 280px tracks; the compact desktop rails hold 280px', () => {
+  it('tile rails snap 2.15-per-screen then 232px tracks; every desktop rail holds 232px and never grows', () => {
     const rail = read('components/discover/OfferTileRail.tsx')
-    for (const c of ['auto-cols-[260px]', 'sm:auto-cols-[280px]', 'lg:auto-cols-[280px]']) expect(rail).toContain(c)
-    expect(read('components/discover/OfferCardRail.tsx')).toContain("'lg:grow-0 lg:basis-[280px]'")
+    for (const c of ['auto-cols-[clamp(150px,calc((100vw-36px)/2.15),232px)]', 'sm:auto-cols-[232px]']) expect(rail).toContain(c)
+    expect(read('components/discover/OfferCardRail.tsx')).toContain("'lg:grow-0 lg:basis-[232px]'")
   })
   it('the feed grids keep a 20px gap and column counts that leave every card 260px or wider', () => {
     expect(read('components/discover/offerFeedGrid.ts')).toContain("'grid grid-cols-1 gap-5 fold:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6'")

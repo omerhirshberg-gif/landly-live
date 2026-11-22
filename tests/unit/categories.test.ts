@@ -54,3 +54,21 @@ describe('perksCountLabel', () => {
     }
   })
 })
+
+describe('Chef Restaurants category', () => {
+  it('is the second tile, named in all five languages, with its own icon and photo', async () => {
+    const { translations } = await import('@/lib/i18n/translations')
+    const { CATEGORY_ICONS } = await import('@/components/ui/CategoryIcon')
+    const { existsSync } = await import('node:fs')
+    expect(CATEGORY_TILES.map((t) => t.category).slice(0, 2)).toEqual(['Restaurants and Cafes', 'Chef Restaurants'])
+    expect(CATEGORY_TILES).toHaveLength(13)
+    expect(translations.he.row_chef).toBe('מסעדות שף')
+    expect(translations.en.row_chef).toBe('Chef Restaurants')
+    expect(translations.ru.row_chef).toBe('Авторские рестораны')
+    expect(translations.fr.row_chef).toBe('Restaurants gastronomiques')
+    expect(translations.es.row_chef).toBe('Restaurantes de autor')
+    expect(CATEGORY_ICONS['Chef Restaurants']).toBeDefined()
+    expect(CATEGORY_ICONS['Chef Restaurants']).not.toBe(CATEGORY_ICONS['Restaurants and Cafes'])
+    for (const dir of ['public/categories', 'landly-mobile/assets/categories']) expect(existsSync(`${dir}/chef.webp`)).toBe(true)
+  })
+})

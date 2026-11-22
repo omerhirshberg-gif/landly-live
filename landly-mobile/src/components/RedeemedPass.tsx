@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native'
+import { superTavHeadline } from '@shared/offers/superTav'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { formatRedeemedDate } from '@shared/format'
 import { REDEMPTION_METHOD_LABEL_KEYS } from '@shared/offers/redemption'
@@ -20,6 +21,7 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
   const { t, lang } = useLang()
   const title = localizeText(voucher.offerTitle, voucher.translations, lang, 'title')
   const name = localizedBusinessName(voucher, lang)
+  const headline = superTavHeadline(voucher, t('super_tav_headline'))
   return (
     <View style={styles.card}>
       <View>
@@ -29,12 +31,21 @@ export default function RedeemedPass({ voucher }: { voucher: VoucherDocument & {
         </View>
       </View>
       <View style={styles.text}>
-        <AppText style={styles.business} numberOfLines={1}>
-          {name.text}
-        </AppText>
-        <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>
-          {title.text}
-        </ContentText>
+        {headline ? (
+          <>
+            <AppText style={styles.business} numberOfLines={2}>{headline}</AppText>
+            <AppText style={styles.title} numberOfLines={1}>{name.text}</AppText>
+          </>
+        ) : (
+          <>
+            <AppText style={styles.business} numberOfLines={1}>
+              {name.text}
+            </AppText>
+            <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>
+              {title.text}
+            </ContentText>
+          </>
+        )}
         <View style={styles.metaRow}>
           <View style={styles.methodChip}>
             <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>

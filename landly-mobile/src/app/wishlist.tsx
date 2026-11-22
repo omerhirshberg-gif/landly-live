@@ -5,19 +5,23 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import type { OfferDocument } from '@shared/firebase/offers'
 import { useOffers } from '@shared/offers/useOffers'
 import { useWishlist } from '@shared/firebase/useWishlist'
-import AppText from '../../components/AppText'
-import FeedCell from '../../components/FeedCell'
-import Notice from '../../components/Notice'
-import ScreenTitleRow from '../../components/ScreenTitleRow'
-import OfferCard from '../../components/OfferCard'
-import { OfferListSkeleton } from '../../components/Skeleton'
-import { useLang } from '../../i18n/LangProvider'
-import { openOffer } from '../../lib/openOffer'
-import { useLayout } from '../../lib/useLayout'
-import { colors, header } from '../../theme'
+import AppText from '../components/AppText'
+import FeedCell from '../components/FeedCell'
+import Notice from '../components/Notice'
+import ScreenHeader from '../components/ScreenHeader'
+import ScreenTitleRow from '../components/ScreenTitleRow'
+import OfferCard from '../components/OfferCard'
+import { OfferListSkeleton } from '../components/Skeleton'
+import { useLang } from '../i18n/LangProvider'
+import { openOffer } from '../lib/openOffer'
+import { useLayout } from '../lib/useLayout'
+import { colors, header } from '../theme'
 
-// The saved perks (web: /wishlist), the Wishlist tab. The list follows the live wishlist in the order it was saved, as on the website:
+// The saved perks (web: /wishlist), opened from the Profile tab's heart. The list follows the live wishlist in the order it was saved, as on the website:
 // un-hearting a card drops it at once. An id whose offer is no longer on sale is skipped.
+// A render error here shows the retry card; the rest of the app stays up.
+export { default as ErrorBoundary } from '../components/RouteErrorBoundary'
+
 export default function WishlistScreen() {
   const { t } = useLang()
   // Columns follow the window (two unfolded, three on a tablet); the key
@@ -50,6 +54,7 @@ export default function WishlistScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenHeader fallback="/profile" />
       <FlashList
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}

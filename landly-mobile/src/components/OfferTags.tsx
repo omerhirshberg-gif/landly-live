@@ -10,16 +10,16 @@ import { colors } from '../theme'
 // photo, on the card and the offer screen alike (web: components/discover/
 // OfferTags.tsx). A long category gives way to the method. `showCategory` is off
 // in a list already scoped to one category, where every card would repeat it.
-export default function OfferTags({ category, method, modes, showCategory = true }: { category: string; method: RedemptionMethod; modes?: RedemptionMode[]; showCategory?: boolean }) {
+export default function OfferTags({ category, method, modes, showCategory = true, categoryName }: { /** A Raayonit venue's own category name, exactly as the hub's rows show it; replaces the GoLandly category. */ categoryName?: string; category: string; method: RedemptionMethod; modes?: RedemptionMode[]; showCategory?: boolean }) {
   const { t } = useLang()
-  const tile = CATEGORY_TILES.find((c) => c.category === category)
+  const tile = categoryName ? undefined : CATEGORY_TILES.find((c) => c.category === category)
   return (
     <View style={styles.row}>
       {showCategory && (
         <>
           <View style={styles.category}>
             {tile && <CategoryIcon category={tile.category} size={14} color={TEXT} />}
-            <AppText style={[styles.text, styles.categoryText]} numberOfLines={1}>{tile ? t(tile.labelKey) : category}</AppText>
+            <AppText style={[styles.text, styles.categoryText]} numberOfLines={1}>{tile ? t(tile.labelKey) : categoryName ?? category}</AppText>
           </View>
           <AppText style={[styles.text, styles.dot]} accessibilityElementsHidden importantForAccessibility="no">·</AppText>
         </>

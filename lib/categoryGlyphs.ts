@@ -7,6 +7,7 @@ type Category = (typeof BUSINESS_CATEGORIES)[number]
 // steps of Tailwind's palette, so any icon stays clear on top.
 export const CATEGORY_TINTS: Record<Category, string> = {
   'Restaurants and Cafes': '#ffedd5', // orange: warm, food
+  'Chef Restaurants': '#fee2e2', // red: fine dining, the wine-red counterpart of food's orange
   'Beach and Sea': '#cffafe', // cyan: water
   'Attractions and Tours': '#fce7f3', // pink: fun
   'Fashion and Shopping': '#ede9fe', // violet

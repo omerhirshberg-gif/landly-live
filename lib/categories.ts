@@ -6,6 +6,7 @@ import { TranslationKey } from '@/lib/i18n/translations'
 // i18n-keyed rather than a shared exported constant.
 export const BUSINESS_CATEGORIES = [
   'Restaurants and Cafes',
+  'Chef Restaurants',
   'Beach and Sea',
   'Attractions and Tours',
   'Fashion and Shopping',
@@ -33,6 +34,7 @@ export interface CategoryTile {
 // the /categories chip rail and lib/perks/perksFilter.ts so they can't drift.
 export const CATEGORY_TILES: CategoryTile[] = [
   { category: 'Restaurants and Cafes', labelKey: 'row_restaurants', photo: 'restaurants' },
+  { category: 'Chef Restaurants', labelKey: 'row_chef', photo: 'chef' },
   { category: 'Beach and Sea', labelKey: 'row_beach', photo: 'beach' },
   { category: 'Attractions and Tours', labelKey: 'cats_attractions_tours', photo: 'attractions' },
   { category: 'Fashion and Shopping', labelKey: 'row_fashion', photo: 'fashion' },

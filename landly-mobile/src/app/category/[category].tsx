@@ -1,15 +1,17 @@
 import { useCallback, useDeferredValue, useMemo, useState } from 'react'
-import { RefreshControl, StyleSheet, View } from 'react-native'
+import { Platform, Pressable, RefreshControl, Share, StyleSheet, View } from 'react-native'
 import { FlashList } from '@shopify/flash-list'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, perksCountLabel } from '@shared/categories'
-import { deriveAreas, type Area, type Coordinates } from '@shared/geo'
 import type { OfferDocument } from '@shared/firebase/offers'
 import { useOffers } from '@shared/offers/useOffers'
-import { DEFAULT_PERK_SORT, filterAndSortPerks, offerDistanceKm, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
+import { landlyOffers } from '@shared/offers/discoverTab'
+import { DEFAULT_PERK_SORT, filterAndSortPerks, parseCategoryFilter, type PerkSort } from '@shared/perks/perksFilter'
+import { badgeKm, partitionByLocation, sortByLocation } from '@shared/perks/locationFilter'
+import { locationCountLabel } from '@shared/perks/locationCount'
 import AppText from '../../components/AppText'
-import AreaPicker from '../../components/AreaPicker'
+import LocationFilterBar from '../../components/LocationFilterBar'
 import NearMeButton from '../../components/NearMeButton'
 import FeedCell from '../../components/FeedCell'
 import GlassBackButton from '../../components/GlassBackButton'
@@ -19,8 +21,12 @@ import PerksSearchField from '../../components/PerksSearchField'
 import SortSheet from '../../components/SortSheet'
 import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
+import { useLocationFilter } from '../../lib/useLocationFilter'
 import { openOffer } from '../../lib/openOffer'
 import { useLayout } from '../../lib/useLayout'
+import { gridCellWidth } from '../../lib/layout'
+import { API_BASE_URL } from '../../lib/env'
+import LineIcon from '../../components/LineIcon'
 import { colors, radius, type } from '../../theme'
 import CategoryIcon from '../../components/CategoryIcon'
 
@@ -33,7 +39,10 @@ export default function CategoryScreen() {
   const { t, lang } = useLang()
   // Columns follow the window (two unfolded, three on a tablet); the key
   // remounts the list when folding changes them, as numColumns requires.
-  const { columns, cellWidth, paddingLeft, paddingRight } = useLayout()
+  // Two equal-height cards per row on a phone (three unfolded, four on a tablet).
+  const { categoryColumns: columns, rowWidth, paddingLeft, paddingRight } = useLayout()
+  const cellWidth = gridCellWidth(rowWidth, columns)
+  const grid = useMemo(() => ({ columns, cellWidth }), [columns, cellWidth])
   // The back bar sits outside the list, so it steps in from a side cutout itself.
   const insets = useSafeAreaInsets()
   const { category: rawCategory } = useLocalSearchParams<{ category: string }>()
@@ -44,26 +53,34 @@ export default function CategoryScreen() {
   const tile = CATEGORY_TILES.find((c) => c.category === category)
   // This category's slice of the shared catalog (lib/offers/offersStore.ts), drawn from the held copy on the first frame.
   const { offers: catalog, failed, refresh } = useOffers()
-  const offers = useMemo(() => (catalog ? catalog.filter((offer) => offer.category === category) : null), [catalog, category])
+  const offers = useMemo(() => (catalog ? landlyOffers(catalog).filter((offer) => offer.category === category) : null), [catalog, category])
   const [refreshing, setRefreshing] = useState(false)
   const [query, setQuery] = useState('')
   // The field updates on the keystroke's frame; the list filters against the deferred copy; clearing is instant.
   const deferredQuery = useDeferredValue(query)
   const appliedQuery = query ? deferredQuery : ''
   const [sort, setSort] = useState<PerkSort>(DEFAULT_PERK_SORT)
-  // Near me, within this category only: the member's location (or an area
-  // picked when there is none) orders the list nearest-first and puts a
-  // distance on each card. Same state shape as the Perks tab.
-  const [origin, setOrigin] = useState<{ coords: Coordinates; area: Area | null } | null>(null)
-  const [geoError, setGeoError] = useState<string | null>(null)
-  const originCoords = origin?.coords ?? null
-  const areas = useMemo(() => deriveAreas(offers ?? []), [offers])
+  // Near me / a picked area: the app-wide location filter (lib/useLocationFilter.ts), so a radius or area set on Home or
+  // Perks is already applied when "See all (N)" opens this category. The list narrows to it, and nationwide chains that
+  // can't be placed follow in their own section.
+  const location = useLocationFilter()
+  const loc = location.filter
 
-  // Already one category, so the pipeline only searches and sorts.
-  const visible = useMemo(
-    () => (offers ? filterAndSortPerks(offers, { query: appliedQuery, category: 'all', sort }, t, lang, originCoords) : []),
-    [offers, appliedQuery, sort, t, lang, originCoords]
-  )
+  // Already one category, so the pipeline only searches and sorts; the location then splits nearby from nationwide.
+  const { nearbyList, nationwideList } = useMemo(() => {
+    if (!offers) return { nearbyList: [] as OfferDocument[], nationwideList: [] as OfferDocument[] }
+    const matched = filterAndSortPerks(offers, { query: appliedQuery, category: 'all', sort }, t, lang, null)
+    const parts = partitionByLocation(matched, loc)
+    return { nearbyList: sortByLocation(parts.nearby, sort === DEFAULT_PERK_SORT ? loc : null), nationwideList: parts.nationwide }
+  }, [offers, appliedQuery, sort, t, lang, loc])
+  const visible = useMemo(() => [...nearbyList, ...nationwideList], [nearbyList, nationwideList])
+  const nearbyCount = nearbyList.length
+  const rows = useMemo<CategoryRow[]>(() => {
+    const list: CategoryRow[] = nearbyList.map((offer) => ({ key: offer.id, type: 'offer', offer }))
+    if (nationwideList.length > 0) list.push({ key: 'nationwide-heading', type: 'nationwide' })
+    nationwideList.forEach((offer) => list.push({ key: offer.id, type: 'offer', offer, nationwide: true }))
+    return list
+  }, [nearbyList, nationwideList])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -72,13 +89,21 @@ export default function CategoryScreen() {
   }, [refresh])
   const cardWidth = columns > 1 ? cellWidth : undefined
   const renderItem = useCallback(
-    ({ item, index }: { item: OfferDocument; index: number }) => (
-      <FeedCell column={index}>
-        <OfferCard offer={item} onOpen={openOffer} showCategoryBadge={false} distanceKm={offerDistanceKm(item, originCoords)} width={cardWidth} />
-      </FeedCell>
-    ),
-    [originCoords, cardWidth]
+    ({ item, index }: { item: CategoryRow; index: number }) =>
+      item.type === 'nationwide' ? (
+        <AppText accessibilityRole="header" style={styles.nationwideTitle}>{t('loc_more_nationwide')}</AppText>
+      ) : (
+        <FeedCell column={index} grid={grid}>
+          <OfferCard offer={item.offer} variant={columns > 1 ? 'compact' : 'standard'} onOpen={openOffer} showCategoryBadge={false} distanceKm={badgeKm(item.offer, loc)} nationwide={item.nationwide} width={cardWidth} />
+        </FeedCell>
+      ),
+    [loc, cardWidth, grid, columns, t]
   )
+  // "Share with a friend": this category's page on the website, through the system share sheet.
+  const shareCategory = () => {
+    const url = `${API_BASE_URL}/categories?cat=${encodeURIComponent(category)}`
+    Share.share(Platform.OS === 'ios' ? { url } : { message: url }).catch(() => {})
+  }
 
   // Opened from a deep link with nothing under it: back lands on the grid.
   const goBack = () => {
@@ -95,8 +120,10 @@ export default function CategoryScreen() {
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         key={'cols-' + columns}
-        data={visible}
-        keyExtractor={offerKey}
+        data={rows}
+        keyExtractor={rowKey}
+        getItemType={rowType}
+        overrideItemLayout={(layout, item) => { layout.span = item.type === 'nationwide' ? columns : 1 }}
         numColumns={columns}
         renderItem={renderItem}
         contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}
@@ -115,7 +142,7 @@ export default function CategoryScreen() {
                   {tile ? t(tile.labelKey) : category}
                 </AppText>
                 {offers ? (
-                  <AppText style={styles.count}>{perksCountLabel(offers.length, t)}</AppText>
+                  <AppText style={styles.count}>{loc ? locationCountLabel(nearbyCount, nationwideList.length, t) : perksCountLabel(offers.length, t)}</AppText>
                 ) : (
                   !failed && <View style={styles.countPlaceholder} />
                 )}
@@ -124,33 +151,21 @@ export default function CategoryScreen() {
             {!!offers?.length && (
               <View style={styles.controls}>
                 <PerksSearchField value={query} onChangeText={setQuery} />
-                <NearMeButton
-                  active={!!origin}
-                  onLocate={(coords) => setOrigin({ coords, area: null })}
-                  onClear={() => setOrigin(null)}
-                  onError={setGeoError}
-                />
+                <NearMeButton filter={loc} onApply={location.apply} />
                 <SortSheet value={sort} onChange={setSort} />
               </View>
             )}
-            {geoError && !origin && (
-              <View style={styles.geoNotice}>
-                <AppText accessibilityLiveRegion="polite" style={styles.geoError}>
-                  {geoError}
-                </AppText>
-                {areas.length > 0 && (
-                  <AreaPicker
-                    areas={areas}
-                    onPick={(area) => {
-                      setGeoError(null)
-                      setOrigin({ coords: area.center, area })
-                    }}
-                  />
-                )}
-              </View>
-            )}
+            <LocationFilterBar filter={loc} onRadius={location.setRadiusKm} onClear={location.clear} />
             {failed && <Notice message={t('mobile_load_error')} />}
           </View>
+        }
+        ListFooterComponent={
+          visible.length > 0 ? (
+            <Pressable accessibilityRole="button" onPress={shareCategory} style={({ pressed }) => [styles.share, pressed && styles.sharePressed]}>
+              <LineIcon name="share" size={18} color={colors.textStrong} strokeWidth={1.75} />
+              <AppText style={styles.shareText}>{t('category_share_friend')}</AppText>
+            </Pressable>
+          ) : null
         }
         ListEmptyComponent={
           offers === null ? (
@@ -171,7 +186,9 @@ export default function CategoryScreen() {
   )
 }
 
-const offerKey = (offer: OfferDocument) => offer.id
+type CategoryRow = { key: string; type: 'offer'; offer: OfferDocument; nationwide?: boolean } | { key: string; type: 'nationwide' }
+const rowKey = (row: CategoryRow) => row.key
+const rowType = (row: CategoryRow) => row.type
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
@@ -179,9 +196,11 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 8 },
   content: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24, flexGrow: 1 },
   header: { marginBottom: 16, gap: 14 },
+  share: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, marginTop: 12, paddingHorizontal: 20, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
+  sharePressed: { opacity: 0.6 },
+  shareText: { fontSize: 15, fontWeight: '600', color: colors.textStrong },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  geoNotice: { marginTop: -6, gap: 10 },
-  geoError: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.danger },
+  nationwideTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 8, marginBottom: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   emojiBox: {
     width: 60,

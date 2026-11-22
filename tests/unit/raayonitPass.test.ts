@@ -17,18 +17,21 @@ const voucher: PassVoucher = {
 describe('a Raayonit pass', () => {
   const json = buildPassJson(voucher, identity, 11, 'Dana')
 
-  it('has no barcode of any kind', () => {
-    expect(json.barcodes).toEqual([])
+  it('centres the code as a Code 128 barcode with the code as text, never a QR', () => {
+    expect(json.barcodes).toEqual([expect.objectContaining({ format: 'PKBarcodeFormatCode128', message: 'RY-4821-7730-19', altText: 'RY-4821-7730-19' })])
+    expect(buildPassJson({ ...voucher, externalCode: 'קוד-עברית' }, identity, null).barcodes).toEqual([])
   })
 
-  it('lays the front out beneath a text-free strip: offer, code, then issuer and redemption', () => {
+  it('lays the front out beneath a text-free strip: offer, then issuer and redemption, the code in the barcode', () => {
     const t = json.eventTicket
     expect(t.headerFields[0]).toMatchObject({ key: 'expires' })
     expect(t.primaryFields).toEqual([])
     expect(t.secondaryFields).toEqual([
       expect.objectContaining({ key: 'offer', label: 'FOX', value: 'תו על 100' }),
-      expect.objectContaining({ key: 'code', label: 'Redemption Code', value: 'RY-4821-7730-19' }),
     ])
+    // A code Code 128 cannot carry stays on the front as text.
+    const text = buildPassJson({ ...voucher, externalCode: 'קוד-עברית' }, identity, null).eventTicket.secondaryFields
+    expect(text[1]).toMatchObject({ key: 'code', value: 'קוד-עברית' })
     expect(t.auxiliaryFields).toEqual([
       expect.objectContaining({ key: 'issuer', label: 'Issued by', value: 'Raayonit Ltd.' }),
       expect.objectContaining({ key: 'redemption', label: 'Redemption', value: 'In store' }),
@@ -37,10 +40,26 @@ describe('a Raayonit pass', () => {
 
   it('carries the issuer, the five-year note and the order on the back, and the expiry on the front', () => {
     const back = json.eventTicket.backFields.map((f) => f.key)
-    expect(back.slice(0, 3)).toEqual(['issuerBack', 'order', 'member'])
+    expect(back.slice(0, 4)).toEqual(['issuerBack', 'multiChain', 'order', 'member'])
     expect(json.eventTicket.backFields[0]!.value).toBe('Valid for 5 years from purchase')
     expect(json.eventTicket.headerFields[0]).toMatchObject({ key: 'expires', value: '2031-11-17T21:59:59Z' })
     expect(json.expirationDate).toBe('2031-11-17T21:59:59Z')
+  })
+
+  it('explains the Multi-Chain Super Tav on the back, with the live chain count, and keeps the front clean', () => {
+    const back = (j: typeof json) => j.eventTicket.backFields.find((f) => f.key === 'multiChain')!
+    expect(back(json)).toMatchObject({ label: 'Multi-Chain Super Tav' })
+    expect(back(json).value).not.toContain('{count}')
+    const counted = buildPassJson({ ...voucher, chainCount: 246 }, identity, null, null)
+    expect(back(counted).value).toContain('240+')
+    expect(JSON.stringify(json.eventTicket.secondaryFields)).not.toContain('Super Tav')
+    expect(passStrings({ ...voucher, chainCount: 246 }, 'he')[back(counted).value]).toContain('240+')
+  })
+
+  it('puts paid / voucher value on the back when the amounts are known', () => {
+    const paid = buildPassJson({ ...voucher, amountAgorot: 7900, faceValueAgorot: 10000 }, identity, null, null)
+    expect(paid.eventTicket.backFields.find((f) => f.key === 'paidValue')).toMatchObject({ value: '₪79 / ₪100' })
+    expect(json.eventTicket.backFields.some((f) => f.key === 'paidValue')).toBe(false)
   })
 
   it('leaves the standard steps, which mention a QR code, out of the how-to', () => {
@@ -68,24 +87,11 @@ describe('a Raayonit pass', () => {
     expect(plain.eventTicket.secondaryFields[0]).toMatchObject({ key: 'offer' })
   })
 
-  it('composites the issuer badge into the strip’s top end corner, on the brand colour when the offer has no photo', async () => {
-    const plain = await loadStripImages('', 'no-such-category')
-    expect(plain).toEqual({})
-    const badged = await loadStripImages('', 'no-such-category', true)
-    expect(Object.keys(badged).sort()).toEqual(['strip.png', 'strip@2x.png', 'strip@3x.png'])
-    const meta = await sharp(badged['strip@2x.png']).metadata()
-    expect([meta.width, meta.height]).toEqual([750, 196])
-    // The strip is the brand navy, except where the white badge sits in the top end corner; the strip carries no text.
-    const { data, info } = await sharp(badged['strip@2x.png']).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    const px = (x: number, y: number) => [...data.subarray((y * info.width + x) * 4, (y * info.width + x) * 4 + 3)]
-    expect(px(20, 20)).toEqual([11, 27, 61])
-    const bright = (p: number[]) => p[0]! > 200 && p[1]! > 200
-    expect(bright(px(info.width - 40, 60))).toBe(true)
-    expect(bright(px(40, info.height - 30))).toBe(false)
-    expect(bright(px(info.width - 40, info.height - 10))).toBe(false)
+  it('leaves the strip free of any logo: the brand colour without a photo', async () => {
+    expect(await loadStripImages('', 'no-such-category')).toEqual({})
   })
 
-  it('builds a complete mock bundle with the badged strip', async () => {
+  it('builds a complete mock bundle', async () => {
     const config = resolvePassConfig({}, 'local', 'test')
     if (config.mode === 'unavailable') throw new Error('mock config expected')
     const zip = await buildPkpass(voucher, config, { discountPercent: null, imageUrl: '', category: '', holderName: null })
@@ -111,6 +117,8 @@ describe('a Raayonit pass', () => {
     const pass = buildPassJson(dup, identity, null)
     expect(pass.description).toBe('Mega Sport — Super Tav')
     expect(pass.eventTicket.secondaryFields[0]).toMatchObject({ label: 'Mega Sport', value: 'Super Tav' })
+    // A title that is the business itself carries no label: no "Super Tav" over "Super Tav".
+    expect(buildPassJson({ ...voucher, businessName: 'Super Tav', offerTitle: 'Super Tav' }, identity, null).eventTicket.secondaryFields[0]).not.toHaveProperty('label')
     expect(offerWithoutBusiness('Mega Sport', 'Mega Sport')).toBe('Mega Sport')
     expect(offerWithoutBusiness('Gift card', 'Mega Sport')).toBe('Gift card')
     expect(buildPassJson({ ...voucher, businessName: 'FOX', offerTitle: 'Gift card' }, identity, null).description).toBe('FOX — Gift card')

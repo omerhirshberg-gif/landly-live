@@ -4,6 +4,8 @@
     { "path": "/api/cron/whatsapp-idle", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/monthly-costs-report", "schedule": "0 5 1 * *" },
     { "path": "/api/cron/raayonit-sync", "schedule": "0 1 * * *" },
-    { "path": "/api/cron/raayonit-sync", "schedule": "0 2 * * *" }
+    { "path": "/api/cron/raayonit-sync", "schedule": "0 2 * * *" },
+    { "path": "/api/cron/inventory-release", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/inventory-daily", "schedule": "0 5 * * *" }
   ]
 }

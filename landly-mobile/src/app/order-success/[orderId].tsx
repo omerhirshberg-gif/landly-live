@@ -16,6 +16,8 @@ import Confetti from '../../components/Confetti'
 import IssuerAttribution from '../../components/IssuerAttribution'
 import { isPooled } from '@shared/inventory/types'
 import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
+import { isRaayonitMultiChain } from '@shared/offers/multiChainNote'
+import { superTavHeadline } from '@shared/offers/superTav'
 import LineIcon from '../../components/LineIcon'
 import Notice from '../../components/Notice'
 import PurchaseMedia from '../../components/PurchaseMedia'
@@ -87,6 +89,7 @@ export default function OrderSuccessScreen() {
   }, [paid])
 
   const pending = order === undefined || order?.status === 'pending'
+  const headline = order ? superTavHeadline(order, t('super_tav_headline')) : null
   const discount = paid && order.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
 
   return (
@@ -121,8 +124,19 @@ export default function OrderSuccessScreen() {
               <View style={styles.perkRow}>
                 <PurchaseMedia source={{ order, offer }} category={offer?.category} />
                 <View style={styles.perkText}>
-                  <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
-                  <AppText style={styles.perkTitle}>{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
+                  {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below. */}
+                  {headline ? (
+                    <>
+                      <AppText style={[styles.perkTitle, styles.perkTitleFirst]}>{headline}</AppText>
+                      <AppText style={[styles.business, styles.businessBelow]} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                    </>
+                  ) : (
+                    <>
+                      <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                      <AppText style={styles.perkTitle}>{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
+                    </>
+                  )}
+                  {isRaayonitMultiChain(order) && <AppText style={styles.multiChain}>{t('order_multi_chain_note')}</AppText>}
                 </View>
               </View>
               {isPooled(order.fulfillmentType) && (
@@ -221,6 +235,7 @@ function CopyOrderIdButton({ value }: { value: string }) {
 
 const styles = StyleSheet.create({
   issuer: { alignSelf: 'stretch', marginTop: 20 },
+  multiChain: { marginTop: 6, fontSize: 13, lineHeight: 19, color: colors.body },
   safe: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 48 },
   // textAlign overrides AppText's reading-direction alignment: these states are centred.
@@ -246,6 +261,8 @@ const styles = StyleSheet.create({
   perkText: { flex: 1, minWidth: 0 },
   business: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, textTransform: 'uppercase' },
   perkTitle: { fontSize: 16, lineHeight: 22, fontWeight: '700', color: colors.heading, marginTop: 2 },
+  perkTitleFirst: { marginTop: 0 },
+  businessBelow: { marginTop: 2 },
   paidRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
   paidLabel: { fontSize: 14, color: colors.textMuted },
   paidValue: { fontSize: 22, fontWeight: '900', color: colors.heading },

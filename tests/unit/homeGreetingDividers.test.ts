@@ -26,16 +26,11 @@ describe('time-based greeting', () => {
   })
 })
 
-describe('Home dividers', () => {
-  const src = read('components/home/LoggedInHome.tsx')
-  it('puts a hairline before curated, New, Best Sellers and each category rail', () => {
-    for (const marker of ['name="home-curated"', 'name="home-new"', 'name="home-bestsellers"', 'name="home-category-rail"']) {
-      const i = src.indexOf(marker)
-      expect(i).toBeGreaterThan(-1)
-      expect(src.slice(Math.max(0, i - 120), i)).toContain('<HomeDivider />')
-    }
-    expect(src).toContain('data-home-divider')
-    expect(src).toContain('aria-hidden="true"')
+describe('Home category rows', () => {
+  it('has no New or Best Sellers rails and no Raayonit sections: only the GoLandly category rows', () => {
+    const src = read('components/home/LoggedInHome.tsx')
+    expect(src).toContain('<HomeCategoryRails')
+    for (const gone of ['home-new', 'home-bestsellers', 'GiftCardBand', 'RaayonitCategoryRail', 'BrandLogoWall', 'HomeDivider']) expect(src).not.toContain(gone)
   })
 })
 

@@ -22,8 +22,9 @@ class FakeDb {
   seed(name: string, id: string, data: Doc) { this.col(name).set(id, data) }
   doc(name: string, id: string) { return this.col(name).get(id) }
   offerWrites() { return this.writes.filter((w) => w.path.startsWith('offers/')) }
+  changes() { return [...this.col('businessChanges')].map(([id, d]) => ({ id, ...d }) as { id: string; kind: string; status: string; key: string; nameHe: string; before: unknown; payload: Record<string, unknown> }) }
   private ref(name: string, id: string) {
-    return { id, path: `${name}/${id}`, set: async (d: Doc) => { this.writes.push({ op: 'set', path: `${name}/${id}`, data: d }); this.col(name).set(id, d) }, update: async (d: Doc) => { this.writes.push({ op: 'update', path: `${name}/${id}`, data: d }); this.col(name).set(id, { ...this.col(name).get(id), ...d }) } }
+    return { id, path: `${name}/${id}`, get: async () => { const d = this.col(name).get(id); return { exists: !!d, data: () => d } }, create: async (d: Doc) => { if (this.col(name).has(id)) throw new Error('exists'); this.writes.push({ op: 'set', path: `${name}/${id}`, data: d }); this.col(name).set(id, d) }, set: async (d: Doc) => { this.writes.push({ op: 'set', path: `${name}/${id}`, data: d }); this.col(name).set(id, d) }, update: async (d: Doc) => { this.writes.push({ op: 'update', path: `${name}/${id}`, data: d }); this.col(name).set(id, { ...this.col(name).get(id), ...d }) } }
   }
   collection(name: string) {
     const self = this
@@ -69,9 +70,8 @@ const noMail: DailySyncDeps['notify'] = async () => 'none'
 const KNOWN = BRANDS.find((b) => /^\d+$/.test(b.key) === false && b.key.startsWith('l-') && !b.key.startsWith('l-s') && !!b.logoFile && knownCategory(b.nameHe, b.nameEn) && officialBrandName(b.nameHe, 'en') !== null && /^\S+( \S+)?$/.test(b.nameHe) && HTML.includes(`>${b.nameHe}<`))!
 
 let fake: FakeDb
-let apply: ReturnType<typeof vi.fn>
-const run = (opts: Parameters<typeof runDailySync>[1] = {}, page = HTML, deps: DailySyncDeps = {}) => runDailySync(dbOf(fake), opts, { fetcher: fetcherOf(page), now: () => NOW, notify: noMail, apply: apply as never, ...deps })
-beforeEach(() => { fake = new FakeDb(); apply = vi.fn(async () => undefined); seedCards(fake) })
+const run = (opts: Parameters<typeof runDailySync>[1] = {}, page = HTML, deps: DailySyncDeps = {}) => runDailySync(dbOf(fake), opts, { fetcher: fetcherOf(page), now: () => NOW, notify: noMail, ...deps })
+beforeEach(() => { fake = new FakeDb(); seedCards(fake) })
 
 describe('parsing the live directory', () => {
   it('reads every brand from the one page', () => {
@@ -90,9 +90,9 @@ describe('unchanged catalogue', () => {
     expect(r.counts).toMatchObject({ added: 0, archived: 0, reactivated: 0, pendingReview: 0 })
     expect(r.counts.unchanged).toBeGreaterThan(200)
     expect(fake.offerWrites()).toHaveLength(0)
-    expect(apply).not.toHaveBeenCalled()
+    expect(fake.changes()).toHaveLength(0)
     expect(translateBatch).not.toHaveBeenCalled()
-    expect(fake.doc('raayonit_sync_logs', '2026-11-18')).toMatchObject({ status: 'ok' }) // the run log is the only write
+    expect(fake.doc('raayonit_sync_logs', '2026-11-18')).toMatchObject({ status: 'ok' }) // the run log and the method snapshot are the only writes
   })
   it('a dry run writes nothing at all', async () => {
     const r = await run({ dry: true })
@@ -102,44 +102,59 @@ describe('unchanged catalogue', () => {
 })
 
 describe('a brand added', () => {
-  it('a known brand is written live, once, with its own translation pass only', async () => {
+  it('a known brand is only RECORDED as a pending change: nothing goes live until an admin approves', async () => {
     fake = new FakeDb(); seedCards(fake, (b) => b.key === KNOWN.key)
     const r = await run({ dry: true })
     expect(r.added.map((a) => a.nameHe)).toEqual([KNOWN.nameHe])
     expect(r.added[0]).toMatchObject({ kind: 'known', category: knownCategory(KNOWN.nameHe, KNOWN.nameEn) })
     const live = await run()
     expect(live.counts).toMatchObject({ added: 1, addedKnown: 1, pendingReview: 0 })
-    expect(apply).toHaveBeenCalledTimes(1)
-    const [brands, partial] = apply.mock.calls[0] as [SnapshotBrand[], { decide: (b: SnapshotBrand) => unknown }]
-    expect(brands).toHaveLength(1)
-    expect(partial.decide(brands[0]!)).toEqual({ published: true, pending: false })
+    expect(fake.offerWrites()).toHaveLength(0)
+    expect(fake.changes()).toHaveLength(1)
+    expect(fake.changes()[0]).toMatchObject({ kind: 'added', status: 'pending', key: KNOWN.key, payload: { known: true } })
   })
 
-  it('an unknown brand is staged unpublished for review, translated once, and never public', async () => {
+  it('an unknown brand is recorded for review, with nothing written to offers', async () => {
     // A business Raayonit lists under a name no rule knows, with no card of ours yet (its row is renamed; matching is by Raayonit's own key).
     fake = new FakeDb(); seedCards(fake, (b) => b.nameHe === 'קפה פולה')
     const page = HTML.replaceAll('קפה פולה', 'מסעדת הניסוי')
-    const translateBatch = vi.fn(async (texts: string[]) => texts.map((t) => `x:${t}`))
-    const r = await runDailySync(dbOf(fake), {}, { fetcher: fetcherOf(page), now: () => NOW, notify: noMail, translateBatch })
+    const r = await runDailySync(dbOf(fake), {}, { fetcher: fetcherOf(page), now: () => NOW, notify: noMail })
     expect(r.counts).toMatchObject({ added: 1, addedKnown: 0, pendingReview: 1, archived: 0 })
-    const staged = fake.offerWrites().find((w) => w.op === 'set')!.data!
-    expect(staged).toMatchObject({ published: false, raayonitSyncPending: true, source: 'raayonit-sync', brandName: 'מסעדת הניסוי' })
-    expect(staged.pendingSince).toBeDefined()
-    expect(publicOfferData(staged, { poolRemaining: new Map([['p100', 9]]), activeBusinesses: null })).toBeNull()
-    expect(fake.offerWrites().filter((w) => w.op === 'set')).toHaveLength(1) // nothing else is rewritten
-    expect(translateBatch.mock.calls.length).toBeLessThanOrEqual(4) // one pass per language, only this brand's strings
+    expect(fake.offerWrites()).toHaveLength(0)
+    expect(fake.changes().find((c) => c.kind === 'added')).toMatchObject({ status: 'pending', nameHe: 'מסעדת הניסוי', payload: { known: false } })
   })
 })
 
 describe('a brand removed', () => {
-  it('is soft-archived, never deleted', async () => {
+  it('is recorded as a pending removal; the card stays live until an admin approves', async () => {
     fake.seed('offers', 'gone1', { fulfillmentType: 'raayonit_pool', sourceKey: 'raayonit:l-99999', brandName: 'עסק שנסגר', published: true })
     const r = await run()
     expect(r.counts.archived).toBe(1)
+    expect(fake.doc('offers', 'gone1')).toMatchObject({ published: true, sourceKey: 'raayonit:l-99999' })
+    expect(fake.changes().find((c) => c.kind === 'removed')).toMatchObject({ status: 'pending', payload: { offerId: 'gone1' } })
+    expect(fake.offerWrites()).toHaveLength(0)
+  })
+  it('approving it archives the card (never deletes), but only while the display flag is on', async () => {
+    const { approveBusinessChange } = await import('@/lib/inventory/ledger/businessChangeApproval')
+    fake.seed('offers', 'gone1', { fulfillmentType: 'raayonit_pool', sourceKey: 'raayonit:l-99999', brandName: 'עסק שנסגר', published: true })
+    await run()
+    const id = fake.changes().find((c) => c.kind === 'removed')!.id
+    await expect(approveBusinessChange(dbOf(fake) as never, id, 'admin', false)).rejects.toThrow(/switched off/)
+    expect(fake.doc('offers', 'gone1')).toMatchObject({ published: true })
+    await approveBusinessChange(dbOf(fake) as never, id, 'admin', true)
     expect(fake.writes.some((w) => w.op === 'delete')).toBe(false)
     expect(fake.doc('offers', 'gone1')).toMatchObject({ published: false, archivedReason: 'removed_from_raayonit_catalog', archivedSourceKey: 'raayonit:l-99999', sourceKey: 'retired:gone1' })
-    expect(fake.doc('offers', 'gone1')!.archivedAt).toBeDefined()
-    expect(fake.offerWrites()).toHaveLength(1)
+    expect(fake.doc('businessChanges', id)).toMatchObject({ status: 'approved', decidedBy: 'admin' })
+  })
+  it('records a redemption-method change from the previous snapshot', async () => {
+    await run()
+    const snap = fake.doc('system_config', 'raayonit_directory_snapshot')!.entries as Record<string, { nameHe: string; method: string }>
+    const key = Object.keys(snap)[0]!
+    snap[key] = { ...snap[key]!, method: 'phone' }
+    fake.seed('raayonit_sync_logs', '2026-11-18', { status: 'dry' })
+    const r = await run()
+    expect(r.counts.changesRecorded).toBe(1)
+    expect(fake.changes().find((c) => c.kind === 'method_changed')).toMatchObject({ key, before: 'phone', status: 'pending' })
   })
 })
 
@@ -149,8 +164,7 @@ describe('a brand back after removal', () => {
     fake.seed('offers', 'old1', { fulfillmentType: 'raayonit_pool', sourceKey: 'retired:old1', brandName: KNOWN.nameHe, published: false, archivedReason: 'removed_from_raayonit_catalog', archivedSourceKey: `raayonit:${KNOWN.key}` })
     const r = await run()
     expect(r.counts).toMatchObject({ added: 0, reactivated: 1 })
-    const [, partial] = apply.mock.calls[0] as [SnapshotBrand[], { reuse: Map<string, string> }]
-    expect(partial.reuse.get(KNOWN.key)).toBe('old1')
+    expect(fake.changes().find((c) => c.kind === 'added')).toMatchObject({ payload: { reuseOfferId: 'old1' } })
   })
 })
 
@@ -174,7 +188,7 @@ describe('safety guards', () => {
     expect(r.status).toBe('aborted_guard')
     expect(r.abortReason).toMatch(/sections|rows|brands|תו על/)
     expect(fake.offerWrites()).toHaveLength(0)
-    expect(apply).not.toHaveBeenCalled()
+    expect(fake.changes()).toHaveLength(0)
   })
   it('a page that is not HTML aborts', async () => {
     const r = await run({}, HTML, { fetcher: (async () => new Response('{}', { headers: { 'content-type': 'application/json' } })) as typeof fetch })
@@ -196,6 +210,7 @@ describe('safety guards', () => {
     const forced = await run({ force: true })
     expect(forced.status).toBe('ok')
     expect(forced.counts.archived).toBe(30)
+    expect(fake.offerWrites()).toHaveLength(0) // 30 pending removals, none applied
   })
   it('the day is claimed once', async () => {
     await run({ guarded: true })

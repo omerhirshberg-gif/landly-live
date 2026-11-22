@@ -369,7 +369,7 @@ Raayonit "Tav Al" vouchers are stored in the existing `couponPools` collection a
 
 - `POOL_CODES_KEY` set in both environments (separate keys are fine; a code encrypted with one key can only be read with it).
 - The Raayonit logo at `public/images/partners/raayonit-logo.png` and `landly-mobile/assets/images/raayonit-logo.png`.
-- Create the stocks (one per voucher value, e.g. 100 for 89 and 150 for 129) on Stock & Vouchers in each environment, then add the codes from Raayonit's Excel file there. Codes are never copied between environments.
+- Create the stocks (one per voucher value, e.g. 100 for 89, 150 for 132 and 200 for 174) on Stock & Vouchers in each environment, then add the codes from Raayonit's Excel file there. Codes are never copied between environments.
 
 ## Raayonit daily diff sync (`VoucherNum=253`)
 

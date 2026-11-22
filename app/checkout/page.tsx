@@ -1,5 +1,6 @@
 'use client'
 
+import { superTavHeadline } from '@/lib/offers/superTav'
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CalendarCheck, CircleAlert, History, LoaderCircle, Lock, PiggyBank, Play, RotateCw } from 'lucide-react'
@@ -7,6 +8,7 @@ import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import TranzilaPaymentWidget from '@/components/checkout/TranzilaPaymentWidget'
 import DevSandboxPaymentWidget from '@/components/checkout/DevSandboxPaymentWidget'
+import CheckoutSteps from '@/components/checkout/CheckoutSteps'
 import CheckoutTrustBadges from '@/components/checkout/CheckoutTrustBadges'
 import ConsentText from '@/components/auth/entrance/ConsentText'
 import MerchantBadge from '@/components/discover/MerchantBadge'
@@ -192,21 +194,59 @@ function CheckoutContent() {
   }
 
   const media = order ? purchaseMediaProps({ order, offer }) : null
+  const orderHeadline = order ? superTavHeadline(order, t('super_tav_headline')) : null
   const discount = order?.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
   const fee = order ? cancellationFeeAgorot(Math.round(order.amount * 100)) / 100 : 0
+  const priceBlock = order ? (
+                  <div className="rounded-2xl bg-gradient-to-br from-brandTint to-white p-5 sm:p-6 ring-1 ring-brandLight">
+                    <dl className="space-y-3">
+                      {order.originalPrice !== null && discount > 0 && (
+                        <>
+                          <div className="flex items-center justify-between text-sm">
+                            <dt className="text-slate-500">{t('checkout_original_price_label')}</dt>
+                            <dd className="text-slate-500 line-through" dir="ltr">{formatPrice(order.originalPrice)}</dd>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <dt className="text-slate-500">{t('checkout_discount_label')}</dt>
+                            <dd className="font-semibold text-emerald-700" dir="ltr">-{formatPrice(discount)}</dd>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex items-end justify-between gap-4 pt-1">
+                        <dt className="text-base font-bold text-ink">{t('checkout_total_label')}</dt>
+                        <dd className="text-3xl font-black tracking-tight text-brand" dir="ltr">{formatPrice(order.amount)}</dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-slate-500">{t('checkout_vat_note')}</p>
+                      {discount > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                          <PiggyBank aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
+                          <span>{t('checkout_you_save').replace('{amount}', formatPrice(discount))}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+  ) : null
+
   const payLabel = order ? t('checkout_pay_button').replace('{price}', formatPrice(order.amount)) : ''
 
   return (
     <>
       <Navbar />
       <div className="checkout-canvas below-header min-h-screen min-h-dvh">
-        <div className="max-w-xl mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-6 sm:pb-12">
+        <div className="mx-auto max-w-xl px-5 sm:px-6 pt-4 sm:pt-8 pb-6 sm:pb-12 lg:max-w-6xl lg:px-8 lg:pt-10 lg:pb-16">
           <BackButton fallback={backFallback} className="mb-3" />
-          <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('checkout_label')}</div>
-          <h1 className="text-2xl sm:text-3xl font-black text-ink mb-6">{t('checkout_title')}</h1>
+          <div className="mb-6 lg:mb-8 lg:flex lg:items-end lg:justify-between lg:gap-8">
+            <div>
+              <div className="text-xs font-bold tracking-widest text-brand uppercase mb-1">{t('checkout_label')}</div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-ink">{t('checkout_title')}</h1>
+            </div>
+            {order && <CheckoutSteps current={step} />}
+          </div>
 
           {error && !order && (
-            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center">
+            <div role="alert" className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center lg:mx-auto lg:max-w-xl">
               <CircleAlert aria-hidden="true" className="mx-auto mb-3 h-7 w-7 text-red-500" strokeWidth={1.75} />
               <p className="text-sm text-slate-600">{error}</p>
             </div>
@@ -244,7 +284,8 @@ function CheckoutContent() {
           )}
 
           {order && step === 'summary' && (
-            <>
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-8">
+              <div className="min-w-0">
               <article className="relative overflow-hidden rounded-3xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-20px_rgba(0,56,184,0.35)] ring-1 ring-slate-200/70">
                 <div aria-hidden="true" className="h-1.5 bg-gradient-to-r from-brand to-emerald-500" />
                 <div className="p-5 sm:p-7">
@@ -257,8 +298,18 @@ function CheckoutContent() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{localizedBusinessName(order, lang).text}</div>
-                      <h2 className="mt-1 text-lg font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</h2>
+                      {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below. */}
+                      {orderHeadline ? (
+                        <>
+                          <h2 className="text-lg font-bold leading-snug text-ink tabular-nums" dir="auto">{orderHeadline}</h2>
+                          <div className="mt-1 text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs font-bold tracking-widest text-brand uppercase truncate" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                          <h2 className="mt-1 text-lg font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</h2>
+                        </>
+                      )}
                       {offer && <RedemptionBadge method={offer.redemptionMethod} className="mt-2" />}
                     </div>
                   </div>
@@ -267,38 +318,11 @@ function CheckoutContent() {
                     <IssuerAttribution issuer={RAAYONIT_ISSUER} lang={lang} note={t('voucher_valid_years')} className="mt-6" />
                   )}
 
-                  {/* The itemised price, VAT included, and what the member saves. */}
-                  <div className="mt-7 rounded-2xl bg-gradient-to-br from-brandTint to-white p-5 sm:p-6 ring-1 ring-brandLight">
-                    <dl className="space-y-3">
-                      {order.originalPrice !== null && discount > 0 && (
-                        <>
-                          <div className="flex items-center justify-between text-sm">
-                            <dt className="text-slate-500">{t('checkout_original_price_label')}</dt>
-                            <dd className="text-slate-500 line-through" dir="ltr">{formatPrice(order.originalPrice)}</dd>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <dt className="text-slate-500">{t('checkout_discount_label')}</dt>
-                            <dd className="font-semibold text-emerald-700" dir="ltr">-{formatPrice(discount)}</dd>
-                          </div>
-                        </>
-                      )}
-                      <div className="flex items-end justify-between gap-4 pt-1">
-                        <dt className="text-base font-bold text-ink">{t('checkout_total_label')}</dt>
-                        <dd className="text-3xl font-black tracking-tight text-brand" dir="ltr">{formatPrice(order.amount)}</dd>
-                      </div>
-                    </dl>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs text-slate-500">{t('checkout_vat_note')}</p>
-                      {discount > 0 && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                          <PiggyBank aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
-                          <span>{t('checkout_you_save').replace('{amount}', formatPrice(discount))}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  {/* Phones and tablets: the price sits in the flow; from 1024px it lives in the sticky summary beside it. */}
+                  <div className="lg:hidden">{priceBlock}</div>
 
-                  <section aria-labelledby="checkout-voucher-heading" className="mt-8">
+                  <div className="lg:mt-8 lg:grid lg:grid-cols-2 lg:gap-10">
+                  <section aria-labelledby="checkout-voucher-heading" className="mt-8 lg:mt-0">
                     <h2 id="checkout-voucher-heading" className="text-sm font-bold text-ink mb-3">{t('checkout_voucher_details_title')}</h2>
                     <p className="flex items-center gap-2 text-sm text-slate-600">
                       <span aria-hidden="true" className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-sky-200/60 bg-brandTint text-brand">
@@ -314,17 +338,22 @@ function CheckoutContent() {
                     )}
                   </section>
 
-                  <section aria-labelledby="checkout-cancellation-heading" className="mt-8 border-t border-slate-100 pt-7">
+                  <section aria-labelledby="checkout-cancellation-heading" className="mt-8 border-t border-slate-100 pt-7 lg:mt-0 lg:border-t-0 lg:border-s lg:pt-0 lg:ps-10">
                     <h2 id="checkout-cancellation-heading" className="text-sm font-bold text-ink mb-3">{t('checkout_cancellation_title')}</h2>
                     <p className="text-sm text-slate-600 leading-[1.7]">
                       {t('checkout_cancellation_body').replace('{fee}', formatPrice(fee))}
                     </p>
                   </section>
+                  </div>
 
                 </div>
               </article>
+              <CheckoutTrustBadges className="mt-5 hidden lg:mt-6 lg:grid lg:grid-cols-3" />
+              </div>
 
-              <CheckoutTrustBadges className="mt-5" />
+              <aside className="lg:sticky lg:top-24">
+              <div className="hidden lg:mb-5 lg:block lg:rounded-3xl lg:bg-white lg:p-3 lg:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-20px_rgba(0,56,184,0.35)] lg:ring-1 lg:ring-slate-200/70">{priceBlock}</div>
+              <CheckoutTrustBadges className="mt-5 lg:hidden" />
 
               {/* Sticky on phones (above the home indicator), in the flow from 640px. */}
               <div className="checkout-paybar sticky bottom-0 z-10 -mx-5 mt-5 px-5 pt-4 sm:static sm:mx-0 sm:px-0 sm:pt-0">
@@ -345,14 +374,40 @@ function CheckoutContent() {
                   <span dir="auto">{payLabel}</span>
                 </button>
               </div>
-            </>
+              </aside>
+            </div>
           )}
 
-          {order && step === 'payment' && (order.sandbox ? (
-            <DevSandboxPaymentWidget orderId={order.orderId} offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
-          ) : (
-            <TranzilaPaymentWidget offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
-          ))}
+          {order && step === 'payment' && (
+            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-8">
+              <div className="min-w-0">
+                {order.sandbox ? (
+                  <DevSandboxPaymentWidget orderId={order.orderId} offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
+                ) : (
+                  <TranzilaPaymentWidget offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
+                )}
+              </div>
+              {/* Desktop only: what is being paid for stays beside the payment. */}
+              <aside className="hidden lg:sticky lg:top-24 lg:block">
+                <div className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-20px_rgba(0,56,184,0.35)] ring-1 ring-slate-200/70">
+                  <div className="flex items-center gap-4">
+                    {media?.badge && <MerchantBadge size="lg" {...media.badge} />}
+                    {!media?.badge && !!media?.photoUrl && (
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-brandTint ring-1 ring-slate-200/70">
+                        <PerkImage src={media.photoUrl} alt="" category={offer?.category ?? ''} businessName="" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                      <div className="mt-1 font-bold leading-snug text-ink" dir="auto">{orderHeadline ?? localizeText(order.offerTitle, order.translations, lang, 'title').text}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4">{priceBlock}</div>
+                </div>
+                <CheckoutTrustBadges className="mt-5" />
+              </aside>
+            </div>
+          )}
         </div>
       </div>
     </>

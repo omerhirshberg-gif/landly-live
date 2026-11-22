@@ -1,17 +1,18 @@
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import AppText from './AppText'
+import LineIcon from './LineIcon'
+import { useLang } from '../i18n/LangProvider'
 import { tick } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
-import { actionTint, radius, type } from '../theme'
+import { actionTint, type } from '../theme'
 
 // "Exclusive Deals", "Curated for you": the member section title, with an
 // optional trailing action (See all) on the reading-direction end. The row
 // spans the screen's padded width; the title takes the rest of it (and
 // truncates), so the action is held at the far end at any width, right in
 // English and left in Hebrew. `leading` heads the title with a bare 18pt line icon
-// at 1.5 stroke, no badge (Home's category rails). No deal count beside the title: the action stays one plain verb. The action is a tinted pill: 32pt to the
-// eye, a 44pt-tall target to the finger.
+// at 1.5 stroke, no badge (Home's category rails). No deal count beside the title: the action stays one plain verb. The action is plain text with a chevron (no pill), a 44pt-tall target to the finger.
 // Web: components/discover/OfferCardRail.tsx.
 export default function SectionHeader({
   title,
@@ -24,6 +25,7 @@ export default function SectionHeader({
   onAction?: () => void
   leading?: ReactNode
 }) {
+  const { isRtl } = useLang()
   return (
     <View style={styles.row}>
       <View style={styles.heading}>
@@ -50,8 +52,10 @@ export default function SectionHeader({
           style={styles.action}
         >
           {({ pressed }) => (
-            <View style={[styles.pill, pressed && styles.pillPressed]}>
+            // Plain text and a chevron pointing the reading way: no pill, no border.
+            <View style={[styles.link, pressed && styles.linkPressed]}>
               <AppText style={styles.actionLabel}>{action}</AppText>
+              <LineIcon name="chevronEnd" size={16} color={actionTint.text} strokeWidth={2} flip={isRtl} />
             </View>
           )}
         </Pressable>
@@ -67,15 +71,7 @@ const styles = StyleSheet.create({
   glyph: { flexShrink: 0, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   title: { flexShrink: 1, minWidth: 0 },
   action: { flexShrink: 0, minHeight: 44, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.chip,
-    borderCurve: 'continuous',
-    backgroundColor: actionTint.bg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: actionTint.border,
-  },
-  pillPressed: { backgroundColor: actionTint.bgPressed },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  linkPressed: { opacity: 0.55 },
   actionLabel: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: actionTint.text },
 })

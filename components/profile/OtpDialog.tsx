@@ -10,17 +10,22 @@ import {
   contactChangeErrorKey,
   finishEmailChange,
   requestPhoneChange,
+  requestSignupOtp,
   resendEmailChange,
   resendEndsChange,
   verifyEmailCode,
   verifyPhoneCode,
+  verifySignupCode,
   type ContactChangeFailure,
+  type ContactChangeResult,
+  type SignupOtpStart,
 } from '@/lib/account/contactChange'
 import { auth } from '@/lib/firebase/config'
-import { normalizeOtpInput, OTP_LENGTH, type OtpChannel, type OtpTarget } from '@/lib/auth/otp'
+import { formatOtpCountdown, isOtpChannel, OTP_LENGTH, OTP_RESEND_SECONDS, type OtpChannel, type OtpTarget } from '@/lib/auth/otp'
 import { otpCopyKeys, resolveOtpChannel, splitAtPlaceholder } from '@/lib/auth/otpChannel'
 import { useResendCountdown } from '@/lib/auth/useResendCountdown'
 import { useLang } from '@/lib/i18n/useLang'
+import OtpCodeInput, { type OtpCodeInputHandle } from '@/components/auth/OtpCodeInput'
 
 // The 6-digit code for a pending change on /profile (app:
 // components/OtpSheet.tsx): "Verify via SMS" (Israeli numbers) or "Verify via WhatsApp" for a new phone number, or
@@ -28,33 +33,44 @@ import { useLang } from '@/lib/i18n/useLang'
 // showModal() (top layer, focus kept inside, Esc closes), centred from
 // 640px and near the top on phones so the keyboard never covers it.
 //
-// One real input lies over six drawn boxes, so iOS/Android one-time-code
-// autofill, paste ("123 456" or a whole message) and screen readers all
-// meet a single field; the sixth digit submits. "Resend code" counts down
-// 60 seconds after every send.
+// The code field is OtpCodeInput: one real input over six drawn boxes, so
+// iOS/Android one-time-code autofill, paste ("123 456" or a whole message)
+// and screen readers all meet a single field; the sixth digit submits, and a
+// wrong code shakes the boxes, clears them and keeps the focus in the field.
+// "Resend code" counts down 60 seconds (m:ss) after every send.
+//
+// With `signup` it confirms a brand-new account instead of a profile change:
+// the session is the sign-up's own ID token (the member is signed out until
+// the code is right), the code goes through /api/auth/verify-signup-otp, and
+// `onVerified` receives the custom token the server mints so a caller without
+// the password can still sign in.
 export default function OtpDialog({
   user,
+  signup,
   target,
   resendIn,
   onClose,
   onVerified,
   onEnded,
 }: {
-  user: User
+  /** The signed-in member (profile changes); a sign-up has none and passes `signup`. */
+  user?: User
+  /** Confirms a new account: where the ID token comes from, and the send (or cooldown lookup) already in flight. */
+  signup?: { getIdToken: () => Promise<string>; initialSend?: Promise<ContactChangeResult<SignupOtpStart>> }
   /** The pending E.164 number or email address. */
   target: OtpTarget
   /** Seconds before "Resend code" is allowed (from the send that opened this). */
   resendIn: number
   onClose: () => void
-  onVerified: () => void
+  onVerified: (customToken?: string) => void
   /** A resend ended the change (resendEndsChange): closes here, and the profile screen shows `message`. */
   onEnded: (message: string) => void
 }) {
   const { t, lang } = useLang()
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<OtpCodeInputHandle>(null)
+  const inFlight = useRef(false)
   const [code, setCode] = useState('')
-  const [focused, setFocused] = useState(false)
   const [busy, setBusy] = useState(false)
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +79,28 @@ export default function OtpDialog({
   const [channel, setChannel] = useState<OtpChannel>(() => (target.kind === 'phone' ? resolveOtpChannel(target.phone) : 'whatsapp'))
   const copy = otpCopyKeys(channel)
   const { secondsLeft, restart } = useResendCountdown(resendIn)
+  const getToken = () => (signup ? signup.getIdToken() : user!.getIdToken())
+  const errorKind = signup ? 'signup' : target.kind
+
+  // A sign-up's first code is still being sent when the dialog opens (or the cooldown is being looked up).
+  const initialSend = signup?.initialSend
+  useEffect(() => {
+    if (!initialSend) return
+    let live = true
+    initialSend.then((result) => {
+      if (!live) return
+      if (result.ok) {
+        restart(result.resendIn)
+        return
+      }
+      restart(result.retryAfter ?? 0)
+      if (result.reason !== 'rateLimited') setError(t(contactChangeErrorKey(result.reason, 'signup')))
+    })
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per send
+  }, [initialSend])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -84,32 +122,36 @@ export default function OtpDialog({
   const display = target.kind === 'email' ? target.email : formatPhoneNumberIntl(target.phone) || target.phone
 
   const failure = (result: ContactChangeFailure) => {
-    const message = t(contactChangeErrorKey(result.reason, target.kind))
+    const message = t(contactChangeErrorKey(result.reason, errorKind))
     return result.reason === 'invalidCode' && result.attemptsLeft
       ? `${message} ${t('otp_attempts_left').replace('{count}', String(result.attemptsLeft))}`
       : message
   }
 
   const verify = async (value: string) => {
-    if (value.length !== OTP_LENGTH || busy) return
+    if (value.length !== OTP_LENGTH || busy || inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setError(null)
     setNotice(null)
-    const idToken = await user.getIdToken().catch(() => null)
+    const idToken = await getToken().catch(() => null)
     const result = !idToken
       ? CONTACT_CHANGE_FAILED
-      : await (isEmail ? verifyEmailCode(idToken, value) : verifyPhoneCode(idToken, value)).catch(() => CONTACT_CHANGE_FAILED)
+      : await (signup ? verifySignupCode(idToken, value) : isEmail ? verifyEmailCode(idToken, value) : verifyPhoneCode(idToken, value)).catch(() => CONTACT_CHANGE_FAILED)
+    inFlight.current = false
     if (result.ok) {
       // Every session just ended with the email change; this one signs back in.
-      if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})
+      if (!signup && isEmail) await finishEmailChange(auth, user!, 'customToken' in result ? result.customToken : undefined).catch(() => {})
       setBusy(false)
-      onVerified()
+      inputRef.current?.blur()
+      onVerified(signup && 'customToken' in result ? result.customToken : undefined)
       return
     }
+    // Wrong, expired or unreachable: shake, empty the boxes; the field takes the focus back once it is enabled.
     setBusy(false)
     setError(failure(result))
     setCode('')
-    inputRef.current?.focus()
+    inputRef.current?.shake()
   }
 
   const resend = async () => {
@@ -117,12 +159,14 @@ export default function OtpDialog({
     setResending(true)
     setError(null)
     setNotice(null)
-    const idToken = await user.getIdToken().catch(() => null)
+    const idToken = await getToken().catch(() => null)
     const result = !idToken
       ? CONTACT_CHANGE_FAILED
-      : await (target.kind === 'email'
-          ? resendEmailChange(idToken, lang)
-          : requestPhoneChange(idToken, { phone: target.phone, lang })
+      : await (signup
+          ? requestSignupOtp(idToken, { lang })
+          : target.kind === 'email'
+            ? resendEmailChange(idToken, lang)
+            : requestPhoneChange(idToken, { phone: target.phone, lang })
         ).catch(() => CONTACT_CHANGE_FAILED)
     setResending(false)
     if (result.ok) {
@@ -130,8 +174,8 @@ export default function OtpDialog({
         onClose()
         return
       }
-      restart('resendIn' in result ? result.resendIn : 0)
-      const sentVia = 'channel' in result ? result.channel : channel
+      restart(('resendIn' in result && result.resendIn) || OTP_RESEND_SECONDS)
+      const sentVia: OtpChannel = 'channel' in result && isOtpChannel(result.channel) ? result.channel : channel
       setChannel(sentVia)
       setCode('')
       // LRI…PDI: the number or address stays left-to-right inside a Hebrew sentence.
@@ -139,7 +183,7 @@ export default function OtpDialog({
       inputRef.current?.focus()
       return
     }
-    if (resendEndsChange(result.reason)) {
+    if (!signup && resendEndsChange(result.reason)) {
       onEnded(failure(result))
       return
     }
@@ -147,8 +191,7 @@ export default function OtpDialog({
     setError(failure(result))
   }
 
-  const onChange = (raw: string) => {
-    const next = normalizeOtpInput(raw)
+  const onChange = (next: string) => {
     setCode(next)
     setError(null)
     if (next.length === OTP_LENGTH) verify(next)
@@ -182,9 +225,9 @@ export default function OtpDialog({
         >
           {isEmail ? <Mail aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : channel === 'sms' ? <MessageSquareText aria-hidden="true" className="h-6 w-6" strokeWidth={1.75} /> : <WhatsAppIcon className="h-6 w-6" />}
         </div>
-        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(isEmail ? 'otp_email_title' : copy.title)}</h2>
+        <h2 id="otp-dialog-title" className="mt-4 pe-10 text-lg font-bold text-slate-900">{t(signup ? 'otp_signup_title' : isEmail ? 'otp_email_title' : copy.title)}</h2>
         <p id="otp-dialog-subtitle" className="mt-1 text-sm text-slate-500">
-          {isEmail ? t('otp_email_subtitle') : splitAtPlaceholder(t(copy.subtitle), '{phone}')[0]}
+          {isEmail ? t(signup ? 'otp_signup_subtitle' : 'otp_email_subtitle') : splitAtPlaceholder(t(copy.subtitle), '{phone}')[0]}
           {isEmail && ' '}
           {/* An address may be long: it wraps anywhere; a number never breaks. */}
           <bdi dir="ltr" className={`font-semibold text-slate-700 ${isEmail ? '[overflow-wrap:anywhere]' : 'whitespace-nowrap'}`}>{display}</bdi>
@@ -198,38 +241,7 @@ export default function OtpDialog({
             verify(code)
           }}
         >
-          <div className="relative" dir="ltr" onClick={() => inputRef.current?.focus()}>
-            <div className="grid grid-cols-6 gap-2" aria-hidden="true">
-              {Array.from({ length: OTP_LENGTH }, (_, i) => {
-                const active = focused && (i === code.length || (i === OTP_LENGTH - 1 && code.length === OTP_LENGTH))
-                return (
-                  <span
-                    key={i}
-                    className={`flex h-14 items-center justify-center rounded-[12px] border-[1.5px] bg-white text-2xl font-bold text-slate-900 transition-colors ${
-                      error ? 'border-red-300' : active ? 'border-brand ring-2 ring-brand/15' : code[i] ? 'border-slate-300' : 'border-slate-200'
-                    }`}
-                  >
-                    {code[i] ?? ''}
-                  </span>
-                )
-              })}
-            </div>
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]*"
-              aria-label={t('otp_input_label')}
-              aria-invalid={!!error || undefined}
-              value={code}
-              onChange={(e) => onChange(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              disabled={busy}
-              className="otp-input"
-            />
-          </div>
+          <OtpCodeInput ref={inputRef} value={code} onChange={onChange} error={!!error} disabled={busy} label={t('otp_input_label')} />
 
           {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
           {notice && !error && <p role="status" className="mt-3 text-sm font-semibold text-emerald-700">{notice}</p>}
@@ -243,7 +255,7 @@ export default function OtpDialog({
             disabled={secondsLeft > 0 || resending || busy}
             className="tap-target w-full mt-2 rounded-[12px] text-sm font-semibold text-brand hover:bg-brandLight/60 transition-colors disabled:text-slate-400 disabled:hover:bg-transparent"
           >
-            {resending ? '…' : secondsLeft > 0 ? t('otp_resend_in').replace('{seconds}', String(secondsLeft)) : t('otp_resend_btn')}
+            {resending ? '…' : secondsLeft > 0 ? t('otp_resend_in').replace('{time}', formatOtpCountdown(secondsLeft)) : t('otp_resend_btn')}
           </button>
         </form>
       </div>

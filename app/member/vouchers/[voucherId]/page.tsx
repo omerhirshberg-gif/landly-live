@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Clock, LoaderCircle, MapPin, Ticket } from 'lucide-react'
+import { LoaderCircle, MapPin, Ticket } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -16,12 +16,18 @@ import VoucherTicket from '@/components/member/VoucherTicket'
 import VoucherTerms from '@/components/member/VoucherTerms'
 import { CodeReveal, QrReveal } from '@/components/member/VoucherReveal'
 import AddToAppleWallet from '@/components/member/AddToAppleWallet'
+import BusinessPageNotice from '@/components/member/BusinessPageNotice'
 import IssuerAttribution from '@/components/member/IssuerAttribution'
+import VoucherBalance from '@/components/member/VoucherBalance'
+import { resolveVoucherRedemptionProgress } from '@/lib/vouchers/redemptionProgress'
+import { superTavHeadline } from '@/lib/offers/superTav'
+import { ChainsFold, MultiChainCreditBox } from '@/components/offers/MultiChainCredit'
+import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
 import MarkVoucherUsed from '@/components/member/MarkVoucherUsed'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
-import { formatLongDate, formatNumericDate } from '@/lib/format'
+import { formatNumericDate } from '@/lib/format'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@/lib/firebase/vouchers'
 import TranslationNotice from '@/components/ui/TranslationNotice'
 import { useLocalizedContent } from '@/lib/i18n/useLocalizedContent'
@@ -68,9 +74,17 @@ export default function VoucherPage() {
   const title = content.text('title')
   const instructions = content.text('redemptionInstructions')
   const businessName = voucher ? localizedBusinessName(voucher, lang).text : ''
+  const headline = voucher ? superTavHeadline(voucher, t('super_tav_headline')) : null
   const { place, destination } = voucher ? voucherDestination(voucher, lang) : { place: '', destination: null }
   const codeOnly = voucher?.redemptionKind === 'code_only'
   const expired = !!voucher?.expiresAt && voucher.expiresAt.getTime() < Date.now()
+  // A multi-chain pass: the title already names it, and one guide covers every chain.
+  const multiChain = voucher?.perkScope === 'multi_chain'
+  const guide = voucher?.universalRedemptionGuide
+  const hasGuide = multiChain && !!(guide && (guide.he || guide.en))
+  // The balance line only when it says something the value in the title doesn't: a partly used pass.
+  const progress = voucher ? resolveVoucherRedemptionProgress(voucher) : null
+  const showBalance = !!progress && (progress.remainingAgorot !== progress.faceValueAgorot || voucher?.status !== 'active')
 
   if (loading || !user || held || voucher === undefined) {
     return (
@@ -90,7 +104,7 @@ export default function VoucherPage() {
     <>
       <Navbar />
       <div className="below-header member-canvas min-h-screen min-h-dvh">
-        <div className="max-w-xl mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-12">
+        <div className="max-w-xl lg:max-w-[1320px] 2xl:max-w-[1640px] mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pb-12">
           <OpenInAppHint className="mb-3" />
           <BackButton fallback="/member" label={t('nav_my_pass')} className="mb-3" />
 
@@ -100,39 +114,40 @@ export default function VoucherPage() {
               <p className="text-sm text-slate-600">{t('voucher_not_found')}</p>
             </div>
           ) : (
-            <>
+            <div className="lg:grid lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:items-start lg:gap-8 2xl:grid-cols-[minmax(0,540px)_minmax(0,1fr)] 2xl:gap-12">
+              <div className="lg:sticky lg:top-[calc(var(--header-offset)+1rem)]">
               <VoucherTicket
                 top={
                   <>
                     <VoucherCover voucher={voucher} name={businessName} aspect="aspect-[2/1] max-h-[220px]" logoSize="lg" />
                     <div className="px-5 pb-[18px] pt-10 sm:px-7 sm:pt-11">
-                      <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink break-words sm:text-3xl" dir="auto">{businessName}</h1>
-                      <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-slate-600" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
+                      {/* Directly under the gift card: what is left, then until when. */}
+                      {(voucher.expiresAt || showBalance) && (
+                        <div className="mb-6">
+                          {showBalance && <VoucherBalance voucher={voucher} variant="detail" />}
+                          {voucher.expiresAt && (
+                            <p className={`mt-1 text-center text-sm font-medium ${expired ? 'text-red-600' : 'text-slate-500'}`}>
+                              {t(expired ? 'voucher_expired_on' : 'voucher_valid_until').split('{date}').map((part, i) => (i === 0 ? part : <Fragment key="d"><bdi dir="ltr" className="font-bold tabular-nums">{formatNumericDate(voucher.expiresAt!)}</bdi>{part}</Fragment>))}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+                      {headline ? (
+                        <>
+                          <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink tabular-nums break-words sm:text-3xl" dir="auto">{headline}</h1>
+                          {!multiChain && <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-slate-600" dir="auto">{businessName}</p>}
+                        </>
+                      ) : (
+                        <>
+                          <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink break-words sm:text-3xl" dir="auto">{businessName}</h1>
+                          <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-slate-600" lang={title.lang ?? undefined} dir="auto">{title.text}</p>
+                        </>
+                      )}
                       {codeOnly && voucher.issuer && <IssuerAttribution issuer={voucher.issuer} lang={lang} note={t('voucher_valid_years')} className="mt-5" />}
-                      <ContactActions stack className="mt-5" websiteUrl={voucher.websiteUrl} phone={voucher.contactPhone} />
                       {content.machine && (
                         <TranslationNotice className="mt-1" showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />
                       )}
-                      <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <RedemptionBadge method={voucher.redemptionMethod} />
-                        {voucher.expiresAt && (
-                          <span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold ${expired ? 'text-red-600' : 'text-slate-500'}`}>
-                            <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                            <span>{t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}</span>
-                          </span>
-                        )}
-                      </div>
-                      {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-3.5 text-sm text-muted" />}
-                      {!place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
-                        <div className="mt-3">{brands.length > 0 ? <BrandStrip entries={brands} /> : <ParticipatingChains offer={voucher} guide={false} />}</div>
-                      )}
-                      {place && (
-                        <p className="mt-3.5 flex items-start gap-1.5 text-sm text-muted">
-                          <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
-                          <span className="min-w-0 break-words" dir="auto">{place}</span>
-                        </p>
-                      )}
-                      {destination && <NavigationLinks wide destination={destination} className="mt-3" />}
                     </div>
                   </>
                 }
@@ -142,12 +157,8 @@ export default function VoucherPage() {
                       <>
                         {/* Raayonit: the code is the voucher. No QR code, no QR reveal. */}
                         <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} prominent />
-                        {voucher.expiresAt && (
-                          <p className="mt-3.5 flex items-center justify-center gap-1.5 text-[13px] text-slate-500">
-                            <span>{t('voucher_valid_until').replace('{date}', '').trim()}</span>
-                            <bdi dir="ltr" className="text-sm font-bold tabular-nums text-slate-900">{formatNumericDate(voucher.expiresAt)}</bdi>
-                          </p>
-                        )}
+                        {/* Immediately under the code: issued as a Multi-Chain Super Tav, valid here and across the network. */}
+                        {isRaayonitMultiChain(voucher) && !multiChain && <MultiChainCreditBox className="mt-4" />}
                         <AddToAppleWallet voucher={voucher} />
                         <MarkVoucherUsed voucherId={voucher.id} />
                       </>
@@ -175,18 +186,38 @@ export default function VoucherPage() {
                 }
               />
 
-              {/* How to redeem, up under the ticket; the conditions stay in VoucherTerms, so they aren't shown twice. */}
-              <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
-                {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
-                {voucher.perkScope === 'multi_chain' && <div className="mb-5"><RedemptionGuide offer={voucher} /></div>}
-                <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" codeOnly={codeOnly} />
-                {(voucher.expiresAt || voucher.redemptionTerms) && (
-                  <div className="mt-5 border-t border-slate-100 pt-5">
-                    <VoucherTerms voucher={voucher} terms={content.text('redemptionTerms')} />
-                  </div>
-                )}
               </div>
-            </>
+
+              {/* Right column from lg (below it, under the ticket): how to redeem, where it works, the terms. */}
+              <div className="mt-4 space-y-4 lg:mt-0">
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+                  {/* A multi-chain pass is redeemed the same way at every chain: its one guide replaces the generic steps. */}
+                  {hasGuide ? <><div className="mb-3"><RedemptionBadge method={voucher.redemptionMethod} /></div><RedemptionGuide offer={voucher} /></> : <HowToRedeem method={voucher.redemptionMethod} instructions={instructions.text} instructionsLang={instructions.lang} variant="inline" codeOnly={codeOnly} />}
+                  {voucher.status === 'active' && !expired && <BusinessPageNotice offerId={voucher.offerId} multiChain={multiChain} className="mt-5" />}
+                  {voucher.redemptionTerms && (
+                    <div className="mt-5 border-t border-slate-100 pt-5">
+                      <VoucherTerms voucher={voucher} terms={content.text('redemptionTerms')} hideExpiry />
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-6 empty:hidden">
+                  <ContactActions stack className="mt-5" websiteUrl={voucher.websiteUrl} phone={voucher.contactPhone} />
+                  {!place && locationNoticeKind(voucher) !== null && <PerkReachLine offer={voucher} className="mt-3.5 text-sm text-muted" />}
+                  {!place && (locationNoticeKind(voucher) === 'stores' || locationNoticeKind(voucher) === 'chains') && (
+                    <div className="mt-3">{brands.length > 0 ? <BrandStrip entries={brands} compact /> : <ParticipatingChains offer={voucher} guide={false} />}</div>
+                  )}
+                  {place && (
+                    <p className="mt-3.5 flex items-start gap-1.5 text-sm text-muted">
+                      <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} />
+                      <span className="min-w-0 break-words" dir="auto">{place}</span>
+                    </p>
+                  )}
+                  {destination && <NavigationLinks wide destination={destination} className="mt-3" />}
+                  {/* Under the store's own branches: where else the voucher works (the whole Raayonit network). */}
+                  {isRaayonitMultiChain(voucher) && voucher.perkScope !== 'multi_chain' && <div className="mt-4 border-t border-slate-100"><ChainsFold /></div>}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

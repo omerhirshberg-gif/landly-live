@@ -25,6 +25,7 @@ export default function CategoryPhotoRail({ contained = false }: { contained?: b
 
   return (
     <nav aria-label={t('cats_category_label')} className={`offer-rail relative ${contained ? LANDING_COLUMN : 'lg:mx-auto lg:max-w-[2200px]'}`}>
+      {overflowing && <div className={contained ? '' : 'member-bleed member-bleed-fill'}><RailArrows bar edges={edges} page={page} /></div>}
       <ul ref={railRef} onScroll={measure} className={`${contained ? LANDING_RAIL_FIT : 'member-bleed member-bleed-fill'} edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none py-1 [-webkit-overflow-scrolling:touch] sm:gap-4 ${contained ? '' : 'lg:gap-3'}`}>
         {CATEGORY_TILES.map((tile) => (
           <li key={tile.category} className={`flex-shrink-0 snap-start ${contained ? 'lg:basis-[calc((100%-4*1rem)/5)] xl:basis-[calc((100%-5*1rem)/6)] 2xl:basis-[calc((100%-6*1rem)/7)]' : 'lg:basis-[calc((100%-6*0.75rem)/7)] xl:basis-[calc((100%-7*0.75rem)/8)]'}`}>
@@ -40,7 +41,6 @@ export default function CategoryPhotoRail({ contained = false }: { contained?: b
           </li>
         ))}
       </ul>
-      {overflowing && <RailArrows edges={edges} page={page} />}
     </nav>
   )
 }

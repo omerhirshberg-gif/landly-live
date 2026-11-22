@@ -16,7 +16,8 @@ export type PassVoucher = Pick<
   | 'userId' | 'offerId' | 'businessName' | 'offerTitle' | 'redemptionCode' | 'redeemToken' | 'status' | 'expiresAt'
   | 'redemptionTerms' | 'redemptionMethod' | 'redemptionInstructions' | 'displayOrderNumber'
   | 'translations' | 'businessTranslations' | 'businessAddress' | 'businessGeo' | 'redemptionKind' | 'issuer' | 'externalCode'
-> & { id: string }
+  | 'amountAgorot' | 'faceValueAgorot' | 'savingsAgorot'
+> & { id: string; /** The live size of the Raayonit network, set by the pass route for a Raayonit voucher; absent or 0 leaves it out of the sentence. */ chainCount?: number }
 
 const REDEEM_TOKEN_PATTERN = /^[0-9a-f]{32}$/
 const VOUCHER_ID_PATTERN = /^[\w-]{1,256}$/
@@ -48,6 +49,9 @@ export function readPassVoucher(snap: DocumentSnapshot): PassVoucher | null {
     redemptionKind: data.redemptionKind === 'code_only' ? 'code_only' : null,
     issuer: parseIssuer(data.issuer),
     externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
+    amountAgorot: typeof data.amountAgorot === 'number' && data.amountAgorot > 0 ? data.amountAgorot : null,
+    faceValueAgorot: typeof data.faceValueAgorot === 'number' && data.faceValueAgorot > 0 ? data.faceValueAgorot : null,
+    savingsAgorot: typeof data.savingsAgorot === 'number' && data.savingsAgorot > 0 ? data.savingsAgorot : null,
   }
 }
 

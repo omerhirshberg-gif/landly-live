@@ -13,6 +13,8 @@ import { translations, type Lang, type TranslationKey } from '@/lib/i18n/transla
 import { redeemVoucherKey, voucherRedeemUrl } from '@/lib/offers/redeemLink'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@/lib/offers/redemption'
 import { issuerLine } from '@/lib/payments/issuer'
+import { isRaayonitMultiChain, withChainCount } from '@/lib/offers/multiChainNote'
+import { formatValueRatio, resolveVoucherValue } from '@/lib/vouchers/voucherValue'
 import type { PassConfig, PassIdentity } from './passConfig'
 import type { PassVoucher } from './passVoucher'
 
@@ -80,6 +82,11 @@ interface PassText {
   method: string
   labelCode: string
   validYears: string
+  /** A Raayonit voucher's back: the Multi-Chain Super Tav explanation and its label ('' for any other). */
+  labelMultiChain: string
+  multiChain: string
+  /** Paid against the voucher's full worth ("₪79 / ₪100"): language-independent, so only its label is translated. */
+  labelPaidValue: string
 }
 
 /**
@@ -101,6 +108,8 @@ function passText(voucher: PassVoucher, lang: Lang): PassText {
   const instructions = localizeText(voucher.redemptionInstructions, voucher.translations, lang, 'redemptionInstructions').text
   const codeOnly = voucher.redemptionKind === 'code_only'
   const steps = redemptionSteps(voucher.redemptionMethod, instructions, t, codeOnly)
+  const multiChain = isRaayonitMultiChain(voucher)
+  const value = resolveVoucherValue(voucher)
   return {
     description: business ? `${business} — ${offer}` : offer,
     offer,
@@ -117,12 +126,16 @@ function passText(voucher: PassVoucher, lang: Lang): PassText {
     labelOrder: t('success_order_number_label'),
     labelMember: t('wallet_pass_member'),
     issuer: voucher.issuer ? issuerLine(voucher.issuer, lang) : '',
-    labelIssuedBy: t('wallet_pass_issued_by'),
-    issuerName: voucher.issuer ? t('wallet_pass_issuer_name') : '',
+    // Without Raayonit's approval (display flag off) the issuer is null and the pass says only that it is a multi-chain voucher.
+    labelIssuedBy: voucher.issuer ? t('wallet_pass_issued_by') : '',
+    issuerName: voucher.issuer ? t('wallet_pass_issuer_name') : codeOnly ? t('multi_chain_voucher_label') : '',
     labelRedemption: t('wallet_pass_redemption'),
     method: t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod]),
     labelCode: t('voucher_redemption_code_label'),
-    validYears: voucher.issuer ? t('voucher_valid_years') : '',
+    validYears: voucher.issuer || codeOnly ? t('voucher_valid_years') : '',
+    labelMultiChain: multiChain ? (voucher.issuer ? t('super_card_title') : t('multi_chain_voucher_label')) : '',
+    multiChain: multiChain ? (voucher.issuer ? withChainCount(t('wallet_pass_multi_chain'), voucher.chainCount) : t('wallet_pass_multi_chain_neutral')) : '',
+    labelPaidValue: value ? t('wallet_pass_paid_value') : '',
   }
 }
 
@@ -135,15 +148,20 @@ const field = (key: string, label: string, value: string) => ({ key, label, valu
  *   primary    none: Wallet would draw it over the photo
  *   secondary  the business over the offer, then (a Raayonit pass) the redemption code
  *   auxiliary  order number and member
- *   barcode    centred by Wallet, the redemption code under it
+ *   barcode    centred by Wallet, the redemption code under it (a Raayonit pass: its code as Code 128)
  */
 export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, discountPercent: number | null, holderName: string | null = null) {
   const text = passText(voucher, 'en')
+  const value = resolveVoucherValue(voucher)
   const expires = voucher.expiresAt ? passDate(voucher.expiresAt) : null
   const geo = voucher.businessGeo
-  // A Raayonit voucher is a code and nothing else: no barcode, and the code itself is on the front
-  // beside the issuer's line, so a cashier reads it without flipping the pass.
+  // A Raayonit voucher is a code and nothing else (no redeem link): the code is a Code 128 barcode, centred by Wallet
+  // with the code as text under it, so a cashier scans or reads it without flipping the pass. A code that is not plain
+  // ASCII (Code 128's range) is left as text on the front instead.
   const codeOnly = voucher.redemptionKind === 'code_only' && !!voucher.externalCode
+  const codeBarcode = codeOnly && /^[\x20-\x7E]+$/.test(voucher.externalCode!)
+  // The offer's label is the business, unless the title is the business (a Super Tav) and would say it twice.
+  const offerLabel = text.business && text.business.trim().toLocaleLowerCase() !== text.offer.trim().toLocaleLowerCase() ? { label: text.business } : {}
   return {
     formatVersion: 1,
     passTypeIdentifier: identity.passTypeId,
@@ -152,12 +170,17 @@ export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, disc
     organizationName: 'GoLandly',
     description: text.description,
     // A Raayonit pass's logo is the GoLandly × Raayonit lockup (assets/logo-raayonit*.png), which carries both brands; any other pass has GoLandly's mark and name.
-    ...(codeOnly ? {} : { logoText: 'GoLandly' }),
+    ...(codeOnly && voucher.issuer ? {} : { logoText: 'GoLandly' }),
     ...PASS_COLORS,
     sharingProhibited: true,
     ...(expires ? { expirationDate: expires } : {}),
     // The same payload as the in-app QR, so a cashier sees one code everywhere.
-    barcodes: codeOnly ? [] : [{
+    barcodes: codeBarcode ? [{
+      format: 'PKBarcodeFormatCode128' as const,
+      message: voucher.externalCode!,
+      messageEncoding: 'iso-8859-1',
+      altText: voucher.externalCode!,
+    }] : codeOnly ? [] : [{
       format: 'PKBarcodeFormatQR' as const,
       message: voucherRedeemUrl(redeemVoucherKey(voucher)),
       messageEncoding: 'iso-8859-1',
@@ -169,14 +192,14 @@ export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, disc
         ? [{ ...field('expires', text.labelValidUntil, expires), dateStyle: 'PKDateStyleMedium' as const, timeStyle: 'PKDateStyleNone' as const }]
         : [],
       // The strip carries no text (a primary field would be drawn over the photo). Beneath it, top to bottom: the offer's title, the
-      // code (a Raayonit pass) and, on its own row, who issued it and how it is redeemed. Any other pass: the title, then order and member.
+      // code (a Raayonit pass: in the barcode below) and, on its own row, who issued it and how it is redeemed. Any other pass: the title, then order and member.
       primaryFields: [],
       secondaryFields: codeOnly
         ? [
-            { key: 'offer', value: text.offer, ...(text.business ? { label: text.business } : {}) },
-            field('code', text.labelCode, voucher.externalCode!),
+            { key: 'offer', value: text.offer, ...offerLabel },
+            ...(codeBarcode ? [] : [field('code', text.labelCode, voucher.externalCode!)]),
           ]
-        : [{ key: 'offer', value: text.offer, ...(text.business ? { label: text.business } : {}) }],
+        : [{ key: 'offer', value: text.offer, ...offerLabel }],
       auxiliaryFields: codeOnly
         ? [
             field('issuer', text.labelIssuedBy, text.issuerName),
@@ -188,10 +211,12 @@ export function buildPassJson(voucher: PassVoucher, identity: PassIdentity, disc
           ],
       backFields: [
         ...(codeOnly ? [
-          field('issuerBack', text.issuer, text.validYears),
+          field('issuerBack', text.issuer || text.issuerName, text.validYears),
+          field('multiChain', text.labelMultiChain, text.multiChain),
           ...(voucher.displayOrderNumber ? [field('order', text.labelOrder, voucher.displayOrderNumber)] : []),
           ...(holderName ? [field('member', text.labelMember, holderName)] : []),
         ] : []),
+        ...(value ? [field('paidValue', text.labelPaidValue, formatValueRatio(value))] : []),
         field('how', text.labelHow, text.how),
         ...(discountPercent && discountPercent > 0 ? [field('discount', text.labelDiscount, `${discountPercent}%`)] : []),
         ...(text.terms ? [field('terms', text.labelTerms, text.terms)] : []),
@@ -235,40 +260,17 @@ async function categoryPhoto(category: string): Promise<Buffer | null> {
   return readFile(join(process.cwd(), 'public', 'categories', `${photo}.webp`)).catch(() => null)
 }
 
-/** The issuer's logo on a soft white pill, sized for one strip scale, to sit in the strip's top end corner. */
-async function issuerBadge(logo: Buffer, scale: number): Promise<Buffer> {
-  const padX = 12 * scale
-  const markHeight = 60 * scale
-  const height = markHeight + 12 * scale
-  const mark = await sharp(logo).resize({ height: markHeight, fit: 'inside' }).png().toBuffer()
-  const { width: markWidth = 0 } = await sharp(mark).metadata()
-  const pill = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${markWidth + padX * 2}" height="${height}"><rect width="100%" height="100%" rx="${12 * scale}" fill="#fff"/></svg>`)
-  return sharp(pill).composite([{ input: mark, left: padX, top: Math.round((height - markHeight) / 2) }]).png().toBuffer()
-}
-
-async function issuerLogoFile(): Promise<Buffer | null> {
-  return readFile(join(process.cwd(), 'public', 'images', 'partners', 'raayonit-logo.png')).catch(() => null)
-}
-
 /**
- * The offer's photo, or its category's, cropped for each scale. Wallet shows the brand colour with
- * neither. A Raayonit pass (`withIssuerBadge`) carries the issuer's logo in the strip's top end corner,
- * on the brand colour when there is no photo, since Wallet's logo slot stays GoLandly's.
+ * The offer's photo, or its category's, cropped for each scale, and nothing drawn on it (the issuer's logo is in
+ * Wallet's logo slot already). Wallet shows the brand colour with neither.
  */
-export async function loadStripImages(imageUrl: string, category: string, withIssuerBadge = false): Promise<Record<string, Buffer>> {
-  const logo = withIssuerBadge ? await issuerLogoFile() : null
-  const blank = logo ? await sharp({ create: { width: STRIP_WIDTH, height: STRIP_HEIGHT, channels: 3, background: { r: 11, g: 27, b: 61 } } }).png().toBuffer() : null
-  for (const source of [imageUrl ? await remoteImage(imageUrl) : null, await categoryPhoto(category), blank]) {
+export async function loadStripImages(imageUrl: string, category: string): Promise<Record<string, Buffer>> {
+  for (const source of [imageUrl ? await remoteImage(imageUrl) : null, await categoryPhoto(category)]) {
     if (!source) continue
     try {
       const entries = await Promise.all(STRIP_SCALES.map(async ([name, scale]) => {
-        const base = await sharp(source).resize(STRIP_WIDTH * scale, STRIP_HEIGHT * scale, { fit: 'cover' }).png().toBuffer()
-        const badge = logo ? await issuerBadge(logo, scale) : null
-        const meta = badge ? await sharp(badge).metadata() : null
-        const image = badge && meta
-          ? sharp(base).composite([{ input: badge, left: STRIP_WIDTH * scale - (meta.width ?? 0) - 8 * scale, top: 8 * scale }])
-          : sharp(base)
-        return [name, await image.png({ compressionLevel: 9, palette: true }).toBuffer()] as const
+        const image = await sharp(source).resize(STRIP_WIDTH * scale, STRIP_HEIGHT * scale, { fit: 'cover' }).png({ compressionLevel: 9, palette: true }).toBuffer()
+        return [name, image] as const
       }))
       return Object.fromEntries(entries)
     } catch {
@@ -325,7 +327,7 @@ export async function buildPkpass(
   const files: Record<string, Buffer> = await atStage('assets', async () => ({
     'pass.json': Buffer.from(JSON.stringify(json)),
     ...(await staticImages(raayonit)),
-    ...(await loadStripImages(options.imageUrl, options.category, raayonit)),
+    ...(await loadStripImages(options.imageUrl, options.category)),
   }))
   const strings = Object.fromEntries(CONTENT_LANGS.map((lang) => [lang, passStrings(voucher, lang)]))
 

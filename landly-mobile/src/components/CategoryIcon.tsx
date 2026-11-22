@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg'
 import Armchair from 'lucide-react-native/icons/armchair'
 import Baby from 'lucide-react-native/icons/baby'
 import Car from 'lucide-react-native/icons/car'
+import ChefHat from 'lucide-react-native/icons/chef-hat'
 import Compass from 'lucide-react-native/icons/compass'
 import Dumbbell from 'lucide-react-native/icons/dumbbell'
 import Plane from 'lucide-react-native/icons/plane'
@@ -32,6 +33,7 @@ function Lipstick({ size, color, strokeWidth }: IconProps) {
 // fine 1.5 stroke. Nothing here is directional, so no glyph mirrors in Hebrew.
 export const CATEGORY_ICONS: Record<string, (props: IconProps) => ReactNode> = {
   'Restaurants and Cafes': UtensilsCrossed,
+  'Chef Restaurants': ChefHat,
   'Beach and Sea': TreePalm,
   'Attractions and Tours': Compass,
   'Fashion and Shopping': ShoppingBag,

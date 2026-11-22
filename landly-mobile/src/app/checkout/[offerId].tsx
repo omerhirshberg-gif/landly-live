@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { superTavHeadline } from '@shared/offers/superTav'
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams, type Href } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -194,6 +195,7 @@ export default function CheckoutScreen() {
     }
   }
 
+  const orderHeadline = order ? superTavHeadline(order, t('super_tav_headline')) : null
   const discount = order?.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
   const fee = order ? cancellationFeeAgorot(Math.round(order.amount * 100)) / 100 : 0
   const backFallback: Href = offerId ? { pathname: '/offer/[offerId]', params: { offerId } } : '/perks'
@@ -241,8 +243,18 @@ export default function CheckoutScreen() {
               <View style={styles.offerRow}>
                 <PurchaseMedia source={{ order, offer }} category={offer?.category} />
                 <View style={styles.offerText}>
-                  <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
-                  <AppText style={styles.offerTitle} accessibilityRole="header">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
+                  {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below. */}
+                  {orderHeadline ? (
+                    <>
+                      <AppText style={[styles.offerTitle, styles.offerTitleFirst]} accessibilityRole="header">{orderHeadline}</AppText>
+                      <AppText style={[styles.business, styles.businessBelow]} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                    </>
+                  ) : (
+                    <>
+                      <AppText style={styles.business} numberOfLines={1}>{localizedBusinessName(order, lang).text}</AppText>
+                      <AppText style={styles.offerTitle} accessibilityRole="header">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</AppText>
+                    </>
+                  )}
                 </View>
               </View>
 
@@ -345,6 +357,8 @@ const styles = StyleSheet.create({
   offerText: { flex: 1, minWidth: 0 },
   business: { fontSize: 12, fontWeight: '700', color: colors.brand, letterSpacing: 1, textTransform: 'uppercase' },
   offerTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },
+  offerTitleFirst: { marginTop: 0 },
+  businessBelow: { marginTop: 4 },
   priceBox: { marginTop: 24, padding: 20, borderRadius: radius.lg, backgroundColor: colors.brandTint, borderWidth: 1, borderColor: colors.brandLight, gap: 12 },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   priceLabel: { fontSize: 14, color: colors.textMuted },

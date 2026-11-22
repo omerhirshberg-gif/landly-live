@@ -63,3 +63,26 @@ export function resolveChainBrands(subject: ChainBrandSubject, offers: readonly 
   if (found.size === 0 && subject.allLiveBrands) return [...byName.values()].filter((entry, i, all) => all.findIndex((o) => o.offerId === entry.offerId) === i)
   return [...found.values()]
 }
+
+type NetworkOffer = Pick<OfferDocument, 'fulfillmentType' | 'perkScope' | 'brandName' | 'businessName'>
+
+/** How many distinct brands honour a Raayonit voucher right now: the live single-brand Raayonit offers, by normalised name. */
+export function liveRaayonitBrandCount(offers: readonly NetworkOffer[]): number {
+  const names = new Set<string>()
+  for (const offer of offers) {
+    if (offer.fulfillmentType !== 'raayonit_pool' || offer.perkScope === 'multi_chain') continue
+    const key = brandNameKey(offer.brandName || offer.businessName || '')
+    if (key) names.add(key)
+  }
+  return names.size
+}
+
+/** Every live single-brand Raayonit offer as a brand tile, one per brand name: the whole network a voucher works at. */
+export function liveRaayonitBrands(offers: readonly OfferDocument[]): BrandIndexEntry[] {
+  const byName = new Map<string, BrandIndexEntry>()
+  for (const offer of offers) {
+    const entry = brandEntryOf(offer)
+    if (entry && !byName.has(brandNameKey(entry.name))) byName.set(brandNameKey(entry.name), entry)
+  }
+  return [...byName.values()]
+}

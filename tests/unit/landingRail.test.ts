@@ -65,8 +65,8 @@ describe('the public landing reaches the screen edges', () => {
     }
     expect(read('components/landing/BottomCta.tsx')).toContain('mx-auto w-full max-w-[2200px] rounded-3xl')
   })
-  it('Our perks uses the 260/280px rail cards', () => {
-    expect(read('components/discover/OfferCard.tsx')).toContain('w-[clamp(240px,72vw,260px)] flex-shrink-0 sm:w-[280px]')
+  it('Our perks shows 2.15 rail cards on a phone and fixed 232px cards from sm', () => {
+    expect(read('components/discover/OfferCard.tsx')).toContain('w-[clamp(150px,calc((100vw-36px)/2.15),232px)] flex-shrink-0 sm:w-[232px]')
     expect(read('components/landing/LiveDeals.tsx')).toContain('<OfferCard offer={offer} />')
   })
 })

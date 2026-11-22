@@ -1,8 +1,8 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import Link from 'next/link'
-import { Globe, Heart, MapPin, Store } from 'lucide-react'
+import { Globe, Heart } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { useAuth } from '@/lib/firebase/useAuth'
 import { useIsWishlisted, useToggleWishlist } from '@/lib/firebase/useWishlist'
@@ -10,19 +10,16 @@ import { getOfferDiscountPercent, type OfferDocument } from '@/lib/firebase/offe
 import { formatPrice } from '@/lib/format'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
+import { webOfferHref } from '@/lib/offers/offerRoutes'
 import { badgeLogoUri } from '@/lib/offers/dealImage'
-import { CATEGORY_TILES } from '@/lib/categories'
-import { redemptionChannel, redemptionTagKey } from '@/lib/offers/redemption'
-import { formatDistance, offerPlaceLabel } from '@/lib/geo'
 import DealMedia from './DealMedia'
 import { isRaayonitOffer, logoOnlyHero, raayonitImageOpts } from '@/lib/offers/logoOnly'
 import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
-import { isMultiChain, PerkReachLine } from './PerkReach'
-import { locationNoticeKind } from '@/lib/offers/locationVisibility'
+import { displayTitle } from '@/lib/offers/superTav'
 import DiscountBadge from './DiscountBadge'
 import MerchantBadge from './MerchantBadge'
-import CategoryIcon from '@/components/ui/CategoryIcon'
 import { useDealImage } from './useDealImage'
+import { expiryPill } from '@/lib/offers/cardExpiry'
 
 // The feeds' grid lives on its own (offerFeedGrid.ts), so a loading skeleton
 // can share it without loading the card and Firebase with it.
@@ -43,6 +40,8 @@ interface OfferCardProps {
   showCategoryBadge?: boolean
   /** Kilometres from the member's location (Near me), shown before the place; undefined without one. */
   distanceKm?: number | null
+  /** A nationwide chain with no placeable branch, listed under a location filter: a subtle "Nationwide chain" tag, no distance. */
+  nationwide?: boolean
   /** Above the fold (the first cards of the first rail): its photo loads first, eagerly, instead of lazily. */
   priority?: boolean
 }
@@ -61,21 +60,11 @@ interface OfferCardProps {
 // Memoized: a rail or grid re-rendering around it (a search keystroke, a
 // filter, a heart saved on another card) leaves it alone. Its heart subscribes
 // to its own offer id only (useIsWishlisted), and flips on the click's frame.
-export default memo(function OfferCard({ offer, showWishlistButton = false, layout = 'rail', className = '', compact = false, showCategoryBadge = true, distanceKm, priority = false }: OfferCardProps) {
+export default memo(function OfferCard({ offer, showWishlistButton = false, layout = 'rail', className = '', compact = false, priority = false, nationwide = false }: OfferCardProps) {
   const { t, lang } = useLang()
   const title = localizeText(offer.title, offer.translations, lang, 'title')
   const name = localizedBusinessName(offer, lang)
-  // A single venue says where it is, from its address, else its city (never "valid at 1 store" or the redemption method).
-  const place = offerPlaceLabel(offer, lang)
-  const hasDistance = typeof distanceKm === 'number'
   const rail = layout === 'rail'
-  const multiChain = isMultiChain(offer)
-  // Online, online and in store, or in store: the tag over the photo, and an online store has no street to show.
-  const channel = redemptionChannel(offer)
-  const onlineOnly = channel === 'online'
-  const ChannelIcon = channel === 'in_store' ? Store : Globe
-  // A multi-branch perk has no street address: the chains or the branch-validity notice say where it works.
-  const reach = locationNoticeKind(offer) !== null
   const image = useDealImage(offer.imageUrl, raayonitImageOpts(offer))
   const hero = logoOnlyHero(offer)
   const heroLogo = hero ? { src: hero.kind === 'issuer' ? RAAYONIT_LOGO_PATH : hero.logoUrl, alt: name.text, small: hero.kind === 'brand' ? hero.fallback : hero.small } : null
@@ -84,30 +73,26 @@ export default memo(function OfferCard({ offer, showWishlistButton = false, layo
   const toggleWishlist = useToggleWishlist()
   const multiValue = (offer.variants?.length ?? 0) > 1
   const discount = getOfferDiscountPercent(offer.originalPrice, offer.offerPrice)
-  const categoryTile = CATEGORY_TILES.find((c) => c.category === offer.category)
+  // Read once per mount, since render must stay pure.
+  const [now] = useState(Date.now)
+  const pill = expiryPill(offer.expiryDate, now)
 
   return (
     <Link
-      href={`/offers/${offer.id}`}
+      href={webOfferHref(offer)}
       // A rail scrolls sideways, so it keeps 4px of room above its cards for the lift.
       className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.07)] transition-[box-shadow,transform,border-color] duration-200 ease-out-expo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98] motion-reduce:transition-none [@media(hover:hover)]:hover:border-slate-300 [@media(hover:hover)]:hover:shadow-card-hover motion-reduce:[@media(hover:hover)]:hover:translate-y-0 ${
-        rail ? 'w-[clamp(240px,72vw,260px)] flex-shrink-0 sm:w-[280px] [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
+        rail ? 'w-[clamp(150px,calc((100vw-36px)/2.15),232px)] flex-shrink-0 sm:w-[232px] [@media(hover:hover)]:hover:-translate-y-1' : 'w-full [@media(hover:hover)]:hover:-translate-y-1'
       } ${className}`}
     >
       <DealMedia src={offer.imageUrl} image={image} priority={priority} alt={title.text} category={offer.category} logo={heroLogo} aspect={rail ? 'aspect-[16/10] max-h-40' : 'aspect-[2/1] max-h-[172px]'}>
         <DiscountBadge percent={discount} />
-        {/* How it's redeemed (and, in a mixed feed, a category mark) over the photo's top start corner. */}
-        <span className="absolute start-2.5 top-2.5 flex max-w-[calc(100%-4.5rem)] items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-micro font-semibold text-body">
-          {showCategoryBadge && (
-            <>
-              <CategoryIcon category={offer.category} className="h-3 w-3 shrink-0" strokeWidth={1.5} />
-              {/* The mark is a picture; the name is for screen readers. */}
-              <span className="sr-only">{categoryTile ? t(categoryTile.labelKey) : offer.category}</span>
-            </>
-          )}
-          {!multiChain && (offer.redemptionMethod === 'in_store' || offer.redemptionMethod === 'online') && <ChannelIcon aria-hidden="true" className="h-3 w-3 shrink-0" strokeWidth={1.75} />}
-          <span className="truncate">{multiChain ? t('perk_multi_chain_badge') : t(redemptionTagKey(offer))}</span>
-        </span>
+        {/* The expiry at the photo's top start corner: dark, crimson inside 48 hours. */}
+        {pill && pill.kind !== 'expired' && (
+          <span className={`absolute start-2.5 top-2.5 max-w-[calc(100%-4.5rem)] truncate rounded-full px-2 py-0.5 text-[11px] font-bold leading-4 text-white ${pill.kind === 'urgent' ? 'bg-red-700' : 'bg-slate-900/80'}`}>
+            {t(pill.key).split('{date}').map((part, i) => (i === 0 ? part : <span key="d"><bdi dir="ltr" className="tabular-nums">{pill.date}</bdi>{part}</span>))}
+          </span>
+        )}
         {showWishlistButton && user && (
           <button
             type="button"
@@ -134,31 +119,20 @@ export default memo(function OfferCard({ offer, showWishlistButton = false, layo
       </DealMedia>
 
       <div className={`flex flex-1 flex-col p-3 ${heroLogo ? 'pt-3' : 'pt-[22px]'}`}>
-        {/* Cards in a row stretch to the tallest, and the price rides the foot (mt-auto), so no title lines are reserved. */}
-        <p className={`line-clamp-2 text-[15px] font-bold leading-tight text-ink`}>
-          <bdi lang={title.lang ?? undefined} dir="auto">{title.text}</bdi>
+        {/* Two lines of room whatever the title needs, so neighbouring cards share one baseline; the price rides the foot (mt-auto). */}
+        <p className="line-clamp-2 min-h-[2.5rem] text-[15px] font-bold leading-tight text-ink">
+          <bdi lang={title.lang ?? undefined} dir="auto">{displayTitle(offer, title.text, t('super_tav_headline'))}</bdi>
         </p>
         {/* The business on its own line, then where (or how far) on a full-width line below, so a long notice wraps whole. */}
         <bdi className="mt-[3px] block min-w-0 truncate text-meta leading-snug text-body" lang={name.lang ?? undefined} dir="auto">{name.text}</bdi>
+        {nationwide && (
+          <span className="mt-1.5 inline-flex max-w-full items-center gap-1 self-start rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold leading-4 text-muted">
+            <Globe aria-hidden="true" className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            <span className="truncate">{t('loc_nationwide_badge')}</span>
+          </span>
+        )}
         {/* The foot: where it is, then the price, pinned together to the card's bottom edge (mt-auto) so every card in a row lines up. */}
         <div className="mt-auto pt-2">
-          {onlineOnly ? (
-            <div className="flex min-w-0 items-center gap-1 text-micro leading-4">
-              <Globe aria-hidden="true" className="h-3 w-3 flex-shrink-0 text-brand" strokeWidth={1.75} />
-              <span className="truncate font-medium text-muted">{t('perk_online_store')}</span>
-            </div>
-          ) : reach ? (
-            <PerkReachLine offer={offer} className="text-micro leading-4 text-muted" />
-          ) : (place || hasDistance) ? (
-            <div className="flex min-w-0 items-center gap-1 text-micro leading-4">
-              <MapPin aria-hidden="true" className={`h-3 w-3 flex-shrink-0 ${hasDistance ? 'text-brand' : 'text-slate-400'}`} strokeWidth={1.75} />
-              {/* <bdi>: "1.2 ק״מ" keeps its order inside a Hebrew or English line. */}
-              {typeof distanceKm === 'number' && <bdi className="flex-shrink-0 font-semibold text-brand">{formatDistance(distanceKm, lang)}</bdi>}
-              {hasDistance && place && <span aria-hidden="true" className="text-muted">·</span>}
-              {place && <bdi className="truncate font-medium text-muted" dir="auto">{place}</bdi>}
-            </div>
-          ) : null}
-
           {/* One baseline at the card's foot: the price, then the struck-through original. Always left to right, "₪" included. */}
           <div className="mt-1.5 flex flex-nowrap items-baseline gap-x-2 whitespace-nowrap">
           {multiValue ? (
@@ -167,7 +141,6 @@ export default memo(function OfferCard({ offer, showWishlistButton = false, layo
               <span className="text-price text-brand">
                 {t('offer_card_from').split('{price}').map((part, i) => (i === 0 ? part : <span key="p"><bdi dir="ltr" className="tabular-nums">{formatPrice(offer.offerPrice)}</bdi>{part}</span>))}
               </span>
-              <bdi dir="ltr" className="self-center rounded-lg bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold tabular-nums leading-4 text-body">{offer.variants!.map((v) => v.faceValueAgorot / 100).join(' / ')} ₪</bdi>
             </>
           ) : (
             <>

@@ -96,14 +96,14 @@ describe('native screens follow the live window', () => {
 
   // The perk feeds are FlashLists (no columnWrapperStyle): each cell takes its column index and FeedCell shifts the card by
   // column x gap / columns, which leaves exactly GRID_GAP between neighbours.
-  it.each(['app/(tabs)/perks.tsx', 'app/(tabs)/wishlist.tsx', 'app/category/[category].tsx'])(
+  it.each(['app/(tabs)/perks.tsx', 'app/wishlist.tsx', 'app/category/[category].tsx'])(
     '%s is a FlashList that remounts when folding changes the column count',
     (path) => {
       const source = read(path)
       expect(source).toContain('<FlashList')
       expect(source).toContain("key={'cols-' + columns}")
       expect(source).toContain('numColumns={columns}')
-      expect(source).toMatch(/<FeedCell column=\{(item\.)?index\}>/)
+      expect(source).toMatch(/<FeedCell column=\{(item\.)?index\}( grid=\{grid\})?>/)
     }
   )
 
@@ -143,7 +143,7 @@ describe('native screens follow the live window', () => {
 describe('native safe-area insets held landscape', () => {
   const screens = sources('landly-mobile/src/app')
   // Screens laid out by useLayout() pad by inset plus gutter themselves; every other screen takes the side insets from its SafeAreaView.
-  const LAYOUT_SCREENS = ['(tabs)/index.tsx', '(tabs)/perks.tsx', '(tabs)/wishlist.tsx', '(tabs)/wallet.tsx', 'category/[category].tsx', 'offer/[offerId].tsx']
+  const LAYOUT_SCREENS = ['(tabs)/index.tsx', '(tabs)/perks.tsx', 'wishlist.tsx', '(tabs)/wallet.tsx', 'category/[category].tsx', 'offer/[offerId].tsx']
 
   it.each(screens.filter((file) => readFileSync(file, 'utf8').includes('<SafeAreaView')))('%s keeps content clear of a side cutout', (file) => {
     const source = readFileSync(file, 'utf8')
@@ -227,8 +227,11 @@ describe('section header', () => {
     expect(header).toContain("action: { flexShrink: 0, minHeight: 44, justifyContent: 'center',")
     expect(header).not.toContain('row-reverse')
     const web = readFileSync('components/discover/OfferCardRail.tsx', 'utf8')
-    expect(web).toContain('<MemberColumn wide className="mb-1 flex items-center justify-between gap-2">')
+    expect(web).toContain("const row = 'mb-1 flex items-center justify-between gap-2'")
     expect(web).toContain('className="flex min-w-0 flex-1 items-center gap-1.5 text-xl font-bold tracking-tight text-ink"')
-    expect(web).toContain('tap-target group/pill inline-flex shrink-0 items-center')
+    // "See all perks" is plain text with a chevron: no pill, no border.
+    expect(web).toContain('tap-target group/link inline-flex shrink-0 items-center')
+    expect(web).not.toContain('border-slate-200/70 bg-brandTint')
+    expect(header).not.toContain('pill:')
   })
 })

@@ -1,7 +1,7 @@
 import { Platform, StyleSheet, View } from 'react-native'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useWishlist } from '@shared/firebase/useWishlist'
+import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import { useLang } from '../../i18n/LangProvider'
 import { colors } from '../../theme'
 import { tick } from '../../lib/haptics'
@@ -21,9 +21,11 @@ import { tick } from '../../lib/haptics'
 //   above the gesture or 3-button system bar. Material draws no divider, so a
 //   border-coloured hairline is laid over its top edge.
 // The system lays the five out in equal columns at its own bar height.
-// The order is physical and permanent: Home far left, then Perks, Wishlist,
-// My Pass, Profile far right, in every language. The Wishlist tab carries the
-// live count of saved perks as its badge (the system draws it). Native layout direction stays LTR
+// The order is physical and permanent: Home far left, then Perks, the Raayonit
+// Card ("תו על"), My Pass, Profile far right, in every language. The Raayonit tab
+// is there only while Raayonit's name may be shown (useRaayonitDisplay), so with
+// it off the bar has four. The saved perks (Wishlist) open from the Profile
+// tab's heart. Native layout direction stays LTR
 // (supportsRTL is off in app.json); Hebrew only flips the JS root view, so
 // the screens follow the language while the bar never mirrors.
 const androidBar = Platform.OS === 'android'
@@ -51,7 +53,7 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 
 export default function TabsLayout() {
   const { t } = useLang()
-  const { wishlistCount } = useWishlist()
+  const raayonit = useRaayonitDisplay()
   const insets = useSafeAreaInsets()
 
   return (
@@ -65,12 +67,12 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Icon sf={{ default: 'gift', selected: 'gift.fill' }} md="redeem" />
           <NativeTabs.Trigger.Label>{t('mobile_tab_perks')}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="wishlist">
-          <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} md={{ default: 'favorite_border', selected: 'favorite' }} />
-          <NativeTabs.Trigger.Label>{t('wishlist_title')}</NativeTabs.Trigger.Label>
-          {/* Only with saved perks: an empty Badge still draws a dot (its value becomes ' '). */}
-          {wishlistCount > 0 && <NativeTabs.Trigger.Badge>{String(wishlistCount)}</NativeTabs.Trigger.Badge>}
-        </NativeTabs.Trigger>
+        {raayonit && (
+          <NativeTabs.Trigger name="raayonit">
+            <NativeTabs.Trigger.Icon sf={{ default: 'creditcard', selected: 'creditcard.fill' }} md="credit_card" />
+            <NativeTabs.Trigger.Label>{t('nav_raayonit')}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        )}
         <NativeTabs.Trigger name="wallet">
           <NativeTabs.Trigger.Icon sf={{ default: 'ticket', selected: 'ticket.fill' }} md="confirmation_number" />
           <NativeTabs.Trigger.Label>{t('mobile_tab_wallet')}</NativeTabs.Trigger.Label>

@@ -55,6 +55,7 @@ it('the account email, pending fields and welcome-email flag are server-only', a
     { welcomeEmailSentAt: null },
     { marketingOptInAt: null },
     { marketingOptInSource: 'signup' },
+    { emailVerifiedAt: null },
   ]) {
     await expect(updateDoc(doc(owner, OWNER), patch), JSON.stringify(Object.keys(patch))).rejects.toMatchObject({ code: 'permission-denied' })
   }

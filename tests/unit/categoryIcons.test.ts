@@ -51,12 +51,12 @@ describe('category vector icons', () => {
     expect(map(app)).toEqual(map(web))
   })
 
-  it('heads the New and Bestsellers rails and lists with icons (Sparkles, Award), not ✨ and 🔥, on the web and in the app', () => {
+  it('heads the New and Bestsellers rails and lists with icons (a plus, Award), not ✨ and 🔥, on the web and in the app', () => {
     const page = read('app/categories/page.tsx')
-    expect(page).toContain('<OfferTileRail icon={Sparkles}')
+    expect(page).toContain('<OfferTileRail icon={CirclePlus}')
     expect(page).toContain('<OfferTileRail icon={Award}')
     expect(page).not.toContain('Flame')
-    expect(read('app/categories/new/page.tsx')).toContain('icon={Sparkles}')
+    expect(read('app/categories/new/page.tsx')).toContain('icon={CirclePlus}')
     expect(read('app/categories/bestsellers/page.tsx')).toContain('<OfferListView icon={Award}')
     const perks = read('landly-mobile/src/app/(tabs)/perks.tsx')
     // The app's rails take the same icons, named in landly-mobile/src/lib/categoryGlyphs.ts.
@@ -64,7 +64,7 @@ describe('category vector icons', () => {
     expect(perks).toContain('<OfferTileRail glyph="bestsellers"')
     expect(perks).not.toMatch(/[✨🔥🆕]/u)
     const glyphs = read('landly-mobile/src/lib/categoryGlyphs.ts')
-    expect(glyphs).toContain("new: 'sparkles'")
+    expect(glyphs).toContain("new: 'circlePlus'")
     expect(glyphs).toContain("bestsellers: 'award'")
     expect(read('landly-mobile/src/components/OfferTileRail.tsx')).toContain('<LineIcon name={RAIL_ICONS[glyph]}')
     // The rails' heads are a bare 18px line icon (no badge); the list pages' head is dark ink in a neutral hairline frame. No Font Awesome.

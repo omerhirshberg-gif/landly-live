@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
-import { formatLongDate, formatNumericDate } from '@shared/format'
+import { formatNumericDate } from '@shared/format'
 import { voucherDestination } from '@shared/member/voucherDestination'
 import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import { REDEMPTION_METHOD_LABEL_KEYS, redemptionSteps } from '@shared/offers/redemption'
@@ -24,7 +24,13 @@ import ContactActions from '../../components/ContactActions'
 import VoucherTicket from '../../components/VoucherTicket'
 import ScreenHeader from '../../components/ScreenHeader'
 import { CodeReveal, QrReveal } from '../../components/VoucherReveal'
+import BusinessPageNotice from '../../components/BusinessPageNotice'
 import IssuerAttribution from '../../components/IssuerAttribution'
+import VoucherBalance from '../../components/VoucherBalance'
+import { resolveVoucherRedemptionProgress } from '@shared/vouchers/redemptionProgress'
+import { superTavHeadline } from '@shared/offers/superTav'
+import { ChainsAccordion, MultiChainCreditBox } from '../../components/MultiChainCredit'
+import { isRaayonitMultiChain } from '@shared/offers/multiChainNote'
 import MarkVoucherUsed from '../../components/MarkVoucherUsed'
 import { cachedVoucher } from '../../lib/openVoucher'
 import { useLang } from '../../i18n/LangProvider'
@@ -67,7 +73,15 @@ export default function VoucherScreen() {
   const instructions = content.text('redemptionInstructions')
   const terms = content.text('redemptionTerms')
   const businessName = voucher ? localizedBusinessName(voucher, lang).text : ''
+  const headline = voucher ? superTavHeadline(voucher, t('super_tav_headline')) : null
   const { place, destination } = voucher ? voucherDestination(voucher, lang) : { place: '', destination: null }
+  // A multi-chain pass: the title already names it, and one guide covers every chain (web: app/member/vouchers/[voucherId]/page.tsx).
+  const multiChain = voucher?.perkScope === 'multi_chain'
+  const guide = voucher?.universalRedemptionGuide
+  const hasGuide = multiChain && !!(guide && (guide.he || guide.en))
+  // The balance line only when it says something the value in the title doesn't: a partly used pass.
+  const progress = voucher ? resolveVoucherRedemptionProgress(voucher) : null
+  const showBalance = !!progress && (progress.remainingAgorot !== progress.faceValueAgorot || voucher?.status !== 'active')
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -83,8 +97,29 @@ export default function VoucherScreen() {
               <>
                 <VoucherCover voucher={voucher} ratio={2} maxHeight={200} logoHeight={56} />
                 <View style={styles.head}>
-                  <AppText style={styles.business} accessibilityRole="header">{businessName}</AppText>
-                  <ContentText contentLang={title.lang} style={styles.title}>{title.text}</ContentText>
+                  {/* Directly under the gift card: what is left, then until when. */}
+                  {(voucher.expiresAt || showBalance) && (
+                    <View style={styles.balanceBlock}>
+                      {showBalance && <VoucherBalance voucher={voucher} variant="detail" />}
+                      {voucher.expiresAt && (
+                        <AppText style={[styles.balanceExpiry, expired && styles.expired]}>
+                          {t(expired ? 'voucher_expired_on' : 'voucher_valid_until').split('{date}').map((part, i) => (i === 0 ? part : [<AppText key="d" ltr style={styles.balanceExpiryDate}>{formatNumericDate(voucher.expiresAt!)}</AppText>, part]))}
+                        </AppText>
+                      )}
+                    </View>
+                  )}
+                  {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+                  {headline ? (
+                    <>
+                      <AppText style={styles.business} accessibilityRole="header">{headline}</AppText>
+                      {!multiChain && <AppText style={styles.title}>{businessName}</AppText>}
+                    </>
+                  ) : (
+                    <>
+                      <AppText style={styles.business} accessibilityRole="header">{businessName}</AppText>
+                      <ContentText contentLang={title.lang} style={styles.title}>{title.text}</ContentText>
+                    </>
+                  )}
                   {codeOnly && voucher.issuer && (
                     <View style={styles.issuer}>
                       <IssuerAttribution issuer={voucher.issuer} note={t('voucher_valid_years')} />
@@ -92,19 +127,6 @@ export default function VoucherScreen() {
                   )}
                   <View style={styles.contact}><ContactActions websiteUrl={voucher.websiteUrl} phone={voucher.contactPhone} stack /></View>
                   {content.machine && <TranslationNotice showingOriginal={content.showingOriginal} onToggle={content.toggleOriginal} />}
-                  <View style={styles.chips}>
-                    <View style={styles.methodChip}>
-                      <AppText style={styles.methodText}>{t(REDEMPTION_METHOD_LABEL_KEYS[voucher.redemptionMethod])}</AppText>
-                    </View>
-                    {voucher.expiresAt && (
-                      <View style={styles.validityRow}>
-                        <LineIcon name="clock" size={14} color={expired ? colors.danger : colors.textMuted} strokeWidth={1.75} />
-                        <AppText style={[styles.validity, expired && styles.expired]}>
-                          {t(expired ? 'voucher_expired_on' : 'voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
                   {!destination && !place && locationNoticeKind(voucher) !== null && (
                     <View style={styles.address}>
                       <PerkReachLine offer={voucher} />
@@ -126,6 +148,8 @@ export default function VoucherScreen() {
                       <NavigationButtons destination={destination} wide />
                     </View>
                   )}
+                  {/* Under the store's own branches: where else the voucher works (the whole Raayonit network). */}
+                  {isRaayonitMultiChain(voucher) && voucher.perkScope !== 'multi_chain' && <ChainsAccordion />}
                 </View>
               </>
             }
@@ -135,12 +159,8 @@ export default function VoucherScreen() {
                   <>
                     {/* Raayonit: the code is the voucher. No QR code, no QR reveal. */}
                     <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} prominent />
-                    {voucher.expiresAt && (
-                      <View style={styles.expiryRow} accessible accessibilityLabel={t('voucher_valid_until').replace('{date}', formatLongDate(voucher.expiresAt, lang))}>
-                        <AppText style={styles.expiryLabel}>{t('voucher_valid_until').replace('{date}', '').trim()}</AppText>
-                        <AppText ltr style={styles.expiryDate}>{formatNumericDate(voucher.expiresAt)}</AppText>
-                      </View>
-                    )}
+                    {/* Immediately under the code: issued as a Multi-Chain Super Tav, valid here and across the network. */}
+                    {isRaayonitMultiChain(voucher) && !multiChain && <MultiChainCreditBox />}
                     <AddToAppleWallet voucher={voucher} />
                     <MarkVoucherUsed voucherId={voucher.id} />
                   </>
@@ -168,8 +188,8 @@ export default function VoucherScreen() {
           <View style={styles.panel}>
             <AppText style={styles.howTitle} accessibilityRole="header">{t('redeem_how_title')}</AppText>
             {/* A multi-chain pass is redeemed with its issuer: the guide leads, ahead of the generic steps. */}
-            {voucher.perkScope === 'multi_chain' && <View style={styles.guideBlock}><RedemptionGuide offer={voucher} /></View>}
-            {(() => {
+            {multiChain && <View style={styles.guideBlock}><RedemptionGuide offer={voucher} /></View>}
+            {!hasGuide && (() => {
               const steps = redemptionSteps(voucher.redemptionMethod, instructions.text, t, codeOnly)
               // Numbers only for the merchant's own multi-line instructions, where order matters.
               const numbered = instructions.text.trim() !== '' && steps.length > 1
@@ -184,6 +204,8 @@ export default function VoucherScreen() {
                 </View>
               ))
             })()}
+            {/* The steps above are the general terms; the business's own page has the exact ones. Only while the pass can still be used. */}
+            {voucher.status === 'active' && !expired && <BusinessPageNotice offerId={voucher.offerId} multiChain={voucher.perkScope === 'multi_chain'} />}
             {!!terms.text && (
               <>
                 <AppText style={styles.termsLabel} accessibilityRole="header">{t('voucher_redemption_terms_label')}</AppText>
@@ -219,6 +241,9 @@ const styles = StyleSheet.create({
   addressText: { flex: 1, fontSize: 13, lineHeight: 20, color: colors.textMuted },
   nav: { marginTop: 16 },
   gap: { height: 16 },
+  balanceBlock: { marginBottom: 20, alignItems: 'center', gap: 4 },
+  balanceExpiry: { fontSize: 14, lineHeight: 20, fontWeight: '500', color: colors.textMuted, textAlign: 'center' },
+  balanceExpiryDate: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: colors.body, fontVariant: ['tabular-nums'] },
   expiryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 },
   expiryLabel: { fontSize: 13, color: colors.textMuted },
   expiryDate: { fontSize: 14, fontWeight: '700', color: colors.textStrong, fontVariant: ['tabular-nums'] },

@@ -1,5 +1,6 @@
 'use client'
 
+import { superTavHeadline } from '@/lib/offers/superTav'
 import { Check, Receipt } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 import { localizeText } from '@/lib/i18n/contentTranslation'
@@ -47,8 +48,17 @@ export default function RedeemedTab({ vouchers }: { vouchers: RedeemedVoucher[] 
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-bold leading-snug text-slate-700" dir="auto">{localizedBusinessName(voucher, lang).text}</div>
-            <div className="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-slate-500" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</div>
+            {superTavHeadline(voucher, t('super_tav_headline')) ? (
+              <>
+                <div className="line-clamp-2 break-words text-base font-bold leading-snug text-slate-700 tabular-nums" dir="auto">{superTavHeadline(voucher, t('super_tav_headline'))}</div>
+                <div className="mt-0.5 truncate text-sm leading-snug text-slate-500" dir="auto">{localizedBusinessName(voucher, lang).text}</div>
+              </>
+            ) : (
+              <>
+                <div className="truncate text-base font-bold leading-snug text-slate-700" dir="auto">{localizedBusinessName(voucher, lang).text}</div>
+                <div className="mt-0.5 line-clamp-2 break-words text-sm leading-snug text-slate-500" dir="auto">{localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text}</div>
+              </>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <RedemptionBadge method={voucher.redemptionMethod} />
               {voucher.redeemedAt && (

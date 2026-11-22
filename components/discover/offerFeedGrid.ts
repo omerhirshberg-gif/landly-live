@@ -6,3 +6,9 @@
  * so the grid fills the page's wide fluid column.
  */
 export const OFFER_FEED_GRID = 'grid grid-cols-1 gap-5 fold:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6'
+
+/**
+ * A category's results: two equal-height cards per row on phones (their cells share one baseline: a two-line title slot and
+ * a pinned foot), three from 600px, then as the feeds do.
+ */
+export const OFFER_RESULTS_GRID = 'grid grid-cols-2 items-stretch gap-3 fold:grid-cols-3 fold:gap-5 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6'

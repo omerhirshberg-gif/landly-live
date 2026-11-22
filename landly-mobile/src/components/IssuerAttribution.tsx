@@ -1,5 +1,6 @@
 import { Image, StyleSheet, View } from 'react-native'
 import { issuerLine, type VoucherIssuer } from '@shared/payments/issuer'
+import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import AppText from './AppText'
 import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
@@ -17,6 +18,8 @@ const LOGO_HEIGHT = 46
 
 export default function IssuerAttribution({ issuer, note }: { issuer: VoucherIssuer; note?: string }) {
   const { lang } = useLang()
+  // Raayonit's name and logo show only once its written approval is switched on (lib/flags/featureFlags.ts).
+  if (!useRaayonitDisplay()) return null
   const line = issuerLine(issuer, lang)
   return (
     <View style={styles.wrap} accessible accessibilityLabel={note ? `${line}. ${note}` : line}>

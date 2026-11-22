@@ -6,6 +6,7 @@ import CategoryIcon from '@/components/ui/CategoryIcon'
 import { formatSavings } from '@/lib/format'
 import type { HeroFeature } from '@/lib/home/showcase'
 import { useLang } from '@/lib/i18n/useLang'
+import { displayTitle } from '@/lib/offers/superTav'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { localizedBusinessName } from '@/lib/business/businessText'
 
@@ -101,6 +102,7 @@ function FeatureCard({ feature, theme, tilt }: { feature: HeroFeature; theme: Th
   const { offer, savings, percent } = feature
   const name = localizedBusinessName(offer, lang)
   const title = localizeText(offer.title, offer.translations, lang, 'title')
+  const shownTitle = displayTitle(offer, title.text, t('super_tav_headline'))
   const amount = formatSavings(savings, lang)
   const [savedBefore, savedAfter] = t('landing_savings_badge').split('{amount}')
   const nameProps = { lang: name.lang ?? undefined, dir: 'auto' as const }
@@ -111,7 +113,7 @@ function FeatureCard({ feature, theme, tilt }: { feature: HeroFeature; theme: Th
       <Link href={feature.href} className={`${CARD} ${tilt} ${theme.card}`}>
         {glyph}
         <span className={`${EYEBROW} text-brand`} {...nameProps}>{name.text}</span>
-        <span className="mt-1 line-clamp-2 text-lg sm:text-xl font-black leading-[1.25] tracking-tight" {...titleProps}>{title.text}</span>
+        <span className="mt-1 line-clamp-2 text-lg sm:text-xl font-black leading-[1.25] tracking-tight" {...titleProps}>{shownTitle}</span>
         <span className="mt-auto self-start rounded-full bg-white px-3 py-1 text-meta font-black text-brand shadow-sm">
           {savedBefore}<bdi>{amount}</bdi>{savedAfter}
         </span>
@@ -127,7 +129,7 @@ function FeatureCard({ feature, theme, tilt }: { feature: HeroFeature; theme: Th
           <span aria-hidden="true" className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand" />
           <span className={EYEBROW} {...nameProps}>{name.text}</span>
         </span>
-        <span className="mt-1 line-clamp-2 text-meta sm:text-sm font-medium leading-snug text-slate-600" {...titleProps}>{title.text}</span>
+        <span className="mt-1 line-clamp-2 text-meta sm:text-sm font-medium leading-snug text-slate-600" {...titleProps}>{shownTitle}</span>
         {/* The amount set large inside the phrase, whichever side of it the language puts the words. */}
         <span className="mt-auto flex flex-wrap items-baseline gap-x-1 font-black text-brand">
           {savedBefore.trim() && <span className="text-xs uppercase tracking-wider rtl:tracking-normal">{savedBefore.trim()}</span>}
@@ -147,7 +149,7 @@ function FeatureCard({ feature, theme, tilt }: { feature: HeroFeature; theme: Th
         </span>
       )}
       <span className={`mt-auto ${EYEBROW} text-slate-500`} {...nameProps}>{name.text}</span>
-      <span className="mt-1 line-clamp-2 text-title sm:text-lg font-black leading-tight tracking-tight" {...titleProps}>{title.text}</span>
+      <span className="mt-1 line-clamp-2 text-title sm:text-lg font-black leading-tight tracking-tight" {...titleProps}>{shownTitle}</span>
     </Link>
   )
 }

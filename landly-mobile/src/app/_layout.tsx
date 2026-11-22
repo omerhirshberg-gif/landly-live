@@ -211,6 +211,8 @@ function RootNavigator() {
               <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: ONB.screenInMs }} />
               {/* The Profile tab's gear pushes Settings over the tabs; a swipe turns it back. */}
               <Stack.Screen name="settings" options={pageFlipOptions(isRtl)} />
+              {/* The Profile tab's heart opens the saved perks (the Wishlist is no longer a tab). */}
+              <Stack.Screen name="wishlist" options={pageFlipOptions(isRtl)} />
               {/* A category tile (Perks grid, Home rail) opens its folder the same way. */}
               <Stack.Screen name="category/[category]" options={pageFlipOptions(isRtl)} />
               {/* A My Pass card's "View Voucher" opens the voucher on its own screen. */}
@@ -218,6 +220,7 @@ function RootNavigator() {
               {/* A perk card opens its offer natively, never in the browser (lib/openOffer.ts). */}
               <Stack.Screen name="offer/[offerId]" options={pageFlipOptions(isRtl)} />
               {/* The offer's Buy opens checkout in the app too; a purchase replaces it with the confirmation. */}
+              <Stack.Screen name="raayonit-card" options={pageFlipOptions(isRtl)} />
               <Stack.Screen name="checkout/[offerId]" options={pageFlipOptions(isRtl)} />
               <Stack.Screen name="order-success/[orderId]" options={pageFlipOptions(isRtl)} />
             </Stack.Protected>

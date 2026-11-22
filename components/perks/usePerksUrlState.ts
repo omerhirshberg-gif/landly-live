@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { DEFAULT_PERK_SORT, parseCategoryFilter, parseMethodFilter, parseMinDiscount, parsePerkSort, type CategoryFilter, type PerkMethodFilter, type PerkMinDiscount, type PerkSort } from '@/lib/perks/perksFilter'
+import { OFFER_KINDS, type OfferKind } from '@/lib/offers/offerKind'
+import { DEFAULT_PERK_SORT, parseCategoryFilter, parseMethodFilter, parseMinDiscount, parsePerkSort, parsePerkSource, type CategoryFilter, type PerkMethodFilter, type PerkMinDiscount, type PerkSort, type PerkSource } from '@/lib/perks/perksFilter'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 const SEARCH_DEBOUNCE_MS = 200
@@ -21,6 +22,10 @@ export function usePerksUrlState() {
   const sort = parsePerkSort(params.get('sort'))
   const method = parseMethodFilter(params.get('type'))
   const minDiscount = parseMinDiscount(params.get('min'))
+  const rawKind = params.get('kind') ?? ''
+  const kind: OfferKind | 'all' = (OFFER_KINDS as readonly string[]).includes(rawKind) ? (rawKind as OfferKind) : 'all'
+  const brand = (params.get('brand') ?? '').trim()
+  const source = parsePerkSource(params.get('src'))
   const urlQuery = params.get('q') ?? ''
 
   const [query, setQuery] = useState(urlQuery)
@@ -28,7 +33,7 @@ export function usePerksUrlState() {
   const appliedQuery = query ? debouncedQuery : ''
 
   const write = useCallback(
-    (key: 'cat' | 'sort' | 'q' | 'type' | 'min', value: string | null) => {
+    (key: 'cat' | 'sort' | 'q' | 'type' | 'min' | 'kind' | 'brand' | 'src', value: string | null) => {
       const next = new URLSearchParams(window.location.search)
       if (value) next.set(key, value)
       else next.delete(key)
@@ -51,14 +56,17 @@ export function usePerksUrlState() {
   const setCategory = useCallback((next: CategoryFilter) => write('cat', next === 'all' ? null : next), [write])
   const setSort = useCallback((next: PerkSort) => write('sort', next === DEFAULT_PERK_SORT ? null : next), [write])
 
+  const setSource = useCallback((next: PerkSource) => write('src', next === 'all' ? null : next), [write])
+  const setKind = useCallback((next: OfferKind | 'all') => write('kind', next === 'all' ? null : next), [write])
+  const setBrand = useCallback((next: string) => write('brand', next || null), [write])
   const setMethod = useCallback((next: PerkMethodFilter) => write('type', next === 'all' ? null : next), [write])
   const setMinDiscount = useCallback((next: PerkMinDiscount) => write('min', next === 0 ? null : String(next)), [write])
   const reset = useCallback(() => {
     const next = new URLSearchParams(window.location.search)
-    for (const key of ['sort', 'type', 'min']) next.delete(key)
+    for (const key of ['sort', 'type', 'min', 'kind', 'brand']) next.delete(key)
     const search = next.toString()
     window.history.replaceState(null, '', search ? `${pathname}?${search}` : pathname)
   }, [pathname])
 
-  return { query, setQuery, appliedQuery, category, setCategory, sort, setSort, method, setMethod, minDiscount, setMinDiscount, resetFilters: reset }
+  return { query, setQuery, appliedQuery, category, setCategory, sort, setSort, method, setMethod, minDiscount, setMinDiscount, kind, setKind, brand, source, setSource, setBrand, resetFilters: reset }
 }

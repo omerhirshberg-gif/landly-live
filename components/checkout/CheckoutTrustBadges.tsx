@@ -19,7 +19,7 @@ export default function CheckoutTrustBadges({ className = '' }: { className?: st
   return (
     <ul className={`grid gap-2 sm:grid-cols-3 sm:gap-3 ${className}`}>
       {BADGES.map(({ icon, key, tone }) => (
-        <li key={key} className="flex items-center gap-3 rounded-2xl bg-white/80 px-3 py-2.5 ring-1 ring-slate-200/70 sm:flex-col sm:items-center sm:gap-2 sm:py-3 sm:text-center">
+        <li key={key} className="flex items-center gap-3 rounded-2xl bg-white/80 px-3 py-2.5 ring-1 ring-slate-200/70 sm:flex-col sm:items-center sm:gap-2 sm:py-3 sm:text-center lg:flex-row lg:gap-3 lg:py-3.5 lg:text-start">
           <IconFrame icon={icon} size="sm" tone={tone} />
           <span className="text-xs font-semibold leading-snug text-slate-700">{t(key)}</span>
         </li>

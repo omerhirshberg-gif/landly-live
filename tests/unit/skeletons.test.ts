@@ -32,7 +32,7 @@ describe('loading skeletons', () => {
   it('replaces the spinners on the web feeds and the Expo lists', () => {
     expect(readFileSync('app/categories/page.tsx', 'utf8')).not.toContain('fa-spinner')
     expect(readFileSync('app/wishlist/page.tsx', 'utf8')).not.toContain('fa-spinner')
-    for (const screen of ['(tabs)/index.tsx', '(tabs)/perks.tsx', '(tabs)/wallet.tsx', '(tabs)/wishlist.tsx', 'category/[category].tsx']) {
+    for (const screen of ['(tabs)/index.tsx', '(tabs)/perks.tsx', '(tabs)/wallet.tsx', 'wishlist.tsx', 'category/[category].tsx']) {
       expect(readFileSync(`landly-mobile/src/app/${screen}`, 'utf8'), screen).not.toContain('ActivityIndicator')
     }
   })

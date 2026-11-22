@@ -9,11 +9,13 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import { locationNoticeKind } from '@shared/offers/locationVisibility'
 import AppText from './AppText'
 import { PerkReachLine } from './PerkReach'
+import VoucherBalance from './VoucherBalance'
 import ContentText from './ContentText'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
 import TicketTear from './TicketTear'
 import VoucherCover from './VoucherCover'
+import { superTavHeadline } from '@shared/offers/superTav'
 import { impact } from '../lib/haptics'
 import { openVoucher } from '../lib/openVoucher'
 import { webOnly } from '../lib/webStyles'
@@ -37,6 +39,7 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
   const { t, lang, isRtl } = useLang()
   const title = localizeText(voucher.offerTitle, voucher.translations, lang, 'title')
   const name = localizedBusinessName(voucher, lang)
+  const headline = superTavHeadline(voucher, t('super_tav_headline'))
   // Read once per mount, since render must stay pure.
   const [now] = useState(Date.now)
   const expired = !!voucher.expiresAt && voucher.expiresAt.getTime() < now
@@ -51,7 +54,7 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
     <ScalePressable
       pressedScale={0.98}
       accessibilityRole="button"
-      accessibilityLabel={[name.text, title.text, validity, t('voucher_show_button')].filter(Boolean).join(', ')}
+      accessibilityLabel={[headline ?? name.text, headline ? name.text : title.text, validity, t('voucher_show_button')].filter(Boolean).join(', ')}
       onPress={() => {
         impact()
         // Hands the pass over, so the voucher screen draws it at once (src/lib/openVoucher.ts).
@@ -61,9 +64,19 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
     >
       <VoucherCover voucher={voucher} maxHeight={148} />
       <View style={styles.body}>
-        <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
-        <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>
-        {!place && locationNoticeKind(voucher) !== null && (
+        {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below; any other perk keeps business then deal. */}
+        {headline ? (
+          <>
+            <AppText style={styles.business} numberOfLines={2}>{headline}</AppText>
+            {voucher.perkScope !== 'multi_chain' && <AppText style={styles.title} numberOfLines={1}>{name.text}</AppText>}
+          </>
+        ) : (
+          <>
+            <AppText style={styles.business} numberOfLines={1}>{name.text}</AppText>
+            <ContentText contentLang={title.lang} style={styles.title} numberOfLines={2}>{title.text}</ContentText>
+          </>
+        )}
+        {!place && voucher.perkScope !== 'multi_chain' && locationNoticeKind(voucher) !== null && (
           <View style={styles.address}>
             <PerkReachLine offer={voucher} compact />
           </View>
@@ -74,6 +87,8 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
             <AppText style={styles.addressText} numberOfLines={1}>{place}</AppText>
           </View>
         )}
+        {/* What was paid against what the voucher is worth, before it is opened. */}
+        <View style={styles.value}><VoucherBalance voucher={voucher} /></View>
       </View>
       <TicketTear />
       <View style={styles.footer}>
@@ -114,6 +129,7 @@ const styles = StyleSheet.create({
   business: { fontSize: 17, lineHeight: 23, fontWeight: '800', color: colors.heading },
   title: { fontSize: 14, lineHeight: 20, color: colors.body, marginTop: 2 },
   address: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  value: { marginTop: 10 },
   addressText: { flex: 1, fontSize: 12, lineHeight: 16, color: colors.textFaint },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14 },
   validityRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -22,7 +22,7 @@ export default function TranzilaPaymentWidget({ offerTitle, amount, onBack }: Tr
   const { t } = useLang()
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 shadow-card text-center">
+    <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 lg:p-12 shadow-card text-center">
       <Lock aria-hidden="true" className="mx-auto mb-4 h-7 w-7 text-brand" strokeWidth={1.75} />
       <h2 className="text-lg font-bold text-slate-900 mb-2">{t('checkout_payment_coming_soon_title')}</h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-1">{t('checkout_payment_coming_soon_sub')}</p>

@@ -2,11 +2,13 @@
 
 import { Suspense, useDeferredValue, useMemo, useState } from 'react'
 import Navbar from '@/components/layout/Navbar'
-import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
+import OfferCard from '@/components/discover/OfferCard'
+import ShareFriendButton from '@/components/discover/ShareFriendButton'
+import { OFFER_RESULTS_GRID } from '@/components/discover/offerFeedGrid'
 import OfferTileRail from '@/components/discover/OfferTileRail'
-import MultiChainShowcase from '@/components/discover/MultiChainShowcase'
-import { Award, MapPin, Search, Sparkles, Tags } from 'lucide-react'
-import { buildCategoryRails, isSuperVoucher, railLabel, selectSuperVouchers } from '@/lib/home/categoryRails'
+import { landlyOffers } from '@/lib/offers/discoverTab'
+import { Award, MapPin, Search, CirclePlus, Tags } from 'lucide-react'
+import { buildCategoryRails, isSuperVoucher, railLabel } from '@/lib/home/categoryRails'
 import OfferCardRail from '@/components/discover/OfferCardRail'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import CategoryGrid from '@/components/perks/CategoryGrid'
@@ -18,9 +20,10 @@ import { PerksUrlStateProvider, usePerksUrlContext } from '@/components/perks/Pe
 import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
 import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
-import { CATEGORY_TILES, filterCategoryTiles, perksCountLabel } from '@/lib/categories'
+import { CATEGORY_TILES, filterCategoryTiles } from '@/lib/categories'
 import LocationFilterBar from '@/components/discover/LocationFilterBar'
-import { applyLocationFilter, badgeKm, sortByLocation } from '@/lib/perks/locationFilter'
+import { applyLocationFilterWithNationwide, badgeKm, partitionByLocation, sortByLocation } from '@/lib/perks/locationFilter'
+import { locationCountLabel } from '@/lib/perks/locationCount'
 import { isOfferAvailable, isOfferNew, sortFeaturedOffers } from '@/lib/firebase/offers'
 import { useOffers } from '@/lib/offers/useOffers'
 import { categoryHref, DEFAULT_PERK_SORT, filterAndSortPerks, hasActivePerkFilters, normalizeQuery } from '@/lib/perks/perksFilter'
@@ -39,11 +42,13 @@ const NEARBY_MAX = 12
 function PerksBrowser() {
   const { t, lang } = useLang()
   // Search, Sort and the filters are edited by the persistent bar above (GlobalPerkSearchBar); this reads the same URL state.
-  const { appliedQuery, category, setCategory, sort, method, minDiscount } = usePerksUrlContext()!
+  const { appliedQuery, category, setCategory, sort, method, minDiscount, kind, brand } = usePerksUrlContext()!
   const { origin, filter, setRadiusKm, setAreaPick, setOrigin } = usePerksSearch()
   // The shared catalog (lib/offers/offersStore.ts): a held or saved copy draws on the first frame, so coming back here
   // never shows a skeleton; a stale copy refreshes behind it. A failed load with nothing to show offers a retry.
-  const { offers, failed, refresh } = useOffers()
+  const { offers: allOffers, failed, refresh } = useOffers()
+  // This page is GoLandly's own perks only; Raayonit's "תו על" has its own tab (/raayonit).
+  const offers = useMemo(() => (allOffers ? landlyOffers(allOffers) : allOffers), [allOffers])
   const [retrying, setRetrying] = useState(false)
   const retry = () => {
     setRetrying(true)
@@ -56,29 +61,26 @@ function PerksBrowser() {
   const listSort = useDeferredValue(sort)
   const listMethod = useDeferredValue(method)
   const listMinDiscount = useDeferredValue(minDiscount)
-  const filtering = hasActivePerkFilters({ query: appliedQuery, category, sort, method, minDiscount })
+  const filtering = hasActivePerkFilters({ query: appliedQuery, category, sort, method, minDiscount, kind, brand })
   const normalizedQuery = normalizeQuery(listQuery)
 
   const originCoords = origin?.coords ?? null
   // Near me / a picked area narrows every list on the page (lib/perks/locationFilter.ts).
-  const located = useMemo(() => (offers ? applyLocationFilter(offers, filter) : undefined), [offers, filter])
-  const locEmpty = !!filter && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
-  const results = useMemo(
-    () =>
-      located && filtering
-        ? sortByLocation(
-            filterAndSortPerks(located, { query: listQuery, category: listCategory, sort: listSort, method: listMethod, minDiscount: listMinDiscount }, t, lang, null),
-            listSort === DEFAULT_PERK_SORT ? filter : null
-          )
-        : [],
-    [located, filtering, listQuery, listCategory, listSort, listMethod, listMinDiscount, t, lang, filter]
-  )
+  const located = useMemo(() => (offers ? applyLocationFilterWithNationwide(offers, filter) : undefined), [offers, filter])
+  // Nothing real in this radius or area: only multi-chain passes and unplaceable nationwide chains are left.
+  const locEmpty = !!filter && !!offers && !partitionByLocation(offers, filter).nearby.some((o) => o.perkScope !== 'multi_chain')
+  const { nearbyResults, nationwideResults } = useMemo(() => {
+    if (!offers || !filtering) return { nearbyResults: [], nationwideResults: [] }
+    const matched = filterAndSortPerks(offers, { query: listQuery, category: listCategory, sort: listSort, method: listMethod, minDiscount: listMinDiscount, kind, brand }, t, lang, null)
+    const parts = partitionByLocation(matched, filter)
+    return { nearbyResults: sortByLocation(parts.nearby, listSort === DEFAULT_PERK_SORT ? filter : null), nationwideResults: parts.nationwide }
+  }, [offers, filtering, listQuery, listCategory, listSort, listMethod, listMinDiscount, kind, brand, t, lang, filter])
+  const results = useMemo(() => [...nearbyResults, ...nationwideResults], [nearbyResults, nationwideResults])
   // A search across All also surfaces the categories it names.
   const matchingTiles = normalizedQuery && listCategory === 'all' ? filterCategoryTiles(CATEGORY_TILES, normalizedQuery, t) : []
   // The overview's two rails: one fetch, sold-out offers left out, bestsellers then newest.
   const railOffers = useMemo(() => (located ? sortFeaturedOffers(located.filter((o) => isOfferAvailable(o) && !isSuperVoucher(o))) : []), [located])
   const categoryRails = useMemo(() => (located ? buildCategoryRails(located) : []), [located])
-  const superOffers = useMemo(() => (located ? selectSuperVouchers(located) : []), [located])
   const newOffers = railOffers.filter((offer) => isOfferNew(offer.createdAt) && offer.fulfillmentType !== 'raayonit_pool')
   const bestsellerOffers = railOffers.filter((offer) => offer.isBestseller)
   const selectedTile = CATEGORY_TILES.find((tile) => tile.category === category)
@@ -87,7 +89,7 @@ function PerksBrowser() {
   // The page heading carries the selected category, so the results heading
   // only names a search, or "All" for a sort over everything; a category on
   // its own shows just the count under the page heading.
-  const pageTitle = selectedTile ? t(selectedTile.labelKey) : t('cats_page_title')
+  const pageTitle = selectedTile ? t(selectedTile.labelKey) : t('perks_explore_title')
   const resultsTitle = normalizedQuery
     ? t('cats_search_results_title').replace('{query}', listQuery.trim())
     : selectedTile
@@ -101,6 +103,12 @@ function PerksBrowser() {
         <BackButton fallback="/categories" label={t('nav_back')} onBack={() => setCategory('all')} className="mb-2" />
       )}
       <PageHeading title={pageTitle} />
+      {offers !== null && offers !== undefined && offers.length === 0 && !failed ? (<>
+        <div aria-live="polite" className="dash-empty-state rounded-2xl border border-slate-100 bg-white">
+          <Tags aria-hidden="true" strokeWidth={1.75} />
+          <div className="mb-1 text-base font-bold text-ink">{t('perks_landly_soon')}</div>
+        </div>
+      </>) : (<>
       {filtering && (
         <div className="mb-8">
           <PerksToolbar category={category} onCategoryChange={setCategory} showFilters={filtering} />
@@ -133,13 +141,24 @@ function PerksBrowser() {
             <section aria-live="polite">
               <div className="mb-3 flex flex-wrap items-baseline gap-x-2">
                 {resultsTitle && <h2 className="text-base font-bold text-ink break-words">{resultsTitle}</h2>}
-                <span className="text-sm text-body">{perksCountLabel(results.length, t)}</span>
+                <span className="text-sm text-body">{locationCountLabel(nearbyResults.length, nationwideResults.length, t)}</span>
               </div>
-              <div className={`${OFFER_FEED_GRID} touch-pan-y touch-pinch-zoom`}>
-                {results.map((offer) => (
+              <div className={`${OFFER_RESULTS_GRID} touch-pan-y touch-pinch-zoom`}>
+                {nearbyResults.map((offer) => (
                   <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={listCategory === 'all'} distanceKm={badgeKm(offer, filter)} />
                 ))}
               </div>
+              {nationwideResults.length > 0 && (
+                <>
+                  <h2 className="mb-3 mt-8 text-base font-bold text-ink break-words">{t('loc_more_nationwide')}</h2>
+                  <div className={`${OFFER_RESULTS_GRID} touch-pan-y touch-pinch-zoom`}>
+                    {nationwideResults.map((offer) => (
+                      <OfferCard key={offer.id} offer={offer} layout="grid" showCategoryBadge={listCategory === 'all'} nationwide />
+                    ))}
+                  </div>
+                </>
+              )}
+              <ShareFriendButton className="mt-8" />
             </section>
           ) : (
             matchingTiles.length === 0 && (
@@ -155,6 +174,8 @@ function PerksBrowser() {
         </div>
       ) : (
         <>
+          <p className="mb-1 text-xs font-bold tracking-wide text-brand">{t('perks_landly_label')}</p>
+          <h2 id="perks-landly-title" className="mb-3.5 text-[22px] font-extrabold tracking-tight text-ink sm:text-2xl">{t('perks_landly_title')}</h2>
           {locEmpty && (
             <div className="dash-empty-state mb-8 rounded-2xl border border-slate-100 bg-white" aria-live="polite">
               <MapPin aria-hidden="true" strokeWidth={1.75} />
@@ -166,16 +187,13 @@ function PerksBrowser() {
             </div>
           )}
 
-          {/* The flagship multi-chain voucher: one card per value, centred above everything else. */}
-          {superOffers[0] && <MultiChainShowcase offer={superOffers[0]} />}
-
           {(newOffers.length > 0 || bestsellerOffers.length > 0) && (
             <>
               <SectionDivider className="mb-8" />
               {/* The rails pad themselves (py-5), so the hairline between them needs no spacing of its own. */}
               <div className="mb-8">
                 {newOffers.length > 0 && (
-                  <OfferTileRail icon={Sparkles} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} autoAdvance compact />
+                  <OfferTileRail icon={CirclePlus} title={t('row_new')} href="/categories/new" seeMore={t('cats_see_more')} offers={newOffers} autoAdvance compact />
                 )}
                 {newOffers.length > 0 && bestsellerOffers.length > 0 && <SectionDivider />}
                 {bestsellerOffers.length > 0 && (
@@ -190,7 +208,7 @@ function PerksBrowser() {
             <div className="mb-10">
               {categoryRails.map((rail, index) => (
                 <div key={rail.category}>
-                  {(index > 0 || superOffers.length > 0 || newOffers.length > 0 || bestsellerOffers.length > 0) && <SectionDivider />}
+                  {(index > 0 || newOffers.length > 0 || bestsellerOffers.length > 0) && <SectionDivider />}
                   <OfferCardRail
                     id={`cat-rail-${index}`}
                     title={railLabel(rail, t)}
@@ -208,6 +226,7 @@ function PerksBrowser() {
           )}
         </>
       )}
+      </>)}
     </>
   )
 }
@@ -226,8 +245,8 @@ function PageHeading({ title }: { title?: string }) {
 
 export default function CategoriesPage() {
   const fallback = (
-    <MemberPageShell fluid globalSearch>
-      <MemberColumn wide className="pb-10 sm:pb-12">
+    <MemberPageShell fluid contained globalSearch>
+      <MemberColumn wide className="pb-28 sm:pb-12">
         <PageHeading />
         <OfferGridSkeleton />
       </MemberColumn>
@@ -239,8 +258,8 @@ export default function CategoriesPage() {
       <div className="below-header member-canvas">
         <Suspense fallback={fallback}>
           <PerksUrlStateProvider>
-            <MemberPageShell fluid globalSearch>
-              <MemberColumn wide className="pb-10 sm:pb-12">
+            <MemberPageShell fluid contained globalSearch>
+              <MemberColumn wide className="pb-28 sm:pb-12">
                 <PerksBrowser />
               </MemberColumn>
             </MemberPageShell>

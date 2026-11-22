@@ -71,7 +71,7 @@ describe('web OfferTileRail', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'New on GoLandly', offers }))
     const rail = html.match(/<div class="(offer-tile-rail[^"]*)">/)![1].split(' ')
     expect(rail).not.toContain('grid-rows-2')
-    for (const c of ['grid', 'grid-flow-col', 'auto-cols-[260px]', 'sm:auto-cols-[280px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
+    for (const c of ['grid', 'grid-flow-col', 'auto-cols-[clamp(150px,calc((100vw-36px)/2.15),232px)]', 'sm:auto-cols-[232px]', 'overflow-x-auto', 'snap-x', 'scrollbar-none']) expect(rail).toContain(c)
     // DOM order is the reading order.
     const hrefs = [...html.matchAll(/href="\/offers\/(\d)"/g)].map((m) => m[1])
     expect(hrefs).toEqual(['1', '2', '3', '4', '5'])
@@ -80,7 +80,7 @@ describe('web OfferTileRail', () => {
   it('renders the canonical OfferCard: both prices, the logo box and the discount over the picture', () => {
     const html = render('en', createElement(OfferTileRail, { icon: Sparkles, title: 'x', offers: [offer('1')] }))
     expect(html).toContain('aspect-[2/1] max-h-[172px]')
-    expect(html).toContain('h-[44px] min-w-[64px] max-w-[124px] rounded-xl')
+    expect(html).toContain('h-[44px] w-[72px] rounded-xl')
     expect(html).toContain('-20%')
     expect(html).toContain('₪80')
     expect(html).toContain('line-through')
@@ -121,9 +121,8 @@ describe('/categories overview order', () => {
     expect(grid).toBeGreaterThan(bestRail)
     const native = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
     const n = (s: string) => native.indexOf(s)
-    // The list's rows, in order: the showcase, the highlight rails, then one row per category.
-    expect(n("type: 'showcase'")).toBeGreaterThan(-1)
-    expect(n("type: 'showcase'")).toBeLessThan(n("type: 'highlights'"))
+    // The GoLandly tab's rows, in order: the highlight rails, then one row per category (Raayonit has a tab of its own).
+    expect(n("type: 'highlights'")).toBeGreaterThan(-1)
     expect(n("type: 'highlights'")).toBeLessThan(n('categoryRails.forEach('))
     expect(n("title={t('row_new')}")).toBeLessThan(n("title={t('row_bestsellers')}"))
   })
@@ -148,7 +147,7 @@ describe('/categories overview order', () => {
     expect(beforeCategoryRail).toBeGreaterThan(bestRail)
     expect(categoryRail).toBeGreaterThan(beforeCategoryRail)
     // The highlights always follow a hairline; a category rail does after anything above it.
-    expect(native).toContain("list.push({ key: 'highlights', type: 'highlights', divider: true })")
-    expect(native).toContain('divider: index > 0 || superOffers.length > 0 || highlights')
+    expect(native).toContain("list.push({ key: 'highlights', type: 'highlights', divider: false })")
+    expect(native).toContain('divider: index > 0 || highlights')
   })
 })

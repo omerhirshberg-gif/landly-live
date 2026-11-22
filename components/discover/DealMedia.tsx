@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import BrandMedia from '@/components/ui/BrandMedia'
 import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { dealPhotoFit } from '@/lib/offers/imageFit'
 import { CategoryPanel } from './PerkImage'
@@ -58,10 +59,17 @@ export default function DealMedia({
   if (logo) {
     return (
       <div className={`relative z-[1] w-full ${aspect} ${className}`}>
-        <div className={`absolute inset-0 z-0 flex items-center justify-center overflow-hidden rounded-[inherit] border-b border-slate-100 ${logo.small ? 'bg-gradient-to-br from-[#F1F5F9] to-[#E2E8F0] px-[30%] py-[14%]' : 'bg-white px-5 py-4 sm:px-6'}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoFailed ? RAAYONIT_LOGO_PATH : logo.src} alt={logo.alt} onError={() => setLogoFailed(true)} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
-        </div>
+        {logo.small || logoFailed ? (
+          <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden rounded-[inherit] border-b border-slate-100 bg-gradient-to-br from-[#F1F5F9] to-[#E2E8F0] px-[30%] py-[14%]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoFailed ? RAAYONIT_LOGO_PATH : logo.src} alt={logo.alt} onError={() => setLogoFailed(true)} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
+          </div>
+        ) : (
+          // A logo-only perk fills the frame edge to edge (blurred copy, tint, crisp logo), never a logo on white.
+          <div className="absolute inset-0 z-0 overflow-hidden rounded-[inherit] bg-[#EEF2F7]">
+            <BrandMedia src={logo.src} alt={logo.alt} inset="p-5 sm:p-6" onError={() => setLogoFailed(true)} />
+          </div>
+        )}
         {children}
       </div>
     )

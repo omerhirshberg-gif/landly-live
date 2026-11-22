@@ -1,0 +1,47 @@
+import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { parsePerkSource } from '@/lib/perks/perksFilter'
+import { logoWallOffers } from '@/lib/home/logoWall'
+import { translations } from '@/lib/i18n/translations'
+import type { OfferDocument } from '@/lib/firebase/offers'
+
+const offer = (id: string, businessName: string, imageUrl: string, logoKind?: string) => ({ id, businessName, imageUrl, logoKind }) as unknown as OfferDocument
+
+describe('Explore Perks source segment (?src=)', () => {
+  it('reads all, landly and raayonit; anything else is all', () => {
+    expect(parsePerkSource('landly')).toBe('landly')
+    expect(parsePerkSource('raayonit')).toBe('raayonit')
+    for (const raw of [null, undefined, '', 'all', 'x']) expect(parsePerkSource(raw)).toBe('all')
+  })
+
+  it('Explore Perks is GoLandly perks only: no source segment, no Raayonit card or chains directory (web and native)', () => {
+    const web = readFileSync('app/categories/page.tsx', 'utf8')
+    const native = readFileSync('landly-mobile/src/app/(tabs)/perks.tsx', 'utf8')
+    for (const [path, src] of [['web', web], ['native', native]]) {
+      expect(src, path).not.toContain('SourceSegment')
+      expect(src, path).not.toContain('RaayonitTab')
+      for (const gone of ['GiftCardBand', 'RaayonitPromoStrip', 'isRaayonitOffer']) expect(src, path).not.toContain(gone)
+    }
+    // While there are no GoLandly perks, a calm note stands in.
+    expect(native).toContain("return [{ key: 'soon', type: 'soon' }]")
+    expect(web).toContain("t('perks_landly_soon')")
+  })
+
+  it('has its labels and the gift card copy in all five languages', () => {
+    for (const lang of ['en', 'he', 'ru', 'fr', 'es'] as const) {
+      for (const key of ['perks_src_all', 'perks_src_landly', 'perks_src_raayonit', 'perks_explore_title', 'gift_valid_chains', 'home_logo_wall_title'] as const) expect(translations[lang][key].length, `${lang}.${key}`).toBeGreaterThan(0)
+      expect(translations[lang].gift_valid_chains).toContain('{count}+')
+    }
+    expect(translations.en.products_title).toBe('Gift cards')
+    expect(translations.he.products_title).toBe('כרטיסי מתנה')
+  })
+})
+
+describe('logo wall tiles', () => {
+  it('keeps real logos only, one per business, capped at 24', () => {
+    const list = [offer('a', 'A', 'u'), offer('b', 'B', 'u', 'photo'), offer('c', 'a', 'u'), offer('d', 'D', '')]
+    expect(logoWallOffers(list).map((o) => o.id)).toEqual(['a'])
+    const many = Array.from({ length: 40 }, (_, i) => offer(`o${i}`, `Biz${i}`, 'u'))
+    expect(logoWallOffers(many)).toHaveLength(24)
+  })
+})

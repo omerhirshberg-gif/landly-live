@@ -33,10 +33,14 @@ export interface VoucherDocument {
   // Who issued a pre-bought voucher, shown with its logo (lib/payments/issuer.ts), and what it is worth in agorot.
   issuer?: VoucherIssuer | null
   faceValueAgorot?: number | null
+  // What the member paid, in agorot (set by the payment webhook); the paid half of "₪79 / ₪100" (lib/vouchers/voucherValue.ts).
+  amountAgorot?: number | null
   // The Raayonit stock the voucher's code came from (set by the payment webhook); absent on older ones, which are the offer's default stock.
   poolId?: string | null
   // What the member saved on this purchase, in agorot (set by the payment webhook; lib/member/savings.ts); absent on older vouchers.
   savingsAgorot?: number | null
+  // How much of the voucher's worth has been used, in agorot; absent (= 0) until a redeem flow records a partial use. A redeemed voucher counts as fully used (lib/vouchers/redemptionProgress.ts).
+  redeemedAgorot?: number | null
   // What the QR code carries (redeemVoucherKey): 128 random bits, set by the
   // payment webhook. null for vouchers issued before it existed, until
   // scripts/backfill-redeem-tokens.mjs gives them one.
@@ -107,8 +111,10 @@ function toDoc(data: Record<string, unknown>): VoucherDocument {
     externalCode: typeof data.externalCode === 'string' && data.externalCode ? data.externalCode : null,
     redemptionKind: data.redemptionKind === 'code_only' ? 'code_only' : null,
     issuer: parseIssuer(data.issuer),
+    amountAgorot: typeof data.amountAgorot === 'number' && Number.isFinite(data.amountAgorot) && data.amountAgorot > 0 ? data.amountAgorot : null,
     faceValueAgorot: typeof data.faceValueAgorot === 'number' && Number.isInteger(data.faceValueAgorot) && data.faceValueAgorot > 0 ? data.faceValueAgorot : null,
     poolId: typeof data.poolId === 'string' && data.poolId ? data.poolId : null,
+    redeemedAgorot: typeof data.redeemedAgorot === 'number' && Number.isFinite(data.redeemedAgorot) && data.redeemedAgorot >= 0 ? data.redeemedAgorot : null,
     savingsAgorot: typeof data.savingsAgorot === 'number' && Number.isFinite(data.savingsAgorot) && data.savingsAgorot >= 0 ? data.savingsAgorot : null,
     redeemToken: typeof data.redeemToken === 'string' && REDEEM_TOKEN_PATTERN.test(data.redeemToken) ? data.redeemToken : null,
     status: parseVoucherStatus(data.status),

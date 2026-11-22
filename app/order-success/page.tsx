@@ -8,6 +8,7 @@ import { isPooled } from '@/lib/inventory/types'
 import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
+import CheckoutSteps from '@/components/checkout/CheckoutSteps'
 import Confetti from '@/components/checkout/Confetti'
 import MerchantBadge from '@/components/discover/MerchantBadge'
 import PerkImage from '@/components/discover/PerkImage'
@@ -21,6 +22,8 @@ import { getOffer, type OfferDocument } from '@/lib/firebase/offers'
 import { subscribeToOrder, type OrderDocument } from '@/lib/firebase/orders'
 import { formatPrice, priceDifference } from '@/lib/format'
 import { orderReference } from '@/lib/payments/orderNumber'
+import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
+import { superTavHeadline } from '@/lib/offers/superTav'
 
 const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2'
 
@@ -82,17 +85,19 @@ function OrderSuccessContent() {
 
   const pending = order === undefined || order?.status === 'pending'
   const media = paid ? purchaseMediaProps({ order, offer }) : null
+  const headline = order ? superTavHeadline(order, t('super_tav_headline')) : null
   const discount = paid && order.originalPrice ? priceDifference(order.originalPrice, order.amount) : 0
 
   return (
     <>
       <Navbar />
-      {paid && <Confetti />}
+      {paid && <Confetti fromTop />}
       <div className="below-header member-canvas">
-        <div className="max-w-lg mx-auto px-5 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center">
+        <div className={`mx-auto px-5 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10 ${paid ? 'max-w-lg lg:max-w-5xl lg:px-8 lg:pt-12 lg:pb-16' : 'max-w-lg'}`}>
+          {paid && <CheckoutSteps current="done" className="mb-8 justify-center" />}
+          <div className={`bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-card text-center ${paid ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-x-14 lg:p-12' : ''}`}>
             {/* One live region for every state, so the confirmation is announced as it arrives. */}
-            <div role="status" aria-live="polite">
+            <div role="status" aria-live="polite" className={paid ? 'lg:col-start-1 lg:row-start-1 lg:self-end' : undefined}>
               {pending && (
                 <>
                   <LoaderCircle aria-hidden="true" className="mx-auto mb-4 h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
@@ -125,6 +130,7 @@ function OrderSuccessContent() {
 
             {paid && (
               <>
+                <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center">
                 {/* What was bought: thumbnail, business and perk, paid and saved. */}
                 <div className="mt-6 flex items-center gap-4 rounded-2xl bg-brandTint p-4 text-start ring-1 ring-brandLight">
                   {media?.badge && <MerchantBadge size="lg" {...media.badge} />}
@@ -134,8 +140,19 @@ function OrderSuccessContent() {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
-                    <div className="mt-0.5 font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</div>
+                    {/* A Super Tav leads with its value ("Super Tav — ₪100 Value"), the business on the line below. */}
+                    {headline ? (
+                      <>
+                        <div className="font-bold leading-snug text-ink tabular-nums" dir="auto">{headline}</div>
+                        <div className="mt-0.5 truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="truncate text-xs font-bold uppercase tracking-widest text-brand" dir="auto">{localizedBusinessName(order, lang).text}</div>
+                        <div className="mt-0.5 font-bold leading-snug text-ink" dir="auto">{localizeText(order.offerTitle, order.translations, lang, 'title').text}</div>
+                      </>
+                    )}
+                    {isRaayonitMultiChain(order) && <p className="mt-1.5 text-[13px] leading-[19px] text-slate-600">{t('order_multi_chain_note')}</p>}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="text-sm text-slate-600">
                         {t('success_amount_paid_label')}: <span className="font-black text-ink" dir="ltr">{formatPrice(order.amount)}</span>
@@ -170,10 +187,11 @@ function OrderSuccessContent() {
                   <Mail aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.75} />
                   <span>{t('success_receipt_note')}</span>
                 </p>
+                </div>
 
                 {/* Sticky above the home indicator on phones, in the flow from 640px.
                     The WhatsApp widget rises above it there (data-floating-clearance). */}
-                <div data-floating-clearance="" className="sticky bottom-0 -mx-6 mt-6 flex flex-col gap-2 bg-white px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:px-0 sm:pb-0">
+                <div data-floating-clearance="" className="sticky bottom-0 -mx-6 mt-6 flex flex-col gap-2 bg-white px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:px-0 sm:pb-0 lg:col-start-1 lg:row-start-2 lg:mt-8 lg:w-full lg:max-w-sm lg:self-start lg:justify-self-center">
                   <Link
                     href="/member"
                     className="ds-btn ds-btn-primary ds-btn-wrap w-full"

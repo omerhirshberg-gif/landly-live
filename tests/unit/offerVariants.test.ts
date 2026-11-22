@@ -59,7 +59,7 @@ async function brandStore() {
   await addPoolCodes(db.db as never, p100, ['C100-A', 'C100-B'])
   await addPoolCodes(db.db as never, p150, ['C150-A'])
   db.seed('offers/offer', {
-    ...base, fulfillmentType: 'raayonit_pool', perkScope: 'single_business', brandName: 'FOX', businessName: 'FOX', title: 'FOX',
+    ...base, fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', brandName: 'Multi-chain', businessName: 'Multi-chain', title: 'Multi-chain',
     totalQuantity: null, offerPrice: 89, originalPrice: 100, poolId: p100,
     variants: [{ faceValueAgorot: 10000, priceAgorot: 8900, poolId: p100 }, { faceValueAgorot: 15000, priceAgorot: 12900, poolId: p150 }],
   })

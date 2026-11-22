@@ -1,18 +1,16 @@
 'use client'
 
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Award, Sparkles } from 'lucide-react'
 import type { User } from 'firebase/auth'
 import Avatar from '@/components/ui/Avatar'
 import AvatarLightbox from '@/components/ui/AvatarLightbox'
-import CategoryIcon from '@/components/ui/CategoryIcon'
-import OfferCardRail from '@/components/discover/OfferCardRail'
-import SectionBoundary from '@/components/errors/SectionBoundary'
 import ActivePassCard from './ActivePassCard'
-import MultiChainShowcase from '@/components/discover/MultiChainShowcase'
-import CategoryPhotoRail, { CategoryPhotoTitle } from './CategoryPhotoRail'
-import CuratedOffers from './CuratedOffers'
+import HomeCategoryRails from './HomeCategoryRails'
+import RaayonitPromoStrip from '@/components/raayonit/RaayonitPromoStrip'
+import SectionBoundary from '@/components/errors/SectionBoundary'
+import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
+import { isFlagship, isRaayonitOffer, landlyOffers } from '@/lib/offers/discoverTab'
 import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/MemberPageShell'
 import LocationFilterBar from '@/components/discover/LocationFilterBar'
 import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
@@ -22,14 +20,12 @@ import { useMemberProfile } from '@/lib/firebase/useMemberProfile'
 import { useVouchers } from '@/lib/firebase/VouchersProvider'
 import { greetingKey } from '@/lib/auth/greeting'
 import { useGreetingPeriod } from '@/lib/home/useGreetingPeriod'
-import { buildCategoryRails, railLabel, selectCurated, selectHighlights, selectSuperVouchers } from '@/lib/home/categoryRails'
 import { useLang } from '@/lib/i18n/useLang'
-import { categoryHref } from '@/lib/perks/perksFilter'
 
 // The signed-in home: the member's greeting, the blue member-pass card with
-// their live active-pass count, quick category pills, Recommended for you, then
-// a rail for each category with a claimable perk (lib/home/categoryRails.ts), so
-// a category appears by itself with its first offer. The greeting, card and rails
+// their live active-pass count, then a row for every GoLandly category with ten
+// slots (HomeCategoryRails; lib/home/categoryRails.ts buildHomeCategorySlots):
+// real perks first, "Coming soon" placeholders after. No Raayonit here. The greeting, card and rails
 // share one fluid column up to 2200px (below 1024px the greeting and a card up to
 // 680px wide form one centred hero; from there a text-only welcome on the start
 // edge replaces both, since the navbar has My Pass and the avatar); the rails reach the screen's edges below 1024px and fill the column from
@@ -60,18 +56,22 @@ export default function LoggedInHome({ user }: { user: User }) {
 
   // Near me (the bar's button) or a picked area narrows every list on Home (lib/perks/locationFilter.ts).
   const { filter, setRadiusKm, setAreaPick, setOrigin } = usePerksSearch()
-  const located = useMemo(() => (offers ? applyLocationFilter(offers, filter) : null), [offers, filter])
+  // Home shows GoLandly's own perks only (plus one entry banner to the Raayonit Card tab); Raayonit's "תו על" has its own tab (/raayonit).
+  const allLocated = useMemo(() => (offers ? applyLocationFilter(offers, filter) : null), [offers, filter])
+  const located = useMemo(() => (allLocated ? landlyOffers(allLocated) : null), [allLocated])
+  const raayonitOffers = useMemo(() => (offers ?? []).filter(isRaayonitOffer), [offers])
+  const flagship = useMemo(() => raayonitOffers.find(isFlagship) ?? null, [raayonitOffers])
+  const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
+  // The entry banner to the Raayonit Card tab: there while the tab is (Raayonit's name may be shown).
+  const showBanner = useRaayonitDisplay()
   const locEmpty = !!filter && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
-  const curated = useMemo(() => (located ? selectCurated(located) : null), [located])
-  const superOffers = useMemo(() => (located ? selectSuperVouchers(located) : []), [located])
-  const highlights = useMemo(() => (located ? selectHighlights(located) : null), [located])
-  const rails = useMemo(() => (located ? buildCategoryRails(located) : []), [located])
 
   return (
     <main className="member-canvas below-header min-h-[100dvh] overflow-x-clip">
       {/* No site footer for members: the support prompt is pinned to the bottom of the screen instead, clear of the iPhone home indicator. */}
       <MemberPageShell
         fluid
+        contained
         globalSearch
         footer={
           <p className="text-center text-sm text-body">
@@ -129,92 +129,16 @@ export default function LoggedInHome({ user }: { user: User }) {
           </h1>
         </MemberColumn>
 
-        {/* The flagship multi-chain voucher, one card per value (100 / 150), first under the welcome and above the categories. */}
-        {superOffers[0] && (
-          <SectionBoundary name="home-super-tav">
-            <MemberColumn wide className="mt-6 sm:mt-8 lg:mt-0"><MultiChainShowcase offer={superOffers[0]} /></MemberColumn>
+        {/* Every official GoLandly category as a row of ten cards: real perks first, "Coming soon" placeholders after. Raayonit has its own tab (/raayonit) and never appears here. */}
+        {showBanner && (
+          <SectionBoundary name="home-raayonit-banner">
+            <MemberColumn wide className="mt-6 sm:mt-8 lg:mt-0"><RaayonitPromoStrip offer={flagship} count={chainCount} /></MemberColumn>
           </SectionBoundary>
         )}
-
-        <SectionBoundary name="home-category-photos">
-          <section aria-labelledby="home-categories-title" className={superOffers[0] ? 'mt-8' : 'mt-6 sm:mt-8 lg:mt-0'}>
-            <MemberColumn wide>
-              <CategoryPhotoTitle id="home-categories-title" className="mb-3 text-xl font-bold text-ink" />
-            </MemberColumn>
-            <CategoryPhotoRail />
-          </section>
-        </SectionBoundary>
-
-        <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
-          <HomeDivider />
-          <SectionBoundary name="home-curated"><CuratedOffers offers={curated} /></SectionBoundary>
-          {/* The Perks page's two highlight rails, the same offers, each on its own beat. */}
-          {highlights && highlights.newOffers.length > 0 && (
-            <>
-            <HomeDivider />
-            <SectionBoundary name="home-new">
-              <OfferCardRail
-                id="home-new-title"
-                title={t('row_new')}
-                glyph={<Sparkles aria-hidden="true" className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
-                offers={highlights.newOffers}
-                href="/categories/new"
-                seeAll={t('home_see_all')}
-                dots
-                autoAdvance
-                autoAdvanceOffsetMs={1500}
-                compact
-              />
-            </SectionBoundary>
-            </>
-          )}
-          {highlights && highlights.bestsellerOffers.length > 0 && (
-            <>
-            <HomeDivider />
-            <SectionBoundary name="home-bestsellers">
-              <OfferCardRail
-                id="home-bestsellers-title"
-                title={t('row_bestsellers')}
-                glyph={<Award aria-hidden="true" className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
-                offers={highlights.bestsellerOffers}
-                href="/categories/bestsellers"
-                seeAll={t('home_see_all')}
-                dots
-                autoAdvance
-                autoAdvanceOffsetMs={3000}
-                compact
-              />
-            </SectionBoundary>
-            </>
-          )}
-          {rails.map((rail, index) => (
-            <Fragment key={rail.category}>
-            <HomeDivider />
-            <SectionBoundary name="home-category-rail">
-              <OfferCardRail
-                id={`home-rail-${index}`}
-                title={railLabel(rail, t)}
-                glyph={<CategoryIcon category={rail.category} className="h-[18px] w-[18px] flex-shrink-0 text-ink" strokeWidth={1.5} />}
-                offers={rail.offers}
-                href={rail.tile ? categoryHref(rail.tile.category) : undefined}
-                seeAll={rail.tile ? t('home_see_all') : undefined}
-                showCategoryBadge={false}
-                compact
-              />
-            </SectionBoundary>
-            </Fragment>
-          ))}
+        <div className="mb-8 mt-6 sm:mt-8 lg:mt-6">
+          <HomeCategoryRails offers={located} />
         </div>
       </MemberPageShell>
     </main>
-  )
-}
-
-/** The hairline between Home's rail blocks, inside the wide column: it fades out at both ends, so it reads the same in English and Hebrew. Decorative. */
-function HomeDivider() {
-  return (
-    <MemberColumn wide>
-      <div aria-hidden="true" data-home-divider="" className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 to-transparent" />
-    </MemberColumn>
   )
 }

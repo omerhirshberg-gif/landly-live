@@ -6,6 +6,7 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { RequestAuthError, requireVerifiedCustomerUid } from '@/lib/firebase/verifyRequestUser'
 import { parseVoucherStatus } from '@/lib/vouchers/status'
 import { isVoucherId } from '@/lib/wallet/passVoucher'
+import { selfReportRedeemed } from '@/lib/inventory/ledger/operations'
 
 // POST (Bearer ID token): the member says they have used a code-only voucher (Raayonit), which no
 // merchant scans, so nothing else can tell. Self-reported: the voucher becomes 'redeemed' (and
@@ -34,6 +35,7 @@ export async function POST(request: Request, { params }: Params) {
   if (!isVoucherId(voucherId)) return reply({ error: 'Voucher not found.' }, 404)
   const ref = getAdminDb().collection('vouchers').doc(voucherId)
   try {
+    let inventoryVoucherId: string | null = null
     const outcome = await getAdminDb().runTransaction(async (tx) => {
       const snap = await tx.get(ref)
       const data = snap.data()
@@ -41,11 +43,14 @@ export async function POST(request: Request, { params }: Params) {
       if (!data || data.userId !== uid) return 'notFound' as const
       if (data.redemptionKind !== 'code_only') return 'notEligible' as const
       if (parseVoucherStatus(data.status) !== 'active') return 'notEligible' as const
+      inventoryVoucherId = typeof data.inventoryVoucherId === 'string' ? data.inventoryVoucherId : null
       tx.update(ref, { status: 'redeemed', redeemedAt: Timestamp.now(), selfReportedUse: true, updatedAt: FieldValue.serverTimestamp() })
       return 'ok' as const
     })
     if (outcome === 'notFound') return reply({ error: 'Voucher not found.' }, 404)
     if (outcome === 'notEligible') return reply({ error: 'This voucher can\'t be marked as used.' }, 409)
+    // The ledger copy of the code is redeemed through the same single transition function (a no-op for a voucher from before the ledger).
+    if (inventoryVoucherId) await selfReportRedeemed(getAdminDb(), inventoryVoucherId, voucherId).catch(() => undefined)
     return reply({ ok: true })
   } catch (error) {
     console.error('Mark voucher used failed', error instanceof Error ? error.message : 'unknown error')

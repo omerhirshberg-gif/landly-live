@@ -1,6 +1,8 @@
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import type { VoucherDocument } from '@shared/firebase/vouchers'
 import { useVoucherOffer } from '@shared/member/useVoucherOffer'
+import { voucherFaceValueText } from '@shared/vouchers/redemptionProgress'
+import AppText from './AppText'
 import { heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../lib/logoHero'
 import DealMedia from './DealMedia'
 import MerchantBadge from './MerchantBadge'
@@ -21,16 +23,23 @@ export default function VoucherCover({
   logoHeight = 40,
   style,
 }: {
-  voucher: Pick<VoucherDocument, 'offerId' | 'businessName'>
+  voucher: Pick<VoucherDocument, 'offerId' | 'businessName'> & Partial<Pick<VoucherDocument, 'amountAgorot' | 'faceValueAgorot' | 'savingsAgorot'>>
   ratio?: number
   maxHeight?: number
   logoHeight?: number
   style?: StyleProp<ViewStyle>
 }) {
   const offer = useVoucherOffer(voucher.offerId)
+  const faceValue = voucherFaceValueText(voucher)
   const image = useDealImage(offer?.imageUrl ?? '', raayonitImageOpts(offer))
   return (
     <DealMedia image={image} category={offer?.category ?? ''} logo={heroLogoSource(offer)} ratio={ratio} maxHeight={maxHeight}>
+      {/* The gift card's value, in the cover's bottom end corner (the logo has the start one) over a soft fade. */}
+      {faceValue && (
+        <View pointerEvents="none" style={styles.valueFade}>
+          <AppText ltr style={styles.value}>{faceValue}</AppText>
+        </View>
+      )}
       {!heroLogoSource(offer) && !isRaayonitOffer(offer) && <MerchantBadge
         logoUri={badgeLogoUri(secureImageUrl(offer?.businessLogoUrl ?? ''), image.uri, image.role)}
         height={logoHeight}
@@ -42,4 +51,6 @@ export default function VoucherCover({
 
 const styles = StyleSheet.create({
   logo: { position: 'absolute', start: 12 },
+  valueFade: { position: 'absolute', start: 0, end: 0, bottom: 0, alignItems: 'flex-end', paddingHorizontal: 16, paddingTop: 32, paddingBottom: 10, experimental_backgroundImage: 'linear-gradient(to top, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0))' },
+  value: { fontSize: 26, lineHeight: 28, fontWeight: '800', letterSpacing: -0.3, color: '#FFFFFF', fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
 })

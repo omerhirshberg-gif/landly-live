@@ -10,6 +10,10 @@ import { addYearsEndOfIsraelDayMs, isValidValidityDays, normalizeRedemptionTerms
 import { RAAYONIT_ISSUER, RAAYONIT_VALIDITY_YEARS } from './issuer'
 import { isRedemptionMethod, normalizeRedemptionInstructions, normalizeRedemptionMethod } from '../offers/redemption'
 import { applyPoolAllocation, planPoolAllocation } from '../inventory/poolAllocation'
+import { applySettlement, pickCandidates, planSettlement, releaseReservation, type SettlementPlan } from '../inventory/ledger/stock'
+import { decryptVoucherCode, hashCode } from '../inventory/ledger/codes'
+import { issuedVoucherPlan } from '../inventory/ledger/transitions'
+import { prepareLedgerSale } from '../inventory/ledger/prepareSale'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
 import { savingsAgorotOf } from '../member/savingsMath'
@@ -25,7 +29,9 @@ function transactionKey(event: TranzilaNotification): string {
 export async function claimOfferForOrder(db: Firestore, event: TranzilaNotification) {
   const orderRef = db.collection('orders').doc(event.orderId)
   const receiptRef = db.collection('paymentTransactions').doc(transactionKey(event))
-  return db.runTransaction(async (tx) => {
+  // Before the transaction: what the ledger needs that must not run inside a retryable transaction (a supplier call, a stock query).
+  const pre = event.approved ? await prepareLedgerSale(db, event.orderId) : null
+  const outcome = await db.runTransaction(async (tx) => {
     const [orderSnap, receiptSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)])
     if (!orderSnap.exists) throw new PaymentError('Order not found.', 404)
     const order = orderSnap.data()!
@@ -107,8 +113,20 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     const fulfillmentType = parseFulfillmentType(order.fulfillmentType ?? offer.fulfillmentType)
     const poolId = isDocumentId(order.poolId) ? order.poolId : isDocumentId(offer.poolId) ? offer.poolId : null
     // All reads (the pool and its next code) happen before the first write below.
-    const poolPlan = fulfillmentType === 'raayonit_pool'
+    // A product that lives in the ledger sells through RESERVED -> SOLD -> DELIVERED; an older pool still allocates by sequence.
+    const ledgerStock = pre?.kind === 'stock' ? pre : null
+    const poolPlan = fulfillmentType === 'raayonit_pool' && !ledgerStock
       ? await planPoolAllocation(db, tx, poolId ?? '', order.offerId, event.orderId, now) : null
+    const ledgerPlan: SettlementPlan | null = ledgerStock
+      ? await planSettlement(db, tx, ledgerStock.productId, event.orderId, ledgerStock.reservedId, ledgerStock.fallbackIds, now, voucherRef.id) : null
+    const ledgerCode = ledgerPlan ? decryptVoucherCode(ledgerPlan.code.cipher, ledgerPlan.voucherRef.id) : null
+    const issuedSale = pre?.kind === 'issued' ? pre : null
+    const issuedPlan = issuedSale ? issuedVoucherPlan(db, {
+      productId: issuedSale.productId, supplierId: issuedSale.supplierId, codeEncrypted: issuedSale.codeEncrypted, codeHash: hashCode(issuedSale.code), faceValueAgorot: issuedSale.faceValueAgorot,
+      supplierRef: issuedSale.supplierRef, expiresAt: issuedSale.expiresAt ? Timestamp.fromDate(issuedSale.expiresAt) : null, orderId: event.orderId, walletVoucherId: voucherRef.id,
+      businessId: direct ? order.businessId : null, externalId: issuedSale.externalEventId,
+    }, now) : null
+    const ledgerFaceValue = ledgerPlan?.voucher.faceValueAgorot ?? null
     const terms = parseFrozenTerms(order) ?? (businessSnap ? parseFrozenTerms(businessSnap.data()) : null)
     // The terms frozen on the order at checkout; orders from before that read the offer's.
     const validityDays = isValidValidityDays(order.validityDays) ? order.validityDays : normalizeValidityDays(offer.validityDays)
@@ -127,7 +145,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       redeemToken: randomBytes(16).toString('hex'),
       status: 'active', takenAt: now, redeemedAt: null,
       // A Raayonit voucher lasts 5 calendar years from the moment of purchase; any other, the offer's validity days.
-      expiresAt: Timestamp.fromMillis(poolPlan
+      expiresAt: ledgerPlan?.voucher.expiresAt ?? issuedPlan?.data.expiresAt ?? Timestamp.fromMillis(poolPlan
         ? addYearsEndOfIsraelDayMs(now.toMillis(), RAAYONIT_VALIDITY_YEARS)
         : voucherExpiresAtMs(now.toMillis(), validityDays)),
       redemptionTerms, redemptionMethod, redemptionInstructions,
@@ -148,11 +166,19 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
       payoutBatchId: null,
       // A Raayonit code is the member's entitlement, so the voucher (owner-readable) carries it.
-      externalCode: poolPlan?.code ?? null,
+      externalCode: poolPlan?.code ?? ledgerCode ?? issuedSale?.code ?? null,
+      // The ledger document behind the code (absent on a voucher sold from an older pool).
+      ...(ledgerPlan || issuedPlan ? { inventoryVoucherId: ledgerPlan?.voucherRef.id ?? issuedPlan!.ref.id } : {}),
       // A Raayonit voucher is a code and nothing else (no QR code): who issued it and what it is worth, frozen with the sale.
-      ...(poolPlan ? { redemptionKind: 'code_only', issuer: RAAYONIT_ISSUER, faceValueAgorot: poolPlan.faceValueAgorot, poolId } : {}),
+      ...(poolPlan || ledgerPlan ? { redemptionKind: 'code_only', issuer: RAAYONIT_ISSUER, faceValueAgorot: poolPlan?.faceValueAgorot ?? ledgerFaceValue, poolId } : {}),
     })
     if (poolPlan) applyPoolAllocation(tx, poolPlan, event.orderId, order.userId, now)
+    if (ledgerPlan) applySettlement(db, tx, ledgerPlan, now)
+    if (issuedPlan) {
+      // Issued at the sale by the supplier: the voucher is born DELIVERED, with its ISSUED / SOLD / DELIVERED events, in this transaction.
+      tx.create(issuedPlan.ref, issuedPlan.data)
+      for (const e of issuedPlan.events) tx.create(e.ref, e.data)
+    }
     tx.set(shardRef, { count: issued + 1 })
     tx.update(offerRef, { claimedCount: FieldValue.increment(1) })
     // No business voucherStats write here: that doc is shared by every perk a
@@ -166,4 +192,8 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     tx.create(receiptRef, { ...event, processedAt: now })
     return { alreadyProcessed: false }
   })
+  // A declined payment frees the code its checkout was holding (the 5-minute cron frees any this misses).
+  if (!event.approved && !outcome.alreadyProcessed) await releaseReservation(db, event.orderId).catch(() => 0)
+  return outcome
 }
+

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { StyleSheet, View, type ImageSourcePropType } from 'react-native'
 import Image from './SafeImage'
+import BrandMedia from './BrandMedia'
 import Animated from 'react-native-reanimated'
 import { dealPhotoFit } from '@shared/offers/imageFit'
 import { CategoryPanel } from './PerkImage'
@@ -102,7 +103,9 @@ export default function DealMedia({
       <View style={[styles.hero, corners === 'all' && styles.heroRounded, corners === 'none' && styles.heroSquare]}>
         {logo ? (
           <View style={[styles.logoHero, (logoSmall || logoFailed) && styles.logoHeroSmall]}>
-            <Image source={logoFailed ? FALLBACK_LOGO : logo} style={styles.logoImage} contentFit="contain" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={150} onError={() => setFailedLogoKey(logoKey)} accessibilityIgnoresInvertColors />
+            {logoSmall || logoFailed
+              ? <Image source={logoFailed ? FALLBACK_LOGO : logo} style={styles.logoImage} contentFit="contain" cachePolicy="memory-disk" recyclingKey={recyclingKey} transition={150} onError={() => setFailedLogoKey(logoKey)} accessibilityIgnoresInvertColors />
+              : <BrandMedia source={logo} recyclingKey={recyclingKey} inset={20} onError={() => setFailedLogoKey(logoKey)} />}
           </View>
         ) : <CategoryPanel category={category} size="hero" />}
         {/* Loaded while still unknown, so its size can tell a photo from a logo. */}
@@ -156,7 +159,8 @@ const styles = StyleSheet.create({
   hero: { flex: 1, overflow: 'hidden', borderTopStartRadius: 15, borderTopEndRadius: 15 },
   heroRounded: { borderRadius: radius.lg },
   heroSquare: { borderTopStartRadius: 0, borderTopEndRadius: 0 },
-  logoHero: { ...StyleSheet.absoluteFill, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E2E8F0' },
+  // A logo-only perk fills the frame edge to edge (BrandMedia: blurred copy, tint, crisp logo), never a logo on white.
+  logoHero: { ...StyleSheet.absoluteFill, backgroundColor: '#EEF2F7' },
   // The Raayonit mark standing in for a brand with no picture: small and centred over a soft slate/ice studio surface, never stark white.
   logoHeroSmall: { paddingHorizontal: '28%', paddingVertical: '12%', backgroundColor: '#E9EEF4', experimental_backgroundImage: 'linear-gradient(135deg, #F1F5F9, #E2E8F0)' },
   logoImage: { width: '100%', height: '100%' },

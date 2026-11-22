@@ -11,6 +11,9 @@ import { parseIssuer, RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { buildOrderConfirmationEmail, sendOrderConfirmationEmail, type OrderConfirmationDetails } from '@/lib/email/sendOrderConfirmationEmail'
 import { localizedBusinessName, parseBusinessTranslations } from '@/lib/business/businessText'
 import { localizeText } from '@/lib/i18n/contentTranslation'
+import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
+import { isRaayonitDisplayEnabled } from '@/lib/flags/featureFlags.server'
+import { resolveVoucherValue } from '@/lib/vouchers/voucherValue'
 import { normalizeImageUrl } from '@/lib/offers/imageUrl'
 import { parseOfferTranslations } from '@/lib/offers/offerText'
 import { normalizeDisplayOrderNumber } from './orderNumber'
@@ -57,6 +60,8 @@ export async function sendOrderConfirmation(db: Firestore, orderId: string): Pro
     const preferred = userSnap.data()?.preferredLanguage
     const lang = isValidLang(preferred) ? preferred : 'en'
     const origin = applicationOrigin()
+    // Raayonit's attribution and logo appear only once the display flag is on; until then the email says it is a multi-chain voucher.
+    const showRaayonit = await isRaayonitDisplayEnabled()
     const rawImage = offerSnap.data()?.imageUrl
     const imageUrl = normalizeImageUrl(typeof rawImage === 'string' ? rawImage : '')
     const details: OrderConfirmationDetails = {
@@ -74,8 +79,18 @@ export async function sendOrderConfirmation(db: Firestore, orderId: string): Pro
       amount: order.amount,
       originalPrice: typeof order.originalPrice === 'number' && order.originalPrice > order.amount ? order.originalPrice : null,
       voucherLink: `${origin}/member/vouchers/${encodeURIComponent(order.voucherId)}`,
+      // Paid against the voucher's full worth; the voucher's own amounts first, the order's as the legacy fallback.
+      value: resolveVoucherValue({
+        amountAgorot: voucherSnap.data()?.amountAgorot ?? order.amountAgorot,
+        faceValueAgorot: voucherSnap.data()?.faceValueAgorot,
+        savingsAgorot: voucherSnap.data()?.savingsAgorot,
+        originalPrice: order.originalPrice,
+      }),
+      raayonitDisplay: showRaayonit,
+      expiresAt: voucherSnap.data()?.expiresAt instanceof Timestamp ? voucherSnap.data()!.expiresAt.toDate() : null,
+      multiChain: isRaayonitMultiChain({ fulfillmentType: order.fulfillmentType ?? offerSnap.data()?.fulfillmentType, redemptionKind: voucherSnap.data()?.redemptionKind }),
       // Raayonit: the issuer frozen on the voucher, its logo as an absolute link, and the 5-year expiry.
-      ...(parseIssuer(voucherSnap.data()?.issuer)
+      ...(showRaayonit && parseIssuer(voucherSnap.data()?.issuer)
         ? {
             issuer: parseIssuer(voucherSnap.data()?.issuer),
             issuerLogoUrl: `${origin}${RAAYONIT_LOGO_PATH}`,

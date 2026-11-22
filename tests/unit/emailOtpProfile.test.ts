@@ -42,7 +42,7 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
 
   it('signs this device back in (every session ended) before confirming a verified email', () => {
     const code = read(otp)
-    expect(code).toContain("if (isEmail) await finishEmailChange(auth, user, 'customToken' in result ? result.customToken : undefined).catch(() => {})")
+    expect(code).toContain("if (!signup && isEmail) await finishEmailChange(auth, user!, 'customToken' in result ? result.customToken : undefined).catch(() => {})")
     // The sign-in finishes before the screen hears about it.
     expect(code.indexOf('await finishEmailChange(')).toBeLessThan(code.indexOf('onVerified', code.indexOf('await finishEmailChange(')))
     const src = read(profile)
@@ -62,9 +62,10 @@ describe.each(SCREENS)('email change by code ($name)', ({ profile, form, otp, ot
     const src = read(otp)
     expect(src).toContain('verifyEmailCode(idToken, value')
     expect(src).toContain('resendEmailChange(idToken, lang')
-    expect(src).toContain("contactChangeErrorKey(result.reason, target.kind)")
-    expect(src).toContain("isEmail ? 'otp_email_title' : copy.title")
-    expect(src).toContain("t('otp_email_subtitle')")
+    expect(src).toContain("const errorKind = signup ? 'signup' : target.kind")
+    expect(src).toContain("contactChangeErrorKey(result.reason, errorKind)")
+    expect(src).toContain("signup ? 'otp_signup_title' : isEmail ? 'otp_email_title' : copy.title")
+    expect(src).toContain("signup ? 'otp_signup_subtitle' : 'otp_email_subtitle'")
   })
 })
 

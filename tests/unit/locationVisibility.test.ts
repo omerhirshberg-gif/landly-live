@@ -107,7 +107,8 @@ describe('a single venue', () => {
   it('the cards and pages show the address, never the redemption method as the place', () => {
     for (const f of ['components/discover/OfferCard.tsx', 'landly-mobile/src/components/OfferCard.tsx']) {
       const src = readFileSync(f, 'utf8')
-      expect(src).toContain('const place = offerPlaceLabel(offer, lang)\n')
+      // Cards carry no place at all; the offer page below shows the address.
+      expect(src).not.toContain('offerPlaceLabel')
       expect(src).not.toContain("t('redeem_method_in_store') : ''")
     }
     for (const f of ['app/offers/[offerId]/page.tsx', 'landly-mobile/src/app/offer/[offerId].tsx']) {

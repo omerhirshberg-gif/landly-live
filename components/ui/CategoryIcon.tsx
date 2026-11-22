@@ -1,4 +1,4 @@
-import { Armchair, Baby, Car, Compass, createLucideIcon, Dumbbell, Plane, ShieldCheck, ShoppingBag, Tag, TreePalm, UtensilsCrossed, Wine, type LucideIcon } from 'lucide-react'
+import { Armchair, Baby, Car, ChefHat, Compass, createLucideIcon, Dumbbell, Plane, ShieldCheck, ShoppingBag, Tag, TreePalm, UtensilsCrossed, Wine, type LucideIcon } from 'lucide-react'
 
 // Beauty and Skincare: a lipstick, since Lucide has no cosmetics glyph (its
 // Sparkles read as "new" or "magic", not makeup). Drawn on Lucide's 24px grid
@@ -18,6 +18,7 @@ export const Lipstick = createLucideIcon('lipstick', [
 // glyph mirrors in Hebrew. The Expo app draws the same set (landly-mobile/src/components/CategoryIcon.tsx).
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'Restaurants and Cafes': UtensilsCrossed,
+  'Chef Restaurants': ChefHat,
   'Beach and Sea': TreePalm,
   'Attractions and Tours': Compass,
   'Fashion and Shopping': ShoppingBag,

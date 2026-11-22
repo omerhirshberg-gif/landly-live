@@ -45,11 +45,12 @@ describe('navbar layout lock', () => {
     expect(langSwitch).toBeLessThan(hamburger)
   })
 
-  it('wears the GoLandly x Raayonit lockup: both logos, a hairline between them', () => {
+  it('wears the solo GoLandly lockup: the mark and the wordmark, never the Raayonit logo', () => {
     const nav = render('en')
     expect(nav).toContain('src="/logo-mark.png"')
-    expect(nav).toContain('raayonit-logo.png')
-    expect(nav).toContain('opacity-20')
+    expect(nav).toContain('GoLandly')
+    expect(nav).not.toContain('raayonit-logo.png')
+    expect(nav).not.toContain('opacity-20')
   })
 
   it('anchors the language menu under the right-hand trigger in every direction', () => {
@@ -159,15 +160,15 @@ describe('header account actions', () => {
     expect(signIn).toBeLessThan(nav.indexOf('lucide-globe'))
   })
 
-  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, My Pass and Support (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the bar links are Home, Explore Perks, Raayonit Card, My Pass and Support (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const nav = html.slice(0, html.indexOf('</nav>'))
     const t = translations[lang]
     const centre = nav.slice(nav.indexOf('class="hidden lg:flex'), nav.indexOf('class="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end"'))
     const hrefs = [...centre.matchAll(/href="([^"]*)"/g)].map((m) => m[1])
-    expect(hrefs).toEqual(['/', '/categories', '/member', '/support'])
+    expect(hrefs).toEqual(['/', '/categories', '/raayonit', '/member', '/support'])
     expect(centre).not.toContain('/wishlist')
-    for (const label of [t.nav_home, t.nav_cta, t.nav_my_pass, t.nav_support]) expect(centre).toContain(`>${label}<`)
+    for (const label of [t.nav_home, t.nav_cta, t.nav_raayonit, t.nav_my_pass, t.nav_support]) expect(centre).toContain(`>${label}<`)
     // The avatar menu is the account: no Profile text link in the bar.
     expect(centre).not.toContain(`>${t.nav_profile}<`)
     // On / the Home link is the current page.
@@ -207,11 +208,11 @@ describe('header account actions', () => {
     }
   })
 
-  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, then Settings (%s)', (lang) => {
+  it.each(['en', 'he'] as const)('signed in: the drawer runs member card, Home, My Pass, Explore Perks, Raayonit Card, then Settings (%s)', (lang) => {
     const html = render(lang, { loggedIn: true })
     const drawer = html.slice(html.indexOf('</nav>'))
     const t = translations[lang]
-    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/settings'])
+    expect([...drawer.matchAll(/href="([^"]*)"/g)].map((m) => m[1])).toEqual(['/profile', '/', '/member', '/categories', '/raayonit', '/settings'])
     expect(drawer).toContain(`>${t.nav_home}<`)
     expect(drawer).not.toContain(`>${t.nav_perks}<`)
     // Preferences live on /settings now: no accordions, language buttons, security or legal links in the drawer.

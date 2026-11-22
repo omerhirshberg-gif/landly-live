@@ -41,7 +41,7 @@ service cloud.firestore {
     function serverOnlyUserKeys() {
       return ['pendingEmail', 'pendingEmailRequestedAt', 'pendingPhone', 'pendingPhoneRequestedAt', 'phoneVerified',
         'welcomeEmailSent', 'welcomeEmailSentAt', 'marketingOptInAt', 'marketingOptInSource',
-        'webauthnUserId', 'sessionsValidAfter',
+        'webauthnUserId', 'sessionsValidAfter', 'emailVerifiedAt',
         // Admin-managed account state (lib/admin/userActions.ts): a member who could write
         // these could lift their own suspension or ban.
         'status', 'statusChangedAt', 'statusReason', 'kycTier', 'passId'];
@@ -122,6 +122,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /phoneVerifications/{userId} {
+      allow read, write: if false;
+    }
+    // The sign-up email code (hashed, with its attempt count and last send):
+    // /api/auth/send-signup-otp and /api/auth/verify-signup-otp only.
+    match /signupEmailVerifications/{userId} {
       allow read, write: if false;
     }
 
@@ -293,6 +298,40 @@ service cloud.firestore {
     match /adminAuditLog/{entryId} {
       allow read, write: if false;
     }
+    // Voucher inventory ledger (lib/inventory/ledger/): Admin SDK only. Codes are AES-256-GCM encrypted; nothing here is
+    // readable by a client, and nothing may be changed in place by one.
+    //  - suppliers, inventoryProducts, inventoryVouchers, importBatches: stock and the files it came from
+    //  - voucherEvents: STRICTLY append-only (create once, never update or delete): every status change and balance change
+    //  - reconciliationRuns, businessChanges, inventoryAlerts: the daily jobs' output
+    // The Admin SDK bypasses these rules, so the append-only promise is also enforced in code (events are only ever created,
+    // tests/unit/ledgerIronRule.test.ts) and the rules stop every client and every future rules-bound writer.
+    match /suppliers/{supplierId} {
+      allow read, write: if false;
+    }
+    match /inventoryProducts/{productId} {
+      allow read, write: if false;
+    }
+    match /inventoryVouchers/{voucherId} {
+      allow read, write: if false;
+    }
+    match /importBatches/{batchId} {
+      allow read, write: if false;
+    }
+    match /voucherEvents/{eventId} {
+      allow read: if false;
+      allow create: if false;
+      allow update, delete: if false;
+    }
+    match /reconciliationRuns/{runId} {
+      allow read, write: if false;
+    }
+    match /businessChanges/{changeId} {
+      allow read, write: if false;
+    }
+    match /inventoryAlerts/{alertId} {
+      allow read, write: if false;
+    }
+
     // raayonit_sync_logs/{YYYY-MM-DD, Asia/Jerusalem}: one document per daily Raayonit sync run (counts and brand names, no
     // secrets). Written and read only by the Admin SDK (lib/inventory/raayonitDailySync.ts).
     match /raayonit_sync_logs/{day} {

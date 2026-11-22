@@ -12,6 +12,8 @@ import { localizedBusinessName } from '@/lib/business/businessText'
 import { localizeText } from '@/lib/i18n/contentTranslation'
 import { formatPrice } from '@/lib/format'
 import { useLang } from '@/lib/i18n/useLang'
+import { webOfferHref } from '@/lib/offers/offerRoutes'
+import { superTavHeadline } from '@/lib/offers/superTav'
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 
 // A bottom sheet below 1024px (the hamburger drawer owns the side), a popover from there.
@@ -193,12 +195,14 @@ function WishlistList({ ids, count, title, onNavigate, onClose }: { ids: string[
 }
 
 function WishlistRow({ offer, lang, onNavigate, onRemove, removeLabel }: { offer: OfferDocument; lang: ReturnType<typeof useLang>['lang']; onNavigate: () => void; onRemove: () => void; removeLabel: string }) {
+  const { t } = useLang()
+  const headline = superTavHeadline(offer, t('super_tav_headline'))
   const title = localizeText(offer.title, offer.translations, lang, 'title').text
   const business = localizedBusinessName(offer, lang).text
   const discounted = offer.originalPrice > offer.offerPrice
   return (
     <li className="group flex items-center gap-1 rounded-xl transition-colors [@media(hover:hover)]:hover:bg-[#F0F7FF]">
-      <Link href={`/offers/${offer.id}`} onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-start">
+      <Link href={webOfferHref(offer)} onClick={onNavigate} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-start">
         <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
           {offer.imageUrl ? (
             <img src={offer.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
@@ -207,8 +211,18 @@ function WishlistRow({ offer, lang, onNavigate, onRemove, removeLabel }: { offer
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-normal text-[#475569]">{business}</span>
-          <span className="block truncate text-sm font-semibold leading-snug text-ink">{title}</span>
+          {/* A Super Tav leads with its value, the business on the line below. */}
+          {headline ? (
+            <>
+              <span className="block truncate text-sm font-semibold leading-snug text-ink">{headline}</span>
+              <span className="block truncate text-xs font-normal text-[#475569]">{business}</span>
+            </>
+          ) : (
+            <>
+              <span className="block truncate text-xs font-normal text-[#475569]">{business}</span>
+              <span className="block truncate text-sm font-semibold leading-snug text-ink">{title}</span>
+            </>
+          )}
           <span className="mt-0.5 flex items-baseline gap-2">
             <bdi dir="ltr" className="text-sm font-bold tabular-nums text-brand">{formatPrice(offer.offerPrice)}</bdi>
             {discounted && <bdi dir="ltr" className="text-xs tabular-nums text-slate-400 line-through">{formatPrice(offer.originalPrice)}</bdi>}

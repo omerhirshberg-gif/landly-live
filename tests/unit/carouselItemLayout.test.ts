@@ -28,7 +28,7 @@ describe('carouselItemLayout', () => {
 describe('carouselInitialCount', () => {
   it('mounts the cards in view plus the one peeking in, never more than the rail holds', () => {
     const card = carouselCardWidth(390)
-    expect(carouselInitialCount(390, card, 12)).toBe(3)
+    expect(carouselInitialCount(390, card, 12)).toBe(4)
     expect(carouselInitialCount(390, card, 1)).toBe(1)
     expect(carouselInitialCount(0, card, 12)).toBe(1)
   })
