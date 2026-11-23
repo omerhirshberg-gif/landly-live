@@ -26,6 +26,8 @@ const get = (headers: Record<string, string> = {}) => new Request('https://landl
 
 beforeEach(() => {
   vi.resetModules()
+  // A live gateway, unless a test says otherwise: with none, every offer is flagged comingSoon.
+  vi.stubEnv('TRANZILA_TERMINAL', 'test_terminal')
   mocks.limit.mockClear()
   mocks.revalidateTag.mockClear()
   mocks.docs = []
@@ -116,6 +118,15 @@ describe('GET /api/public/offers', () => {
     const stranger = await GET(get({ origin: 'https://evil.example' }))
     expect(stranger.headers.get('Access-Control-Allow-Origin')).toBeNull()
     expect(OPTIONS(get({ origin: 'http://localhost:8081' })).status).toBe(204)
+  })
+
+  it('with no live payment gateway every offer stays listed but is flagged comingSoon', async () => {
+    vi.stubEnv('TRANZILA_TERMINAL', '')
+    mocks.docs = [doc('shop'), doc('brand')]
+    const { GET } = await import('@/app/api/public/offers/route')
+    const offers = (await (await GET(get())).json()).offers as { id: string; comingSoon?: boolean }[]
+    expect(offers.map((o) => o.id)).toEqual(['shop', 'brand'])
+    expect(offers.every((o) => o.comingSoon === true)).toBe(true)
   })
 
   it('fails with 503 and no-store, so a failure is never cached', async () => {

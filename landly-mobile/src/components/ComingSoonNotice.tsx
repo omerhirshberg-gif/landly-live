@@ -5,15 +5,15 @@ import { useLang } from '../i18n/LangProvider'
 import { colors } from '../theme'
 
 // Raayonit launch-pending notice (web: components/raayonit/ComingSoonNotice.tsx). Shown wherever the card could be bought while
-// `comingSoon` is on: the card, every value and every business stay visible, only the purchase waits.
-export default function ComingSoonNotice({ compact = false, style }: { compact?: boolean; style?: StyleProp<ViewStyle> }) {
+// `comingSoon` is on (`generic`: any other perk while no payment gateway is live): the card, every value and every business stay visible, only the purchase waits.
+export default function ComingSoonNotice({ compact = false, generic = false, style }: { compact?: boolean; generic?: boolean; style?: StyleProp<ViewStyle> }) {
   const { t } = useLang()
   return (
     <View accessibilityRole="alert" style={[styles.box, style]}>
       <View style={styles.icon}><LineIcon name="clock" size={18} color={colors.brand} strokeWidth={1.75} /></View>
       <View style={styles.copy}>
-        <AppText style={styles.title}>{t('raayonit_coming_soon_title')}</AppText>
-        {!compact && <AppText style={styles.body}>{t('raayonit_coming_soon_body')}</AppText>}
+        <AppText style={styles.title}>{t(generic ? 'perk_purchase_soon_title' : 'raayonit_coming_soon_title')}</AppText>
+        {!compact && <AppText style={styles.body}>{t(generic ? 'perk_purchase_soon_body' : 'raayonit_coming_soon_body')}</AppText>}
       </View>
     </View>
   )

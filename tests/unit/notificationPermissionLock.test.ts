@@ -3,10 +3,9 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // The OS / browser notification prompt appears only from a tap on the
-// onboarding's "Enable Notifications" button: never on launch, sign-in or
-// when a step mounts. This keeps it so: the request calls live in the two
-// notificationPermission modules, and those are used only from the Enable
-// handler of each OnboardingWizard.
+// website onboarding's "Enable Notifications" button: never on launch, sign-in or
+// when a step mounts. The native app has no push in v1, so it never asks at all:
+// its wizard skips the notifications card and there is no expo-notifications.
 
 const ROOT = path.resolve(__dirname, '../..')
 const SOURCE_DIRS = ['app', 'components', 'lib', 'landly-mobile/src']
@@ -28,12 +27,8 @@ const read = (file: string) => readFileSync(file, 'utf8')
 // Comments don't count: strip them before looking for calls.
 const code = (file: string) => read(file).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
-const PERMISSION_MODULES = [
-  'components/auth/onboarding/notificationPermission.ts',
-  'landly-mobile/src/lib/notificationPermission.ts',
-  'landly-mobile/src/lib/notificationPermission.web.ts',
-]
-const WIZARDS = ['components/auth/onboarding/OnboardingWizard.tsx', 'landly-mobile/src/auth/onboarding/OnboardingWizard.tsx']
+const PERMISSION_MODULES = ['components/auth/onboarding/notificationPermission.ts']
+const WIZARDS = ['components/auth/onboarding/OnboardingWizard.tsx']
 
 describe('notification permission is asked only on tap', () => {
   it('requests the permission only inside the notificationPermission modules', () => {
@@ -41,7 +36,7 @@ describe('notification permission is asked only on tap', () => {
     expect(offenders.sort()).toEqual([...PERMISSION_MODULES].sort())
   })
 
-  it('imports those modules only from the two onboarding wizards', () => {
+  it('imports that module only from the website onboarding wizard', () => {
     const importers = files
       .filter((file) => !PERMISSION_MODULES.includes(rel(file)) && /notificationPermission['"]/.test(code(file)))
       .map(rel)
@@ -61,8 +56,13 @@ describe('notification permission is asked only on tap', () => {
     }
   })
 
-  it('wires the Enable and Maybe-later buttons to those handlers', () => {
+  it('wires the website Enable and Maybe-later buttons to those handlers', () => {
     expect(read(path.join(ROOT, 'components/auth/onboarding/OnboardingWizard.tsx'))).toContain('onEnable={handleEnable} onLater={handleLater}')
-    expect(read(path.join(ROOT, 'landly-mobile/src/auth/onboarding/OnboardingWizard.tsx'))).toContain('onEnable={handleEnable} onLater={handleLater}')
+  })
+
+  it('the native app has no notification permission prompt in v1', () => {
+    expect(files.filter((file) => rel(file).startsWith('landly-mobile/') && /expo-notifications|requestPermissionsAsync|notificationPermission/.test(code(file))).map(rel)).toEqual([])
+    expect(read(path.join(ROOT, 'landly-mobile/package.json'))).not.toContain('expo-notifications')
+    expect(read(path.join(ROOT, 'landly-mobile/app.json'))).not.toContain('expo-notifications')
   })
 })

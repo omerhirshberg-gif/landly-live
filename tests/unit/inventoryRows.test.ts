@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LOW_STOCK, buildInventoryRows, filterInventory, sortByUrgency, stockHealth, type InventoryOffer, type InventoryPool } from '@/lib/admin/inventoryRows'
+import { DEFAULT_LOW_STOCK, buildInventoryRows, filterInventory, isOfferLinkedToPool, sortByUrgency, stockHealth, type InventoryOffer, type InventoryPool } from '@/lib/admin/inventoryRows'
 
 const offer = (over: Partial<InventoryOffer> = {}): InventoryOffer => ({ id: 'o1', title: 'Perk', businessName: 'Biz', fulfillmentType: 'direct_merchant', poolId: null, totalQuantity: null, claimedCount: 0, ...over })
 const pool = (over: Partial<InventoryPool> = {}): InventoryPool => ({ poolId: 'o1', offerId: 'o1', status: 'active', totalPurchased: 100, allocatedCount: 40, remainingCount: 60, warningThreshold: 10, ...over })
@@ -40,5 +40,11 @@ describe('inventory rows', () => {
     expect(sortByUrgency(rows).map((r) => r.title)).toEqual(['A out', 'C low', 'B ok'])
     expect(filterInventory(rows, { query: '', health: 'low' }).map((r) => r.title)).toEqual(['C low'])
     expect(filterInventory(rows, { query: 'cafe', health: 'all' }).map((r) => r.title)).toEqual(['C low'])
+  })
+
+  it('links a multi-denomination card to every stock it sells from, not only its default one', () => {
+    const card = offer({ id: 'card', poolId: 'p100', variantPoolIds: ['p100', 'p150', 'p200'] })
+    expect(['p100', 'p150', 'p200', 'other'].map((id) => isOfferLinkedToPool(card, id))).toEqual([true, true, true, false])
+    expect(isOfferLinkedToPool(offer({ id: 'old', poolId: 'p100' }), 'p150')).toBe(false)
   })
 })

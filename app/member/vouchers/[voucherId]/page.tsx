@@ -16,6 +16,7 @@ import VoucherTicket from '@/components/member/VoucherTicket'
 import VoucherTerms from '@/components/member/VoucherTerms'
 import { CodeReveal, QrReveal } from '@/components/member/VoucherReveal'
 import AddToAppleWallet from '@/components/member/AddToAppleWallet'
+import AddToGoogleWallet from '@/components/member/AddToGoogleWallet'
 import BusinessPageNotice from '@/components/member/BusinessPageNotice'
 import IssuerAttribution from '@/components/member/IssuerAttribution'
 import VoucherBalance from '@/components/member/VoucherBalance'
@@ -160,6 +161,7 @@ export default function VoucherPage() {
                         {/* Immediately under the code: issued as a Multi-Chain Super Tav, valid here and across the network. */}
                         {isRaayonitMultiChain(voucher) && !multiChain && <MultiChainCreditBox className="mt-4" />}
                         <AddToAppleWallet voucher={voucher} />
+                        <AddToGoogleWallet voucher={voucher} />
                         <MarkVoucherUsed voucherId={voucher.id} />
                       </>
                     ) : voucher.status === 'active' ? (
@@ -169,6 +171,7 @@ export default function VoucherPage() {
                           <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} />
                         </div>
                         <AddToAppleWallet voucher={voucher} />
+                        <AddToGoogleWallet voucher={voucher} />
                       </>
                     ) : (
                       <p role="status" className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-semibold text-slate-600">

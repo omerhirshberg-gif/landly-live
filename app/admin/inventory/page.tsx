@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { useAdminT } from '@/lib/admin/translations'
-import type { InventoryOffer, InventoryPool } from '@/lib/admin/inventoryRows'
+import { isOfferLinkedToPool, type InventoryOffer, type InventoryPool } from '@/lib/admin/inventoryRows'
 import Alert from '@/components/admin/Alert'
 import { CardSkeletons } from '@/components/admin/Card'
 import EmptyState from '@/components/admin/EmptyState'
@@ -92,7 +92,7 @@ export default function InventoryPage() {
           ) : (
             <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {[...data.pools].filter((p) => p.faceValueAgorot != null).sort((a, b) => (a.faceValueAgorot ?? 0) - (b.faceValueAgorot ?? 0)).map((pool) => {
-                const linked = data.offers.filter((o) => o.poolId === pool.poolId).length
+                const linked = data.offers.filter((o) => isOfferLinkedToPool(o, pool.poolId)).length
                 const low = pool.remainingCount <= pool.warningThreshold
                 return (
                   <li key={pool.poolId} className="flex flex-col gap-4 rounded-3xl border border-adm-line bg-adm-surface p-5 shadow-sm">

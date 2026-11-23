@@ -28,3 +28,12 @@ export function isPaymentSandboxEnabled(): boolean {
 export function sandboxTransactionId(): string {
   return `9${Date.now()}${String(randomInt(0, 1000)).padStart(3, '0')}`
 }
+
+/**
+ * Whether a checkout can actually take payment here: a real Tranzila terminal is configured, or the dev sandbox is on.
+ * Everywhere else the perks stay listed but cannot be bought (lib/offers/purchaseAvailability.ts), so no screen offers a
+ * Buy action that would dead-end.
+ */
+export function arePaymentsLive(): boolean {
+  return !!process.env.TRANZILA_TERMINAL || isPaymentSandboxEnabled()
+}

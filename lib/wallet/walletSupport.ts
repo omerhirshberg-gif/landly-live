@@ -18,12 +18,36 @@ export function walletSupport(userAgent: string, maxTouchPoints: number): Wallet
   return /Macintosh|Windows|Linux|CrOS/.test(userAgent) ? 'handoff' : 'none'
 }
 
-/** Whether a voucher can go into Wallet at all; the server checks the same (lib/wallet/passVoucher.ts). */
-export function canOfferWalletPass(voucher: { status: string; redeemToken: string | null; expiresAt: Date | null }, nowMs: number): boolean {
-  return voucher.status === 'active' && !!voucher.redeemToken && (!voucher.expiresAt || voucher.expiresAt.getTime() > nowMs)
+/**
+ * Whether a voucher can go into Wallet at all (Apple or Google); the server checks the same (lib/wallet/passVoucher.ts).
+ * A code-only voucher (Raayonit) has no redeem token, only its own code, so that counts instead.
+ */
+export function canOfferWalletPass(
+  voucher: { status: string; redeemToken: string | null; expiresAt: Date | null; externalCode?: string | null; redemptionKind?: string | null },
+  nowMs: number,
+): boolean {
+  const hasCode = voucher.redemptionKind === 'code_only' ? !!voucher.externalCode : !!voucher.redeemToken || !!voucher.externalCode
+  return voucher.status === 'active' && hasCode && (!voucher.expiresAt || voucher.expiresAt.getTime() > nowMs)
 }
 
 /** Apple's own badge artwork, as downloaded from developer.apple.com/wallet (see docs/apple-wallet-configuration.md). */
 export function walletBadgePath(lang: string): string {
   return `/wallet/add-to-apple-wallet-${lang}.svg`
+}
+
+// Google Wallet (the same save link everywhere: Google's own page or app takes over).
+//  badge   -- Android browsers, and desktop browsers (the pass lands in the member's Google account and syncs to their phone)
+//  in-app  -- an app's embedded browser on Android: badge, plus a hint to open it in Chrome
+//  none    -- iPhone, iPad and any other iOS browser (Apple Wallet only there), and anything unknown
+export type GoogleWalletSupport = 'badge' | 'in-app' | 'none'
+
+export function googleWalletSupport(userAgent: string, maxTouchPoints: number): GoogleWalletSupport {
+  if (/iPhone|iPad|iPod/i.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1)) return 'none'
+  if (/Android/i.test(userAgent)) return IN_APP_BROWSER.test(userAgent) || /; wv\)/.test(userAgent) ? 'in-app' : 'badge'
+  return /Macintosh|Windows|Linux|CrOS/.test(userAgent) ? 'badge' : 'none'
+}
+
+/** Google's official badge artwork (public/wallet/google/, see its README.txt): en, he, ru, fr, es. */
+export function googleWalletBadgePath(lang: string): string {
+  return `/wallet/google/${lang}.svg`
 }

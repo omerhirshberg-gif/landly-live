@@ -5,9 +5,9 @@ import { useLang } from '@/lib/i18n/useLang'
 
 /**
  * Raayonit launch-pending notice (native: landly-mobile/src/components/ComingSoonNotice.tsx). Shown wherever the card could be
- * bought while `comingSoon` is on: the card, every value and every business stay visible, only the purchase waits.
+ * bought while `comingSoon` is on (`generic`: any other perk while no payment gateway is live): the card, every value and every business stay visible, only the purchase waits.
  */
-export default function ComingSoonNotice({ className = '', compact = false }: { className?: string; compact?: boolean }) {
+export default function ComingSoonNotice({ className = '', compact = false, generic = false }: { className?: string; compact?: boolean; generic?: boolean }) {
   const { t } = useLang()
   return (
     <div role="status" className={`flex items-center gap-3 rounded-2xl border border-blue-200/70 bg-gradient-to-br from-blue-50/70 to-indigo-50/30 p-3.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md ${className}`}>
@@ -15,8 +15,8 @@ export default function ComingSoonNotice({ className = '', compact = false }: { 
         <Clock className="h-[18px] w-[18px]" strokeWidth={1.75} />
       </span>
       <div className="min-w-0 flex-1 text-start">
-        <p className="text-[14px] font-extrabold leading-5 tracking-tight text-ink">{t('raayonit_coming_soon_title')}</p>
-        {!compact && <p className="mt-0.5 text-[13px] leading-5 text-body">{t('raayonit_coming_soon_body')}</p>}
+        <p className="text-[14px] font-extrabold leading-5 tracking-tight text-ink">{t(generic ? 'perk_purchase_soon_title' : 'raayonit_coming_soon_title')}</p>
+        {!compact && <p className="mt-0.5 text-[13px] leading-5 text-body">{t(generic ? 'perk_purchase_soon_body' : 'raayonit_coming_soon_body')}</p>}
       </div>
     </div>
   )

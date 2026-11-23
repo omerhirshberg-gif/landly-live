@@ -19,7 +19,8 @@
     "test:emulator": "firebase emulators:exec --config firebase.test.json --project demo-landly-payments --only firestore \"vitest run tests/emulator --no-file-parallelism\"",
     "typecheck": "tsc --noEmit --incremental false",
     "check:apple": "node scripts/check-apple-oauth.mjs",
-    "check:apple-key": "node scripts/check-apple-key.mjs"
+    "check:apple-key": "node scripts/check-apple-key.mjs",
+    "check:store-readiness": "node scripts/check-store-readiness.mjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",

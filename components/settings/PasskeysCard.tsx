@@ -75,7 +75,7 @@ export default function PasskeysCard({ user }: { user: User }) {
       } else if (outcome.kind === 'reauth') {
         setReauth(true)
       } else if (outcome.kind === 'error') {
-        setMessage({ tone: 'error', text: t(outcome.code === 'already_registered' ? 'passkeys_err_already' : 'passkeys_err_failed') })
+        setMessage({ tone: 'error', text: t(outcome.code === 'already_registered' ? 'passkeys_err_already' : outcome.code === 'blocked' ? 'passkeys_err_blocked' : 'passkeys_err_failed') })
       }
     } catch {
       setMessage({ tone: 'error', text: t('passkeys_err_failed') })

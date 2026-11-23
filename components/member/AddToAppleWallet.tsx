@@ -23,7 +23,7 @@ const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outli
 // full strength while the pass loads. Being artwork it never mirrors in
 // Hebrew; it's centred, so nothing around it has to.
 export default function AddToAppleWallet({ voucher }: {
-  voucher: { id: string; status: string; redeemToken: string | null; expiresAt: Date | null }
+  voucher: { id: string; status: string; redeemToken: string | null; expiresAt: Date | null; externalCode?: string | null; redemptionKind?: string | null }
 }) {
   const { t } = useLang()
   // Known only in the browser; null renders nothing, on the server too.
@@ -71,7 +71,7 @@ export default function AddToAppleWallet({ voucher }: {
   if (!eligible || !support) return null
 
   return (
-    <div className="mt-6 flex flex-col items-center gap-3 border-t border-slate-100 pt-5 text-center">
+    <div className="wallet-section mt-6 flex flex-col items-center gap-3 border-t border-slate-100 pt-5 text-center">
       {support === 'handoff' ? (
         <IPhoneHandoff voucherId={voucher.id} />
       ) : (

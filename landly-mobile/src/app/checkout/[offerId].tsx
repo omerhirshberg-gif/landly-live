@@ -18,6 +18,7 @@ import { isPooled } from '@shared/inventory/types'
 import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import AppText from '../../components/AppText'
 import Button from '../../components/Button'
+import ComingSoonNotice from '../../components/ComingSoonNotice'
 import ConsentText from '../../components/ConsentText'
 import LineIcon from '../../components/LineIcon'
 import Notice from '../../components/Notice'
@@ -103,8 +104,10 @@ export default function CheckoutScreen() {
     [uid, offerId, variantPoolId]
   )
 
+  // A perk that cannot be bought yet (no live payment gateway) never starts an order.
+  const comingSoon = offer?.comingSoon === true
   useEffect(() => {
-    if (!user || !offerId) return
+    if (!user || !offerId || comingSoon) return
     let cancelled = false
     ;(async () => {
       try {
@@ -127,7 +130,7 @@ export default function CheckoutScreen() {
     return () => {
       cancelled = true
     }
-  }, [user, offerId, attempt, isClaimed, failureMessage, variantPoolId])
+  }, [user, offerId, attempt, isClaimed, failureMessage, variantPoolId, comingSoon])
 
   const retry = () => {
     setLoadError(null)
@@ -210,7 +213,12 @@ export default function CheckoutScreen() {
         onBack={backAction === 'default' ? undefined : () => backAction === 'to-summary' && setStep('summary')}
       />
 
-      {claimed ? (
+      {comingSoon ? (
+        <View style={styles.centered}>
+          <ComingSoonNotice generic />
+          <Button label={t('onb_back')} variant="secondary" onPress={() => router.back()} />
+        </View>
+      ) : claimed ? (
         <View style={styles.centered}>
           <View style={styles.stateIcon}>
             <LineIcon name="check" size={24} color={colors.success} strokeWidth={2.4} />

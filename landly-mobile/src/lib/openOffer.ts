@@ -26,7 +26,7 @@ export function openOffer(offer: OfferDocument, denomination?: number, direct = 
   seen.set(offer.id, offer)
   // The flagship never has an offer screen of its own: the hub (or the 1-click checkout from it) is where it is bought.
   if (isFlagship(offer)) {
-    if (direct && denomination) {
+    if (direct && denomination && !offer.comingSoon) {
       const variant = variantForDenomination(offer.variants ?? [], denomination)
       router.push({ pathname: '/checkout/[offerId]', params: { offerId: offer.id, ...(variant ? { variant: variant.poolId } : {}) } })
     } else router.push(RAAYONIT_HUB)

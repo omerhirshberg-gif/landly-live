@@ -10,7 +10,7 @@ import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
 import { colors } from '../theme'
 
-type Voucher = { id: string; status: string; redeemToken: string | null; expiresAt: Date | null }
+type Voucher = { id: string; status: string; redeemToken: string | null; expiresAt: Date | null; externalCode?: string | null; redemptionKind?: string | null }
 
 // Reanimated drops this under the system's Reduce Motion.
 const NOTICE_IN = new Keyframe({
