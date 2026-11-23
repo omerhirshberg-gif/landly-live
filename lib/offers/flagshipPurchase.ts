@@ -2,7 +2,7 @@
 // website and the Expo app. These are the same guards the offer page applied (a value the member already owns, past expiry), plus sold out.
 import type { OfferVariant } from './variants'
 
-export type PurchaseBlock = 'expired' | 'soldOut' | 'owned' | null
+export type PurchaseBlock = 'comingSoon' | 'expired' | 'soldOut' | 'owned' | null
 
 export interface FlagshipPurchaseInput {
   variants: readonly OfferVariant[]
@@ -14,6 +14,8 @@ export interface FlagshipPurchaseInput {
   totalQuantity?: number | null
   claimedCount?: number
   now: number
+  /** Launch-pending mode: the card is shown but cannot be bought yet. Wins over every other state. */
+  comingSoon?: boolean
 }
 
 export interface FlagshipPurchase {
@@ -24,12 +26,14 @@ export interface FlagshipPurchase {
 }
 
 export function flagshipPurchase(input: FlagshipPurchaseInput): FlagshipPurchase {
-  const { variants, picked, claimedPools, expiryDate, totalQuantity, claimedCount = 0, now } = input
+  const { variants, picked, claimedPools, expiryDate, totalQuantity, claimedCount = 0, now, comingSoon = false } = input
   const free = variants.filter((v) => !claimedPools.includes(v.poolId))
   const byValue = [...variants].sort((a, b) => b.faceValueAgorot - a.faceValueAgorot)
   const selected = variants.length > 0 ? free.find((v) => v.poolId === picked) ?? byValue.find((v) => free.includes(v)) ?? byValue[0] : undefined
   const everyValueOwned = variants.length > 0 && free.length === 0
-  const block: PurchaseBlock = everyValueOwned
+  const block: PurchaseBlock = comingSoon
+    ? 'comingSoon'
+    : everyValueOwned
     ? 'owned'
     : expiryDate && expiryDate.getTime() < now
       ? 'expired'

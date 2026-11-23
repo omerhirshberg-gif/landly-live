@@ -9,6 +9,7 @@ import { flagshipLimitNotice } from '@/lib/offers/flagshipLimit'
 import { useLang } from '@/lib/i18n/useLang'
 import { RAAYONIT_LOGO_PATH } from '@/lib/payments/issuer'
 import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
+import ComingSoonNotice from './ComingSoonNotice'
 import FlagshipCta from './FlagshipCta'
 import { useFlagshipPurchase } from './useFlagshipPurchase'
 import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@/lib/brand/emblemPaths'
@@ -42,6 +43,7 @@ export default function RaayonitHero({ offer, buy = false, step = 'hub' }: { off
             </p>
           </div>
         )}
+        {purchase.block === 'comingSoon' && <ComingSoonNotice className="mt-4" />}
         {buy ? (
           <FlagshipCta to={step === 'details' ? 'checkout' : 'details'} purchase={purchase} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand px-4 text-[15px] font-bold text-white transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" />
         ) : (

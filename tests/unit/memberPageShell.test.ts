@@ -42,7 +42,7 @@ describe('MemberPageShell', () => {
     const member = read('app/member/page.tsx')
     expect(member).toContain('<div className="mx-auto w-full max-w-[960px] space-y-6">')
     expect(member).not.toMatch(/<aside|lg:grid-cols-\[minmax\(0,1fr\)_300px\]|lg:sticky/)
-    const order = ['<h1 className={PAGE_TITLE}>', '<SegmentBadge', '<DashboardStats', '<MemberTabs', '<PerksTab'].map((s) => member.indexOf(s))
+    const order = ['<h1 className={`${PAGE_TITLE}','<SegmentBadge', '<DashboardStats', '<MemberTabs', '<PerksTab'].map((s) => member.indexOf(s))
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(order.every((i) => i > -1)).toBe(true)
   })

@@ -13,7 +13,7 @@ export default function FlagshipCta({ purchase, className, to = 'details' }: { p
   const { block, card, href, detailsHref, ready } = purchase
   const target = to === 'details' ? detailsHref : href
   if (block) {
-    return <button type="button" disabled className={`${className} cursor-not-allowed opacity-50`}>{t(block === 'owned' ? 'offer_already_claimed_title' : 'products_unavailable')}</button>
+    return <button type="button" disabled className={`${className} cursor-not-allowed opacity-50`}>{t(block === 'owned' ? 'offer_already_claimed_title' : block === 'comingSoon' ? 'raayonit_coming_soon_cta' : 'products_unavailable')}</button>
   }
   // The hub's action is "More details & purchase" (no price: the value is chosen on the next page); the details page's is "Continue to order — ₪174".
   const [before, after = ''] = t(to === 'details' ? 'products_cta' : 'raayonit_continue_order').split('{price}')

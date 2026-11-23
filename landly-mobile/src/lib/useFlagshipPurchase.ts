@@ -45,7 +45,7 @@ export function useFlagshipPurchase(offer: OfferDocument | null) {
 
   const live = offer ? showcaseCards(offer) : []
   const cards = live.length > 0 ? live : FALLBACK
-  const { selected, block } = flagshipPurchase({ variants, picked: picked || wanted?.poolId || '', claimedPools, expiryDate: offer?.expiryDate, totalQuantity: offer?.totalQuantity, claimedCount: offer?.claimedCount, now })
+  const { selected, block } = flagshipPurchase({ variants, picked: picked || wanted?.poolId || '', claimedPools, expiryDate: offer?.expiryDate, totalQuantity: offer?.totalQuantity, claimedCount: offer?.claimedCount, now, comingSoon: offer?.comingSoon === true })
   // With no live offer the fallback tiles are only a preview: the first one stands in as selected.
   // With no live offer yet the highest value (the ladder's "Best value") shows selected.
   const fallbackCard = cards.find((c) => c.best) ?? cards[cards.length - 1]

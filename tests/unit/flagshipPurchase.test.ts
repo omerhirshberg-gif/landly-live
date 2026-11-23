@@ -47,3 +47,18 @@ describe('flagshipPurchase', () => {
     expect(flagshipPurchase(base).block).toBeNull()
   })
 })
+
+describe('flagshipPurchase in launch-pending mode', () => {
+  it('blocks the purchase as comingSoon and wins over every other state', () => {
+    expect(flagshipPurchase({ ...base, comingSoon: true }).block).toBe('comingSoon')
+    expect(flagshipPurchase({ ...base, comingSoon: true, claimedPools: ['p100', 'p150', 'p200'] }).block).toBe('comingSoon')
+    expect(flagshipPurchase({ ...base, comingSoon: true, expiryDate: new Date(0) }).block).toBe('comingSoon')
+  })
+  it('still selects a value, so the ladder and the card keep showing it', () => {
+    expect(flagshipPurchase({ ...base, comingSoon: true }).selected?.poolId).toBe('p200')
+  })
+  it('changes nothing when it is off', () => {
+    expect(flagshipPurchase({ ...base, comingSoon: false }).block).toBeNull()
+    expect(flagshipPurchase(base).block).toBeNull()
+  })
+})

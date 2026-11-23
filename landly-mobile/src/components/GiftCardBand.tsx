@@ -27,7 +27,7 @@ function FullBand({ offer, count }: { offer: OfferDocument | null; count: number
   // Selecting a value and the Buy action go straight to checkout; the club card and the details link open the hub. With no live offer
   // yet, the tiles are a preview and the action opens the hub.
   const disabled = purchase.ready && !!block
-  const label = block ? t(block === 'owned' ? 'offer_already_claimed_title' : 'products_unavailable') : t('products_cta')
+  const label = block ? t(block === 'owned' ? 'offer_already_claimed_title' : block === 'comingSoon' ? 'raayonit_coming_soon_cta' : 'products_unavailable') : t('products_cta')
   return (
     <View style={styles.band}>
       <View style={styles.head}>

@@ -8,6 +8,7 @@ import type { OfferDocument } from '@shared/firebase/offers'
 import { isolateLtr, type ShowcaseCard } from '@shared/home/superShowcase'
 import { flagshipLimitNotice } from '@shared/offers/flagshipLimit'
 import AppText from './AppText'
+import ComingSoonNotice from './ComingSoonNotice'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
 import { useFlagshipPurchase } from '../lib/useFlagshipPurchase'
@@ -29,7 +30,7 @@ export default function RaayonitHero({ offer, buy = false, step = 'hub' }: { off
   const limit = buy && step === 'details' ? flagshipLimitNotice(cards, ownedPools) : null
   // On the hub (`buy`) a tile selects its value and the action goes straight to checkout; elsewhere the whole card opens the hub.
   const disabled = buy && (!purchase.ready || !!block)
-  const label = buy ? (block ? t(block === 'owned' ? 'offer_already_claimed_title' : 'products_unavailable') : step === 'details' ? t('raayonit_continue_order').replace('{price}', isolateLtr(`₪${card?.price ?? ''}`)) : t('products_cta')) : t('products_cta')
+  const label = buy ? (block ? t(block === 'owned' ? 'offer_already_claimed_title' : block === 'comingSoon' ? 'raayonit_coming_soon_cta' : 'products_unavailable') : step === 'details' ? t('raayonit_continue_order').replace('{price}', isolateLtr(`₪${card?.price ?? ''}`)) : t('products_cta')) : t('products_cta')
   return (
     <View style={styles.card}>
       <ClubCard />
@@ -45,6 +46,7 @@ export default function RaayonitHero({ offer, buy = false, step = 'hub' }: { off
           <AppText style={styles.limitText}>{t(limit.kind === 'all' ? 'raayonit_limit_all' : 'raayonit_limit_some').replace('{values}', limit.values)}</AppText>
         </View>
       )}
+      {block === 'comingSoon' && <ComingSoonNotice style={styles.notice} />}
       <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => (buy ? (step === 'details' ? purchase.buy() : purchase.openDetails()) : router.push('/raayonit'))} style={({ pressed }) => [styles.cta, disabled && styles.ctaOff, pressed && styles.pressed]}>
         <AppText numberOfLines={1} style={styles.ctaText}>{label}</AppText>
       </Pressable>
@@ -175,6 +177,7 @@ const styles = StyleSheet.create({
   checkEnd: { left: 8 },
   limit: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, borderRadius: 16, borderCurve: 'continuous', borderWidth: 1, borderColor: 'rgba(253,230,138,0.9)', backgroundColor: '#FFFBEB' },
   limitIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(253,230,138,0.9)', backgroundColor: '#FEF3C7' },
+  notice: { marginTop: 16 },
   limitText: { flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: 20, fontWeight: '600', color: '#451A03' },
   chooseTitle: { marginBottom: 12, fontSize: 19, fontWeight: '800', letterSpacing: -0.3, color: colors.heading },
   ribbon: { position: 'absolute', top: 14, width: 112, paddingVertical: 3, alignItems: 'center', backgroundColor: '#16A34A' },
