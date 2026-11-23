@@ -72,6 +72,8 @@ export interface OfferDocument {
   websiteUrl?: string
   contactPhone?: string
   universalRedemptionGuide?: { he: string; en: string } | null
+  /** Raayonit launch-pending mode: listed and visible, but cannot be bought yet (system_config/feature_flags.raayonitComingSoon). */
+  comingSoon?: boolean
   // false = a draft the admin hasn't published yet (kept out of every public read and out of checkout); missing = published.
   published?: boolean
 }
@@ -115,6 +117,7 @@ export function toOfferDocument(id: string, data: Record<string, unknown>): Offe
     ...(isRaayonitCategoryId(data.raayonitCategory) ? { raayonitCategory: data.raayonitCategory } : {}),
     ...(typeof data.kosherBranchCount === 'number' && data.kosherBranchCount > 0 ? { kosherBranchCount: data.kosherBranchCount } : {}),
     ...readPerkScope(data),
+    ...(data.comingSoon === true ? { comingSoon: true } : {}),
     ...(data.published === false ? { published: false } : {}),
   }
 }

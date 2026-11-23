@@ -7,7 +7,7 @@ import { isBusinessUnavailable, publicOfferData, withLiveBrandIndex } from '@/li
 import { parseVariants } from '@/lib/offers/variants'
 import { offerToWire, toOfferDocument, type OfferWire } from '@/lib/offers/offerDocument'
 import { isRaayonitBrandCard, isRaayonitGeneralCard, gateGeneralCard } from '@/lib/offers/raayonitGate'
-import { isRaayonitDisplayEnabled } from '@/lib/flags/featureFlags.server'
+import { isRaayonitComingSoonEnabled, isRaayonitDisplayEnabled } from '@/lib/flags/featureFlags.server'
 import { countInStock } from '@/lib/inventory/ledger/stock'
 import { raayonitCategoryOf } from '@/lib/offers/raayonitCategories'
 import categoryByKey from '@/lib/offers/raayonitCategoryByKey.json'
@@ -33,18 +33,20 @@ async function readLiveOffers(): Promise<OfferWire[]> {
   // Voucher stock per pool, and which businesses still exist and may trade: an offer is public only while both hold.
   const poolIds = [...new Set(docs.flatMap((d) => [d.data().poolId, ...parseVariants(d.data().variants).map((v) => v.poolId)]).filter((p): p is string => typeof p === 'string' && !!p))]
   const businessIds = [...new Set(docs.map((d) => d.data().businessId).filter((b): b is string => typeof b === 'string' && !!b))]
-  const [pools, businesses, users, products, displayEnabled] = await Promise.all([
+  const [pools, businesses, users, products, displayEnabled, comingSoon] = await Promise.all([
     poolIds.length ? db.getAll(...poolIds.map((id) => db.collection('couponPools').doc(id))) : [],
     businessIds.length ? db.getAll(...businessIds.map((id) => db.collection('businesses').doc(id))) : [],
     businessIds.length ? db.getAll(...businessIds.map((id) => db.collection('users').doc(id))) : [],
     poolIds.length ? db.getAll(...poolIds.map((id) => db.collection(PRODUCTS_COLLECTION).doc(id))) : [],
     isRaayonitDisplayEnabled(),
+    isRaayonitComingSoonEnabled(),
   ])
   const poolRemaining = new Map(pools.map((p) => [p.id, p.exists && p.data()?.status !== 'archived' ? Number(p.data()?.remainingCount) || 0 : 0]))
   // A product that lives in the ledger is counted from its IN_STOCK codes (an aggregation, no counter document to contend on).
   await Promise.all(products.filter((p) => p.exists && p.data()?.active !== false).map(async (p) => poolRemaining.set(p.id, await countInStock(db, p.id))))
   // Dev sandbox only: an empty Raayonit stock still lists, because a test checkout fills it with RAAYONIT-DEMO codes (lib/payments/sandboxDemoStock.ts).
-  if (isPaymentSandboxEnabled()) {
+  // Launch-pending mode lists them the same way (and flags them comingSoon below): visible exactly as on dev, but never purchasable.
+  if (isPaymentSandboxEnabled() || comingSoon) {
     for (const d of docs) {
       if (d.data().fulfillmentType !== 'raayonit_pool') continue
       for (const id of [d.data().poolId, ...parseVariants(d.data().variants).map((v) => v.poolId)]) if (typeof id === 'string' && id && !poolRemaining.get(id)) poolRemaining.set(id, DEMO_CODES_PER_TOPUP)
@@ -54,7 +56,7 @@ async function readLiveOffers(): Promise<OfferWire[]> {
   const activeBusinesses = new Set(businesses.filter((b) => b.exists && !isBusinessUnavailable(b.data(), userById.get(b.id))).map((b) => b.id))
   const listed = docs.flatMap((d) => {
     const data = publicOfferData(d.data(), { poolRemaining, activeBusinesses })
-    return data ? [{ id: d.id, data }] : []
+    return data ? [{ id: d.id, data: comingSoon && data.fulfillmentType === 'raayonit_pool' ? { ...data, comingSoon: true } : data }] : []
   })
   // While display is on, every chain's own card is listed (each opens its detail page and sells the shared 100 / 150 stock) and carries
   // its Raayonit category; with the kill switch off the per-chain cards disappear and the general card goes neutral.

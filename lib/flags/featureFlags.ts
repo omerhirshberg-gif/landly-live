@@ -35,3 +35,19 @@ export function resolveRaayonitDisplay({ env, doc, projectId }: FlagInputs): boo
   void projectId
   return true
 }
+
+export interface ComingSoonInputs {
+  /** RAAYONIT_COMING_SOON: '1'/'true' or '0'/'false'. Wins over the document. */
+  env: string | undefined
+  /** system_config/feature_flags.raayonitComingSoon, when the document exists. */
+  doc: unknown
+}
+
+/**
+ * Launch-pending mode for Raayonit: every Raayonit card is listed as on DEV (tab, general card, brand list, pages) even with no voucher
+ * codes loaded, a "not available yet" notice shows, and nothing can be bought. Default OFF, so a normal project behaves as before.
+ * Turn it off once real codes are loaded and the card sells.
+ */
+export function resolveRaayonitComingSoon({ env, doc }: ComingSoonInputs): boolean {
+  return parseBool(env) ?? parseBool(doc) ?? false
+}

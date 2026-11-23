@@ -11,6 +11,7 @@ import { isBusinessUnavailable } from '../offers/availability'
 import { relocateBundledImage } from '../offers/imageUrl'
 import { findVariant, orderIdFor, parseVariants } from '../offers/variants'
 import { isRaayonitBrandCard } from '../offers/raayonitGate'
+import { isRaayonitComingSoonEnabled } from '../flags/featureFlags.server'
 import { releaseReservation, reserveForCheckout } from '../inventory/ledger/stock'
 import { ensureSandboxDemoStock } from './sandboxDemoStock'
 import { resolveLedgerProduct, type LedgerProduct } from '../inventory/ledger/prepareSale'
@@ -76,6 +77,8 @@ export async function initiateOrder(
   // A ledger product holds its code for the buyer for 15 minutes (IN_STOCK -> RESERVED) before the order exists, so two
   // checkouts can never be promised the same code. The same order asking again gets the same reservation. Released on any failure.
   const offerPreview = (await offerRef.get()).data()
+  // Launch-pending mode: Raayonit is shown but not sold yet, whatever stock there is. Refused before any code is reserved.
+  if (offerPreview?.fulfillmentType === 'raayonit_pool' && await isRaayonitComingSoonEnabled()) throw new PaymentError('Raayonit cards are not available yet.', 503)
   // Dev sandbox only: an empty Raayonit stock (a value with no uploaded codes) gets a few fake RAAYONIT-DEMO codes, so a test purchase can complete.
   if (sandbox) await ensureSandboxDemoStock(db, offerPreview, variantPoolId)
   const product: LedgerProduct | null = await resolveLedgerProduct(db, offerPreview, variantPoolId)

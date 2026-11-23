@@ -7,13 +7,14 @@ const mocks = vi.hoisted(() => ({
   missing: [] as string[],
   stock: {} as Record<string, number>,
   display: true,
+  comingSoon: false,
 }))
 vi.mock('server-only', () => ({}))
 // unstable_cache needs a Next request context; here it just runs the function.
 vi.mock('next/cache', () => ({ unstable_cache: (fn: () => unknown) => fn, revalidateTag: mocks.revalidateTag, revalidatePath: vi.fn() }))
 vi.mock('@/lib/firebase/admin', () => ({
   getAdminDb: () => ({
-    collection: (name: string) => ({ doc: (id: string) => ({ id, name, get: async () => ({ data: () => (name === 'system_config' ? { raayonitDisplay: mocks.display } : undefined) }) }), limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }),
+    collection: (name: string) => ({ doc: (id: string) => ({ id, name, get: async () => ({ data: () => (name === 'system_config' ? { raayonitDisplay: mocks.display, raayonitComingSoon: mocks.comingSoon } : undefined) }) }), limit: (n: number) => { mocks.limit(n); return { get: async () => ({ docs: mocks.docs }) } } }),
     // Pools hold stock and businesses exist, unless a test says otherwise.
     getAll: async (...refs: { id: string; name: string }[]) => refs.map((r) => ({ id: r.id, exists: r.name === 'inventoryProducts' ? false : !mocks.missing.includes(r.id), data: () => (r.name === 'couponPools' ? { remainingCount: mocks.stock[r.id] ?? 5 } : {}) })),
   }),
@@ -31,6 +32,7 @@ beforeEach(() => {
   mocks.missing = []
   mocks.stock = {}
   mocks.display = true
+  mocks.comingSoon = false
 })
 
 describe('GET /api/public/offers', () => {
@@ -69,6 +71,34 @@ describe('GET /api/public/offers', () => {
     expect(offers.map((o: { id: string }) => o.id)).toEqual(['brand', 'shop'])
     expect(offers[0].variants).toHaveLength(1)
     expect(offers[0]).toMatchObject({ offerPrice: 89, originalPrice: 100 })
+  })
+
+  it('launch-pending mode lists every Raayonit card with no codes, flags it comingSoon, and leaves other offers alone', async () => {
+    mocks.comingSoon = true
+    mocks.stock = { p100: 0, p150: 0 }
+    const variants = [{ faceValueAgorot: 10000, priceAgorot: 8900, poolId: 'p100' }, { faceValueAgorot: 15000, priceAgorot: 12900, poolId: 'p150' }]
+    mocks.docs = [
+      doc('general', { fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', poolId: 'p100', variants }),
+      doc('chain', { fulfillmentType: 'raayonit_pool', perkScope: 'single_chain', poolId: 'p100', variants, brandName: 'Cafe' }),
+      doc('draft', { fulfillmentType: 'raayonit_pool', perkScope: 'single_chain', poolId: 'p100', variants, published: false }),
+      doc('shop', { fulfillmentType: 'direct_merchant', businessId: 'b1' }),
+    ]
+    vi.resetModules()
+    const { GET } = await import('@/app/api/public/offers/route')
+    const offers = (await (await GET(get())).json()).offers
+    expect(offers.map((o: { id: string }) => o.id)).toEqual(['general', 'chain', 'shop'])
+    expect(offers[0]).toMatchObject({ comingSoon: true })
+    expect(offers[0].variants).toHaveLength(2)
+    expect(offers[0].brandIndex?.map((b: { offerId: string }) => b.offerId)).toEqual(['chain'])
+    expect(offers[1]).toMatchObject({ comingSoon: true })
+    expect(offers[2]).not.toHaveProperty('comingSoon')
+  })
+
+  it('with launch-pending mode off, an empty stock stays hidden and nothing is flagged', async () => {
+    mocks.stock = { p100: 0 }
+    mocks.docs = [doc('general', { fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', poolId: 'p100', variants: [{ faceValueAgorot: 10000, priceAgorot: 8900, poolId: 'p100' }] })]
+    const { GET } = await import('@/app/api/public/offers/route')
+    expect((await (await GET(get())).json()).offers).toEqual([])
   })
 
   it('carries no member data: every field is one the public offer page already shows', async () => {
