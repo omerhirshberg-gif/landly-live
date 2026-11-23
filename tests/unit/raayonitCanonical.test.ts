@@ -47,9 +47,20 @@ describe('canonical Raayonit catalogue', () => {
 })
 
 describe('Leonardo', () => {
-  it('keeps the active Jerusalem spa and drops the closed ones', () => {
-    const rows = find(/^לאונרדו$/)!.branches.map((b) => b.name)
-    expect(rows).toContain('ספא - לאונרדו פלאזה ירושלים')
-    expect(rows.join('|')).not.toMatch(/אין ים המלח/)
+  it('keeps only active hotels in the hotel card; its spas are their own card; the closed ones are gone', () => {
+    const hotels = find(/^לאונרדו$/)!.branches.map((b) => b.name)
+    expect(hotels).toHaveLength(18)
+    expect(hotels.join('|')).not.toMatch(/ספא|אין ים המלח|^יו /)
+    expect(hotels).not.toContain('לאונרדו ירושלים')
+    // The two Jerusalem hotels without a closure notice stay.
+    expect(hotels).toEqual(expect.arrayContaining(['לאונרדו פלאזה ירושלים', 'לאונרדו בוטיק ירושלים']))
+    const spas = find(/^ספא לאונרדו$/)!.branches.map((b) => b.name)
+    expect(spas).toEqual(['לאונרדו קלאב טבריה', 'ספא - לאונרדו פלאזה ירושלים'])
+  })
+  it('lists each U Hotels branch once, in the U Hotels card only', () => {
+    const u = find(/^יו$/)!.branches.map((b) => b.name)
+    expect(u).toHaveLength(3)
+    const everywhere = brands.flatMap((b) => b.branches.map((br) => `${b.nameHe}|${br.name}`))
+    expect(everywhere.filter((x) => /\|יו (?:קורל|מג'יק|בוטיק)/.test(x))).toHaveLength(3)
   })
 })

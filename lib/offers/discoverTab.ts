@@ -1,5 +1,5 @@
 import type { OfferDocument } from '../firebase/offers'
-import { RAAYONIT_CATEGORY_IDS, raayonitCategoryOf, type RaayonitCategoryId } from './raayonitCategories'
+import { RAAYONIT_CATEGORY_IDS, raayonitCategoriesOf, raayonitCategoryOf, type RaayonitCategoryId } from './raayonitCategories'
 
 // The two collections on Home and Perks: GoLandly's own perks, and Raayonit's "תו על" with the chains that honour it.
 // Pure and shared by the website and the Expo app.
@@ -25,14 +25,14 @@ const nameOf = (o: OfferDocument) => (o.brandName || o.businessName || o.title |
 
 /**
  * The chains grouped by Raayonit's own categories, in the page's order, empty categories left out. A venue listed under two
- * categories is not duplicated here (it has the one category it was stored with). `byName` sorts a rail alphabetically.
+ * categories is not duplicated here unless `membership` is set: it then appears in each category Raayonit lists it under (the Raayonit tab's
+ * rows and filter), while Home, the counts and the details list keep the one primary category. Sorted alphabetically within a category.
  */
-export function chainsByCategory<T extends Chain>(offers: readonly T[], locale = 'he'): CategoryGroup<T>[] {
+export function chainsByCategory<T extends Chain>(offers: readonly T[], locale = 'he', options: { membership?: boolean } = {}): CategoryGroup<T>[] {
   const byId = new Map<RaayonitCategoryId, T[]>()
   for (const o of offers) {
     if (!isChain(o)) continue
-    const id = raayonitCategoryOf(o)
-    byId.set(id, [...(byId.get(id) ?? []), o])
+    for (const id of options.membership ? raayonitCategoriesOf(o) : [raayonitCategoryOf(o)]) byId.set(id, [...(byId.get(id) ?? []), o])
   }
   const collator = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' })
   return RAAYONIT_CATEGORY_IDS.filter((id) => byId.has(id)).map((id) => ({ id, offers: [...byId.get(id)!].sort((a, b) => collator.compare(nameOf(a), nameOf(b)) || a.id.localeCompare(b.id)) }))

@@ -7,9 +7,11 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { BATCH_COMMIT_CHUNK } from '@/lib/admin/offersBatch'
 import { hasOrdersOrVouchers, isSuperseded, publishFields, restoreFields } from '@/lib/inventory/raayonitCardActions'
 import { ARCHIVED_REASON, tabOf } from '@/lib/inventory/raayonitCardTabs'
+import { raayonitCategoriesOf } from '@/lib/offers/raayonitCategories'
+import categoryByKey from '@/lib/offers/raayonitCategoryByKey.json'
 
 // The generated Raayonit cards and what an admin can do to them. A card is live while offers.published !== false.
-//   GET   every card with its tab fields (live, pending review, archived by the sync, hidden) and, for an archived card, whether it can be deleted.
+//   GET   every card with its tab fields, its Raayonit categories (primary first), (live, pending review, archived by the sync, hidden) and, for an archived card, whether it can be deleted.
 //   POST  { published, ids | all }          publish (an archived card is restored through the same code) or remove from the site
 //         { action: 'restore', ids }         bring archived partners back
 //         { action: 'delete', ids }          delete archived partners for good, only those no order or voucher points at
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
     return {
       id: d.id, title: String(o.title ?? ''), brandName: String(o.brandName ?? ''), perkScope: o.perkScope === 'multi_chain' ? 'multi_chain' : 'single_business',
       poolId: typeof o.poolId === 'string' ? o.poolId : '', published, pending, tab, archivedReason, archivedAt: iso(o.archivedAt),
-      rejected: o.reviewRejectedAt instanceof Timestamp, superseded: isSuperseded(o), category: String(o.category ?? ''), chainsCount: Number(o.chainsCount) || 0,
+      rejected: o.reviewRejectedAt instanceof Timestamp, superseded: isSuperseded(o), category: String(o.category ?? ''), raayonitCategories: o.perkScope === 'multi_chain' ? [] : raayonitCategoriesOf(o, categoryByKey), chainsCount: Number(o.chainsCount) || 0,
       originalPrice: Number(o.originalPrice) || 0, offerPrice: Number(o.offerPrice) || 0, generated: o.source === 'raayonit-sync',
       deletable: tab === 'archive' ? !(await hasOrdersOrVouchers(db, d.id)) : false,
     }

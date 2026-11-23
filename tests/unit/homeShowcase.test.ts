@@ -73,22 +73,30 @@ describe('showcase data', () => {
 })
 
 describe('pass showcase', () => {
-  it.each(Object.keys(translations) as Lang[])('lays the royal-blue card out like a membership card, with no floating badges (%s)', (lang) => {
+  it.each(Object.keys(translations) as Lang[])('lays the flat ink card out like a Wallet pass on a light screen, with no floating badges (%s)', (lang) => {
     expect(translations.en.landing_pass_demo_name).toBe('Israel Israeli')
     expect(translations.he.landing_pass_demo_name).toBe('ישראל ישראלי')
     const t = translations[lang]
     const html = withLang(lang, createElement(PassShowcase))
-    expect(html).toMatch(/class="pass-card rounded-2xl sm:rounded-3xl border border-white\/20 bg-gradient-to-br from-brand to-brandDark/)
-    // Header: the white mark and wordmark (kept left to right), the member number opposite.
+    expect(html).toMatch(/class="pass-card relative shrink-0 overflow-hidden rounded-\[18px\] border border-white\/10 bg-ink /)
+    expect(html).not.toContain('from-brand to-brandDark')
+    expect(html).toContain('from-slate-100 to-white')
+    // The sheet header (close, title, Add) and the photo strip.
+    expect(html).toContain(t.landing_pass_add)
+    expect(html).toContain('<img src="/images/raayonit-banner/shopping.webp"')
+    // Header: the white mark and wordmark (kept left to right), the validity as a mono header field opposite.
     expect(html).toMatch(/<span class="flex items-center gap-1\.5" dir="ltr"><svg viewBox="0 0 526 512"/)
-    expect(html).toContain('<bdi dir="ltr" class="block font-mono text-xs font-bold text-white/90">#LND-84920</bdi>')
-    // The member number appears once, in the header.
-    expect(html.match(/LND-84920/g)).toHaveLength(1)
-    // The member's name, the QR, then a footer: valid until and status.
+    expect(html).toContain(t.landing_pass_card_valid.replace(/'/g, '&#x27;'))
+    // The member number: once as a field, once as the barcode's caption, as on a real pass.
+    expect(html).toContain('<bdi dir="ltr" class="block font-mono text-xs font-medium text-white">#LND-84920</bdi>')
+    expect(html.match(/LND-84920/g)).toHaveLength(2)
+    // The member's name, then the label-over-value fields (member, status), then the barcode on a white panel, as Wallet draws a pass.
     expect(html).toContain(`dir="auto">${t.landing_pass_demo_name}</div>`)
-    const footer = html.slice(html.indexOf('<div class="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3">'))
-    expect(html.indexOf('pass-qr')).toBeLessThan(html.indexOf('border-t border-white/15'))
-    for (const key of ['landing_pass_card_valid', 'landing_pass_status', 'landing_pass_status_active'] as const) expect(footer).toContain(t[key].replace(/'/g, '&#x27;'))
+    const fields = html.slice(html.indexOf('<div class="mt-2 grid grid-cols-2 gap-3">'), html.indexOf('pass-qr relative'))
+    expect(html.indexOf('<div class="mt-2 grid grid-cols-2 gap-3">')).toBeGreaterThan(0)
+    expect(html.indexOf('pass-qr relative')).toBeGreaterThan(html.indexOf('grid-cols-2'))
+    expect(html).not.toContain('border-t border-white/15')
+    for (const key of ['landing_pass_card_member', 'landing_pass_status', 'landing_pass_status_active'] as const) expect(fields).toContain(t[key].replace(/'/g, '&#x27;'))
     expect(html).toContain(t.landing_pass_redeem.replace(/'/g, '&#x27;'))
     expect(html).not.toContain('float-badge')
     expect(html).not.toMatch(/wallet|apple pay|side button/i)

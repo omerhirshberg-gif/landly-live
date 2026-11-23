@@ -167,3 +167,17 @@ Only the business's own website (`official_website`, or the website its Google B
 | קפה בגולף | `l-7906` | https://static.wixstatic.com/media/8cd186_cf997b82062a4e42937320e5fc27caa1~mv2.jpg (cafebagolf.co.il) | official_website |
 | Eye Glow | `l-8951` | https://www.eyeglow.co.il/wp-content/uploads/2026/04/69e4da6f66188661e6334a92.jpeg | official_website |
 | FOX home | `65` | https://www.foxhome.co.il/cdn/shop/files/foxhomelogo_t_4e2369ef-5350-4de1-98c6-d43a50493a16.webp | official_website |
+
+## Home Raayonit Card banner photos
+
+The three slides of Home's Raayonit Card banner (`components/perks/RaayonitBanner.tsx`, native `landly-mobile/src/components/RaayonitBanner.tsx`).
+
+- Licence: [Unsplash License](https://unsplash.com/license) (each photo page reads "Free to use under the Unsplash License", read on **2026-11-23**). No attribution is required; the photographer is recorded here.
+- Files: `public/images/raayonit-banner/{name}.webp` and `landly-mobile/assets/raayonit-banner/{name}.webp` (byte-identical, 3000x1000, cropped from the 3000px-wide original with `sips` and encoded with `cwebp -q 80 -sharp_yuv`). Nothing is hotlinked.
+- Policy check (by eye, 2026-11-23): no identifiable face and no brand logo. The dining photo has one blurred, unrecognisable figure at its far right edge, which the narrow-screen crop removes.
+
+| File | Subject | Place | Photographer | Photo page | Image id | Licence checked |
+|---|---|---|---|---|---|---|
+| `raayonit-banner/dining.webp` | Long set table with wine glasses, menus and candle in warm window light | Utrecht, Netherlands (page tag) | Ronan | https://unsplash.com/photos/clear-wine-glasses-on-top-of-dining-table-PCE0T5i4pDI | `1574966739987-65e38db0f7ce` | 2026-11-23 |
+| `raayonit-banner/spa.webp` | Indoor spa pool with garden windows and a mosaic bench | Château de Massillan, Uchaux, France (page tag) | judith girard-marczak | https://unsplash.com/photos/a-large-indoor-swimming-pool-with-a-bench-next-to-it-Ux3IhJoO-2w | `1633618309980-ad765f2cea20` | 2026-11-23 |
+| `raayonit-banner/shopping.webp` | Boutique with a mannequin, clothes on a rail, shelves and caps | Portland, Maine, USA (page tag) | Laura Peruchi | https://unsplash.com/photos/a-clothing-store-with-clothes-and-hats-on-display-2gLL2ZgBlcU | `1718985342149-7178154e0aee` | 2026-11-23 |

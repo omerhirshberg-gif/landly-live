@@ -1,6 +1,9 @@
 // The 18 categories of Raayonit's own "מיין לפי תחומים" filter (VoucherNum=253), in the page's order. A listing section maps to
 // exactly one; every "רשתות" network page belongs to `networks`. The Hebrew names are Raayonit's own, kept verbatim.
 // Pure and client-safe: the sync, the offers API, the website and the app share it.
+import membership from './raayonitCategoryMembership.json'
+const CATEGORY_MEMBERSHIP = membership as Record<string, readonly string[]>
+
 export const RAAYONIT_CATEGORY_IDS = [
   'chef-restaurants', 'cafes-restaurants', 'cafe-cafe', 'pizza-agvania', 'pizza-story', 'biscotti', 'mr-pretzels', 'all-tastes', 'basher',
   'spa', 'hotels', 'attractions', 'luggage-gadgets-home', 'beauty-lifestyle', 'jewelry', 'cinemas', 'soldier-traveler', 'networks',
@@ -12,7 +15,7 @@ export const RAAYONIT_CATEGORY_NAMES: Record<RaayonitCategoryId, Names> = {
   'chef-restaurants': { he: 'מסעדות שף', en: 'Chef Restaurants', ru: 'Шеф-рестораны', fr: 'Restaurants de chefs', es: 'Restaurantes de chef' },
   'cafes-restaurants': { he: 'בתי קפה ומסעדות', en: 'Cafés & Restaurants', ru: 'Кафе и рестораны', fr: 'Cafés et restaurants', es: 'Cafés y restaurantes' },
   'cafe-cafe': { he: 'בתי קפה - סניפי קפה קפה', en: 'Cafés — Café Café Branches', ru: 'Кафе — филиалы Café Café', fr: 'Cafés — succursales Café Café', es: 'Cafés — sucursales Café Café' },
-  'pizza-agvania': { he: 'פיצה - רשת פיצה עגבניה', en: 'Pizza — Pizza Agvania Chain', ru: 'Пицца — сеть Pizza Agvania', fr: 'Pizza — chaîne Pizza Agvania', es: 'Pizza — cadena Pizza Agvania' },
+  'pizza-agvania': { he: 'פיצה - רשת פיצה עגבנייה', en: 'Pizza — Pizza Agvania Chain', ru: 'Пицца — сеть Pizza Agvania', fr: 'Pizza — chaîne Pizza Agvania', es: 'Pizza — cadena Pizza Agvania' },
   'pizza-story': { he: 'פיצה - רשת פיצה סטורי', en: 'Pizza — Pizza Story Chain', ru: 'Пицца — сеть Pizza Story', fr: 'Pizza — chaîne Pizza Story', es: 'Pizza — cadena Pizza Story' },
   biscotti: { he: 'ביסקוטי - רשת קונדיטוריות ובתי קפה', en: 'Biscotti — Patisseries & Cafés Chain', ru: 'Biscotti — сеть кондитерских и кафе', fr: 'Biscotti — chaîne de pâtisseries et cafés', es: 'Biscotti — cadena de pastelerías y cafés' },
   'mr-pretzels': { he: 'פרצל - רשת Mr. Pretzels', en: 'Pretzels — Mr. Pretzels Chain', ru: 'Крендели — сеть Mr. Pretzels', fr: 'Bretzels — chaîne Mr. Pretzels', es: 'Pretzels — cadena Mr. Pretzels' },
@@ -44,6 +47,8 @@ export const raayonitCategoryName = (id: RaayonitCategoryId, lang: string): stri
 const NETWORK_NAME_CATEGORY: ReadonlyArray<readonly [RegExp, RaayonitCategoryId]> = [
   [/קפה\s*קפה|caf[ée]\s*caf[ée]/i, 'cafe-cafe'], [/פיצה\s*עגבני/, 'pizza-agvania'], [/פיצה\s*סטורי/, 'pizza-story'], [/ביסקוטי|biscotti/i, 'biscotti'],
   [/mr\.?\s*pretzels|פרצל/i, 'mr-pretzels'], [/באשר|bas[h]?er/i, 'basher'], [/סינמה\s*סיטי|cinema\s*city/i, 'cinemas'],
+  [/share\s*spa|שיר\s*ספא/i, 'spa'],
+  [/^(?!.*(?:ספא|spa)).*(?:\bbrown\b|בראון)/i, 'hotels'], // a Brown hotel, never its spa
 ]
 
 /** The offer's Raayonit category: the stored one, else the one its source key (and, for a network page, its name) implies. */
@@ -58,4 +63,17 @@ export function raayonitCategoryOf(offer: { raayonitCategory?: unknown; sourceKe
   if (isRaayonitCategoryId(mapped)) return mapped
   const section = key.match(/^l-s(\d+)$/)?.[1]
   return (section && SECTION_CATEGORY_ID[section]) || 'cafes-restaurants'
+}
+
+/**
+ * Every category Raayonit's own filter lists a business under, its primary one first. Raayonit shows a business in each section it
+ * appears in (Max Brenner is under both "בתי קפה ומסעדות" and "רשתות"); a card stores one primary category, which stays its badge and
+ * what Home counts. The extra ones come from raayonitCategoryMembership.json (scripts/raayonit-category-membership.mts, read from the live
+ * directory), so the Raayonit tab's rows and filter can list the business under each of them without any stored field.
+ */
+export function raayonitCategoriesOf(offer: { raayonitCategory?: unknown; sourceKey?: unknown; brandName?: unknown }, byKey: Readonly<Record<string, string>> = {}): RaayonitCategoryId[] {
+  const primary = raayonitCategoryOf(offer, byKey)
+  const key = typeof offer.sourceKey === 'string' ? offer.sourceKey.replace(/^raayonit:/, '') : ''
+  const extra = (CATEGORY_MEMBERSHIP[key] ?? []).filter(isRaayonitCategoryId)
+  return [...new Set([primary, ...extra])]
 }

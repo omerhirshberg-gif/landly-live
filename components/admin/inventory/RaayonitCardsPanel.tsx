@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatIsraeliDateTime } from '@/lib/admin/formatDate'
 import { CARD_TABS, type CardTab } from '@/lib/inventory/raayonitCardTabs'
-import { categorySlug, groupCards, keepCategory } from '@/lib/inventory/raayonitCardGroups'
+import { adminCategoryOf, groupByRaayonitCategory, keepCategory } from '@/lib/inventory/raayonitCardGroups'
+import { isRaayonitCategoryId, raayonitCategoryName } from '@/lib/offers/raayonitCategories'
+import { isolateLtr } from '@/lib/home/superShowcase'
 import { adminFetch } from '@/lib/admin/adminSession'
 import { useAdminT } from '@/lib/admin/translations'
 import { brandsSheetTemplate } from '@/lib/inventory/raayonitCatalog'
@@ -16,7 +18,7 @@ import { ADMIN_SELECT, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/adm
 
 interface Card {
   id: string; title: string; brandName: string; perkScope: 'multi_chain' | 'single_business'; published: boolean; pending: boolean; tab: CardTab
-  archivedAt: string | null; rejected: boolean; superseded: boolean; deletable: boolean; category: string; chainsCount: number; originalPrice: number; offerPrice: number
+  archivedAt: string | null; rejected: boolean; superseded: boolean; deletable: boolean; category: string; raayonitCategories: string[]; chainsCount: number; originalPrice: number; offerPrice: number
 }
 
 // The generated Raayonit cards in four tabs (active on the site, added and pending review, removed by Raayonit and archived,
@@ -81,7 +83,12 @@ export default function RaayonitCardsPanel({ onChanged }: { onChanged: () => voi
     XLSX.writeFile(book, 'raayonit-brands-and-branches.xlsx')
   }
 
-  const categoryLabel = (c: string) => { const slug = categorySlug(c); return slug ? t(`rc.cat.${slug}` as 'rc.cat.restaurants') : c }
+  // Raayonit's own category names (admin language only: he or en).
+  // The first is the group the row sits in; the rest are the other categories Raayonit also lists the business under (Chains included).
+  const categoryNames = (card: Card) => {
+    const own = adminCategoryOf(card.raayonitCategories)
+    return [own, ...card.raayonitCategories.filter((id) => id !== own)].filter(isRaayonitCategoryId).map((id) => raayonitCategoryName(id, locale))
+  }
 
   const act = async (body: Record<string, unknown>, success: (data: Record<string, number>) => string) => {
     setBusy('publish')
@@ -129,6 +136,12 @@ export default function RaayonitCardsPanel({ onChanged }: { onChanged: () => voi
           {card.perkScope === 'multi_chain' ? t('rc.general') : t('rc.brand')}
           {card.chainsCount > 0 ? <> · <bdi dir="ltr" className="tabular-nums">{card.chainsCount}</bdi> {card.perkScope === 'multi_chain' ? t('rc.chains') : t('rc.branches')}</> : null}
         </p>
+        {card.perkScope !== 'multi_chain' && categoryNames(card).length > 0 && (
+          <p dir="auto" className="mt-0.5 text-xs text-adm-muted">
+            {t('rc.categoryLabel')}: {categoryNames(card)[0]}
+            {categoryNames(card).length > 1 ? <> · {t('rc.alsoIn')} {categoryNames(card).slice(1).join(', ')}</> : null}
+          </p>
+        )}
         {card.tab === 'archive' && (
           <p className="mt-0.5 text-xs text-adm-muted">{t('rc.archivedReason')} · {t('rc.removedOn')} <bdi dir="ltr" className="tabular-nums">{formatIsraeliDateTime(card.archivedAt)}</bdi></p>
         )}
@@ -185,10 +198,11 @@ export default function RaayonitCardsPanel({ onChanged }: { onChanged: () => voi
   const count = (which: CardTab) => cards?.filter((c) => c.tab === which).length ?? 0
   const inTab = cards?.filter((c) => c.tab === tab) ?? []
   const shown = cards === null ? null : inTab
-  const allGroups = groupCards(inTab, locale, categoryLabel)
-  const activeCategory = keepCategory(category, allGroups.groups)
-  const { pinned, groups } = groupCards(activeCategory === 'all' ? inTab : inTab.filter((c) => c.perkScope === 'multi_chain' || c.category === activeCategory), locale, categoryLabel)
-  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.category))
+  const grouped = groupByRaayonitCategory(inTab, locale)
+  const activeCategory = keepCategory(category, grouped.groups)
+  const pinned = grouped.pinned
+  const groups = grouped.groups.filter((g) => (activeCategory === 'all' ? g.cards.length > 0 : g.id === activeCategory))
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.id))
   const drafts = cards?.filter((c) => c.tab === 'hidden' && !c.rejected && !c.superseded).length ?? 0
   const moveTab = (e: React.KeyboardEvent, i: number) => {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
@@ -241,11 +255,11 @@ export default function RaayonitCardsPanel({ onChanged }: { onChanged: () => voi
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="sr-only" htmlFor="rc-category">{t('rc.categoryFilter')}</label>
               <select id="rc-category" className={`${ADMIN_SELECT} w-full sm:w-72`} value={activeCategory} onChange={(e) => setCategory(e.target.value)}>
-                <option value="all">{t('rc.allCategories')} ({inTab.length})</option>
-                {allGroups.groups.map((g) => <option key={g.category} value={g.category}>{g.label} ({g.cards.length})</option>)}
+                <option value="all">{t('rc.showAll')} ({isolateLtr(String(inTab.length))})</option>
+                {grouped.groups.map((g) => <option key={g.id} value={g.id} disabled={g.cards.length === 0}>{g.label} ({isolateLtr(String(g.cards.length))})</option>)}
               </select>
               {groups.length > 0 && (
-                <button type="button" className={`${SECONDARY_BUTTON} w-full sm:ms-auto sm:w-auto`} onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.category)))}>
+                <button type="button" className={`${SECONDARY_BUTTON} w-full sm:ms-auto sm:w-auto`} onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.id)))}>
                   <i className={`fa-solid ${allCollapsed ? 'fa-angles-down' : 'fa-angles-up'} text-xs`} aria-hidden="true" />
                   {t(allCollapsed ? 'rc.expandAll' : 'rc.collapseAll')}
                 </button>
@@ -258,12 +272,12 @@ export default function RaayonitCardsPanel({ onChanged }: { onChanged: () => voi
               </section>
             )}
             {groups.map((g) => {
-              const open = !collapsed.has(g.category)
-              const panelId = `rc-group-${g.category.replace(/\W+/g, '-')}`
+              const open = !collapsed.has(g.id)
+              const panelId = `rc-group-${g.id}`
               return (
-                <section key={g.category} aria-label={g.label} className="mb-4">
+                <section key={g.id} aria-label={g.label} className="mb-4">
                   <h3 className="sticky top-[72px] z-10 lg:top-16">
-                    <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setCollapsed((c) => { const n = new Set(c); if (open) n.add(g.category); else n.delete(g.category); return n })}
+                    <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setCollapsed((c) => { const n = new Set(c); if (open) n.add(g.id); else n.delete(g.id); return n })}
                       className={`flex min-h-11 w-full items-center gap-3 border border-adm-line bg-adm-surface px-4 text-start text-sm font-bold text-adm-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-adm-accent ${open ? 'rounded-t-2xl' : 'rounded-2xl'}`}>
                       <i className={`fa-solid fa-chevron-down text-[10px] text-adm-muted transition-transform ${open ? '' : dir === 'rtl' ? 'rotate-90' : '-rotate-90'}`} aria-hidden="true" />
                       <span className="min-w-0 flex-1 truncate">{g.label}</span>

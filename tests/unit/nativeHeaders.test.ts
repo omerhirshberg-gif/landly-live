@@ -122,12 +122,16 @@ describe('native Home', () => {
     const at = ['<ActivePassCard', "case 'category'"].map((s) => home.indexOf(s))
     expect(at.every((i) => i > -1)).toBe(true)
     expect([...at].sort((a, b) => a - b)).toEqual(at)
-    for (const gone of ['<GiftCardBand', '<RaayonitCategoryRail', '<BrandLogoWall', '<CategoryPhotoRail']) expect(home).not.toContain(gone)
+    for (const gone of ['<GiftCardBand', '<RaayonitCategoryRail', '<BrandLogoWall']) expect(home).not.toContain(gone)
   })
 
-  it('shows every category row with ten slots, real perks first and inert placeholders after', () => {
+  it('shows only categories that hold a real perk; with none, the category photo rail, the live Raayonit chains and one calm note replace the placeholder rows', () => {
     expect(home).toContain('buildHomeCategorySlots(located)')
-    expect(home).toContain('placeholders={HOME_SLOT_COUNT - real.length}')
+    expect(home).toContain('homeIsEmpty(categoryGroups)')
+    expect(home).toContain("group.slots.some((slot) => slot.kind === 'offer')")
+    expect(home).toContain('placeholders={0}')
+    expect(home).not.toContain('HOME_SLOT_COUNT')
+    for (const row of ['<CategoryPhotoRail onSelect={openCategory} />', '<PerksSoonCard quiet={showBanner && chainsPreview.length > 0} />', '<LiveChainsSection offers={chainsPreview} chainCount={chainCount} card />']) expect(home).toContain(row)
     expect(home).not.toContain('<ProductsSection')
     expect(home).not.toContain("type: 'divider'")
   })

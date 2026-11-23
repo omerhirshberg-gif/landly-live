@@ -99,6 +99,9 @@ export { indexUrl }
 /** Translates Hebrew strings (fine print lines, branch names, cities, streets) into one language; wired to Cloud Translation by the caller. */
 export type TranslateBatch = (texts: string[], lang: (typeof OTHER_LANGS)[number]) => Promise<string[]>
 
+/** The issuer's name is sent in Latin letters: Cloud Translation reads the Hebrew "רעיונית" as the adjective "fictional". */
+export const protectBrandWords = (text: string): string => text.replace(/רעיונית/g, 'Raayonit')
+
 /** Translates each distinct string once per language, in batches. A string that comes back empty keeps its Hebrew. */
 async function translateAll(strings: Iterable<string>, translateBatch: TranslateBatch): Promise<Record<(typeof OTHER_LANGS)[number], Map<string, string>>> {
   const unique = [...new Set([...strings].map((x) => x.trim()).filter(Boolean))]
@@ -106,7 +109,7 @@ async function translateAll(strings: Iterable<string>, translateBatch: Translate
   for (const lang of OTHER_LANGS) {
     for (let i = 0; i < unique.length; i += 100) {
       const slice = unique.slice(i, i + 100)
-      const done = await translateBatch(slice, lang)
+      const done = await translateBatch(slice.map(protectBrandWords), lang)
       slice.forEach((text, j) => out[lang].set(text, done[j]?.trim() || text))
     }
   }
@@ -288,7 +291,7 @@ export async function syncRaayonitCatalog(db: Firestore, input: { brands: Snapsh
         redemptionModes: [...modes],
         redemptionInstructions: instructions,
         sourceKey,
-        ...(brand ? { raayonitCategory: raayonitCategoryOf({ sourceKey }, categoryByKey as Record<string, string>) } : {}),
+        ...(brand ? { raayonitCategory: raayonitCategoryOf({ sourceKey, brandName: brand.nameHe }, categoryByKey as Record<string, string>) } : {}),
         source: 'raayonit-sync',
         ...(brand ? { sourceUrl: brand.siteUrl, websiteUrl: normalizeWebsiteUrl(brand.siteUrl), contactPhone: brand.branches.length === 1 ? firstPhone(brand.branches[0]!.phone)?.display ?? '' : '' } : {}),
         ...(input.publish && !partial ? { published: true } : {}),

@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { BUSINESS_CATEGORIES } from '@/lib/categories'
-import { CATEGORY_SLUGS, categorySlug, cleanName, groupCards, keepCategory, scriptOf, type GroupableCard } from '@/lib/inventory/raayonitCardGroups'
+import { adminCategoryOf, cleanName, groupByRaayonitCategory, keepCategory, scriptOf, type GroupableCard } from '@/lib/inventory/raayonitCardGroups'
+import { RAAYONIT_CATEGORY_IDS, RAAYONIT_CATEGORY_NAMES } from '@/lib/offers/raayonitCategories'
 import { en } from '@/lib/admin/translations/en'
 import { he } from '@/lib/admin/translations/he'
 
-const card = (id: string, name: string, category = 'Restaurants and Cafes', over: Partial<GroupableCard> = {}): GroupableCard => ({ id, title: `תו על — ${name}`, brandName: name, category, perkScope: 'single_business', ...over })
-const labels = (loc: 'he' | 'en') => (c: string) => { const slug = categorySlug(c); return slug ? (loc === 'he' ? he : en)[`rc.cat.${slug}` as 'rc.cat.cars'] : c }
+const card = (id: string, name: string, categories: string[] = ['cafes-restaurants'], over: Partial<GroupableCard> = {}): GroupableCard => ({ id, title: `תו על — ${name}`, brandName: name, raayonitCategories: categories, perkScope: 'single_business', ...over })
 const names = (cards: GroupableCard[]) => cards.map(cleanName)
+const group = <T extends GroupableCard>(g: ReturnType<typeof groupByRaayonitCategory<T>>, id: string) => g.groups.find((x) => x.id === id)!
 
 describe('clean business name', () => {
   it('prefers brandName and otherwise strips the Super Tav lead from the title', () => {
@@ -27,60 +27,65 @@ describe('clean business name', () => {
 describe('sorting inside a category', () => {
   const mixed = [card('1', 'ALDO'), card('2', 'אווז הזהב'), card('3', 'Acco Beach'), card('4', '4Chef'), card('5', 'ADAM HOTELS'), card('6', 'בר איטליה'), card('7', '6 במאי'), card('8', 'Item 10'), card('9', 'Item 2')]
   it('Latin A-Z first in English, case-insensitive and numeric', () => {
-    const { groups } = groupCards(mixed, 'en', labels('en'))
-    expect(names(groups[0]!.cards)).toEqual(['4Chef', 'Acco Beach', 'ADAM HOTELS', 'ALDO', 'Item 2', 'Item 10', '6 במאי', 'אווז הזהב', 'בר איטליה'])
+    expect(names(group(groupByRaayonitCategory(mixed, 'en'), 'cafes-restaurants').cards)).toEqual(['4Chef', 'Acco Beach', 'ADAM HOTELS', 'ALDO', 'Item 2', 'Item 10', '6 במאי', 'אווז הזהב', 'בר איטליה'])
   })
   it('Hebrew א-ת first in Hebrew, then Latin', () => {
-    const { groups } = groupCards(mixed, 'he', labels('he'))
-    expect(names(groups[0]!.cards)).toEqual(['6 במאי', 'אווז הזהב', 'בר איטליה', '4Chef', 'Acco Beach', 'ADAM HOTELS', 'ALDO', 'Item 2', 'Item 10'])
+    expect(names(group(groupByRaayonitCategory(mixed, 'he'), 'cafes-restaurants').cards)).toEqual(['6 במאי', 'אווז הזהב', 'בר איטליה', '4Chef', 'Acco Beach', 'ADAM HOTELS', 'ALDO', 'Item 2', 'Item 10'])
   })
 })
 
-describe('category groups', () => {
-  const cards = [card('a', 'x', 'Restaurants and Cafes'), card('b', 'y', 'Fashion and Shopping'), card('c', 'z', 'Pampering Bundles'), card('d', 'w', 'Mystery Category'), card('e', 'v', 'Kids and Baby')]
-  it('orders groups by their localized name, A-Z in English', () => {
-    expect(groupCards(cards, 'en', labels('en')).groups.map((g) => g.label)).toEqual(['Fashion and Shopping', 'Kids and Baby', 'Pampering Bundles', 'Restaurants and Cafes', 'Mystery Category'])
+describe('Raayonit category groups', () => {
+  const cards = [card('a', 'x', ['cafes-restaurants']), card('b', 'y', ['spa']), card('c', 'z', ['networks', 'spa']), card('d', 'w', ['not-a-category', 'hotels'])]
+  it('always lists all 18 categories in Raayonit\'s order, empty ones included', () => {
+    const { groups } = groupByRaayonitCategory(cards, 'en')
+    expect(groups.map((g) => g.id)).toEqual([...RAAYONIT_CATEGORY_IDS])
+    expect(groups).toHaveLength(18)
+    expect(groups.find((g) => g.id === 'chef-restaurants')!.cards).toEqual([])
   })
-  it('orders groups א-ב in Hebrew', () => {
-    const labelsHe = groupCards(cards, 'he', labels('he')).groups.map((g) => g.label)
-    expect(labelsHe.slice(0, 4)).toEqual(['אופנה וקניות', 'ילדים ותינוקות', 'מארזים מפנקים', 'מסעדות ובתי קפה'])
+  it('labels groups with Raayonit\'s own names in the admin language', () => {
+    expect(group(groupByRaayonitCategory(cards, 'he'), 'spa').label).toBe(RAAYONIT_CATEGORY_NAMES.spa.he)
+    expect(group(groupByRaayonitCategory(cards, 'en'), 'networks').label).toBe('Chains')
+    expect(group(groupByRaayonitCategory(cards, 'he'), 'pizza-agvania').label).toBe('פיצה - רשת פיצה עגבנייה')
   })
-  it('puts an unknown category last and keeps its raw name', () => {
-    const { groups } = groupCards(cards, 'en', labels('en'))
-    expect(groups.at(-1)).toMatchObject({ category: 'Mystery Category', label: 'Mystery Category' })
+  it('puts every business in exactly one group: its specific category, Chains only when it has no section of its own', () => {
+    const g = groupByRaayonitCategory([...cards, card('e', 'only chains', ['networks']), card('f', 'pizza', ['pizza-story', 'networks'])], 'en')
+    expect(group(g, 'spa').cards.map((c) => c.id).sort()).toEqual(['b', 'c'])
+    expect(group(g, 'networks').cards.map((c) => c.id)).toEqual(['e'])
+    expect(group(g, 'pizza-story').cards.map((c) => c.id)).toEqual(['f'])
+    expect(group(g, 'hotels').cards.map((c) => c.id)).toEqual(['d'])
+    const all = g.groups.flatMap((x) => x.cards.map((c) => c.id))
+    expect(new Set(all).size).toBe(all.length)
   })
-  it('pins the multi-chain card above the groups and out of its category', () => {
-    const multi = card('m', 'תו על רב-רשתי', 'Fashion and Shopping', { perkScope: 'multi_chain' })
-    const { pinned, groups } = groupCards([...cards, multi], 'he', labels('he'))
-    expect(pinned.map((c) => c.id)).toEqual(['m'])
-    expect(groups.flatMap((g) => g.cards).some((c) => c.id === 'm')).toBe(false)
-    expect(groups.find((g) => g.category === 'Fashion and Shopping')!.cards).toHaveLength(1)
+  it('adminCategoryOf prefers the specific section over Chains', () => {
+    expect(adminCategoryOf(['networks', 'cafes-restaurants'])).toBe('cafes-restaurants')
+    expect(adminCategoryOf(['basher', 'networks'])).toBe('basher')
+    expect(adminCategoryOf(['networks'])).toBe('networks')
+    expect(adminCategoryOf(['nope'])).toBeNull()
   })
-  it('drops empty categories and counts per group', () => {
-    const { groups } = groupCards([card('a', 'x'), card('b', 'y')], 'en', labels('en'))
-    expect(groups).toHaveLength(1)
-    expect(groups[0]!.cards).toHaveLength(2)
+  it('pins the multi-chain card above the groups and out of every category', () => {
+    const multi = card('m', 'תו על רב-רשתי', ['spa'], { perkScope: 'multi_chain' })
+    const g = groupByRaayonitCategory([...cards, multi], 'he')
+    expect(g.pinned.map((c) => c.id)).toEqual(['m'])
+    expect(g.groups.flatMap((x) => x.cards).some((c) => c.id === 'm')).toBe(false)
   })
 })
 
 describe('category filter', () => {
-  const groups = [{ category: 'A' }, { category: 'B' }]
-  it('is kept while the category has cards and resets to all otherwise', () => {
-    expect(keepCategory('A', groups)).toBe('A')
-    expect(keepCategory('Z', groups)).toBe('all')
+  const groups = [{ id: 'spa', cards: [1] }, { id: 'hotels', cards: [] as number[] }]
+  it('is kept while the category has cards in the tab and resets to all otherwise', () => {
+    expect(keepCategory('spa', groups)).toBe('spa')
+    expect(keepCategory('hotels', groups)).toBe('all')
+    expect(keepCategory('zzz', groups)).toBe('all')
     expect(keepCategory('all', [])).toBe('all')
   })
 })
 
-describe('labels', () => {
-  it('every business category has a slug and a label in both admin languages', () => {
-    for (const category of BUSINESS_CATEGORIES) {
-      const slug = CATEGORY_SLUGS[category]
-      expect(slug, category).toBeTruthy()
-      expect(en[`rc.cat.${slug}` as 'rc.cat.cars'], `en ${category}`).toBeTruthy()
-      expect(he[`rc.cat.${slug}` as 'rc.cat.cars'], `he ${category}`).toBeTruthy()
-    }
-    expect(Object.keys(CATEGORY_SLUGS)).toHaveLength(BUSINESS_CATEGORIES.length)
+describe('admin labels', () => {
+  it('has the Show all, also-listed-under and category keys in both admin languages, and none of the retired GoLandly ones', () => {
+    for (const key of ['rc.showAll', 'rc.alsoIn', 'rc.categoryLabel'] as const) { expect(en[key], key).toBeTruthy(); expect(he[key], key).toBeTruthy() }
+    expect(he['rc.showAll']).toBe('הצג הכל')
+    expect(Object.keys(en).some((k) => k.startsWith('rc.cat.') || k === 'rc.allCategories')).toBe(false)
+    expect(Object.keys(he).some((k) => k.startsWith('rc.cat.') || k === 'rc.allCategories')).toBe(false)
   })
 })
 
@@ -95,5 +100,11 @@ describe('the card panel', () => {
   })
   it('sticky category headers use the approved offsets', () => {
     expect(src).toContain('sticky top-[72px] z-10 lg:top-16')
+  })
+  it('lists all 18 categories in the filter (empty ones disabled) with LTR-isolated counts, and keeps the GoLandly select for approvals', () => {
+    expect(src).toContain('disabled={g.cards.length === 0}')
+    expect(src).toContain('isolateLtr(String(g.cards.length))')
+    expect(src).toContain("t('rc.showAll')")
+    expect(src).toContain('BUSINESS_CATEGORIES')
   })
 })

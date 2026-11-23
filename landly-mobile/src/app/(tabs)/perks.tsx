@@ -21,6 +21,8 @@ import {
 import AppText from '../../components/AppText'
 import LocationFilterBar from '../../components/LocationFilterBar'
 import CategoryGrid from '../../components/CategoryGrid'
+import LiveChainsSection from '../../components/LiveChainsSection'
+import PerksSoonCard from '../../components/PerksSoonCard'
 import FeedCell from '../../components/FeedCell'
 import SortSheet from '../../components/SortSheet'
 import FilterSheet, { type FilterFacets, type FilterValues } from '../../components/FilterSheet'
@@ -40,7 +42,9 @@ import { OfferListSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { locationCountLabel } from '@shared/perks/locationCount'
 import { openOffer } from '../../lib/openOffer'
-import { landlyOffers } from '@shared/offers/discoverTab'
+import { isFlagship, isRaayonitOffer, landlyOffers } from '@shared/offers/discoverTab'
+import { selectChainsPreview } from '@shared/home/chainsPreview'
+import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import { useLayout } from '../../lib/useLayout'
 import { colors, header } from '../../theme'
 
@@ -68,6 +72,8 @@ type PerksRow =
   | { key: string; type: 'offer'; offer: OfferDocument; index: number; nationwide?: boolean }
   | { key: 'empty'; type: 'empty' }
   | { key: 'soon'; type: 'soon' }
+  | { key: 'browse'; type: 'browse' }
+  | { key: 'live'; type: 'live' }
 
 const VIEWABILITY = { itemVisiblePercentThreshold: 5 }
 const rowKey = (row: PerksRow) => row.key
@@ -100,6 +106,11 @@ export default function PerksScreen() {
   // Explore Perks is GoLandly's own perks only; Raayonit's "תו על" has its own tab.
   const offers = useMemo(() => (allOffers ? landlyOffers(allOffers) : null), [allOffers])
   const landlyEmpty = offers !== null && offers.length === 0
+  // While GoLandly has no direct perks the screen points at the Raayonit Card tab: its entry strip and a preview of its chains (the name follows the display flag).
+  const showRaayonit = useRaayonitDisplay()
+  const raayonitOffers = useMemo(() => (allOffers ?? []).filter(isRaayonitOffer), [allOffers])
+  const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
+  const chainsPreview = useMemo(() => selectChainsPreview(raayonitOffers, lang), [raayonitOffers, lang])
   const [refreshing, setRefreshing] = useState(false)
   // Near me / a picked area (lib/perks/locationFilter.ts): one filter shared with Home and the category screens
   // (lib/useLocationFilter.ts). It narrows every list below, and nationwide chains that can't be placed are kept, listed apart.
@@ -179,7 +190,14 @@ export default function PerksScreen() {
   const rows = useMemo<PerksRow[]>(() => {
     const list: PerksRow[] = []
     // Explore Perks is GoLandly's own perks: the direct perks, or a calm note while there are none. A search or a filter narrows them alone.
-    if (landlyEmpty) return [{ key: 'soon', type: 'soon' }]
+    if (landlyEmpty) {
+      // A search still names the categories it matches (there is nothing else to filter).
+      if (normalizedQuery) return matchingTiles.length > 0 ? [{ key: 'tiles', type: 'tiles' }] : [{ key: 'empty', type: 'empty' }]
+      // The live Raayonit chains lead (they work today), then the quiet "on their way" note and the categories to browse.
+      if (showRaayonit && chainsPreview.length > 0) list.push({ key: 'live', type: 'live' })
+      list.push({ key: 'soon', type: 'soon' }, { key: 'browse', type: 'browse' })
+      return list
+    }
     if (listBrowsing) {
       const highlights = newOffers.length > 0 || bestsellerOffers.length > 0
       if (highlights || categoryRails.length > 0) list.push({ key: 'landlyLabel', type: 'landlyLabel' })
@@ -197,7 +215,7 @@ export default function PerksScreen() {
       list.push({ key: 'empty', type: 'empty' })
     }
     return list
-  }, [landlyEmpty, listBrowsing, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, nearbyList, nationwideList, offers])
+  }, [landlyEmpty, normalizedQuery, showRaayonit, chainsPreview, listBrowsing, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, nearbyList, nationwideList, offers])
 
   // Which rows are on screen: a rail's autoplay runs only while it is.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(() => new Set(['highlights']))
@@ -267,11 +285,16 @@ export default function PerksScreen() {
           </FeedCell>
         )
       case 'soon':
+        return <PerksSoonCard quiet={showRaayonit && chainsPreview.length > 0} />
+      case 'browse':
         return (
-          <View style={styles.empty} accessibilityLiveRegion="polite">
-            <AppText style={styles.emptyTitle}>{t('perks_landly_soon')}</AppText>
+          <View style={styles.browse}>
+            <AppText accessibilityRole="header" style={styles.sectionTitle}>{t('perks_browse_title')}</AppText>
+            <CategoryGrid tiles={CATEGORY_TILES} onSelect={openCategory} />
           </View>
         )
+      case 'live':
+        return <LiveChainsSection offers={chainsPreview} chainCount={chainCount} />
       case 'empty':
         return (
           <View style={styles.empty} accessibilityLiveRegion="polite">
@@ -377,6 +400,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, lineHeight: 24, fontWeight: '700', color: colors.heading, marginTop: 4 },
   resultsHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 8 },
   resultsCount: { fontSize: 14, color: colors.textMuted },
+  browse: { marginTop: 28, gap: 14 },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

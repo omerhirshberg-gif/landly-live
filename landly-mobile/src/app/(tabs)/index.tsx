@@ -16,8 +16,12 @@ import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { useVouchers } from '@shared/firebase/VouchersProvider'
 import { greetingKey } from '@shared/auth/greeting'
 import { useGreetingPeriod } from '@shared/home/useGreetingPeriod'
-import { buildHomeCategorySlots, HOME_SLOT_COUNT, type HomeCategorySlots } from '@shared/home/categoryRails'
+import { buildHomeCategorySlots, homeIsEmpty, type HomeCategorySlots } from '@shared/home/categoryRails'
+import { selectChainsPreview } from '@shared/home/chainsPreview'
 import CategoryIcon from '../../components/CategoryIcon'
+import CategoryPhotoRail from '../../components/CategoryPhotoRail'
+import LiveChainsSection from '../../components/LiveChainsSection'
+import PerksSoonCard from '../../components/PerksSoonCard'
 import RaayonitPromoStrip from '../../components/RaayonitPromoStrip'
 import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import ActivePassCard from '../../components/ActivePassCard'
@@ -57,6 +61,9 @@ const GREETING_IN = Platform.OS === 'web' ? undefined : FadeInDown.duration(ONB.
 type HomeRow =
   | { key: 'top'; type: 'top' }
   | { key: 'banner'; type: 'banner' }
+  | { key: 'categories'; type: 'categories' }
+  | { key: 'soon'; type: 'soon' }
+  | { key: 'live'; type: 'live' }
   | { key: 'loading'; type: 'loading' }
   | { key: string; type: 'category'; group: HomeCategorySlots }
 
@@ -104,14 +111,30 @@ export default function HomeScreen() {
   const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
   // The entry banner to the Raayonit Card tab: there while the tab is (Raayonit's name may be shown).
   const showBanner = useRaayonitDisplay()
+  const chainsPreview = useMemo(() => selectChainsPreview(raayonitOffers, lang), [raayonitOffers, lang])
   const categoryGroups = useMemo(() => (located ? buildHomeCategorySlots(located) : null), [located])
   const rows = useMemo<HomeRow[]>(() => {
     const list: HomeRow[] = [{ key: 'top', type: 'top' }]
-    if (showBanner) list.push({ key: 'banner', type: 'banner' })
-    if (!categoryGroups) return failed ? list : [...list, { key: 'loading', type: 'loading' }]
-    for (const group of categoryGroups) list.push({ key: `cat:${group.tile.category}`, type: 'category', group })
+    // The entry strip gives way to the live section while GoLandly has no direct perks (it would repeat the same count); it returns with the first one.
+    const empty = !!categoryGroups && homeIsEmpty(categoryGroups)
+    const live = empty && showBanner && chainsPreview.length > 0
+    if (showBanner && !live) list.push({ key: 'banner', type: 'banner' })
+    if (!categoryGroups) {
+      // A failed read still leaves the category tiles to browse; no "on their way" note, which would be untrue.
+      if (!failed) return [...list, { key: 'loading', type: 'loading' }]
+      return [...list, { key: 'categories', type: 'categories' }]
+    }
+    // No direct perk yet: the category photo rail, one calm note and a preview of the Raayonit chains, instead of 13 rows of placeholders.
+    if (empty) {
+      // The live Raayonit chains first, then the category photo rail, then the quiet "on their way" note.
+      if (live) list.push({ key: 'live', type: 'live' })
+      list.push({ key: 'categories', type: 'categories' }, { key: 'soon', type: 'soon' })
+      return list
+    }
+    // Only categories that hold a real perk get a row, and each shows just its perks.
+    for (const group of categoryGroups) if (group.slots.some((slot) => slot.kind === 'offer')) list.push({ key: `cat:${group.tile.category}`, type: 'category', group })
     return list
-  }, [categoryGroups, failed, showBanner])
+  }, [categoryGroups, failed, showBanner, chainsPreview])
 
   // Which rows are on screen: a rail's autoplay runs only while it is.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(() => new Set(['cat:Restaurants and Cafes']))
@@ -143,6 +166,18 @@ export default function HomeScreen() {
         )
       case 'banner':
         return <View style={styles.banner}><RaayonitPromoStrip offer={flagship} count={chainCount} /></View>
+      case 'categories':
+        return (
+          <>
+            {failed && <Notice message={t('mobile_load_error')} />}
+            <SectionHeader title={t('home_top_categories')} />
+            <CategoryPhotoRail onSelect={openCategory} />
+          </>
+        )
+      case 'soon':
+        return <PerksSoonCard quiet={showBanner && chainsPreview.length > 0} />
+      case 'live':
+        return <LiveChainsSection offers={chainsPreview} chainCount={chainCount} card />
       case 'loading':
         return <OfferCarouselSkeleton />
       case 'category': {
@@ -157,7 +192,7 @@ export default function HomeScreen() {
               action={t('perk_see_all_perks')}
               onAction={() => openCategory(tile.category)}
             />
-            <OfferCarousel key={item.key} offers={real} placeholders={HOME_SLOT_COUNT - real.length} onOpen={openOffer} showDots={false} showCategoryBadge={false} visible={visibleKeys.has(item.key)} />
+            <OfferCarousel key={item.key} offers={real} placeholders={0} onOpen={openOffer} showDots={false} showCategoryBadge={false} visible={visibleKeys.has(item.key)} />
           </>
         )
       }

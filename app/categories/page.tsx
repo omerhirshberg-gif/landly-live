@@ -6,7 +6,11 @@ import OfferCard from '@/components/discover/OfferCard'
 import ShareFriendButton from '@/components/discover/ShareFriendButton'
 import { OFFER_RESULTS_GRID } from '@/components/discover/offerFeedGrid'
 import OfferTileRail from '@/components/discover/OfferTileRail'
-import { landlyOffers } from '@/lib/offers/discoverTab'
+import { isFlagship, isRaayonitOffer, landlyOffers } from '@/lib/offers/discoverTab'
+import { selectChainsPreview } from '@/lib/home/chainsPreview'
+import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
+import LiveChainsSection from '@/components/perks/LiveChainsSection'
+import PerksSoonCard from '@/components/perks/PerksSoonCard'
 import { Award, MapPin, Search, CirclePlus, Tags } from 'lucide-react'
 import { buildCategoryRails, isSuperVoucher, railLabel } from '@/lib/home/categoryRails'
 import OfferCardRail from '@/components/discover/OfferCardRail'
@@ -49,6 +53,12 @@ function PerksBrowser() {
   const { offers: allOffers, failed, refresh } = useOffers()
   // This page is GoLandly's own perks only; Raayonit's "תו על" has its own tab (/raayonit).
   const offers = useMemo(() => (allOffers ? landlyOffers(allOffers) : allOffers), [allOffers])
+  // While GoLandly has no direct perks the page points at the Raayonit Card tab: the live chains section, which opens the tab (the name follows the display flag).
+  const showRaayonit = useRaayonitDisplay()
+  const raayonitOffers = useMemo(() => (allOffers ?? []).filter(isRaayonitOffer), [allOffers])
+  const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
+  const liveShown = showRaayonit && chainCount > 0
+  const chainsPreview = useMemo(() => selectChainsPreview(raayonitOffers, lang), [raayonitOffers, lang])
   const [retrying, setRetrying] = useState(false)
   const retry = () => {
     setRetrying(true)
@@ -103,11 +113,14 @@ function PerksBrowser() {
         <BackButton fallback="/categories" label={t('nav_back')} onBack={() => setCategory('all')} className="mb-2" />
       )}
       <PageHeading title={pageTitle} />
-      {offers !== null && offers !== undefined && offers.length === 0 && !failed ? (<>
-        <div aria-live="polite" className="dash-empty-state rounded-2xl border border-slate-100 bg-white">
-          <Tags aria-hidden="true" strokeWidth={1.75} />
-          <div className="mb-1 text-base font-bold text-ink">{t('perks_landly_soon')}</div>
-        </div>
+      {offers !== null && offers !== undefined && offers.length === 0 && !failed && !filtering ? (<>
+        {/* No direct perk yet: the Raayonit Card entry, one calm note, the categories to browse and a preview of the Raayonit chains. A search still falls through to the listing below. */}
+        {liveShown && <LiveChainsSection offers={chainsPreview} chainCount={chainCount} nested className="mb-10" />}
+        <PerksSoonCard quiet={liveShown} className="mb-10" />
+        <section aria-labelledby="perks-browse-title" className="mb-10">
+          <h2 id="perks-browse-title" className="mb-3.5 text-xl font-bold tracking-tight text-ink">{t('perks_browse_title')}</h2>
+          <CategoryGrid tiles={CATEGORY_TILES} />
+        </section>
       </>) : (<>
       {filtering && (
         <div className="mb-8">
@@ -218,6 +231,7 @@ function PerksBrowser() {
                     seeAll={rail.tile ? t('cats_see_all').replace('{count}', String(rail.total)) : undefined}
                     showCategoryBadge={false}
                     compact
+                    scaled
                     nested
                   />
                 </div>

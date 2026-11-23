@@ -3,10 +3,11 @@
 // cleanup and the tests share it.
 import type { RaayonitBranch, RaayonitBrand } from './raayonitCatalog'
 import { inferMethods, knownCategory } from './raayonitCatalog'
+import { isClosedText } from './raayonitClosure'
 
 /** Notices and table furniture that mark a row as not a working branch. */
-const JUNK = /לא מכבד תווים|עד להודעה חדשה|עמכם הסליחה|סגור לרגל שיפוצים|סגור זמנית|סגור באופן זמני|לפירוט לחץ|שם האתר|^\s*(כתובת|טלפון|כשרות|מיקום)\s*$/
-export const isJunkText = (text: string): boolean => JUNK.test(text)
+const JUNK = /לפירוט לחץ|שם האתר|^\s*(כתובת|טלפון|כשרות|מיקום)\s*$/
+export const isJunkText = (text: string): boolean => isClosedText(text) || JUNK.test(text)
 
 /** A branch name without the "take-away only" or "closed" tail Raayonit appends to it. */
 export function cleanBranchName(name: string): string {
@@ -23,17 +24,25 @@ export function branchNotice(name: string): string {
   return name.match(/\s[-–]\s+(התו תקף[^|]*)$/)?.[1]?.replace(/\s+/g, ' ').replace('אווי', 'אוויי').trim() ?? ''
 }
 
-/** Drops junk and suspended rows, strips noisy tails, removes duplicates (same name and address). */
+/**
+ * Drops junk and suspended rows, strips noisy tails, removes duplicates (same name and address). The first copy of a duplicate is kept, but
+ * it takes `kosher: true` from any later copy: a branch on a network page (no kosher flag) and in the listing (flagged) is one kosher branch.
+ * A flag that is only ever false or absent stays as it is.
+ */
 export function sanitizeBranches(branches: readonly RaayonitBranch[]): RaayonitBranch[] {
-  const seen = new Set<string>()
+  const seen = new Map<string, number>()
   const out: RaayonitBranch[] = []
   for (const b of branches) {
     if (isJunkText(b.name) || isJunkText(b.address)) continue
     const name = cleanBranchName(b.name)
     if (!name) continue
     const key = `${name}|${b.address.replace(/\s+/g, ' ').trim()}`.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
+    const at = seen.get(key)
+    if (at !== undefined) {
+      if (b.kosher === true && out[at]!.kosher !== true) out[at] = { ...out[at]!, kosher: true }
+      continue
+    }
+    seen.set(key, out.length)
     out.push({ ...b, name })
   }
   return out

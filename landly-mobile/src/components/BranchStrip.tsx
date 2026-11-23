@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { branchLine, localizedBranch, type OfferBranch } from '@shared/offers/branches'
-import { firstPhone } from '@shared/offers/contact'
+import { parsePhones } from '@shared/offers/contact'
 import { Linking } from 'react-native'
 import AppText from './AppText'
 import BranchNavigationSheet, { type BranchTarget } from './BranchNavigationSheet'
@@ -39,13 +39,14 @@ export default function BranchStrip({ branches, brand }: { branches: readonly Of
         <ScrollView horizontal showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.rail}>
           {shown.map((b, i) => {
             const text = localizedBranch(b, lang)
-            const phone = firstPhone(b.phone)
+            const phones = parsePhones(b.phone).slice(0, 3)
+            const phone = phones[0] ?? null
             return (
               <View key={`${b.name}-${i}`} style={[styles.card, isRtl ? styles.accentRtl : styles.accent]}>
                 <AppText autoDir numberOfLines={2} style={styles.name}>{text.name}</AppText>
                 <AppText autoDir numberOfLines={2} style={styles.where}>{[text.address, text.city && !text.address.includes(text.city) ? text.city : ''].filter(Boolean).join(', ')}</AppText>
                 {b.kosher && <AppText style={styles.kosher}>{t('branch_kosher')}</AppText>}
-                {phone && <AppText ltr style={styles.phone}>{phone.display}</AppText>}
+                {phones.map((p) => <AppText key={p.href} ltr style={styles.phone}>{p.display}</AppText>)}
                 <View style={styles.actions}>
                   <Pressable accessibilityRole="button" accessibilityLabel={`${t('branch_directions')}: ${text.name}`} onPress={() => setPicked({ label: branchLine(b, lang), name: branchLine(b, 'he'), brand })} style={({ pressed }) => [styles.go, pressed && styles.goPressed]}>
                     <LineIcon name="navigation" size={14} color={colors.brand} strokeWidth={2} />

@@ -30,7 +30,7 @@ export default memo(function RaayonitTab({ offers, initialCategory }: { offers: 
   useEffect(() => { writeFilters(filters) }, [filters])
   const [query, setQuery] = useState('')
   const q = normalizeQuery(query)
-  const allGroups = useMemo(() => chainsByCategory(offers, lang), [offers, lang])
+  const allGroups = useMemo(() => chainsByCategory(offers, lang, { membership: true }), [offers, lang])
   const regions = useMemo(() => availableRegionFilters(offers), [offers])
   const category = keepRaayonitFilter(filters.category, allGroups)
   const region = regions.includes(filters.region) ? filters.region : 'all'
@@ -39,10 +39,10 @@ export default memo(function RaayonitTab({ offers, initialCategory }: { offers: 
   const { visible, groups } = useMemo(() => {
     const byRegion = near ? nearMe(offers, near) : region === 'all' ? offers : offers.filter((o) => matchesRegionFilter(o, region))
     const bySearch = q ? byRegion.filter((o) => chainMatchesSearch(o, q, t, lang)) : byRegion
-    const grouped = chainsByCategory(bySearch, lang)
+    const grouped = chainsByCategory(bySearch, lang, { membership: true })
     const picked = category === 'all' ? grouped : grouped.filter((g) => g.id === category)
     // Near me lists the venues themselves, nearest first, not the category groups' alphabetical order.
-    return { visible: near ? bySearch.filter((o) => picked.some((g) => g.offers.includes(o))) : picked.flatMap((g) => g.offers), groups: picked }
+    return { visible: near ? bySearch.filter((o) => picked.some((g) => g.offers.includes(o))) : [...new Map(picked.flatMap((g) => g.offers).map((o) => [o.id, o] as const)).values()], groups: picked }
   }, [offers, region, near, q, category, t, lang])
   // Browsing (no search, no category) is one row per category; a search or a picked category lists the matches as a grid.
   const rows = !q && category === 'all' && !near

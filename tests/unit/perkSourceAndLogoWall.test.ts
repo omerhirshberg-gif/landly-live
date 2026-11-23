@@ -20,11 +20,11 @@ describe('Explore Perks source segment (?src=)', () => {
     for (const [path, src] of [['web', web], ['native', native]]) {
       expect(src, path).not.toContain('SourceSegment')
       expect(src, path).not.toContain('RaayonitTab')
-      for (const gone of ['GiftCardBand', 'RaayonitPromoStrip', 'isRaayonitOffer']) expect(src, path).not.toContain(gone)
+      expect(src, path).not.toContain('GiftCardBand')
     }
-    // While there are no GoLandly perks, a calm note stands in.
-    expect(native).toContain("return [{ key: 'soon', type: 'soon' }]")
-    expect(web).toContain("t('perks_landly_soon')")
+    // While there are no GoLandly perks: the live Raayonit chains lead, then a quiet note and the categories (both platforms).
+    expect(native).toContain("list.push({ key: 'soon', type: 'soon' }, { key: 'browse', type: 'browse' })")
+    for (const [path, src] of [['web', web], ['native', native]]) for (const part of ['<LiveChainsSection', '<PerksSoonCard']) expect(src, `${path} ${part}`).toContain(part)
   })
 
   it('has its labels and the gift card copy in all five languages', () => {

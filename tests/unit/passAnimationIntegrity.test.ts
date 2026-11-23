@@ -19,7 +19,15 @@ describe('pass animation integrity', () => {
   })
 
   it('keeps the component byte for byte', () => {
-    expect(sha(component)).toBe('6126b0074fba2f3ea88f8ef660d9c0b02ea260f6a8006c0d630330f9cef6a701')
+    expect(sha(component)).toBe('0a730e6e9079cf8ad68db1fada5b500bb99288155733035ace635ae0d57befb2')
+  })
+
+  it('keeps the motion hooks and the in-view logic in the component, whatever its look', () => {
+    // Re-pinned on 2026-11-23 for the approved restyle to a flat ink Wallet-style pass on a dark screen (look only: CSS, timings and logic unchanged).
+    for (const hook of ['pass-anim relative', 'pass-card ', 'pass-qr relative', 'pass-shine', 'pass-pill ']) expect(component, hook).toContain(hook)
+    expect(component).toContain("data-pass={!armed ? undefined : passInView ? 'play' : 'armed'}")
+    expect(component).toContain("rootMargin: '0px 0px -15% 0px'")
+    expect(component).toContain("(prefers-reduced-motion: reduce)")
   })
 
   it('keeps every timing', () => {

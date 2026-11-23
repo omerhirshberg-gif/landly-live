@@ -30,6 +30,8 @@ import MessageCircleQuestionMark from 'lucide-react-native/icons/message-circle-
 import Monitor from 'lucide-react-native/icons/monitor'
 import Navigation from 'lucide-react-native/icons/navigation'
 import PiggyBank from 'lucide-react-native/icons/piggy-bank'
+import Pause from 'lucide-react-native/icons/pause'
+import Play from 'lucide-react-native/icons/play'
 import Plus from 'lucide-react-native/icons/plus'
 import QrCode from 'lucide-react-native/icons/qr-code'
 import Receipt from 'lucide-react-native/icons/receipt'
@@ -107,6 +109,8 @@ const ICONS = {
   store: Store,
   arrowUpEnd: ArrowUpRight,
   clock: Clock,
+  pause: Pause,
+  play: Play,
 } as const
 
 export type LineIconName = keyof typeof ICONS
