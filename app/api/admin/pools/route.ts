@@ -6,6 +6,7 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { ADMIN_LIST_CAP } from '@/lib/admin/adminList'
 import { createSharedPool } from '@/lib/inventory/poolAdmin'
 import { cipherKeyConfigured } from '@/lib/crypto/fieldCipher'
+import { parseVariants } from '@/lib/offers/variants'
 import { parseFulfillmentType, POOL_COLLECTION } from '@/lib/inventory/types'
 import { PaymentError } from '@/lib/payments/paymentValidation'
 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
   const db = getAdminDb()
   // Bounded, and only the fields shown (not whole offer documents).
   const [offersSnap, poolsSnap] = await Promise.all([
-    db.collection('offers').select('title', 'businessName', 'fulfillmentType', 'poolId', 'totalQuantity', 'claimedCount').limit(ADMIN_LIST_CAP).get(),
+    db.collection('offers').select('title', 'businessName', 'fulfillmentType', 'poolId', 'variants', 'totalQuantity', 'claimedCount').limit(ADMIN_LIST_CAP).get(),
     db.collection(POOL_COLLECTION).limit(ADMIN_LIST_CAP).get(),
   ])
   const pools = poolsSnap.docs.map((doc) => {
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
       return {
         id: doc.id, title: o.title ?? '', businessName: o.businessName ?? '',
         fulfillmentType: parseFulfillmentType(o.fulfillmentType), poolId: typeof o.poolId === 'string' ? o.poolId : null,
+        variantPoolIds: parseVariants(o.variants).map((v) => v.poolId),
         totalQuantity: typeof o.totalQuantity === 'number' ? o.totalQuantity : null, claimedCount: Number(o.claimedCount) || 0,
       }
     })

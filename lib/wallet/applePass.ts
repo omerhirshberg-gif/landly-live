@@ -58,7 +58,7 @@ export function passSerialNumber(passTypeId: string, voucherId: string): string 
 /** Whole seconds, the W3C form Wallet documents. */
 const passDate = (date: Date) => date.toISOString().replace(/\.\d{3}Z$/, 'Z')
 
-interface PassText {
+export interface PassText {
   description: string
   offer: string
   business: string
@@ -101,7 +101,7 @@ export function offerWithoutBusiness(offer: string, business: string): string {
   return rest || offer
 }
 
-function passText(voucher: PassVoucher, lang: Lang): PassText {
+export function passText(voucher: PassVoucher, lang: Lang): PassText {
   const t = (key: TranslationKey) => translations[lang][key]
   const business = localizedBusinessName(voucher, lang).text
   const offer = offerWithoutBusiness(localizeText(voucher.offerTitle, voucher.translations, lang, 'title').text, business)

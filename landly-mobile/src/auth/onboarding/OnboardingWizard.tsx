@@ -21,7 +21,6 @@ import OtpSheet from '../../components/OtpSheet'
 import TextField from '../../components/TextField'
 import { useLang } from '../../i18n/LangProvider'
 import { API_BASE_URL } from '../../lib/env'
-import { requestNotificationPermission } from '../../lib/notificationPermission'
 import { useKeyboardVisible } from '../../lib/useKeyboardVisible'
 import { isWeb, webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
@@ -31,7 +30,6 @@ import { saveOnboardingDraft } from './draftStorage'
 import { wizardBack } from '@shared/navigation/backGuard'
 import { useBackGuard } from '../../lib/useBackGuard'
 import LanguageStep from './LanguageStep'
-import NotificationsActions, { NotificationPoints } from './NotificationsStep'
 import PersonaStep from './PersonaStep'
 import PointList from './PointList'
 import StepHeader from './StepHeader'
@@ -49,7 +47,6 @@ const TITLES: Partial<Record<OnboardingStep, { title: TranslationKey; subtitle: 
   persona: { title: 'onb_persona_title', subtitle: 'onb_persona_subtitle' },
   origin: { title: 'onb_origin_title', subtitle: 'onb_origin_subtitle' },
   phone: { title: 'onb_phone_title', subtitle: 'onb_phone_subtitle' },
-  notifications: { title: 'onb_notif_title', subtitle: 'onb_notif_subtitle' },
 }
 
 // Below this window height the subtitles go, as they do whenever the keyboard is up.
@@ -61,10 +58,10 @@ const STAGE_PAD_Y = 12
 
 // Post-sign-in onboarding (native counterpart of components/auth/onboarding/
 // OnboardingWizard.tsx): welcome, language, persona, country of origin,
-// WhatsApp number, notifications and a celebration, one card at a time. It only runs for a
+// WhatsApp number and a celebration, one card at a time (the shared notifications card is skipped here: no push in v1). It only runs for a
 // signed-in, verified member who hasn't finished it — the sign-in gate stays
 // closed (`onboarding`) until "Let's explore" — so the answers are saved with
-// a single update when the notifications card is left. Step order:
+// a single update when the phone card is left. Step order:
 // lib/auth/onboarding.ts; motion: lib/brand/onboardingMotion.ts. The card on
 // screen and the answers so far are kept on the device (`draft` is what was
 // there when the wizard opened), so an app restart resumes the same card.
@@ -92,7 +89,7 @@ export default function OnboardingWizard({
   const keyboardVisible = useKeyboardVisible()
   const { height } = useWindowDimensions()
   const compact = keyboardVisible || height < SHORT_SCREEN
-  const [step, setStep] = useState<OnboardingStep>(draft?.step ?? 'welcome')
+  const [step, setStep] = useState<OnboardingStep>(draft?.step === 'notifications' ? 'phone' : draft?.step ?? 'welcome')
   // Set first, so the current card re-renders with the right `exiting` before
   // the step changes (an unmounting view keeps the props of its last render).
   const [nav, setNav] = useState<{ target: OnboardingStep; dir: 1 | -1 } | null>(null)
@@ -112,7 +109,7 @@ export default function OnboardingWizard({
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<'enable' | 'later' | 'explore' | null>(null)
+  const [busy, setBusy] = useState<'later' | 'explore' | null>(null)
   const [phoneBusy, setPhoneBusy] = useState(false)
   // The 6-digit code sheet for the number being verified (Continue on the phone card).
   const [otp, setOtp] = useState<{ target: OtpTarget; resendIn: number } | null>(null)
@@ -161,6 +158,13 @@ export default function OnboardingWizard({
 
   const advance = () => {
     const target = nextStep(step)
+    // Push notifications are not part of the app's first release: the card after the phone number is skipped, so no
+    // permission prompt is shown and the profile is saved with notifications off.
+    if (target === 'notifications') {
+      setBusy('later')
+      void finish(false)
+      return
+    }
     if (target) goTo(target, 1)
   }
 
@@ -286,22 +290,12 @@ export default function OnboardingWizard({
     }
   }
 
-  const handleEnable = async () => {
-    setBusy('enable')
-    await finish(await requestNotificationPermission())
-  }
-
-  const handleLater = async () => {
-    setBusy('later')
-    await finish(false)
-  }
-
   const handleExplore = () => {
     setBusy('explore')
     onComplete()
   }
 
-  const continueButton = <Button label={t('onb_continue')} onPress={handleContinue} busy={step === 'phone' && phoneBusy} large arrow />
+  const continueButton = <Button label={t('onb_continue')} onPress={handleContinue} busy={step === 'phone' && (phoneBusy || busy === 'later')} large arrow />
 
   // Each card as its sections (title, body, actions), which rise in one after another.
   const sections = (): ReactNode[] => {
@@ -390,11 +384,7 @@ export default function OnboardingWizard({
         </View>,
       ]
     }
-    return [
-      intro,
-      <NotificationPoints key="body" />,
-      <NotificationsActions key="actions" busy={busy === 'enable' || busy === 'later' ? busy : null} onEnable={handleEnable} onLater={handleLater} />,
-    ]
+    return [intro]
   }
 
   // Forward: the new card comes in from the reading direction's far side and

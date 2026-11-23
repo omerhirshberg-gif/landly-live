@@ -47,10 +47,12 @@ export function walletFailureMessage(reason: WalletFailure): TranslationKey {
   return 'wallet_add_error'
 }
 
+export type WalletProvider = 'apple' | 'google'
+
 /** Whether to show the badge at all. Any doubt reads as no: nothing is shown that can't work. */
-export async function fetchWalletAvailability(apiBaseUrl: string): Promise<boolean> {
+export async function fetchWalletAvailability(apiBaseUrl: string, provider: WalletProvider = 'apple'): Promise<boolean> {
   try {
-    const res = await request(`${normalizeApiBaseUrl(apiBaseUrl)}/api/wallet/apple/availability`, { method: 'GET' })
+    const res = await request(`${normalizeApiBaseUrl(apiBaseUrl)}/api/wallet/${provider}/availability`, { method: 'GET' })
     const data = await res.json().catch(() => null)
     return res.ok && data?.available === true
   } catch {
@@ -71,9 +73,30 @@ export async function requestWalletPass(idToken: string, voucherId: string, apiB
   }
   const data = await res.json().catch(() => null)
   if (res.ok && typeof data?.url === 'string') return { ok: true, url: rebasePassUrl(data.url, apiBaseUrl), mock: data.mock === true }
-  if (res.status === 401 || res.status === 403) return { ok: false, reason: 'unauthorized' }
-  if (res.status === 404) return { ok: false, reason: 'notFound' }
-  if (res.status === 409) return { ok: false, reason: 'notEligible' }
-  if (res.status === 429) return { ok: false, reason: 'rateLimited' }
-  return { ok: false, reason: 'unavailable' }
+  return { ok: false, reason: failureForStatus(res.status) }
+}
+
+function failureForStatus(status: number): WalletFailure {
+  if (status === 401 || status === 403) return 'unauthorized'
+  if (status === 404) return 'notFound'
+  if (status === 409) return 'notEligible'
+  if (status === 429) return 'rateLimited'
+  return 'unavailable'
+}
+
+/** The Google Wallet save link for this voucher (https://pay.google.com/gp/v/save/...), opened as is: Google's own page or app takes over. */
+export async function requestGoogleWalletLink(idToken: string, voucherId: string, apiBaseUrl: string): Promise<{ ok: true; url: string } | { ok: false; reason: WalletFailure }> {
+  let res: Response
+  try {
+    res = await request(`${normalizeApiBaseUrl(apiBaseUrl)}/api/wallet/google/${encodeURIComponent(voucherId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${idToken}` },
+    })
+  } catch {
+    return { ok: false, reason: 'offline' }
+  }
+  const data = await res.json().catch(() => null)
+  // Only Google's own save page is ever opened, whatever the server sent.
+  if (res.ok && typeof data?.url === 'string' && data.url.startsWith('https://pay.google.com/gp/v/save/')) return { ok: true, url: data.url }
+  return { ok: false, reason: res.ok ? 'unavailable' : failureForStatus(res.status) }
 }

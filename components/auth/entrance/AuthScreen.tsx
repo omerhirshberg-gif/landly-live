@@ -83,6 +83,7 @@ const PASSKEY_ERRORS: Record<PasskeyErrorCode, TranslationKey> = {
   already_registered: 'passkey_err_failed',
   rate_limited: 'passkey_err_rateLimited',
   unavailable: 'passkey_err_unavailable',
+  blocked: 'passkey_err_blocked',
   failed: 'passkey_err_failed',
 }
 // After this many cancelled or failed passkey attempts in a row, the row gets

@@ -25,6 +25,8 @@ export type PasskeyErrorCode =
   | 'already_registered'
   | 'rate_limited'
   | 'unavailable'
+  /** The browser refused the request at once, without showing a passkey sheet (some third-party iOS browsers and in-app WebViews). */
+  | 'blocked'
   | 'failed'
 
 export type PasskeySignInOutcome =
@@ -83,6 +85,15 @@ function isCancellation(err: unknown): boolean {
   return name === 'NotAllowedError' || name === 'AbortError'
 }
 
+// A member closing the sheet takes a while; a browser that can't do passkeys
+// refuses the request straight away, with the same NotAllowedError.
+const INSTANT_REFUSAL_MS = 1500
+
+function isInstantRefusal(err: unknown, startedAt: number): boolean {
+  const e = err as { name?: string; cause?: { name?: string } } | null
+  return (e?.cause?.name ?? e?.name) === 'NotAllowedError' && Date.now() - startedAt < INSTANT_REFUSAL_MS
+}
+
 function isPreviouslyRegistered(err: unknown): boolean {
   const e = err as { name?: string; code?: string; cause?: { name?: string } } | null
   return e?.code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED' || (e?.cause?.name ?? e?.name) === 'InvalidStateError'
@@ -130,9 +141,11 @@ export async function signInWithPasskey({
   const { challengeId, optionsJSON } = options.data as { challengeId: string; optionsJSON: Parameters<typeof startAuthentication>[0]['optionsJSON'] }
 
   let response
+  const authStartedAt = Date.now()
   try {
     response = await startAuthentication({ optionsJSON, useBrowserAutofill: autofill })
   } catch (err) {
+    if (!autofill && isInstantRefusal(err, authStartedAt)) return { kind: 'error', code: 'blocked' }
     if (isCancellation(err)) return { kind: 'cancelled' }
     return { kind: 'error', code: 'failed' }
   }
@@ -188,10 +201,12 @@ export async function addPasskey(user: User): Promise<AddPasskeyOutcome> {
   const { challengeId, optionsJSON } = options.data as { challengeId: string; optionsJSON: Parameters<typeof startRegistration>[0]['optionsJSON'] }
 
   let response
+  const registerStartedAt = Date.now()
   try {
     response = await startRegistration({ optionsJSON })
   } catch (err) {
     if (isPreviouslyRegistered(err)) return { kind: 'error', code: 'already_registered' }
+    if (isInstantRefusal(err, registerStartedAt)) return { kind: 'error', code: 'blocked' }
     if (isCancellation(err)) return { kind: 'cancelled' }
     return { kind: 'error', code: 'failed' }
   }

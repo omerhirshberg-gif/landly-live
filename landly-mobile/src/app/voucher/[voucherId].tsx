@@ -11,6 +11,7 @@ import { useLocalizedContent } from '@shared/i18n/useLocalizedContent'
 import { offerTextSources } from '@shared/offers/offerText'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AddToAppleWallet from '../../components/AddToAppleWallet'
+import AddToGoogleWallet from '../../components/AddToGoogleWallet'
 import AppText from '../../components/AppText'
 import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
@@ -162,6 +163,7 @@ export default function VoucherScreen() {
                     {/* Immediately under the code: issued as a Multi-Chain Super Tav, valid here and across the network. */}
                     {isRaayonitMultiChain(voucher) && !multiChain && <MultiChainCreditBox />}
                     <AddToAppleWallet voucher={voucher} />
+                    <AddToGoogleWallet voucher={voucher} />
                     <MarkVoucherUsed voucherId={voucher.id} />
                   </>
                 ) : voucher.status === 'active' ? (
@@ -170,6 +172,7 @@ export default function VoucherScreen() {
                     <View style={styles.gap} />
                     <CodeReveal code={voucher.externalCode ?? voucher.redemptionCode} />
                     <AddToAppleWallet voucher={voucher} />
+                    <AddToGoogleWallet voucher={voucher} />
                   </>
                 ) : (
                   <AppText style={styles.redeemed} accessibilityLiveRegion="polite">{t(voucher.status === 'cancelled' ? 'voucher_cancelled' : 'voucher_already_redeemed')}</AppText>

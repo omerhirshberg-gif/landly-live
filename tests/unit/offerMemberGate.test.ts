@@ -50,7 +50,7 @@ describe('offer member gate', () => {
     expect(page).toContain('{!guest && (')
     expect(page).not.toContain('line-clamp-4')
     expect(page).not.toContain('href="/login"')
-    expect(page).toMatch(/\{user && !authLoading && !claimLoading && !claimedHere && \([\s\S]*?href=\{checkoutHref\}/)
+    expect(page).toMatch(/\{user && !authLoading && !claimLoading && !claimedHere && !offer\.comingSoon && \([\s\S]*?href=\{checkoutHref\}/)
   })
 })
 

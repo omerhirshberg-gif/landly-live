@@ -8,18 +8,25 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true,
         "CFBundleDevelopmentRegion": "en",
         "CFBundleLocalizations": [
           "en",
-          "he"
+          "he",
+          "ru",
+          "fr",
+          "es"
         ],
-        "NSLocalNetworkUsageDescription": "GoLandly connects to the development server on your local network while the app is being developed."
+        "NSLocalNetworkUsageDescription": "GoLandly connects to the development server on your local network while the app is being developed.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.amitbd.landlyapp",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:www.golandly.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +38,33 @@
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "www.golandly.com",
+              "pathPrefix": "/offers/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.golandly.com",
+              "pathPrefix": "/member/vouchers/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -48,7 +82,6 @@
           }
         }
       ],
-      "expo-notifications",
       "expo-web-browser",
       "expo-image",
       "expo-apple-authentication",
@@ -89,12 +122,27 @@
           "locationAlwaysPermission": false,
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
-          "isAndroidForegroundServiceEnabled": false
+          "isAndroidForegroundServiceEnabled": false,
+          "motionUsagePermission": false,
+          "isAndroidMotionActivityEnabled": false
         }
       ]
     ],
     "experiments": {
       "tsconfigPaths": false
-    }
+    },
+    "locales": {
+      "en": "./locales/en.json",
+      "he": "./locales/he.json",
+      "ru": "./locales/ru.json",
+      "fr": "./locales/fr.json",
+      "es": "./locales/es.json"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4bc2ad80-c0e8-4694-92d9-4dff1b57e93e"
+      }
+    },
+    "owner": "amitbd1"
   }
 }

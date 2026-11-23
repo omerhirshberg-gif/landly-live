@@ -15,9 +15,15 @@ export interface InventoryOffer {
   businessName: string
   fulfillmentType: 'direct_merchant' | 'raayonit_pool'
   poolId: string | null
+  /** Every stock a multi-denomination card sells from (its `variants`); `poolId` is only the default, cheapest one. */
+  variantPoolIds?: string[]
   totalQuantity: number | null
   claimedCount: number
 }
+
+/** True when the offer sells from this stock: as its default `poolId` or as any of its variants. */
+export const isOfferLinkedToPool = (offer: Pick<InventoryOffer, 'poolId' | 'variantPoolIds'>, poolId: string): boolean =>
+  offer.poolId === poolId || (offer.variantPoolIds ?? []).includes(poolId)
 
 export interface InventoryPool {
   poolId: string

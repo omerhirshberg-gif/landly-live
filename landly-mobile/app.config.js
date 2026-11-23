@@ -50,11 +50,18 @@ const reversed = (id) => id.split('.').reverse().join('.')
 const googleSchemes = googleClientIds.ios ? [reversed(googleClientIds.ios)] : []
 const firebaseValue = (name) => process.env[`EXPO_PUBLIC_FIREBASE_${name}`] || rootEnv[`NEXT_PUBLIC_FIREBASE_${name}`]
 
+// EAS: the project id and owner come from the environment (EAS_PROJECT_ID, EAS_OWNER), never from the repo.
+// Left unset (local builds, Expo Go) the app config carries no EAS link. Apple Team ID and signing keys stay in
+// EAS managed credentials and the web deployment's environment (see docs/STORE_RELEASE.md).
+const eas = process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined
+
 module.exports = ({ config }) => ({
   ...config,
+  ...(process.env.EAS_OWNER ? { owner: process.env.EAS_OWNER } : {}),
   scheme: [config.scheme, ...googleSchemes],
   extra: {
     ...config.extra,
+    ...(eas ? { eas } : {}),
     firebase: {
       apiKey: firebaseValue('API_KEY'),
       authDomain: firebaseValue('AUTH_DOMAIN'),

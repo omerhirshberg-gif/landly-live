@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "GoLandly משתמשת במצלמה כדי שתוכלו לצלם תמונת פרופיל.",
+    "NSFaceIDUsageDescription": "GoLandly משתמשת ב-Face ID כדי שתוכלו לפתוח את האפליקציה במהירות ולשמור על פרטיות השוברים שלכם.",
+    "NSPhotoLibraryUsageDescription": "GoLandly משתמשת בתמונות שלכם כדי שתוכלו לבחור תמונת פרופיל.",
+    "NSLocationWhenInUseUsageDescription": "GoLandly משתמשת במיקום שלכם כדי להציג הטבות לידכם."
+  }
+}

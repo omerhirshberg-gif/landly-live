@@ -48,6 +48,7 @@ import RedemptionCallout from '../../components/RedemptionCallout'
 import { isolateLtr, variantForDenomination } from '@shared/home/superShowcase'
 import { heroLogoIsFallback, heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../../lib/logoHero'
 import { badgeLogoUri, secureImageUrl } from '../../lib/imageSource'
+import ComingSoonNotice from '../../components/ComingSoonNotice'
 import { cachedOffer, openOffer } from '../../lib/openOffer'
 import OfferCarousel from '../../components/OfferCarousel'
 import { superTavHeadline } from '@shared/offers/superTav'
@@ -458,6 +459,12 @@ export default function OfferScreen() {
                   <AppText style={styles.claimedLinkText}>{t('home_pass_cta')}</AppText>
                 </Pressable>
               </View>
+            ) : offer?.comingSoon ? (
+              // No live payment gateway: the perk stays visible, the purchase waits (never a dead-end checkout).
+              <View style={styles.soon}>
+                <ComingSoonNotice generic compact />
+                <Button label={t('perk_purchase_soon_cta')} onPress={buy} disabled large />
+              </View>
             ) : (
               <Button
                 label={t('offer_buy_button').replace('{price}', formatPrice(price))}
@@ -604,5 +611,6 @@ const styles = StyleSheet.create({
   claimed: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 52 },
   claimedTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.heading },
   claimedLink: { minHeight: 44, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  soon: { gap: 10 },
   claimedLinkText: { fontSize: 15, fontWeight: '700', color: colors.brand },
 })

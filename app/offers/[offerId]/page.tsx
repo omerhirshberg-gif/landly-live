@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { CalendarDays, CircleCheck, Heart, MapPin, Tags, Ticket } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
+import ComingSoonNotice from '@/components/raayonit/ComingSoonNotice'
 import Navbar from '@/components/layout/Navbar'
 import { useLang } from '@/lib/i18n/useLang'
 import { Lang } from '@/lib/i18n/translations'
@@ -509,7 +510,17 @@ export default function OfferDetailPage() {
                     </div>
                   )}
 
-                  {user && !authLoading && !claimLoading && !claimedHere && (expired ? (
+                  {user && !authLoading && !claimLoading && !claimedHere && offer.comingSoon && (
+                    // No live payment gateway: the perk stays visible, the purchase waits (never a dead-end checkout).
+                    <div className="space-y-3">
+                      <ComingSoonNotice generic compact />
+                      <button type="button" disabled className="ds-btn ds-btn-primary ds-btn-wrap w-full cursor-not-allowed opacity-50 lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
+                        <span>{t('perk_purchase_soon_cta')}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {user && !authLoading && !claimLoading && !claimedHere && !offer.comingSoon && (expired ? (
                     // Gone past its date: the button stays in place, unusable, as in the app.
                     <button type="button" disabled className="ds-btn ds-btn-primary ds-btn-wrap w-full lg:h-[52px] lg:rounded-xl lg:text-base lg:font-bold">
                       <span>{t('offer_buy_button').replace('{price}', formatPrice(price))}</span>
