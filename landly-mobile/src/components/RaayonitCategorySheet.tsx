@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { OfferDocument } from '@shared/firebase/offers'
 import { isolateLtr } from '@shared/home/superShowcase'
 import { normalizeQuery } from '@shared/perks/perksFilter'
-import { raayonitCategoryName, raayonitCategoryOf, type RaayonitCategoryId } from '@shared/offers/raayonitCategories'
+import { raayonitCategoriesOf, raayonitCategoryName, raayonitCategoryOf, type RaayonitCategoryId } from '@shared/offers/raayonitCategories'
 import { chainMatchesSearch } from '@shared/offers/raayonitRegions'
 import AppText from './AppText'
 import ChainTile from './ChainTile'
@@ -23,7 +23,7 @@ export default function RaayonitCategorySheet({ title, offers, onClose }: { titl
   // A list spanning several categories (the details screen's every business) can be narrowed by category; one category's own list has nothing to narrow.
   const categories = useMemo(() => [...new Set(offers.map((o) => raayonitCategoryOf(o)))], [offers])
   const q = normalizeQuery(query)
-  const shown = useMemo(() => offers.filter((o) => (category === 'all' || raayonitCategoryOf(o) === category) && chainMatchesSearch(o, q, t, lang)), [offers, category, q, t, lang])
+  const shown = useMemo(() => offers.filter((o) => (category === 'all' || raayonitCategoriesOf(o).includes(category)) && chainMatchesSearch(o, q, t, lang)), [offers, category, q, t, lang])
   const insets = useSafeAreaInsets()
   const bounds = useSheetBounds()
   const { width } = useWindowDimensions()

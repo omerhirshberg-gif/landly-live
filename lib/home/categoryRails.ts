@@ -112,3 +112,6 @@ export function buildHomeCategorySlots(offers: readonly OfferDocument[]): HomeCa
     return { tile, slots }
   })
 }
+
+/** True while no category holds a real perk: Home then shows the category rail and one calm note instead of rows of placeholders. */
+export const homeIsEmpty = (groups: readonly HomeCategorySlots[]): boolean => groups.every((group) => group.slots.every((slot) => slot.kind === 'placeholder'))

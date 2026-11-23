@@ -8,6 +8,7 @@ import { brandOfRow, groupListing, isSuspended, parseSupplierInfo, type Supplier
 import { finalizeCatalog } from './raayonitSanitize'
 import { sendSyncAlert, type AlertOutcome } from './raayonitSyncAlert'
 import { brandSourceKey } from './raayonitMigration'
+import { branchDrift, type DriftReport } from './raayonitBranchDrift'
 import { methodChanges, methodFingerprint, recordBusinessChanges, snapshotOf, SNAPSHOT_DOC, type MethodSnapshot, type RecordedChange } from './ledger/businessChanges'
 
 // The daily Raayonit "תו על" sync, shared by the cron route, the admin button and the CLI. It reads the one live directory page,
@@ -25,6 +26,8 @@ export const MIN_LIVE_BRANDS = 150
 export const MAX_REMOVALS = 15
 export const REMOVAL_FRACTION = 0.1
 export const MAX_ADDITIONS = 25
+/** Shown when a project holds no Raayonit cards at all: nothing to diff against, so every live brand would look new. Not a change on Raayonit's side. */
+export const EMPTY_CATALOGUE_REASON = 'no Raayonit cards exist in this project yet: run the catalogue promotion/seed script first (the live directory is unchanged)'
 export const LOG_COLLECTION = 'raayonit_sync_logs'
 const LOCK_STALE_MS = 15 * 60 * 1000
 const UA = 'Mozilla/5.0 (compatible; GoLandlyCatalogSync)'
@@ -38,6 +41,10 @@ export interface SyncReport {
   status: SyncStatus
   dry: boolean
   abortReason?: string
+  /** The NetworkNum keys that matched no card when the unknown-pages guard fired (the abort reason lists the first of them). */
+  unresolved?: string[]
+  /** Branch-level drift against the live listing and the closures that hit only some of a business's branches. Report only: no card is changed by it. */
+  drift?: DriftReport
   skipped?: 'already-ran' | 'in-progress'
   startedAt: string
   finishedAt: string
@@ -81,6 +88,7 @@ const cardOf = (id: string, d: FirebaseFirestore.DocumentData): ExistingCard => 
   archivedReason: typeof d.archivedReason === 'string' ? d.archivedReason : undefined,
   archivedSourceKey: typeof d.archivedSourceKey === 'string' ? d.archivedSourceKey : undefined,
   restored: !!d.restoredAt,
+  branches: Array.isArray(d.branches) ? d.branches.filter((b: unknown): b is Record<string, unknown> => !!b && typeof b === 'object').map((b: Record<string, unknown>) => ({ name: String(b.name ?? ''), address: String(b.address ?? ''), phone: String(b.phone ?? ''), kosher: b.kosher === true })) : undefined,
 })
 
 async function readExisting(db: Firestore): Promise<ExistingCard[]> {
@@ -116,6 +124,17 @@ export function pageProblem(live: Pick<LiveDirectory, 'rows' | 'sections' | 'ent
   if (live.rows.length < MIN_LIVE_ROWS) return `only ${live.rows.length} listing rows were found (minimum ${MIN_LIVE_ROWS})`
   if (live.entries.length < MIN_LIVE_BRANDS) return `only ${live.entries.length} brands were found (minimum ${MIN_LIVE_BRANDS})`
   return null
+}
+
+/** Why a project with no active cards cannot be diffed, or null. Pure. */
+export function emptyCatalogueProblem(activeCards: number): string | null {
+  return activeCards === 0 ? EMPTY_CATALOGUE_REASON : null
+}
+
+/** The guard text for too many unmatched network pages: the count, the limit and the first keys, so the cause is visible in the log. Pure. */
+export function unknownPagesProblem(keys: readonly string[]): string {
+  const shown = keys.slice(0, 30).join(', ')
+  return `${keys.length} unknown network pages (limit ${MAX_ADDITIONS}), NetworkNum: ${shown}${keys.length > 30 ? ', …' : ''}`
 }
 
 /** Why the size of the change is implausible, or null. Pure. */
@@ -192,10 +211,18 @@ export async function runDailySync(db: Firestore, options: DailySyncOptions = {}
     // 2. The diff. Network pages are known by number only: fetch the name of any that matches no card, then diff again.
     const existing = await readExisting(db)
     const indexLogos = new Map(parseNetworkIndex(html).map((n) => [n.key, n.logoUrl]))
+    const activeCards = existing.filter((c) => /^raayonit:[^:]+$/.test(c.sourceKey) && c.sourceKey !== brandSourceKey('general')).length
+    const empty = emptyCatalogueProblem(activeCards)
+    if (empty) return finish({ ...base, status: 'aborted_guard', abortReason: empty, counts: { ...emptyCounts(), rows: live.rows.length, liveBrands: live.entries.length } })
+    let drift: DriftReport | undefined
+    try { drift = branchDrift(live, existing) } catch (err) { console.error('[raayonit-sync] branch drift check failed', err) } // never blocks the sync
     let entries = live.entries
     let diff = diffCatalog(entries, existing)
     if (diff.unresolved.length > 0) {
-      if (diff.unresolved.length > MAX_ADDITIONS) return finish({ ...base, status: 'aborted_guard', abortReason: `${diff.unresolved.length} unknown network pages` })
+      if (diff.unresolved.length > MAX_ADDITIONS) {
+        const keys = diff.unresolved.map((e) => e.key)
+        return finish({ ...base, status: 'aborted_guard', abortReason: unknownPagesProblem(keys), unresolved: keys, counts: { ...emptyCounts(), rows: live.rows.length, liveBrands: live.entries.length, existing: activeCards, unchanged: diff.unchanged } })
+      }
       const named = new Map<string, LiveEntry>()
       for (const entry of diff.unresolved) {
         try {
@@ -216,7 +243,7 @@ export async function runDailySync(db: Firestore, options: DailySyncOptions = {}
     const kinds = new Map<string, AddedKind>()
     const built: SnapshotBrand[] = []
     const reuse = new Map<string, string>()
-    const report: SyncReport = { ...base, counts }
+    const report: SyncReport = { ...base, counts, ...(drift ? { drift } : {}) }
     const wanted = [...diff.added.map((entry) => ({ entry, card: null as ExistingCard | null })), ...diff.reactivated]
     for (const { entry, card } of wanted) {
       let brand: RaayonitBrand | null = null

@@ -240,3 +240,15 @@ describe('mirroring', () => {
     expect(readFileSync('landly-mobile/src/components/CategoryOfferRail.tsx', 'utf8')).toContain('<OfferCarousel offers={rail.offers} onOpen={openOffer} showDots={false} showCategoryBadge={false} visible={visible} />')
   })
 })
+
+describe('category photos', () => {
+  it('gives every category its own photo, byte-identical on the website and in the app (Chef Restaurants is not the Restaurants photo)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { createHash } = await import('node:crypto')
+    const { CATEGORY_TILES } = await import('@/lib/categories')
+    const sha = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex')
+    const web = CATEGORY_TILES.map((tile) => sha(`public/categories/${tile.photo}.webp`))
+    expect(new Set(web).size).toBe(CATEGORY_TILES.length)
+    CATEGORY_TILES.forEach((tile, i) => expect(sha(`landly-mobile/assets/categories/${tile.photo}.webp`), tile.photo).toBe(web[i]))
+  })
+})

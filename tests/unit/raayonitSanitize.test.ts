@@ -45,10 +45,10 @@ const EXPECTED: Record<string, string[]> = {
     'ShareSpa', 'Spa - My Touch', 'Spa by CLARINS', 'המרחב הפנימי',
     'טיליה - קליניקה טיפולית', 'מנטרה ספא', 'ניגון הנפש - עינבל ערד', 'ספא אלוויט',
     'ספא דניאל', 'ספא חמת קיסר', 'ספא קאנטרי גן עברון',
-    'לאונרדו',
+    'ספא לאונרדו',
   ],
   'Israel and Global Tourism': [
-    'Acco Beach', 'ADAM HOTELS', 'BROWN', 'GORDONIA',
+    'לאונרדו', 'Acco Beach', 'ADAM HOTELS', 'BROWN', 'GORDONIA',
     'NYX תל אביב', 'PIAZZA DEL SOL', 'VERT', 'אדם בוטיק',
     'אורכידאה אילת', 'אורכידאה תל אביב', 'בוטניקה', 'בטבע קדרים בקתות גליליות',
     'בין הזיתים', 'הבקתות של סיון', 'הרודס', 'יו',
@@ -125,12 +125,12 @@ describe('catalogue finalising', () => {
   it('drops a brand whose every branch was suspended', () => {
     expect(finalizeCatalog([brand({ key: 'q', nameHe: 'ספא ק', branches: [b('האתר לא מכבד תווים - ספא ק')] })])).toEqual([])
   })
-  it('puts every one of the 231 bundled brands in its exact category', () => {
+  it('puts every one of the 232 bundled brands in its exact category', () => {
     const out = finalizeCatalog(applyCanonical((snapshot as { brands: RaayonitBrand[] }).brands))
-    expect(out).toHaveLength(231)
+    expect(out).toHaveLength(232)
     const expected = new Map(Object.entries(EXPECTED).flatMap(([category, names]) => names.map((n) => [n, category] as const)))
-    expect(expected.size).toBe(231)
-    expect(Object.values(EXPECTED).flat()).toHaveLength(231)
+    expect(expected.size).toBe(232)
+    expect(Object.values(EXPECTED).flat()).toHaveLength(232)
     const actual = new Map(out.map((x) => [x.nameHe, x.category] as const))
     expect([...actual.keys()].sort()).toEqual([...expected.keys()].sort())
     expect(Object.fromEntries([...actual].filter(([n, c]) => expected.get(n) !== c))).toEqual({})
@@ -149,7 +149,9 @@ describe('catalogue finalising', () => {
     for (const chef of ["הדרל'ה", 'דיאנא', 'הלנה בנמל קיסריה', 'קימל בגלבוע', 'BAR ITALIA', 'KYOTO', 'capri', 'התרנגול הכחול', 'LUNEL', 'Baba Yaga', 'POMO', 'CAFÉ NAPO', 'כרמא', 'Sheyan']) expect(cat(chef), chef).toBe('Chef Restaurants')
     // Raayonit lists these two under "בתי קפה ומסעדות", not its chef section.
     for (const cafe of ['מרקוס', "PATRICK'S"]) expect(cat(cafe), cafe).toBe('Restaurants and Cafes')
-    expect(cat('לאונרדו')).toBe('Pampering Bundles')
+    // Leonardo's hotels are Hotels & Hospitality ("Israel and Global Tourism"); its two listed spas are their own Spa card.
+    expect(cat('לאונרדו')).toBe('Israel and Global Tourism')
+    expect(cat('ספא לאונרדו')).toBe('Pampering Bundles')
     expect(cat('ארבל עיצוב פנים - מומלץ אמון הציבור')).toBe('Beauty and Skincare')
     for (const food of ['joya', 'טנדוקה', 'הסושיה', 'iz café', 'הפינה החלבית', 'הלובי']) expect(cat(food), food).toBe('Restaurants and Cafes')
     expect(cat('מגה ספורט')).toBe('Sport and Fitness')

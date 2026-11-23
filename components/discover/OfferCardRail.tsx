@@ -17,7 +17,8 @@ import OfferCardPlaceholder from './OfferCardPlaceholder'
  * on the cards invite a tap on a perk when the member reaches the end. Mouse only (the CSS hides them on touch); hidden from AT, since everything
  * in the row is in the tab order.
  */
-export function RailArrows({ edges, page, bar = false }: { edges: { start: boolean; end: boolean }; page: (direction: 1 | -1) => void; bar?: boolean }) {
+/** `onTitle` (with `bar`): the arrows ride the heading's line above instead of taking a row of their own (member Home's category rail). */
+export function RailArrows({ edges, page, bar = false, onTitle = false }: { edges: { start: boolean; end: boolean }; page: (direction: 1 | -1) => void; bar?: boolean; onTitle?: boolean }) {
   const pair = (
     <>
       <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => page(-1)} data-hidden={!edges.start || undefined} className="tile-rail-arrow">
@@ -28,13 +29,15 @@ export function RailArrows({ edges, page, bar = false }: { edges: { start: boole
       </button>
     </>
   )
-  return bar ? <div className="tile-rail-bar">{pair}</div> : pair
+  return bar ? <div className={onTitle ? 'tile-rail-bar tile-rail-bar-up' : 'tile-rail-bar'}>{pair}</div> : pair
 }
 
 // A card's slot from 1024px: every card keeps 232px and never grows, so two or three items never stretch into wide boxes.
 // Below that a phone shows two cards and a sliver of the third (about 2.15 in view).
 const FILL_SLOT = 'lg:grow-0 lg:basis-[232px]'
 const COMPACT_SLOT = 'lg:grow-0 lg:basis-[232px]'
+// Home and Explore Perks (`scaled`): the card steps up with the wide desktop column (MemberPageShell `contained`): 240px from 1280px, 264px from 1536px, 288px from 1920px.
+export const SCALED_SLOT = 'lg:grow-0 lg:basis-[232px] xl:basis-[240px] 2xl:basis-[264px] min-[1920px]:basis-[288px]'
 
 /** The heading row: its own member column on Home, or a plain row when the page's column already pads it (`nested`). */
 function HeadRow({ nested, children }: { nested: boolean; children: ReactNode }) {
@@ -64,6 +67,7 @@ export default function OfferCardRail({
   priorityCount = 0,
   nested = false,
   placeholders = 0,
+  scaled = false,
 }: {
   id: string
   title: string
@@ -86,6 +90,8 @@ export default function OfferCardRail({
   priorityCount?: number
   /** The rail already sits inside a padded MemberColumn (/categories): its heading and first card start on that column's line instead of adding a second gutter. */
   nested?: boolean
+  /** Home and Explore Perks only: cards grow with the wide desktop column (SCALED_SLOT). */
+  scaled?: boolean
   /** Empty "Coming soon" slots after the offers (Home's category rows pad to 10): inert, so a published perk replaces one. */
   placeholders?: number
 }) {
@@ -119,7 +125,7 @@ export default function OfferCardRail({
           className={`${nested ? 'member-bleed-nested' : 'member-bleed member-bleed-fill'} edge-fade flex gap-2.5 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-3 pt-1 sm:gap-4`}
         >
           {offers.map((offer, index) => (
-            <div key={offer.id} className={`flex shrink-0 snap-start lg:min-w-0 ${compact ? COMPACT_SLOT : FILL_SLOT}`}>
+            <div key={offer.id} className={`flex shrink-0 snap-start lg:min-w-0 ${scaled ? SCALED_SLOT : compact ? COMPACT_SLOT : FILL_SLOT}`}>
               <OfferCard offer={offer} showWishlistButton showCategoryBadge={showCategoryBadge} compact={compact} priority={index < priorityCount} className="lg:w-full" />
             </div>
           ))}

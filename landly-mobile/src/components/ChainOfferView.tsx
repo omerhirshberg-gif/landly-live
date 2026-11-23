@@ -32,6 +32,8 @@ import ScreenHeader from './ScreenHeader'
 import { ParticipatingChains, RedemptionGuide } from './PerkReach'
 import { useLang } from '../i18n/LangProvider'
 import { heroLogoSource } from '../lib/logoHero'
+import { secureImageUrl } from '../lib/imageSource'
+import { bundledBrandImage } from '../lib/raayonitBrandImages'
 import { useLayout } from '../lib/useLayout'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
@@ -67,7 +69,9 @@ export default function ChainOfferView({ offer }: { offer: OfferDocument }) {
   const descriptionText = distinctDescription(content.text('title').text, description.text)
   const instructions = content.text('redemptionInstructions')
   const terms = content.text('redemptionTerms')
-  const logo = heroLogoSource(offer)
+  // As on the website: the logo-only hero, else the card's own picture (a bundled brand image or a link), else the Raayonit mark.
+  const own = offer.imageUrl?.trim() ? bundledBrandImage(offer.imageUrl) ?? (secureImageUrl(offer.imageUrl) ? { uri: secureImageUrl(offer.imageUrl) } : null) : null
+  const logo = heroLogoSource(offer) ?? own ?? ISSUER_LOGO
 
   const noticeKind = locationNoticeKind(offer)
   const hasBranches = !!offer.branches?.length

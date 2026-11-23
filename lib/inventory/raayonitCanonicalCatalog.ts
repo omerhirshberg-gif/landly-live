@@ -2,6 +2,7 @@
 // misses, wording corrections, what is suspended or closed, and the counts a healthy catalogue has. Pure (no I/O), so the
 // sync, the seed script and the tests share it. Phone cells Raayonit leaves blank stay blank: nothing is invented.
 import type { RaayonitBrand, RaayonitBranch } from './raayonitCatalog'
+import { isClosedText, NAMED_CLOSURES } from './raayonitClosure'
 
 const HOTEL_TERMS = [
   'בבתי המלון והארחה יש להיכנס למידע הנוסף בעמודה השמאלית טרם ההזמנה, ישנן מלונות שההזמנות יבוצעו דרך חברת רעיונית בלבד, ובחלק מהמלונות ניתן לממש עד 50% ממחיר העסקה, היתרה תשולם באחד מאמצעי התשלום המקובלים בבית העסק.',
@@ -36,7 +37,7 @@ export const NO_IMAGE_BRAND_KEYS: readonly string[] = ['l-7902'] // Torta Loca
 
 /** Rows that must never reach a card: suspended or closed (brand or branch text). */
 export const SUSPENDED_BRAND_KEYS: readonly string[] = ['235'] // Brown Hotels Spa: the site honours no vouchers until further notice
-export const CLOSED_BRANCH_PATTERNS: readonly RegExp[] = [/מחנה יהודה.*רוסטרס|רוסטרס.*מחנה יהודה|האפרסק 20/, /לאונרדו אין ים המלח/]  // the closed Leonardo Jerusalem spa row is caught as junk text ("האתר סגור באופן זמני")
+export const CLOSED_BRANCH_PATTERNS: readonly RegExp[] = [/מחנה יהודה.*רוסטרס|רוסטרס.*מחנה יהודה|האפרסק 20/, ...NAMED_CLOSURES.map((c) => new RegExp(c.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))]  // Raayonit's own closure notices are caught by isClosedText (raayonitClosure.ts)
 
 /** Branches whose phone Raayonit's public table leaves empty (kept empty). */
 export const BLANK_PHONE_BRANCHES = ['מקס ברנר כרמיאל', 'מקס ברנר ירושלים', 'אצה - סושי בר', 'TALADA'] as const
@@ -61,7 +62,7 @@ export function applyCanonical<T extends RaayonitBrand>(brands: readonly T[]): T
     .filter((b) => !SUSPENDED_BRAND_KEYS.includes(b.key))
     .map((b) => (CANONICAL_RENAMES[b.key] ? { ...b, nameHe: CANONICAL_RENAMES[b.key]!, nameEn: b.nameEn === b.nameHe ? CANONICAL_RENAMES[b.key]! : b.nameEn } : b))
     .map((b) => (NO_IMAGE_BRAND_KEYS.includes(b.key) ? withoutImage(b) : b))
-    .map((b) => ({ ...b, branches: b.branches.filter((br) => !CLOSED_BRANCH_PATTERNS.some((re) => re.test(`${br.name} ${br.address}`))) }))
+    .map((b) => ({ ...b, branches: b.branches.filter((br) => !isClosedText(`${br.name} ${br.address}`) && !CLOSED_BRANCH_PATTERNS.some((re) => re.test(`${br.name} ${br.address}`))) }))
   const have = new Set(out.map((b) => b.key))
   return [...out, ...(CANONICAL_EXTRA_BRANDS.filter((b) => !have.has(b.key)) as T[])]
 }

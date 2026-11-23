@@ -45,7 +45,7 @@ import { isChain, isFlagship, landlyOffers } from '@shared/offers/discoverTab'
 import RaayonitChainNotes from '../../components/RaayonitChainNotes'
 import BranchStrip from '../../components/BranchStrip'
 import RedemptionCallout from '../../components/RedemptionCallout'
-import { variantForDenomination } from '@shared/home/superShowcase'
+import { isolateLtr, variantForDenomination } from '@shared/home/superShowcase'
 import { heroLogoIsFallback, heroLogoSource, isRaayonitOffer, raayonitImageOpts } from '../../lib/logoHero'
 import { badgeLogoUri, secureImageUrl } from '../../lib/imageSource'
 import { cachedOffer, openOffer } from '../../lib/openOffer'
@@ -336,7 +336,7 @@ export default function OfferScreen() {
                   <View style={styles.chips}>
                     {!!offer.kosherBranchCount && (
                       <View style={[styles.chip, styles.methodChip]}>
-                        <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</AppText>
+                        <AppText style={[styles.chipText, styles.methodText]} numberOfLines={1}>{t('offer_kosher_branches').replace('{count}', isolateLtr(String(offer.kosherBranchCount)))}</AppText>
                       </View>
                     )}
                     {remaining !== null && (

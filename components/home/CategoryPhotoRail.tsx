@@ -25,13 +25,13 @@ export default function CategoryPhotoRail({ contained = false }: { contained?: b
 
   return (
     <nav aria-label={t('cats_category_label')} className={`offer-rail relative ${contained ? LANDING_COLUMN : 'lg:mx-auto lg:max-w-[2200px]'}`}>
-      {overflowing && <div className={contained ? '' : 'member-bleed member-bleed-fill'}><RailArrows bar edges={edges} page={page} /></div>}
+      {overflowing && <div className={contained ? '' : 'member-bleed member-bleed-fill'}><RailArrows bar onTitle={!contained} edges={edges} page={page} /></div>}
       <ul ref={railRef} onScroll={measure} className={`${contained ? LANDING_RAIL_FIT : 'member-bleed member-bleed-fill'} edge-fade flex gap-3 overflow-x-auto touch-pan-x touch-pan-y touch-pinch-zoom overscroll-x-contain snap-x snap-mandatory scrollbar-none py-1 [-webkit-overflow-scrolling:touch] sm:gap-4 ${contained ? '' : 'lg:gap-3'}`}>
         {CATEGORY_TILES.map((tile) => (
-          <li key={tile.category} className={`flex-shrink-0 snap-start ${contained ? 'lg:basis-[calc((100%-4*1rem)/5)] xl:basis-[calc((100%-5*1rem)/6)] 2xl:basis-[calc((100%-6*1rem)/7)]' : 'lg:basis-[calc((100%-6*0.75rem)/7)] xl:basis-[calc((100%-7*0.75rem)/8)]'}`}>
+          <li key={tile.category} className={`flex-shrink-0 snap-start ${contained ? 'lg:basis-[calc((100%-4*1rem)/5)] xl:basis-[calc((100%-5*1rem)/6)] 2xl:basis-[calc((100%-6*1rem)/7)]' : 'lg:basis-[calc((100%-6*0.75rem)/7)] min-[1920px]:basis-[calc((100%-7*0.75rem)/8)]'}`}>
             <Link
               href={categoryHref(tile.category)}
-              className={`${contained ? 'lg:aspect-[16/10] lg:h-auto lg:w-full ' : 'lg:h-[112px] lg:w-full '}relative block h-[110px] w-[176px] overflow-hidden rounded-2xl bg-slate-700 shadow-card transition-transform duration-200 ease-out-expo [-webkit-tap-highlight-color:transparent] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:h-[150px] sm:w-[240px] [@media(hover:hover)]:hover:-translate-y-0.5 motion-reduce:[@media(hover:hover)]:hover:translate-y-0`}
+              className={`${contained ? 'lg:aspect-[16/10] lg:h-auto lg:w-full ' : 'lg:h-[112px] lg:w-full xl:aspect-[16/10] xl:h-auto '}relative block h-[110px] w-[176px] overflow-hidden rounded-2xl bg-slate-700 shadow-card transition-transform duration-200 ease-out-expo [-webkit-tap-highlight-color:transparent] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:active:scale-100 sm:h-[150px] sm:w-[240px] [@media(hover:hover)]:hover:-translate-y-0.5 motion-reduce:[@media(hover:hover)]:hover:translate-y-0`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/categories/${tile.photo}.webp`} alt="" width={960} height={600} loading="lazy" decoding="async" draggable={false} className="absolute inset-0 h-full w-full object-cover object-center" />

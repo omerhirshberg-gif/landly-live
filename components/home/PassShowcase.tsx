@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { CircleCheck, PiggyBank, QrCode, Ticket } from 'lucide-react'
+import { CircleCheck, PiggyBank, QrCode, Ticket, X } from 'lucide-react'
 import IconFrame from '@/components/ui/IconFrame'
 import Reveal from '@/components/ui/Reveal'
 import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@/lib/brand/emblemPaths'
@@ -13,7 +13,7 @@ import { useInView } from '@/lib/useInView'
 
 // How long a voucher stays valid by default (an offer's validityDays).
 const PASS_VALID_DAYS = 180
-const QR_SIZE = 112
+const QR_SIZE = 92
 // The mockup's sample member number: an illustration, not a real account.
 const DEMO_MEMBER_ID = 'LND-84920'
 
@@ -29,11 +29,13 @@ const POINTS = [
 ] as const
 
 // The guest home's look at the member pass: a phone drawn in CSS with the
-// pass on screen, beside what using one is like. The pass is a royal-blue
-// card laid out like a membership card: the white Landly mark and wordmark
-// with the member number opposite (its one appearance), the member's name
-// with a "Free member" chip under it, the QR in a white frame, and a footer row (valid until, status: active);
-// under the card, a quiet "Show to redeem" pill. The name and number are a sample (the
+// pass on its light Wallet-style screen, beside what using one is like. The
+// pass is laid out like the real Wallet pass (lib/wallet/applePass.ts): a flat
+// ink card the white Landly mark and wordmark
+// with the validity opposite as a header field, a photo strip, the member's
+// name, label-over-value fields (member number, status: active) and the QR on
+// a white panel with the number under it; above it, the sheet's header (close,
+// title, Add); under the card, a quiet "Show to redeem" line. The name and number are a sample (the
 // home page is for guests); the QR is real and opens /signup, so scanning it
 // leads somewhere. Nothing floats outside the phone. The card's header and
 // columns follow the page direction, so in Hebrew the logo sits on the right
@@ -98,58 +100,69 @@ export default function PassShowcase() {
 
         <div ref={passRef} data-pass={!armed ? undefined : passInView ? 'play' : 'armed'} className="pass-anim relative mx-auto w-[248px] sm:w-[272px]">
           {/* Decorative: the phone repeats the points beside it. */}
-          <div aria-hidden="true" className="relative rounded-[2.75rem] bg-ink p-2.5 shadow-[0_2px_4px_rgba(11,27,61,.12),0_24px_48px_-12px_rgba(11,27,61,.35),0_48px_96px_-24px_rgba(0,56,184,.35)]">
-            <div className="relative flex aspect-[9/19] flex-col overflow-hidden rounded-[2.25rem] bg-gradient-to-b from-brandTint to-white px-3.5 pt-11 pb-4">
-              <div className="absolute top-2.5 left-1/2 h-[22px] w-[84px] -translate-x-1/2 rounded-full bg-ink" />
-              <div className="mb-3 px-1 text-meta font-extrabold text-ink">{t('landing_pass_screen_title')}</div>
+          <div aria-hidden="true" className="relative rounded-[2.5rem] bg-[#0E1014] p-[7px] ring-1 ring-inset ring-white/15 shadow-[0_2px_4px_rgba(11,27,61,.12),0_24px_48px_-12px_rgba(11,27,61,.35),0_48px_96px_-24px_rgba(0,56,184,.35)]">
+            <div className="relative flex aspect-[9/19] flex-col overflow-hidden rounded-[2.1rem] bg-gradient-to-b from-slate-100 to-white px-3.5 pt-11 pb-4">
+              <div className="absolute top-2.5 left-1/2 h-[22px] w-[84px] -translate-x-1/2 rounded-full bg-[#0E1014]" />
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200/80"><X aria-hidden="true" className="h-3 w-3 text-ink" strokeWidth={2.5} /></span>
+                <span className="min-w-0 truncate text-meta font-bold text-ink">{t('landing_pass_screen_title')}</span>
+                <span className="shrink-0 rounded-full bg-[#0A84FF] px-2.5 py-0.5 text-nano font-bold text-white">{t('landing_pass_add')}</span>
+              </div>
 
-              <div className="pass-card rounded-2xl sm:rounded-3xl border border-white/20 bg-gradient-to-br from-brand to-brandDark p-4 text-start text-white shadow-[0_25px_50px_-12px_rgba(0,56,184,.5)]">
-                <div className="flex items-start justify-between gap-2">
+              {/* Laid out like the real Wallet pass (lib/wallet/applePass.ts): a flat ink card the mark and a header field,
+                  a photo strip, the primary field, label-over-value fields, then the barcode on a white panel. Only the look changes here: the pass-*
+                  hooks drive the entrance. */}
+              <div className="pass-card relative shrink-0 overflow-hidden rounded-[18px] border border-white/10 bg-ink text-start text-white shadow-[0_10px_30px_-8px_rgba(11,27,61,.45)]">
+                <div className="flex items-center justify-between gap-2 px-3.5 pb-2.5 pt-3.5">
                   <span className="flex items-center gap-1.5" dir="ltr">
                     <PassEmblem />
-                    <svg viewBox={`${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`} className="h-3.5 w-auto" fill="currentColor">
+                    <svg viewBox={`${WORDMARK_VIEWBOX.x} ${WORDMARK_VIEWBOX.y} ${WORDMARK_VIEWBOX.width} ${WORDMARK_VIEWBOX.height}`} className="h-3 w-auto" fill="currentColor">
                       <path d={WORDMARK_PATH} />
                     </svg>
                   </span>
                   <span className="text-end leading-tight">
-                    <span className="block text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_member')}</span>
-                    <bdi dir="ltr" className="block font-mono text-xs font-bold text-white/90">#{DEMO_MEMBER_ID}</bdi>
+                    <span className="block font-mono text-nano font-medium uppercase tracking-wider rtl:tracking-normal text-[rgb(180,194,220)]">{t('landing_pass_card_valid')}</span>
+                    <bdi dir="ltr" className="block min-h-[1.1rem] font-mono text-xs font-medium text-white">{validThru}</bdi>
                   </span>
                 </div>
-                <div className="mt-1.5 truncate font-display text-xl sm:text-2xl font-bold tracking-tight text-white" dir="auto">{t('landing_pass_demo_name')}</div>
-                {/* The pass itself costs nothing to hold: a quiet chip under the name. */}
-                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-nano font-semibold uppercase tracking-wider rtl:tracking-normal text-white/90">
-                  <CircleCheck aria-hidden="true" className="h-2.5 w-2.5 text-emerald-300" strokeWidth={2.5} />
-                  {t('landing_pass_free_member')}
-                </span>
-                <div className="mt-4 flex justify-center">
-                  <div className="pass-qr relative overflow-hidden rounded-2xl bg-white p-2 shadow-[0_6px_16px_-6px_rgba(0,0,0,.35)]">
-                    <span aria-hidden="true" className="pass-shine" />
-                    {qr ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={qr} alt="" width={QR_SIZE} height={QR_SIZE} className="block rounded-lg" />
-                    ) : (
-                      <div style={{ width: QR_SIZE, height: QR_SIZE }} className="rounded-lg bg-slate-100" />
-                    )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/raayonit-banner/shopping.webp" alt="" width={3000} height={1000} loading="lazy" decoding="async" className="block h-9 w-full object-cover" />
+                <div className="px-3.5 pb-3 pt-2.5">
+                  <div className="truncate font-display text-lg sm:text-xl font-normal tracking-tight text-white" dir="auto">{t('landing_pass_demo_name')}</div>
+                  <span className="mt-0.5 inline-flex items-center gap-1 font-mono text-nano font-medium uppercase tracking-wider rtl:tracking-normal text-[rgb(180,194,220)]">
+                    <CircleCheck aria-hidden="true" className="h-2.5 w-2.5 text-emerald-400" strokeWidth={2.5} />
+                    {t('landing_pass_free_member')}
+                  </span>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <div className="font-mono text-nano font-medium uppercase tracking-wider rtl:tracking-normal text-[rgb(180,194,220)]">{t('landing_pass_card_member')}</div>
+                      <bdi dir="ltr" className="block font-mono text-xs font-medium text-white">#{DEMO_MEMBER_ID}</bdi>
+                    </div>
+                    <div className="min-w-0 text-end">
+                      <div className="font-mono text-nano font-medium uppercase tracking-wider rtl:tracking-normal text-[rgb(180,194,220)]">{t('landing_pass_status')}</div>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white">
+                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        {t('landing_pass_status_active')}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
-                  <div className="min-w-0">
-                    <div className="text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_card_valid')}</div>
-                    <bdi dir="ltr" className="block min-h-[1.25rem] font-mono text-xs sm:text-sm font-bold text-white">{validThru}</bdi>
-                  </div>
-                  <div className="min-w-0 text-end">
-                    <div className="text-nano font-medium uppercase tracking-wider text-blue-200/80">{t('landing_pass_status')}</div>
-                    <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
-                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      {t('landing_pass_status_active')}
-                    </span>
+                  <div className="mt-3 flex justify-center">
+                    <div className="pass-qr relative w-full overflow-hidden rounded-lg bg-white px-3 pb-1.5 pt-2.5 text-center">
+                      <span aria-hidden="true" className="pass-shine" />
+                      {qr ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={qr} alt="" width={QR_SIZE} height={QR_SIZE} className="mx-auto block" />
+                      ) : (
+                        <div style={{ width: QR_SIZE, height: QR_SIZE }} className="mx-auto bg-slate-100" />
+                      )}
+                      <bdi dir="ltr" className="mt-1 block text-nano font-medium tracking-wide text-ink">{DEMO_MEMBER_ID}</bdi>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pass-pill mx-auto mt-auto inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-sm">
-                <QrCode aria-hidden="true" className="h-3.5 w-3.5 text-brand" strokeWidth={2} />
+              <div className="pass-pill mx-auto mt-auto inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-600">
+                <QrCode aria-hidden="true" className="h-3.5 w-3.5 text-slate-500" strokeWidth={2} />
                 {t('landing_pass_redeem')}
               </div>
             </div>

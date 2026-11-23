@@ -117,7 +117,7 @@
  "l-tilia": "spa",
  "l-5270": "spa",
  "l-holmes": "spa",
- "l-leonardo": "spa",
+ "l-leonardo": "hotels",
  "l-2895": "spa",
  "l-2092": "spa",
  "l-5050": "spa",
@@ -185,5 +185,7 @@
  "l-s16": "cinemas",
  "l-2403": "soldier-traveler",
  "l-9216": "soldier-traveler",
- "l-la-bourse": "networks"
+ "l-la-bourse": "networks",
+ "l-u-hotels": "hotels",
+ "l-leonardo-spa": "spa"
 }

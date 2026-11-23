@@ -6,7 +6,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import sharp from 'sharp'
 import { parseNetworkIndex, parseNetworkPage, showNetworksUrl, networkUrl, RAAYONIT_BASE, RAAYONIT_VOUCHER_NUM, type RaayonitBrand } from '../lib/inventory/raayonitCatalog'
-import { groupListing, parseListingRows, parseListingSections, parseSupplierInfo, type SupplierInfo } from '../lib/inventory/raayonitListing'
+import { applyListingKosher, groupListing, parseListingRows, parseListingSections, parseSupplierInfo, type SupplierInfo } from '../lib/inventory/raayonitListing'
 
 const dry = process.argv.includes('--dry')
 const UA = 'Mozilla/5.0 (compatible; GoLandlyCatalogSync)'
@@ -43,7 +43,8 @@ await pool(rows, 4, async (row) => {
 const skip = new Set(networks.flatMap((n) => [n.nameHe, n.nameEn].filter(Boolean).map((s) => s.trim().toLowerCase())))
 const { brands: listed, suspended } = groupListing(rows, sections, infos, skip)
 
-const all = [...networks, ...listed]
+// A network page carries no kosher flag; the listing rows skipped above do, so bring them onto the network brands' branches.
+const all = [...applyListingKosher(networks, rows), ...listed]
 const branchTotal = all.reduce((n, b) => n + b.branches.length, 0)
 const withImage = all.filter((b) => b.logoUrl).length
 console.log(JSON.stringify({ networks: networks.length, listingRows: rows.length, sections: sections.length, detailsFetched: infos.size, suspendedSkipped: suspended, listingBrands: listed.length, brands: all.length, branches: branchTotal, brandsWithOwnImage: withImage, kosherBrands: listed.filter((b) => b.kosher).length }, null, 1))

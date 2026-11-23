@@ -6,8 +6,8 @@ Not linked from the Privacy Policy or Terms of Service: the Unsplash License nee
 
 - Licence: [Unsplash License](https://unsplash.com/license): free for commercial use, no permission or credit required. It does not cover trademarks, or the likeness of identifiable people for endorsement.
 - Files: `public/categories/{slug}.webp` and `landly-mobile/assets/categories/{slug}.webp` (byte-identical; 960x600 WebP). Nothing is hotlinked.
-- Source platform for all 12: Unsplash. Image host id = `images.unsplash.com/photo-{ID}`.
-- Visual review (2026-11-13): all 12 are bright, well framed with `object-cover` centred, and legible under the bottom scrim.
+- Source platform for all 13: Unsplash. Image host id = `images.unsplash.com/photo-{ID}`.
+- Visual review (2026-11-13): all 12 originals are bright, well framed with `object-cover` centred, and legible under the bottom scrim.
 
 ## Status: PENDING manual confirmation
 
@@ -16,7 +16,7 @@ The photographer name, the photo page URL and the licence-check date could not b
 | Slug | Category | Photo ID | Subject | Photo page URL | Photographer | Licence checked | SHA-256 (shipped file) |
 |---|---|---|---|---|---|---|---|
 | restaurants | Restaurants and Cafes | `1517248135467-4c7edcad34c4` | Restaurant interior, set tables | _pending_ | _pending_ | _pending_ | `a5906ee8e381474bc552566b67b09752f9cc49b2df9d751d0f4ce83e894a52c5` |
-| chef | Chef Restaurants | `1517248135467-4c7edcad34c4` | Reuses the `restaurants` photo until a fine-dining photo is sourced and licence-checked | _pending_ | _pending_ | _pending_ | same file as `restaurants` |
+| chef | Chef Restaurants | `1750943082452-c714763f73b2` | Chef's hands presenting a plated fine-dining dish; cropped from the chest down so no face is shown | https://unsplash.com/photos/a-chef-presents-a-beautifully-plated-dish-6jVutqtcgQs | Tommaso Ubezio | 2026-11-23 (page states "Free to use under the Unsplash License"; published 2025-06-26) | `202c834a0a5212a2472f7d5dd24ada6cec7decb3849b3d793554d8d056350d80` |
 | beach | Beach and Sea | `1507525428034-b723cf961d3e` | Sunset shoreline, turquoise sea | _pending_ | _pending_ | _pending_ | `0be9402b8594b5f31f2dcf55b7bc4ac52a0e7eab0a949e51c7d7678036680ec0` |
 | attractions | Attractions and Tours | `1513889961551-628c1e5e2ee9` | Fairground swing carousel | _pending_ | _pending_ | _pending_ | `5174b7001a6e13c56697e0731b5836dd0a6175fc78fe6907fe8ae637c57d382d` |
 | fashion | Fashion and Shopping | `1441986300917-64674bd600d8` | Clothing store, shelves of apparel | _pending_ | _pending_ | _pending_ | `b5ebe9844d8e91ddfaca2c0b16de2f3d310daeb378de62ee40bbb30558ba9836` |

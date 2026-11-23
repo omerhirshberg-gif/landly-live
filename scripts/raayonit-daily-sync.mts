@@ -21,4 +21,12 @@ if (!dry && projectId !== 'landly-dev' && !args.includes('--allow-prod')) {
 const translateBatch = isTranslationEnabled() ? async (texts: string[], lang: string) => cloudTranslator.translate(texts, lang, 'he') : undefined
 const report = await runDailySync(getFirestore(), { dry, force: args.includes('--force') }, { origin: projectId === 'landly-dev' ? 'http://localhost:3000' : 'https://golandly.com', translateBatch })
 console.log(JSON.stringify(report, null, 2))
+if (report.drift) {
+  const d = report.drift.counts
+  console.log(`Branch drift: ${d.brandsDrifted} of ${d.brandsCompared} compared businesses differ (${d.added} added, ${d.missing} missing, ${d.changed} changed); ${d.partialClosures} partial closure(s), ${d.fullSuspensions} fully suspended.`)
+  for (const b of report.drift.brands) console.log(`  ${b.nameHe} [${b.key}] card ${b.cardBranches} / live ${b.liveBranches}: +${b.added.length} -${b.missing.length} ~${b.changed.length}`)
+  for (const p of report.drift.partialClosures) console.log(`  Partial closure: ${p.nameHe} [${p.key}] ${p.closed.length} closed, ${p.liveBranches} live`)
+  if (report.drift.fullSuspensions.length) console.log(`  Fully suspended: ${report.drift.fullSuspensions.join(' | ')}`)
+}
+if (report.status === 'aborted_guard') console.log(`Guard: ${report.abortReason}${report.unresolved?.length ? `\nUnresolved NetworkNum keys (${report.unresolved.length}): ${report.unresolved.join(', ')}` : ''}`)
 process.exit(report.status === 'ok' ? 0 : 2)

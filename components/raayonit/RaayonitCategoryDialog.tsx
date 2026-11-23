@@ -8,7 +8,7 @@ import { useBodyScrollLock } from '@/lib/useBodyScrollLock'
 import { useIsSheet } from '@/lib/useIsSheet'
 import type { OfferDocument } from '@/lib/firebase/offers'
 import { normalizeQuery } from '@/lib/perks/perksFilter'
-import { raayonitCategoryName, raayonitCategoryOf, type RaayonitCategoryId } from '@/lib/offers/raayonitCategories'
+import { raayonitCategoriesOf, raayonitCategoryName, raayonitCategoryOf, type RaayonitCategoryId } from '@/lib/offers/raayonitCategories'
 import { chainMatchesSearch } from '@/lib/offers/raayonitRegions'
 import RailArrows, { useRail } from '@/components/offers/RailArrows'
 import ChainTile from './ChainTile'
@@ -23,7 +23,7 @@ export default function RaayonitCategoryDialog({ title, offers, onClose }: { tit
   const categories = useMemo(() => [...new Set(offers.map((o) => raayonitCategoryOf(o)))], [offers])
   const q = normalizeQuery(query)
   const pills = useRail<HTMLDivElement>(categories.length)
-  const shown = useMemo(() => offers.filter((o) => (category === 'all' || raayonitCategoryOf(o) === category) && chainMatchesSearch(o, q, t, lang)), [offers, category, q, t, lang])
+  const shown = useMemo(() => offers.filter((o) => (category === 'all' || raayonitCategoriesOf(o).includes(category)) && chainMatchesSearch(o, q, t, lang)), [offers, category, q, t, lang])
   const isSheet = useIsSheet()
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()

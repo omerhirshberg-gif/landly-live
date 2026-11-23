@@ -22,6 +22,8 @@ export interface LiveDirectory {
   entries: LiveEntry[]
   /** Titles dropped because the row itself says the business is not honouring vouchers. */
   suspended: string[]
+  /** The dropped rows themselves, so a business with only some branches closed can be told apart from a fully suspended one. */
+  suspendedRows: ListingRow[]
 }
 
 /** Every brand the live directory lists, from the listing page's rows and the network index (both on the one page). */
@@ -29,14 +31,15 @@ export function parseLiveDirectory(html: string): LiveDirectory {
   const rows = parseListingRows(html)
   const sections = parseListingSections(html)
   const suspended: string[] = []
+  const suspendedRows: ListingRow[] = []
   const byKey = new Map<string, LiveEntry>()
   for (const row of rows) {
-    if (isSuspended(row.title)) { suspended.push(row.title); continue }
+    if (isSuspended(row.title)) { suspended.push(row.title); suspendedRows.push(row); continue }
     const brand = brandOfRow(row)
     if (!byKey.has(brand.key)) byKey.set(brand.key, { key: brand.key, nameHe: brand.nameHe, nameEn: brand.nameEn, source: 'listing' })
   }
   for (const { key } of parseNetworkIndex(html)) if (!byKey.has(key) && !SUSPENDED_BRAND_KEYS.includes(key)) byKey.set(key, { key, nameHe: '', nameEn: '', source: 'network' })
-  return { rows, sections, entries: [...byKey.values()], suspended }
+  return { rows, sections, entries: [...byKey.values()], suspended, suspendedRows }
 }
 
 /** A stored offer card, reduced to what the diff needs. */
@@ -50,6 +53,8 @@ export interface ExistingCard {
   archivedReason?: string
   /** The `raayonit:…` key an archived card had before it became `retired:{id}`. */
   archivedSourceKey?: string
+  /** The card's branch list as stored (address, phone and kosher flag are what the drift check compares). */
+  branches?: { name?: string; address?: string; phone?: string; kosher?: boolean }[]
   /** An admin restored this card by hand: the nightly sync must not archive it again until Raayonit lists it and later drops it. */
   restored?: boolean
 }

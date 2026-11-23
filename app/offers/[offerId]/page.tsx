@@ -380,7 +380,7 @@ export default function OfferDetailPage() {
                 {/* Only what the offer really states. */}
                 <div className="mt-5 flex flex-wrap items-center gap-2 empty:hidden">
                   {!!offer.kosherBranchCount && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">{t('offer_kosher_branches').replace('{count}', String(offer.kosherBranchCount))}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">{t('offer_kosher_branches').split('{count}').flatMap((part, i) => (i === 0 ? [part] : [<bdi key={i} dir="ltr">{offer.kosherBranchCount}</bdi>, part]))}</span>
                   )}
                   {remaining !== null && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold leading-4 text-body">

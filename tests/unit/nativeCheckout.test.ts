@@ -153,7 +153,8 @@ describe('swipe back from the Perks tab', () => {
   it('pushes a tile as the category screen, like Home, instead of filtering in place', () => {
     const perks = read('app/(tabs)/perks.tsx')
     expect(perks).toContain("router.push({ pathname: '/category/[category]', params: { category: next } })")
-    expect(perks.match(/onSelect={openCategory}/g)).toHaveLength(1)
+    // The overview tiles, the empty-catalogue browse grid and the search's matching categories.
+    expect(perks.match(/onSelect={openCategory}/g)).toHaveLength(2)
     // One stable opener for every rail; the rail passes its own category (components/CategoryOfferRail.tsx).
     expect(perks).toContain('onSeeAll={item.rail.tile ? openCategory : undefined}')
     expect(read('components/CategoryOfferRail.tsx')).toContain('onAction={onSeeAll ? () => onSeeAll(rail.category) : undefined}')

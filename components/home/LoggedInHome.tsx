@@ -10,6 +10,7 @@ import HomeCategoryRails from './HomeCategoryRails'
 import RaayonitPromoStrip from '@/components/raayonit/RaayonitPromoStrip'
 import SectionBoundary from '@/components/errors/SectionBoundary'
 import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
+import { buildHomeCategorySlots, homeIsEmpty } from '@/lib/home/categoryRails'
 import { isFlagship, isRaayonitOffer, landlyOffers } from '@/lib/offers/discoverTab'
 import MemberPageShell, { MemberColumn, PAGE_TITLE } from '@/components/layout/MemberPageShell'
 import LocationFilterBar from '@/components/discover/LocationFilterBar'
@@ -64,6 +65,9 @@ export default function LoggedInHome({ user }: { user: User }) {
   const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
   // The entry banner to the Raayonit Card tab: there while the tab is (Raayonit's name may be shown).
   const showBanner = useRaayonitDisplay()
+  // While GoLandly has no direct perk the live Raayonit section (HomeCategoryRails) replaces this strip: it would repeat the same count. The strip returns with the first perk.
+  const homeEmpty = useMemo(() => (located ? homeIsEmpty(buildHomeCategorySlots(located)) : false), [located])
+  const liveShown = homeEmpty && showBanner && chainCount > 0
   const locEmpty = !!filter && !!located && !located.some((o) => o.perkScope !== 'multi_chain')
 
   return (
@@ -130,13 +134,13 @@ export default function LoggedInHome({ user }: { user: User }) {
         </MemberColumn>
 
         {/* Every official GoLandly category as a row of ten cards: real perks first, "Coming soon" placeholders after. Raayonit has its own tab (/raayonit) and never appears here. */}
-        {showBanner && (
+        {showBanner && !liveShown && (
           <SectionBoundary name="home-raayonit-banner">
-            <MemberColumn wide className="mt-6 sm:mt-8 lg:mt-0"><RaayonitPromoStrip offer={flagship} count={chainCount} /></MemberColumn>
+            <MemberColumn wide className="mt-6 sm:mt-8 lg:mt-0 [&>a]:max-w-none"><RaayonitPromoStrip offer={flagship} count={chainCount} /></MemberColumn>
           </SectionBoundary>
         )}
         <div className="mb-8 mt-6 sm:mt-8 lg:mt-6">
-          <HomeCategoryRails offers={located} />
+          <HomeCategoryRails offers={located} chains={raayonitOffers} showChains={showBanner} />
         </div>
       </MemberPageShell>
     </main>

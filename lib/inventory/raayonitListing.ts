@@ -2,6 +2,8 @@
 // chains, spas, hotels, attractions ...), each with a detail pane (own image, blurb, notes) fetched per row.
 // Pure (no I/O): the scraper script and the tests share it. The 74 "רשתות" network pages are parsed in raayonitCatalog.ts.
 import { decodeEntities, inferCategory, inferMethods, type RaayonitBrand, type RaayonitBranch } from './raayonitCatalog'
+import { isClosedText, isNamedClosure } from './raayonitClosure'
+import { aliasOf } from './raayonitSanitize'
 
 export interface ListingSection { id: string; title: string; description: string }
 export interface ListingRow {
@@ -48,16 +50,14 @@ export function parseSupplierInfo(html: string): SupplierInfo {
   return { image, notes, text: text(html) }
 }
 
-// A site that does not honour vouchers for now, by the wording Raayonit puts in the row's name or detail pane.
-const SUSPENDED_TEXT = /(?:ה?אתר )?(?:לא מכבד תווים|סגור באופן זמני)|סגור לרגל שיפוצים/
-// Rows Raayonit lists without a notice that the business says are not honouring vouchers.
-const SUSPENDED_NAMES = new Set(['לאונרדו ירושלים', 'לאונרדו אין ים המלח'])
-export const isSuspended = (title: string, detailText = ''): boolean => SUSPENDED_TEXT.test(title) || SUSPENDED_TEXT.test(detailText) || SUSPENDED_NAMES.has(title.trim())
+// A site that does not honour vouchers for now: Raayonit's notice in the row's name or detail pane, or a property known to be closed (raayonitClosure.ts).
+export const isSuspended = (title: string, detailText = ''): boolean => isClosedText(title) || isClosedText(detailText) || isNamedClosure(title)
 
 /** The branch's name without the "closed" or "take-away only" notice Raayonit appends to it. */
 const cleanTitle = (title: string) => title.replace(/\s+-\s+התו תקף[^|]*$/, '').replace(/\*+$/, '').trim()
 
-interface ChainDef { id: string; nameHe: string; nameEn: string; match: RegExp }
+// `sections`: the chain only claims rows from these listing sections, so a name that appears in two (Leonardo's hotels in 78, its spas in 4) never merges them.
+interface ChainDef { id: string; nameHe: string; nameEn: string; match: RegExp; sections?: readonly string[] }
 // Brands that appear as several rows. A section's rows can all be one chain (SECTION_CHAINS); the rest match by name.
 export const NAME_CHAINS: ChainDef[] = [
   { id: 'sharespa', nameHe: 'ShareSpa', nameEn: 'ShareSpa', match: /ShareSpa/i },
@@ -76,7 +76,9 @@ export const NAME_CHAINS: ChainDef[] = [
   { id: 'spa-daniel', nameHe: 'ספא דניאל', nameEn: 'Spa Daniel', match: /^ספא דניאל/ },
   { id: 'mila-spa', nameHe: 'מילה ספא', nameEn: 'Mila Spa', match: /^מילה ספא/ },
   { id: 'la-bourse', nameHe: 'לה בורסה', nameEn: 'La Bourse', match: /^לה בורסה/ },
-  { id: 'leonardo', nameHe: 'לאונרדו', nameEn: 'Leonardo Hotels', match: /לאונרדו|יו קורל|יו מג'יק|יו בוטיק|Fattal|פתאל/ },
+  { id: 'leonardo', nameHe: 'לאונרדו', nameEn: 'Leonardo Hotels', match: /לאונרדו|Fattal|פתאל/, sections: ['78'] },
+  { id: 'leonardo-spa', nameHe: 'ספא לאונרדו', nameEn: 'Leonardo Spa', match: /לאונרדו/, sections: ['4'] },
+  { id: 'u-hotels', nameHe: 'יו', nameEn: 'U Hotels', match: /^יו (?:קורל|מג'יק|בוטיק)/, sections: ['78'] },
   { id: 'brown', nameHe: 'בראון', nameEn: 'Brown Hotels', match: /BROWN|בראון/i },
   { id: 'vert', nameHe: 'VERT', nameEn: 'VERT Hotels', match: /^VERT/i },
   { id: 'herods', nameHe: 'הרודס', nameEn: 'Herods Hotels', match: /^הרודס/ },
@@ -105,7 +107,7 @@ const hash = (s: string) => { let h = 0; for (const c of s) h = (h * 31 + c.char
 /** The brand a row belongs to: a chain (by section or name) or the business itself. `key` is stable across runs. */
 export function brandOfRow(row: Pick<ListingRow, 'title' | 'sectionId' | 'sid'>): { key: string; nameHe: string; nameEn: string; chain: boolean } {
   const title = cleanTitle(row.title)
-  const named = NAME_CHAINS.find((c) => c.match.test(title))
+  const named = NAME_CHAINS.find((c) => c.match.test(title) && (!c.sections || c.sections.includes(row.sectionId)))
   if (named) return { key: `l-${named.id}`, nameHe: named.nameHe, nameEn: named.nameEn, chain: true }
   const section = SECTION_CHAINS[row.sectionId]
   if (section) return { key: `l-s${row.sectionId}`, ...section, chain: true }
@@ -154,4 +156,34 @@ export function groupListing(rows: ListingRow[], sections: ListingSection[], inf
     })
   }
   return { brands, suspended }
+}
+
+const normText = (s: string) => s.normalize('NFC').toLowerCase().replace(/[.‎‏'"׳״,]/g, '').replace(/[\s\-–]+/g, ' ').trim()
+const placeKey = (b: { address?: string; name?: string }) => normText(b.address || '') || normText(b.name || '')
+
+/**
+ * Sets `kosher: true` on a brand's branches that Raayonit's listing marks kosher. A business that has its own "רשתות" network page is skipped
+ * by `groupListing` (so it never appears twice), and the network page carries no kosher flag, so its kosher branches would be lost: this brings
+ * them over from the listing rows of the same business (same alias, else same name), matched by address. It only ever adds `true`; a branch
+ * the listing does not flag keeps whatever it had, and no phone, address or name is touched. Pure and idempotent.
+ */
+export function applyListingKosher<T extends RaayonitBrand>(brands: readonly T[], rows: readonly ListingRow[]): T[] {
+  const kosherRows = rows.filter((r) => r.kosher && !isSuspended(r.title))
+  return brands.map((brand) => {
+    const own = aliasOf(brand)
+    const sameBusiness = (r: ListingRow) => {
+      const listed = brandOfRow(r)
+      const alias = aliasOf(listed)
+      return (own !== null && alias === own) || normText(listed.nameHe) === normText(brand.nameHe) || (!!listed.nameEn && normText(listed.nameEn) === normText(brand.nameEn))
+    }
+    const places = new Set(kosherRows.filter(sameBusiness).map(placeKey))
+    if (places.size === 0) return brand
+    let changed = false
+    const branches = brand.branches.map((b) => {
+      if (b.kosher === true || !places.has(placeKey(b))) return b
+      changed = true
+      return { ...b, kosher: true }
+    })
+    return changed ? { ...brand, branches } : brand
+  })
 }

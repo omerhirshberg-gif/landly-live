@@ -51,7 +51,8 @@ export default function InventoryPage() {
   }, [load])
 
   const stocks = useMemo(
-    () => (data?.pools ?? []).filter((p) => p.faceValueAgorot != null).map((p) => ({ poolId: p.poolId, title: p.title || `₪${(p.faceValueAgorot ?? 0) / 100}`, faceValueAgorot: p.faceValueAgorot ?? null })),
+    () => (data?.pools ?? [])
+      .filter((p) => p.faceValueAgorot != null).sort((a, b) => (a.faceValueAgorot ?? 0) - (b.faceValueAgorot ?? 0)).map((p) => ({ poolId: p.poolId, title: p.title || `₪${(p.faceValueAgorot ?? 0) / 100}`, faceValueAgorot: p.faceValueAgorot ?? null })),
     [data],
   )
   return (
@@ -90,7 +91,7 @@ export default function InventoryPage() {
             <EmptyState icon="fa-boxes-stacked" title={t('inv.raayonit.empty')} description={t('inv.raayonit.emptyBody')} action={<button type="button" className={PRIMARY_BUTTON} onClick={() => setCreating(true)}>{t('inv.raayonit.new')}</button>} />
           ) : (
             <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {data.pools.filter((p) => p.faceValueAgorot != null).map((pool) => {
+              {[...data.pools].filter((p) => p.faceValueAgorot != null).sort((a, b) => (a.faceValueAgorot ?? 0) - (b.faceValueAgorot ?? 0)).map((pool) => {
                 const linked = data.offers.filter((o) => o.poolId === pool.poolId).length
                 const low = pool.remainingCount <= pool.warningThreshold
                 return (

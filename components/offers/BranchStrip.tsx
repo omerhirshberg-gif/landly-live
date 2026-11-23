@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Navigation, Phone } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
-import { firstPhone } from '@/lib/offers/contact'
+import { parsePhones } from '@/lib/offers/contact'
 import { branchLine, localizedBranch, type OfferBranch } from '@/lib/offers/branches'
 import RailArrows, { useRail } from './RailArrows'
 import BranchNavigationModal, { type BranchTarget } from './BranchNavigationModal'
@@ -38,14 +38,15 @@ export default function BranchStrip({ branches, brand }: { branches: readonly Of
         <ul ref={rail.ref} onScroll={rail.measure} className="-mx-1 flex snap-x scroll-px-1 gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {shown.map((b, i) => {
             const text = localizedBranch(b, lang)
-            const phone = firstPhone(b.phone)
+            const phones = parsePhones(b.phone).slice(0, 3)
+            const phone = phones[0] ?? null
             const where = [text.address, text.city && !text.address.includes(text.city) ? text.city : ''].filter(Boolean).join(', ')
             return (
               <li key={`${b.name}-${i}`} className="flex min-h-[140px] w-[248px] min-w-[200px] shrink-0 snap-start flex-col gap-1.5 rounded-2xl border border-slate-200/90 border-s-4 border-s-brand bg-white p-3.5">
                 <bdi className="line-clamp-2 text-[15px] font-bold leading-tight text-ink" dir="auto">{text.name}</bdi>
                 {where && <bdi className="line-clamp-2 text-[13px] leading-snug text-muted" dir="auto">{where}</bdi>}
                 {b.kosher && <span className="self-start rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-ink">{t('branch_kosher')}</span>}
-                {phone && <bdi dir="ltr" className="self-start text-[13px] font-semibold leading-snug text-ink">{phone.display}</bdi>}
+                {phones.map((p) => <bdi key={p.href} dir="ltr" className="self-start text-[13px] font-semibold leading-snug text-ink">{p.display}</bdi>)}
                 <div className="mt-auto flex items-center gap-4">
                   <button
                     type="button"

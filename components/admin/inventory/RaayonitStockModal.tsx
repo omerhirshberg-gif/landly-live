@@ -15,6 +15,13 @@ export interface RaayonitStock {
   faceValueAgorot: number | null
 }
 
+/** The voucher amounts a file may carry: the opened stock's own value, or every stock's, ascending. */
+export function acceptedValues(stocks: RaayonitStock[], fixed?: RaayonitStock): string {
+  const own = fixed?.faceValueAgorot
+  const list = own != null ? [own] : stocks.map((s) => s.faceValueAgorot).filter((v): v is number => v != null)
+  return [...new Set(list.map((v) => v / 100))].sort((a, b) => a - b).join(', ')
+}
+
 interface Group { amount: number; count: number; stock: RaayonitStock | null }
 
 // Raayonit's two-column Excel file (voucher code, voucher amount) added to the voucher stocks.
@@ -96,7 +103,9 @@ export default function RaayonitStockModal({ stocks, fixed, onClose, onDone }: {
             <i className="fa-solid fa-folder-open text-xs" aria-hidden="true" />
             {t('upload.choose')}
           </button>
-          <p className="text-xs text-adm-muted">{t('upload.formats', { n: MAX_SHEET_ROWS })}</p>
+          <p className="text-xs text-adm-muted">
+            <bdi dir="ltr">.xlsx</bdi> {t('upload.or')} <bdi dir="ltr">.csv</bdi> · {t('upload.formats', { n: MAX_SHEET_ROWS, values: acceptedValues(stocks, fixed) })}
+          </p>
           {fixed && fixed.faceValueAgorot !== null && <p className={ADMIN_HINT}>{t('upload.onlyFixed', { value: fixed.faceValueAgorot / 100 })}</p>}
         </div>
       ) : (
