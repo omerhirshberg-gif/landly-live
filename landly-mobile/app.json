@@ -123,7 +123,7 @@
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false,
-          "motionUsagePermission": false,
+          "motionUsagePermission": "GoLandly uses motion activity to improve nearby venue and perk discovery accuracy.",
           "isAndroidMotionActivityEnabled": false
         }
       ],
