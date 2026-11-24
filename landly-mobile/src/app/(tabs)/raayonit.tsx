@@ -19,7 +19,7 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 export default function RaayonitTabScreen() {
   const { t } = useLang()
   const { paddingLeft, paddingRight } = useLayout()
-  const { category } = useLocalSearchParams<{ category?: string }>()
+  const { category, q } = useLocalSearchParams<{ category?: string; q?: string }>()
   const { offers } = useOffers()
   const raayonit = useMemo(() => (offers ?? []).filter(isRaayonitOffer), [offers])
   const flagship = useMemo(() => raayonit.find(isFlagship) ?? null, [raayonit])
@@ -29,7 +29,7 @@ export default function RaayonitTabScreen() {
       <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingLeft, paddingRight }]}>
         <ScreenTitleRow title={t('raayonit_page_title')} style={styles.title} />
         <RaayonitHero offer={flagship} buy />
-        <RaayonitTab key={category ?? 'all'} offers={chains} initialCategory={category} />
+        <RaayonitTab key={`${category ?? 'all'}|${q ?? ''}`} offers={chains} initialCategory={category} initialQuery={q} />
       </ScrollView>
     </SafeAreaView>
   )

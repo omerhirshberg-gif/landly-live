@@ -17,6 +17,7 @@
 // `expo start` and a full reload of the app, not just Fast Refresh.
 const fs = require('fs')
 const path = require('path')
+const { assertBuildEnvironment } = require('./config/buildGuard')
 
 // .env.local is read after .env and wins, as in Next.js -- that's where the
 // landly-dev (staging) project lives for local development, so Expo and
@@ -34,7 +35,11 @@ function readRootEnv() {
   return env
 }
 
-const rootEnv = readRootEnv()
+// An EAS build names its profile (EAS_BUILD_PROFILE). It reads only the EAS environment's EXPO_PUBLIC_* values: the
+// root .env.local (landly-dev) is never a fallback there, so even `eas build --local` cannot bake DEV values into a
+// production binary. Local runs (no profile) keep the root-env convenience.
+const buildProfile = process.env.EAS_BUILD_PROFILE || undefined
+const rootEnv = buildProfile ? {} : readRootEnv()
 
 // Native Google sign-in: iOS (src/auth/googleSignIn.ts) uses the iOS OAuth
 // client, whose reversed ID is registered as a URL scheme so Google's
@@ -55,8 +60,23 @@ const firebaseValue = (name) => process.env[`EXPO_PUBLIC_FIREBASE_${name}`] || r
 // EAS managed credentials and the web deployment's environment (see docs/STORE_RELEASE.md).
 const eas = process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined
 
+// Hard fail: the profile's Firebase project and API origin must match (config/buildGuard.js).
+assertBuildEnvironment({
+  profile: buildProfile,
+  projectId: firebaseValue('PROJECT_ID'),
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+})
+
+// The dev-server local-network prompt text belongs to development builds only (Expo Go / dev client, local runs); a
+// store binary never carries it.
+function withoutDevOnlyPlist(config) {
+  if (buildProfile === undefined || buildProfile === 'development') return config
+  const { NSLocalNetworkUsageDescription: _dev, ...infoPlist } = config.ios?.infoPlist ?? {}
+  return { ...config, ios: { ...config.ios, infoPlist } }
+}
+
 module.exports = ({ config }) => ({
-  ...config,
+  ...withoutDevOnlyPlist(config),
   ...(process.env.EAS_OWNER ? { owner: process.env.EAS_OWNER } : {}),
   scheme: [config.scheme, ...googleSchemes],
   extra: {

@@ -1,17 +1,17 @@
-// Ops: creates (or, with --update, patches) this environment's Google Wallet OfferClass, ahead of the first member
+// Ops: creates (or, with --update, patches) this environment's Google Wallet GenericClass, ahead of the first member
 // adding a pass (the server also creates it on demand when Google answers 404). Idempotent: an existing class is left
 // alone unless --update is given.
 //
 //   npx tsx scripts/setupGoogleWalletClass.ts --target dev
-//       reads .env.local only: the landly-dev service account  -> class <issuer>.golandly_voucher_dev
+//       reads .env.local only: the landly-dev service account  -> class <issuer>.golandly_generic_dev
 //   npx tsx scripts/setupGoogleWalletClass.ts --target prod --confirm-production
-//       reads .env only: the landly-be752 service account      -> class <issuer>.golandly_voucher_prod
+//       reads .env only: the landly-be752 service account      -> class <issuer>.golandly_generic_prod
 //
 // Options:
 //   --issuer-id <id>      the issuer id, else GOOGLE_WALLET_ISSUER_ID from the target's file, else from the shell
 //   --classes dev|prod|both
 //                         which class(es) to register: the target's own by default. `both` registers
-//                         <issuer>.golandly_voucher_dev and <issuer>.golandly_voucher_prod with the one credential, which is
+//                         <issuer>.golandly_generic_dev and <issuer>.golandly_generic_prod with the one credential, which is
 //                         what a single service account authorised on the shared issuer is for (needs --confirm-production)
 //   --impersonate [sa]    get the token with `gcloud auth print-access-token --impersonate-service-account` (defaults to the
 //                         file's FIREBASE_ADMIN_CLIENT_EMAIL): no private key is read from disk or created, the token lives
@@ -19,9 +19,8 @@
 //   --use-adc             the same with Application Default Credentials (gcloud auth application-default login, scopes
 //                         wallet_object.issuer and cloud-platform); the account behind them must be an issuer user
 //   --update              patch an existing class with the current definition
-//   --skip-logo           register the production class without its logo (Google fetches the logo's URL when the class is
-//                         saved, so the class can't be created before public/wallet/google/logo.png is live on www.golandly.com).
-//                         Without it, a class that already exists is patched, which adds the logo once it is deployed.
+// The class holds only the two-column row layout; the pass's logo and hero live on each object (lib/wallet/googlePass.ts),
+// so a class can be created before the images are deployed. The older Offer classes (golandly_voucher_*) are left alone.
 // Every run ends by reading each class back (GET) and printing the HTTP status.
 // Only the target's own file is read, and only FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL,
 // FIREBASE_ADMIN_PRIVATE_KEY and GOOGLE_WALLET_ISSUER_ID from it (the issuer id may also come from the shell): nothing
@@ -62,7 +61,7 @@ function readTargetEnv(file: string): Record<string, string | undefined> {
   return Object.fromEntries(KEYS.map((key) => [key, parsed[key]?.trim() || undefined]))
 }
 
-const USAGE = 'Usage: setupGoogleWalletClass.ts --target dev|prod [--confirm-production] [--issuer-id <id>] [--classes dev|prod|both] [--impersonate [sa] | --use-adc] [--skip-logo] [--update]'
+const USAGE = 'Usage: setupGoogleWalletClass.ts --target dev|prod [--confirm-production] [--issuer-id <id>] [--classes dev|prod|both] [--impersonate [sa] | --use-adc] [--update]'
 const API = 'https://walletobjects.googleapis.com/walletobjects/v1'
 
 async function main() {
@@ -119,22 +118,21 @@ async function main() {
     const classSuffix = name === 'prod' ? GOOGLE_CLASS_SUFFIX_PROD : GOOGLE_CLASS_SUFFIX_DEV
     const config = {
       mode: 'ready' as const, issuerId, classSuffix, classId: `${issuerId}.${classSuffix}`, serviceAccountEmail: email, privateKey,
-      // The production class carries the logo from the live site; the dev class is made without one (previews add theirs on demand).
-      siteOrigin: name === 'prod' && !flag('--skip-logo') ? 'https://www.golandly.com' : null, target: TARGETS[name].deploy,
+      siteOrigin: null, assetOrigin: 'https://www.golandly.com', target: TARGETS[name].deploy,
     }
-    const before = await fetch(`${API}/offerClass/${encodeURIComponent(config.classId)}`, { headers: { Authorization: `Bearer ${token}` } })
-    // A missing class is created; one that exists is patched when asked, or when it should carry the logo.
+    const before = await fetch(`${API}/genericClass/${encodeURIComponent(config.classId)}`, { headers: { Authorization: `Bearer ${token}` } })
+    // A missing class is created; one that exists is patched when asked.
     if (before.status === 404) {
-      await walletApi.ensureOfferClass(config, token)
-      console.log(`Created ${config.classId}${config.siteOrigin ? '' : ' (no logo)'}.`)
-    } else if (flag('--update') || config.siteOrigin) {
-      await walletApi.updateOfferClass(config, token)
-      console.log(`Updated ${config.classId}${config.siteOrigin ? ' (with the logo)' : ' (no logo)'}.`)
+      await walletApi.ensureGenericClass(config, token)
+      console.log(`Created ${config.classId}.`)
+    } else if (flag('--update')) {
+      await walletApi.updateGenericClass(config, token)
+      console.log(`Updated ${config.classId}.`)
     } else {
-      await walletApi.ensureOfferClass(config, token)
+      await walletApi.ensureGenericClass(config, token)
     }
-    const read = await fetch(`${API}/offerClass/${encodeURIComponent(config.classId)}`, { headers: { Authorization: `Bearer ${token}` } })
-    console.log(`GET offerClass/${config.classId} -> HTTP ${read.status}`)
+    const read = await fetch(`${API}/genericClass/${encodeURIComponent(config.classId)}`, { headers: { Authorization: `Bearer ${token}` } })
+    console.log(`GET genericClass/${config.classId} -> HTTP ${read.status}`)
     if (!read.ok) process.exitCode = 1
   }
 }

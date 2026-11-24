@@ -7,8 +7,8 @@ import { discountPercent } from '@/lib/perks/perksFilter'
 import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
 import { isRaayonitDisplayEnabled } from '@/lib/flags/featureFlags.server'
 import { liveChainNetworkCount } from '@/lib/offers/networkCount.server'
-import { buildOfferObject, googleObjectId, googleSaveUrl, signSaveJwt } from '@/lib/wallet/googlePass'
-import { ensureOfferClass, getWalletAccessToken, GoogleWalletError, upsertOfferObject } from '@/lib/wallet/googleWalletApi'
+import { buildGenericObject, googleObjectId, googleSaveUrl, signSaveJwt } from '@/lib/wallet/googlePass'
+import { ensureGenericClass, getWalletAccessToken, GoogleWalletError, upsertGenericObject } from '@/lib/wallet/googleWalletApi'
 import { getGoogleWalletConfig } from '@/lib/wallet/passConfig'
 import { isPassEligible, isVoucherId, readPassVoucher, type PassVoucher } from '@/lib/wallet/passVoucher'
 
@@ -57,24 +57,22 @@ export async function POST(request: Request, { params }: Params) {
     // Raayonit's name stays off the pass until the display flag is on (written approval); the pass then reads as a plain multi-chain voucher.
     if (voucher.issuer && !(await isRaayonitDisplayEnabled())) voucher.issuer = null
     if (isRaayonitMultiChain(voucher)) voucher.chainCount = await liveChainNetworkCount()
-    // Decoration: the frozen order gives the discount, the offer its photo, the member their name. A pass works without any of them.
-    const [order, offer, member] = await Promise.all([
+    // Decoration: the frozen order gives the discount, the member their name. A pass works without either.
+    const [order, member] = await Promise.all([
       db.collection('orders').doc(voucher.id).get().catch(() => null),
-      db.collection('offers').doc(voucher.offerId).get().catch(() => null),
       db.collection('users').doc(uid).get().catch(() => null),
     ])
     const original = order?.get('originalPrice')
     const paid = order?.get('amount')
     const name = member?.get('displayName')
-    const object = buildOfferObject(voucher, config, {
+    const object = buildGenericObject(voucher, config, {
       discountPercent: typeof original === 'number' && typeof paid === 'number' ? discountPercent(original, paid) : null,
-      imageUrl: typeof offer?.get('imageUrl') === 'string' ? offer.get('imageUrl') : '',
       holderName: typeof name === 'string' ? name.trim() : null,
     })
 
     const token = await getWalletAccessToken(config)
-    await ensureOfferClass(config, token)
-    await upsertOfferObject(token, object)
+    await ensureGenericClass(config, token)
+    await upsertGenericObject(token, object)
     return reply({ url: googleSaveUrl(signSaveJwt(config, googleObjectId(config, voucher.id))) })
   } catch (error) {
     // The stage and the HTTP status only: never a token, the voucher id (it holds the uid) or a credential.

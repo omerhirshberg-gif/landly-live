@@ -20,19 +20,49 @@
       "extends": "base",
       "distribution": "internal",
       "channel": "preview",
-      "environment": "preview"
+      "environment": "preview",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "testflight": {
+      "extends": "base",
+      "distribution": "store",
+      "autoIncrement": true,
+      "channel": "testflight",
+      "environment": "preview",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     },
     "production": {
       "extends": "base",
+      "distribution": "store",
       "autoIncrement": true,
       "channel": "production",
       "environment": "production",
+      "ios": {
+        "simulator": false
+      },
       "android": {
         "buildType": "app-bundle"
       }
     }
   },
   "submit": {
+    "testflight": {
+      "ios": {},
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
     "production": {
       "ios": {},
       "android": {

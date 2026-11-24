@@ -12,6 +12,8 @@ import { logoWallOffers } from '@/lib/home/logoWall'
 import { RAAYONIT_HUB, webOfferPath } from '@/lib/offers/offerRoutes'
 import { roundedCount } from '@/lib/offers/raayonitPreview'
 
+// Tiles load eagerly (BrandMedia `eager`): at most 24 small logos, and a lazy <img> inside the drifting, masked, overflow-hidden rail (or a
+// horizontal scroller) can fail to load on iOS Safari / WebKit webviews (no intersection report), which leaves grey, unpainted tiles.
 // Home's "Where your card works" (native: landly-mobile/src/components/BrandLogoWall.tsx): a strip of real chain logos on white tiles, as a
 // gift-card shop shows where its card is accepted. A tile opens that chain's page; the header's link opens the hub. Nothing renders without logos.
 export default memo(function BrandLogoWall({ offers, rail = false, title, byBranches = false }: { offers: OfferDocument[]; rail?: boolean; title?: string; byBranches?: boolean }) {
@@ -39,7 +41,7 @@ export default memo(function BrandLogoWall({ offers, rail = false, title, byBran
               {tiles.map((o) => (
                 <li key={o.id} className="shrink-0">
                   <Link href={webOfferPath(o.id)} tabIndex={copy ? -1 : undefined} aria-label={localizedBusinessName(o, lang).text} className="relative block h-[72px] w-[104px] overflow-hidden rounded-2xl border border-slate-200/80 bg-[#EEF2F7] shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:h-20 sm:w-[132px] [@media(hover:hover)]:hover:-translate-y-0.5">
-                    <BrandMedia src={o.imageUrl} cover={o.logoKind === 'photo'} inset="p-2.5" />
+                    <BrandMedia src={o.imageUrl} cover={o.logoKind === 'photo'} inset="p-2.5" eager />
                   </Link>
                 </li>
               ))}
@@ -52,7 +54,7 @@ export default memo(function BrandLogoWall({ offers, rail = false, title, byBran
           {tiles.map((o) => (
             <li key={o.id} className="shrink-0">
               <Link href={webOfferPath(o.id)} aria-label={localizedBusinessName(o, lang).text} className="relative block h-[72px] w-[104px] overflow-hidden rounded-2xl border border-slate-200/80 bg-[#EEF2F7] shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:h-20 sm:w-[132px] [@media(hover:hover)]:hover:-translate-y-0.5">
-                <BrandMedia src={o.imageUrl} cover={o.logoKind === 'photo'} inset="p-2.5" />
+                <BrandMedia src={o.imageUrl} cover={o.logoKind === 'photo'} inset="p-2.5" eager />
               </Link>
             </li>
           ))}

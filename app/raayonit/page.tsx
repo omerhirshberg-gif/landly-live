@@ -12,7 +12,7 @@ import { isFlagship, isRaayonitOffer } from '@/lib/offers/discoverTab'
 import { useOffers } from '@/lib/offers/useOffers'
 
 // The Raayonit Card and every business that accepts it (native: landly-mobile/src/app/raayonit.tsx): the purchase block with a direct
-// Buy action, then the search, all 18 Raayonit categories and the full grid. `?category=` pre-selects a category.
+// Buy action, then the search, all 18 Raayonit categories and the full grid. `?category=` pre-selects a category, `?q=` fills the search.
 function Catalog() {
   const { t } = useLang()
   const params = useSearchParams()
@@ -21,6 +21,7 @@ function Catalog() {
   const flagship = useMemo(() => raayonit.find(isFlagship) ?? null, [raayonit])
   const chains = useMemo(() => raayonit.filter((o) => !isFlagship(o)), [raayonit])
   const category = params.get('category') ?? undefined
+  const q = params.get('q') ?? undefined
   return (
     <MemberPageShell fluid>
       <MemberColumn wide>
@@ -31,7 +32,7 @@ function Catalog() {
         </div>
       </MemberColumn>
       <div className="pb-28 sm:pb-12">
-        <RaayonitTab key={category ?? 'all'} offers={chains} initialCategory={category} />
+        <RaayonitTab key={`${category ?? 'all'}|${q ?? ''}`} offers={chains} initialCategory={category} initialQuery={q} />
       </div>
     </MemberPageShell>
   )
