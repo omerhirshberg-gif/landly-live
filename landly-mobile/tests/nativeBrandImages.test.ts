@@ -27,5 +27,18 @@ describe('native Raayonit image resolution', () => {
     const snap = JSON.parse(read('lib/inventory/raayonitCatalog.snapshot.json')) as { brands: { logoFile?: string }[] }
     for (const b of snap.brands) if (b.logoFile) { expect(web, b.logoFile).toContain(b.logoFile); expect(existsSync(`landly-mobile/assets/raayonit-brands/${b.logoFile}`)).toBe(true) }
   })
+  it('resolves every brand picture through brandImageSource, never a raw stored link', () => {
+    for (const f of ['BrandLogoWall', 'FindBusinessSheet']) {
+      const src = read(`landly-mobile/src/components/${f}.tsx`)
+      expect(src, f).toContain('brandImageSource(')
+      expect(src, f).not.toMatch(/<BrandMedia source=\{(?:o|offer)\.imageUrl/)
+    }
+    expect(read('landly-mobile/src/lib/raayonitBrandImages.ts')).toContain('export function brandImageSource')
+  })
+  it('keeps the website logo wall tiles eager so a mobile browser never leaves them blank', () => {
+    const wall = read('components/home/BrandLogoWall.tsx')
+    const tiles = wall.match(/<BrandMedia [^>]*\/>/g) ?? []
+    expect(tiles).toHaveLength(2)
+    for (const t of tiles) expect(t).toContain(' eager')
+  })
 })
-

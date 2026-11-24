@@ -4,8 +4,8 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { translations } from '@/lib/i18n/translations'
 import { RAAYONIT_ISSUER } from '@/lib/payments/issuer'
-import { buildOfferClass, buildOfferObject, googleObjectId, signSaveJwt, GOOGLE_SAVE_URL } from '@/lib/wallet/googlePass'
-import { ensureOfferClass, getWalletAccessToken, resetGoogleWalletCaches, upsertOfferObject } from '@/lib/wallet/googleWalletApi'
+import { buildGenericClass, buildGenericObject, googleObjectId, signSaveJwt, GOOGLE_SAVE_URL } from '@/lib/wallet/googlePass'
+import { ensureGenericClass, getWalletAccessToken, resetGoogleWalletCaches, upsertGenericObject } from '@/lib/wallet/googleWalletApi'
 import { resolveGoogleWalletConfig, GOOGLE_CLASS_SUFFIX_DEV, GOOGLE_CLASS_SUFFIX_PROD } from '@/lib/wallet/passConfig'
 import type { PassVoucher } from '@/lib/wallet/passVoucher'
 import { canOfferWalletPass, googleWalletBadgePath, googleWalletSupport } from '@/lib/wallet/walletSupport'
@@ -39,15 +39,15 @@ const voucher: PassVoucher = {
   redemptionKind: null, issuer: null, externalCode: null, amountAgorot: 7900, faceValueAgorot: 10000, savingsAgorot: 2100,
 }
 const raayonit: PassVoucher = { ...voucher, id: 'uid123_fox', redeemToken: null, redemptionKind: 'code_only', issuer: RAAYONIT_ISSUER, externalCode: 'RY-4821-7730-19' }
-const options = { discountPercent: 21, imageUrl: 'https://cdn.example/photo.jpg', holderName: 'Dana' }
+const options = { discountPercent: 21, holderName: 'Dana' }
 
 describe('Google Wallet config: DEV and PROD stay apart', () => {
   it('production signs for the prod class with the landly-be752 account, dev and preview for the dev class', () => {
     expect(prod().classId).toBe(`${ISSUER}.${GOOGLE_CLASS_SUFFIX_PROD}`)
-    expect(GOOGLE_CLASS_SUFFIX_PROD).toBe('golandly_voucher_prod')
+    expect(GOOGLE_CLASS_SUFFIX_PROD).toBe('golandly_generic_prod')
     expect(dev().classId).toBe(`${ISSUER}.${GOOGLE_CLASS_SUFFIX_DEV}`)
-    expect(GOOGLE_CLASS_SUFFIX_DEV).toBe('golandly_voucher_dev')
-    expect(resolveGoogleWalletConfig(env('landly-dev'), 'local')).toMatchObject({ mode: 'ready', classSuffix: 'golandly_voucher_dev' })
+    expect(GOOGLE_CLASS_SUFFIX_DEV).toBe('golandly_generic_dev')
+    expect(resolveGoogleWalletConfig(env('landly-dev'), 'local')).toMatchObject({ mode: 'ready', classSuffix: 'golandly_generic_dev' })
   })
   it('refuses the wrong project for the deployment, either way round', () => {
     expect(resolveGoogleWalletConfig(env('landly-dev'), 'production')).toMatchObject({ mode: 'unavailable' })
@@ -78,7 +78,7 @@ describe('the save link JWT', () => {
     const claims = JSON.parse(Buffer.from(payload!, 'base64url').toString())
     expect(claims).toEqual({
       iss: config.serviceAccountEmail, aud: 'google', typ: 'savetowallet', iat: 1_700_000_000,
-      origins: ['https://www.golandly.com'], payload: { offerObjects: [{ id: objectId }] },
+      origins: ['https://www.golandly.com'], payload: { genericObjects: [{ id: objectId }] },
     })
     expect(createVerify('RSA-SHA256').update(`${header}.${payload}`).verify(PUBLIC_PEM, Buffer.from(signature!, 'base64url'))).toBe(true)
     expect(createVerify('RSA-SHA256').update(`${header}.${payload}x`).verify(PUBLIC_PEM, Buffer.from(signature!, 'base64url'))).toBe(false)
@@ -96,34 +96,54 @@ describe('the save link JWT', () => {
   })
 })
 
-describe('the OfferClass', () => {
-  it('is the environment\'s class with the title in all five languages', () => {
-    const cls = buildOfferClass(prod())
-    expect(cls).toMatchObject({ id: `${ISSUER}.golandly_voucher_prod`, issuerName: 'GoLandly', redemptionChannel: 'INSTORE', title: 'GoLandly voucher' })
-    expect(cls.localizedTitle.translatedValues.map((v) => v.language).sort()).toEqual(['es', 'fr', 'he', 'ru'])
-    expect(cls.titleImage?.sourceUri.uri).toBe('https://www.golandly.com/wallet/google/logo.png')
-    expect(buildOfferClass(resolveGoogleWalletConfig(env('landly-dev'), 'local') as ReturnType<typeof dev>)).not.toHaveProperty('titleImage')
+describe('the GenericClass', () => {
+  it('is the environment\'s class, with the issuer | redemption and order | valid-until rows', () => {
+    const cls = buildGenericClass(prod())
+    expect(cls.id).toBe(`${ISSUER}.golandly_generic_prod`)
+    const rows = cls.classTemplateInfo.cardTemplateOverride.cardRowTemplateInfos.map((r) => [r.twoItems.startItem.firstValue.fields[0]!.fieldPath, r.twoItems.endItem.firstValue.fields[0]!.fieldPath])
+    expect(rows).toEqual([["object.textModulesData['issuer']", "object.textModulesData['redemption']"], ["object.textModulesData['order']", "object.textModulesData['validUntil']"]])
+    const details = cls.classTemplateInfo.detailsTemplateOverride.detailsItemInfos.map((d) => d.item.firstValue.fields[0]!.fieldPath)
+    expect(details.some((p) => /\['(issuer|redemption|order|validUntil)'\]/.test(p))).toBe(false)
+    expect(details).toContain("object.textModulesData['how']")
+    expect(buildGenericClass(dev()).id).toBe(`${ISSUER}.golandly_generic_dev`)
   })
 })
 
-describe('the OfferObject', () => {
-  const object = buildOfferObject(voucher, prod(), options)
+describe('the GenericObject', () => {
+  const object = buildGenericObject(voucher, prod(), options)
   const mod = (o: typeof object, id: string) => o.textModulesData.find((m) => m.id === id)
+  const lang = (l: { translatedValues: { language: string; value: string }[] }, code: string) => l.translatedValues.find((v) => v.language === code)?.value
 
   it('is a QR of the redeem link with the code as text, valid until expiry', () => {
     expect(object.barcode).toEqual({ type: 'QR_CODE', value: `https://golandly.com/redeem/${'b'.repeat(32)}`, alternateText: '123456' })
     expect(object.validTimeInterval).toEqual({ end: { date: '2031-11-17T21:59:59.000Z' } })
-    expect(object).toMatchObject({ state: 'ACTIVE', classId: `${ISSUER}.golandly_voucher_prod`, locations: [{ latitude: 32.08, longitude: 34.78 }] })
-    expect(object.heroImage?.sourceUri.uri).toBe('https://cdn.example/photo.jpg')
+    expect(object).toMatchObject({ state: 'ACTIVE', classId: `${ISSUER}.golandly_generic_prod`, hexBackgroundColor: '#0B1B3D' })
+  })
+  it('titles the card with the offer, never a fixed string, under "GoLandly" and the merchant', () => {
+    expect(object.cardTitle.defaultValue.value).toBe('GoLandly')
+    expect(object.header.defaultValue.value).toBe('Coffee for two')
+    expect(object.subheader.defaultValue.value).toBe('Cafe')
+    const r = buildGenericObject(raayonit, prod(), options)
+    expect(r.subheader.defaultValue.value).toContain('Raayonit Ltd.')
+    expect(r.header.defaultValue.value).not.toBe('GoLandly voucher')
+  })
+  it('fills the four row fields every time, and puts the dash only where a value is missing', () => {
+    expect(['issuer', 'redemption', 'order', 'validUntil'].map((id) => !!mod(object, id)?.body)).toEqual([true, true, true, true])
+    expect(mod(object, 'order')!.body).toBe('#1001')
+    expect(mod(object, 'validUntil')!.body).toBe('17 Nov 2031')
+    const bare = buildGenericObject({ ...voucher, displayOrderNumber: '', expiresAt: null }, prod(), options)
+    expect(mod(bare, 'order')!.body).toBe('—')
+    expect(mod(bare, 'validUntil')!.body).toBe('—')
+    expect(bare).not.toHaveProperty('validTimeInterval')
   })
   it('is a Code 128 of the code for a code-only (Raayonit) voucher, and never a QR', () => {
-    const o = buildOfferObject(raayonit, prod(), options)
+    const o = buildGenericObject(raayonit, prod(), options)
     expect(o.barcode).toEqual({ type: 'CODE_128', value: 'RY-4821-7730-19', alternateText: 'RY-4821-7730-19' })
     expect(mod(o, 'issuer')!.body).toContain('Raayonit Ltd.')
     expect(mod(o, 'code')!.body).toBe('RY-4821-7730-19')
   })
   it('hides Raayonit\'s name until the display flag is on (the route clears the issuer)', () => {
-    const o = buildOfferObject({ ...raayonit, issuer: null }, prod(), options)
+    const o = buildGenericObject({ ...raayonit, issuer: null }, prod(), options)
     expect(JSON.stringify(o)).not.toContain('Raayonit Ltd.')
   })
   it('carries the details in all five languages, English as the default', () => {
@@ -133,20 +153,35 @@ describe('the OfferObject', () => {
     expect(mod(object, 'terms')!.body).toBe('One per table')
     expect(mod(object, 'member')!.body).toBe('Dana')
     expect(mod(object, 'discount')!.body).toBe('21%')
+    expect(lang(object.header, 'he') ?? 'Coffee for two').toBe('Coffee for two')
   })
-  it('brackets codes, order numbers and percentages with isolate marks in Hebrew only', () => {
+  it('brackets codes, order numbers, dates and percentages with isolate marks in Hebrew only', () => {
     const order = mod(object, 'order')!
-    const he = order.localizedBody.translatedValues.find((v) => v.language === 'he')!.value
-    expect(he).toBe('⁨#1001⁩')
+    expect(lang(order.localizedBody, 'he')).toBe('⁨#1001⁩')
     expect(order.localizedBody.defaultValue.value).toBe('#1001')
-    expect(order.localizedBody.translatedValues.find((v) => v.language === 'fr')?.value ?? '#1001').toBe('#1001')
-    const code = mod(buildOfferObject(raayonit, prod(), options), 'code')!
-    expect(code.localizedBody.translatedValues.find((v) => v.language === 'he')!.value).toBe('⁨RY-4821-7730-19⁩')
-    expect(mod(object, 'discount')!.localizedBody.translatedValues.find((v) => v.language === 'he')!.value).toBe('⁨21%⁩')
+    expect(lang(order.localizedBody, 'fr') ?? '#1001').toBe('#1001')
+    expect(lang(mod(object, 'validUntil')!.localizedBody, 'he')).toMatch(/^⁨.+⁩$/)
+    expect(lang(mod(buildGenericObject(raayonit, prod(), options), 'code')!.localizedBody, 'he')).toBe('⁨RY-4821-7730-19⁩')
+    expect(lang(mod(object, 'discount')!.localizedBody, 'he')).toBe('⁨21%⁩')
   })
-  it('puts a photo on the pass only when it is a public https URL Google can reach', () => {
-    expect(buildOfferObject(voucher, prod(), { ...options, imageUrl: 'http://x/y.jpg' })).not.toHaveProperty('heroImage')
-    expect(buildOfferObject(voucher, resolveGoogleWalletConfig(env('landly-dev'), 'local') as ReturnType<typeof dev>, options)).not.toHaveProperty('heroImage')
+  it('always serves the logo and hero from a public https origin, never localhost', () => {
+    expect(object.logo.sourceUri.uri).toBe('https://www.golandly.com/wallet/google/logo.png')
+    expect(object.heroImage.sourceUri.uri).toBe('https://www.golandly.com/wallet/google/hero.png')
+    const local = resolveGoogleWalletConfig(env('landly-dev'), 'local') as ReturnType<typeof dev>
+    expect(local.siteOrigin).toBeNull()
+    const o = buildGenericObject(voucher, local, options)
+    expect(o.logo.sourceUri.uri).toBe('https://www.golandly.com/wallet/google/logo.png')
+    expect(o.heroImage.sourceUri.uri).toBe('https://www.golandly.com/wallet/google/hero.png')
+    expect(JSON.stringify(o)).not.toMatch(/localhost|127\.0\.0\.1|http:\/\//)
+  })
+  it('takes WALLET_ASSET_ORIGIN only when it is a public https origin', () => {
+    const origin = (value: string) => (resolveGoogleWalletConfig(env('landly-dev', { WALLET_ASSET_ORIGIN: value }), 'local') as ReturnType<typeof dev>).assetOrigin
+    expect(origin('https://assets.example.com/path')).toBe('https://assets.example.com')
+    for (const bad of ['http://assets.example.com', 'https://localhost:3000', 'https://192.168.1.5', 'not a url', '']) expect(origin(bad)).toBe('https://www.golandly.com')
+    expect(dev().assetOrigin).toBe(dev().siteOrigin ?? 'https://www.golandly.com')
+  })
+  it('links to the member area on the active origin, never to a voucher page', () => {
+    expect(object.linksModuleData.uris[0]).toMatchObject({ uri: 'https://www.golandly.com/member', description: 'Open GoLandly' })
   })
   it('names no uid or voucher id anywhere on the object', () => {
     expect(JSON.stringify(object)).not.toContain('uid123')
@@ -181,30 +216,30 @@ describe('the Wallet REST client', () => {
   })
   it('creates the class once when Google says 404, and not again in this process', async () => {
     answers = (_u, m) => (m === 'GET' ? { status: 404 } : { status: 200 })
-    await ensureOfferClass(dev(), 'tok')
-    await ensureOfferClass(dev(), 'tok')
+    await ensureGenericClass(dev(), 'tok')
+    await ensureGenericClass(dev(), 'tok')
     expect(calls.map((c) => c.method)).toEqual(['GET', 'POST'])
-    expect(JSON.parse(calls[1]!.body!).id).toBe(`${ISSUER}.golandly_voucher_dev`)
+    expect(JSON.parse(calls[1]!.body!).id).toBe(`${ISSUER}.golandly_generic_dev`)
   })
   it('leaves an existing class alone, and treats a concurrent create (409) as done', async () => {
     answers = () => ({ status: 200 })
-    await ensureOfferClass(dev(), 'tok')
+    await ensureGenericClass(dev(), 'tok')
     expect(calls.map((c) => c.method)).toEqual(['GET'])
     resetGoogleWalletCaches()
     calls = []
     answers = (_u, m) => (m === 'GET' ? { status: 404 } : { status: 409 })
-    await expect(ensureOfferClass(dev(), 'tok')).resolves.toBeUndefined()
+    await expect(ensureGenericClass(dev(), 'tok')).resolves.toBeUndefined()
   })
   it('inserts the object, then patches it on a 409, and fails closed on anything else', async () => {
     answers = (_u, m) => (m === 'POST' ? { status: 409 } : { status: 200 })
-    await upsertOfferObject('tok', { id: 'a.b' })
-    expect(calls.map((c) => `${c.method} ${c.url.split('/v1')[1]}`)).toEqual(['POST /offerObject', 'PATCH /offerObject/a.b'])
+    await upsertGenericObject('tok', { id: 'a.b' })
+    expect(calls.map((c) => `${c.method} ${c.url.split('/v1')[1]}`)).toEqual(['POST /genericObject', 'PATCH /genericObject/a.b'])
     answers = () => ({ status: 403 })
-    await expect(upsertOfferObject('tok', { id: 'a.b' })).rejects.toMatchObject({ stage: 'object', status: 403 })
+    await expect(upsertGenericObject('tok', { id: 'a.b' })).rejects.toMatchObject({ stage: 'object', status: 403 })
   })
   it('keeps Google\'s own error message for the setup script, with anything credential-shaped redacted', async () => {
     answers = () => ({ status: 403, json: { error: { code: 403, message: 'Permission denied.', errors: [{ reason: 'permissionDenied' }], echo: 'Bearer ya29.secret-token' } } })
-    const error = await upsertOfferObject('tok', { id: 'a.b' }).catch((e) => e)
+    const error = await upsertGenericObject('tok', { id: 'a.b' }).catch((e) => e)
     expect(error.detail).toContain('Permission denied.')
     expect(error.detail).toContain('permissionDenied')
     expect(error.detail).not.toContain('ya29')
@@ -369,7 +404,7 @@ describe('what to show where', () => {
 })
 
 describe('Google\'s badge artwork and copy', () => {
-  it('ships the official SVGs for the five languages, identical on the web and in the app, never mirrored or recoloured', () => {
+  it('ships the official SVGs and their PNG renderings for the five languages, never mirrored or recoloured', () => {
     for (const lang of ['en', 'he', 'ru', 'fr', 'es']) {
       const web = readFileSync(`public/wallet/google/${lang}.svg`, 'utf8')
       expect(existsSync(`landly-mobile/assets/wallet/google-${lang}.svg`)).toBe(true)
@@ -377,10 +412,13 @@ describe('Google\'s badge artwork and copy', () => {
       expect(web).toMatch(/^<svg width="\d+" height="55" viewBox="0 0 \d+ 55"/)
       expect(web).toContain('fill="#1F1F1F"')
       expect(web).not.toMatch(/scale\(-|transform/)
-      expect(readFileSync('landly-mobile/src/lib/googleWalletBadges.ts', 'utf8')).toContain(JSON.stringify(web.trim()))
+      // The site's <img> and the app's bitmaps (1x/2x/3x) are renderings of that one artwork: no SVG is drawn on a phone.
+      expect(existsSync(`public/wallet/google/${lang}.png`)).toBe(true)
+      for (const suffix of ['', '@2x', '@3x']) expect(existsSync(`landly-mobile/assets/wallet/google-${lang}${suffix}.png`)).toBe(true)
+      expect(readFileSync('landly-mobile/src/lib/googleWalletBadges.ts', 'utf8')).toContain(`require('../../assets/wallet/google-${lang}.png')`)
     }
-    expect(googleWalletBadgePath('he')).toBe('/wallet/google/he.svg')
-    expect(existsSync('public/wallet/google/logo.png')).toBe(true)
+    expect(googleWalletBadgePath('he')).toBe('/wallet/google/he.png')
+    for (const file of ['logo.png', 'hero.png']) expect(existsSync(`public/wallet/google/${file}`)).toBe(true)
   })
   it('never mirrors or dims the badge in the components', () => {
     const web = readFileSync('components/member/AddToGoogleWallet.tsx', 'utf8')
@@ -388,12 +426,14 @@ describe('Google\'s badge artwork and copy', () => {
     const native = readFileSync('landly-mobile/src/components/AddToGoogleWallet.tsx', 'utf8')
     expect(native).toContain('BADGE_HEIGHT = 48')
     expect(native).not.toMatch(/scaleX/)
+    // A bitmap, never react-native-svg (its Fabric renderer doubled the Hebrew label on Android).
+    expect(native).not.toMatch(/react-native-svg|SvgXml/)
     expect(native.slice(native.indexOf('<Pressable'), native.indexOf('</Pressable>'))).not.toMatch(/opacity|pressed/)
   })
   it('has the new copy in every language', () => {
     for (const table of Object.values(translations)) {
       expect(table.wallet_google_add_label).toMatch(/Google Wallet/)
-      for (const key of ['wallet_google_class_title', 'wallet_google_desktop_hint', 'wallet_google_open_in_chrome'] as const) expect(table[key].length).toBeGreaterThan(0)
+      for (const key of ['wallet_google_class_title', 'wallet_google_desktop_hint', 'wallet_google_open_in_chrome', 'wallet_google_link_label'] as const) expect(table[key].length).toBeGreaterThan(0)
     }
   })
 })

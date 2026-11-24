@@ -19,11 +19,11 @@ import { colors } from '../theme'
 
 // "Where to redeem" (web: components/raayonit/RaayonitTab.tsx): a title, one search field with a Filter button beside it (Category and Region
 // live in the button's bottom sheet, RaayonitFilterSheet.tsx), a summary bar with "Clear filters" while any filter is on, the live result
-// count and a grid of framed venue cards. Tapping a card opens its page. `initialCategory` (?category=) pre-selects a category.
-export default memo(function RaayonitTab({ offers, initialCategory }: { offers: OfferDocument[]; initialCategory?: string }) {
+// count and a grid of framed venue cards. Tapping a card opens its page. `initialCategory` (?category=) pre-selects a category; `initialQuery` (?q=) fills the search.
+export default memo(function RaayonitTab({ offers, initialCategory, initialQuery }: { offers: OfferDocument[]; initialCategory?: string; initialQuery?: string }) {
   const { t, lang, isRtl } = useLang()
   const [filters, setFilters] = useState<RaayonitFilterValues>({ ...NO_RAAYONIT_FILTERS, category: (initialCategory as RaayonitCategoryId | undefined) ?? 'all' })
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery ?? '')
   const q = normalizeQuery(query)
   const allGroups = useMemo(() => chainsByCategory(offers, lang, { membership: true }), [offers, lang])
   const regions = useMemo(() => availableRegionFilters(offers), [offers])

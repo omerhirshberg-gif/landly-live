@@ -13,6 +13,7 @@ import { redemptionSteps, instructionSteps } from '@shared/offers/redemption'
 import { normalizeQuery } from '@shared/perks/perksFilter'
 import AppText from './AppText'
 import BrandMedia from './BrandMedia'
+import { brandImageSource } from '../lib/raayonitBrandImages'
 import ContentText from './ContentText'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
@@ -68,7 +69,7 @@ export default function FindBusinessSheet({ chains, only, onClose }: { chains: O
                 {shown.map((o) => (
                   <ScalePressable key={o.id} accessibilityRole="button" accessibilityLabel={localizedBusinessName(o, lang).text} onPress={() => setPicked(o)} style={styles.row}>
                     <View style={styles.thumb}>
-                      <BrandMedia source={o.imageUrl || MARK} cover={!!o.imageUrl && o.logoKind === 'photo'} recyclingKey={o.id} inset={8} />
+                      <BrandMedia source={brandImageSource(o.imageUrl) ?? MARK} cover={!!o.imageUrl && o.logoKind === 'photo'} recyclingKey={o.id} inset={8} />
                     </View>
                     <View style={styles.rowCopy}>
                       <AppText autoDir numberOfLines={1} style={styles.rowName}>{localizedBusinessName(o, lang).text}</AppText>
@@ -99,7 +100,7 @@ function BusinessDetail({ offer }: { offer: OfferDocument }) {
     <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.detail}>
       <View style={styles.rowPlain}>
         <View style={styles.thumb}>
-          <BrandMedia source={offer.imageUrl || MARK} cover={!!offer.imageUrl && offer.logoKind === 'photo'} recyclingKey={offer.id} inset={8} />
+          <BrandMedia source={brandImageSource(offer.imageUrl) ?? MARK} cover={!!offer.imageUrl && offer.logoKind === 'photo'} recyclingKey={offer.id} inset={8} />
         </View>
         <View style={styles.rowCopy}>
           <AppText autoDir numberOfLines={2} style={styles.detailName}>{localizedBusinessName(offer, lang).text}</AppText>

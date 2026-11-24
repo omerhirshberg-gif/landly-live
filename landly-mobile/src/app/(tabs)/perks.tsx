@@ -23,6 +23,8 @@ import LocationFilterBar from '../../components/LocationFilterBar'
 import CategoryGrid from '../../components/CategoryGrid'
 import LiveChainsSection from '../../components/LiveChainsSection'
 import PerksSoonCard from '../../components/PerksSoonCard'
+import RaayonitReferralCard from '../../components/RaayonitReferralCard'
+import { matchRaayonitChains } from '@shared/perks/raayonitReferral'
 import FeedCell from '../../components/FeedCell'
 import SortSheet from '../../components/SortSheet'
 import FilterSheet, { type FilterFacets, type FilterValues } from '../../components/FilterSheet'
@@ -71,6 +73,7 @@ type PerksRow =
   | { key: 'nationwide'; type: 'nationwide' }
   | { key: string; type: 'offer'; offer: OfferDocument; index: number; nationwide?: boolean }
   | { key: 'empty'; type: 'empty' }
+  | { key: 'referral'; type: 'referral' }
   | { key: 'soon'; type: 'soon' }
   | { key: 'browse'; type: 'browse' }
   | { key: 'live'; type: 'live' }
@@ -137,6 +140,8 @@ export default function PerksScreen() {
   const openCategory = useCallback((next: string) => router.push({ pathname: '/category/[category]', params: { category: next } }), [router])
 
   const normalizedQuery = normalizeQuery(appliedQuery)
+  // A search that names a business honouring the Raayonit Card (only while it has no direct perk to show, see the rows below).
+  const referralMatches = useMemo(() => (showRaayonit && normalizedQuery ? matchRaayonitChains(raayonitOffers, appliedQuery) : []), [showRaayonit, normalizedQuery, raayonitOffers, appliedQuery])
   // Nothing chosen: the screen is the overview.
   const browsing = !hasActivePerkFilters({ query, category, sort, kind, brand })
   const listBrowsing = !hasActivePerkFilters({ query: appliedQuery, category: listCategory, sort: listSort, kind, brand })
@@ -192,7 +197,11 @@ export default function PerksScreen() {
     // Explore Perks is GoLandly's own perks: the direct perks, or a calm note while there are none. A search or a filter narrows them alone.
     if (landlyEmpty) {
       // A search still names the categories it matches (there is nothing else to filter).
-      if (normalizedQuery) return matchingTiles.length > 0 ? [{ key: 'tiles', type: 'tiles' }] : [{ key: 'empty', type: 'empty' }]
+      if (normalizedQuery) {
+        const refRow: PerksRow[] = referralMatches.length > 0 ? [{ key: 'referral', type: 'referral' }] : []
+        if (matchingTiles.length > 0) return [{ key: 'tiles', type: 'tiles' }, ...refRow]
+        return refRow.length > 0 ? refRow : [{ key: 'empty', type: 'empty' }]
+      }
       // The live Raayonit chains lead (they work today), then the quiet "on their way" note and the categories to browse.
       if (showRaayonit && chainsPreview.length > 0) list.push({ key: 'live', type: 'live' })
       list.push({ key: 'soon', type: 'soon' }, { key: 'browse', type: 'browse' })
@@ -211,11 +220,13 @@ export default function PerksScreen() {
       nearbyList.forEach((offer, index) => list.push({ key: `o:${offer.id}`, type: 'offer', offer, index }))
       if (nationwideList.length > 0) list.push({ key: 'nationwide', type: 'nationwide' })
       nationwideList.forEach((offer, index) => list.push({ key: `o:${offer.id}`, type: 'offer', offer, index, nationwide: true }))
+    } else if (referralMatches.length > 0) {
+      list.push({ key: 'referral', type: 'referral' })
     } else if (offers !== null && matchingTiles.length === 0) {
       list.push({ key: 'empty', type: 'empty' })
     }
     return list
-  }, [landlyEmpty, normalizedQuery, showRaayonit, chainsPreview, listBrowsing, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, nearbyList, nationwideList, offers])
+  }, [landlyEmpty, normalizedQuery, showRaayonit, chainsPreview, listBrowsing, newOffers, bestsellerOffers, categoryRails, matchingTiles, visible, nearbyList, nationwideList, offers, referralMatches])
 
   // Which rows are on screen: a rail's autoplay runs only while it is.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(() => new Set(['highlights']))
@@ -295,6 +306,8 @@ export default function PerksScreen() {
         )
       case 'live':
         return <LiveChainsSection offers={chainsPreview} chainCount={chainCount} />
+      case 'referral':
+        return <RaayonitReferralCard matches={referralMatches} query={appliedQuery} chainCount={chainCount} />
       case 'empty':
         return (
           <View style={styles.empty} accessibilityLiveRegion="polite">

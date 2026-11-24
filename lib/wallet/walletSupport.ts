@@ -47,7 +47,7 @@ export function googleWalletSupport(userAgent: string, maxTouchPoints: number): 
   return /Macintosh|Windows|Linux|CrOS/.test(userAgent) ? 'badge' : 'none'
 }
 
-/** Google's official badge artwork (public/wallet/google/, see its README.txt): en, he, ru, fr, es. */
+/** Google's official badge artwork as a PNG rendering of its SVG (public/wallet/google/, see its README.txt): en, he, ru, fr, es. */
 export function googleWalletBadgePath(lang: string): string {
-  return `/wallet/google/${lang}.svg`
+  return `/wallet/google/${lang}.png`
 }

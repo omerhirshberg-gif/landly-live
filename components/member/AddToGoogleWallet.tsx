@@ -106,6 +106,7 @@ function GoogleBadge({ busy, onPress }: { busy: boolean; onPress: () => void }) 
         src={googleWalletBadgePath(attempt === 0 ? lang : 'en')}
         alt=""
         draggable={false}
+        height={48}
         onError={() => setAttempt((value) => (value === 0 ? 1 : 2))}
         className="block h-12 w-auto max-w-full"
       />

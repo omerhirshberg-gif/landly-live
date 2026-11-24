@@ -12,6 +12,7 @@ import ScalePressable from './ScalePressable'
 import SectionHeader from './SectionHeader'
 import { useLang } from '../i18n/LangProvider'
 import { openOffer } from '../lib/openOffer'
+import { brandImageSource } from '../lib/raayonitBrandImages'
 import { useLayout } from '../lib/useLayout'
 import { colors } from '../theme'
 
@@ -36,7 +37,7 @@ export default memo(function BrandLogoWall({ offers }: { offers: OfferDocument[]
             const name = localizedBusinessName(o, lang).text
             return (
               <ScalePressable key={o.id} accessibilityRole="button" accessibilityLabel={name} onPress={() => openOffer(o)} style={styles.tile}>
-                <BrandMedia source={o.imageUrl} cover={o.logoKind === 'photo'} recyclingKey={o.id} inset={8} />
+                <BrandMedia source={brandImageSource(o.imageUrl)} cover={o.logoKind === 'photo'} recyclingKey={o.id} inset={8} />
               </ScalePressable>
             )
           })}

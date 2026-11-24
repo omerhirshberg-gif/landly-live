@@ -21,6 +21,8 @@ import SectionDivider from '@/components/ui/SectionDivider'
 import { OfferGridSkeleton } from '@/components/ui/Skeleton'
 import MemberPageShell, { MemberColumn, PAGE_TITLE_GAP, PageTitle } from '@/components/layout/MemberPageShell'
 import { PerksUrlStateProvider, usePerksUrlContext } from '@/components/perks/PerksUrlStateContext'
+import RaayonitReferralCard from '@/components/perks/RaayonitReferralCard'
+import { matchRaayonitChains } from '@/lib/perks/raayonitReferral'
 import { usePerksSearch } from '@/lib/perks/PerksSearchProvider'
 import BackButton from '@/components/navigation/BackButton'
 import { useLang } from '@/lib/i18n/useLang'
@@ -73,6 +75,8 @@ function PerksBrowser() {
   const listMinDiscount = useDeferredValue(minDiscount)
   const filtering = hasActivePerkFilters({ query: appliedQuery, category, sort, method, minDiscount, kind, brand })
   const normalizedQuery = normalizeQuery(listQuery)
+  // A search that names a business honouring the Raayonit Card; shown only while it finds no direct perk (below).
+  const referralMatches = useMemo(() => (showRaayonit && normalizedQuery ? matchRaayonitChains(raayonitOffers, listQuery) : []), [showRaayonit, normalizedQuery, raayonitOffers, listQuery])
 
   const originCoords = origin?.coords ?? null
   // Near me / a picked area narrows every list on the page (lib/perks/locationFilter.ts).
@@ -174,7 +178,9 @@ function PerksBrowser() {
               <ShareFriendButton className="mt-8" />
             </section>
           ) : (
-            matchingTiles.length === 0 && (
+            <>
+              {referralMatches.length > 0 && <RaayonitReferralCard matches={referralMatches} query={listQuery} chainCount={chainCount} />}
+              {referralMatches.length === 0 && matchingTiles.length === 0 && (
               <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
                 {normalizedQuery ? <Search aria-hidden="true" strokeWidth={1.75} /> : <Tags aria-hidden="true" strokeWidth={1.75} />}
                 <div className="font-bold text-ink text-base mb-1">
@@ -182,7 +188,8 @@ function PerksBrowser() {
                 </div>
                 <p className="text-sm text-body max-w-xs">{normalizedQuery ? t('cats_search_no_results_sub') : t('deals_empty_sub')}</p>
               </div>
-            )
+              )}
+            </>
           )}
         </div>
       ) : (

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
-import { SvgXml } from 'react-native-svg'
 import { useAuth } from '@shared/firebase/useAuth'
 import { fetchWalletAvailability, requestGoogleWalletLink, walletFailureMessage, type WalletFailure } from '@shared/wallet/walletClient'
 import { canOfferWalletPass, googleWalletSupport } from '@shared/wallet/walletSupport'
@@ -21,8 +20,11 @@ const NOTICE_IN = new Keyframe({
 }).duration(180)
 
 // Google's rules for the badge: its own artwork only, unmodified (never recoloured, restyled,
-// animated or mirrored: SvgXml draws it as is, whatever the layout direction), at least 48dp
-// high, with 8dp clear on every side, in the language's own version else English.
+// animated or mirrored: an Image draws it as is, whatever the layout direction), at least 48dp
+// high, with 8dp clear on every side, in the language's own version else English. It is a bitmap
+// (1x/2x/3x, rendered from Google's SVG by scripts/generate-wallet-assets.mjs), not an SVG: the
+// Fabric SVG renderer on Android drew the badge's fill and its hairline outline twice and doubled
+// the label.
 const BADGE_HEIGHT = 48
 const CLEAR_SPACE = 8
 
@@ -93,7 +95,7 @@ export default function AddToGoogleWallet({ voucher }: { voucher: Voucher }) {
       <View style={styles.row}>
         <View style={styles.badgeRow}>
           <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy }} onPress={add} style={styles.badge}>
-            <SvgXml xml={badge.xml} width={width} height={BADGE_HEIGHT} />
+            <Image source={badge.source} style={{ width, height: BADGE_HEIGHT }} resizeMode="contain" fadeDuration={0} accessibilityIgnoresInvertColors />
           </Pressable>
           {busy && <ActivityIndicator style={styles.spinner} color={colors.brand} accessibilityLabel={t('wallet_add_busy')} />}
         </View>

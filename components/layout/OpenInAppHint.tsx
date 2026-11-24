@@ -15,7 +15,7 @@ function isPhoneOrTablet(): boolean {
   return /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1
 }
 
-// A quiet "Open in app" card for an offer or voucher page opened in a phone's
+// A quiet "Open in app" bar for an offer or voucher page opened in a phone's
 // browser (e.g. from the order confirmation email). It links to the same
 // screen in the Expo app over the landly:// scheme (lib/navigation/deepLinks.ts)
 // and never redirects by itself, so a visitor without the app is never sent to
@@ -60,14 +60,14 @@ export function OpenInAppBar({ t, appUrl, onDismiss, className = '' }: {
     <div
       role="region"
       aria-label={t('openInApp_text')}
-      className={`sm:hidden flex items-center gap-3 rounded-2xl border border-slate-100 bg-white ps-3 pe-1.5 py-2 shadow-card ${className}`}
+      className={`sm:hidden flex items-center gap-2.5 rounded-xl border border-slate-200/80 bg-white ps-3 pe-2 py-2 shadow-[0_1px_2px_rgb(15_23_42/0.04),0_4px_14px_rgb(15_23_42/0.05)] ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo-mark.png" alt="" width={28} height={27} className="h-7 w-7 flex-shrink-0 object-contain" />
-      <p className="flex-1 min-w-0 text-meta font-semibold leading-snug text-slate-700">{t('openInApp_text')}</p>
+      <p className="min-w-0 flex-1 text-meta font-semibold leading-snug text-slate-700">{t('openInApp_text')}</p>
       <a
         href={appUrl}
-        className="tap-target flex-shrink-0 rounded-xl bg-brand px-4 py-1.5 text-meta font-bold text-white whitespace-nowrap transition-colors hover:bg-brandDark"
+        className="inline-flex h-8 flex-shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-brand px-3.5 text-[13px] font-semibold tracking-tight text-white transition-colors hover:bg-brandDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         {t('openInApp_button')}
       </a>
@@ -75,9 +75,9 @@ export function OpenInAppBar({ t, appUrl, onDismiss, className = '' }: {
         type="button"
         onClick={onDismiss}
         aria-label={t('openInApp_dismiss')}
-        className="tap-target inline-flex flex-shrink-0 items-center justify-center text-slate-400 transition-colors hover:text-slate-600"
+        className="-my-1 -ms-1 -me-1 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
       >
-        <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+        <X aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2} />
       </button>
     </div>
   )

@@ -84,16 +84,19 @@ export function getPassConfig(): PassConfig {
 
 // ---------------------------------------------------------------------------
 // Google Wallet (lib/wallet/googlePass.ts). One issuer serves both projects, so
-// DEV and PROD stay apart by class id: production signs for `golandly_voucher_prod`
-// and everything else for `golandly_voucher_dev`, with the Firebase Admin service
+// DEV and PROD stay apart by class id: production signs for `golandly_generic_prod`
+// and everything else for `golandly_generic_dev` (Generic passes; the older Offer classes
+// `golandly_voucher_*` stay registered so passes already saved keep working), with the Firebase Admin service
 // account of its own project (the same one lib/firebase/admin.ts uses, checked
 // here against the deployment target again). Any mismatch or gap turns the
 // feature off ('unavailable', the badge stays hidden) rather than signing with the
 // wrong identity. There is no mock mode: a Wallet save link can't be faked.
 // ---------------------------------------------------------------------------
 
-export const GOOGLE_CLASS_SUFFIX_PROD = 'golandly_voucher_prod'
-export const GOOGLE_CLASS_SUFFIX_DEV = 'golandly_voucher_dev'
+export const GOOGLE_CLASS_SUFFIX_PROD = 'golandly_generic_prod'
+export const GOOGLE_CLASS_SUFFIX_DEV = 'golandly_generic_dev'
+/** Where the logo and hero are served from when the deployment itself isn't reachable by Google (a local run): the live site, unless WALLET_ASSET_ORIGIN names another public https origin. */
+const DEFAULT_ASSET_ORIGIN = SITE_URL
 const ISSUER_ID = /^\d{8,20}$/
 
 export type GoogleWalletConfig =
@@ -107,9 +110,22 @@ export type GoogleWalletConfig =
       privateKey: string
       /** Where the pass's images are served from (https only; none on a machine Google can't reach). */
       siteOrigin: string | null
+      /** Always a public https origin Google can fetch the pass's logo and hero from: `siteOrigin`, else WALLET_ASSET_ORIGIN, else the live site. */
+      assetOrigin: string
       target: FirebaseDeployTarget
     }
   | { mode: 'unavailable'; reason: string }
+
+/** An https origin on a public host, else null (never http, localhost, a LAN address or a path). */
+function publicHttpsOrigin(value: string | undefined): string | null {
+  try {
+    const url = new URL((value ?? '').trim())
+    if (url.protocol !== 'https:' || /^(localhost|127\.|10\.|192\.168\.|0\.0\.0\.0|\[?::1)/i.test(url.hostname) || !url.hostname.includes('.')) return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
 
 export function resolveGoogleWalletConfig(env: Env, target: FirebaseDeployTarget): GoogleWalletConfig {
   const issuerId = env.GOOGLE_WALLET_ISSUER_ID?.trim()
@@ -134,7 +150,8 @@ export function resolveGoogleWalletConfig(env: Env, target: FirebaseDeployTarget
   const classSuffix = production ? GOOGLE_CLASS_SUFFIX_PROD : GOOGLE_CLASS_SUFFIX_DEV
   const vercelHost = env.VERCEL_URL?.trim()
   const siteOrigin = production ? SITE_URL : target === 'preview' && vercelHost ? `https://${vercelHost}` : null
-  return { mode: 'ready', issuerId, classId: `${issuerId}.${classSuffix}`, classSuffix, serviceAccountEmail: email, privateKey, siteOrigin, target }
+  const assetOrigin = siteOrigin ?? publicHttpsOrigin(env.WALLET_ASSET_ORIGIN) ?? DEFAULT_ASSET_ORIGIN
+  return { mode: 'ready', issuerId, classId: `${issuerId}.${classSuffix}`, classSuffix, serviceAccountEmail: email, privateKey, siteOrigin, assetOrigin, target }
 }
 
 export function getGoogleWalletConfig(): GoogleWalletConfig {

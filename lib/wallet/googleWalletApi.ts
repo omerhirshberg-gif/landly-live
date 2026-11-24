@@ -1,6 +1,6 @@
 import 'server-only'
 import { createSign } from 'node:crypto'
-import { buildOfferClass, type GoogleWalletConfigReady } from './googlePass'
+import { buildGenericClass, type GoogleWalletConfigReady } from './googlePass'
 
 // Google Wallet's REST side (walletobjects.googleapis.com), called as the Firebase Admin
 // service account with the wallet_object.issuer scope. The account must be an issuer user in
@@ -72,15 +72,15 @@ async function call(stage: 'class' | 'object', token: string, method: string, pa
 }
 
 /**
- * Makes sure this environment's OfferClass exists: checked once per process, created when Google answers 404
+ * Makes sure this environment's GenericClass exists: checked once per process, created when Google answers 404
  * (a 409 from a concurrent creator counts as done). The setup script (scripts/setupGoogleWalletClass.ts) does the
  * same ahead of time and can also update an existing class.
  */
-export async function ensureOfferClass(config: GoogleWalletConfigReady, token: string): Promise<void> {
+export async function ensureGenericClass(config: GoogleWalletConfigReady, token: string): Promise<void> {
   if (ensuredClasses.has(config.classId)) return
-  const found = await call('class', token, 'GET', `/offerClass/${encodeURIComponent(config.classId)}`)
+  const found = await call('class', token, 'GET', `/genericClass/${encodeURIComponent(config.classId)}`)
   if (found.status === 404) {
-    const created = await call('class', token, 'POST', '/offerClass', buildOfferClass(config))
+    const created = await call('class', token, 'POST', '/genericClass', buildGenericClass(config))
     if (!created.ok && created.status !== 409) throw await walletFailure('class', created)
   } else if (!found.ok) {
     throw await walletFailure('class', found)
@@ -89,16 +89,16 @@ export async function ensureOfferClass(config: GoogleWalletConfigReady, token: s
 }
 
 /** Insert, then patch when the object already exists (a member adding the same voucher again). */
-export async function upsertOfferObject(token: string, object: { id: string }): Promise<void> {
-  const inserted = await call('object', token, 'POST', '/offerObject', object)
+export async function upsertGenericObject(token: string, object: { id: string }): Promise<void> {
+  const inserted = await call('object', token, 'POST', '/genericObject', object)
   if (inserted.ok) return
   if (inserted.status !== 409) throw await walletFailure('object', inserted)
-  const patched = await call('object', token, 'PATCH', `/offerObject/${encodeURIComponent(object.id)}`, object)
+  const patched = await call('object', token, 'PATCH', `/genericObject/${encodeURIComponent(object.id)}`, object)
   if (!patched.ok) throw await walletFailure('object', patched)
 }
 
-/** Overwrites this environment's existing OfferClass with the current definition (the setup script's --update). */
-export async function updateOfferClass(config: GoogleWalletConfigReady, token: string): Promise<void> {
-  const res = await call('class', token, 'PATCH', `/offerClass/${encodeURIComponent(config.classId)}`, buildOfferClass(config))
+/** Overwrites this environment's existing GenericClass with the current definition (the setup script's --update). */
+export async function updateGenericClass(config: GoogleWalletConfigReady, token: string): Promise<void> {
+  const res = await call('class', token, 'PATCH', `/genericClass/${encodeURIComponent(config.classId)}`, buildGenericClass(config))
   if (!res.ok) throw await walletFailure('class', res)
 }
