@@ -52,6 +52,39 @@ function guardProblems({ profile, projectId, apiBaseUrl }) {
   return problems
 }
 
+// EAS Update (OTA): `eas update` never sets EAS_BUILD_PROFILE, so the npm scripts name the profile in
+// LANDLY_UPDATE_PROFILE. Only store-facing profiles receive updates, and each maps to one branch and one EAS
+// environment (kept in package.json scripts, asserted by tests/mobile/buildGuard.test.ts).
+const UPDATE_PROFILES = {
+  testflight: { branch: 'testflight', environment: 'preview' },
+  production: { branch: 'production', environment: 'production' },
+}
+
+/** True when this Node process is the EAS CLI running `eas update` (argv: .../eas-cli/... update ...). */
+function isEasUpdateCommand(argv = process.argv) {
+  const args = argv.slice(1).map(String)
+  return args.some((a) => /(^|[\\/])eas(-cli)?([\\/]|\.js$|$)/.test(a)) && args.includes('update')
+}
+
+/**
+ * The profile this config evaluation is for: the EAS build profile, else the explicit update profile. Problems:
+ * an update without a profile (fails closed), an unknown or non-updatable profile, or a build profile that
+ * disagrees with the update profile.
+ */
+function resolveProfile({ buildProfile, updateProfile, argv = process.argv } = {}) {
+  const problems = []
+  if (updateProfile && !UPDATE_PROFILES[updateProfile]) {
+    problems.push(`LANDLY_UPDATE_PROFILE "${updateProfile}" is not updatable (expected one of ${Object.keys(UPDATE_PROFILES).join(', ')})`)
+  }
+  if (buildProfile && updateProfile && buildProfile !== updateProfile) {
+    problems.push(`EAS_BUILD_PROFILE "${buildProfile}" conflicts with LANDLY_UPDATE_PROFILE "${updateProfile}"`)
+  }
+  if (!buildProfile && !updateProfile && isEasUpdateCommand(argv)) {
+    problems.push('`eas update` needs an explicit profile: run `npm run update:testflight` or `npm run update:production` (sets LANDLY_UPDATE_PROFILE)')
+  }
+  return { profile: buildProfile || updateProfile || undefined, problems }
+}
+
 function assertBuildEnvironment(input) {
   const problems = guardProblems(input)
   if (problems.length) {
@@ -59,4 +92,4 @@ function assertBuildEnvironment(input) {
   }
 }
 
-module.exports = { PROD_PROJECT, DEV_PROJECT, PROD_API_ORIGIN, PROFILE_PROJECT, guardProblems, assertBuildEnvironment }
+module.exports = { PROD_PROJECT, DEV_PROJECT, PROD_API_ORIGIN, PROFILE_PROJECT, UPDATE_PROFILES, guardProblems, assertBuildEnvironment, isEasUpdateCommand, resolveProfile }

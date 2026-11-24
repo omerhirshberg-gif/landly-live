@@ -2,7 +2,9 @@ import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { guardProblems, assertBuildEnvironment } = require('../../landly-mobile/config/buildGuard.js')
+const { guardProblems, assertBuildEnvironment, resolveProfile, isEasUpdateCommand, UPDATE_PROFILES } = require('../../landly-mobile/config/buildGuard.js')
+const pkg = require('../../landly-mobile/package.json')
+const easJson = require('../../landly-mobile/eas.json')
 
 const PROD_API = 'https://www.golandly.com'
 const DEV_API = 'https://landly-dev.vercel.app'
@@ -80,5 +82,49 @@ describe('app.config.js', () => {
 
   it('fails a production config carrying the DEV project', () => {
     expect(() => load({ ...prod, EXPO_PUBLIC_FIREBASE_PROJECT_ID: 'landly-dev' })).toThrow(/landly-be752/)
+  })
+})
+
+describe('EAS Update guard', () => {
+  const EAS_UPDATE = ['node', '/x/node_modules/eas-cli/bin/run', 'update', '--branch', 'production']
+
+  it('detects the eas update command, not other commands', () => {
+    expect(isEasUpdateCommand(EAS_UPDATE)).toBe(true)
+    expect(isEasUpdateCommand(['node', '/x/node_modules/eas-cli/bin/run', 'build'])).toBe(false)
+    expect(isEasUpdateCommand(['node', '/x/node_modules/expo/bin/cli', 'export'])).toBe(false)
+  })
+
+  it('uses the update profile when no build profile is set (update:testflight, update:production)', () => {
+    expect(resolveProfile({ updateProfile: 'testflight', argv: EAS_UPDATE })).toEqual({ profile: 'testflight', problems: [] })
+    expect(resolveProfile({ updateProfile: 'production', argv: EAS_UPDATE })).toEqual({ profile: 'production', problems: [] })
+    expect(resolveProfile({ buildProfile: 'production', argv: [] })).toEqual({ profile: 'production', problems: [] })
+  })
+
+  it('fails closed on a missing update profile', () => {
+    expect(resolveProfile({ argv: EAS_UPDATE }).problems).toHaveLength(1)
+    expect(resolveProfile({ argv: ['node', 'expo', 'start'] })).toEqual({ profile: undefined, problems: [] })
+  })
+
+  it('rejects unknown, non-updatable and mismatched update profiles', () => {
+    for (const updateProfile of ['staging', 'development', 'preview']) {
+      expect(resolveProfile({ updateProfile, argv: EAS_UPDATE }).problems.length).toBeGreaterThan(0)
+    }
+    expect(resolveProfile({ buildProfile: 'testflight', updateProfile: 'production', argv: [] }).problems.length).toBeGreaterThan(0)
+  })
+
+  it('runs the environment guard for the update profile (no DEV values in a production update)', () => {
+    expect(guardProblems({ profile: 'production', projectId: 'landly-dev', apiBaseUrl: PROD_API }).length).toBeGreaterThan(0)
+    expect(guardProblems({ profile: 'testflight', projectId: 'landly-be752', apiBaseUrl: DEV_API }).length).toBeGreaterThan(0)
+  })
+
+  it('pairs each update script with its own profile, branch, channel and EAS environment', () => {
+    for (const [profile, { branch, environment }] of Object.entries(UPDATE_PROFILES) as [string, { branch: string; environment: string }][]) {
+      const script: string = pkg.scripts[`update:${profile}`]
+      expect(script).toContain(`LANDLY_UPDATE_PROFILE=${profile} `)
+      expect(script).toContain(`--branch ${branch} `)
+      expect(script).toContain(`--environment ${environment} `)
+      expect(easJson.build[profile].channel).toBe(branch)
+      expect(easJson.build[profile].environment).toBe(environment)
+    }
   })
 })

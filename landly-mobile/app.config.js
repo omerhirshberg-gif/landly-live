@@ -17,7 +17,7 @@
 // `expo start` and a full reload of the app, not just Fast Refresh.
 const fs = require('fs')
 const path = require('path')
-const { assertBuildEnvironment } = require('./config/buildGuard')
+const { assertBuildEnvironment, resolveProfile } = require('./config/buildGuard')
 
 // .env.local is read after .env and wins, as in Next.js -- that's where the
 // landly-dev (staging) project lives for local development, so Expo and
@@ -38,7 +38,14 @@ function readRootEnv() {
 // An EAS build names its profile (EAS_BUILD_PROFILE). It reads only the EAS environment's EXPO_PUBLIC_* values: the
 // root .env.local (landly-dev) is never a fallback there, so even `eas build --local` cannot bake DEV values into a
 // production binary. Local runs (no profile) keep the root-env convenience.
-const buildProfile = process.env.EAS_BUILD_PROFILE || undefined
+// `eas update` sets no EAS_BUILD_PROFILE, so the update npm scripts name it in LANDLY_UPDATE_PROFILE; an update with no
+// profile, an unknown one, or one that conflicts with the build profile throws (fails closed).
+const resolved = resolveProfile({
+  buildProfile: process.env.EAS_BUILD_PROFILE || undefined,
+  updateProfile: process.env.LANDLY_UPDATE_PROFILE || undefined,
+})
+if (resolved.problems.length) throw new Error(`EAS update environment guard failed:\n - ${resolved.problems.join('\n - ')}`)
+const buildProfile = resolved.profile
 const rootEnv = buildProfile ? {} : readRootEnv()
 
 // Native Google sign-in: iOS (src/auth/googleSignIn.ts) uses the iOS OAuth
@@ -75,8 +82,19 @@ function withoutDevOnlyPlist(config) {
   return { ...config, ios: { ...config.ios, infoPlist } }
 }
 
+// EAS Update (silent OTA, applied on the next cold start). Only when the config knows its EAS project (an EAS build or
+// update); Expo Go and local runs have none, so updates stay disabled there. Web ignores these keys.
+// A named EAS profile (build or update) may also fall back to the project id in app.json.
+function updatesFor(config) {
+  const projectId = eas?.projectId || (buildProfile ? config.extra?.eas?.projectId : undefined)
+  return projectId
+    ? { url: `https://u.expo.dev/${projectId}`, enabled: true, checkAutomatically: 'ON_LOAD', fallbackToCacheTimeout: 0 }
+    : { enabled: false }
+}
+
 module.exports = ({ config }) => ({
   ...withoutDevOnlyPlist(config),
+  updates: updatesFor(config),
   ...(process.env.EAS_OWNER ? { owner: process.env.EAS_OWNER } : {}),
   scheme: [config.scheme, ...googleSchemes],
   extra: {

@@ -123,10 +123,11 @@
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false,
-          "motionUsagePermission": false,
+          "motionUsagePermission": "GoLandly uses motion activity to improve nearby venue and perk discovery accuracy.",
           "isAndroidMotionActivityEnabled": false
         }
-      ]
+      ],
+      "expo-updates"
     ],
     "experiments": {
       "tsconfigPaths": false
@@ -143,6 +144,9 @@
         "projectId": "4bc2ad80-c0e8-4694-92d9-4dff1b57e93e"
       }
     },
-    "owner": "amitbd1"
+    "owner": "amitbd1",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    }
   }
 }
