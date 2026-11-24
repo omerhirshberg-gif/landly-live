@@ -27,6 +27,7 @@
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.29",
     "expo-web-browser": "~57.0.3",
     "firebase": "^12.19.0",
     "libphonenumber-js": "1.13.13",
@@ -55,7 +56,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "update:testflight": "LANDLY_UPDATE_PROFILE=testflight npx eas-cli@latest update --branch testflight --environment preview --platform all",
+    "update:production": "LANDLY_UPDATE_PROFILE=production npx eas-cli@latest update --branch production --environment production --platform all"
   },
   "private": true
 }

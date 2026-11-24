@@ -59,6 +59,22 @@ The script prints `unset <NAME> (this shell)` for each of these four; they are n
 4. DEV testing: `eas build --profile testflight --platform all`, then `eas submit --profile testflight`. PROD: `eas build --profile production --platform all`, then `eas submit --profile production`.
 5. After the listings are public, set the store variables above.
 
+## Over-the-air updates (EAS Update)
+
+JavaScript, asset and string changes can ship without a store release; native changes cannot. Updates apply silently on the next cold start (`checkAutomatically: ON_LOAD`, `fallbackToCacheTimeout: 0`); there is no in-app prompt. A launch crash falls back to the embedded bundle.
+
+| | DEV | PROD |
+|---|---|---|
+| Build profile / channel | `testflight` (and `preview`, which keeps its own `preview` channel and gets no updates) / `testflight` | `production` / `production` |
+| Publish | `npm run update:testflight -- --message "..."` | `npm run update:production -- --message "..."` |
+| Branch, EAS environment | `testflight`, `preview` (`landly-dev`, `https://dev.golandly.com`) | `production`, `production` (`landly-be752`, `https://www.golandly.com`) |
+
+- `runtimeVersion` uses the `fingerprint` policy: any native change (dependency, plugin, native config) gets a new runtime version, so an update only reaches binaries that contain its native code. After such a change, build new binaries (`eas build --profile testflight|production --platform all`) before publishing updates. Binaries built before `expo-updates` was added never receive updates.
+- Always publish with the npm scripts: they set `LANDLY_UPDATE_PROFILE`, which makes `app.config.js` skip the root `.env.local` and run the build guard. A bare `eas update` throws.
+- One-time: `eas channel:create testflight` and `eas channel:create production`, then check `eas channel:view` links each to the branch of the same name.
+- Roll back with `eas update:rollback` (or republish a previous update with `eas update:republish`). Updates must stay compatible with the live web API and Firestore rules.
+- Updates are disabled in Expo Go, development builds and local runs (no EAS project id), and `expo-updates` does nothing on web.
+
 ## Payments in v1
 
 A perk is listed but cannot be bought while no payment gateway is live (no `TRANZILA_TERMINAL`, no dev sandbox): the server marks every public offer `comingSoon` (`lib/offers/purchaseAvailability.ts`), and the website and the app replace Buy with a "purchases open very soon" notice and a disabled button. Setting `TRANZILA_TERMINAL` turns purchases on with no app update.
