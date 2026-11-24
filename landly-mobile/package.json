@@ -9,6 +9,7 @@
     "@shopify/flash-list": "2.0.2",
     "expo": "~57.0.30",
     "expo-apple-authentication": "~57.0.2",
+    "expo-application": "~57.0.3",
     "expo-auth-session": "~57.0.16",
     "expo-blur": "~57.0.3",
     "expo-clipboard": "~57.0.2",
@@ -58,7 +59,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "update:testflight": "LANDLY_UPDATE_PROFILE=testflight npx eas-cli@latest update --branch testflight --environment preview --platform all",
-    "update:production": "LANDLY_UPDATE_PROFILE=production npx eas-cli@latest update --branch production --environment production --platform all"
+    "ota:testflight": "EXPO_PUBLIC_API_BASE_URL=https://dev.golandly.com EXPO_PUBLIC_FIREBASE_PROJECT_ID=landly-dev npm run update:testflight -- --message \"OTA-$(date +%Y-%m-%d-%H%M)\"",
+    "update:production": "LANDLY_UPDATE_PROFILE=production npx eas-cli@latest update --branch production --environment production --platform all",
+    "ota:production": "EXPO_PUBLIC_API_BASE_URL=https://www.golandly.com EXPO_PUBLIC_FIREBASE_PROJECT_ID=landly-be752 npm run update:production -- --message \"OTA-$(date +%Y-%m-%d-%H%M)\""
   },
   "private": true
 }

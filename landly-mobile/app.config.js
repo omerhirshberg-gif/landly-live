@@ -54,9 +54,12 @@ const rootEnv = buildProfile ? {} : readRootEnv()
 // uses Google's native sheet and needs only the project's *web* client ID:
 // the app itself is identified by its package name and signing SHA-1 on the
 // Android client in the Google Cloud console, so there is no scheme.
+// An ID pasted into EAS from a .env line can keep its quotes or a trailing newline, which Google answers with
+// "401 invalid_client", so both are trimmed here (config/buildGuard.js then checks the shape).
+const cleanClientId = (value) => (value || '').trim().replace(/^(['"])(.*)\1$/, '$2').trim() || undefined
 const googleClientIds = {
-  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
-  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
+  ios: cleanClientId(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID),
+  web: cleanClientId(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID),
 }
 const reversed = (id) => id.split('.').reverse().join('.')
 const googleSchemes = googleClientIds.ios ? [reversed(googleClientIds.ios)] : []
@@ -72,15 +75,9 @@ assertBuildEnvironment({
   profile: buildProfile,
   projectId: firebaseValue('PROJECT_ID'),
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+  googleClientIds,
+  messagingSenderId: firebaseValue('MESSAGING_SENDER_ID'),
 })
-
-// The dev-server local-network prompt text belongs to development builds only (Expo Go / dev client, local runs); a
-// store binary never carries it.
-function withoutDevOnlyPlist(config) {
-  if (buildProfile === undefined || buildProfile === 'development') return config
-  const { NSLocalNetworkUsageDescription: _dev, ...infoPlist } = config.ios?.infoPlist ?? {}
-  return { ...config, ios: { ...config.ios, infoPlist } }
-}
 
 // EAS Update (silent OTA, applied on the next cold start). Only when the config knows its EAS project (an EAS build or
 // update); Expo Go and local runs have none, so updates stay disabled there. Web ignores these keys.
@@ -93,7 +90,7 @@ function updatesFor(config) {
 }
 
 module.exports = ({ config }) => ({
-  ...withoutDevOnlyPlist(config),
+  ...config,
   updates: updatesFor(config),
   ...(process.env.EAS_OWNER ? { owner: process.env.EAS_OWNER } : {}),
   scheme: [config.scheme, ...googleSchemes],

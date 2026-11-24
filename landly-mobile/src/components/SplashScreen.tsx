@@ -15,7 +15,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as NativeSplash from 'expo-splash-screen'
-import { glideToLockup, nativeSplashClearanceMs, SPLASH_RELEASE_MS, splashGlideBackstopMs } from '@shared/brand/entranceTimeline'
+import { glideToLockup, nativeSplashClearanceMs, SPLASH_HOLD_MS, SPLASH_RELEASE_MS, splashGlideBackstopMs } from '@shared/brand/entranceTimeline'
 import BrandHero, { HERO, LOCKUP_HEIGHT, LOCKUP_SCALE } from './BrandHero'
 import { useEntrance, type Rect } from './Entrance'
 import {
@@ -115,10 +115,19 @@ export default function SplashScreen({
   }, [])
 
   const [introDone, setIntroDone] = useState(false)
+  // The finished logo rests for SPLASH_HOLD_MS before it hands over. It runs
+  // beside auth resolution (`ready`), so a slow auth never waits longer for it.
+  const [held, setHeld] = useState(false)
   const handleIntroDone = useCallback(() => {
     setIntroDone(true)
     onIntroDone()
   }, [onIntroDone])
+  useEffect(() => {
+    if (!introDone) return
+    // Reduced motion has no glide to pace: it crossfades straight away.
+    const timer = setTimeout(() => setHeld(true), reduced ? 0 : SPLASH_HOLD_MS)
+    return () => clearTimeout(timer)
+  }, [introDone, reduced])
   // Where the glide ends (`to` follows `goal` when a new spot arrives); its progress is `p`.
   const toX = useSharedValue(0)
   const toY = useSharedValue(0)
@@ -168,7 +177,7 @@ export default function SplashScreen({
   }, [])
 
   useEffect(() => {
-    if (!ready || !introDone || started.current) return
+    if (!ready || !introDone || !held || started.current) return
     // Once only, whichever ends it first: the animation's callback or the timer.
     // The screen's own logo shows under the splash's (phase 'done'), then the
     // splash fades off it and unmounts.
@@ -222,7 +231,7 @@ export default function SplashScreen({
     if (target || handoff === 'none' || reduced) return fadeOut()
     const timer = setTimeout(fadeOut, HANDOFF_TIMEOUT_MS)
     return () => clearTimeout(timer)
-  }, [ready, introDone, handoff, heroRect, lockRect, lockWaitOver, reduced, window, insets, setPhase, onDone, overlay, p, landed, toX, toY, goalX, goalY, toScale, sloganFade])
+  }, [ready, introDone, held, handoff, heroRect, lockRect, lockWaitOver, reduced, window, insets, setPhase, onDone, overlay, p, landed, toX, toY, goalX, goalY, toScale, sloganFade])
 
   // A spot measured after the glide started (the lock screen laid out, its
   // insets settled): the path bends to it rather than landing off it.

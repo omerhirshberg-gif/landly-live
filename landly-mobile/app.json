@@ -19,7 +19,6 @@
           "fr",
           "es"
         ],
-        "NSLocalNetworkUsageDescription": "GoLandly connects to the development server on your local network while the app is being developed.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.amitbd.landlyapp",
@@ -86,6 +85,7 @@
       "expo-image",
       "expo-apple-authentication",
       "./plugins/withSceneLifecycle",
+      "./plugins/withDevLocalNetwork",
       [
         "expo-local-authentication",
         {
@@ -146,7 +146,7 @@
     },
     "owner": "amitbd1",
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     }
   }
 }

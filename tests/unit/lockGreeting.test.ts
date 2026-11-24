@@ -142,7 +142,7 @@ describe('lock screen wiring', () => {
     for (const z of lockZ) expect(splashZ).toBeGreaterThan(z)
     expect(splash).toContain('zIndex: SPLASH_Z,\n    elevation: SPLASH_Z,')
     // The hand-over waits for both the app and the full intro (star, arrow, wordmark, shine).
-    expect(splash).toContain('if (!ready || !introDone || started.current) return')
+    expect(splash).toContain('if (!ready || !introDone || !held || started.current) return')
     const { T } = await import('@/lib/brand/entranceTimeline')
     expect(T.shine + T.shineMs).toBeGreaterThanOrEqual(1800)
   })

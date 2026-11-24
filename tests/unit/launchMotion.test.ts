@@ -33,14 +33,14 @@ describe('splash intro', () => {
     expect(layout).toContain('{lockUp && <AppLockOverlay settled={stackUp} />}')
     expect(layout).toContain('<SplashScreen ready={screensUp} handoff={handoff} onIntroDone={handleIntroDone}')
     // The splash still waits for both before handing over.
-    expect(await read('components/SplashScreen.tsx')).toContain('if (!ready || !introDone || started.current) return')
+    expect(await read('components/SplashScreen.tsx')).toContain('if (!ready || !introDone || !held || started.current) return')
   })
 
   it('starts every stage once, on mount, and never re-renders the emblem mid-intro', async () => {
     const hero = await read('components/BrandHero.tsx')
     expect(hero.match(/useEffect\(/g)).toHaveLength(1)
     expect(hero).toContain('export default memo(function BrandHero(')
-    expect(T.shine + T.shineMs).toBe(2950)
+    expect(T.shine + T.shineMs).toBe(2550)
   })
 
   it('passes Reanimated easing objects, never CSS easing strings', async () => {
@@ -73,10 +73,10 @@ describe('splash logo into the app lock', () => {
   })
 
   it('glides on one critically damped progress spring while the slogan fades, then crossfades onto the screen\'s own logo', async () => {
-    expect(GLIDE).toEqual({ login: { duration: 620, dampingRatio: 1 }, lock: { duration: 700, dampingRatio: 1 } })
+    expect(GLIDE).toEqual({ login: { duration: 800, dampingRatio: 1 }, lock: { duration: 880, dampingRatio: 1 } })
     expect(SPLASH_RELEASE_MS).toBe(140)
     // The card's rise (login.tsx, and the web) keeps its own spring.
-    expect(ENTRANCE_SPRING).toEqual({ damping: 15, stiffness: 90 })
+    expect(ENTRANCE_SPRING).toEqual({ damping: 18, stiffness: 70 })
     const splash = await read('components/SplashScreen.tsx')
     expect(splash).toContain('const to = glideToLockup(from, target, LOCKUP_HEIGHT, LOCKUP_SCALE)')
     // Position and scale are read off one spring (landly-mobile/src/lib/splashMotion.ts), released near its end.

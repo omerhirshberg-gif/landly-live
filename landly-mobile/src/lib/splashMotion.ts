@@ -11,8 +11,8 @@ import type { Box } from '@shared/brand/entranceTimeline'
 // glide-length-dependent offset (1.5px on a 300pt glide) that the crossfade
 // showed as a jolt; under half a pixel, it's settled onto the spot exactly.
 export const GLIDE = {
-  login: { duration: 620, dampingRatio: 1 },
-  lock: { duration: 700, dampingRatio: 1 },
+  login: { duration: 800, dampingRatio: 1 },
+  lock: { duration: 880, dampingRatio: 1 },
 } as const
 
 /**

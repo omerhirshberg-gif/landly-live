@@ -23,11 +23,30 @@ function hostOf(url) {
 
 const PROD_HOST = /^(?:www\.)?golandly\.com$/
 
+const GOOGLE_CLIENT_ID = /^(\d{6,})-[a-z0-9]{20,}\.apps\.googleusercontent\.com$/
+
+// Google OAuth client IDs: well-formed, iOS and web distinct, and (when the Firebase sender ID is known) issued by the
+// profile's own Google Cloud project, whose number is the Firebase messagingSenderId. A DEV client in a PROD build,
+// or an ID that kept its quotes, would otherwise only surface as Google's "401 invalid_client" on a device.
+function googleClientProblems(profile, ids, messagingSenderId) {
+  const problems = []
+  const entries = Object.entries(ids || {}).filter(([, id]) => id)
+  for (const [platform, id] of entries) {
+    const match = GOOGLE_CLIENT_ID.exec(id)
+    if (!match) problems.push(`profile "${profile}": EXPO_PUBLIC_GOOGLE_${platform.toUpperCase()}_CLIENT_ID is not a Google OAuth client ID ("<project number>-<id>.apps.googleusercontent.com")`)
+    else if (messagingSenderId && match[1] !== String(messagingSenderId).trim()) {
+      problems.push(`profile "${profile}": EXPO_PUBLIC_GOOGLE_${platform.toUpperCase()}_CLIENT_ID belongs to Google Cloud project ${match[1]}, not the Firebase project ${messagingSenderId}`)
+    }
+  }
+  if (ids?.ios && ids?.web && ids.ios === ids.web) problems.push(`profile "${profile}": the iOS and web Google client IDs must be different OAuth clients`)
+  return problems
+}
+
 /**
  * Returns the list of problems for this profile (empty = fine). `profile` undefined means a local run (Expo Go,
  * `expo start`, `expo run:*`): nothing to enforce.
  */
-function guardProblems({ profile, projectId, apiBaseUrl }) {
+function guardProblems({ profile, projectId, apiBaseUrl, googleClientIds, messagingSenderId }) {
   if (!profile) return []
   const expected = PROFILE_PROJECT[profile]
   if (!expected) return [`unknown EAS profile "${profile}" (expected one of ${Object.keys(PROFILE_PROJECT).join(', ')})`]
@@ -35,6 +54,7 @@ function guardProblems({ profile, projectId, apiBaseUrl }) {
   if (projectId !== expected) {
     problems.push(`profile "${profile}" must use Firebase project "${expected}", but EXPO_PUBLIC_FIREBASE_PROJECT_ID is "${projectId || '(unset)'}"`)
   }
+  problems.push(...googleClientProblems(profile, googleClientIds, messagingSenderId))
   const api = (apiBaseUrl || '').trim()
   if (profile === 'production') {
     const normalized = api.replace(/^https?:\/\/golandly\.com(?=[:/?#]|$)/i, PROD_API_ORIGIN).replace(/\/+$/, '')

@@ -2,6 +2,9 @@ import Constants from 'expo-constants'
 import { FirebaseError } from 'firebase/app'
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import { translateGoogleNativeError } from './googleSignInErrors'
+import { withGoogleClientHint } from '@shared/auth/googleClientHint'
+import { nativeBuildInfo } from './nativeBuildInfo'
 import { finishCustomerGoogleSignIn, type CustomerSignInResult } from '@shared/auth/signInCustomer'
 import { auth } from '@shared/firebase/config'
 import type { Lang } from '@shared/i18n/translations'
@@ -23,40 +26,36 @@ const webClientId: string | undefined = Constants.expoConfig?.extra?.googleClien
 /** The button always shows; this says whether tapping it can work (false until the web client ID is set). */
 export const GOOGLE_SIGN_IN_CONFIGURED = !!webClientId
 
-let configured = false
-
-/** The failure codes login.tsx already says in the member's language (lib/firebase/authErrors.ts). */
-function translate(err: unknown): FirebaseError {
-  const code = (err as { code?: unknown } | null)?.code
-  if (code === statusCodes.SIGN_IN_CANCELLED) return new FirebaseError('auth/popup-closed-by-user', 'Google sign-in was cancelled')
-  if (code === statusCodes.IN_PROGRESS) return new FirebaseError('auth/cancelled-popup-request', 'Google sign-in is already in progress')
-  if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-    return new FirebaseError('auth/google-play-services-unavailable', 'Google Play services is not available')
-  }
-  return new FirebaseError('auth/internal-error', 'Google sign-in failed')
-}
+// Configured once, when the module loads, so the sheet never opens on a
+// half-initialised SDK. No scopes beyond the default (email, profile).
+if (webClientId) GoogleSignin.configure({ webClientId })
 
 /** Throws a Firebase-style 'auth/popup-closed-by-user' when the user backs out. */
 export async function signInWithGoogle(currentLang: Lang): Promise<CustomerSignInResult> {
   if (!webClientId) throw new Error('Google sign-in is not configured for this platform')
   let idToken: string | null
   try {
-    if (!configured) {
-      GoogleSignin.configure({ webClientId })
-      configured = true
-    }
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
     const response = await GoogleSignin.signIn()
     if (response.type !== 'success') throw new FirebaseError('auth/popup-closed-by-user', 'Google sign-in was cancelled')
     idToken = response.data.idToken
   } catch (err) {
-    throw err instanceof FirebaseError ? err : translate(err)
+    // Every failure carries the masked web client ID this build was baked with, so a device screenshot names it.
+    throw withGoogleClientHint(err instanceof FirebaseError ? err : translateGoogleNativeError(err, statusCodes), webClientId, nativeBuildInfo())
   }
-  if (!idToken) throw new FirebaseError('auth/internal-error', 'Google returned no ID token')
+  if (!idToken) throw withGoogleClientHint(new FirebaseError('auth/internal-error', 'Google returned no ID token'), webClientId, nativeBuildInfo())
   return signInWithGoogleIdToken(idToken, currentLang)
 }
 
 export async function signInWithGoogleIdToken(idToken: string, currentLang: Lang): Promise<CustomerSignInResult> {
-  const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))
+  let cred
+  try {
+    cred = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))
+  } catch (err) {
+    // Firebase refused Google's token (its message says why, e.g. a web client
+    // from another project). Logged here so it can't be mistaken for a native failure.
+    console.warn('[auth] Firebase rejected the Google credential:', (err as { code?: unknown } | null)?.code)
+    throw err instanceof Error ? withGoogleClientHint(err, webClientId, nativeBuildInfo()) : err
+  }
   return finishCustomerGoogleSignIn(cred, currentLang)
 }

@@ -3,23 +3,25 @@
 // same curves. Plain numbers only: each platform builds its own easing
 // objects from these.
 //
-//   0    – 1100  Star of David + arch: scale 0.85 -> 1, outline first, then fill
-//   1100 – 1750  Arrow bursts out of its tail and springs into place
-//   1750 – 2300  Wordmark and slogan fade in
-//   2300 – 2950  Diagonal shine sweeps bottom-left -> top-right
+//   0    –  950  Star of David + arch: scale 0.85 -> 1, outline first, then fill
+//   950  – 1500  Arrow bursts out of its tail and springs into place
+//   1500 – 1950  Wordmark and slogan fade in
+//   1950 – 2550  Diagonal shine sweeps bottom-left -> top-right
+//   2550 – 2950  Hold (SPLASH_HOLD_MS): the finished logo rests, while auth resolves
+//   2950 –       Hand-over: the logo glides up (800ms) as the card rises (~3.7s in)
 export const T = {
-  arrow: 1100,
-  reveal: 1750,
-  slogan: 1870,
-  shine: 2300,
-  shineMs: 650,
+  arrow: 950,
+  reveal: 1500,
+  slogan: 1600,
+  shine: 1950,
+  shineMs: 600,
   // Stage 1 detail: the outline draws in, holds, then hands over to the fill.
-  outlineInMs: 450,
-  outlineHoldMs: 350,
-  outlineOutMs: 300,
-  fillDelay: 350,
+  outlineInMs: 380,
+  outlineHoldMs: 300,
+  outlineOutMs: 250,
+  fillDelay: 300,
   arrowFadeMs: 140,
-  revealMs: 550,
+  revealMs: 500,
   // Reduced motion: a single fade of the finished mark.
   reducedMs: 400,
 } as const
@@ -42,8 +44,12 @@ export interface Spring {
 
 // Low damping ratio (~0.4): the arrow overshoots and rings briefly as it docks.
 export const ARROW_SPRING = { damping: 12, stiffness: 220, mass: 1 } as const satisfies Spring
-// One spring for everything else that moves in the entrance (card rise, splash hand-over).
-export const ENTRANCE_SPRING = { damping: 15, stiffness: 90 } as const satisfies Spring
+// One spring for everything else that moves in the entrance (the card's rise):
+// slightly over-damped, so it settles without a wobble.
+export const ENTRANCE_SPRING = { damping: 18, stiffness: 70 } as const satisfies Spring
+// How long the finished logo rests (after the shine, before the hand-over)
+// while auth resolves in the background; it never delays a slower auth.
+export const SPLASH_HOLD_MS = 400
 // The splash logo's hand-over glide is native only: its critically damped
 // springs live with it (landly-mobile/src/lib/splashMotion.ts GLIDE).
 export const SPLASH_BACKDROP_MS = 420
@@ -86,7 +92,7 @@ export const FROM = {
 
 // The form card: rises on ENTRANCE_SPRING while fading in over CARD_FADE_MS.
 export const CARD_DELAY_MS = 60
-export const CARD_FADE_MS = 420
+export const CARD_FADE_MS = 520
 
 /** Damped-spring position at time `t` (s), from 0 to a target of 1, starting at rest. */
 export function springProgress({ damping, stiffness, mass = 1 }: Spring, t: number): number {
