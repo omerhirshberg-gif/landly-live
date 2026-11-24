@@ -1,5 +1,6 @@
 import { FirebaseError } from 'firebase/app'
 import type { TranslationKey } from '../i18n/translations'
+import { googleBuildInfoOf, googleClientHintOf } from '../auth/googleClientHint'
 
 const MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'Could not create an account. Please try again, or try signing in or resetting your password.',
@@ -55,11 +56,15 @@ const CODE_KEYS: Record<string, TranslationKey> = {
   'auth/operation-not-allowed': 'autherr_methodUnavailable',
   // Android's native Google sheet needs Google Play services (googleSignIn.android.ts).
   'auth/google-play-services-unavailable': 'autherr_playServices',
+  // This build's signing key or Google client isn't registered (googleSignInErrors.ts).
+  'auth/google-config-error': 'autherr_googleConfig',
   'auth/web-storage-unsupported': 'autherr_storage',
   'auth/operation-not-supported-in-this-environment': 'autherr_storage',
   // expo-apple-authentication (the app's native Apple sheet).
   ERR_REQUEST_CANCELED: 'autherr_cancelled',
 }
+
+const SHOW_CODE = new Set(['auth/google-config-error'])
 
 /** Backing out of Google's or Apple's sign-in: nothing to report. */
 const CANCEL_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled', 'ERR_REQUEST_CANCELED'])
@@ -102,11 +107,19 @@ export function describeAuthError(err: unknown, options: { provider?: AuthErrorP
   const code = authErrorCode(err)
   // Only an OAuth error name ("invalid_grant") goes on screen, never free text.
   const reason = authErrorDetail(err)?.error?.match(/^[a-z_]{1,40}$/i)?.[0]
-  const shown = code && reason ? `${code} · ${reason}` : code
+  const clientHint = googleClientHintOf(err)
+  const withReason = code && reason ? `${code} · ${reason}` : code
+  // The native Google flows tag their errors with the masked client ID baked into this binary (googleClientHint.ts).
+  const buildInfo = googleBuildInfoOf(err)
+  const shown = withReason && clientHint ? `${withReason} · client ${clientHint}${buildInfo ? ` · ${buildInfo}` : ''}` : withReason
+  if (clientHint && !CANCEL_CODES.has(code ?? '')) {
+    return { key: (code && CODE_KEYS[code]) || 'autherr_googleFailed', code: shown }
+  }
   if (code && NATIVE_APPLE_CODES.has(code)) return { key: 'autherr_appleFailed', code: shown }
   if (code && options.provider && PROVIDER_CODES.has(code)) return { key: PROVIDER_KEYS[options.provider], code: shown }
   const key = code ? CODE_KEYS[code] : undefined
-  return key ? { key, code: null } : { key: 'autherr_generic', code: shown }
+  // A setup failure is for the team, not the member: its code stays on screen so a screenshot says what to fix.
+  return key ? { key, code: code && SHOW_CODE.has(code) ? shown : null } : { key: 'autherr_generic', code: shown }
 }
 
 export type AuthErrorDetail = {
@@ -166,5 +179,8 @@ export function logAuthError(err: unknown): void {
  * in a Hebrew sentence and the sentence keeps its own full stop.
  */
 export function withIsolatedCode(text: string, code: string | null): string {
-  return code ? `${text} ⁦(${code})⁩` : text
+  if (!code) return text
+  // A long code (the Google diagnostic: client, package, build) goes on its own line so it doesn't break mid-token
+  // inside the sentence; the app's Text honours the newline, and the web never gets one that long.
+  return `${text}${code.length > 40 ? '\n' : ' '}⁦(${code})⁩`
 }

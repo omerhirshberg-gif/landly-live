@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { ARROW_SPRING, ENTRANCE_SPRING, NATIVE_SPLASH_CLEARANCE_MS, NATIVE_SPLASH_FADE_MS, nativeSplashClearanceMs, T, springProgress, springToCssLinear } from '@/lib/brand/entranceTimeline'
+import { ARROW_SPRING, CARD_FADE_MS, ENTRANCE_SPRING, NATIVE_SPLASH_CLEARANCE_MS, NATIVE_SPLASH_FADE_MS, nativeSplashClearanceMs, SPLASH_HOLD_MS, T, springProgress, springToCssLinear } from '@/lib/brand/entranceTimeline'
 
 const points = (easing: string) => easing.slice('linear('.length, -1).split(', ').map(Number)
 
 describe('entrance timeline', () => {
   it('keeps the four stages in order and back to back', () => {
-    expect(T.arrow).toBe(1100)
-    expect(T.reveal).toBe(1750)
-    expect(T.shine).toBe(2300)
-    expect(T.shine + T.shineMs).toBe(2950)
+    expect(T.arrow).toBe(950)
+    expect(T.reveal).toBe(1500)
+    expect(T.shine).toBe(1950)
+    // A crisp intro, then a 400ms hold and the 800ms glide: about 3.7s to a usable screen.
+    expect(T.shine + T.shineMs).toBe(2550)
+    expect(SPLASH_HOLD_MS).toBe(400)
+    expect(T.shine + T.shineMs + SPLASH_HOLD_MS + 800).toBeLessThanOrEqual(3800)
     expect(T.outlineInMs + T.outlineHoldMs + T.outlineOutMs).toBeLessThanOrEqual(T.arrow)
     expect(T.slogan).toBeGreaterThan(T.reveal)
   })
@@ -43,7 +46,9 @@ describe('entrance timeline', () => {
     expect(durationMs).toBeLessThan(1500)
   })
 
-  it('keeps the card spring gentle', () => {
+  it('keeps the card spring gentle: damping 18, stiffness 70, no overshoot', () => {
+    expect(ENTRANCE_SPRING).toEqual({ damping: 18, stiffness: 70 })
+    expect(CARD_FADE_MS).toBe(520)
     const values = points(springToCssLinear(ENTRANCE_SPRING).easing)
     expect(Math.max(...values)).toBeLessThan(1.05)
   })

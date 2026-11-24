@@ -28,23 +28,37 @@ describe('providerOrder', () => {
   })
 })
 
-describe('web ProviderTile', () => {
-  it.each(LANGS)('names each icon-only tile in the page language (%s)', (lang) => {
+describe('web ProviderTile (a full-width button)', () => {
+  it.each(LANGS)('shows each provider\'s label as the button text in the page language (%s)', (lang) => {
     const t = translations[lang]
     for (const [provider, label] of [['apple', t.login_appleBtn], ['google', t.login_googleBtn], ['passkey', t.login_passkeyBtn]] as const) {
       const html = tile({ provider, label, onClick: () => {} })
-      expect(html).toContain(`aria-label="${attr(label)}"`)
-      expect(html).toContain(`title="${attr(label)}"`)
-      // The icon itself is hidden from screen readers; the label is the name.
+      expect(html).toContain(`<span class="truncate">${attr(label)}</span>`)
+      // The icon itself is hidden from screen readers; the visible label is the name.
       expect(html).toMatch(/<span aria-hidden="true"/)
     }
   })
 
-  it('has the shared metrics: 54px on phones, 52px from sm, 14px corners, 0.96 press, a 22px icon box', () => {
+  it('says Continue with Google in all five languages, Hebrew included', () => {
+    expect(translations.en.login_googleBtn).toBe('Continue with Google')
+    expect(translations.he.login_googleBtn).toBe('המשך עם Google')
+    for (const lang of LANGS) {
+      expect(translations[lang].login_googleBtn).toMatch(/Google/)
+      expect(translations[lang].signup_googleBtn).toBe(translations[lang].login_googleBtn)
+    }
+  })
+
+  it('has the primary button\'s metrics: full width, 52px, 14px corners, 0.97 press, a 22px icon box', () => {
     const html = tile({ provider: 'google', label: 'x', onClick: () => {} })
-    for (const cls of ['h-[54px]', 'w-[54px]', 'sm:h-[52px]', 'sm:w-[52px]', 'rounded-[14px]', 'active:enabled:scale-[0.96]', 'h-[22px] w-[22px]']) {
+    for (const cls of ['w-full', 'h-[52px]', 'rounded-[14px]', 'active:enabled:scale-[0.97]', 'h-[22px] w-[22px]']) {
       expect(html).toContain(cls)
     }
+  })
+
+  it('puts the logo on the logical start edge, so Hebrew mirrors it', () => {
+    const html = tile({ provider: 'google', label: 'x', onClick: () => {} })
+    expect(html).toContain('absolute start-[18px]')
+    expect(html).not.toMatch(/\b(?:left|right|ml|mr|pl|pr)-/)
   })
 
   it('draws Apple black with a white logo nudged up 1px by an offset, not a transform', () => {
@@ -54,16 +68,23 @@ describe('web ProviderTile', () => {
     expect(html).toContain('relative bottom-px')
   })
 
-  it.each(['apple', 'google', 'passkey'] as const)('stays crisp at rest (%s): no transform or layer hint outside the press', (provider) => {
+  it('draws Google white with a hairline border', () => {
+    const html = tile({ provider: 'google', label: 'x', onClick: () => {} })
+    expect(html).toContain('border-slate-200 bg-white')
+    expect(html).toMatch(/ border /)
+  })
+
+  it.each(['apple', 'google', 'passkey'] as const)('stays crisp at rest (%s): no transform or layer hint outside the press and a mouse hover', (provider) => {
     const html = tile({ provider, label: 'x', onClick: () => {} })
-    // The only transform is the pressed scale.
+    // Transforms only behind :active and a real mouse's hover.
     expect(html.match(/(?:^|[\s"])(?:-?translate-[xyz]|scale-|rotate-|transform\b|will-change|backface|translateZ)/g) ?? []).toEqual([])
-    expect(html).toContain('active:enabled:scale-[0.96]')
+    expect(html).toContain('active:enabled:scale-[0.97]')
+    expect(html).toContain('[@media(hover:hover)]:hover:enabled:-translate-y-px')
     expect(html).toContain('shape-rendering="geometricPrecision"')
   })
 
   it('draws the passkey glyph 1:1 so its 2px stroke lands on whole pixels', () => {
-    const html = tile({ provider: 'passkey', label: 'x', onClick: () => {} })
+    const html = tile({ provider: 'passkey', label: 'Sign in', onClick: () => {} })
     expect(html).toContain('width="22" height="22" viewBox="1 1 22 22"')
     expect(html).toContain('stroke-width="2"')
     expect(html).toContain('stroke="#0038b8"')
@@ -72,24 +93,55 @@ describe('web ProviderTile', () => {
   it('shows a spinner and the busy label while its sign-in runs, at full strength', () => {
     const html = tile({ provider: 'passkey', label: 'Sign in', busyLabel: 'Waiting', busy: true, disabled: true, onClick: () => {} })
     expect(html).toContain('aria-busy="true"')
-    expect(html).toContain('aria-label="Waiting"')
+    expect(html).toContain('<span class="truncate">Waiting</span>')
     expect(html).toContain('animate-spin')
     expect(html).not.toContain('opacity-60')
   })
 
-  it('dims the other tiles while another sign-in runs', () => {
+  it('dims the other buttons while another sign-in runs', () => {
     const html = tile({ provider: 'apple', label: 'x', disabled: true, onClick: () => {} })
     expect(html).toContain('disabled=""')
     expect(html).toContain('opacity-60')
   })
 
-  it('lays the tiles out in one centred row', () => {
+  it('stacks the buttons full width, 12px apart', () => {
     const html = renderToStaticMarkup(createElement(ProviderRow, null, 'a'))
-    expect(html).toContain('flex flex-row gap-3 justify-center items-center')
+    expect(html).toContain('flex flex-col gap-3 w-full')
   })
 })
 
-describe('the auth screens use the row', () => {
+describe('the app\'s ProviderTile (a full-width button)', () => {
+  const src = read('landly-mobile/src/components/ProviderTile.tsx')
+
+  it('matches the primary button: stretched, 52pt, 14 corners, a 1px hairline on the white one', () => {
+    expect(src).toContain("alignSelf: 'stretch'")
+    expect(src).toContain('height: 52')
+    expect(src).toContain('borderRadius: 14')
+    expect(src).toContain('borderWidth: 1')
+    expect(src).toContain('plain: { backgroundColor: colors.white, borderColor: colors.border }')
+    expect(src).toContain("apple: { backgroundColor: '#000000', borderColor: '#000000' }")
+  })
+
+  it('springs to 0.97 on the UI thread with a soft haptic, and skips the spring under Reduce Motion', () => {
+    expect(src).toContain('const PRESS_SCALE = 0.97')
+    expect(src).toContain('withSpring(PRESS_SCALE, PRESS_SPRING)')
+    expect(src).toContain('useReducedMotion()')
+    expect(src).toContain('soft()')
+    expect(read('landly-mobile/src/lib/haptics.ts')).toContain('ImpactFeedbackStyle.Soft')
+  })
+
+  it('puts the logo on the logical start edge and centres the label', () => {
+    expect(src).toContain('start: 18')
+    expect(src).not.toMatch(/\b(?:left|right|marginLeft|marginRight|paddingLeft|paddingRight):/)
+    expect(src).toContain("textAlign: 'center'")
+  })
+
+  it('stacks the providers in a column on the login screen', () => {
+    expect(read('landly-mobile/src/app/(auth)/login.tsx')).toContain("providerRow: { flexDirection: 'column', gap: 12, alignSelf: 'stretch' }")
+  })
+})
+
+describe('the auth screens use the stack', () => {
   const web = read('components/auth/entrance/AuthScreen.tsx')
   const app = read('landly-mobile/src/app/(auth)/login.tsx')
 

@@ -2,21 +2,21 @@
 
 import type { AuthProvider } from '@/lib/auth/appleDevice'
 
-// One square sign-in provider button in the auth screen's ProviderRow:
-// 54px on phones, 52px from `sm` (the large button's heights), 14px corners.
-// Icon only, so the label is the accessible name and the desktop tooltip.
-// Every icon sits in the same 22px box, centred in the tile, so the three
-// line up on one axis; the Apple logo is nudged up 1px (its leaf makes it
-// look low). While its sign-in runs, the icon becomes a spinner of the same
-// size, so the tile never resizes. Counterpart of the app's
+// A full-width sign-in provider button in the auth screen's ProviderRow:
+// as wide as the primary button (the large button's 52px, 14px corners).
+// The logo sits on the start edge (the right in Hebrew) in a 22px box and the label is centred across the whole button. Apple is
+// solid black with a white logo; Google and the passkey are white with a 1px
+// hairline. While its sign-in runs, the logo becomes a spinner of the same
+// size, so the button never resizes. Counterpart of the app's
 // landly-mobile/src/components/ProviderTile.tsx.
 //
 // Kept crisp: whole-pixel sizes throughout, and no transform at rest — the
-// 0.96 scale exists only while pressed, and the Apple nudge is a 1px offset,
-// not a translate. Deliberately no translateZ(0), backface-visibility or
-// will-change: each keeps the tile on its own GPU layer, which the browser
-// rasterizes once and then composites at fractional offsets or stretches
-// mid-press, which is exactly what makes it soft (see TextField.tsx).
+// 0.97 scale exists only while pressed (a hover lifts it 1px, from a real
+// mouse only), and the Apple nudge is a 1px offset, not a translate.
+// Deliberately no translateZ(0), backface-visibility or will-change: each
+// keeps the button on its own GPU layer, which the browser rasterizes once
+// and then composites at fractional offsets or stretches mid-press, which is
+// exactly what makes it soft (see TextField.tsx).
 
 // The Apple logo for Sign in with Apple buttons (Apple's guidelines allow it
 // logo-only, black, no smaller than the other providers' buttons).
@@ -53,8 +53,8 @@ export const PROVIDER_ICONS: Record<AuthProvider, React.ReactNode> = {
 
 const SKINS: Record<AuthProvider, string> = {
   apple: 'border-black bg-black text-white [@media(hover:hover)]:hover:enabled:bg-neutral-800',
-  google: 'border-slate-200 bg-white [@media(hover:hover)]:hover:enabled:bg-slate-50',
-  passkey: 'border-slate-200 bg-white [@media(hover:hover)]:hover:enabled:bg-slate-50',
+  google: 'border-slate-200 bg-white text-slate-900 [@media(hover:hover)]:hover:enabled:bg-slate-50',
+  passkey: 'border-slate-200 bg-white text-slate-900 [@media(hover:hover)]:hover:enabled:bg-slate-50',
 }
 
 export default function ProviderTile({
@@ -78,20 +78,19 @@ export default function ProviderTile({
       type="button"
       onClick={onClick}
       disabled={disabled || busy}
-      aria-label={busy && busyLabel ? busyLabel : label}
       aria-busy={busy || undefined}
-      title={label}
       data-provider={provider}
       // The busy tile stays at full strength (its spinner is the feedback); the others dim.
-      className={`inline-flex shrink-0 items-center justify-center h-[54px] w-[54px] sm:h-[52px] sm:w-[52px] rounded-[14px] border select-none cursor-pointer transition-[transform,background-color] duration-150 ease-out active:enabled:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${SKINS[provider]} ${disabled && !busy ? 'opacity-60 cursor-not-allowed' : ''}`}
+      className={`relative flex w-full shrink-0 items-center justify-center h-[52px] rounded-[14px] border px-[52px] text-[16px] font-bold tracking-[-0.01em] select-none cursor-pointer transition-[transform,translate,scale,background-color,box-shadow] duration-150 ease-out active:enabled:scale-[0.97] [@media(hover:hover)]:hover:enabled:-translate-y-px [@media(hover:hover)]:hover:enabled:shadow-[0_6px_18px_-8px_rgba(15,23,42,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${SKINS[provider]} ${disabled && !busy ? 'opacity-60 cursor-not-allowed' : ''}`}
     >
-      <span aria-hidden="true" className="flex h-[22px] w-[22px] items-center justify-center">
+      <span aria-hidden="true" className="absolute start-[18px] flex h-[22px] w-[22px] items-center justify-center">
         {busy ? (
           <span className={`h-[18px] w-[18px] rounded-full border-2 border-r-transparent animate-spin ${provider === 'apple' ? 'border-white' : 'border-brand'}`} />
         ) : (
           PROVIDER_ICONS[provider]
         )}
       </span>
+      <span className="truncate">{busy && busyLabel ? busyLabel : label}</span>
     </button>
   )
 }

@@ -27,6 +27,10 @@ vi.mock('../../landly-mobile/node_modules/@react-native-google-signin/google-sig
   statusCodes: { SIGN_IN_CANCELLED: '12501', IN_PROGRESS: 'IN_PROGRESS', PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE' },
 }))
 vi.mock('@shared/auth/signInCustomer', () => ({ finishCustomerGoogleSignIn: mocks.finish }))
+vi.mock('../../landly-mobile/src/auth/nativeBuildInfo', () => ({
+  nativeBuildInfo: () => ({ applicationId: 'com.amitbd.landlyapp', versionCode: '12', runtimeVersion: '1.0.0', channel: 'testflight', updateId: '3fa91c2d-aaaa-bbbb', embedded: false }),
+}))
+vi.mock('@shared/auth/googleClientHint', async () => await import('../../lib/auth/googleClientHint'))
 vi.mock('@shared/firebase/config', () => ({ auth: { name: 'auth' } }))
 
 type GoogleModule = {
@@ -78,12 +82,14 @@ describe('Android native Google sign-in', () => {
     ['SIGN_IN_CANCELLED', () => mocks.signIn.mockRejectedValue({ code: '12501' }), 'auth/popup-closed-by-user'],
     ['IN_PROGRESS', () => mocks.signIn.mockRejectedValue({ code: 'IN_PROGRESS' }), 'auth/cancelled-popup-request'],
     ['PLAY_SERVICES_NOT_AVAILABLE', () => mocks.hasPlayServices.mockRejectedValue({ code: 'PLAY_SERVICES_NOT_AVAILABLE' }), 'auth/google-play-services-unavailable'],
-    ['an unknown native error (DEVELOPER_ERROR)', () => mocks.signIn.mockRejectedValue({ code: '10' }), 'auth/internal-error'],
+    ['DEVELOPER_ERROR (a signing key or client Google does not know)', () => mocks.signIn.mockRejectedValue({ code: '10' }), 'auth/google-config-error'],
+    ['an unrecognised native error', () => mocks.signIn.mockRejectedValue({ code: 'SOMETHING_ELSE' }), 'auth/internal-error'],
     ['a response with no ID token', () => mocks.signIn.mockResolvedValue({ type: 'success', data: { idToken: null } }), 'auth/internal-error'],
   ])('maps %s to a Firebase-style code', async (_name, arrange, code) => {
     arrange()
+    mocks.webClientId = '840081012057-g74k9lcrema2t6nescpgoooq2kfou6i9.apps.googleusercontent.com'
     const { signInWithGoogle } = await load()
-    await expect(signInWithGoogle('en')).rejects.toMatchObject({ code })
+    await expect(signInWithGoogle('en')).rejects.toMatchObject({ code, googleClient: '8400...u6i9', googleBuild: 'pkg com.amitbd.landlyapp · v12 · rt 1.0.0 · testflight · ota 3fa91c2d' })
     expect(mocks.signInWithCredential).not.toHaveBeenCalled()
   })
 

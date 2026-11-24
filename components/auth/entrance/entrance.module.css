@@ -844,15 +844,15 @@ li[data-state='done'] > .brandStepDot {
 
 /* ── Card and chrome entrance ───────────────────────────────────────────
    The card rises on the entrance spring while fading in; the back link and
-   footer only fade. After the intro it starts with the reveal stage, as the
-   mobile card rises while the splash logo settles. */
+   footer only fade. They wait for the intro to finish and the logo's hold
+   (--t-hold), as the mobile card rises when the splash logo starts its glide. */
 .root[data-entrance='pending'] .chrome,
 .root[data-entrance='pending'] .brandContent,
 .root[data-entrance='pending'] .card {
   visibility: hidden;
 }
 .root[data-entrance='intro'] {
-  --card-delay: calc(var(--t-reveal) + var(--card-delay-base));
+  --card-delay: calc(var(--t-shine) + var(--t-shine-ms) + var(--t-hold) + var(--card-delay-base));
 }
 .root[data-entrance='settled'] {
   --card-delay: var(--card-delay-base);

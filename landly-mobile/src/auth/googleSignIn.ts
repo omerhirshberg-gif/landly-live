@@ -6,6 +6,8 @@ import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
 import { finishCustomerGoogleSignIn, type CustomerSignInResult } from '@shared/auth/signInCustomer'
 import { auth } from '@shared/firebase/config'
 import type { Lang } from '@shared/i18n/translations'
+import { withGoogleClientHint } from '@shared/auth/googleClientHint'
+import { nativeBuildInfo } from './nativeBuildInfo'
 
 // iOS "Continue with Google" (Android is googleSignIn.android.ts, the native
 // Google sheet; the browser build, googleSignIn.web.ts, uses the Firebase
@@ -48,18 +50,38 @@ export async function signInWithGoogle(currentLang: Lang): Promise<CustomerSignI
     usePKCE: true,
     extraParams: { prompt: 'select_account' },
   })
+  // Every failure carries the masked iOS client ID this build was baked with, so a device screenshot names it.
+  const tag = <T extends Error>(err: T): T => withGoogleClientHint(err, clientId, nativeBuildInfo())
   const result = await request.promptAsync(discovery)
+  if (result.type === 'error') {
+    // Google redirected back with an OAuth error (e.g. invalid_client, redirect_uri_mismatch).
+    const reason = String(result.params?.error ?? result.error?.code ?? 'unknown').match(/^[a-z_]{1,40}$/i)?.[0] ?? 'unknown'
+    throw tag(new FirebaseError('auth/invalid-credential', `Google refused the sign-in (${reason})`))
+  }
   if (result.type !== 'success') throw new FirebaseError('auth/popup-closed-by-user', 'Google sign-in was cancelled')
 
-  const tokens = await AuthSession.exchangeCodeAsync(
-    { clientId, redirectUri, code: result.params.code, extraParams: { code_verifier: request.codeVerifier ?? '' } },
-    discovery
-  )
-  if (!tokens.idToken) throw new Error('Google returned no ID token')
+  let tokens
+  try {
+    tokens = await AuthSession.exchangeCodeAsync(
+      { clientId, redirectUri, code: result.params.code, extraParams: { code_verifier: request.codeVerifier ?? '' } },
+      discovery
+    )
+  } catch (err) {
+    // Google's token endpoint answers with an OAuth error name (invalid_client, invalid_grant, ...).
+    const reason = String((err as { code?: unknown } | null)?.code ?? '').match(/^[a-z_]{1,40}$/i)?.[0]
+    throw tag(new FirebaseError('auth/invalid-credential', `Google token exchange failed${reason ? ` (${reason})` : ''}`))
+  }
+  if (!tokens.idToken) throw tag(new FirebaseError('auth/internal-error', 'Google returned no ID token'))
   return signInWithGoogleIdToken(tokens.idToken, currentLang)
 }
 
 export async function signInWithGoogleIdToken(idToken: string, currentLang: Lang): Promise<CustomerSignInResult> {
-  const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))
+  let cred
+  try {
+    cred = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken))
+  } catch (err) {
+    // Firebase refused Google's token (e.g. an ID token minted for a client of another project).
+    throw err instanceof Error ? withGoogleClientHint(err, clientId, nativeBuildInfo()) : err
+  }
   return finishCustomerGoogleSignIn(cred, currentLang)
 }

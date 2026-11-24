@@ -11,39 +11,32 @@
 //   node scripts/generate-app-icons.mjs --check
 //     measures those files against the rules below; exits 1 if any fails
 //
-// Every icon centres the whole emblem (the Star of David and the arrow), so it
-// reads as centred in any launcher mask: iOS and Google Play put the average of
-// the glyph's bounding-box centre and its ink-weighted centroid (the optical
-// centre) on the canvas centre; Android an optical centre between its bounding
-// box and its smallest enclosing circle (OPTICAL_LEAN).
-// iOS: the glyph's box fills ICON_FILL of the canvas width, centred
-// on an opaque background (iOS rejects transparency); the arrow
-// tip keeps CORNER_CLEARANCE inside the home screen's rounded-square mask.
+// Every icon puts the emblem's vertical axis (EMBLEM_AXIS_X) on the canvas
+// centre line x = SIZE / 2. The Star of David's apex and the bottom of the
+// arrow tail + arch (the two feet) are both centred on that axis, so the
+// symmetric star-and-arch body reads dead-centre and the arrow sweeps out to
+// the right, as in the original Landly icon.
+// iOS: the glyph's box fills ICON_FILL of the canvas width, on an opaque
+// background (iOS rejects transparency), vertically centred; the arrow tip
+// keeps CORNER_CLEARANCE inside the home screen's rounded-square mask.
 // Android: the glyph stays inside the official 66-of-108 safe circle (every
 // launcher mask contains the central 72, so nothing is ever clipped); it is as
-// large as fits there, on its optical centre, on a transparent foreground over
+// large as fits there, on the same axis, on a transparent foreground over
 // app.json's adaptiveIcon.backgroundColor.
-// Google Play: 512x512, 32-bit sRGB PNG, every pixel opaque on white; the
-// glyph keeps PLAY_MARGIN of the canvas clear on every side, so Play's rounded mask never touches it.
+// Google Play: 512x512, 32-bit sRGB PNG, every pixel opaque on white, laid out
+// like the iOS icon; the glyph keeps PLAY_MARGIN of the canvas clear on every side.
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
-import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '../lib/brand/emblemPaths.ts'
+import { ARCH, ARROW, EMBLEM_AXIS_X, EMBLEM_VIEWBOX, STAR } from '../lib/brand/emblemPaths.ts'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SIZE = 1024
 const HALF = SIZE / 2
-export const ICON_FILL = 0.64
+export const ICON_FILL = 0.745
 /** Web favicons (32px and smaller) are read tiny, so they fill more of the canvas than the app icon. */
-export const FAVICON_FILL = 0.9
-/**
- * The optical centre of the glyph is the average of its bounding-box centre and
- * its ink-weighted centroid, in viewBox units; it goes on the canvas centre.
- * The box centre alone reads as shifted left (the arrow only reaches out to the
- * right); the centroid alone is pulled by the heavy star. Their average is the
- * fix, and the layouts report the resulting offset of the box from the centre.
- */
+export const FAVICON_FILL = 0.82
 export const ICON_BACKGROUND = '#fcfcfc'
 /** Radius of Android's 66-of-108 safe circle on the 1024 canvas. */
 export const SAFE_RADIUS = Math.floor((SIZE * 66) / 108 / 2)
@@ -67,9 +60,9 @@ export const MASKABLE_RADIUS = 0.4
  * pixels along the line from the centre, the glyph keeps inside it.
  */
 const MASK_EXPONENT = 5
-export const CORNER_CLEARANCE = 48
+export const CORNER_CLEARANCE = 32
 export const PLAY_SIZE = 512
-export const PLAY_MARGIN = 0.15
+export const PLAY_MARGIN = 0.05
 export const PLAY_BACKGROUND = '#ffffff'
 export const FILES = {
   icon: path.join(ROOT, 'landly-mobile/assets/icon.png'),
@@ -178,32 +171,40 @@ const boxOf = (points) => {
 
 /** Where each icon puts the glyph: px per viewBox unit, and the viewBox point on the canvas centre. */
 export async function layouts() {
-  const { points, centroid } = await outline()
+  const { points } = await outline()
   const box = boxOf(points)
 
   const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  // Optical centre: the box centre and the ink centroid, averaged (viewBox units).
-  const optical = { x: (boxCenter.x + centroid.x) / 2, y: (boxCenter.y + centroid.y) / 2 }
-  // Vertically the box stays centred (top and bottom margins equal): the arrow and the arch set the height.
-  const opticalCenter = { x: optical.x, y: boxCenter.y }
+  // The axis the Star's apex and the feet share goes on the canvas centre line; vertically the box stays centred.
+  const axisCenter = { x: EMBLEM_AXIS_X, y: boxCenter.y }
   /** How far the box centre sits right of the canvas centre, in canvas px at `scale`. */
-  const offsetOf = (scale) => (boxCenter.x - opticalCenter.x) * scale
+  const offsetOf = (scale) => (boxCenter.x - axisCenter.x) * scale
 
-  // iOS: the optical centre on the canvas centre, the box ICON_FILL of the width.
+  // Where the Star's apex and the bottom feet sit, in viewBox units (reported, and checked against the axis).
+  const star = await outline(partPaths(STAR))
+  const apexPoints = star.points.filter((p) => p.y < Math.min(...star.points.map((q) => q.y)) + 8)
+  const apexX = (Math.min(...apexPoints.map((p) => p.x)) + Math.max(...apexPoints.map((p) => p.x))) / 2
+  const base = await outline([ARCH, ARROW].map(partPaths).join(''))
+  const feetPoints = base.points.filter((p) => p.y > Math.max(...base.points.map((q) => q.y)) - 4)
+  const feetX = (Math.min(...feetPoints.map((p) => p.x)) + Math.max(...feetPoints.map((p) => p.x))) / 2
+  /** Canvas x of a viewBox x at `scale`. */
+  const canvasX = (x, scale) => HALF + (x - axisCenter.x) * scale
+
+  // iOS: the axis on the canvas centre line, the box ICON_FILL of the width.
   const iosScale = (SIZE * ICON_FILL) / box.width
-  const ios = { scale: iosScale, center: opticalCenter, offset: offsetOf(iosScale) }
-  // Web maskable icon: the farthest glyph point three px (at 1024) inside the safe circle around the optical centre.
-  const farthest = Math.max(...points.map((p) => Math.hypot(p.x - opticalCenter.x, p.y - opticalCenter.y)))
+  const ios = { scale: iosScale, center: axisCenter, offset: offsetOf(iosScale), apexX: canvasX(apexX, iosScale), feetX: canvasX(feetX, iosScale) }
+  // Web maskable icon: the farthest glyph point three px (at 1024) inside the safe circle around the axis centre.
+  const farthest = Math.max(...points.map((p) => Math.hypot(p.x - axisCenter.x, p.y - axisCenter.y)))
   const maskableScale = (MASKABLE_RADIUS * SIZE - 3) / farthest
-  const maskable = { scale: maskableScale, center: opticalCenter, offset: offsetOf(maskableScale) }
-  // Web favicons: the same centring, a larger fill so 32px and 16px stay legible.
-  const faviconScale = (SIZE * FAVICON_FILL) / box.width
-  const favicon = { scale: faviconScale, center: opticalCenter, offset: offsetOf(faviconScale) }
+  const maskable = { scale: maskableScale, center: axisCenter, offset: offsetOf(maskableScale) }
+  // Web favicons: the same axis; the arrow tip keeps 4% of the canvas clear on the right, so 32px and 16px stay legible.
+  const faviconScale = Math.min((SIZE * FAVICON_FILL) / box.width, (HALF - SIZE * 0.04) / (box.x + box.width - axisCenter.x))
+  const favicon = { scale: faviconScale, center: axisCenter, offset: offsetOf(faviconScale) }
 
-  // Android: the optical centre on the canvas centre, then the scale that puts
-  // the farthest glyph point on the 66dp safe circle, three pixels inside
-  // for anti-aliasing. The enclosing circle's centre: the farthest distance is convex in the centre,
-  // so a nested ternary search finds it.
+  // Android: the axis on the canvas centre line, then the scale that puts the
+  // farthest glyph point on the 66dp safe circle, three pixels inside for
+  // anti-aliasing. Vertically the centre leans OPTICAL_LEAN from the box
+  // centre toward the y that minimises that reach (convex, so a ternary search finds it).
   const reach = (cx, cy) => Math.max(...points.map((p) => Math.hypot(p.x - cx, p.y - cy)))
   const ternary = (lo, hi, f) => {
     for (let i = 0; i < 40; i++) {
@@ -214,19 +215,13 @@ export async function layouts() {
     }
     return (lo + hi) / 2
   }
-  const bestY = (cx) => ternary(box.y, box.y + box.height, (cy) => reach(cx, cy))
-  const cx = ternary(box.x, box.x + box.width, (x) => reach(x, bestY(x)))
-  const cy = bestY(cx)
-  // Optical centre: the box centre leaning OPTICAL_LEAN toward the circle's.
-  const ox = boxCenter.x + (cx - boxCenter.x) * OPTICAL_LEAN
-  const oy = boxCenter.y + (cy - boxCenter.y) * OPTICAL_LEAN
-  const android = { scale: (SAFE_RADIUS - 3) / reach(ox, oy), center: { x: ox, y: oy } }
+  const bestY = ternary(box.y, box.y + box.height, (cy) => reach(axisCenter.x, cy))
+  const oy = boxCenter.y + (bestY - boxCenter.y) * OPTICAL_LEAN
+  const android = { scale: (SAFE_RADIUS - 3) / reach(axisCenter.x, oy), center: { x: axisCenter.x, y: oy } }
 
-  // Google Play: the box centred, as large as keeps PLAY_MARGIN clear on
-  // every side. (A pixel more, so the anti-aliased edge stays outside it too.)
-  const room = PLAY_SIZE / 2 - Math.ceil(PLAY_SIZE * PLAY_MARGIN) - 1 - Math.abs(offsetOf((PLAY_SIZE / 2) / (box.width / 2)))
-  const playScale = room / Math.max(box.width, box.height) * 2
-  const playStore = { size: PLAY_SIZE, scale: playScale, center: opticalCenter, offset: offsetOf(playScale) }
+  // Google Play: laid out like iOS (same fill, same axis) on the 512 canvas.
+  const playScale = (PLAY_SIZE * ICON_FILL) / box.width
+  const playStore = { size: PLAY_SIZE, scale: playScale, center: axisCenter, offset: offsetOf(playScale) }
 
   return { ios, favicon, maskable, android, playStore }
 }
@@ -266,6 +261,9 @@ export async function check() {
   if (Math.abs(icon.fill - ICON_FILL) > 0.02) failures.push(`icon.png glyph fills ${(icon.fill * 100).toFixed(1)}%`)
   if (Math.abs(icon.margins.top - icon.margins.bottom) > 2) failures.push(`icon.png margins ${icon.margins.top}/${icon.margins.bottom}`)
   if (Math.abs(icon.margins.left - icon.margins.right - 2 * ios.offset) > 3) failures.push(`icon.png margins ${icon.margins.left}/${icon.margins.right}`)
+  // The Star's apex and the bottom feet sit on the centre line x = 512.
+  if (Math.abs(ios.apexX - HALF) > 2) failures.push(`icon.png Star apex is at x=${ios.apexX.toFixed(1)}, not ${HALF}`)
+  if (Math.abs(ios.feetX - HALF) > 3) failures.push(`icon.png bottom arch is centred at x=${ios.feetX.toFixed(1)}, not ${HALF}`)
   if (icon.cornerClearance < CORNER_CLEARANCE) failures.push(`icon.png keeps only ${icon.cornerClearance.toFixed(0)}px inside the mask`)
 
   const adaptive = await measure(FILES.adaptive)
@@ -311,13 +309,14 @@ export async function check() {
     const meta = await sharp(file).metadata()
     if (meta.width !== size || meta.height !== size) failures.push(`${path.basename(file)} is ${meta.width}x${meta.height}, expected ${size}`)
   }
-  return { failures, icon, adaptive, maskable, play: { ...play, minMargin: playMargin, meta: playMeta } }
+  return { failures, ios, icon, adaptive, maskable, play: { ...play, minMargin: playMargin, meta: playMeta } }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (!process.argv.includes('--check')) await generate()
-  const { failures, icon, adaptive, maskable, play } = await check()
+  const { failures, ios, icon, adaptive, maskable, play } = await check()
   console.log(`icon.png          ${(icon.fill * 100).toFixed(1)}% wide, margins ${icon.margins.left}/${icon.margins.right} x ${icon.margins.top}/${icon.margins.bottom}, ${icon.cornerClearance.toFixed(0)}px inside the mask, opaque: ${icon.opaque}`)
+  console.log(`axis              Star apex x=${ios.apexX.toFixed(1)}, bottom arch centre x=${ios.feetX.toFixed(1)} (canvas centre ${HALF})`)
   console.log(`adaptive-icon.png ${(adaptive.fill * 100).toFixed(1)}% wide, box centre ${boxCenter(adaptive).x},${boxCenter(adaptive).y}, furthest pixel ${adaptive.maxRadius.toFixed(0)}px from centre (66dp safe circle ${SAFE_RADIUS}px)`)
   console.log(`icon-maskable-512 furthest pixel ${maskable.maxRadius.toFixed(0)}px from centre (safe circle ${MASKABLE_RADIUS * maskable.width}px)`)
   console.log(`play-store-icon   ${play.width}x${play.height} ${play.meta.channels * 8}-bit ${play.meta.space}${play.meta.icc ? ' (ICC)' : ''}, margins ${play.margins.left}/${play.margins.right} x ${play.margins.top}/${play.margins.bottom} (min ${(play.minMargin * 100).toFixed(1)}%), opaque: ${play.opaque}`)

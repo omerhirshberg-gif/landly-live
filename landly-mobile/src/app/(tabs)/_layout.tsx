@@ -1,6 +1,5 @@
 import { Platform, StyleSheet, View } from 'react-native'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import { useLang } from '../../i18n/LangProvider'
 import { colors } from '../../theme'
@@ -16,11 +15,7 @@ import { tick } from '../../lib/haptics'
 //   border-coloured hairline at all times. Tab screens run edge to edge
 //   underneath; their scroll views use automatic content insets, so content
 //   scrolls behind the bar and ends clear of it.
-// - Android: the Material 3 navigation bar: solid surfaceContainer, the
-//   no indicator pill (the active icon and label turn brand blue), native ripple, laid out
-//   above the gesture or 3-button system bar. Material draws no divider, so a
-//   border-coloured hairline is laid over its top edge.
-// The system lays the five out in equal columns at its own bar height.
+// - Android and web have their own layouts (_layout.android.tsx, _layout.web.tsx) on a shared JS tab bar.
 // The order is physical and permanent: Home far left, then Perks, the Raayonit
 // Card ("תו על"), My Pass, Profile far right, in every language. The Raayonit tab
 // is there only while Raayonit's name may be shown (useRaayonitDisplay), so with
@@ -28,25 +23,11 @@ import { tick } from '../../lib/haptics'
 // tab's heart. Native layout direction stays LTR
 // (supportsRTL is off in app.json); Hebrew only flips the JS root view, so
 // the screens follow the language while the bar never mirrors.
-const androidBar = Platform.OS === 'android'
-  ? {
-      backgroundColor: colors.surfaceContainer,
-      indicatorColor: 'transparent',
-      rippleColor: colors.border,
-      iconColor: { default: colors.body, selected: colors.brand },
-      labelStyle: { default: { color: colors.body }, selected: { color: colors.brand } },
-      labelVisibilityMode: 'labeled' as const,
-    }
-  : {}
-
 const iosVersion = Platform.OS === 'ios' ? parseInt(String(Platform.Version), 10) : 0
 const iosEdgeBar =
   Platform.OS === 'ios' && iosVersion < 26
     ? { disableTransparentOnScrollEdge: true, blurEffect: 'systemChromeMaterial' as const, shadowColor: colors.border }
     : {}
-
-/** Material 3's navigation bar height (labelled items), above the system bar's inset. */
-const ANDROID_BAR_HEIGHT = 80
 
 // A render error here shows the retry card; the rest of the app stays up.
 export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
@@ -54,11 +35,10 @@ export { default as ErrorBoundary } from '../../components/RouteErrorBoundary'
 export default function TabsLayout() {
   const { t } = useLang()
   const raayonit = useRaayonitDisplay()
-  const insets = useSafeAreaInsets()
 
   return (
     <View style={styles.root}>
-      <NativeTabs tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...androidBar} {...iosEdgeBar}>
+      <NativeTabs tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...iosEdgeBar}>
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
           <NativeTabs.Trigger.Label>{t('mobile_tab_home')}</NativeTabs.Trigger.Label>
@@ -82,14 +62,10 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Label>{t('nav_profile')}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-      {Platform.OS === 'android' && (
-        <View pointerEvents="none" style={[styles.androidDivider, { bottom: ANDROID_BAR_HEIGHT + insets.bottom }]} />
-      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  androidDivider: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
 })

@@ -25,3 +25,8 @@ export function warning() {
 export function impact() {
   if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
 }
+
+/** A soft impact: pressing a full-width button, felt more than heard. */
+export function soft() {
+  if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {})
+}

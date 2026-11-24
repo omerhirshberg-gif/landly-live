@@ -725,7 +725,7 @@ export default function LoginScreen() {
                       <AppText style={styles.or}>{t('login_orDivider')}</AppText>
                       <View style={styles.rule} />
                     </View>
-                    {/* In render order, so VoiceOver and TalkBack follow it; the root's RTL direction mirrors the row for Hebrew. */}
+                    {/* One full-width button per provider, stacked in render order, so VoiceOver and TalkBack follow it. */}
                     <View style={styles.providerRow}>
                       {providers.map((provider) =>
                         provider === 'apple' ? (
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
   link: { fontSize: 14, fontWeight: '700', color: colors.brand },
   muted: { fontSize: 14, color: colors.textMuted },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 14 },
-  providerRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', alignItems: 'center' },
+  providerRow: { flexDirection: 'column', gap: 12, alignSelf: 'stretch' },
   rule: { flex: 1, height: 1, backgroundColor: colors.border },
   or: { fontSize: 12, fontWeight: '600', color: colors.textFaint, textTransform: 'uppercase' },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 24 },

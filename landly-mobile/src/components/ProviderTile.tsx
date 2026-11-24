@@ -1,17 +1,21 @@
 import { useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated'
 import Svg, { Circle, Path } from 'react-native-svg'
 import type { AuthProvider } from '@shared/auth/appleDevice'
+import { soft } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
+import AppText from './AppText'
 
-// One square sign-in provider button in the login screen's provider row:
-// 54pt (52px in the browser build, as on the website from `sm`), 14 corners,
-// icon only, so `label` is the accessible name. Every icon sits in the same
-// 22pt box, centred in the tile, so they line up on one axis; the Apple logo
-// is nudged up 1pt (its leaf makes it look low). While its sign-in runs, the
-// icon becomes a spinner of the same size. Counterpart of the website's
-// components/auth/entrance/ProviderTile.tsx.
+// A full-width sign-in provider button in the login screen's provider stack:
+// as wide as the primary button above it, 52pt tall with the same 14 corners.
+// The logo sits on the start edge (the right in Hebrew) inside a 22pt box and
+// the label is centred across the whole button. Apple is solid black with a
+// white logo; Google and the rest are white with a 1px hairline. Pressing it
+// springs it to 0.97 on the UI thread with a soft haptic; while its sign-in
+// runs, the logo becomes a spinner of the same size, so the button never
+// resizes. Counterpart of the website's components/auth/entrance/ProviderTile.tsx.
 
 // The Apple logo for Sign in with Apple buttons (Apple's guidelines allow it
 // logo-only, black, no smaller than the other providers' buttons).
@@ -49,6 +53,10 @@ export function ProviderGlyph({ provider, appleColor = '#FFFFFF' }: { provider: 
   )
 }
 
+// Quick and tight, with no overshoot: a press is a response, not a flourish.
+const PRESS_SPRING = { damping: 22, stiffness: 420, mass: 0.6 } as const
+const PRESS_SCALE = 0.97
+
 export default function ProviderTile({
   provider,
   label,
@@ -63,52 +71,72 @@ export default function ProviderTile({
   onPress: () => void
 }) {
   const [pressed, setPressed] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const reduced = useReducedMotion()
+  const scale = useSharedValue(1)
   const apple = provider === 'apple'
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }))
+  const inactive = disabled || busy
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: disabled || busy, busy }}
-      disabled={disabled || busy}
+      accessibilityState={{ disabled: inactive, busy }}
+      disabled={inactive}
       onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      style={disabled ? styles.webNotAllowed : styles.webPointer}
+      onPressIn={() => {
+        setPressed(true)
+        soft()
+        scale.set(reduced ? 1 : withSpring(PRESS_SCALE, PRESS_SPRING))
+      }}
+      onPressOut={() => {
+        setPressed(false)
+        scale.set(reduced ? 1 : withSpring(1, PRESS_SPRING))
+      }}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      pressRetentionOffset={16}
+      style={[styles.fill, disabled ? styles.webNotAllowed : styles.webPointer]}
     >
-      <View
+      <Animated.View
         style={[
-          styles.tile,
+          styles.button,
           apple ? styles.apple : styles.plain,
-          pressed && styles.pressed,
-          pressed && (apple ? styles.applePressed : styles.plainPressed),
-          // The busy tile stays at full strength (its spinner is the feedback); the others dim.
+          (hovered || pressed) && !inactive && (apple ? styles.applePressed : styles.plainPressed),
+          // The busy button stays at full strength (its spinner is the feedback); the others dim.
           disabled && !busy && styles.disabled,
+          scaleStyle,
         ]}
       >
         <View style={styles.iconBox}>{busy ? <ActivityIndicator size="small" color={apple ? '#FFFFFF' : colors.brand} /> : <ProviderGlyph provider={provider} />}</View>
-      </View>
+        <AppText numberOfLines={1} style={[styles.label, { color: apple ? '#FFFFFF' : colors.heading }]}>
+          {label}
+        </AppText>
+      </Animated.View>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  tile: {
-    width: 54,
-    height: 54,
+  fill: { alignSelf: 'stretch' },
+  button: {
+    height: 52,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
     borderWidth: 1,
-    transform: [{ scale: 1 }],
-    ...webOnly({ width: 52, height: 52 }),
+    // Room for the logo on the start edge so a long label never runs under it.
+    paddingHorizontal: 52,
   },
   apple: { backgroundColor: '#000000', borderColor: '#000000' },
   plain: { backgroundColor: colors.white, borderColor: colors.border },
-  pressed: { transform: [{ scale: 0.96 }] },
   applePressed: { backgroundColor: '#262626' },
   plainPressed: { backgroundColor: colors.background },
   disabled: { opacity: 0.6 },
-  iconBox: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { position: 'absolute', start: 18, width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  // The primary button's label: 16, bold, slightly tight.
+  label: { fontSize: 16, fontWeight: '700', letterSpacing: -0.16, textAlign: 'center' },
   // An offset, not a transform: in the browser build a transform would leave the logo soft.
   appleNudge: { position: 'relative', top: -1 },
   webPointer: webOnly({ cursor: 'pointer' }),

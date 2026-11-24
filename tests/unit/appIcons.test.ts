@@ -12,26 +12,28 @@ describe('app icons', async () => {
     expect(result.failures).toEqual([])
   })
 
-  it('centre the whole emblem, arrow included, not the Star of David alone', async () => {
+  it("put the Star of David's apex and the bottom arch on the vertical centre line x = 512", async () => {
     const { icon, play, adaptive } = result
-    // iOS and Google Play centre the glyph's box vertically and put its optical centre (the average of the box centre and the ink centroid) on the canvas centre.
-    const { ios, playStore } = await layouts()
+    const { ios, android, playStore } = await layouts()
+    expect(Math.abs(ios.apexX - 512)).toBeLessThanOrEqual(2)
+    expect(Math.abs(ios.feetX - 512)).toBeLessThanOrEqual(3)
+    // The axis, not the box, is centred: the arrow reaches out to the right, so the box sits right of the centre line by `offset`.
+    expect(ios.offset).toBeGreaterThan(0)
     expect(Math.abs(icon.margins.left - icon.margins.right - 2 * ios.offset)).toBeLessThanOrEqual(3)
     expect(Math.abs(play.margins.left - play.margins.right - 2 * playStore.offset)).toBeLessThanOrEqual(3)
-    // The optical shift is small: the old fixed 24px nudge pushed the mark toward the top-right corner.
-    expect(Math.abs(ios.offset)).toBeLessThan(12)
+    expect(Math.abs(icon.margins.top - icon.margins.bottom)).toBeLessThanOrEqual(2)
     expect(Math.abs(play.margins.top - play.margins.bottom)).toBeLessThanOrEqual(2)
-    // Android centres an optical point between box and circle, so the box sits within a few pixels of the middle.
-    expect(Math.abs(adaptive.margins.left - adaptive.margins.right)).toBeLessThanOrEqual(8)
-    expect(Math.abs(adaptive.margins.top - adaptive.margins.bottom)).toBeLessThanOrEqual(8)
+    // Android shares the axis (and so the same centre x as iOS, in viewBox units).
+    expect(android.center.x).toBeCloseTo(ios.center.x, 6)
+    expect(adaptive.margins.left).toBeGreaterThan(adaptive.margins.right)
   })
 
-  it('fill about 64% of the iOS icon, on an opaque square, clear of the rounded corners', () => {
+  it('fill about 74.5% of the iOS icon, on an opaque square, clear of the rounded corners', () => {
     const { icon } = result
     expect([icon.width, icon.height]).toEqual([1024, 1024])
     expect(icon.opaque).toBe(true)
-    expect(icon.fill).toBeGreaterThanOrEqual(0.62)
-    expect(icon.fill).toBeLessThanOrEqual(0.66)
+    expect(icon.fill).toBeGreaterThanOrEqual(0.73)
+    expect(icon.fill).toBeLessThanOrEqual(0.76)
     expect(Math.abs(icon.fill - ICON_FILL)).toBeLessThan(0.01)
     expect(Math.abs(icon.margins.top - icon.margins.bottom)).toBeLessThanOrEqual(2)
     expect(icon.cornerClearance).toBeGreaterThanOrEqual(CORNER_CLEARANCE)
@@ -61,7 +63,7 @@ describe('app icons', async () => {
     )
   })
 
-  it('gives Google Play a 512x512 32-bit sRGB PNG, opaque white, with 15% clear on every side', async () => {
+  it('gives Google Play a 512x512 32-bit sRGB PNG, opaque white, with at least 5% clear on every side', async () => {
     const { play } = result
     expect([play.width, play.height]).toEqual([PLAY_SIZE, PLAY_SIZE])
     expect(play.meta.format).toBe('png')

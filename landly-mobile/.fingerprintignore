@@ -1,0 +1,7 @@
+# Local build output inside node_modules (a developer's `expo run:android` / pod install) is not part of the app's
+# native code. Only used if runtimeVersion goes back to the `fingerprint` policy (app.json uses `appVersion`).
+node_modules/**/android/build/**
+node_modules/**/android/.cxx/**
+node_modules/**/android/.gradle/**
+node_modules/**/ios/build/**
+node_modules/**/ios/Pods/**
