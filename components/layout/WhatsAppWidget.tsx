@@ -54,18 +54,24 @@ function useFloatingClearance(enabled: boolean): number {
     let frame = 0
     const measure = () => {
       frame = 0
+      // setState bails out on an equal value, so this costs nothing when nothing moved.
       setLift(floatingClearance(document, window.innerHeight))
     }
-    // At most once a frame, however many scroll, resize and DOM events arrive.
+    // At most once a frame, however many scroll, resize and DOM events arrive;
+    // none while the tab is hidden (it re-measures when it shows again).
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure)
+      if (!frame && !document.hidden) frame = requestAnimationFrame(measure)
     }
     measure()
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
+    document.addEventListener('visibilitychange', schedule)
     // A bar can appear later (the cookie notice after its storage check, an
     // offer's bar once the offer loads) or change height (text wrapping).
-    const mutations = new MutationObserver(schedule)
+    // Changes inside this widget (its own bubble) never move a bar.
+    const mutations = new MutationObserver((records) => {
+      if (records.some((r) => !(r.target instanceof Element && r.target.closest('.wa-widget')))) schedule()
+    })
     mutations.observe(document.body, { childList: true, subtree: true })
     const sizes = new ResizeObserver(schedule)
     sizes.observe(document.body)
@@ -73,6 +79,7 @@ function useFloatingClearance(enabled: boolean): number {
       if (frame) cancelAnimationFrame(frame)
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
+      document.removeEventListener('visibilitychange', schedule)
       mutations.disconnect()
       sizes.disconnect()
     }

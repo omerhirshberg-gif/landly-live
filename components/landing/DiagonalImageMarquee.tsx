@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pause, Play } from 'lucide-react'
 import { useLang } from '@/lib/i18n/useLang'
 
@@ -68,9 +68,29 @@ function Copy({ className, photos, duplicate, sizes }: { className: string; phot
 export default function DiagonalImageMarquee() {
   const { t } = useLang()
   const [paused, setPaused] = useState(false)
+  // Off screen (scrolled past, or a hidden tab) the tracks stand still, so an idle page stops compositing.
+  // Separate from `paused`: scrolling back never overrides the visitor's own pause.
+  const [onScreen, setOnScreen] = useState(true)
+  const frameRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame || typeof IntersectionObserver === 'undefined') return
+    let intersecting = true
+    const sync = () => setOnScreen(intersecting && !document.hidden)
+    const observer = new IntersectionObserver(([entry]) => {
+      intersecting = entry.isIntersecting
+      sync()
+    }, { rootMargin: '100px' })
+    observer.observe(frame)
+    document.addEventListener('visibilitychange', sync)
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+    }
+  }, [])
   const label = t('landing_marquee_alt')
   return (
-    <div className={`marquee-frame mx-auto w-full lg:mx-0${paused ? ' is-paused' : ''}`}>
+    <div ref={frameRef} className={`marquee-frame mx-auto w-full lg:mx-0${paused ? ' is-paused' : ''}${onScreen ? '' : ' is-offscreen'}`}>
       <div className="marquee-stage hidden lg:block">
         <div role="img" aria-label={label} className="marquee-tilt">
           {COLUMNS.map(({ direction, photos }) => (
