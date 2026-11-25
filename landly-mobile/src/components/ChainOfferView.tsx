@@ -26,6 +26,7 @@ import Button from './Button'
 import ContactActions from './ContactActions'
 import ContentText from './ContentText'
 import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import OfferTags from './OfferTags'
 import RaayonitChainNotes from './RaayonitChainNotes'
 import ScreenHeader from './ScreenHeader'
@@ -44,7 +45,7 @@ const ISSUER_LOGO = require('../../assets/images/raayonit-logo.png') as ImageSou
 // discount ribbon, no denomination picker and no store-specific Buy. One column: the venue (logo, name, "Accepts Raayonit Card", website and
 // phone), the participating branches, how to redeem and the fine print, then a pinned action that opens the Raayonit Card page (/raayonit).
 export default function ChainOfferView({ offer }: { offer: OfferDocument }) {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const insets = useSafeAreaInsets()
   const { paddingLeft, paddingRight, width } = useLayout()
   const display = useRaayonitDisplay()
@@ -143,7 +144,7 @@ export default function ChainOfferView({ offer }: { offer: OfferDocument }) {
 
           <Pressable accessibilityRole="link" onPress={openHub} style={({ pressed }) => [styles.seeAll, pressed && styles.pressed]}>
             <AppText style={styles.seeAllText}>{seeAll}</AppText>
-            <LineIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} flip={isRtl} />
+            <DirectionalIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} />
           </Pressable>
         </View>
       </ScrollView>

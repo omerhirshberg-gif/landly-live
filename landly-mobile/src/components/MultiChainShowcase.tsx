@@ -7,11 +7,12 @@ import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
 import { openOffer } from '../lib/openOffer'
 import AppText from './AppText'
+import Corner from './Corner'
 import PagerDots from './PagerDots'
 import { CAROUSEL_GAP as GAP, carouselPage, carouselSnapOffsets } from '../lib/carousel'
 import { useLayout } from '../lib/useLayout'
 import { isWeb, webOnly } from '../lib/webStyles'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 
 // The Perks tab's flagship "Multi-Chain Super Vouchers" showcase (web: components/discover/MultiChainShowcase.tsx): a centred header,
 // then one large card per voucher value, stacked on a phone. The top value is the midnight-navy "Best Value" card. Each card opens
@@ -92,9 +93,11 @@ function VoucherCard({ card, offer }: { card: ShowcaseCard; offer: OfferDocument
       style={({ pressed }) => [styles.card, dark ? styles.cardDark : styles.cardLight, pressed && styles.pressed]}
     >
       {/* The discount hangs across the top trailing corner as a diagonal ribbon (the card clips it): 45deg at the right, -45deg at the left in Hebrew. */}
+      <Corner at="top-end" top={22} end={-34}>
       <View pointerEvents="none" accessible={false} style={[styles.ribbon, { transform: [{ rotate: isRtl ? '-45deg' : '45deg' }] }]}>
         <AppText ltr style={styles.ribbonText}>{`-${card.discountPercent}%`}</AppText>
       </View>
+      </Corner>
       <AppText numberOfLines={1} style={[styles.kicker, dark && styles.clearRibbon, { color: dark ? '#FCD34D' : '#64748B', fontWeight: dark ? '700' : '600' }]}>{isRtl ? eyebrow : eyebrow.toUpperCase()}</AppText>
       <AppText numberOfLines={1} style={[styles.value, dark && styles.clearRibbon, { color: ink }]}>{t('super_card_value_line').replace('{value}', value)}</AppText>
       <View style={styles.priceRow}>
@@ -103,7 +106,7 @@ function VoucherCard({ card, offer }: { card: ShowcaseCard; offer: OfferDocument
       </View>
       <View style={[styles.cta, { backgroundColor: dark ? colors.white : colors.brand }]}>
         <AppText numberOfLines={1} style={[styles.ctaText, { color: dark ? '#0B1B3D' : colors.white }]}>{cta}</AppText>
-        <LineIcon name="arrowUpEnd" size={16} color={dark ? '#0B1B3D' : colors.white} strokeWidth={2} flip={isRtl} />
+        <DirectionalIcon name="arrowUpEnd" size={16} color={dark ? '#0B1B3D' : colors.white} strokeWidth={2} />
       </View>
     </Pressable>
   )
@@ -123,7 +126,7 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 12, letterSpacing: 0.5 },
   value: { marginTop: 4, fontSize: 20, fontWeight: '700' },
   // The ribbon: emerald, 132pt wide, centred on the card's top trailing corner diagonal.
-  ribbon: { position: 'absolute', top: 22, end: -34, width: 132, paddingVertical: 4, alignItems: 'center', backgroundColor: '#059669', zIndex: 2, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  ribbon: { width: 132, paddingVertical: 4, alignItems: 'center', backgroundColor: '#059669', zIndex: 2, shadowColor: '#000000', shadowOpacity: 0.25, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   ribbonText: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: colors.white, fontVariant: ['tabular-nums'] },
   clearRibbon: { paddingEnd: 80 },
   priceRow: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },

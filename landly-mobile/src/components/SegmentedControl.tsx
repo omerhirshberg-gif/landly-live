@@ -11,8 +11,9 @@ const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1)
 
 // Equal-width segments with a sliding active pill. The pill is translated by
 // whole multiples of its own width (percent translate), so nothing has to be
-// measured. `left` and translateX are physical, so in RTL — where the row
-// flips — the pill's visual slot is mirrored to match. `brand` is the
+// measured. The pill is anchored at the row's start edge (`start`, which follows
+// the root view's direction; a physical `left` is mirrored by iOS under it),
+// while translateX is always physical, so in RTL the pill moves the other way. `brand` is the
 // member dashboard's look (web: .dash-tabs): a rounded grey track with a
 // solid brand pill under white text.
 export default function SegmentedControl<T extends string>({
@@ -32,7 +33,8 @@ export default function SegmentedControl<T extends string>({
   const { isRtl } = useLang()
   const count = options.length
   const index = Math.max(0, options.findIndex((o) => o.value === value))
-  const slot = isRtl ? count - 1 - index : index
+  // Physical travel from the start edge: rightwards in English, leftwards in Hebrew.
+  const slot = isRtl ? -index : index
 
   return (
     <View accessibilityRole="tablist" style={[styles.track, brand && styles.brandTrack, style]}>
@@ -87,7 +89,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: 0,
+    start: 0,
     borderRadius: 10,
     backgroundColor: colors.white,
     shadowColor: colors.textStrong,

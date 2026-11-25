@@ -16,7 +16,9 @@ describe('native Home header', () => {
   })
 
   it('sits close under the safe area without a second gap', () => {
-    expect(home).toContain("<SafeAreaView style={styles.safe} edges={['top']}>")
+    // TabScreen owns the top safe-area inset and the brand bar (tabHeaderParity.test.ts).
+    expect(home).toContain('<TabScreen>')
+    expect(read('components/TabScreen.tsx')).toContain("<SafeAreaView style={styles.safe} edges={['top']}>")
     expect(home).toMatch(/<ScreenTitleRow\s+style=\{styles\.greetingSlot\}/)
     expect(home).toContain('greetingSlot: { marginBottom: header.gap }')
   })
@@ -41,8 +43,10 @@ describe('native tab headers share one rhythm', () => {
 
   it('keeps the Settings gear a 44pt target at the end of the Profile title row', () => {
     const profile = read('app/(tabs)/profile.tsx')
-    expect(profile).toMatch(/<ScreenTitleRow\s+title=\{t\('nav_profile'\)\}[\s\S]*?trailing=\{\s*<View style=\{styles\.actions\}>[\s\S]*?settings_gear_label/)
-    expect(profile).toContain('gear: { width: header.action, height: header.action,')
+    // The gear is in the top brand bar now (TabHeader), in the same 44pt box as the heart; the title row is just the title.
+    expect(profile).toMatch(/<ScreenTitleRow\s+title=\{t\('nav_profile'\)\}\s+style=\{styles\.header\}\s*\/>/)
+    expect(profile).not.toContain('settings_gear_label')
+    expect(read('components/SettingsHeaderButton.tsx')).toContain('button: { width: header.action, height: header.action,')
   })
 })
 
@@ -95,7 +99,7 @@ describe('native back button', () => {
     expect(button).toContain('const SIZE = 42')
     expect(button).toContain('target: { width: 48, height: 48')
     expect(button).toContain('name="chevronStart"')
-    expect(button).toContain('flip={isRtl}')
+    expect(button).toContain('<DirectionalIcon')
   })
 
   it('backs every settings header and the category screen', () => {
@@ -131,9 +135,11 @@ describe('native Home', () => {
     expect(home).toContain("group.slots.some((slot) => slot.kind === 'offer')")
     expect(home).toContain('placeholders={0}')
     expect(home).not.toContain('HOME_SLOT_COUNT')
-    for (const row of ['<CategoryPhotoRail onSelect={openCategory} />', '<PerksSoonCard quiet={showBanner && chainsPreview.length > 0} />', '<LiveChainsSection offers={chainsPreview} chainCount={chainCount} card />']) expect(home).toContain(row)
+    for (const row of ['<CategoryPhotoRail onSelect={openCategory} />', '<LiveChainsSection offers={chainsPreview} chainCount={chainCount} />', '<RaayonitBanner />', "t('perks_browse_categories')"]) expect(home).toContain(row)
+    // One hairline between the available-now rail and the categories; no "on their way" note.
+    expect(home).toContain("{ key: 'divider', type: 'divider' }")
+    expect(home).not.toContain('PerksSoonCard')
     expect(home).not.toContain('<ProductsSection')
-    expect(home).not.toContain("type: 'divider'")
   })
 
   it('has one source for its catalog, shared with the website', () => {
@@ -159,9 +165,9 @@ describe('native Raayonit Card tab', () => {
     expect(web).toContain('href: raayonit ? undefined : null')
   })
 
-  it('keeps the saved perks one tap from Profile, on a screen of their own', () => {
-    expect(read('app/(tabs)/profile.tsx')).toContain("router.push('/wishlist')")
-    expect(read('app/wishlist.tsx')).toContain('<ScreenHeader fallback="/profile" />')
+  it('keeps the saved perks one tap from the tab headers, on a screen of their own', () => {
+    expect(read('components/WishlistHeaderButton.tsx')).toContain("router.push('/wishlist')")
+    expect(read('app/wishlist.tsx')).toContain('<ScreenHeader fallback="/" />')
     // The tab replaces the heart that used to end the Perks search row.
     const perks = read('app/(tabs)/perks.tsx')
     expect(perks).not.toContain('WishlistButton')
@@ -198,7 +204,7 @@ describe('native offer screen heart', () => {
     expect(heart).toContain("borderColor: 'rgba(255, 255, 255, 0.6)'")
     expect(heart).toContain('color={saved ? colors.heart : colors.heading}')
     expect(screen.indexOf('styles.ribbon')).toBeLessThan(screen.indexOf('styles.priceRow'))
-    expect(screen).toContain('heart: { position: \'absolute\', bottom: 26, end: 6 }')
+    expect(screen).toContain('<Corner at="bottom-end" bottom={panes ? 6 : 26} end={6}>')
   })
 })
 

@@ -19,7 +19,7 @@ import type { Lang } from '@/lib/i18n/translations'
 import { LANGUAGES } from '@/lib/i18n/languages'
 import AccountMenu from './AccountMenu'
 import MobileMenu from './MobileMenu'
-import { ChevronDown, Globe } from 'lucide-react'
+import { ChevronDown, Globe, Settings } from 'lucide-react'
 
 // The only homepage section the navbar scroll-spies on — Deals now goes to the
 // /categories catalog instead of the #deals overview.
@@ -149,8 +149,19 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2.5 lg:gap-3 flex-shrink-0 justify-self-end">
-            {/* Members' saved perks: the heart beside the avatar at every width (a popover from lg, a bottom sheet below it) */}
-            {user && <WishlistPopover />}
+            {/* Members' saved perks: the heart beside the avatar at every width (a popover from lg, a bottom sheet below it); on /profile the Settings gear takes its place */}
+            {user && (pathname === '/profile' ? (
+              // The Profile page swaps the heart for the Settings gear: same slot, same 40px circle, so the bar never shifts (native twin: SettingsHeaderButton)
+              <Link
+                href="/settings"
+                aria-label={t('settings_gear_label')}
+                className="tap-target relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white text-ink transition-colors [-webkit-tap-highlight-color:transparent] [@media(hover:hover)]:hover:bg-slate-50"
+              >
+                <Settings aria-hidden="true" className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              </Link>
+            ) : (
+              <WishlistPopover />
+            ))}
             {/* Account actions (desktop only): the blue and white capsules (signed out) or the avatar pill (signed in), then a hairline before the language picker */}
             <div className="hidden lg:flex items-center gap-4">
               {user ? (

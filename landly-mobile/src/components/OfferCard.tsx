@@ -6,6 +6,7 @@ import { useIsWishlisted, useToggleWishlist } from '@shared/firebase/useWishlist
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
+import Corner from './Corner'
 import ContentText from './ContentText'
 import DealMedia from './DealMedia'
 import LineIcon from './LineIcon'
@@ -112,15 +113,20 @@ export default memo(function OfferCard({
       <View style={[styles.card, variant === 'carousel' && styles.cardCarousel]}>
         <DealMedia image={image} recyclingKey={offer.id} width={width ? width - CARD_BORDER * 2 : undefined} category={offer.category} logo={heroLogo} logoSmall={heroLogoIsFallback(offer)} ratio={variant === 'carousel' ? 16 / 9 : HERO_RATIO} maxHeight={HERO_MAX_HEIGHT}>
           {pill && pill.kind !== 'expired' && (
-            <View style={[styles.expiry, pill.kind === 'urgent' && styles.expiryUrgent]}>
-              <AppText style={styles.expiryText} numberOfLines={1}>{t(pill.key).replace('{date}', `\u2066${pill.date}\u2069`)}</AppText>
-            </View>
+            <Corner at="top-start" top={10} start={10} style={styles.expiryBox}>
+              <View style={[styles.expiry, pill.kind === 'urgent' && styles.expiryUrgent]}>
+                <AppText style={styles.expiryText} numberOfLines={1}>{t(pill.key).replace('{date}', `\u2066${pill.date}\u2069`)}</AppText>
+              </View>
+            </Corner>
           )}
           {discount > 0 && (
-            <View style={styles.ribbon}>
-              <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={[styles.ribbonText, compact && styles.ribbonTextCompact]}>{`-${discount}%`}</AppText>
-            </View>
+            <Corner at="top-end">
+              <View style={styles.ribbon}>
+                <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={[styles.ribbonText, compact && styles.ribbonTextCompact]}>{`-${discount}%`}</AppText>
+              </View>
+            </Corner>
           )}
+          <Corner at="bottom-end" bottom={10} end={10}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={wishlistLabel}
@@ -132,7 +138,6 @@ export default memo(function OfferCard({
               toggleWishlist(offer.id)
             }}
             style={({ pressed }) => [
-              styles.overlayBottomEnd,
               styles.heart,
               compact && styles.heartCompact,
               saved && styles.heartSaved,
@@ -141,13 +146,15 @@ export default memo(function OfferCard({
           >
             <LineIcon name="heart" size={compact ? 16 : 18} color={saved ? colors.white : colors.textMuted} fill={saved ? colors.white : 'none'} strokeWidth={2} />
           </Pressable>
+          </Corner>
           {!heroLogo && !isRaayonitOffer(offer) && (
-            <MerchantBadge
-              logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
-              height={LOGO_HEIGHT}
-              fixed
-              style={styles.logo}
-            />
+            <Corner at="bottom-start" bottom={-16} start={12}>
+              <MerchantBadge
+                logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
+                height={LOGO_HEIGHT}
+                fixed
+              />
+            </Corner>
           )}
         </DealMedia>
 
@@ -211,9 +218,7 @@ const styles = StyleSheet.create({
   // Every other layout (the grid's cells, the feed) grows to its row's height too, so the price still sits at the foot.
   grow: { flexGrow: 1 },
   // Over the hero: the heart at its bottom end.
-  overlayBottomEnd: { position: 'absolute', bottom: 10, end: 10 },
   // Across the hero's foot: 16pt of it hangs over the body (styles.body's top padding clears it).
-  logo: { position: 'absolute', bottom: -16, start: 12 },
   heart: {
     width: 36,
     height: 36,
@@ -240,7 +245,8 @@ const styles = StyleSheet.create({
   titleSlot: { minHeight: 40 },
   titleSlotCompact: { minHeight: 38 },
   // The expiry pill at the photo's top start: dark and translucent, crimson inside 48 hours.
-  expiry: { position: 'absolute', top: 10, start: 10, maxWidth: '78%', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, borderCurve: 'continuous', backgroundColor: 'rgba(15, 23, 42, 0.78)' },
+  expiryBox: { maxWidth: '78%' },
+  expiry: { maxWidth: '100%', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, borderCurve: 'continuous', backgroundColor: 'rgba(15, 23, 42, 0.78)' },
   expiryUrgent: { backgroundColor: '#B91C1C' },
   expiryText: { fontSize: 11, lineHeight: 15, fontWeight: '700', color: colors.white },
   nationwide: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%', marginTop: 6, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: colors.borderLight },
@@ -258,9 +264,6 @@ const styles = StyleSheet.create({
   // Web: components/discover/DiscountBadge.tsx -- solid emerald-700, white text.
   // The card doesn't clip (its shadow), so the ribbon rounds the card's corner itself, inside the 1pt border.
   ribbon: {
-    position: 'absolute',
-    top: 0,
-    end: 0,
     backgroundColor: colors.discountBadge,
     borderTopEndRadius: 15,
     borderBottomStartRadius: 15,

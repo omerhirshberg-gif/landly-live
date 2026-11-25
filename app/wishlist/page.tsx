@@ -13,6 +13,7 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { useWishlist } from '@/lib/firebase/useWishlist'
 import { getOffersByIds, type OfferDocument } from '@/lib/firebase/offers'
+import BrandLoader from '@/components/ui/BrandLoader'
 
 // Saved perks as the same compact cards as Home and Perks: one column on phones, two from an
 // unfolded foldable, then fixed 280px cards that never stretch, packed from the start edge.
@@ -44,7 +45,9 @@ export default function WishlistPage() {
     return (
       <>
         <Navbar />
-        <div className="below-header member-canvas" />
+        <div className="below-header member-canvas flex flex-col">
+          <BrandLoader size="lg" fill />
+        </div>
       </>
     )
   }

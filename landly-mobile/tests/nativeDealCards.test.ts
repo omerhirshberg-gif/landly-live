@@ -114,8 +114,8 @@ describe('native vector icons', () => {
     expect(wallet).toContain('<EmptyState icon={PASS_ICONS.emptyRedeemed}')
     expect(read('components/VoucherPass.tsx')).toContain('<LineIcon name="clock"')
     expect(read('components/RedeemedPass.tsx')).toContain('<LineIcon name={PASS_ICONS.redeemedMark}')
-    // The pass card's chevron stays a directional, mirrored line glyph.
-    expect(read('components/VoucherPass.tsx')).toContain('<LineIcon name="chevronEnd"')
+    // The pass card's chevron stays a directional line glyph, mirrored by DirectionalIcon.
+    expect(read('components/VoucherPass.tsx')).toContain('<DirectionalIcon name="chevronEnd"')
   })
 
   it('draws no emoji anywhere in the app', () => {
@@ -154,7 +154,7 @@ describe('native perk card layout', () => {
     expect(card).toContain("logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}")
     expect(card.indexOf('<MerchantBadge')).toBeLessThan(card.indexOf('</DealMedia>'))
     expect(card.indexOf('<MerchantBadge')).toBeGreaterThan(card.indexOf('<DealMedia'))
-    expect(card).toContain("logo: { position: 'absolute', bottom: -16, start: 12 }")
+    expect(card).toContain('<Corner at="bottom-start" bottom={-16} start={12}>')
   })
 
   it('fits the business logo whole in a 40pt tall tile on every card', () => {

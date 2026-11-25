@@ -64,13 +64,13 @@ describe('BrandStrip', () => {
     expect(src).toContain('w-[248px] min-w-[200px]')
     expect(src).toContain('scroll-px-1')
   })
-  it('shows the count in a header link and the full-width button, isolated for RTL', () => {
+  it('shows the count only in the full-width button under the rail, isolated for RTL', () => {
     const en = html('en')
-    expect(en).toContain('Show all (⁦231⁩)')
+    expect(en).not.toContain('Show all (⁦231⁩)')
     expect(en).toContain('Show all ⁦231⁩ chains')
     expect(en).toContain('min-h-[44px] w-full rounded-xl border border-[#0038B8]/25 bg-[#F0F7FF]')
     const he = html('he')
-    expect(he).toContain('הצג הכל (⁦231⁩)')
+    expect(he).not.toContain('הצג הכל (⁦231⁩)')
     expect(he).toContain('הצג את כל ⁦231⁩ הרשתות')
   })
   it('opens a searchable grid of every brand (modal source)', () => {

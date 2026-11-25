@@ -85,6 +85,9 @@ select.inp{cursor:pointer;}
    empty the placeholder is a localized word and follows the page direction (start edge: right in Hebrew). */
 .inp-consumer:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown){direction:ltr;text-align:left;}
 .inp:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown){direction:ltr;text-align:left;}
+/* Typed addresses, numbers and passwords keep their left-to-right order in Hebrew but sit at the field's start edge, like the label above them. */
+[dir="rtl"] .inp-consumer:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown),
+[dir="rtl"] .inp:is([type="email"],[type="tel"],[type="password"],[type="url"]):not(:placeholder-shown){text-align:right;}
 
 /* Native <select>: one chevron, on the END edge (right in LTR, left in RTL), with the text clearing it
    (padding-inline-start 14px, padding-inline-end 40px). Shared by .inp, .inp-consumer and the admin's ADMIN_SELECT.
@@ -781,3 +784,35 @@ html:has(.admin-scale.adm-light),html:has(.admin-scale.adm-light) body{backgroun
   .marquee-copy[aria-hidden="true"],.marquee-rcopy[aria-hidden="true"]{display:none}
   .marquee-toggle{display:none}
 }
+
+/* The "live" dot beside "Available now" (native: landly-mobile/src/components/LiveDot.tsx): an 8px emerald core with a soft halo that swells and fades
+   every 1.8s. Still under Reduce Motion. */
+.live-dot{position:relative;display:inline-block;width:8px;height:8px;border-radius:9999px;background:#10b981;flex-shrink:0;}
+.live-dot::after{content:"";position:absolute;inset:0;border-radius:inherit;background:#10b981;animation:live-pulse 1.8s cubic-bezier(.25,.46,.45,.94) infinite;}
+@keyframes live-pulse{from{transform:scale(1);opacity:.55;}to{transform:scale(2.6);opacity:0;}}
+@media (prefers-reduced-motion: reduce){.live-dot::after{animation:none;opacity:0;}}
+
+/* The brand loader (components/ui/BrandLoader.tsx, numbers from lib/brand/loaderSpec.ts, mirrored by the app's
+   BrandLoader.tsx): the pale emblem with a blue band sweeping across it, clipped to the emblem. It loops with no intro
+   or outro: the band starts and ends off the mark, resting for the last 18% of each cycle (the spec's sweepShare). The
+   sweep and its tilt mirror in RTL, the mark never does. Reduce Motion: no band, the pale mark only breathes. */
+.brand-loader{--bl-dir:1;display:block;overflow:visible;}
+.brand-loader-wrap{animation:brand-loader-in var(--bl-fade-in) ease-out var(--bl-delay) both;}
+@keyframes brand-loader-in{from{opacity:0;}to{opacity:1;}}
+[dir="rtl"] .brand-loader{--bl-dir:-1;}
+.brand-loader__tilt{transform:rotate(calc(var(--bl-dir) * var(--bl-tilt)));}
+.brand-loader__band{animation:brand-loader-sweep var(--bl-cycle) var(--bl-ease) infinite;}
+@keyframes brand-loader-sweep{
+  0%{transform:translateX(calc(var(--bl-dir) * var(--bl-travel) * -1));}
+  82%,100%{transform:translateX(calc(var(--bl-dir) * var(--bl-travel)));}
+}
+@keyframes brand-loader-breathe{from{opacity:var(--bl-breathe-from);}to{opacity:1;}}
+@media (prefers-reduced-motion: reduce){
+  .brand-loader__band{animation:none;opacity:0;}
+  .brand-loader{animation:brand-loader-breathe var(--bl-breathe) ease-in-out infinite alternate;}
+}
+
+/* Edit profile's country dialog (components/profile/OriginSelect.tsx): a bottom sheet on phones, a pop-in dialog from md. */
+.origin-dialog{animation:perks-sheet .28s cubic-bezier(.32,.72,0,1);}
+@media (min-width:768px){.origin-dialog{animation:perks-pop .15s ease-out;}}
+@media (prefers-reduced-motion:reduce){.origin-dialog{animation:none;}}

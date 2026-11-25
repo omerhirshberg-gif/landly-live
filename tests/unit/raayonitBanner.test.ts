@@ -41,11 +41,12 @@ describe('Raayonit Card banner on Home', () => {
     expect(native).toContain('isReduceMotionEnabled')
     expect(web + native).not.toMatch(/\p{Extended_Pictographic}/u)
   })
-  it('replaces the button on Home only', () => {
-    expect(read('components/home/HomeCategoryRails.tsx')).toContain('card />')
-    expect(read('app/categories/page.tsx')).not.toMatch(/<LiveChainsSection[^>]*\bcard\b/)
-    expect(read('landly-mobile/src/app/(tabs)/index.tsx')).toContain('chainCount={chainCount} card />')
-    expect(read('landly-mobile/src/app/(tabs)/perks.tsx')).not.toContain('chainCount} card')
+  it('leads Home with the carousel and Explore with the compact entry row, never a button', () => {
+    expect(read('components/home/HomeCategoryRails.tsx')).toContain('<RaayonitBanner />')
+    expect(read('landly-mobile/src/app/(tabs)/index.tsx')).toContain("return <RaayonitBanner />")
+    expect(read('app/categories/page.tsx')).toMatch(/<RaayonitPromoStrip [^>]*\bentry\b/)
+    expect(read('landly-mobile/src/app/(tabs)/perks.tsx')).toContain('<RaayonitPromoStrip offer={flagship} count={chainCount} entry />')
+    for (const file of ['components/perks/LiveChainsSection.tsx', 'landly-mobile/src/components/LiveChainsSection.tsx']) expect(read(file)).not.toContain('chains_live_cta')
   })
 })
 

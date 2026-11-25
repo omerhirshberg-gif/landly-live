@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import AppText from './AppText'
+import Corner from './Corner'
 import { useLang } from '../i18n/LangProvider'
 import { colors, radius } from '../theme'
 
@@ -12,9 +13,11 @@ export default memo(function OfferCardPlaceholder({ width }: { width?: number })
   return (
     <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={[styles.card, width ? { width } : null]}>
       <View style={styles.media}>
-        <View style={styles.tag}>
-          <AppText style={styles.tagText} numberOfLines={1}>{t('home_coming_soon')}</AppText>
-        </View>
+        <Corner at="top-start" top={10} start={10}>
+          <View style={styles.tag}>
+            <AppText style={styles.tagText} numberOfLines={1}>{t('home_coming_soon')}</AppText>
+          </View>
+        </Corner>
       </View>
       <View style={styles.body}>
         <View style={[styles.line, { width: '50%', height: 12 }]} />
@@ -32,7 +35,7 @@ export default memo(function OfferCardPlaceholder({ width }: { width?: number })
 const styles = StyleSheet.create({
   card: { flex: 1, backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   media: { aspectRatio: 16 / 9, backgroundColor: colors.borderLight },
-  tag: { position: 'absolute', top: 10, start: 10, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: colors.border },
+  tag: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: colors.border },
   tagText: { fontSize: 11, lineHeight: 16, fontWeight: '600', color: colors.textMuted },
   body: { flexGrow: 1, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12 },
   line: { backgroundColor: colors.borderLight, borderRadius: 8 },

@@ -6,7 +6,7 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from './AppText'
 import DealMedia from './DealMedia'
 import ContactActions from './ContactActions'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import MerchantBadge from './MerchantBadge'
 import { useLang } from '../i18n/LangProvider'
 import { badgeLogoUri, secureImageUrl } from '../lib/imageSource'
@@ -19,7 +19,7 @@ import { colors } from '../theme'
 // centred across the banner's lower edge, then its website (only when Raayonit or GoLandly hold one) and "To brand page", which opens the
 // Perks catalogue filtered to that brand. No description: only what the data holds. Web: components/offers/BrandSpotlight.tsx.
 export default function BrandSpotlight({ offer, image }: { offer: OfferDocument; image: DealImage }) {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const name = perkBrand(offer)
   const shown = localizedBusinessName(offer, lang).text || name
   if (!name || offer.perkScope === 'multi_chain') return null
@@ -41,7 +41,7 @@ export default function BrandSpotlight({ offer, image }: { offer: OfferDocument;
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
         >
           <AppText style={styles.ctaText}>{t('brand_spotlight_cta')}</AppText>
-          <LineIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} flip={isRtl} />
+          <DirectionalIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} />
         </Pressable>
       </View>
     </View>

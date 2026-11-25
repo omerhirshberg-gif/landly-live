@@ -22,7 +22,7 @@ describe('section divider', () => {
   it.each([
     ['components/home/HomePage.tsx', 3],
     ['components/about/AboutPage.tsx', 3],
-    ['app/categories/page.tsx', 3],
+    ['app/categories/page.tsx', 4],
     ['app/business/page.tsx', 3],
     ['app/support/page.tsx', 2],
   ] as const)('%s separates its sections with the shared divider', (file, n) => {

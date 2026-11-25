@@ -59,8 +59,10 @@ describe('live chains copy', () => {
     const { translations } = await import('@/lib/i18n/translations')
     for (const lang of ['en', 'he', 'ru', 'fr', 'es'] as const) {
       const dict = translations[lang] as Record<string, string>
-      for (const key of ['chains_live_title', 'chains_live_sub', 'chains_live_cta', 'chains_live_badge', 'chains_live_show_all']) expect(dict[key]?.length, `${lang}.${key}`).toBeGreaterThan(0)
+      for (const key of ['chains_live_title', 'chains_live_cta', 'chains_live_badge', 'chains_live_show_all', 'perks_available_now', 'perks_browse_categories', 'raayonit_entry_sub', 'category_soon_title', 'category_soon_cta_all', 'category_strip_title', 'category_strip_sub', 'category_strip_title_all']) expect(dict[key]?.length, `${lang}.${key}`).toBeGreaterThan(0)
       expect(dict.chains_live_title, lang).toContain('{count}')
+      for (const key of ['raayonit_entry_sub', 'category_soon_cta_all', 'category_strip_sub']) expect(dict[key], `${lang}.${key}`).toContain('{count}')
+      for (const key of ['category_soon_title', 'category_strip_title']) expect(dict[key], `${lang}.${key}`).toContain('{category}')
       expect(dict.chains_preview_title, lang).toBeUndefined()
     }
   })

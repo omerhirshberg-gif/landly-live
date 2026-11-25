@@ -7,6 +7,7 @@ import { fetchWalletAvailability, nativePassFailure, requestWalletPass, walletFa
 import { canOfferWalletPass } from '@shared/wallet/walletSupport'
 import { AppleWallet, AppleWalletButton } from '../../modules/apple-wallet'
 import Button from './Button'
+import Corner from './Corner'
 import Notice from './Notice'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
@@ -92,7 +93,11 @@ export default function AddToAppleWallet({ voucher }: { voucher: Voucher }) {
         {AppleWalletButton ? (
           <View style={styles.badge}>
             <AppleWalletButton style={StyleSheet.absoluteFill} onAddPress={add} />
-            {busy && <ActivityIndicator style={styles.spinner} color={colors.brand} accessibilityLabel={t('wallet_add_busy')} />}
+            {busy && (
+            <Corner at="top-end" top={14} end={-32}>
+              <ActivityIndicator color={colors.brand} accessibilityLabel={t('wallet_add_busy')} />
+            </Corner>
+          )}
           </View>
         ) : (
           <Button label={t('wallet_add_label')} variant="secondary" busy={busy} onPress={add} />
@@ -112,5 +117,4 @@ const styles = StyleSheet.create({
   row: { alignSelf: 'stretch', alignItems: 'stretch', gap: 12 },
   // The system button draws to this frame: 52 high and as wide as the buttons above it.
   badge: { height: 52, alignSelf: 'stretch' },
-  spinner: { position: 'absolute', top: 14, end: -32 },
 })

@@ -3,7 +3,7 @@ import type { OfferDocument } from '@shared/firebase/offers'
 import { isolateLtr } from '@shared/home/superShowcase'
 import { roundedCount } from '@shared/offers/raayonitPreview'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { ClubCard } from './RaayonitHero'
 import RaayonitPromoStrip from './RaayonitPromoStrip'
 import { useLang } from '../i18n/LangProvider'
@@ -20,7 +20,7 @@ export default function GiftCardBand({ offer, count, compact = false }: { offer:
 }
 
 function FullBand({ offer, count }: { offer: OfferDocument | null; count: number }) {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
   const purchase = useFlagshipPurchase(offer)
   const { cards, selectedPool, ownedPools, block } = purchase
   const open = purchase.openHub
@@ -55,7 +55,7 @@ function FullBand({ offer, count }: { offer: OfferDocument | null; count: number
       </Pressable>
       <Pressable accessibilityRole="link" onPress={open} style={({ pressed }) => [styles.details, pressed && styles.pressed]}>
         <AppText numberOfLines={1} style={styles.detailsText}>{t('products_details_link').replace('{count}+', isolateLtr(`${roundedCount(count)}+`))}</AppText>
-        <LineIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} flip={isRtl} />
+        <DirectionalIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2} />
       </Pressable>
     </View>
   )

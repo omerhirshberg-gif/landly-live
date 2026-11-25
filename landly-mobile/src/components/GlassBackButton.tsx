@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur'
 import { Component, type ReactNode } from 'react'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors, hairline } from '../theme'
@@ -18,7 +18,7 @@ const isAndroid = Platform.OS === 'android'
 //   native ripple, no faux blur.
 // - Web (Expo export): the same solid circle, darkening while pressed.
 export default function GlassBackButton({ onPress, label }: { onPress: () => void; label?: string }) {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
 
   return (
     <Pressable
@@ -36,7 +36,7 @@ export default function GlassBackButton({ onPress, label }: { onPress: () => voi
                 <BlurView tint="systemChromeMaterial" intensity={80} style={StyleSheet.absoluteFill} />
               </GlassFallback>
             )}
-            <LineIcon name="chevronStart" size={22} color={colors.heading} strokeWidth={2.2} flip={isRtl} />
+            <DirectionalIcon name="chevronStart" size={22} color={colors.heading} strokeWidth={2.2} />
           </View>
         </View>
       )}

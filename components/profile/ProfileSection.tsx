@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { Lock, MailCheck, MessageSquareText, Pencil, Plus } from 'lucide-react'
 import PhoneInput, { formatPhoneNumberIntl, isValidPhoneNumber } from 'react-phone-number-input'
@@ -13,11 +13,13 @@ import type { OtpTarget } from '@/lib/auth/otp'
 import { otpCopyKeys, resolveOtpChannel } from '@/lib/auth/otpChannel'
 import { CUSTOMER_TYPES, MAX_PERSONA_NOTE_LENGTH, OTHER_CUSTOMER_TYPE, canonicalCustomerType, customerTypeLabel, isCustomerType } from '@/lib/customerTypes'
 import { invalidateMemberProfile } from '@/lib/firebase/useMemberProfile'
-import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, listOriginCountries, originLabel } from '@/lib/profile/countryOfOrigin'
+import { ISRAEL_REGIONS, ISRAEL_REGION_KEYS, isIsraelRegion, originLabel } from '@/lib/profile/countryOfOrigin'
 import SegmentBadge from '@/components/member/SegmentBadge'
+import OptionGrid from '@/components/ui/OptionGrid'
 import { WhatsAppIcon } from '@/components/ui/SocialIcon'
 import AvatarUploader from './AvatarUploader'
 import ChangeEmailForm from './ChangeEmailForm'
+import OriginSelect from './OriginSelect'
 import OtpDialog from './OtpDialog'
 import PendingChangeNotice from './PendingChangeNotice'
 
@@ -97,7 +99,6 @@ export default function ProfileSection({ user }: { user: User }) {
   const [emailStatus, setEmailStatus] = useState<Status>(null)
   const [phoneStatus, setPhoneStatus] = useState<Status>(null)
 
-  const countries = useMemo(() => listOriginCountries(lang), [lang])
 
   const change = (patch: Partial<Details>) => setDraft((d) => ({ ...d, ...patch }))
 
@@ -192,6 +193,8 @@ export default function ProfileSection({ user }: { user: User }) {
   const dd = 'text-sm font-bold text-slate-900 break-words lg:text-base lg:font-semibold'
   // The field's name is its hint inside the box (and the select's first option); the label stays for screen readers only.
   const label = 'sr-only'
+  // The option cards and the country row have no placeholder to name them, so their heading shows.
+  const fieldHeading = 'text-sm font-bold text-slate-900 mb-2.5'
   // 16px text so iOS Safari doesn't zoom the page on focus; 48px tall touch target.
   const field = 'inp-consumer'
   const loading = (value: string) => (loadingDoc ? '…' : value)
@@ -366,7 +369,6 @@ export default function ProfileSection({ user }: { user: User }) {
                 countryCallingCodeEditable={false}
                 defaultCountry="IL"
                 autoComplete="tel"
-                autoFocus={!focusName}
                 value={draft.phone}
                 onChange={(value) => {
                   change({ phone: value ?? '' })
@@ -378,12 +380,15 @@ export default function ProfileSection({ user }: { user: User }) {
             </dd>
           </div>
           <div>
-            <dt><label htmlFor="profile-customer-type" className={label}>{t('signup_customerTypeLabel')}</label></dt>
+            <dt id="profile-customer-type-label" className={fieldHeading}>{t('signup_customerTypeLabel')}</dt>
             <dd>
-              <select id="profile-customer-type" value={draft.customerType} onChange={(e) => change({ customerType: e.target.value })} className={`${field} ${isCustomerType(draft.customerType) ? '' : 'is-empty'}`}>
-                {!isCustomerType(draft.customerType) && <option value="" disabled>{t('signup_customerType_placeholder')}</option>}
-                {CUSTOMER_TYPES.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
-              </select>
+              <OptionGrid
+                idPrefix="profile-customer-type"
+                labelledBy="profile-customer-type-label"
+                options={CUSTOMER_TYPES.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                value={draft.customerType}
+                onChange={(customerType) => change({ customerType })}
+              />
               {draft.customerType === OTHER_CUSTOMER_TYPE && (
                 <>
                   <label htmlFor="profile-customer-type-other" className={`${label} mt-3`}>{t('onb_persona_otherLabel')}</label>
@@ -402,26 +407,21 @@ export default function ProfileSection({ user }: { user: User }) {
             </dd>
           </div>
           <div>
-            <dt><label htmlFor="profile-origin" className={label}>{t('profile_origin_label')}</label></dt>
+            <dt><label htmlFor="profile-origin" className={fieldHeading}>{t('profile_origin_label')}</label></dt>
             <dd>
-              <select id="profile-origin" value={draft.countryOfOrigin} onChange={(e) => change({ countryOfOrigin: e.target.value })} className={`${field} ${draft.countryOfOrigin ? '' : 'is-empty'}`}>
-                <option value="">{t('profile_origin_label')}</option>
-                <optgroup label={t('origin_common')}>
-                  {countries.pinned.map((c) => <option key={c.code} value={c.code}>{`${c.flag} ${c.name}`}</option>)}
-                </optgroup>
-                <optgroup label={t('origin_all')}>
-                  {countries.rest.map((c) => <option key={c.code} value={c.code}>{`${c.flag} ${c.name}`}</option>)}
-                </optgroup>
-              </select>
+              <OriginSelect id="profile-origin" value={draft.countryOfOrigin} onChange={(countryOfOrigin) => change({ countryOfOrigin })} />
             </dd>
           </div>
           <div>
-            <dt><label htmlFor="profile-region" className={label}>{t('profile_region_label')}</label></dt>
+            <dt id="profile-region-label" className={fieldHeading}>{t('profile_region_label')}</dt>
             <dd>
-              <select id="profile-region" value={draft.israelRegion} onChange={(e) => change({ israelRegion: e.target.value })} className={`${field} ${draft.israelRegion ? '' : 'is-empty'}`}>
-                <option value="">{t('profile_region_label')}</option>
-                {ISRAEL_REGIONS.map((r) => <option key={r} value={r}>{t(ISRAEL_REGION_KEYS[r])}</option>)}
-              </select>
+              <OptionGrid
+                idPrefix="profile-region"
+                labelledBy="profile-region-label"
+                options={ISRAEL_REGIONS.map((r) => ({ value: r, label: t(ISRAEL_REGION_KEYS[r]) }))}
+                value={draft.israelRegion}
+                onChange={(israelRegion) => change({ israelRegion })}
+              />
             </dd>
           </div>
         </>
@@ -502,12 +502,12 @@ export default function ProfileSection({ user }: { user: User }) {
           {editing ? (
             <form onSubmit={handleSave} noValidate>
               {details}
-              {/* Stacked full-width on phones (Save on top), side by side at the end from sm up */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6 lg:mt-8 pb-[env(safe-area-inset-bottom,0px)]">
-                <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md w-full sm:w-auto">
+              {/* Pinned to the bottom edge while the form is open: a hairline above, Cancel and Save equal width (Cancel at the start, Save at the end). */}
+              <div className="sticky bottom-0 z-10 -mx-5 mt-6 flex gap-3 border-t border-slate-200 bg-white/95 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:mt-8 lg:px-8">
+                <button type="button" onClick={cancelEdit} disabled={saving} className="ds-btn ds-btn-secondary ds-btn-md min-w-0 flex-1">
                   {t('profile_cancel_btn')}
                 </button>
-                <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md w-full sm:w-auto">
+                <button type="submit" disabled={saving} aria-busy={saving} className="ds-btn ds-btn-primary ds-btn-md min-w-0 flex-1">
                   {saving ? '…' : t('profile_save_changes_btn')}
                 </button>
               </div>

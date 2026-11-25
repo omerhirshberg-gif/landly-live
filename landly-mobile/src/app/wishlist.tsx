@@ -54,7 +54,7 @@ export default function WishlistScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader fallback="/profile" />
+      <ScreenHeader fallback="/" />
       <FlashList
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}

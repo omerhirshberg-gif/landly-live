@@ -32,6 +32,19 @@ export const RAAYONIT_CATEGORY_NAMES: Record<RaayonitCategoryId, Names> = {
   networks: { he: 'רשתות', en: 'Chains', ru: 'Сети', fr: 'Enseignes', es: 'Cadenas' },
 }
 
+// Compact pill labels for the categories whose own name runs long (Raayonit's names kept verbatim above): a filter pill never truncates.
+// Categories not listed here keep their full name.
+const RAAYONIT_CATEGORY_SHORT_NAMES: Partial<Record<RaayonitCategoryId, Names>> = {
+  'cafe-cafe': { he: 'קפה קפה', en: 'Café Café', ru: 'Café Café', fr: 'Café Café', es: 'Café Café' },
+  'pizza-agvania': { he: 'פיצה עגבנייה', en: 'Pizza Agvania', ru: 'Pizza Agvania', fr: 'Pizza Agvania', es: 'Pizza Agvania' },
+  'pizza-story': { he: 'פיצה סטורי', en: 'Pizza Story', ru: 'Pizza Story', fr: 'Pizza Story', es: 'Pizza Story' },
+  biscotti: { he: 'ביסקוטי', en: 'Biscotti', ru: 'Biscotti', fr: 'Biscotti', es: 'Biscotti' },
+  'mr-pretzels': { he: 'Mr. Pretzels', en: 'Mr. Pretzels', ru: 'Mr. Pretzels', fr: 'Mr. Pretzels', es: 'Mr. Pretzels' },
+  'all-tastes': { he: 'מכל הטעמים', en: 'All Tastes', ru: 'На любой вкус', fr: 'Pour tous les goûts', es: 'Para todos los gustos' },
+  basher: { he: "באשר פרומז'רי", en: 'Basher Fromagerie', ru: 'Basher Fromagerie', fr: 'Basher Fromagerie', es: 'Basher Fromagerie' },
+  'luggage-gadgets-home': { he: "מזוודות וגאדג'טים", en: 'Luggage & Gadgets', ru: 'Чемоданы и гаджеты', fr: 'Valises et gadgets', es: 'Maletas y gadgets' },
+}
+
 /** Raayonit's listing section id -> its category. (Section 94, Spacez, lists no rows and is not one of the 18.) */
 export const SECTION_CATEGORY_ID: Record<string, RaayonitCategoryId> = {
   '84': 'chef-restaurants', '15': 'cafes-restaurants', '93': 'cafe-cafe', '52': 'pizza-agvania', '110': 'pizza-story', '100': 'biscotti',
@@ -41,6 +54,11 @@ export const SECTION_CATEGORY_ID: Record<string, RaayonitCategoryId> = {
 
 export const isRaayonitCategoryId = (v: unknown): v is RaayonitCategoryId => typeof v === 'string' && (RAAYONIT_CATEGORY_IDS as readonly string[]).includes(v)
 export const raayonitCategoryName = (id: RaayonitCategoryId, lang: string): string => RAAYONIT_CATEGORY_NAMES[id][(lang in RAAYONIT_CATEGORY_NAMES.spa ? lang : 'en') as keyof Names]
+/** The concise label for a filter pill: the short name where the full one runs long, else the full name. */
+export const raayonitCategoryShortName = (id: RaayonitCategoryId, lang: string): string => {
+  const short = RAAYONIT_CATEGORY_SHORT_NAMES[id]
+  return short ? short[(lang in short ? lang : 'en') as keyof Names] : raayonitCategoryName(id, lang)
+}
 
 // A few "רשתות" network pages are the same chains that Raayonit also lists as their own sections (the page for Pizza Story is the
 // "פיצה - רשת פיצה סטורי" section): they belong to that section's category, not to "רשתות".

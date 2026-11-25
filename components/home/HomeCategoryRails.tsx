@@ -11,7 +11,8 @@ import { isChain } from '@/lib/offers/discoverTab'
 import { selectChainsPreview } from '@/lib/home/chainsPreview'
 import CategoryPhotoRail, { CategoryPhotoTitle } from '@/components/home/CategoryPhotoRail'
 import LiveChainsSection from '@/components/perks/LiveChainsSection'
-import PerksSoonCard from '@/components/perks/PerksSoonCard'
+import RaayonitBanner from '@/components/perks/RaayonitBanner'
+import SectionDivider from '@/components/ui/SectionDivider'
 import { useLang } from '@/lib/i18n/useLang'
 import { categoryHref } from '@/lib/perks/perksFilter'
 import { useMemo } from 'react'
@@ -34,17 +35,22 @@ export default function HomeCategoryRails({ offers, chains = [], showChains = fa
     )
   }
 
-  // No direct perk yet: the category photo rail, one calm note and a preview of the Raayonit chains, instead of 13 rows of placeholders.
+  // No direct perk yet: the carousel, the businesses available now, a hairline and the category photo rail, a preview of the Raayonit chains, instead of 13 rows of placeholders.
   if (homeIsEmpty(groups)) {
     const live = showChains && chainsPreview.length > 0
     return (
       <div className="space-y-6 sm:space-y-8">
-        {live && <LiveChainsSection offers={chainsPreview} chainCount={chains.filter(isChain).length} card />}
+        {live && (
+          <>
+            <MemberColumn wide><RaayonitBanner /></MemberColumn>
+            <LiveChainsSection offers={chainsPreview} chainCount={chains.filter(isChain).length} />
+            <MemberColumn wide><SectionDivider /></MemberColumn>
+          </>
+        )}
         <section aria-labelledby="home-top-categories">
           <MemberColumn wide><CategoryPhotoTitle id="home-top-categories" className="mb-3 text-xl font-bold tracking-tight text-ink" /></MemberColumn>
           <CategoryPhotoRail />
         </section>
-        <MemberColumn wide><PerksSoonCard quiet={live} /></MemberColumn>
       </div>
     )
   }

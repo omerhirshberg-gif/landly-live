@@ -29,6 +29,7 @@ import { API_BASE_URL } from '../../lib/env'
 import LineIcon from '../../components/LineIcon'
 import { colors, radius, type } from '../../theme'
 import CategoryIcon from '../../components/CategoryIcon'
+import CategoryEmptyState from '../../components/CategoryEmptyState'
 
 // A category "folder" (web: /categories/[category]), pushed over the tabs
 // from the Perks grid or Home's category rail as a page flip
@@ -175,10 +176,7 @@ export default function CategoryScreen() {
               <AppText style={styles.emptyTitle}>{t('cats_search_no_results_sub')}</AppText>
             </View>
           ) : (
-            <View style={styles.empty}>
-              <AppText style={styles.emptyTitle}>{t('deals_empty_title')}</AppText>
-              <AppText style={styles.emptySub}>{t('deals_empty_sub')}</AppText>
-            </View>
+            <CategoryEmptyState category={category} label={tile ? t(tile.labelKey) : category} />
           )
         }
       />
@@ -217,5 +215,4 @@ const styles = StyleSheet.create({
   countPlaceholder: { height: 12, width: 110, marginTop: 6, borderRadius: radius.pill, backgroundColor: colors.borderLight },
   empty: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
-  emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },
 })

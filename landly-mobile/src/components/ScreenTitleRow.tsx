@@ -29,7 +29,7 @@ export default function ScreenTitleRow({
       ) : (
         children
       )}
-      {trailing}
+      {trailing != null && trailing !== false && <View style={styles.trailing}>{trailing}</View>}
     </View>
   )
 }
@@ -37,4 +37,6 @@ export default function ScreenTitleRow({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: header.row },
   title: { flex: 1, minWidth: 0 },
+  // Auto margin: at the reading-direction end even while the title or greeting is still empty.
+  trailing: { marginStart: 'auto' },
 })

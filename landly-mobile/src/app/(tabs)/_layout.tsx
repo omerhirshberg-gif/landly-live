@@ -19,8 +19,8 @@ import { tick } from '../../lib/haptics'
 // The order is physical and permanent: Home far left, then Perks, the Raayonit
 // Card ("תו על"), My Pass, Profile far right, in every language. The Raayonit tab
 // is there only while Raayonit's name may be shown (useRaayonitDisplay), so with
-// it off the bar has four. The saved perks (Wishlist) open from the Profile
-// tab's heart. Native layout direction stays LTR
+// it off the bar has four. The saved perks (Wishlist) open from the heart
+// in the Home, Perks, Raayonit Card and My Pass headers (not Profile's). Native layout direction stays LTR
 // (supportsRTL is off in app.json); Hebrew only flips the JS root view, so
 // the screens follow the language while the bar never mirrors.
 const iosVersion = Platform.OS === 'ios' ? parseInt(String(Platform.Version), 10) : 0
@@ -38,7 +38,7 @@ export default function TabsLayout() {
 
   return (
     <View style={styles.root}>
-      <NativeTabs tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...iosEdgeBar}>
+      <NativeTabs unstable_nativeProps={{ direction: 'ltr' }} tintColor={colors.brand} screenListeners={{ tabPress: () => tick() }} {...iosEdgeBar}>
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
           <NativeTabs.Trigger.Label>{t('mobile_tab_home')}</NativeTabs.Trigger.Label>

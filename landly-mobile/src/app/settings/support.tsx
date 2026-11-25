@@ -7,6 +7,7 @@ import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_LINK, SUPPORT
 import type { TranslationKey } from '@shared/i18n/translations'
 import AppText from '../../components/AppText'
 import LineIcon, { type LineIconName } from '../../components/LineIcon'
+import DirectionalIcon from '../../components/DirectionalIcon'
 import ScreenHeader from '../../components/ScreenHeader'
 import { useLang } from '../../i18n/LangProvider'
 import { webOnly } from '../../lib/webStyles'
@@ -109,7 +110,6 @@ function ContactCard({
   note: string
   onPress: () => void
 }) {
-  const { isRtl } = useLang()
   const palette = TONES[tone]
   return (
     <Pressable
@@ -133,7 +133,7 @@ function ContactCard({
         <AppText ltr style={styles.cardValue}>{value}</AppText>
         <AppText style={styles.cardNote}>{note}</AppText>
       </View>
-      <LineIcon name="chevronEnd" color={colors.textFaint} strokeWidth={2.2} flip={isRtl} />
+      <DirectionalIcon name="chevronEnd" color={colors.textFaint} strokeWidth={2.2} />
     </Pressable>
   )
 }

@@ -2,7 +2,8 @@
 
 import { Fragment, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { LoaderCircle, MapPin, Ticket } from 'lucide-react'
+import { MapPin, Ticket } from 'lucide-react'
+import BrandLoader from '@/components/ui/BrandLoader'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import OpenInAppHint from '@/components/layout/OpenInAppHint'
@@ -91,11 +92,8 @@ export default function VoucherPage() {
     return (
       <>
         <Navbar />
-        <div className="below-header member-canvas min-h-screen min-h-dvh">
-          <div role="status" className="max-w-xl mx-auto px-5 py-16 flex justify-center text-slate-400">
-            <LoaderCircle aria-hidden="true" className="h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
-            <span className="sr-only">{t('bizdash_loading')}</span>
-          </div>
+        <div className="below-header member-canvas flex min-h-screen min-h-dvh flex-col">
+          <BrandLoader size="lg" fill />
         </div>
       </>
     )

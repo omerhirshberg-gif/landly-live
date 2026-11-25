@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import AppText from './AppText'
 import LineIcon, { type LineIconName } from './LineIcon'
-import { useLang } from '../i18n/LangProvider'
+import DirectionalIcon from './DirectionalIcon'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
 
@@ -27,7 +27,6 @@ export default function SettingsRow({
   role?: 'button' | 'link' | 'radio'
   last?: boolean
 }) {
-  const { isRtl } = useLang()
   const choice = selected !== undefined
   return (
     <Pressable
@@ -55,7 +54,7 @@ export default function SettingsRow({
       {choice ? (
         selected && <LineIcon name="check" color={colors.brand} strokeWidth={2.4} />
       ) : (
-        <LineIcon name="chevronEnd" color={colors.textFaint} strokeWidth={2.2} flip={isRtl} />
+        <DirectionalIcon name="chevronEnd" color={colors.textFaint} strokeWidth={2.2} />
       )}
     </Pressable>
   )

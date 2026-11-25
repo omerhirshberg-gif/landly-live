@@ -52,10 +52,13 @@ export default function BrandStrip({ entries, compact = false }: { entries: Bran
   const rail = useRail<HTMLUListElement>(shown.length)
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setAll(true)} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
-          {t('brands_show_all').replace('{count}', '\u2066' + count + '\u2069')}
-        </button>
+      {/* One "show all" action: the full-width button under the rail. The compact strip has no such button, so it keeps this link. */}
+      <div className={`flex items-center gap-3 ${compact ? 'justify-between' : 'justify-end'}`}>
+        {compact && (
+          <button type="button" onClick={() => setAll(true)} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
+            {t('brands_show_all').replace('{count}', '\u2066' + count + '\u2069')}
+          </button>
+        )}
         <RailArrows edge={rail.edge} page={rail.page} />
       </div>
       {!compact && <label className="flex h-11 items-center gap-2 rounded-[14px] bg-slate-100 px-3.5 focus-within:ring-2 focus-within:ring-brand/40">

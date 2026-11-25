@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { redeemVoucherKey, subscribeToVoucher, type VoucherDocument } from '@shared/firebase/vouchers'
@@ -13,6 +13,7 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import AddToAppleWallet from '../../components/AddToAppleWallet'
 import AddToGoogleWallet from '../../components/AddToGoogleWallet'
 import AppText from '../../components/AppText'
+import BrandLoader from '../../components/BrandLoader'
 import ContentText from '../../components/ContentText'
 import TranslationNotice from '../../components/TranslationNotice'
 import LineIcon from '../../components/LineIcon'
@@ -88,7 +89,7 @@ export default function VoucherScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScreenHeader title={t('voucher_page_title')} fallback="/wallet" />
       {voucher === undefined ? (
-        <ActivityIndicator color={colors.brand} style={styles.spinner} />
+        <BrandLoader size="lg" fill />
       ) : voucher === null ? (
         <AppText style={styles.notFound}>{t('voucher_not_found')}</AppText>
       ) : (
@@ -224,7 +225,6 @@ export default function VoucherScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  spinner: { marginTop: 48 },
   notFound: { fontSize: 15, color: colors.body, textAlign: 'center', marginTop: 48, paddingHorizontal: 24 },
   // The pass stays phone-sized on an unfolded foldable or a tablet: a centred
   // column no wider than the website's (max-w-xl, 576 plus the gutters), so

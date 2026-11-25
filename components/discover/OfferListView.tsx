@@ -3,7 +3,8 @@
 import { ReactNode, useEffect, useState } from 'react'
 import BackButton from '@/components/navigation/BackButton'
 import { GlobalPerkSearchRow } from '@/components/layout/MemberPageShell'
-import { LoaderCircle, Tags, type LucideIcon } from 'lucide-react'
+import { Tags, type LucideIcon } from 'lucide-react'
+import BrandLoader from '@/components/ui/BrandLoader'
 import { useLang } from '@/lib/i18n/useLang'
 import OfferCard, { OFFER_FEED_GRID } from '@/components/discover/OfferCard'
 import type { OfferDocument } from '@/lib/firebase/offers'
@@ -75,7 +76,7 @@ export default function OfferListView({ icon: Icon, title, depKey, fetchOffers, 
 
       {visibleOffers === undefined ? (
         <div className="dash-empty-state">
-          <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" strokeWidth={1.75} />
+          <BrandLoader size="md" />
         </div>
       ) : visibleOffers.length === 0 ? (
         <div className="dash-empty-state bg-white border border-slate-100 rounded-2xl">

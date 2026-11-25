@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Platform, Pressable, RefreshControl, StyleSheet, View, type ViewToken } from 'react-native'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated'
 import { GestureDetector } from 'react-native-gesture-handler'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
@@ -21,7 +21,8 @@ import { selectChainsPreview } from '@shared/home/chainsPreview'
 import CategoryIcon from '../../components/CategoryIcon'
 import CategoryPhotoRail from '../../components/CategoryPhotoRail'
 import LiveChainsSection from '../../components/LiveChainsSection'
-import PerksSoonCard from '../../components/PerksSoonCard'
+import RaayonitBanner from '../../components/RaayonitBanner'
+import SectionDivider from '../../components/SectionDivider'
 import RaayonitPromoStrip from '../../components/RaayonitPromoStrip'
 import { useRaayonitDisplay } from '@shared/flags/raayonitDisplayStore'
 import ActivePassCard from '../../components/ActivePassCard'
@@ -32,7 +33,7 @@ import Notice from '../../components/Notice'
 import OfferCarousel from '../../components/OfferCarousel'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SectionHeader from '../../components/SectionHeader'
-import TabHeader from '../../components/TabHeader'
+import TabScreen from '../../components/TabScreen'
 import { OfferCarouselSkeleton } from '../../components/Skeleton'
 import { useLang } from '../../i18n/LangProvider'
 import { openOffer } from '../../lib/openOffer'
@@ -62,11 +63,13 @@ type HomeRow =
   | { key: 'top'; type: 'top' }
   | { key: 'banner'; type: 'banner' }
   | { key: 'categories'; type: 'categories' }
-  | { key: 'soon'; type: 'soon' }
+  | { key: 'hero'; type: 'hero' }
+  | { key: 'divider'; type: 'divider' }
   | { key: 'live'; type: 'live' }
   | { key: 'loading'; type: 'loading' }
   | { key: string; type: 'category'; group: HomeCategorySlots }
 
+const TOP_FADE = 20
 const HOME_FIRST_CATEGORY = 'Restaurants and Cafes'
 const VIEWABILITY = { itemVisiblePercentThreshold: 5 }
 const rowKey = (row: HomeRow) => row.key
@@ -118,17 +121,18 @@ export default function HomeScreen() {
     // The entry strip gives way to the live section while GoLandly has no direct perks (it would repeat the same count); it returns with the first one.
     const empty = !!categoryGroups && homeIsEmpty(categoryGroups)
     const live = empty && showBanner && chainsPreview.length > 0
-    if (showBanner && !live) list.push({ key: 'banner', type: 'banner' })
+    // The carousel leads Home while GoLandly has no direct perks (the Raayonit Card is what works today); the slim strip returns with the first perk.
+    if (live) list.push({ key: 'hero', type: 'hero' })
+    else if (showBanner) list.push({ key: 'banner', type: 'banner' })
     if (!categoryGroups) {
       // A failed read still leaves the category tiles to browse; no "on their way" note, which would be untrue.
       if (!failed) return [...list, { key: 'loading', type: 'loading' }]
       return [...list, { key: 'categories', type: 'categories' }]
     }
-    // No direct perk yet: the category photo rail, one calm note and a preview of the Raayonit chains, instead of 13 rows of placeholders.
+    // No direct perk yet: the businesses available now, a hairline, then the category photo rail, instead of 13 rows of placeholders.
     if (empty) {
-      // The live Raayonit chains first, then the category photo rail, then the quiet "on their way" note.
-      if (live) list.push({ key: 'live', type: 'live' })
-      list.push({ key: 'categories', type: 'categories' }, { key: 'soon', type: 'soon' })
+      if (live) list.push({ key: 'live', type: 'live' }, { key: 'divider', type: 'divider' })
+      list.push({ key: 'categories', type: 'categories' })
       return list
     }
     // Only categories that hold a real perk get a row, and each shows just its perks.
@@ -166,18 +170,20 @@ export default function HomeScreen() {
         )
       case 'banner':
         return <View style={styles.banner}><RaayonitPromoStrip offer={flagship} count={chainCount} /></View>
+      case 'hero':
+        return <RaayonitBanner />
+      case 'divider':
+        return <SectionDivider style={styles.divider} />
       case 'categories':
         return (
           <>
             {failed && <Notice message={t('mobile_load_error')} />}
-            <SectionHeader title={t('home_top_categories')} />
+            <SectionHeader title={t('perks_browse_categories')} />
             <CategoryPhotoRail onSelect={openCategory} />
           </>
         )
-      case 'soon':
-        return <PerksSoonCard quiet={showBanner && chainsPreview.length > 0} />
       case 'live':
-        return <LiveChainsSection offers={chainsPreview} chainCount={chainCount} card />
+        return <LiveChainsSection offers={chainsPreview} chainCount={chainCount} />
       case 'loading':
         return <OfferCarouselSkeleton />
       case 'category': {
@@ -235,8 +241,8 @@ export default function HomeScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <TabHeader />
+    <TabScreen>
+      <View style={styles.listWrap}>
       <FlashList
         data={rows}
         renderItem={renderRow}
@@ -254,14 +260,26 @@ export default function HomeScreen() {
         keyboardDismissMode="on-drag"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
       />
+      {/* Content scrolled up under the header (the pass card, mid-scroll) dissolves into the page instead of being sliced into a stray strip above the carousel. */}
+      <Svg pointerEvents="none" style={styles.topFade} width="100%" height={TOP_FADE} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Defs>
+          <LinearGradient id="homeTopFade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.background} stopOpacity={1} />
+            <Stop offset="1" stopColor={colors.background} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height={TOP_FADE} fill="url(#homeTopFade)" />
+      </Svg>
+      </View>
       {photoURL && <AvatarViewer uri={photoURL} visible={photoOpen} onClose={() => setPhotoOpen(false)} />}
-    </SafeAreaView>
+    </TabScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  // The SafeAreaView already clears the status bar / Dynamic Island; the
+  listWrap: { flex: 1 },
+  topFade: { position: 'absolute', top: 0, start: 0, end: 0 },
+  // TabScreen's SafeAreaView already clears the status bar / Dynamic Island; the
   // greeting starts header.top below it, as every tab's title does.
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 110, flexGrow: 1 },
   // The title row holds the avatar's height while the profile loads, so nothing jumps.
@@ -277,6 +295,8 @@ const styles = StyleSheet.create({
   expandText: { fontSize: 14, fontWeight: '700', color: colors.brand },
   // Air between the pass card and the Raayonit entry banner, and before the first category row.
   banner: { marginTop: 16, marginBottom: 8 },
+  // The hairline between the available-now rail and the categories.
+  divider: { marginTop: 20 },
   empty: { alignItems: 'center', marginTop: 24, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   emptySub: { fontSize: 14, color: colors.body, textAlign: 'center' },

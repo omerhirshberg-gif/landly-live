@@ -7,6 +7,8 @@ import type { OfferDocument } from '@/lib/firebase/offers'
 import { useLang } from '@/lib/i18n/useLang'
 import { chainsByCategory, keepRaayonitFilter } from '@/lib/offers/discoverTab'
 import { raayonitCategoryName, type RaayonitCategoryId } from '@/lib/offers/raayonitCategories'
+import { landlyCategoryForIds, parseRaayonitScope } from '@/lib/offers/landlyRaayonitCategories'
+import { CATEGORY_TILES } from '@/lib/categories'
 import { normalizeQuery } from '@/lib/perks/perksFilter'
 import { availableRegionFilters, chainMatchesSearch, matchesRegionFilter, nearMe, NEAR_ME_RADIUS_KM, RAAYONIT_REGION_LABEL_KEYS, type RaayonitRegionFilter } from '@/lib/offers/raayonitRegions'
 import { MemberColumn } from '@/components/layout/MemberPageShell'
@@ -22,12 +24,16 @@ import RaayonitFilterMenu, { NO_RAAYONIT_FILTERS, raayonitFilterCount, type Raay
 export default memo(function RaayonitTab({ offers, initialCategory, initialQuery }: { offers: OfferDocument[]; initialCategory?: string; initialQuery?: string }) {
   const { t, lang } = useLang()
   // A `?category=` link wins; otherwise the filters the member left with (opening a business and pressing back) come back.
+  // `?category=` is one Raayonit category or several (a GoLandly category's businesses, comma-separated): several narrow the list as one scope, cleared with the filters.
+  const initialIds = useMemo(() => parseRaayonitScope(initialCategory), [initialCategory])
+  const [scope, setScope] = useState<RaayonitCategoryId[] | null>(initialIds.length > 1 ? initialIds : null)
   const [filters, setFilters] = useState<RaayonitFilterValues>(() => {
-    if (initialCategory) return { ...NO_RAAYONIT_FILTERS, category: initialCategory as RaayonitCategoryId }
+    if (initialIds.length > 0) return { ...NO_RAAYONIT_FILTERS, category: initialIds.length === 1 ? initialIds[0] : 'all' }
     const kept = readFilters()
     return kept ? { category: kept.category as RaayonitCategoryId, region: kept.region as RaayonitRegionFilter, near: kept.near } : NO_RAAYONIT_FILTERS
   })
   useEffect(() => { writeFilters(filters) }, [filters])
+  const applyFilters = (next: RaayonitFilterValues) => { setScope(null); setFilters(next) }
   const [query, setQuery] = useState(initialQuery ?? '')
   const q = normalizeQuery(query)
   const allGroups = useMemo(() => chainsByCategory(offers, lang, { membership: true }), [offers, lang])
@@ -40,18 +46,20 @@ export default memo(function RaayonitTab({ offers, initialCategory, initialQuery
     const byRegion = near ? nearMe(offers, near) : region === 'all' ? offers : offers.filter((o) => matchesRegionFilter(o, region))
     const bySearch = q ? byRegion.filter((o) => chainMatchesSearch(o, q, t, lang)) : byRegion
     const grouped = chainsByCategory(bySearch, lang, { membership: true })
-    const picked = category === 'all' ? grouped : grouped.filter((g) => g.id === category)
+    const picked = scope ? grouped.filter((g) => scope.includes(g.id)) : category === 'all' ? grouped : grouped.filter((g) => g.id === category)
     // Near me lists the venues themselves, nearest first, not the category groups' alphabetical order.
     return { visible: near ? bySearch.filter((o) => picked.some((g) => g.offers.includes(o))) : [...new Map(picked.flatMap((g) => g.offers).map((o) => [o.id, o] as const)).values()], groups: picked }
-  }, [offers, region, near, q, category, t, lang])
+  }, [offers, region, near, q, category, scope, t, lang])
   // Browsing (no search, no category) is one row per category; a search or a picked category lists the matches as a grid.
-  const rows = !q && category === 'all' && !near
+  const rows = !q && category === 'all' && !near && !scope
   const rowList = useMemo(() => raayonitRows(groups), [groups])
   const rowTitle = (id: string) => (id === RAAYONIT_MORE_ROW ? t('raayonit_row_more') : raayonitCategoryName(id as RaayonitCategoryId, lang))
   const openRow = openId ? rowList.find((r) => r.id === openId) : undefined
   const active: RaayonitFilterValues = { category, region, near }
-  const count = raayonitFilterCount(active)
-  const summary = [category !== 'all' ? raayonitCategoryName(category, lang) : null, near ? `${t('geo_near_me_btn')} · ${NEAR_ME_RADIUS_KM} ${lang === 'he' ? 'ק״מ' : lang === 'ru' ? 'км' : 'km'}` : region !== 'all' ? t(RAAYONIT_REGION_LABEL_KEYS[region]) : null].filter(Boolean).join(' · ')
+  const count = raayonitFilterCount(active) + (scope ? 1 : 0)
+  const scopeTile = scope ? CATEGORY_TILES.find((tile) => tile.category === landlyCategoryForIds(scope)) : undefined
+  const scopeLabel = scope ? (scopeTile ? t(scopeTile.labelKey) : scope.map((id) => raayonitCategoryName(id, lang)).join(', ')) : null
+  const summary = [scopeLabel, category !== 'all' ? raayonitCategoryName(category, lang) : null, near ? `${t('geo_near_me_btn')} · ${NEAR_ME_RADIUS_KM} ${lang === 'he' ? 'ק״מ' : lang === 'ru' ? 'км' : 'km'}` : region !== 'all' ? t(RAAYONIT_REGION_LABEL_KEYS[region]) : null].filter(Boolean).join(' · ')
   const list = visible.length === 0 ? (
     <p className="py-10 text-center text-sm text-muted">{t('raayonit_no_results')}</p>
   ) : rows ? null : (
@@ -67,13 +75,13 @@ export default memo(function RaayonitTab({ offers, initialCategory, initialQuery
             <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('raayonit_search_business')} aria-label={t('raayonit_search_business')} className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-slate-400" />
           </label>
-          <RaayonitFilterMenu values={active} onApply={setFilters} categories={allGroups.map((g) => ({ id: g.id, label: raayonitCategoryName(g.id, lang) }))} regions={regions} />
+          <RaayonitFilterMenu values={active} onApply={applyFilters} categories={allGroups.map((g) => ({ id: g.id, label: raayonitCategoryName(g.id, lang) }))} regions={regions} />
           {regions.length > 1 && <RaayonitFilterMenu mode="region" values={active} onApply={setFilters} categories={[]} regions={regions} />}
         </div>
         {count > 0 && (
           <div className="mt-3 flex min-h-10 items-center gap-3 rounded-xl bg-brandTint px-3">
             <bdi dir="auto" className="min-w-0 flex-1 truncate text-[13px] font-semibold text-brand">{summary}</bdi>
-            <button type="button" onClick={() => setFilters(NO_RAAYONIT_FILTERS)} className="min-h-10 shrink-0 text-[13px] font-bold text-brand underline">{t('raayonit_filter_clear')}</button>
+            <button type="button" onClick={() => applyFilters(NO_RAAYONIT_FILTERS)} className="min-h-10 shrink-0 text-[13px] font-bold text-brand underline">{t('raayonit_filter_clear')}</button>
           </div>
         )}
         <p role="status" className="mt-4 text-sm font-bold text-ink">{t('raayonit_results').split('{count}').map((part, i, all) => <span key={i}>{part}{i < all.length - 1 && <bdi dir="ltr">{visible.length}</bdi>}</span>)}</p>

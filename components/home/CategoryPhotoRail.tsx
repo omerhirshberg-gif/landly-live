@@ -48,5 +48,5 @@ export default function CategoryPhotoRail({ contained = false }: { contained?: b
 // The rail's heading, apart from it: the member home sets it on its column while the rail reaches the screen's edges.
 export function CategoryPhotoTitle({ id, className }: { id: string; className: string }) {
   const { t } = useLang()
-  return <h2 id={id} className={className}>{t('home_top_categories')}</h2>
+  return <h2 id={id} className={className}>{t('perks_browse_categories')}</h2>
 }
