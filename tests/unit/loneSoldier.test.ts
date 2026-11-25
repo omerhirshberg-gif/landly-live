@@ -80,7 +80,10 @@ describe('customer type chips', () => {
   })
 
   it('in the app, let the odd last chip grow across the row', () => {
-    expect(read('landly-mobile/src/auth/onboarding/PersonaStep.tsx')).toContain("cell: { flexBasis: '40%', flexGrow: 1")
+    expect(read('landly-mobile/src/auth/onboarding/PersonaStep.tsx')).toContain('<OptionGrid')
+    const grid = read('landly-mobile/src/components/OptionGrid.tsx')
+    expect(grid).toContain("cell: { flexBasis: '45%', flexGrow: 1")
+    expect(grid).toContain("cellSpan: { flexBasis: '100%' }")
   })
 })
 
@@ -95,7 +98,7 @@ describe('Member type settings page (web)', () => {
   })
 
   it('is also editable from the profile, and back from settings returns there', () => {
-    expect(read('components/profile/ProfileSection.tsx')).toMatch(/id="profile-customer-type"[\s\S]*?CUSTOMER_TYPES\.map/)
+    expect(read('components/profile/ProfileSection.tsx')).toMatch(/idPrefix="profile-customer-type"[\s\S]*?CUSTOMER_TYPES\.map/)
     expect(read('lib/navigation/settingsBack.ts')).toContain("SETTINGS_EDIT_OPENERS: readonly string[] = ['/profile']")
   })
 })

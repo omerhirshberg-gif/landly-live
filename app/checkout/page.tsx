@@ -4,6 +4,7 @@ import { superTavHeadline } from '@/lib/offers/superTav'
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CalendarCheck, CircleAlert, History, LoaderCircle, Lock, PiggyBank, Play, RotateCw } from 'lucide-react'
+import BrandLoader from '@/components/ui/BrandLoader'
 import Navbar from '@/components/layout/Navbar'
 import BackButton from '@/components/navigation/BackButton'
 import TranzilaPaymentWidget from '@/components/checkout/TranzilaPaymentWidget'
@@ -183,10 +184,10 @@ function CheckoutContent() {
     return (
       <>
         <Navbar />
-        <div className="checkout-canvas below-header min-h-screen min-h-dvh">
-          <div role="status" className="max-w-xl mx-auto px-5 sm:px-6 py-16 flex flex-col items-center gap-3 text-slate-500">
-            <LoaderCircle aria-hidden="true" className="h-7 w-7 animate-spin text-brand motion-reduce:animate-none" strokeWidth={1.75} />
-            <span className="text-sm">{t('checkout_loading')}</span>
+        <div className="checkout-canvas below-header flex min-h-screen min-h-dvh flex-col">
+          <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-3 px-5 pb-16 text-slate-500 sm:px-6">
+            <BrandLoader size="lg" label={t('checkout_loading')} />
+            <span aria-hidden="true" className="text-sm">{t('checkout_loading')}</span>
           </div>
         </div>
       </>

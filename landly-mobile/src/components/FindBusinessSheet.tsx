@@ -15,10 +15,12 @@ import AppText from './AppText'
 import BrandMedia from './BrandMedia'
 import { brandImageSource } from '../lib/raayonitBrandImages'
 import ContentText from './ContentText'
+import DirectionalIcon from './DirectionalIcon'
 import LineIcon from './LineIcon'
 import ScalePressable from './ScalePressable'
 import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import { useLang } from '../i18n/LangProvider'
+import { openAfterSheet } from '../lib/openAfterSheet'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
@@ -46,7 +48,7 @@ export default function FindBusinessSheet({ chains, only, onClose }: { chains: O
           <View style={styles.head}>
             {canGoBack ? (
               <ScalePressable accessibilityRole="button" onPress={() => setPicked(null)} style={styles.back}>
-                <LineIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2} />
+                <DirectionalIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2} />
                 <AppText style={styles.backText}>{t('voucher_biz_find_back')}</AppText>
               </ScalePressable>
             ) : (
@@ -57,7 +59,7 @@ export default function FindBusinessSheet({ chains, only, onClose }: { chains: O
             </Pressable>
           </View>
           {picked ? (
-            <BusinessDetail offer={picked} />
+            <BusinessDetail offer={picked} onClose={onClose} />
           ) : (
             <>
               <View style={styles.search}>
@@ -75,7 +77,7 @@ export default function FindBusinessSheet({ chains, only, onClose }: { chains: O
                       <AppText autoDir numberOfLines={1} style={styles.rowName}>{localizedBusinessName(o, lang).text}</AppText>
                       <AppText numberOfLines={1} style={styles.rowCat}>{raayonitCategoryName(raayonitCategoryOf(o), lang)}</AppText>
                     </View>
-                    <LineIcon name="chevronEnd" size={16} color={colors.textFaint} strokeWidth={2} />
+                    <DirectionalIcon name="chevronEnd" size={16} color={colors.textFaint} strokeWidth={2} />
                   </ScalePressable>
                 ))}
               </ScrollView>
@@ -88,7 +90,7 @@ export default function FindBusinessSheet({ chains, only, onClose }: { chains: O
 }
 
 // One business: its name, its own redemption steps and conditions, and a link to its full screen.
-function BusinessDetail({ offer }: { offer: OfferDocument }) {
+function BusinessDetail({ offer, onClose }: { offer: OfferDocument; onClose: () => void }) {
   const { t, lang } = useLang()
   const router = useRouter()
   const content = useLocalizedContent(offerTextSources(offer), offer.translations, lang)
@@ -121,7 +123,7 @@ function BusinessDetail({ offer }: { offer: OfferDocument }) {
       </View>
       {!hasOwn && <AppText style={styles.generic}>{t('voucher_biz_find_generic')}</AppText>}
       {raayonitCategoryOf(offer) === 'hotels' && <AppText style={styles.hotel}>{t('raayonit_hotel_notice')}</AppText>}
-      <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/offer/[offerId]', params: { offerId: offer.id } })} style={styles.link}>
+      <Pressable accessibilityRole="link" onPress={() => openAfterSheet(onClose, () => router.push({ pathname: '/offer/[offerId]', params: { offerId: offer.id } }))} style={styles.link}>
         <AppText style={styles.linkText}>{t('voucher_biz_find_open')}</AppText>
       </Pressable>
     </ScrollView>

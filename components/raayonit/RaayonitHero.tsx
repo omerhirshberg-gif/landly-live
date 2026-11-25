@@ -87,7 +87,7 @@ export function ClubCard() {
   return (
     <div dir="ltr" role="img" aria-label={`GoLandly, ${t('products_card_name')}, ${t('products_issued_line')}`}
       className="relative flex h-full min-h-[250px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-700 to-[#0B2A8F] px-5 py-5 text-white shadow-[0_8px_30px_rgb(29,78,216,0.25)] sm:p-7 lg:min-h-[300px]">
-      <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-16 h-[340px] w-[120px] rotate-[24deg] bg-white/[0.07]" />
+      <span aria-hidden="true" className="pointer-events-none absolute -end-8 -top-16 h-[340px] w-[120px] rotate-[24deg] bg-white/[0.07] rtl:-rotate-[24deg]" />
       <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[84px] h-px bg-white/20 sm:top-[100px]" />
       <div aria-hidden="true" className="relative flex items-center justify-between">
         <span className="flex min-w-0 shrink items-center gap-2">

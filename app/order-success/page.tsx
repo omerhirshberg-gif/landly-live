@@ -24,6 +24,7 @@ import { formatPrice, priceDifference } from '@/lib/format'
 import { orderReference } from '@/lib/payments/orderNumber'
 import { isRaayonitMultiChain } from '@/lib/offers/multiChainNote'
 import { superTavHeadline } from '@/lib/offers/superTav'
+import BrandLoader from '@/components/ui/BrandLoader'
 
 const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2'
 
@@ -78,7 +79,9 @@ function OrderSuccessContent() {
     return (
       <>
         <Navbar />
-        <div className="below-header member-canvas" />
+        <div className="below-header member-canvas flex flex-col">
+          <BrandLoader size="lg" fill />
+        </div>
       </>
     )
   }

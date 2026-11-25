@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { formatPrice } from '@shared/format'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
@@ -22,7 +23,7 @@ export default function TranzilaPaymentStep({
   amount: number
   onBack: () => void
 }) {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
 
   return (
     <View style={styles.card}>
@@ -41,7 +42,7 @@ export default function TranzilaPaymentStep({
         hitSlop={8}
         style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
       >
-        <LineIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2.2} flip={isRtl} />
+        <DirectionalIcon name="chevronStart" size={16} color={colors.brand} strokeWidth={2.2} />
         <AppText style={styles.backText}>{t('checkout_back_to_summary')}</AppText>
       </Pressable>
     </View>

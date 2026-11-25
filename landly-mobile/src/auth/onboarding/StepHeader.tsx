@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
 import { onboardingProgress, type OnboardingStep } from '@shared/auth/onboarding'
 import { ONB } from '@shared/brand/onboardingMotion'
 import { StaticEmblem } from '../../components/Emblem'
+import DirectionalIcon from '../../components/DirectionalIcon'
 import { useLang } from '../../i18n/LangProvider'
 import { webOnly } from '../../lib/webStyles'
 import { colors } from '../../theme'
@@ -15,26 +15,14 @@ import { SILK_CSS } from './motion'
 // and celebration never read as outside the flow. `onBack` is null where
 // there's no going back.
 export default function StepHeader({ step, onBack }: { step: OnboardingStep; onBack: (() => void) | null }) {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
   const percent = Math.round(onboardingProgress(step) * 100)
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
         {onBack ? (
           <Pressable accessibilityRole="button" accessibilityLabel={t('onb_back')} onPress={onBack} hitSlop={8} style={styles.back}>
-            <Svg
-              width={22}
-              height={22}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={colors.text}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={isRtl && styles.flip}
-            >
-              <Path d="M19 12H5M12 19l-7-7 7-7" />
-            </Svg>
+            <DirectionalIcon name="arrowStart" size={22} color={colors.text} strokeWidth={2.25} />
           </Pressable>
         ) : (
           <View style={styles.backSpacer} />
@@ -78,7 +66,6 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer' }),
   },
   backSpacer: { width: 2, height: 40 },
-  flip: { transform: [{ scaleX: -1 }] },
   emblem: { width: 32, height: 32 },
   track: { height: 3, borderRadius: 1.5, backgroundColor: colors.borderLight, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 1.5, backgroundColor: colors.brand },

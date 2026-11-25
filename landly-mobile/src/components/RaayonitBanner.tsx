@@ -7,6 +7,7 @@ import { RAAYONIT_HUB } from '@shared/offers/offerRoutes'
 import AppText from './AppText'
 import Image from './SafeImage'
 import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { useLayout } from '../lib/useLayout'
 import { colors } from '../theme'
@@ -89,7 +90,7 @@ export default memo(function RaayonitBanner() {
               <AppText style={styles.title}>{t(slide.key)}</AppText>
               <View style={styles.cta}>
                 <AppText numberOfLines={1} style={styles.ctaText}>{t('chains_live_cta')}</AppText>
-                <LineIcon name="chevronEnd" size={16} color="#FFFFFF" strokeWidth={2} flip={isRtl} />
+                <DirectionalIcon name="chevronEnd" size={16} color="#FFFFFF" strokeWidth={2} />
               </View>
             </View>
           </Pressable>

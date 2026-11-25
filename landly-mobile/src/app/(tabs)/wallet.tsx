@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAuth } from '@shared/firebase/useAuth'
 import { useMemberProfile } from '@shared/firebase/useMemberProfile'
 import { useVouchers } from '@shared/firebase/VouchersProvider'
@@ -13,6 +12,7 @@ import DashboardStats from '../../components/DashboardStats'
 import FeedCell, { feedColumnWrapper } from '../../components/FeedCell'
 import Notice from '../../components/Notice'
 import RedeemedPass from '../../components/RedeemedPass'
+import TabScreen from '../../components/TabScreen'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SegmentBadge from '../../components/SegmentBadge'
 import SegmentedControl from '../../components/SegmentedControl'
@@ -62,7 +62,7 @@ export default function WalletScreen() {
   const list = tab === 'perks' ? active : redeemed
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <TabScreen>
       <FlatList<Voucher>
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
@@ -111,7 +111,7 @@ export default function WalletScreen() {
           )
         }
       />
-    </SafeAreaView>
+    </TabScreen>
   )
 }
 
@@ -129,7 +129,6 @@ function EmptyState({ icon, title, sub, children }: { icon: LineIconName; title:
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24, flexGrow: 1 },
   // Title and badge, the stats, then the tabs: header.gap apart, and header.gap before the first pass.
   header: { marginBottom: header.gap, gap: 0 },

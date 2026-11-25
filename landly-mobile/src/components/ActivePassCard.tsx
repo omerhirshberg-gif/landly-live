@@ -3,6 +3,8 @@ import Svg, { Path } from 'react-native-svg'
 import { ARCH, ARROW, EMBLEM_VIEWBOX, STAR } from '@shared/brand/emblemPaths'
 import { passCountMessage } from '@shared/home/categoryRails'
 import AppText from './AppText'
+import Corner from './Corner'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
 import { colors, radius } from '../theme'
@@ -13,7 +15,7 @@ import { colors, radius } from '../theme'
 // until the first snapshot (or if the read is refused): a "–" and an unseen
 // message holding the card's height, never a fake 0.
 export default function ActivePassCard({ count, onPress }: { count: number | null; onPress: () => void }) {
-  const { t, isRtl } = useLang()
+  const { t } = useLang()
   return (
     <Pressable
       accessibilityRole="button"
@@ -21,13 +23,17 @@ export default function ActivePassCard({ count, onPress }: { count: number | nul
       onPress={onPress}
       style={({ pressed }) => [styles.passCard, pressed && styles.passCardPressed]}
     >
-      <View style={styles.passGlow} />
+      <Corner at="top-end" top={-70} end={-50}>
+        <View style={styles.passGlow} />
+      </Corner>
       {/* The GoLandly emblem as a watermark in the top end corner (web: components/home/LandlyMark.tsx). */}
-      <Svg viewBox={`0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`} width={88} height={86} style={styles.passMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        {[STAR, ARCH, ARROW].flatMap((part) => [part.light, part.dark]).map((d) => (
-          <Path key={d.slice(0, 24)} d={d} fill={colors.white} fillOpacity={0.15} fillRule="evenodd" />
-        ))}
-      </Svg>
+      <Corner at="top-end" top={12} end={14}>
+        <Svg viewBox={`0 0 ${EMBLEM_VIEWBOX.width} ${EMBLEM_VIEWBOX.height}`} width={88} height={86} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {[STAR, ARCH, ARROW].flatMap((part) => [part.light, part.dark]).map((d) => (
+            <Path key={d.slice(0, 24)} d={d} fill={colors.white} fillOpacity={0.15} fillRule="evenodd" />
+          ))}
+        </Svg>
+      </Corner>
       <View style={styles.passTop}>
         <View style={styles.iconBox}>
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -56,13 +62,14 @@ export default function ActivePassCard({ count, onPress }: { count: number | nul
         <AppText style={styles.passCtaText} numberOfLines={1}>
           {t('home_pass_cta')}
         </AppText>
-        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.brand} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={isRtl && styles.flip}>
-          <Path d="M5 12h14M12 5l7 7-7 7" />
-        </Svg>
+        <DirectionalIcon name="arrowEnd" size={15} color={colors.brand} strokeWidth={2.5} />
       </View>
     </Pressable>
   )
 }
+
+// The watermark is 88 wide and 14 in from the end edge, the card pads 18: text keeps clear of all of it.
+const MARK_CLEARANCE = 88 + 14 - 18 + 4
 
 const styles = StyleSheet.create({
   // Solid brand blue, rounded-2xl, lifted off the canvas. No wider than 576pt, so
@@ -86,20 +93,17 @@ const styles = StyleSheet.create({
   passCardPressed: { backgroundColor: colors.brandHover },
   // A soft light disc in the top end corner, for depth without a gradient dependency.
   passGlow: {
-    position: 'absolute',
-    top: -70,
-    end: -50,
     width: 200,
     height: 200,
     borderRadius: 100,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  passMark: { position: 'absolute', top: 12, end: 14 },
-  passTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Clear of the watermark on the end side, like the count row below.
+  passTop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingEnd: MARK_CLEARANCE },
   iconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.16)', alignItems: 'center', justifyContent: 'center' },
   passLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.85)' },
-  // Clear of the watermark on the end side.
-  passCount: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingEnd: 72 },
+  // Clear of the watermark on the end side, as the title row above.
+  passCount: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, paddingEnd: MARK_CLEARANCE },
   countText: { fontSize: 44, lineHeight: 50, fontWeight: '800', color: colors.white, fontVariant: ['tabular-nums'] },
   passMessage: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 21, fontWeight: '600', color: colors.white },
   unseen: { opacity: 0 },
@@ -118,5 +122,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   passCtaText: { fontSize: 15, fontWeight: '700', color: colors.brand },
-  flip: { transform: [{ scaleX: -1 }] },
 })

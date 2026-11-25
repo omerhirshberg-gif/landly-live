@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { OfferDocument } from '@shared/firebase/offers'
 import { isolateLtr } from '@shared/home/superShowcase'
 import { normalizeQuery } from '@shared/perks/perksFilter'
-import { raayonitCategoriesOf, raayonitCategoryName, raayonitCategoryOf, type RaayonitCategoryId } from '@shared/offers/raayonitCategories'
+import { raayonitCategoriesOf, raayonitCategoryOf, raayonitCategoryShortName, type RaayonitCategoryId } from '@shared/offers/raayonitCategories'
 import { chainMatchesSearch } from '@shared/offers/raayonitRegions'
 import AppText from './AppText'
 import ChainTile from './ChainTile'
@@ -45,17 +45,17 @@ export default function RaayonitCategorySheet({ title, offers, onClose }: { titl
             <TextInput value={query} onChangeText={setQuery} placeholder={t('raayonit_search_business')} placeholderTextColor={colors.textFaint} style={[styles.input, { textAlign: isRtl ? 'right' : 'left' }]} accessibilityLabel={t('raayonit_search_business')} returnKeyType="search" />
           </View>
           {categories.length > 1 && (
-            <ScrollView horizontal showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} style={styles.pillScroll} contentContainerStyle={styles.pills}>
+            <ScrollView horizontal showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} overScrollMode="never" style={styles.pillScroll} contentContainerStyle={styles.pills}>
               {(['all', ...categories] as const).map((id) => (
                 <Pressable key={id} accessibilityRole="radio" accessibilityState={{ selected: category === id, checked: category === id }} onPress={() => setCategory(id)} style={[styles.pill, category === id && styles.pillOn]}>
-                  <AppText numberOfLines={1} style={[styles.pillText, category === id && styles.pillTextOn]}>{id === 'all' ? t('cats_all_categories') : raayonitCategoryName(id, lang)}</AppText>
+                  <AppText numberOfLines={1} style={[styles.pillText, category === id && styles.pillTextOn]}>{id === 'all' ? t('cats_all_categories') : raayonitCategoryShortName(id, lang)}</AppText>
                 </Pressable>
               ))}
             </ScrollView>
           )}
           {shown.length === 0 && <AppText accessibilityLiveRegion="polite" style={styles.empty}>{t('raayonit_no_results')}</AppText>}
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.grid}>
-            {shown.map((o) => <View key={o.id} style={{ width: `${100 / cols - 2}%` }}><ChainTile offer={o} /></View>)}
+          <ScrollView style={styles.gridScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.grid}>
+            {shown.map((o) => <View key={o.id} style={{ width: `${100 / cols - 2}%` }}><ChainTile offer={o} dismiss={onClose} /></View>)}
           </ScrollView>
         </View>
       </SheetSlot>
@@ -65,19 +65,22 @@ export default function RaayonitCategorySheet({ title, offers, onClose }: { titl
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: SCRIM_COLOR },
-  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, maxHeight: '92%', ...webOnly({ width: '100%', maxWidth: 960, alignSelf: 'center' }) },
+  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 8, height: '88%', ...webOnly({ width: '100%', maxWidth: 960, alignSelf: 'center' }) },
   handle: { alignSelf: 'center', width: 32, height: 4, borderRadius: 2, backgroundColor: colors.textFaint, marginBottom: 8 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 20, paddingBottom: 10 },
   title: { flex: 1, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, color: colors.heading },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, marginHorizontal: 16, marginBottom: 10, paddingHorizontal: 14, borderRadius: 14, borderCurve: 'continuous', backgroundColor: '#F1F5F9' },
   input: { flex: 1, minWidth: 0, fontSize: 15, color: colors.heading, paddingVertical: 0, ...webOnly({ outlineStyle: 'none' }) },
-  pillScroll: { flexGrow: 0, marginBottom: 10 },
-  pills: { gap: 8, paddingHorizontal: 16 },
-  pill: { minHeight: 36, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: colors.white },
+  // A ScrollView shrinks by default (flexShrink 1) inside the sheet's maxHeight, which squeezed the pills' bottom edge into the grid: the row keeps its own 44pt.
+  pillScroll: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: 12 },
+  pills: { alignItems: 'center', gap: 8, paddingVertical: 4, paddingStart: 16, paddingEnd: 24 },
+  pill: { flexShrink: 0, minHeight: 36, maxWidth: 260, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: colors.white },
   pillOn: { borderColor: colors.brand, backgroundColor: colors.brand },
   pillText: { fontSize: 13, fontWeight: '600', color: '#334155' },
   pillTextOn: { color: '#FFFFFF' },
   empty: { paddingVertical: 24, textAlign: 'center', fontSize: 14, color: colors.textMuted },
+  // The sheet's height is locked (88%), so the grid takes the rest and scrolls inside it, whether it holds 74 businesses or one.
+  gridScroll: { flex: 1, minHeight: 0 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, paddingHorizontal: 16, paddingBottom: 12 },
 })

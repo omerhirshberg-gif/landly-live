@@ -8,7 +8,7 @@ import { roundedCount } from '@shared/offers/raayonitPreview'
 import { RAAYONIT_HUB } from '@shared/offers/offerRoutes'
 import { useRouter } from 'expo-router'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { openOffer } from '../lib/openOffer'
 import { webOnly } from '../lib/webStyles'
@@ -21,7 +21,7 @@ const PDI = '⁩'
 // white card, a line badge, the venue's name, one sentence on the card and "View card". One match opens that venue; several open the hub
 // with the search filled in. `chainCount` is the live number of chains (rounded down to a whole ten, as everywhere else).
 export default memo(function RaayonitReferralCard({ matches, query, chainCount }: { matches: OfferDocument[]; query: string; chainCount: number }) {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const router = useRouter()
   const summary = referralSummary(matches, (o) => localizedBusinessName(o, lang).text)
   const target = referralTarget(matches, query)
@@ -32,14 +32,14 @@ export default memo(function RaayonitReferralCard({ matches, query, chainCount }
   return (
     <Pressable accessibilityRole="link" accessibilityLabel={`${title}. ${t(REFERRAL_KEYS.cta)}`} onPress={open} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.badge} accessible={false} importantForAccessibility="no-hide-descendants">
-        <LineIcon name="arrowUpEnd" size={20} color={colors.brand} strokeWidth={1.75} flip={isRtl} />
+        <DirectionalIcon name="arrowUpEnd" size={20} color={colors.brand} strokeWidth={1.75} />
       </View>
       <View style={styles.copy}>
         <AppText style={styles.title}>{title}</AppText>
         <AppText style={styles.sub}>{t(REFERRAL_KEYS.sub).replace('{count}+', isolateLtr(`${roundedCount(chainCount)}+`))}</AppText>
         <View style={styles.cta}>
           <AppText style={styles.ctaText}>{t(REFERRAL_KEYS.cta)}</AppText>
-          <LineIcon name="chevronEnd" size={14} color={colors.brand} strokeWidth={2} flip={isRtl} />
+          <DirectionalIcon name="chevronEnd" size={14} color={colors.brand} strokeWidth={2} />
         </View>
       </View>
     </Pressable>

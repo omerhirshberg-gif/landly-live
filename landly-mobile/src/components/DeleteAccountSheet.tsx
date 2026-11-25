@@ -13,6 +13,7 @@ import Button from './Button'
 import Checkbox from './Checkbox'
 import Notice from './Notice'
 import { confirmAndRevokeApple } from '../auth/appleRevocation'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
 import { webOnly } from '../lib/webStyles'
@@ -121,19 +122,7 @@ export default function DeleteAccountSheet({ user }: { user: User }) {
           <AppText style={styles.rowTitle}>{t('del_row_title')}</AppText>
           <AppText style={styles.rowSub}>{t('del_row_sub')}</AppText>
         </View>
-        <Svg
-          width={18}
-          height={18}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={colors.dangerBorder}
-          strokeWidth={2.2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={isRtl && styles.flip}
-        >
-          <Path d="m9 6 6 6-6 6" />
-        </Svg>
+        <DirectionalIcon name="chevronEnd" size={18} color={colors.dangerBorder} strokeWidth={2.2} />
       </Pressable>
 
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
@@ -254,7 +243,6 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 16, fontWeight: '600', color: colors.danger },
   rowSub: { marginTop: 1, fontSize: 13, color: colors.textMuted },
-  flip: { transform: [{ scaleX: -1 }] },
   sheet: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

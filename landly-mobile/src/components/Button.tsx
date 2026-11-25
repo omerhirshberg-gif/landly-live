@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { ActivityIndicator, Platform, Pressable, StyleSheet, type ViewStyle } from 'react-native'
 import Animated, { cubicBezier } from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
 import AppText from './AppText'
+import DirectionalIcon from './DirectionalIcon'
 import LineIcon, { type LineIconName } from './LineIcon'
-import { useLang } from '../i18n/LangProvider'
 import { isWeb, webOnly } from '../lib/webStyles'
 import { EASE_SILK, ONB } from '@shared/brand/onboardingMotion'
 import { colors } from '../theme'
@@ -40,7 +39,6 @@ export default function Button({
   /** An exact height instead of the 48/52 sizes (the lock screen's 50px unlock CTA). */
   height?: number
 }) {
-  const { isRtl } = useLang()
   const primary = variant === 'primary'
   const danger = variant === 'danger'
   // Primary and danger are both solid fills with white text.
@@ -85,21 +83,7 @@ export default function Button({
         <AppText style={[styles.label, { color: filled ? colors.white : colors.heading }]}>
           {label}
         </AppText>
-        {arrow && !busy && (
-          <Svg
-            width={20}
-            height={20}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={filled ? colors.white : colors.brand}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={[styles.arrow, isRtl && styles.flip]}
-          >
-            <Path d="M5 12h14M12 5l7 7-7 7" />
-          </Svg>
-        )}
+        {arrow && !busy && <DirectionalIcon name="arrowEnd" size={20} color={filled ? colors.white : colors.brand} strokeWidth={2.5} style={styles.arrow} />}
       </Animated.View>
     </Pressable>
   )
@@ -144,5 +128,4 @@ const styles = StyleSheet.create({
   // button label on every platform.
   label: { fontSize: 16, fontWeight: '700', letterSpacing: -0.16, textAlign: 'center' },
   arrow: { marginStart: 10 },
-  flip: { transform: [{ scaleX: -1 }] },
 })

@@ -10,7 +10,8 @@ import { isFlagship, isRaayonitOffer, landlyOffers } from '@/lib/offers/discover
 import { selectChainsPreview } from '@/lib/home/chainsPreview'
 import { useRaayonitDisplay } from '@/lib/flags/raayonitDisplayStore'
 import LiveChainsSection from '@/components/perks/LiveChainsSection'
-import PerksSoonCard from '@/components/perks/PerksSoonCard'
+import RaayonitPromoStrip from '@/components/raayonit/RaayonitPromoStrip'
+import CategoryEmptyState from '@/components/discover/CategoryEmptyState'
 import { Award, MapPin, Search, CirclePlus, Tags } from 'lucide-react'
 import { buildCategoryRails, isSuperVoucher, railLabel } from '@/lib/home/categoryRails'
 import OfferCardRail from '@/components/discover/OfferCardRail'
@@ -59,6 +60,7 @@ function PerksBrowser() {
   const showRaayonit = useRaayonitDisplay()
   const raayonitOffers = useMemo(() => (allOffers ?? []).filter(isRaayonitOffer), [allOffers])
   const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
+  const flagship = useMemo(() => raayonitOffers.find(isFlagship) ?? null, [raayonitOffers])
   const liveShown = showRaayonit && chainCount > 0
   const chainsPreview = useMemo(() => selectChainsPreview(raayonitOffers, lang), [raayonitOffers, lang])
   const [retrying, setRetrying] = useState(false)
@@ -119,10 +121,15 @@ function PerksBrowser() {
       <PageHeading title={pageTitle} />
       {offers !== null && offers !== undefined && offers.length === 0 && !failed && !filtering ? (<>
         {/* No direct perk yet: the Raayonit Card entry, one calm note, the categories to browse and a preview of the Raayonit chains. A search still falls through to the listing below. */}
-        {liveShown && <LiveChainsSection offers={chainsPreview} chainCount={chainCount} nested className="mb-10" />}
-        <PerksSoonCard quiet={liveShown} className="mb-10" />
+        {liveShown && (
+          <>
+            <RaayonitPromoStrip offer={flagship} count={chainCount} entry />
+            <LiveChainsSection offers={chainsPreview} chainCount={chainCount} nested className="mt-8" />
+            <SectionDivider className="my-8" />
+          </>
+        )}
         <section aria-labelledby="perks-browse-title" className="mb-10">
-          <h2 id="perks-browse-title" className="mb-3.5 text-xl font-bold tracking-tight text-ink">{t('perks_browse_title')}</h2>
+          <h2 id="perks-browse-title" className="mb-3.5 text-xl font-bold tracking-tight text-ink">{t('perks_browse_categories')}</h2>
           <CategoryGrid tiles={CATEGORY_TILES} />
         </section>
       </>) : (<>
@@ -180,7 +187,8 @@ function PerksBrowser() {
           ) : (
             <>
               {referralMatches.length > 0 && <RaayonitReferralCard matches={referralMatches} query={listQuery} chainCount={chainCount} />}
-              {referralMatches.length === 0 && matchingTiles.length === 0 && (
+              {referralMatches.length === 0 && matchingTiles.length === 0 && !normalizedQuery && selectedTile && <CategoryEmptyState category={selectedTile.category} label={t(selectedTile.labelKey)} />}
+              {referralMatches.length === 0 && matchingTiles.length === 0 && !(!normalizedQuery && selectedTile) && (
               <div aria-live="polite" className="dash-empty-state bg-white border border-slate-100 rounded-2xl">
                 {normalizedQuery ? <Search aria-hidden="true" strokeWidth={1.75} /> : <Tags aria-hidden="true" strokeWidth={1.75} />}
                 <div className="font-bold text-ink text-base mb-1">

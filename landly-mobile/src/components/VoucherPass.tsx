@@ -12,6 +12,7 @@ import { PerkReachLine } from './PerkReach'
 import VoucherBalance from './VoucherBalance'
 import ContentText from './ContentText'
 import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import ScalePressable from './ScalePressable'
 import TicketTear from './TicketTear'
 import VoucherCover from './VoucherCover'
@@ -36,7 +37,7 @@ const SOON_DAYS = 7
 // (app/voucher/[voucherId].tsx), where the QR code and the numeric code each
 // stay hidden until tapped. The chevron points left in Hebrew.
 export default function VoucherPass({ voucher }: { voucher: Voucher }) {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const title = localizeText(voucher.offerTitle, voucher.translations, lang, 'title')
   const name = localizedBusinessName(voucher, lang)
   const headline = superTavHeadline(voucher, t('super_tav_headline'))
@@ -102,7 +103,7 @@ export default function VoucherPass({ voucher }: { voucher: Voucher }) {
         )}
         <View style={styles.view}>
           <AppText style={styles.viewText}>{t('voucher_show_button')}</AppText>
-          <LineIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2.2} flip={isRtl} />
+          <DirectionalIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2.2} />
         </View>
       </View>
     </ScalePressable>

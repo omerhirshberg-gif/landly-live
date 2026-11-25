@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { superTavHeadline } from '@shared/offers/superTav'
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams, type Href } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getOffer, type OfferDocument } from '@shared/firebase/offers'
@@ -17,6 +17,7 @@ import { localizedBusinessName } from '@shared/business/businessText'
 import { isPooled } from '@shared/inventory/types'
 import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import AppText from '../../components/AppText'
+import BrandLoader from '../../components/BrandLoader'
 import Button from '../../components/Button'
 import ComingSoonNotice from '../../components/ComingSoonNotice'
 import ConsentText from '../../components/ConsentText'
@@ -236,7 +237,7 @@ export default function CheckoutScreen() {
         </View>
       ) : !order ? (
         <View style={styles.centered} accessibilityRole="progressbar" accessibilityLabel={t('checkout_loading')}>
-          <ActivityIndicator color={colors.brand} />
+          <BrandLoader size="md" decorative />
           <AppText style={styles.loadingText}>{t('checkout_loading')}</AppText>
         </View>
       ) : step === 'payment' ? (
@@ -340,7 +341,7 @@ export default function CheckoutScreen() {
       {paying && (
         <View style={styles.overlay} accessibilityViewIsModal accessibilityLiveRegion="polite">
           <View style={styles.overlayCard}>
-            <ActivityIndicator color={colors.brand} size="large" />
+            <BrandLoader size="md" decorative />
             <AppText style={styles.overlayText}>{t('checkout_processing')}</AppText>
           </View>
         </View>

@@ -6,7 +6,7 @@ import type { OfferDocument } from '@shared/firebase/offers'
 import { bannerFigures, isolateLtr } from '@shared/home/superShowcase'
 import { RAAYONIT_HUB } from '@shared/offers/offerRoutes'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { WhiteEmblem } from './RaayonitHero'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
@@ -18,21 +18,23 @@ const MARK = require('../../assets/images/raayonit-logo.png') as ImageSourceProp
 // The slim Raayonit Card entry banner on top of Home (web: components/raayonit/RaayonitPromoStrip.tsx): a mini club-card thumbnail, the
 // product name with a one-line "up to {percent}% off at {count}+ chains" note (both read live: the flagship's best discount and the chain
 // count, 14 and 230 until known), and a link to the Raayonit Card tab, where the purchase lives. The partner's badge on the thumbnail follows the display flag.
-export default function RaayonitPromoStrip({ offer, count }: { offer: OfferDocument | null; count: number }) {
-  const { t, isRtl } = useLang()
+export default function RaayonitPromoStrip({ offer, count, entry = false, title, sub: subOverride, href }: { offer: OfferDocument | null; count: number; /** A category's own wording and destination (the category screens' empty state). */ title?: string; sub?: string; href?: string; /** Explore's entry row: one plain "Redeemable at {count}+ businesses" line on white, no discount figure and no call-to-action text. */ entry?: boolean }) {
+  const { t } = useLang()
   const router = useRouter()
   const display = useRaayonitDisplay()
   const { width } = useWindowDimensions()
   const figures = bannerFigures(offer, count)
-  const sub = t('raayonit_banner_sub').replace('{percent}', isolateLtr(`${figures.percent}%`)).replace('{count}', isolateLtr(`${figures.count}+`))
-  const cta = t('raayonit_banner_cta')
-  const showCta = width >= 520
+  const sub = subOverride ?? (entry
+    ? t('raayonit_entry_sub').replace('{count}', isolateLtr(`${figures.count}+`))
+    : t('raayonit_banner_sub').replace('{percent}', isolateLtr(`${figures.percent}%`)).replace('{count}', isolateLtr(`${figures.count}+`)))
+  const cta = entry || subOverride ? '' : t('raayonit_banner_cta')
+  const showCta = !entry && !subOverride && width >= 520
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${t('products_card_name')}. ${sub}. ${cta}`}
-      onPress={() => router.push(RAAYONIT_HUB)}
-      style={({ pressed }) => [styles.strip, pressed && styles.pressed]}
+      accessibilityLabel={cta ? `${title ?? t('products_card_name')}. ${sub}. ${cta}` : `${title ?? t('products_card_name')}. ${sub}`}
+      onPress={() => router.push((href ?? RAAYONIT_HUB) as never)}
+      style={({ pressed }) => [styles.strip, (entry || !!subOverride) && styles.stripEntry, pressed && styles.pressed]}
     >
       <View style={styles.thumb} accessible={false} importantForAccessibility="no-hide-descendants">
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -50,12 +52,12 @@ export default function RaayonitPromoStrip({ offer, count }: { offer: OfferDocum
         </View>
       </View>
       <View style={styles.copy}>
-        <AppText ltr numberOfLines={1} style={styles.title}>{t('products_card_name')}</AppText>
+        <AppText ltr={!title} numberOfLines={2} style={styles.title}>{title ?? t('products_card_name')}</AppText>
         <AppText numberOfLines={2} style={styles.sub}>{sub}</AppText>
       </View>
       <View style={styles.link}>
         {showCta && <AppText numberOfLines={1} style={styles.cta}>{cta}</AppText>}
-        <LineIcon name="chevronEnd" size={18} color={colors.brand} strokeWidth={2} flip={isRtl} />
+        <DirectionalIcon name="chevronEnd" size={18} color={colors.brand} strokeWidth={2} />
       </View>
     </Pressable>
   )
@@ -76,6 +78,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F9FF',
     ...webOnly({ cursor: 'pointer' }),
   },
+  stripEntry: { borderColor: colors.border, backgroundColor: colors.white },
   thumb: { width: 64, height: 44, borderRadius: 9, borderCurve: 'continuous', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   thumbRow: { flexDirection: 'row', direction: 'ltr', alignItems: 'center', gap: 4 },
   badge: { height: 22, paddingHorizontal: 3, borderRadius: 5, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },

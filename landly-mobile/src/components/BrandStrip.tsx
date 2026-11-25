@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Image, Modal, Pressable, StyleSheet, TextInput, View, type ImageSourcePropType } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -6,16 +6,20 @@ import { parseBusinessTranslations, localizedBusinessName } from '@shared/busine
 import type { BrandIndexEntry } from '@shared/offers/branches'
 import { sortBrandsByReach } from '@shared/offers/resolveChainBrand'
 import AppText from './AppText'
+import DirectionalIcon from './DirectionalIcon'
 import LineIcon from './LineIcon'
 import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import { useLang } from '../i18n/LangProvider'
 import { secureImageUrl } from '../lib/imageSource'
 import { bundledBrandImage } from '../lib/raayonitBrandImages'
+import { openAfterSheet } from '../lib/openAfterSheet'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const MARK = require('../../assets/images/raayonit-logo.png') as ImageSourcePropType
+
+const RAIL_ITEM = 146 // tile 136 + gap 10, so every offset is known without measuring
 
 // The brands a multi-chain pass works at, as a row of logo tiles: each shows its logo on a white stage, its name and how many
 // branches honour the voucher, and opens that brand's own offer. A search narrows the row and "View all" lists every brand in
@@ -28,13 +32,14 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
   const q = query.trim().toLowerCase()
   const shown = q ? named.filter((e) => e.label.toLowerCase().includes(q) || e.name.includes(query.trim())) : named
   const count = String(named.length)
+  const railRef = useRef<FlatList<(typeof named)[number]>>(null)
+  // A new search starts the rail back at its first brand (the start edge); never reacts to content size, so scrolling is never pulled back.
+  useEffect(() => {
+    railRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [q])
+  const railLayout = useCallback((_: ArrayLike<unknown> | null | undefined, index: number) => ({ length: RAIL_ITEM, offset: RAIL_ITEM * index, index }), [])
   return (
     <View style={styles.wrap}>
-      <View style={styles.headRow}>
-        <Pressable accessibilityRole="button" onPress={() => setAll(true)} style={({ pressed }) => [styles.headLink, pressed && styles.pressed]}>
-          <AppText style={styles.headLinkText}>{t('brands_show_all').replace('{count}', `\u2066${count}\u2069`)}</AppText>
-        </Pressable>
-      </View>
       <View style={styles.search}>
         <LineIcon name="search" size={16} color={colors.textFaint} strokeWidth={2} />
         <TextInput value={query} onChangeText={setQuery} placeholder={t('brands_search')} placeholderTextColor={colors.textFaint} style={[styles.input, { textAlign: isRtl ? 'right' : 'left' }]} accessibilityLabel={t('brands_search')} returnKeyType="search" />
@@ -43,20 +48,27 @@ export default function BrandStrip({ entries }: { entries: BrandIndexEntry[] }) 
         <AppText style={styles.empty}>{t('brands_no_results')}</AppText>
       ) : (
         <FlatList
+          ref={railRef}
           horizontal
+          // Hebrew: the rail is laid out left to right and inverted, so index 0 sits flush at the right (start) edge with offset 0.
+          inverted={isRtl}
+          getItemLayout={railLayout}
           data={shown}
           keyExtractor={(b) => b.offerId}
-          renderItem={({ item }) => <Tile entry={item} label={item.label} />}
+          renderItem={({ item }) => <View style={[styles.cell, { direction: isRtl ? 'rtl' : 'ltr' }]}><Tile entry={item} label={item.label} /></View>}
           showsHorizontalScrollIndicator={false}
           showsVerticalScrollIndicator={false}
+          style={styles.railList}
           contentContainerStyle={styles.rail}
-          initialNumToRender={6}
-          maxToRenderPerBatch={8}
-          windowSize={5}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          removeClippedSubviews={false}
         />
       )}
       <Pressable accessibilityRole="button" onPress={() => setAll(true)} style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}>
         <AppText style={styles.viewAllText}>{t('brands_show_all_cta').replace('{count}', `\u2066${count}\u2069`)}</AppText>
+        <DirectionalIcon name="chevronEnd" size={16} color={colors.brand} strokeWidth={2.2} />
       </Pressable>
       <AllBrands visible={all} onClose={() => setAll(false)} entries={named} />
     </View>
@@ -133,7 +145,7 @@ function AllBrands({ visible, onClose, entries }: { visible: boolean; onClose: (
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<AppText style={styles.empty}>{t('brands_no_results')}</AppText>}
             renderItem={({ item }) => (
-              <Pressable accessibilityRole="link" accessibilityLabel={item.label} onPress={() => { onClose(); router.push({ pathname: '/offer/[offerId]', params: { offerId: item.offerId } }) }} style={({ pressed }) => [styles.gridCell, pressed && styles.pressed]}>
+              <Pressable accessibilityRole="link" accessibilityLabel={item.label} onPress={() => openAfterSheet(onClose, () => router.push({ pathname: '/offer/[offerId]', params: { offerId: item.offerId } }))} style={({ pressed }) => [styles.gridCell, pressed && styles.pressed]}>
                 <View style={styles.gridStage}><Logo entry={item} backdrop /></View>
                 <AppText autoDir numberOfLines={1} style={styles.name}>{item.label}</AppText>
                 {item.branchCount > 0 && <AppText style={styles.count}>{countLabel(t as never, item.branchCount)}</AppText>}
@@ -151,7 +163,9 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 14, borderCurve: 'continuous', backgroundColor: '#F1F5F9' },
   sheetSearch: { marginHorizontal: 16, marginBottom: 8 },
   input: { flex: 1, fontSize: 15, color: colors.textStrong, paddingVertical: 0, ...webOnly({ outlineStyle: 'none' }) },
-  rail: { flexDirection: 'row', gap: 10, paddingVertical: 2 },
+  railList: { direction: 'ltr' },
+  rail: { paddingVertical: 2 },
+  cell: { width: RAIL_ITEM, paddingEnd: 10 },
   tile: { width: 136, gap: 4, ...webOnly({ cursor: 'pointer' }) },
   pressed: { opacity: 0.7 },
   stage: { width: 136, height: 92, borderRadius: 16, borderCurve: 'continuous', borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
@@ -160,10 +174,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 14, lineHeight: 19, fontWeight: '600', color: colors.textStrong },
   count: { fontSize: 12, lineHeight: 16, color: colors.textMuted },
   empty: { fontSize: 14, lineHeight: 20, color: colors.textMuted, paddingVertical: 12, textAlign: 'center' },
-  headRow: { flexDirection: 'row', justifyContent: 'flex-end' },
-  headLink: { minHeight: 44, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
-  headLinkText: { fontSize: 14, fontWeight: '600', color: colors.brand },
-  viewAll: { minHeight: 44, borderRadius: 12, borderCurve: 'continuous', borderWidth: 1, borderColor: 'rgba(0,56,184,0.25)', backgroundColor: '#F0F7FF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, ...webOnly({ cursor: 'pointer' }) },
+  viewAll: { minHeight: 44, borderRadius: 12, borderCurve: 'continuous', borderWidth: 1, borderColor: 'rgba(0,56,184,0.25)', backgroundColor: '#F0F7FF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 16, ...webOnly({ cursor: 'pointer' }) },
   viewAllText: { fontSize: 14, fontWeight: '600', color: colors.brand, textAlign: 'center' },
   backdrop: { width: '100%', height: '100%', backgroundColor: '#F4F6F9', overflow: 'hidden' },
   tint: { backgroundColor: 'rgba(244,246,249,0.45)' },

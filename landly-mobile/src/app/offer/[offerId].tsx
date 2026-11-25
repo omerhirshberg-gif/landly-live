@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -25,12 +25,14 @@ import { isPooled } from '@shared/inventory/types'
 import { RAAYONIT_ISSUER } from '@shared/payments/issuer'
 import Accordion from '../../components/Accordion'
 import AppText from '../../components/AppText'
+import BrandLoader from '../../components/BrandLoader'
 import ContentText from '../../components/ContentText'
 import DealMedia from '../../components/DealMedia'
 import VariantSelector from '../../components/VariantSelector'
 import TranslationNotice from '../../components/TranslationNotice'
 import Button from '../../components/Button'
 import LineIcon from '../../components/LineIcon'
+import Corner from '../../components/Corner'
 import GlassBackButton from '../../components/GlassBackButton'
 import GlassHeartButton from '../../components/GlassHeartButton'
 import MerchantBadge from '../../components/MerchantBadge'
@@ -230,12 +232,13 @@ export default function OfferScreen() {
   const hasStoreList = noticeKind === 'chains' || noticeKind === 'stores' || (offer?.perkScope === 'multi_chain' && chainBrands.length > 0) || (singleVenue && !!offer?.branches?.length)
   const destination = offer ? { geo: offer.geo, placeId: offer.address?.placeId, address: place || offer.location } : null
   const logo = offer && !heroLogoSource(offer) && !isRaayonitOffer(offer) && (
-    <MerchantBadge
-      logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
-      height={panes ? 64 : 56}
-      large
-      style={panes ? styles.logoPane : styles.logo}
-    />
+    <Corner at={panes ? 'bottom-start' : 'top-start'} {...(panes ? { bottom: 16, start: 16 } : { top: -28, start: BODY_PADDING })}>
+      <MerchantBadge
+        logoUri={badgeLogoUri(secureImageUrl(offer.businessLogoUrl ?? ''), image.uri, image.role)}
+        height={panes ? 64 : 56}
+        large
+      />
+    </Corner>
   )
 
   // A participating chain is not a voucher for one store: its screen sends the visitor to the Raayonit Card (/raayonit).
@@ -249,7 +252,7 @@ export default function OfferScreen() {
         {(panes || !offer) && <ScreenHeader fallback="/perks" />}
       </View>
       {offer === undefined || (!!offer && isFlagship(offer)) ? (
-        <ActivityIndicator color={colors.brand} style={styles.spinner} />
+        <BrandLoader size="lg" fill />
       ) : offer === null ? (
         <View style={styles.notFound}>
           <AppText style={styles.notFoundTitle}>{t('offer_detail_not_found_title')}</AppText>
@@ -263,22 +266,25 @@ export default function OfferScreen() {
                 {/* The same picture as the perk card: an offer image that is a logo goes to the badge instead. */}
                 <DealMedia image={image} category={offer.category} logo={heroLogoSource(offer)} logoSmall={heroLogoIsFallback(offer)} corners={panes ? 'all' : 'none'} containRatio={4 / 5} containMaxHeight={380}>
                   {!panes && (
-                    <View style={styles.back}>
+                    <Corner at="top-start" top={6} start={6}>
                       <GlassBackButton label={t('settings_back')} onPress={() => goBack('/perks')} />
-                    </View>
+                    </Corner>
                   )}
                   {discount > 0 && (
-                    <View style={[styles.ribbon, panes && styles.ribbonPane]}>
-                      <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={styles.ribbonText}>{`-${discount}%`}</AppText>
-                    </View>
+                    <Corner at="top-end">
+                      <View style={[styles.ribbon, panes && styles.ribbonPane]}>
+                        <AppText ltr accessibilityLabel={t('offer_percent_off').replace('{n}', String(discount))} style={styles.ribbonText}>{`-${discount}%`}</AppText>
+                      </View>
+                    </Corner>
                   )}
                   {/* At the picture's foot, clear of the ribbon and of the sheet rising over it on a phone; glass on iOS. */}
-                  <GlassHeartButton
-                    saved={saved}
-                    onToggle={() => toggleWishlist(offer.id)}
-                    label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
-                    style={panes ? styles.heartPane : styles.heart}
-                  />
+                  <Corner at="bottom-end" bottom={panes ? 6 : 26} end={6}>
+                    <GlassHeartButton
+                      saved={saved}
+                      onToggle={() => toggleWishlist(offer.id)}
+                      label={saved ? t('btn_remove_from_wishlist') : t('btn_add_to_wishlist')}
+                    />
+                  </Corner>
                   {panes && logo}
                 </DealMedia>
               </Animated.View>
@@ -507,7 +513,6 @@ const styles = StyleSheet.create({
   categoryRail: { marginTop: 24, paddingVertical: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#E2E8F0' },
   issuerTop: { alignSelf: 'stretch', marginTop: 20 },
   safe: { flex: 1, backgroundColor: colors.background },
-  spinner: { marginTop: 48 },
   notFound: { alignItems: 'center', marginTop: 48, paddingHorizontal: 24 },
   notFoundTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: 4 },
   notFoundSub: { fontSize: 14, color: colors.body, textAlign: 'center' },
@@ -515,9 +520,6 @@ const styles = StyleSheet.create({
   heroWrap: { zIndex: 1 },
   // Web: components/discover/DiscountBadge.tsx (solid emerald-700, white text), tied to the picture's top end corner.
   ribbon: {
-    position: 'absolute',
-    top: 0,
-    end: 0,
     backgroundColor: colors.discountBadge,
     borderBottomStartRadius: 16,
     paddingHorizontal: 12,
@@ -530,9 +532,6 @@ const styles = StyleSheet.create({
   },
   ribbonPane: { borderTopEndRadius: radius.lg },
   ribbonText: { fontSize: 14, lineHeight: 20, fontWeight: '700', color: colors.white },
-  heart: { position: 'absolute', bottom: 26, end: 6 },
-  heartPane: { position: 'absolute', bottom: 6, end: 6 },
-  back: { position: 'absolute', top: 6, start: 6 },
   body: { padding: BODY_PADDING },
   // A phone's content, rising over the picture's foot, its shadow falling upward; its top padding clears the logo.
   sheet: {
@@ -562,8 +561,6 @@ const styles = StyleSheet.create({
   },
   bodyPane: { flex: 1, minWidth: 0, padding: 0 },
   // On the sheet's edge on a phone; in the picture's bottom start corner in two panes.
-  logo: { position: 'absolute', top: -28, start: BODY_PADDING },
-  logoPane: { position: 'absolute', bottom: 16, start: 16 },
   chips: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 18 },
   // The chips share one shape: compact, softly rounded, text only.
   chip: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.sm, borderCurve: 'continuous', paddingHorizontal: 10, paddingVertical: 4 },

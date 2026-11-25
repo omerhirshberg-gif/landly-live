@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
-import { useLang } from '../i18n/LangProvider'
+import DirectionalIcon from './DirectionalIcon'
 import { tick } from '../lib/haptics'
 import { webOnly } from '../lib/webStyles'
 import { actionTint, type } from '../theme'
@@ -25,7 +24,6 @@ export default function SectionHeader({
   onAction?: () => void
   leading?: ReactNode
 }) {
-  const { isRtl } = useLang()
   return (
     <View style={styles.row}>
       <View style={styles.heading}>
@@ -55,7 +53,7 @@ export default function SectionHeader({
             // Plain text and a chevron pointing the reading way: no pill, no border.
             <View style={[styles.link, pressed && styles.linkPressed]}>
               <AppText style={styles.actionLabel}>{action}</AppText>
-              <LineIcon name="chevronEnd" size={16} color={actionTint.text} strokeWidth={2} flip={isRtl} />
+              <DirectionalIcon name="chevronEnd" size={16} color={actionTint.text} strokeWidth={2} />
             </View>
           )}
         </Pressable>

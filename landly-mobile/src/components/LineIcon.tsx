@@ -1,5 +1,7 @@
 import type { ColorValue, StyleProp, ViewStyle } from 'react-native'
 import ArrowDownWideNarrow from 'lucide-react-native/icons/arrow-down-wide-narrow'
+import ArrowLeft from 'lucide-react-native/icons/arrow-left'
+import ArrowRight from 'lucide-react-native/icons/arrow-right'
 import ArrowUpRight from 'lucide-react-native/icons/arrow-up-right'
 import Award from 'lucide-react-native/icons/award'
 import Banknote from 'lucide-react-native/icons/banknote'
@@ -108,6 +110,8 @@ const ICONS = {
   circleCheck: CircleCheck,
   store: Store,
   arrowUpEnd: ArrowUpRight,
+  arrowEnd: ArrowRight,
+  arrowStart: ArrowLeft,
   clock: Clock,
   pause: Pause,
   play: Play,

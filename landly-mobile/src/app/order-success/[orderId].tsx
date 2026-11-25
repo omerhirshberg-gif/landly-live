@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import Animated, { ZoomIn } from 'react-native-reanimated'
@@ -11,6 +11,7 @@ import { orderReference } from '@shared/payments/orderNumber'
 import { localizeText } from '@shared/i18n/contentTranslation'
 import { localizedBusinessName } from '@shared/business/businessText'
 import AppText from '../../components/AppText'
+import BrandLoader from '../../components/BrandLoader'
 import Button from '../../components/Button'
 import Confetti from '../../components/Confetti'
 import IssuerAttribution from '../../components/IssuerAttribution'
@@ -99,7 +100,7 @@ export default function OrderSuccessScreen() {
 
       {pending ? (
         <View style={styles.centered} accessibilityLiveRegion="polite">
-          <ActivityIndicator color={colors.brand} />
+          <BrandLoader size="md" decorative />
           <AppText style={styles.stateTitle}>{t('checkout_confirming_title')}</AppText>
           <AppText style={styles.stateSub}>{t('checkout_confirming_sub')}</AppText>
         </View>

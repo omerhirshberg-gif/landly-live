@@ -19,8 +19,10 @@ const EYE = 'M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7
 const EYE_OFF =
   'M10.73 5.08A10.43 10.43 0 0 1 12 5c4.97 0 8.5 4 9.94 6.65a1 1 0 0 1 0 .7 13.16 13.16 0 0 1-1.67 2.68M14.08 14.16a3 3 0 0 1-4.24-4.24M17.48 17.5A10.75 10.75 0 0 1 2.06 12.35a1 1 0 0 1 0-.7 10.38 10.38 0 0 1 4.45-5.13M2 2l20 20'
 
-// Email/password/phone values are typed left-to-right, even in Hebrew; pass
-// `natural` for free text such as a name, which follows the language instead.
+// Email/password/phone values keep their left-to-right character order in
+// Hebrew but sit at the field's start edge (right-aligned) like the label above
+// them; pass `natural` for free text such as a name, which also reads
+// right-to-left.
 // A `secureTextEntry` field gets an eye button that shows/hides the value.
 // `error` replaces `hint` below the field and turns the border red.
 // `prefix` sits inside the field before the value (the phone country code).
@@ -118,7 +120,7 @@ export default function TextField({
             setFocused(false)
             onBlur?.(e)
           }}
-          style={[styles.input, { textAlign: rtlText ? 'right' : 'left', writingDirection: rtlText ? 'rtl' : 'ltr' }]}
+          style={[styles.input, { textAlign: isRtl ? 'right' : 'left', writingDirection: rtlText ? 'rtl' : 'ltr' }]}
         />
         {secureTextEntry && (
           <Pressable

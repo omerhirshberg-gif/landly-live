@@ -5,9 +5,10 @@ import { raayonitCategoryName } from '@shared/offers/raayonitCategories'
 import { localizedBusinessName } from '@shared/business/businessText'
 import { redemptionBadge, REDEMPTION_BADGE_KEYS } from '@shared/offers/raayonitRegions'
 import AppText from './AppText'
-import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import { useLang } from '../i18n/LangProvider'
 import { openOffer } from '../lib/openOffer'
+import { openAfterSheet } from '../lib/openAfterSheet'
 import BrandMedia from './BrandMedia'
 import { secureImageUrl } from '../lib/imageSource'
 import { bundledBrandImage } from '../lib/raayonitBrandImages'
@@ -19,8 +20,8 @@ const MARK = require('../../assets/images/raayonit-logo.png') as ImageSourceProp
 
 // A venue as a framed white card: the picture edge to edge on top, then the name, "Category · coverage" and a quiet redemption line
 // with "Details". No pill boxes inside.
-export default memo(function ChainTile({ offer }: { offer: OfferDocument }) {
-  const { t, lang, isRtl } = useLang()
+export default memo(function ChainTile({ offer, dismiss }: { offer: OfferDocument; dismiss?: () => void }) {
+  const { t, lang } = useLang()
   const [failed, setFailed] = useState(false)
   const label = localizedBusinessName(offer, lang).text
   const url = offer.imageUrl
@@ -28,7 +29,7 @@ export default memo(function ChainTile({ offer }: { offer: OfferDocument }) {
   const count = offer.branches?.length ?? 0
   const photo = offer.logoKind === 'photo'
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => openOffer(offer)} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => openAfterSheet(dismiss, () => openOffer(offer))} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.stage}>
         <BrandMedia source={source} cover={!failed && !!url && photo} recyclingKey={offer.id} onError={() => setFailed(true)} />
       </View>
@@ -41,7 +42,7 @@ export default memo(function ChainTile({ offer }: { offer: OfferDocument }) {
           <AppText numberOfLines={1} style={styles.redeem}>{t(REDEMPTION_BADGE_KEYS[redemptionBadge(offer)])}</AppText>
           <View style={styles.details}>
             <AppText numberOfLines={1} style={styles.detailsText}>{t('raayonit_details_link')}</AppText>
-            <LineIcon name="chevronEnd" size={14} color={colors.brand} strokeWidth={2} flip={isRtl} />
+            <DirectionalIcon name="chevronEnd" size={14} color={colors.brand} strokeWidth={2} />
           </View>
         </View>
       </View>

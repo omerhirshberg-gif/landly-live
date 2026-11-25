@@ -190,7 +190,7 @@ describe('native scroll indicators', () => {
     const tags: string[] = []
     for (const match of source.matchAll(/<(?:Animated\.)?(ScrollView|FlatList|SectionList)(?:<[^>]+>)?(?=\s|>)/g)) {
       const before = source.slice(Math.max(0, match.index - 12), match.index)
-      if (/\b(useRef|RefObject|typeof)$/.test(before)) continue
+      if (/\b(useRef|useRailStart|RefObject|typeof)$/.test(before)) continue
       let depth = 0
       let i = match.index + match[0].length
       for (; i < source.length; i++) {

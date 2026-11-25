@@ -4,8 +4,8 @@ import { StaticEmblem } from './Emblem'
 import { useLang } from '../i18n/LangProvider'
 import { colors } from '../theme'
 
-// The solo GoLandly lockup (web: components/layout/BrandLockup.tsx): the star emblem and the wordmark, nothing else. The Home and Perks tabs' top bar
-// wears it; the Raayonit logo lives on the club card, /raayonit and the Raayonit offer, checkout and voucher screens, never in the bar.
+// The solo GoLandly lockup (web: components/layout/BrandLockup.tsx): the star emblem and the wordmark, nothing else. Every primary tab's top bar
+// (TabHeader, via TabScreen) wears it; the Raayonit logo lives on the club card, /raayonit and the Raayonit offer, checkout and voucher screens, never in the bar.
 // One accessible element, so a screen reader hears it once; the emblem is decorative.
 // The vector emblem (star, arch, arrow) only: the raster logo-mark.png carried a second wordmark baked in under the star.
 const MARK_HEIGHT = 32

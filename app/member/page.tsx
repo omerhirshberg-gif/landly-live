@@ -19,6 +19,7 @@ import { greetingName } from '@/lib/auth/names'
 import { greetingKey } from '@/lib/auth/greeting'
 import { useGreetingPeriod } from '@/lib/home/useGreetingPeriod'
 import SegmentBadge from '@/components/member/SegmentBadge'
+import BrandLoader from '@/components/ui/BrandLoader'
 
 type Voucher = VoucherDocument & { id: string }
 const NO_VOUCHERS: Voucher[] = []
@@ -81,7 +82,9 @@ export default function MemberPage() {
     return (
       <>
         <Navbar />
-        <div className="below-header member-canvas" />
+        <div className="below-header member-canvas flex flex-col">
+          <BrandLoader size="lg" fill />
+        </div>
       </>
     )
   }

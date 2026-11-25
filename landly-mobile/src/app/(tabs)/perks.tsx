@@ -1,10 +1,9 @@
-import TabHeader from '../../components/TabHeader'
+import TabScreen from '../../components/TabScreen'
 import CategoryOfferRail from '../../components/CategoryOfferRail'
 import { startTransition, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, StyleSheet, View, type ViewToken } from 'react-native'
 import { FlashList } from '@shopify/flash-list'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { CATEGORY_TILES, filterCategoryTiles } from '@shared/categories'
 import { isOfferAvailable, isOfferNew, sortFeaturedOffers, type OfferDocument } from '@shared/firebase/offers'
 import { useOffers } from '@shared/offers/useOffers'
@@ -22,7 +21,7 @@ import AppText from '../../components/AppText'
 import LocationFilterBar from '../../components/LocationFilterBar'
 import CategoryGrid from '../../components/CategoryGrid'
 import LiveChainsSection from '../../components/LiveChainsSection'
-import PerksSoonCard from '../../components/PerksSoonCard'
+import RaayonitPromoStrip from '../../components/RaayonitPromoStrip'
 import RaayonitReferralCard from '../../components/RaayonitReferralCard'
 import { matchRaayonitChains } from '@shared/perks/raayonitReferral'
 import FeedCell from '../../components/FeedCell'
@@ -74,7 +73,7 @@ type PerksRow =
   | { key: string; type: 'offer'; offer: OfferDocument; index: number; nationwide?: boolean }
   | { key: 'empty'; type: 'empty' }
   | { key: 'referral'; type: 'referral' }
-  | { key: 'soon'; type: 'soon' }
+  | { key: 'entry'; type: 'entry' }
   | { key: 'browse'; type: 'browse' }
   | { key: 'live'; type: 'live' }
 
@@ -112,6 +111,7 @@ export default function PerksScreen() {
   // While GoLandly has no direct perks the screen points at the Raayonit Card tab: its entry strip and a preview of its chains (the name follows the display flag).
   const showRaayonit = useRaayonitDisplay()
   const raayonitOffers = useMemo(() => (allOffers ?? []).filter(isRaayonitOffer), [allOffers])
+  const flagship = useMemo(() => raayonitOffers.find(isFlagship) ?? null, [raayonitOffers])
   const chainCount = useMemo(() => raayonitOffers.filter((o) => !isFlagship(o)).length, [raayonitOffers])
   const chainsPreview = useMemo(() => selectChainsPreview(raayonitOffers, lang), [raayonitOffers, lang])
   const [refreshing, setRefreshing] = useState(false)
@@ -203,8 +203,8 @@ export default function PerksScreen() {
         return refRow.length > 0 ? refRow : [{ key: 'empty', type: 'empty' }]
       }
       // The live Raayonit chains lead (they work today), then the quiet "on their way" note and the categories to browse.
-      if (showRaayonit && chainsPreview.length > 0) list.push({ key: 'live', type: 'live' })
-      list.push({ key: 'soon', type: 'soon' }, { key: 'browse', type: 'browse' })
+      if (showRaayonit && chainsPreview.length > 0) list.push({ key: 'entry', type: 'entry' }, { key: 'live', type: 'live' })
+      list.push({ key: 'browse', type: 'browse' })
       return list
     }
     if (listBrowsing) {
@@ -295,12 +295,13 @@ export default function PerksScreen() {
             <OfferCard offer={item.offer} onOpen={openOffer} showCategoryBadge={showBadge} distanceKm={badgeKm(item.offer, loc)} nationwide={item.nationwide} width={cardWidth} />
           </FeedCell>
         )
-      case 'soon':
-        return <PerksSoonCard quiet={showRaayonit && chainsPreview.length > 0} />
+      case 'entry':
+        return <RaayonitPromoStrip offer={flagship} count={chainCount} entry />
       case 'browse':
         return (
           <View style={styles.browse}>
-            <AppText accessibilityRole="header" style={styles.sectionTitle}>{t('perks_browse_title')}</AppText>
+            {showRaayonit && chainsPreview.length > 0 && <SectionDivider />}
+            <AppText accessibilityRole="header" style={styles.sectionTitle}>{t('perks_browse_categories')}</AppText>
             <CategoryGrid tiles={CATEGORY_TILES} onSelect={openCategory} />
           </View>
         )
@@ -357,8 +358,7 @@ export default function PerksScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <TabHeader />
+    <TabScreen>
       <FlashList
         data={rows}
         renderItem={renderRow}
@@ -383,12 +383,11 @@ export default function PerksScreen() {
         keyboardDismissMode="on-drag"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
       />
-    </SafeAreaView>
+    </TabScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 110, flexGrow: 1 },
   // The title row, search and filters as one group (14 apart), then header.gap before the results.
   header: { marginBottom: header.gap, gap: 14 },

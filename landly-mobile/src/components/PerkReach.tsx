@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import type { OfferDocument } from '@shared/firebase/offers'
 import { locationNotice, withCount } from '@shared/offers/locationVisibility'
@@ -7,6 +7,7 @@ import AppText from './AppText'
 import BranchNavigationSheet, { type BranchTarget } from './BranchNavigationSheet'
 import LineIcon from './LineIcon'
 import { useLang } from '../i18n/LangProvider'
+import useRailStart from '../lib/useRailStart'
 import { webOnly } from '../lib/webStyles'
 import { colors } from '../theme'
 
@@ -31,25 +32,22 @@ export function PerkReachLine({ offer, compact = false }: { offer: ReachOffer; c
 
 /** The stores or chains that honour a perk, as a row of plain cards the reader scrolls sideways, in their own language. */
 export function ParticipatingChains({ offer, guide = true }: { offer: ReachOffer; guide?: boolean }) {
-  const { t, lang, isRtl } = useLang()
+  const { t, lang } = useLang()
   const branches = participatingBranches(offer, lang)
-  const rail = useRef<ScrollView>(null)
+  const [railRef, onRailSize] = useRailStart<ScrollView>()
   const [picked, setPicked] = useState<BranchTarget | null>(null)
   // One brand's stores are searched with its name in front; a multi-chain pass spans brands, so its names stand alone.
   const brand = offer.perkScope === 'multi_chain' ? null : offer.brandName || offer.businessName || null
   return (
     <View style={styles.chains}>
       <ScrollView
-        ref={rail}
+        ref={railRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         accessibilityLabel={t(offer.perkScope === 'multi_chain' ? 'perk_chains_title' : 'perk_stores_title')}
         contentContainerStyle={styles.rail}
-        // Rows lay out right-to-left in Hebrew, but a horizontal scroller still opens at its left edge; jump to the reading-direction start.
-        onContentSizeChange={() => {
-          if (isRtl) rail.current?.scrollToEnd({ animated: false })
-        }}
+        onContentSizeChange={onRailSize}
       >
         {branches.map((branch) => (
           <Pressable
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
   text: { fontSize: 12, lineHeight: 16, fontWeight: '500', color: colors.textMuted, flexShrink: 1 },
   textCompact: { fontSize: 12, lineHeight: 16 },
   chains: { gap: 14 },
-  rail: { flexDirection: 'row', gap: 10, paddingVertical: 2 },
+  rail: { flexDirection: 'row', gap: 10, paddingVertical: 2, minWidth: '100%' },
   // A plain rounded-rectangle card with a hairline border: a store, not a pill.
   card: { justifyContent: 'center', minWidth: 96, maxWidth: 240, minHeight: 44, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: colors.white, borderRadius: 12, borderCurve: 'continuous', paddingHorizontal: 16, paddingVertical: 10, ...webOnly({ cursor: 'pointer' }) },
   cardPressed: { backgroundColor: colors.brandTint },

@@ -5,6 +5,7 @@ import { citiesOfRegion, cityLabel, ISRAEL_REGIONS, type RegionId } from '@share
 import { RADII_KM, type LocationFilter, type RadiusKm } from '@shared/perks/locationFilter'
 import AppText from './AppText'
 import LineIcon from './LineIcon'
+import DirectionalIcon from './DirectionalIcon'
 import SheetSlot, { SCRIM_COLOR, useSheetBounds } from './SheetSlot'
 import { useLang } from '../i18n/LangProvider'
 import { webOnly } from '../lib/webStyles'
@@ -77,7 +78,7 @@ export function AreaPickerSheet({ visible, onClose, onPick }: { visible: boolean
           <View style={styles.sheetHead}>
             {region && !q ? (
               <Pressable accessibilityRole="button" accessibilityLabel={t('loc_back')} onPress={() => setRegion(null)} style={styles.back} hitSlop={8}>
-                <LineIcon name="chevronStart" flip={isRtl} size={18} color={colors.textStrong} strokeWidth={2} />
+                <DirectionalIcon name="chevronStart" size={18} color={colors.textStrong} strokeWidth={2} />
               </Pressable>
             ) : null}
             <AppText accessibilityRole="header" style={styles.sheetTitle}>{region && !q ? regionName : t('loc_region_title')}</AppText>
@@ -97,7 +98,7 @@ export function AreaPickerSheet({ visible, onClose, onPick }: { visible: boolean
             renderItem={({ item }) => (
               <Pressable accessibilityRole="button" onPress={item.onPress} style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}>
                 <AppText style={[styles.itemText, item.strong && styles.itemStrong]}>{item.label}</AppText>
-                {item.chevron && <LineIcon name="chevronEnd" flip={isRtl} size={16} color={colors.textFaint} strokeWidth={2} />}
+                {item.chevron && <DirectionalIcon name="chevronEnd" size={16} color={colors.textFaint} strokeWidth={2} />}
               </Pressable>
             )}
           />

@@ -1,7 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
 import { signOut, type User } from 'firebase/auth'
 import type { CountryCode } from 'libphonenumber-js'
 import { formatPhone, phoneToE164, splitPhone } from '@shared/auth/onboarding'
@@ -20,13 +18,16 @@ import AppText from '../../components/AppText'
 import AvatarPicker from '../../components/AvatarPicker'
 import Button from '../../components/Button'
 import ChangeEmailForm from '../../components/ChangeEmailForm'
-import CountryOfOriginList from '../../components/CountryOfOriginList'
 import Notice from '../../components/Notice'
 import LineIcon from '../../components/LineIcon'
+import OptionGrid from '../../components/OptionGrid'
+import OriginSelectRow from '../../components/OriginSelectRow'
 import OtpSheet from '../../components/OtpSheet'
 import PendingChangeNotice from '../../components/PendingChangeNotice'
+import TabScreen from '../../components/TabScreen'
 import ScreenTitleRow from '../../components/ScreenTitleRow'
 import SegmentBadge from '../../components/SegmentBadge'
+import SignOutRow from '../../components/SignOutRow'
 import TextField from '../../components/TextField'
 import CountryCodePicker from '../../auth/onboarding/CountryCodePicker'
 import PersonaStep from '../../auth/onboarding/PersonaStep'
@@ -40,8 +41,7 @@ import { colors, header, radius } from '../../theme'
 
 // The Profile tab (web: /profile): who the member is and their details, all
 // the editable ones behind a single Edit profile button (ProfileDetails).
-// The gear at the header's trailing edge (top right,
-// top left in Hebrew) pushes the settings stack, where language, Privacy &
+// The Settings gear sits in the top brand bar (TabScreen action="settings") and pushes the settings stack, where language, Privacy &
 // Security, help and the account-deletion request live.
 export default function ProfileScreen() {
   const { t } = useLang()
@@ -58,53 +58,33 @@ export default function ProfileScreen() {
   // type, Sign out) leading, about 40%, and the details card trailing, 24pt
   // apart so neither runs over the fold. Hebrew puts the identity on the
   // right. A phone keeps the one column: identity, details, Sign out.
-  const { panes } = useLayout()
+  const { panes, paddingLeft, paddingRight } = useLayout()
   const signOutButton = (
-    <Button
-      label={t('nav_logout')}
+    <SignOutRow
       onPress={async () => {
         if (user) await endDeviceSession(user.uid)
         await signOut(auth)
       }}
-      variant="secondary"
     />
   )
 
+  // Edit profile's Cancel / Save, pinned under the scroll while the form is open (set by ProfileDetails).
+  const [editFooter, setEditFooter] = useState<EditFooter | null>(null)
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <TabScreen action="settings">
       <ScrollView
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.content, panes && styles.contentPanes]}
+        contentContainerStyle={[styles.content, { paddingLeft, paddingRight }, panes && styles.contentPanes]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
       >
         <ScreenTitleRow
           title={t('nav_profile')}
           style={styles.header}
-          trailing={
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('wishlist_title')}
-                onPress={() => router.push('/wishlist')}
-                hitSlop={6}
-                style={({ pressed }) => [styles.gear, styles.heart, pressed && styles.gearPressed]}
-              >
-                <LineIcon name="heart" size={24} color={colors.heading} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('settings_gear_label')}
-                onPress={() => router.push('/settings')}
-                hitSlop={6}
-                style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
-              >
-                <LineIcon name="gear" size={24} color={colors.heading} />
-              </Pressable>
-            </View>
-          }
         />
 
         <View style={panes && styles.panes}>
@@ -128,13 +108,23 @@ export default function ProfileScreen() {
           </View>
 
           <View style={panes && styles.trailingPane}>
-            {user && <ProfileDetails user={user} name={name} email={email} profile={live.profile} loaded={live.loaded} />}
+            {user && <ProfileDetails user={user} name={name} email={email} profile={live.profile} loaded={live.loaded} onFooter={setEditFooter} />}
           </View>
         </View>
 
         {!panes && signOutButton}
       </ScrollView>
-    </SafeAreaView>
+      {editFooter && (
+        <View style={styles.footer}>
+          <View style={styles.editAction}>
+            <Button label={t('profile_cancel_btn')} onPress={editFooter.cancel} disabled={editFooter.busy} variant="secondary" />
+          </View>
+          <View style={styles.editAction}>
+            <Button label={t('profile_save_changes_btn')} onPress={editFooter.save} busy={editFooter.busy} />
+          </View>
+        </View>
+      )}
+    </TabScreen>
   )
 }
 
@@ -179,18 +169,22 @@ type Status = { tone: 'info' | 'error'; text: string } | null
 // (/api/account/change-phone decides, otherwise it saves as before).
 // Meanwhile the amber PendingChangeNotice sits under the row until the
 // change is verified, on any device.
+type EditFooter = { busy: boolean; cancel: () => void; save: () => void }
+
 function ProfileDetails({
   user,
   name,
   email,
   profile,
   loaded,
+  onFooter,
 }: {
   user: User
   name: string
   email: string
   profile: UserDocument | null
   loaded: boolean
+  onFooter: (footer: EditFooter | null) => void
 }) {
   const { t, lang } = useLang()
   const current = detailsOf(profile)
@@ -342,6 +336,22 @@ function ProfileDetails({
     />
   )
 
+  // The form's Cancel / Save live in ProfileScreen's pinned footer; the ref keeps their handlers current.
+  const footerActions = useRef({ save, cancel: () => {} })
+  useEffect(() => {
+    footerActions.current = {
+      save,
+      cancel: () => {
+        setEditing(false)
+        setEmailFormOpen(false)
+      },
+    }
+  })
+  useEffect(() => {
+    onFooter(editing ? { busy, save: () => void footerActions.current.save(), cancel: () => footerActions.current.cancel() } : null)
+    return () => onFooter(null)
+  }, [editing, busy, onFooter])
+
   return (
     <>
     <View style={styles.card}>
@@ -482,7 +492,6 @@ function ProfileDetails({
               autoComplete="tel"
               textContentType="telephoneNumber"
               returnKeyType="done"
-              autoFocus={!focusName}
             />
             {phoneNotice}
           </View>
@@ -498,48 +507,17 @@ function ProfileDetails({
           </View>
           <View style={[styles.row, styles.rowBorder]}>
             <AppText style={styles.fieldLabel}>{t('profile_origin_label')}</AppText>
-            <CountryOfOriginList value={draft.countryOfOrigin} onChange={(countryOfOrigin) => change({ countryOfOrigin })} />
+            <OriginSelectRow value={draft.countryOfOrigin} onChange={(countryOfOrigin) => change({ countryOfOrigin })} />
           </View>
           <View style={styles.row}>
             <AppText style={styles.fieldLabel}>{t('profile_region_label')}</AppText>
-            <View accessibilityRole="radiogroup" style={styles.regions}>
-              {ISRAEL_REGIONS.map((region) => {
-                const selected = draft.israelRegion === region
-                return (
-                  <Pressable
-                    key={region}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    onPress={() => change({ israelRegion: region })}
-                    style={({ pressed }) => [styles.region, selected && styles.regionSelected, pressed && styles.pressed]}
-                  >
-                    <AppText style={[styles.regionLabel, selected && styles.regionLabelSelected]}>{t(ISRAEL_REGION_KEYS[region])}</AppText>
-                  </Pressable>
-                )
-              })}
-            </View>
+            <OptionGrid options={ISRAEL_REGIONS.map((region) => ({ value: region, label: t(ISRAEL_REGION_KEYS[region]) }))} value={draft.israelRegion} onChange={(israelRegion) => change({ israelRegion })} />
           </View>
           {saveError && (
             <View style={styles.saveError}>
               <Notice message={saveError} />
             </View>
           )}
-          <View style={styles.editActions}>
-            <View style={styles.editAction}>
-              <Button
-                label={t('profile_cancel_btn')}
-                onPress={() => {
-                  setEditing(false)
-                  setEmailFormOpen(false)
-                }}
-                disabled={busy}
-                variant="secondary"
-              />
-            </View>
-            <View style={styles.editAction}>
-              <Button label={t('profile_save_changes_btn')} onPress={save} busy={busy} />
-            </View>
-          </View>
         </>
       ) : (
         <>
@@ -606,14 +584,8 @@ function Row({ label, value, ltr, last, muted, children }: { label: string; valu
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 16, paddingTop: header.top, paddingBottom: 24 },
   header: { marginBottom: header.gap },
-  // 44pt target at the header's trailing edge; the root view's direction puts it top left in Hebrew.
-  actions: { flexDirection: 'row', alignItems: 'center' },
-  heart: { marginEnd: 0 },
-  gear: { width: header.action, height: header.action, borderRadius: header.action / 2, marginEnd: -8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
-  gearPressed: { backgroundColor: colors.borderLight },
   card: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
@@ -628,7 +600,7 @@ const styles = StyleSheet.create({
   identityBadge: { marginTop: 12, maxWidth: '100%' },
   // Two panes: the column capped and centred, then a row (it follows the
   // root view's direction) split about 40 / 60 with PANE_GAP between.
-  contentPanes: { width: '100%', maxWidth: 1040, alignSelf: 'center' },
+  contentPanes: { width: '100%', alignSelf: 'center' },
   panes: { flexDirection: 'row', alignItems: 'flex-start', gap: PANE_GAP },
   leadingPane: { flex: 2, minWidth: 0 },
   trailingPane: { flex: 3, minWidth: 0 },
@@ -641,20 +613,6 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.heading },
   fieldLabel: { fontSize: 14, fontWeight: '700', color: colors.heading, marginBottom: 10 },
-  regions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  region: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    ...webOnly({ cursor: 'pointer' }),
-  },
-  regionSelected: { borderColor: colors.brand, backgroundColor: colors.brandLight },
-  regionLabel: { fontSize: 14, fontWeight: '600', color: colors.body },
-  regionLabelSelected: { color: colors.brand },
   pressed: { opacity: 0.8 },
   editDisabled: { opacity: 0.6 },
   saveError: { marginBottom: 12 },
@@ -693,7 +651,8 @@ const styles = StyleSheet.create({
     ...webOnly({ cursor: 'pointer' }),
   },
   changeText: { fontSize: 15, fontWeight: '600', color: colors.brand },
-  editActions: { flexDirection: 'row', gap: 12, paddingTop: 4, paddingBottom: 16 },
+  // Pinned under the scroll while the form is open: a hairline above, Cancel and Save equal width.
+  footer: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.white },
   editAction: { flex: 1 },
   savedNotice: { paddingBottom: 16 },
   nameFields: { gap: 12 },

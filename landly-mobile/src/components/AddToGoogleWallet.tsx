@@ -4,6 +4,7 @@ import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import { useAuth } from '@shared/firebase/useAuth'
 import { fetchWalletAvailability, requestGoogleWalletLink, walletFailureMessage, type WalletFailure } from '@shared/wallet/walletClient'
 import { canOfferWalletPass, googleWalletSupport } from '@shared/wallet/walletSupport'
+import Corner from './Corner'
 import Notice from './Notice'
 import { useLang } from '../i18n/LangProvider'
 import { API_BASE_URL } from '../lib/env'
@@ -97,7 +98,11 @@ export default function AddToGoogleWallet({ voucher }: { voucher: Voucher }) {
           <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy }} onPress={add} style={styles.badge}>
             <Image source={badge.source} style={{ width, height: BADGE_HEIGHT }} resizeMode="contain" fadeDuration={0} accessibilityIgnoresInvertColors />
           </Pressable>
-          {busy && <ActivityIndicator style={styles.spinner} color={colors.brand} accessibilityLabel={t('wallet_add_busy')} />}
+          {busy && (
+            <Corner at="top-end" top={18} end={-32}>
+              <ActivityIndicator color={colors.brand} accessibilityLabel={t('wallet_add_busy')} />
+            </Corner>
+          )}
         </View>
         {notice && (
           <Animated.View entering={NOTICE_IN}>
@@ -115,5 +120,4 @@ const styles = StyleSheet.create({
   // Centred, never mirrored; the padding is Google's clear space, inside the tap target.
   badgeRow: { alignSelf: 'center' },
   badge: { padding: CLEAR_SPACE, minHeight: 48, justifyContent: 'center' },
-  spinner: { position: 'absolute', top: 18, end: -32 },
 })
