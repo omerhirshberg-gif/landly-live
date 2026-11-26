@@ -43,7 +43,9 @@ describe('a ledger-backed Raayonit sale', () => {
     const reserved = vouchers(db).filter((v) => v.status === 'RESERVED')
     expect(reserved).toHaveLength(1)
     expect(reserved[0]).toMatchObject({ reservedForOrderId: order.orderId })
-    expect(db.read(`orders/${order.orderId}`)).toMatchObject({ inventoryProductId: 'p100', reservedVoucherId: reserved[0]!.id })
+    expect(db.read(`orders/${order.orderId}`)).toMatchObject({ inventoryProductId: 'p100' })
+    expect(db.read(`orders/${order.orderId}`)).not.toHaveProperty('reservedVoucherId')
+    expect(db.read(`orders/${order.orderId}/internal/terms`)).toMatchObject({ reservedVoucherId: reserved[0]!.id })
 
     await claimOfferForOrder(db.db, pay(order.orderId))
     const sold = vouchers(db).find((v) => v.id === reserved[0]!.id)!

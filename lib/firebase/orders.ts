@@ -6,7 +6,7 @@ import { isOrderNumber, normalizeDisplayOrderNumber } from '../payments/orderNum
 import { parseOfferTranslations, type OfferTranslations } from '../offers/offerText'
 import { parseBusinessTranslations, type BusinessTranslations } from '../business/businessText'
 import { relocateBundledImage } from '../offers/imageUrl'
-import { parseCoordinates, parsePlaceSnapshot, type Coordinates, type PlaceSnapshot } from '../geo'
+import { parsePlaceSnapshot, type PlaceSnapshot } from '../geo'
 
 // refunded: a paid order cancelled through support (admin-set, Admin SDK only).
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
@@ -36,7 +36,6 @@ export interface OrderDocument {
   // The business's name in other languages and its address, as they were at purchase; null for older ones.
   businessTranslations?: BusinessTranslations | null
   businessAddress?: PlaceSnapshot | null
-  businessGeo?: Coordinates | null
   // How it is fulfilled (lib/inventory/types.ts); a Raayonit order gets the issuer's attribution on its success page.
   fulfillmentType?: FulfillmentType
   // The business's logo and the offer's picture as they were at purchase (additive; '' for older orders).
@@ -62,7 +61,6 @@ function toDoc(data: Record<string, unknown>): OrderDocument {
     translations: parseOfferTranslations(data.translations),
     businessTranslations: parseBusinessTranslations(data.businessTranslations),
     businessAddress: parsePlaceSnapshot(data.businessAddress),
-    businessGeo: parseCoordinates(data.businessGeo),
     fulfillmentType: parseFulfillmentType(data.fulfillmentType),
     // An order frozen from a dev-seeded offer holds a localhost link; on read it loads from whichever site shows it.
     businessLogoUrl: typeof data.businessLogoUrl === 'string' ? relocateBundledImage(data.businessLogoUrl.trim()) : '',

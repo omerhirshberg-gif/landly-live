@@ -167,14 +167,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Publicly readable. All writes, including claimedCount, are admin-only
-    // now: offer creation/edits go through a script or the admin API routes
-    // using the Admin SDK, and claimedCount is bumped only by the Tranzila
-    // webhook (lib/payments/claimOfferForOrder.ts) once a payment for that
-    // offer is confirmed — never directly by a client.
+    // Admin SDK only. Clients read the live list from GET /api/public/offers
+    // (lib/firebase/offersCache.server.ts), which serves only published, in-stock
+    // offers of active businesses and sits behind the CDN. The raw collection also
+    // holds drafts, unreleased prices and pool ids, and an open list read would let
+    // anyone bypass the cache and run up reads. claimedCount is bumped only by the
+    // payment webhook (lib/payments/claimOfferForOrder.ts).
     match /offers/{offerId} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
 
     // One voucher per (user, offer), deterministic doc ID (`${uid}_${offerId}`).
@@ -197,6 +197,12 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if isCustomer() && request.auth.uid == resource.data.userId && isVerified() && authFresh();
       allow write: if false;
+    }
+    // What an order holds that a member must not read: the merchant's commission and payment terms, the ledger code held
+    // for the checkout and the place coordinates (lib/payments/orderInternal.ts). Admin SDK only. Rules do not cascade, so
+    // the owner-read rule above never reaches this subcollection.
+    match /orders/{orderId}/internal/{docId} {
+      allow read, write: if false;
     }
 
     // The admin password-guessing throttle (lib/auth/adminLoginThrottle.ts):

@@ -12,7 +12,8 @@ import { relocateBundledImage } from '../offers/imageUrl'
 import { findVariant, orderIdFor, parseVariants } from '../offers/variants'
 import { isRaayonitBrandCard } from '../offers/raayonitGate'
 import { isRaayonitComingSoonEnabled } from '../flags/featureFlags.server'
-import { releaseReservation, reserveForCheckout } from '../inventory/ledger/stock'
+import { countMemberHolds, MAX_HOLDS_PER_MEMBER, releaseReservation, reserveForCheckout } from '../inventory/ledger/stock'
+import { mergeOrderInternal, orderInternalRef } from './orderInternal'
 import { ensureSandboxDemoStock } from './sandboxDemoStock'
 import { resolveLedgerProduct, type LedgerProduct } from '../inventory/ledger/prepareSale'
 
@@ -82,11 +83,24 @@ export async function initiateOrder(
   // Dev sandbox only: an empty Raayonit stock (a value with no uploaded codes) gets a few fake RAAYONIT-DEMO codes, so a test purchase can complete.
   if (sandbox) await ensureSandboxDemoStock(db, offerPreview, variantPoolId)
   const product: LedgerProduct | null = await resolveLedgerProduct(db, offerPreview, variantPoolId)
-  const reservation = product && product.mode === 'stock' ? await reserveForCheckout(db, product.productId, orderRef.id) : null
+  let reservation: Awaited<ReturnType<typeof reserveForCheckout>> | null = null
+  if (product && product.mode === 'stock') {
+    // Cheap refusals first, so a request the transaction would reject anyway never takes a code off the shelf.
+    if (!offerPreview || offerPreview.published === false) throw new PaymentError('This offer is no longer available.')
+    const [customerBusiness, claimed] = await Promise.all([db.collection('businesses').doc(uid).get(), voucherRef.get()])
+    if (customerBusiness.exists) throw new PaymentError('Business accounts cannot purchase customer offers.', 403)
+    if (claimed.exists) throw new PaymentError("You've already claimed this offer.")
+    // One member can't pin the stock: a few live holds at once (this order's own hold is renewed, not counted).
+    if (await countMemberHolds(db, uid, orderRef.id) >= MAX_HOLDS_PER_MEMBER) {
+      throw new PaymentError('Finish or cancel your open checkouts before starting another.', 429)
+    }
+    reservation = await reserveForCheckout(db, product.productId, orderRef.id)
+  }
   try {
+  const internalRef = orderInternalRef(db, orderRef.id)
   return await db.runTransaction(async (tx) => {
-    const [orderSnap, voucherSnap, offerSnap, customerBusinessSnap, legacyVoucherSnap] = await Promise.all([
-      tx.get(orderRef), tx.get(voucherRef), tx.get(offerRef), tx.get(db.collection('businesses').doc(uid)),
+    const [orderSnap, voucherSnap, offerSnap, customerBusinessSnap, internalSnap, legacyVoucherSnap] = await Promise.all([
+      tx.get(orderRef), tx.get(voucherRef), tx.get(offerRef), tx.get(db.collection('businesses').doc(uid)), tx.get(internalRef),
       variantPoolId ? tx.get(db.collection('vouchers').doc(orderIdFor(uid, offerId))) : Promise.resolve(null),
     ])
     if (customerBusinessSnap.exists) throw new PaymentError('Business accounts cannot purchase customer offers.', 403)
@@ -110,7 +124,10 @@ export async function initiateOrder(
       const termsAccepted = order.termsAcceptedAt instanceof Timestamp
       if (acceptTerms && !termsAccepted) tx.update(orderRef, { termsAcceptedAt: Timestamp.now() })
       // A reload after the 15 minutes may hold a different code now: the order follows it.
-      if (reservation && order.reservedVoucherId !== reservation.voucherId) tx.update(orderRef, { reservedVoucherId: reservation.voucherId })
+      // Held on the server-only internal document. A legacy order (fields still on the order itself) is carried over whole,
+      // so the internal document never holds less than the order did.
+      const held = mergeOrderInternal(order, internalSnap.data())
+      if (reservation && held.reservedVoucherId !== reservation.voucherId) tx.set(internalRef, { ...held, reservedVoucherId: reservation.voucherId })
       // A reload is an idempotent read, never a new payment attempt or reprice.
       return {
         orderId: orderRef.id, amount: order.amount, currency: 'ILS' as const,
@@ -181,20 +198,23 @@ export async function initiateOrder(
       amount, amountAgorot, originalPrice, currency: 'ILS', terminal,
       fulfillmentType, poolId: fulfillmentType === 'raayonit_pool' ? chosenPoolId : null, variant: !!variant,
       // The ledger product this order sells and the code held for it (see lib/inventory/ledger/).
-      ...(product ? { inventoryProductId: product.productId } : {}), ...(reservation ? { reservedVoucherId: reservation.voucherId } : {}),
-      commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
+      ...(product ? { inventoryProductId: product.productId } : {}),
       validityDays, redemptionTerms, redemptionMethod, redemptionInstructions,
       // Frozen with the terms, so a later edit or re-translation never changes what was bought.
       translations: offer.translations ?? null,
       // The business's localized name and address, frozen the same way.
       businessTranslations: offer.businessTranslations ?? null,
       businessAddress: offer.address ?? null,
-      businessGeo: offer.geo ?? null,
       // The business's logo and the offer's picture as they were at purchase (additive, optional), so the order summary and
       // the confirmation draw the right logo at once, with no second read of the offer.
       businessLogoUrl: frozenImage(offer.businessLogoUrl), offerImageUrl: frozenImage(offer.imageUrl),
       status: 'pending', createdAt: now, termsAcceptedAt: acceptTerms ? now : null,
       paidAt: null, tranzilaTxnId: null, voucherId: null,
+    }
+    // Commission terms, the held code and the place coordinates: never on the member-readable order (lib/payments/orderInternal.ts).
+    const internal = {
+      commissionRate: terms?.commissionRate ?? null, paymentTerms: terms?.paymentTerms ?? null,
+      reservedVoucherId: reservation ? reservation.voucherId : null, businessGeo: offer.geo ?? null,
     }
     if (superseded) {
       tx.create(db.collection('supersededOrders').doc(`${orderRef.id}_${now.toMillis()}`), {
@@ -205,6 +225,7 @@ export async function initiateOrder(
     } else {
       tx.create(orderRef, newOrder)
     }
+    tx.set(internalRef, internal)
     return {
       orderId: orderRef.id, amount, currency: 'ILS' as const, originalPrice,
       offerTitle: offer.title ?? '', businessName: offer.businessName ?? '',

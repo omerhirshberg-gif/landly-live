@@ -1,11 +1,12 @@
 import 'server-only'
-import { Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore'
+import { parseVoucherStatus } from '@/lib/vouchers/status'
 import { PaymentError } from '@/lib/payments/paymentValidation'
 import { getSupplierAdapter } from '../suppliers'
 import { SupplierNotConfiguredError, SupplierUnsupportedError } from '../suppliers/SupplierAdapter'
 import { trackSupplierCall } from './alerts'
 import { decryptVoucherCode } from './codes'
-import { transitionVoucherStatus, TransitionError, type VoucherState } from './transitions'
+import { commitPlan, eventRefFor, planTransition, transitionVoucherStatus, TransitionError, type VoucherState } from './transitions'
 import { VOUCHERS_COLLECTION } from './types'
 
 // Admin and member operations that are only ever a transition plus a guard. None writes `status` itself.
@@ -79,4 +80,42 @@ export async function selfReportRedeemed(db: Firestore, inventoryVoucherId: stri
     // Already finished or never in the ledger (a pre-ledger voucher): the wallet document stays the record.
     if (!(error instanceof TransitionError)) throw error
   }
+}
+
+export type MarkUsedOutcome = 'ok' | 'notFound' | 'notEligible' | 'expired'
+
+/**
+ * A member marks their own code-only wallet voucher used (/api/vouchers/[voucherId]/mark-used), in ONE transaction: the wallet
+ * document becomes 'redeemed' and its ledger copy goes DELIVERED / PARTIALLY_REDEEMED -> REDEEMED with its event, or neither
+ * changes. Nothing is committed on a failure, so the two can never drift apart.
+ *  - A foreign or missing voucher reads as `notFound`; one that is not an active code-only voucher is `notEligible`.
+ *  - A voucher past its `expiresAt` is `expired` and stays untouched (an expired voucher cannot be used, so it is not "used").
+ *  - A voucher from before the ledger, or whose ledger copy is already finished, has nothing to transition: the wallet
+ *    document alone is the record, as before.
+ */
+export async function markWalletVoucherUsed(db: Firestore, uid: string, walletVoucherId: string, now: Timestamp = Timestamp.now()): Promise<MarkUsedOutcome> {
+  const walletRef = db.collection('vouchers').doc(walletVoucherId)
+  return db.runTransaction(async (tx) => {
+    const wallet = await tx.get(walletRef)
+    const data = wallet.data()
+    if (!data || data.userId !== uid) return 'notFound'
+    if (data.redemptionKind !== 'code_only' || parseVoucherStatus(data.status) !== 'active') return 'notEligible'
+    if (data.expiresAt instanceof Timestamp && data.expiresAt.toMillis() <= now.toMillis()) return 'expired'
+    // Every read before the first write.
+    const ledgerRef = typeof data.inventoryVoucherId === 'string' && data.inventoryVoucherId ? db.collection(VOUCHERS_COLLECTION).doc(data.inventoryVoucherId) : null
+    const ledger = ledgerRef ? await tx.get(ledgerRef) : null
+    let plan: ReturnType<typeof planTransition> | null = null
+    if (ledgerRef && ledger?.exists) {
+      const current = ledger.data() as VoucherState
+      try {
+        plan = planTransition(current, 'REDEEMED', { now, source: 'manual', actor: 'member', reason: 'self_reported', walletVoucherId })
+      } catch (error) {
+        // Already finished (or in a state that cannot redeem): nothing to move in the ledger.
+        if (!(error instanceof TransitionError)) throw error
+      }
+      if (plan) commitPlan(db, tx, ledgerRef, current.supplierId, plan, now, eventRefFor(db, current.supplierId, null))
+    }
+    tx.update(walletRef, { status: 'redeemed', redeemedAt: now, selfReportedUse: true, updatedAt: FieldValue.serverTimestamp() })
+    return 'ok'
+  })
 }

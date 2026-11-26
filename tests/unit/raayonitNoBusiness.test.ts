@@ -31,7 +31,8 @@ describe('Raayonit checkout without a business', () => {
     const order = db.read('orders/user_offer')!
     expect(order).not.toHaveProperty('businessId')
     expect(order).toMatchObject({ businessName: 'BUYME All Style', fulfillmentType: 'raayonit_pool', perkScope: 'multi_chain', brandName: 'BUYME All Style', participatingChains: ['Fox', 'Castro'], chainsCount: 2 })
-    expect(order.commissionRate).toBeNull()
+    expect(order).not.toHaveProperty('commissionRate')
+    expect(db.read('orders/user_offer/internal/terms')).toMatchObject({ commissionRate: null, paymentTerms: null })
   })
 
   it('settles into a voucher with no businessId, keeping it out of merchant portals and payouts', async () => {
