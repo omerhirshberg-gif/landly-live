@@ -1,7 +1,7 @@
 'use client'
 
 import { superTavHeadline } from '@/lib/offers/superTav'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CalendarCheck, CircleAlert, History, LoaderCircle, Lock, PiggyBank, Play, RotateCw } from 'lucide-react'
 import BrandLoader from '@/components/ui/BrandLoader'
@@ -29,6 +29,7 @@ import { useOnboardingGuard } from '@/components/auth/useOnboardingGuard'
 import { formatPrice, priceDifference } from '@/lib/format'
 import { cancellationFeeAgorot } from '@/lib/payments/voucherTerms'
 import { localizedApiError } from '@/lib/api/apiError'
+import type { HostedPaymentParams } from '@/lib/payments/hostedFieldsProtocol'
 
 type CheckoutStep = 'summary' | 'payment'
 
@@ -51,6 +52,8 @@ interface OrderSummary {
   sandbox: boolean
   /** A sandbox order left unfinished earlier, picked up again. */
   resumed: boolean
+  /** Live terminal, after Pay: the Handshake and notify URL for Hosted Fields (lib/payments/hostedFieldsProtocol.ts). */
+  payment?: HostedPaymentParams | null
 }
 
 // `restart` only means something to the local dev sandbox (lib/payments/devSandbox.ts).
@@ -143,6 +146,8 @@ function CheckoutContent() {
         setPayError(data.error ?? t('checkout_error_generic'))
         return
       }
+      // A live order arrives with its Handshake; a sandbox order has none and shows its own widget.
+      setOrder(data as OrderSummary)
       setStep('payment')
     } catch {
       setPayError(t('checkout_error_generic'))
@@ -150,6 +155,19 @@ function CheckoutContent() {
       setProceeding(false)
     }
   }
+
+  // A new Handshake (thtk) for the same frozen order: the old one lasts 20 minutes. Idempotent on the server.
+  const refreshing = useRef(false)
+  const refreshPayment = useCallback(async () => {
+    if (!user || !offerId || refreshing.current) return
+    refreshing.current = true
+    try {
+      const { ok, data } = await initiate(await user.getIdToken(), offerId, true, false, variantPoolId)
+      if (ok) setOrder(data as OrderSummary)
+    } finally {
+      refreshing.current = false
+    }
+  }, [user, offerId, variantPoolId])
 
   // Sandbox only: carry on with the unfinished test order.
   const handleResume = () => {
@@ -385,7 +403,7 @@ function CheckoutContent() {
                 {order.sandbox ? (
                   <DevSandboxPaymentWidget orderId={order.orderId} offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
                 ) : (
-                  <TranzilaPaymentWidget offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
+                  <TranzilaPaymentWidget orderId={order.orderId} payment={order.payment ?? null} onRefreshPayment={refreshPayment} offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
                 )}
               </div>
               {/* Desktop only: what is being paid for stays beside the payment. */}

@@ -11,8 +11,9 @@ const STORAGE_KEY = 'landly_cookie_notice_seen'
 
 // The /join campaign page: a bar over the form would greet every first-time ad
 // visitor, and the page carries its own Privacy Policy link.
+// The card frame (app/checkout/card-frame) is a fragment inside the app's payment step, not a page.
 export function showsCookieNotice(pathname: string | null): boolean {
-  return !(pathname === '/join' || pathname?.startsWith('/join/'))
+  return !(pathname === '/join' || pathname?.startsWith('/join/') || pathname === '/checkout/card-frame')
 }
 
 // An information notice, not a consent prompt: the site stores only what it

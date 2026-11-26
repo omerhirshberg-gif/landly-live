@@ -171,6 +171,9 @@ describe('stale sandbox orders', () => {
   it('keeps the strict 409 outside the sandbox, restart or not', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('TRANZILA_TERMINAL', 'landly_real')
+    vi.stubEnv('TRANZILA_API_APP_KEY', 'app-key')
+    vi.stubEnv('TRANZILA_API_SECRET', 'api-secret')
+    vi.stubEnv('TRANZILA_WEBHOOK_SECRET', 'secret')
     store.seed('orders/user_offer', { ...pending, status: 'failed' })
     const before = store.snapshot()
     expect((await initiate(request())).status).toBe(409)

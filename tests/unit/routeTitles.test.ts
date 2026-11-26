@@ -131,6 +131,7 @@ const EXPECTED: [string, string][] = [
   ['/unsubscribe', 'Unsubscribe | GoLandly'],
   ['/admin/support', 'Support Inbox | GoLandly Admin'],
   ['/join', 'GoLandly | Local deals for people new to Israel'],
+  ['/checkout/card-frame', 'Secure card fields | GoLandly'],
 ]
 
 describe('browser tab titles', () => {

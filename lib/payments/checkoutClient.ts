@@ -1,6 +1,7 @@
 import { normalizeApiBaseUrl } from '@/lib/apiOrigin'
 import type { OfferTranslations } from '@/lib/offers/offerText'
 import type { BusinessTranslations } from '@/lib/business/businessText'
+import type { HostedPaymentParams } from './hostedFieldsProtocol'
 
 // What /api/payments/initiate returns: the order as frozen when it was created.
 export interface CheckoutOrder {
@@ -24,6 +25,8 @@ export interface CheckoutOrder {
   sandbox: boolean
   /** A sandbox order left unfinished earlier, picked up again. */
   resumed: boolean
+  /** Live terminal only, and only after the terms are accepted: what Hosted Fields needs (Handshake thtk, notify URL). Null for sandbox orders and before Pay. */
+  payment?: HostedPaymentParams | null
 }
 
 /**
@@ -106,4 +109,19 @@ export function settleSandboxOrder(
   apiBaseUrl = ''
 ): Promise<CheckoutResult<{ orderId: string }>> {
   return post<{ orderId: string }>(apiBaseUrl, '/api/payments/dev-sandbox', idToken, { orderId, outcome })
+}
+
+export type ConfirmStatus = 'paid' | 'failed' | 'pending'
+
+/**
+ * Live terminal: asks the server to settle after Hosted Fields reports a charge. Sends only the order id: the server asks
+ * Tranzila what it holds and settles from that (lib/payments/settleVerifiedPayment.ts), so nothing here confirms a payment.
+ * 'pending' means Tranzila has no record yet; the caller listens to the order and asks again a few times.
+ */
+export async function confirmPayment(
+  idToken: string,
+  orderId: string,
+  apiBaseUrl = ''
+): Promise<CheckoutResult<{ orderId: string; status: ConfirmStatus }>> {
+  return post<{ orderId: string; status: ConfirmStatus }>(apiBaseUrl, '/api/payments/confirm', idToken, { orderId })
 }

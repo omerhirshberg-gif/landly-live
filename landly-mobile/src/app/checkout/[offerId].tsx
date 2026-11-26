@@ -9,7 +9,8 @@ import { getClaimedPoolIds } from '@shared/firebase/vouchers'
 import { useAuth } from '@shared/firebase/useAuth'
 import { formatPrice, priceDifference } from '@shared/format'
 import type { TranslationKey } from '@shared/i18n/translations'
-import { initiateCheckout, settleSandboxOrder, type CheckoutFailure, type CheckoutOrder } from '@shared/payments/checkoutClient'
+import { confirmPayment, initiateCheckout, settleSandboxOrder, type CheckoutFailure, type CheckoutOrder } from '@shared/payments/checkoutClient'
+import type { CardFrameErrorCode, CardFrameEvent } from '@shared/payments/hostedFieldsProtocol'
 import { cancellationFeeAgorot } from '@shared/payments/voucherTerms'
 import { checkoutBack, checkoutSwipeAllowed } from '@shared/navigation/backGuard'
 import { localizeText } from '@shared/i18n/contentTranslation'
@@ -34,6 +35,11 @@ import { lockedBackOptions } from '../../lib/pageFlip'
 import { useFocusedBackGuard } from '../../lib/useBackGuard'
 import { colors, radius } from '../../theme'
 
+// Pauses between asks to /api/payments/confirm while Tranzila has not answered yet.
+const CONFIRM_DELAYS_MS = [1500, 2500, 4000, 6000, 8000, 10000]
+// Ask for a new Handshake (thtk) this long before the old one lapses.
+const REFRESH_MARGIN_MS = 60_000
+
 const FAILURE_KEYS: Record<CheckoutFailure, TranslationKey> = {
   unauthorized: 'del_session_expired',
   conflict: 'checkout_error_unavailable',
@@ -52,8 +58,11 @@ const FAILURE_KEYS: Record<CheckoutFailure, TranslationKey> = {
 // Then the order settles server-side, never here. A local dev sandbox order
 // (lib/payments/devSandbox.ts) settles on the spot through the webhook's own
 // transaction; a live terminal order goes to the card step
-// (components/TranzilaPaymentStep.tsx) while this screen listens to the order
-// until the Tranzila webhook marks it paid. Either way a success replaces
+// (components/TranzilaPaymentStep.tsx: Tranzila Hosted Fields in an in-app
+// WebView) while this screen listens to the order until the server, having
+// verified the transaction with Tranzila, marks it paid. When the card is
+// charged the screen asks the server to confirm (/api/payments/confirm); the
+// Handshake (thtk) is renewed before its 20 minutes lapse. Either way a success replaces
 // this screen with the order confirmation (app/order-success/[orderId].tsx),
 // so back from there lands on the offer, now "claimed", never on checkout.
 // While a payment is in flight the dimmed overlay holds the screen: no swipe
@@ -77,6 +86,13 @@ export default function CheckoutScreen() {
   const [step, setStep] = useState<'summary' | 'payment'>('summary')
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
+  // Live card step: the charge is in flight or being confirmed (locks back like `paying`, without the dimmed overlay that would hide a 3-D Secure challenge).
+  const [cardBusy, setCardBusy] = useState(false)
+  const [cardConfirming, setCardConfirming] = useState(false)
+  const [cardError, setCardError] = useState<CardFrameErrorCode | null>(null)
+  const [cardDelayed, setCardDelayed] = useState(false)
+  const confirming = useRef(false)
+  const refreshing = useRef(false)
   // Set synchronously, so a double tap can't start a second payment.
   const busy = useRef(false)
   const completed = useRef(false)
@@ -157,10 +173,66 @@ export default function CheckoutScreen() {
     })
   }, [step, orderId, complete, t])
 
+  // A new Handshake for the same frozen order (idempotent on the server); the card fields keep what the member typed.
+  const refreshPayment = useCallback(async () => {
+    if (!user || !offerId || refreshing.current) return
+    refreshing.current = true
+    try {
+      const result = await initiateCheckout(await user.getIdToken(), offerId, { acceptTerms: true, variantPoolId }, API_BASE_URL)
+      if (result.ok) setOrder(result.data)
+    } catch {
+      // The next Pay tap on the fields reports an expired session, which asks again.
+    } finally {
+      refreshing.current = false
+    }
+  }, [user, offerId, variantPoolId])
+
+  const expiresAtMs = order?.payment?.expiresAtMs
+  useEffect(() => {
+    if (step !== 'payment' || !expiresAtMs) return
+    const timer = setTimeout(() => { void refreshPayment() }, Math.max(0, expiresAtMs - REFRESH_MARGIN_MS - Date.now()))
+    return () => clearTimeout(timer)
+  }, [step, expiresAtMs, refreshPayment])
+
+  // The charge went through in Tranzila's fields: ask the server to confirm it. Only the order id is sent; the server asks
+  // Tranzila what it holds and settles, and the order listener above moves the member on.
+  const confirmCharge = useCallback(async () => {
+    if (!user || !orderId || confirming.current) return
+    confirming.current = true
+    setCardConfirming(true)
+    setCardDelayed(false)
+    try {
+      for (let i = 0; i <= CONFIRM_DELAYS_MS.length && !completed.current; i++) {
+        const result = await confirmPayment(await user.getIdToken(), orderId, API_BASE_URL)
+        if (result.ok && result.data.status === 'paid') return complete(orderId)
+        if (result.ok && result.data.status === 'failed') { setCardError('declined'); setCardBusy(false); return }
+        if (!result.ok && (result.reason === 'unauthorized' || result.reason === 'conflict')) break
+        if (i < CONFIRM_DELAYS_MS.length) await new Promise((r) => setTimeout(r, CONFIRM_DELAYS_MS[i]))
+      }
+      // Tranzila has not confirmed yet: stay here (the order listener still moves the member on) and never invite a second charge.
+      if (!completed.current) setCardDelayed(true)
+    } catch {
+      if (!completed.current) setCardDelayed(true)
+    } finally {
+      confirming.current = false
+      setCardConfirming(false)
+    }
+  }, [user, orderId, complete])
+
+  const onCardEvent = useCallback((event: CardFrameEvent) => {
+    if (event.type === 'submitting') { setCardBusy(true); setCardError(null) }
+    else if (event.type === 'charged') void confirmCharge()
+    else if (event.type === 'error') {
+      setCardBusy(false)
+      if (event.code === 'thtk_expired') void refreshPayment()
+    }
+  }, [confirmCharge, refreshPayment])
+
   // Android's back button waits for the payment, like the swipe and the header,
   // and on the card step returns to the summary instead of leaving the checkout.
-  const backAction = checkoutBack({ paying, step })
-  const swipeAllowed = checkoutSwipeAllowed({ paying, step })
+  const locked = paying || cardBusy
+  const backAction = checkoutBack({ paying: locked, step })
+  const swipeAllowed = checkoutSwipeAllowed({ paying: locked, step })
   useFocusedBackGuard(() => {
     if (backAction === 'to-summary') setStep('summary')
     return backAction !== 'default'
@@ -181,6 +253,10 @@ export default function CheckoutScreen() {
       }
       setOrder(accepted.data)
       if (!accepted.data.sandbox) {
+        // A fresh card step: nothing left over from an earlier visit.
+        setCardBusy(false)
+        setCardError(null)
+        setCardDelayed(false)
         setStep('payment')
         return
       }
@@ -242,7 +318,16 @@ export default function CheckoutScreen() {
         </View>
       ) : step === 'payment' ? (
         <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-          <TranzilaPaymentStep offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text} amount={order.amount} onBack={() => setStep('summary')} />
+          <TranzilaPaymentStep
+            offerTitle={localizeText(order.offerTitle, order.translations, lang, 'title').text}
+            amount={order.amount}
+            payment={order.payment ?? null}
+            busy={cardConfirming}
+            error={cardError}
+            delayed={cardDelayed}
+            onEvent={onCardEvent}
+            onBack={() => setStep('summary')}
+          />
         </ScrollView>
       ) : (
         <>
