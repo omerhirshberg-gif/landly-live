@@ -62,23 +62,15 @@ describe('getAllOffers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('falls back to Firestore, capped at 500, when the API is down, and revives dates', async () => {
+  it('never reads Firestore directly: an API failure throws and is never cached', async () => {
     const { offers } = await load()
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503 }) as Response))
-    fs.getDocs.mockResolvedValueOnce(snap([{ id: 'x', data: { title: 'X', createdAt: stamp(1000), expiryDate: null } }]))
-    const result = await offers.getAllOffers()
-    expect(result[0]).toMatchObject({ id: 'x', title: 'X', createdAt: new Date(1000) })
-    expect(fs.limit).toHaveBeenCalledWith(500)
-  })
-
-  it('also falls back when the API payload is malformed, and never caches a failure', async () => {
-    const { offers } = await load()
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ nope: 1 }) }) as Response)
-    vi.stubGlobal('fetch', fetchMock)
-    fs.getDocs.mockRejectedValueOnce(new Error('offline'))
-    await expect(offers.getAllOffers()).rejects.toThrow('offline')
-    fs.getDocs.mockResolvedValueOnce(snap([{ id: 'y', data: {} }]))
+    await expect(offers.getAllOffers()).rejects.toThrow('offers api 503')
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ nope: 1 }) }) as Response))
+    await expect(offers.getAllOffers()).rejects.toThrow('bad payload')
+    vi.stubGlobal('fetch', vi.fn(async () => okResponse([wire('y')])))
     expect((await offers.getAllOffers()).map((o) => o.id)).toEqual(['y'])
+    expect(fs.getDocs).not.toHaveBeenCalled()
   })
 
   it('drops offers that have expired since the list was fetched', async () => {

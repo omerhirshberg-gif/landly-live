@@ -28,7 +28,7 @@ export class TransactionStore {
   }
   read(path: string): DocumentData | undefined { return clone(this.records.get(path)) }
   snapshot() { return clone(Object.fromEntries(this.records)) }
-  count(collection: string) { return [...this.records.keys()].filter((key) => key.startsWith(`${collection}/`)).length }
+  count(collection: string) { return [...this.records.keys()].filter((key) => key.startsWith(`${collection}/`) && !key.slice(collection.length + 1).includes('/')).length }
   private snap(path: string): { exists: boolean; id: string; data: () => DocumentData | undefined; get: (field: string) => any; ref: any } {
     const value = this.read(path)
     return { exists: value !== undefined, id: path.split('/').at(-1)!, data: () => value, get: (field: string) => value?.[field], ref: this.ref(path) }

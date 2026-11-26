@@ -17,6 +17,7 @@ import { prepareLedgerSale } from '../inventory/ledger/prepareSale'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
 import { savingsAgorotOf } from '../member/savingsMath'
+import { mergeOrderInternal, orderInternalRef } from './orderInternal'
 import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START, ORDER_SHARD_COLLECTION, orderShardFor, shardedOrderNumber } from './orderNumber'
 
 function transactionKey(event: TranzilaNotification): string {
@@ -32,7 +33,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
   // Before the transaction: what the ledger needs that must not run inside a retryable transaction (a supplier call, a stock query).
   const pre = event.approved ? await prepareLedgerSale(db, event.orderId) : null
   const outcome = await db.runTransaction(async (tx) => {
-    const [orderSnap, receiptSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)])
+    const [orderSnap, receiptSnap, internalSnap] = await Promise.all([tx.get(orderRef), tx.get(receiptRef), tx.get(orderInternalRef(db, event.orderId))])
     if (!orderSnap.exists) throw new PaymentError('Order not found.', 404)
     const order = orderSnap.data()!
     // Only a local-business order names a business; a Raayonit order and a manual multi-chain pass carry their brand instead.
@@ -127,7 +128,9 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       businessId: direct ? order.businessId : null, externalId: issuedSale.externalEventId,
     }, now) : null
     const ledgerFaceValue = ledgerPlan?.voucher.faceValueAgorot ?? null
-    const terms = parseFrozenTerms(order) ?? (businessSnap ? parseFrozenTerms(businessSnap.data()) : null)
+    // The commission terms and place frozen at checkout sit on the server-only internal document (older orders: on the order itself).
+    const internal = mergeOrderInternal(order, internalSnap.data())
+    const terms = parseFrozenTerms(internal) ?? (businessSnap ? parseFrozenTerms(businessSnap.data()) : null)
     // The terms frozen on the order at checkout; orders from before that read the offer's.
     const validityDays = isValidValidityDays(order.validityDays) ? order.validityDays : normalizeValidityDays(offer.validityDays)
     const redemptionTerms = normalizeRedemptionTerms(typeof order.redemptionTerms === 'string' ? order.redemptionTerms : offer.redemptionTerms)
@@ -156,7 +159,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       ...(normalizeWebsiteUrl(offer.websiteUrl) ? { websiteUrl: normalizeWebsiteUrl(offer.websiteUrl) } : {}),
       ...(parsePhones(offer.contactPhone).length > 0 ? { contactPhone: String(offer.contactPhone).trim() } : {}),
       businessAddress: order.businessAddress ?? null,
-      businessGeo: order.businessGeo ?? null,
+      businessGeo: internal.businessGeo ?? null,
       paymentTransactionKey: receiptRef.id,
       orderNumber, displayOrderNumber,
       // Settlement reads only these: the terms and price as sold, and which batch (if any) paid it out.

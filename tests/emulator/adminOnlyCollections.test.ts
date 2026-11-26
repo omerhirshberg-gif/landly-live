@@ -18,6 +18,10 @@ const PATHS = [
   'couponPools/pool1', 'couponPools/pool1/items/00000001', 'couponPools/pool1/codeHashes/abc',
   'merchantInvites/hash1', 'merchantInviteBatches/b1', 'businessFinancials/biz1', 'businessContracts/c1',
   'payoutBatches/p1', 'payoutBatches/p1/lines/biz1', 'adminAuditLog/a1', 'raayonit_sync_logs/2026-01-01', 'rateLimits/r1', 'orderCounter/0',
+  // Public offers are served by /api/public/offers (published, in-stock only); the raw collection holds drafts.
+  'offers/o1',
+  // The order's commission terms and held code: the member reads the order, never this.
+  'orders/o1/internal/terms',
 ]
 
 beforeAll(async () => {

@@ -6,6 +6,7 @@ import { getSupplierAdapter } from '../suppliers'
 import { SupplierNotConfiguredError } from '../suppliers/SupplierAdapter'
 import { trackSupplierCall } from './alerts'
 import { encryptVoucherCode, hashCode } from './codes'
+import { readOrderInternal } from '@/lib/payments/orderInternal'
 import { pickCandidates } from './stock'
 import { PRODUCTS_COLLECTION, type SupplierId } from './types'
 
@@ -42,7 +43,7 @@ export async function prepareLedgerSale(db: Firestore, orderId: string): Promise
   const p = (await db.collection(PRODUCTS_COLLECTION).doc(productId).get()).data()
   if (!p) return null
   if (p.issueMode !== 'dynamic') {
-    return { kind: 'stock', productId, reservedId: typeof order.reservedVoucherId === 'string' ? order.reservedVoucherId : null, fallbackIds: await pickCandidates(db, productId, 3) }
+    return { kind: 'stock', productId, reservedId: (await readOrderInternal(db, orderId, order)).reservedVoucherId, fallbackIds: await pickCandidates(db, productId, 3) }
   }
   const supplierId: SupplierId = p.supplierId === 'multipass' ? 'multipass' : 'raayonit'
   const externalEventId = `order:${orderId}`

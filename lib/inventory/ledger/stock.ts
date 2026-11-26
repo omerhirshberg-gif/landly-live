@@ -1,5 +1,6 @@
 import 'server-only'
 import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore'
+import { mergeOrderInternal, orderInternalRef } from '@/lib/payments/orderInternal'
 import { PaymentError } from '@/lib/payments/paymentValidation'
 import { commitPlan, eventRefFor, planTransition, TransitionError, transitionVoucherStatus, type TransitionPlan, type VoucherState } from './transitions'
 import { EVENTS_COLLECTION, PRODUCTS_COLLECTION, VOUCHERS_COLLECTION, type SupplierId } from './types'
@@ -69,6 +70,26 @@ export async function reserveForCheckout(db: Firestore, productId: string, order
     }
   }
   throw new PaymentError('This voucher value is out of stock.')
+}
+
+/** Most checkout holds one member may keep at once (each pending order holds one code for 15 minutes). */
+export const MAX_HOLDS_PER_MEMBER = 3
+
+/**
+ * How many codes this member's OTHER pending orders still hold. Counted from the held vouchers themselves (RESERVED and not past
+ * reservedUntil), so abandoned orders whose hold lapsed never count. Equality filters only, so no composite index.
+ */
+export async function countMemberHolds(db: Firestore, uid: string, exceptOrderId: string, now: Timestamp = Timestamp.now()): Promise<number> {
+  const pending = await db.collection('orders').where('userId', '==', uid).where('status', '==', 'pending').limit(50).get()
+  // The held code is on each order's server-only internal document (older orders: on the order itself).
+  const others = pending.docs.filter((d) => d.id !== exceptOrderId)
+  if (others.length === 0) return 0
+  const internals = await db.getAll(...others.map((d) => orderInternalRef(db, d.id)))
+  const ids = others.map((d, i) => mergeOrderInternal(d.data(), internals[i]?.data()).reservedVoucherId).filter((id): id is string => !!id)
+  if (ids.length === 0) return 0
+  const held = await db.getAll(...ids.map((id) => db.collection(VOUCHERS_COLLECTION).doc(id)))
+  return held.filter((v) => v.exists && v.data()?.status === 'RESERVED' && v.data()?.reservedForOrderId !== exceptOrderId
+    && ((v.data()?.reservedUntil as Timestamp | null)?.toMillis() ?? 0) > now.toMillis()).length
 }
 
 /** RESERVED -> IN_STOCK for one order (a failed or abandoned payment). A no-op when nothing is held. */

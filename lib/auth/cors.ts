@@ -3,7 +3,7 @@
 // subject to CORS. These routes authorize with a Bearer ID token, never
 // cookies, so letting another origin call them grants nothing without a
 // valid token. Allowed: loopback origins on any port (Expo web in local
-// development) and the comma-separated CORS_ALLOWED_ORIGINS (deployed Expo
+// development, never on Vercel) and the comma-separated CORS_ALLOWED_ORIGINS (deployed Expo
 // web builds, e.g. "https://app.golandly.com").
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -16,7 +16,8 @@ export function isAllowedOrigin(origin: string | null): origin is string {
   } catch {
     return false
   }
-  if ((url.protocol === 'http:' || url.protocol === 'https:') && LOOPBACK_HOSTS.has(url.hostname)) return true
+  // Loopback is for local Expo web development only; never on a deployed (Vercel) build.
+  if (process.env.VERCEL !== '1' && (url.protocol === 'http:' || url.protocol === 'https:') && LOOPBACK_HOSTS.has(url.hostname)) return true
   const configured = (process.env.CORS_ALLOWED_ORIGINS ?? '')
     .split(',')
     .map((o) => o.trim().replace(/\/+$/, ''))

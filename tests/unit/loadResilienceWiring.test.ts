@@ -52,10 +52,10 @@ describe('no read per item', () => {
     expect(settlement).not.toMatch(/ids\.map\(async \(id\) => \{[\s\S]{0,120}\.get\(\)/)
   })
 
-  it('every offers read from a client is bounded', () => {
+  it('a client never reads the offers collection directly', () => {
     const offers = read('lib/firebase/offers.ts')
-    expect(offers).not.toMatch(/getDocs\(collection\(db, 'offers'\)\)/)
-    expect(offers).toContain('OFFERS_READ_LIMIT = 500')
+    expect(offers).not.toMatch(/collection\(db, 'offers'\)|getDocs\(/)
+    expect(read('firestore.rules')).toMatch(/match \/offers\/\{offerId\} \{\s*allow read, write: if false;/)
   })
 })
 

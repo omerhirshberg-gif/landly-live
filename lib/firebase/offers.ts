@@ -1,16 +1,11 @@
-import { collection, getDocs, limit, query } from 'firebase/firestore'
 import { db } from './config'
 import { compareFeatured, discountPercent, offerMatchesSearch } from '../perks/perksFilter'
-import { toOfferDocument, type OfferDocument } from '../offers/offerDocument'
+import type { OfferDocument } from '../offers/offerDocument'
 import { fetchOffersFromApi } from '../offers/offersApi'
 import { browserOffersStorage, createOffersStore, OFFERS_FRESH_MS, offersStorageKey } from '../offers/offersStore'
 
 export type { OfferDocument } from '../offers/offerDocument'
 
-// Offers are read in one shot and filtered on the device, so the read is
-// capped: hundreds of live offers is the design size (see /api/public/offers).
-export const OFFERS_READ_LIMIT = 500
-const toDoc = toOfferDocument
 
 // Still claimable: unlimited, or not every voucher claimed yet. The Perks
 // rails show only these (sold-out offers stay reachable from search and links).
@@ -72,13 +67,9 @@ export async function getOffersByIds(ids: string[]): Promise<OfferDocument[]> {
 export const OFFERS_CACHE_TTL_MS = OFFERS_FRESH_MS
 
 async function loadOffers(): Promise<OfferDocument[]> {
-  try {
-    return await fetchOffersFromApi()
-  } catch {
-    // The CDN route is an optimization: if it is down or unreachable, read Firestore directly.
-    const snap = await getDocs(query(collection(db, 'offers'), limit(OFFERS_READ_LIMIT)))
-    return snap.docs.map((d) => toDoc(d.id, d.data())).filter((offer) => offer.published !== false)
-  }
+  // The cached API is the only path: `offers` is not readable from the client SDK (firestore.rules), so a failure
+  // throws and the store keeps serving its last good copy.
+  return await fetchOffersFromApi()
 }
 
 function projectId(): string | null {

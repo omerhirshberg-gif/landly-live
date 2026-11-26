@@ -21,7 +21,7 @@ describe('initiateOrder in Raayonit launch-pending mode', () => {
   it('does not stop it when the mode is off (it goes on to the transaction)', async () => {
     mocks.comingSoon = false
     const { initiateOrder } = await import('@/lib/payments/initiateOrder')
-    await expect(initiateOrder(db, 'user1', 'offer1', 'term')).rejects.toThrow(/before any transaction|ledger|Cannot|undefined/i)
+    await expect(initiateOrder(db, 'user1', 'offer1', 'term')).rejects.toThrow(/before any transaction|ledger|Cannot|undefined|not a function/i)
   })
 
   it('never stops a non-Raayonit offer', async () => {

@@ -28,7 +28,8 @@ async function assertFulfilled() {
 }
 
 beforeEach(async () => {
-  const docs = (await Promise.all(collections.map((name) => db.collection(name).get()))).flatMap((snap) => snap.docs)
+  // The orders' server-only internal documents (subcollections) go too, or one test's terms would shadow the next test's order.
+  const docs = [...(await Promise.all(collections.map((name) => db.collection(name).get()))), await db.collectionGroup('internal').get()].flatMap((snap) => snap.docs)
   const batch = db.batch()
   for (const doc of docs) batch.delete(doc.ref)
   await batch.commit()
@@ -121,5 +122,20 @@ describe('real Firestore transactions', () => {
     const before = await snapshot()
     await expect(claimOfferForOrder(db, event)).rejects.toThrow('reconciliation')
     expect(await snapshot()).toEqual(before)
+  })
+
+  it('keeps commission terms, the held code and the coordinates off the member-readable order', async () => {
+    await db.doc('orders/user_offer').delete()
+    await db.doc('businesses/business').set({ ...business, commissionRate: 0.1, paymentTerms: 'net_30' })
+    await initiateOrder(db, 'user', 'offer', terminal)
+    const order = (await db.doc('orders/user_offer').get()).data()!
+    expect(order).not.toHaveProperty('commissionRate')
+    expect(order).not.toHaveProperty('paymentTerms')
+    expect(order).not.toHaveProperty('reservedVoucherId')
+    expect(order).not.toHaveProperty('businessGeo')
+    expect((await db.doc('orders/user_offer/internal/terms').get()).data()).toMatchObject({ commissionRate: 0.1, paymentTerms: 'net_30' })
+    // Settlement reads the terms back from the internal document.
+    await claimOfferForOrder(db, event)
+    expect((await db.doc('vouchers/user_offer').get()).data()).toMatchObject({ commissionRate: 0.1, paymentTerms: 'net_30' })
   })
 })

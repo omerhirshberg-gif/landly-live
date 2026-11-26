@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { randomBytes } from 'node:crypto'
-import { cancelVoucher, confirmSupplierVoid, expireDueVouchers, selfReportRedeemed, voidVoucher } from '@/lib/inventory/ledger/operations'
+import { cancelVoucher, confirmSupplierVoid, expireDueVouchers, markWalletVoucherUsed, selfReportRedeemed, voidVoucher } from '@/lib/inventory/ledger/operations'
 import { expectedBalance } from '@/lib/inventory/ledger/alerts'
 import { dueReminder } from '@/lib/inventory/ledger/customerReminders'
 import { TransactionStore } from '../helpers/transactionStore'
@@ -77,5 +77,62 @@ describe('customer expiry reminders', () => {
   })
   it('a voucher that first comes into range inside 7 days gets only the 7-day reminder', () => {
     expect(dueReminder(NOW + 5 * 86_400_000, NOW, undefined)).toBe('d7')
+  })
+})
+
+describe('marking a wallet voucher used', () => {
+  const wallet = (extra: Record<string, unknown> = {}) => ({ userId: 'u1', status: 'active', redemptionKind: 'code_only', inventoryVoucherId: 'v', expiresAt: day(30), ...extra })
+  const setup = (walletExtra: Record<string, unknown> = {}) => {
+    const db = new TransactionStore()
+    seed(db, 'v', { status: 'DELIVERED', soldAt: day(-1) })
+    db.seed('vouchers/w1', wallet(walletExtra))
+    return db
+  }
+
+  it('moves the wallet voucher and its ledger copy together, with the event', async () => {
+    const db = setup()
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'w1', T0)).toBe('ok')
+    expect(db.read('vouchers/w1')).toMatchObject({ status: 'redeemed', selfReportedUse: true })
+    expect(db.read('inventoryVouchers/v')).toMatchObject({ status: 'REDEEMED', balanceAgorot: 0 })
+    expect(eventTypes(db)).toEqual(['REDEEMED'])
+  })
+
+  it('refuses an expired voucher and changes nothing', async () => {
+    const db = setup({ expiresAt: day(-1) })
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'w1', T0)).toBe('expired')
+    expect(db.read('vouchers/w1')).toMatchObject({ status: 'active' })
+    expect(db.read('inventoryVouchers/v')).toMatchObject({ status: 'DELIVERED', balanceAgorot: 10000 })
+    expect(eventTypes(db)).toEqual([])
+  })
+
+  it('commits neither document when the transaction fails before commit', async () => {
+    const db = setup()
+    db.beforeCommit = async () => { throw new Error('injected pre-commit failure') }
+    await expect(markWalletVoucherUsed(db.db, 'u1', 'w1', T0)).rejects.toThrow('injected pre-commit failure')
+    expect(db.read('vouchers/w1')).toMatchObject({ status: 'active' })
+    expect(db.read('inventoryVouchers/v')).toMatchObject({ status: 'DELIVERED' })
+    expect(eventTypes(db)).toEqual([])
+  })
+
+  it('treats a foreign or missing voucher as not found, and a non-code or used one as not eligible', async () => {
+    const db = setup()
+    expect(await markWalletVoucherUsed(db.db, 'intruder', 'w1', T0)).toBe('notFound')
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'nope', T0)).toBe('notFound')
+    db.seed('vouchers/qr', wallet({ redemptionKind: undefined }))
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'qr', T0)).toBe('notEligible')
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'w1', T0)).toBe('ok')
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'w1', T0)).toBe('notEligible')
+    expect(eventTypes(db)).toEqual(['REDEEMED'])
+  })
+
+  it('still records a voucher from before the ledger, or whose ledger copy is already finished, on the wallet alone', async () => {
+    const db = new TransactionStore()
+    db.seed('vouchers/old', wallet({ inventoryVoucherId: undefined }))
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'old', T0)).toBe('ok')
+    seed(db, 'done', { status: 'REDEEMED', balanceAgorot: 0 })
+    db.seed('vouchers/fin', wallet({ inventoryVoucherId: 'done' }))
+    expect(await markWalletVoucherUsed(db.db, 'u1', 'fin', T0)).toBe('ok')
+    expect(db.read('vouchers/fin')).toMatchObject({ status: 'redeemed' })
+    expect(eventTypes(db)).toEqual([])
   })
 })
