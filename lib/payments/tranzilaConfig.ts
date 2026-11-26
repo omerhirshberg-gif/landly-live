@@ -11,7 +11,22 @@ import 'server-only'
 //  TRANZILA_HANDSHAKE_URL    optional override, https only
 //  TRANZILA_NOTIFY_ORIGIN    optional https origin Tranzila posts Notify to (default: the production API host, or this Vercel deployment)
 //  TRANZILA_RESPONSE_HASH_SECRET  optional, only for the response_hash verifier once Tranzila confirms its format
+//  TRANZILA_VERIFIER         how a charge is verified before settlement (R2). `failclosed` (the default, and the value when unset): nothing
+//                            settles, every confirmation answers 503. `reports`: Tranzila's Reports API (lib/payments/reportsVerifier.ts);
+//                            needs TRANZILA_ORDER_REF_FIELD. `response_hash`: the signed Hosted Fields charge response
+//                            (lib/payments/responseHashVerifier.ts); needs TRANZILA_RESPONSE_HASH_SECRET. Switch only after Tranzila has
+//                            confirmed the reference binding / hash format for the approved merchant number.
+//  TRANZILA_ORDER_REF_FIELD  `reports` only: the terminal's additional transaction field (its api_parameter_name) that carries our order id
+//  TRANZILA_REPORTS_URL      optional override of the Reports API origin (https, tranzila.com host)
+//  TRANZILA_APPLE_PAY / TRANZILA_GOOGLE_PAY  `1` shows that wallet beside the card fields; set only once Tranzila has enabled the wallet
+//                            on the terminal (support ticket #512658609). Unset, no wallet button is offered.
+//  TRANZILA_APPLE_PAY_DOMAIN_ASSOCIATION  the content of Tranzila's apple-developer-merchantid-domain-association file, served at
+//                            /.well-known/apple-developer-merchantid-domain-association (app/.well-known/...)
 export const DEFAULT_HANDSHAKE_URL = 'https://api.tranzila.com/v2/handshake/create'
+export const DEFAULT_REPORTS_URL = 'https://report.tranzila.com'
+
+export type VerifierMode = 'failclosed' | 'reports' | 'response_hash'
+const VERIFIER_MODES: readonly VerifierMode[] = ['failclosed', 'reports', 'response_hash']
 
 export class TranzilaConfigError extends Error {
   readonly status = 503
@@ -24,6 +39,13 @@ export interface TranzilaLiveConfig {
   webhookSecret: string
   handshakeUrl: string
   responseHashSecret: string | null
+  /** R2: how charges are verified. `failclosed` unless an operator opts in. */
+  verifier: VerifierMode
+  /** `reports` mode: the terminal field carrying our order id. */
+  orderRefField: string | null
+  /** Reports API origin (no trailing slash). */
+  reportsUrl: string
+  wallets: { applePay: boolean; googlePay: boolean }
 }
 
 type Env = Record<string, string | undefined>
@@ -40,6 +62,9 @@ function httpsUrl(value: string, name: string): URL {
   if (url.protocol !== 'https:') throw new TranzilaConfigError(`${name} must be https.`)
   return url
 }
+
+// `tranzila.com` or a subdomain of it: never `eviltranzila.com`.
+const isTranzilaHost = (hostname: string) => hostname === 'tranzila.com' || hostname.endsWith('.tranzila.com')
 
 /** Null when no real terminal is configured (sandbox or off); the validated live settings otherwise; throws when half-configured. */
 export function readTranzilaConfig(env: Env = process.env): TranzilaLiveConfig | null {
@@ -59,7 +84,19 @@ export function readTranzilaConfig(env: Env = process.env): TranzilaLiveConfig |
   if (missing.length > 0) throw new TranzilaConfigError(`TRANZILA_TERMINAL is set but ${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} missing.`)
   const handshakeUrl = env.TRANZILA_HANDSHAKE_URL || DEFAULT_HANDSHAKE_URL
   const handshake = httpsUrl(handshakeUrl, 'TRANZILA_HANDSHAKE_URL')
-  if (!handshake.hostname.endsWith('tranzila.com')) throw new TranzilaConfigError('TRANZILA_HANDSHAKE_URL must be a tranzila.com host.')
+  if (!isTranzilaHost(handshake.hostname)) throw new TranzilaConfigError('TRANZILA_HANDSHAKE_URL must be a tranzila.com host.')
+  const verifier = (env.TRANZILA_VERIFIER || 'failclosed') as VerifierMode
+  if (!VERIFIER_MODES.includes(verifier)) throw new TranzilaConfigError(`TRANZILA_VERIFIER must be one of ${VERIFIER_MODES.join(', ')}.`)
+  const orderRefField = env.TRANZILA_ORDER_REF_FIELD || null
+  if (orderRefField !== null && !/^[A-Za-z0-9_]{1,64}$/.test(orderRefField)) throw new TranzilaConfigError('TRANZILA_ORDER_REF_FIELD is malformed.')
+  if (verifier === 'reports' && !orderRefField) {
+    throw new TranzilaConfigError('TRANZILA_VERIFIER=reports needs TRANZILA_ORDER_REF_FIELD: without a reference on the transaction an approved payment cannot be tied to its order.')
+  }
+  if (verifier === 'response_hash' && !env.TRANZILA_RESPONSE_HASH_SECRET) {
+    throw new TranzilaConfigError('TRANZILA_VERIFIER=response_hash needs TRANZILA_RESPONSE_HASH_SECRET.')
+  }
+  const reports = httpsUrl(env.TRANZILA_REPORTS_URL || DEFAULT_REPORTS_URL, 'TRANZILA_REPORTS_URL')
+  if (!isTranzilaHost(reports.hostname)) throw new TranzilaConfigError('TRANZILA_REPORTS_URL must be a tranzila.com host.')
   return {
     terminal,
     appKey: env.TRANZILA_API_APP_KEY!,
@@ -67,6 +104,10 @@ export function readTranzilaConfig(env: Env = process.env): TranzilaLiveConfig |
     webhookSecret: env.TRANZILA_WEBHOOK_SECRET!,
     handshakeUrl,
     responseHashSecret: env.TRANZILA_RESPONSE_HASH_SECRET || null,
+    verifier,
+    orderRefField,
+    reportsUrl: reports.origin,
+    wallets: { applePay: env.TRANZILA_APPLE_PAY === '1', googlePay: env.TRANZILA_GOOGLE_PAY === '1' },
   }
 }
 

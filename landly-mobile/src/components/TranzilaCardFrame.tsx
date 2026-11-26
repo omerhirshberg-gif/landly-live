@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import {
-  CARD_FRAME_PATH, isAllowedCardFrameUrl, parseCardFrameEvent,
-  type CardFrameErrorCode, type CardFrameEvent, type CardFrameInit, type CardFrameState, type HostedPaymentParams,
+  CARD_FRAME_PATH, cardFrameHeight, isAllowedCardFrameUrl, nextCardFramePhase, parseCardFrameEvent,
+  type CardFrameErrorCode, type CardFrameEvent, type CardHolder, type CardFrameInit, type CardFramePhase, type CardFrameState, type HostedPaymentParams,
 } from '@shared/payments/hostedFieldsProtocol'
 import AppText from './AppText'
 import Button from './Button'
@@ -22,6 +22,8 @@ export interface CardFrameProps {
   busy: boolean
   /** An error of the app's own (a failed confirmation) for the frame to show. */
   error: CardFrameErrorCode | null
+  /** The member's name and email for Tranzila's 3-D Secure inputs (optional). */
+  cardHolder?: CardHolder
   onEvent: (event: CardFrameEvent) => void
 }
 
@@ -29,11 +31,15 @@ export interface CardFrameProps {
 // browser. The page speaks the small bridge in lib/payments/hostedFieldsProtocol.ts: the card details stay in Tranzila's
 // iframes inside it and never reach this code or its messages. Navigation of the WebView itself is limited to the GoLandly
 // host and Tranzila; the 3-D Secure challenge runs in Tranzila's iframe inside the page.
-export default function TranzilaCardFrame({ payment, priceLabel, busy, error, onEvent }: CardFrameProps) {
+export default function TranzilaCardFrame({ payment, priceLabel, busy, error, cardHolder, onEvent }: CardFrameProps) {
   const { lang, isRtl, t } = useLang()
   const webRef = useRef<WebView>(null)
   const helloed = useRef(false)
-  const [height, setHeight] = useState(340)
+  // The page's own content height, and the phase: while a charge is in flight the frame grows to hold Tranzila's 400x600 3-D Secure
+  // challenge (see cardFrameHeight), then returns to the compact height once there is a result.
+  const [measured, setMeasured] = useState(340)
+  const [phase, setPhase] = useState<CardFramePhase>('idle')
+  const height = cardFrameHeight(phase, measured)
   const [attempt, setAttempt] = useState(0)
   const [loadFailed, setLoadFailed] = useState(false)
   const [ready, setReady] = useState(false)
@@ -45,7 +51,7 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
     webRef.current?.injectJavaScript(`window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(JSON.stringify(message))}}));true;`)
   }, [])
 
-  const init = useMemo<CardFrameInit>(() => ({ v: 1, type: 'init', payment, lang, dir: isRtl ? 'rtl' : 'ltr', priceLabel }), [payment, lang, isRtl, priceLabel])
+  const init = useMemo<CardFrameInit>(() => ({ v: 1, type: 'init', payment, lang, dir: isRtl ? 'rtl' : 'ltr', priceLabel, ...(cardHolder ? { cardHolder } : {}) }), [payment, lang, isRtl, priceLabel, cardHolder])
   const initRef = useRef(init)
   useEffect(() => { initRef.current = init }, [init])
 
@@ -67,13 +73,15 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
       post(initRef.current)
       return
     }
-    if (event.type === 'height') { setHeight(Math.max(event.px, 200)); return }
+    if (event.type === 'height') { setMeasured(Math.max(event.px, 200)); return }
+    setPhase((current) => nextCardFramePhase(current, event))
     if (event.type === 'ready') setReady(true)
     onEvent(event)
   }
 
   const retry = () => {
     helloed.current = false
+    setPhase('idle')
     setReady(false)
     setLoadFailed(false)
     setAttempt((n) => n + 1)
@@ -109,6 +117,10 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
         mixedContentMode="never"
         allowFileAccess={false}
         allowsInlineMediaPlayback
+        // Tranzila's wallet and 3-D Secure frames may rely on third-party storage inside the page (Android); iOS WKWebView has no Apple Pay,
+        // so the page offers cards there. Both stay inside the allowlist above.
+        thirdPartyCookiesEnabled
+        javaScriptCanOpenWindowsAutomatically={false}
         scrollEnabled={false}
         bounces={false}
         overScrollMode="never"

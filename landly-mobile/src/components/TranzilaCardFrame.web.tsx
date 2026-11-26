@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import {
-  CARD_FRAME_PATH, parseCardFrameEvent, type CardFrameInit, type CardFrameState,
+  CARD_FRAME_PATH, cardFrameHeight, nextCardFramePhase, parseCardFrameEvent, type CardFrameInit, type CardFramePhase, type CardFrameState,
 } from '@shared/payments/hostedFieldsProtocol'
 import AppText from './AppText'
 import Button from './Button'
@@ -15,11 +15,14 @@ const HELLO_TIMEOUT_MS = 15_000
 
 // The Expo web build of the card step: the same GoLandly card page (app/checkout/card-frame) in an iframe, speaking the same
 // bridge (lib/payments/hostedFieldsProtocol.ts). Messages are accepted only from that iframe's window and origin.
-export default function TranzilaCardFrame({ payment, priceLabel, busy, error, onEvent }: CardFrameProps) {
+export default function TranzilaCardFrame({ payment, priceLabel, busy, error, cardHolder, onEvent }: CardFrameProps) {
   const { lang, isRtl, t } = useLang()
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const helloed = useRef(false)
-  const [height, setHeight] = useState(340)
+  const [measured, setMeasured] = useState(340)
+  const [phase, setPhase] = useState<CardFramePhase>('idle')
+  // While a charge is in flight the frame holds Tranzila's 400x600 3-D Secure challenge.
+  const height = cardFrameHeight(phase, measured)
   const [ready, setReady] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -30,7 +33,7 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
     frameRef.current?.contentWindow?.postMessage(message, origin)
   }, [origin])
 
-  const init = useMemo<CardFrameInit>(() => ({ v: 1, type: 'init', payment, lang, dir: isRtl ? 'rtl' : 'ltr', priceLabel }), [payment, lang, isRtl, priceLabel])
+  const init = useMemo<CardFrameInit>(() => ({ v: 1, type: 'init', payment, lang, dir: isRtl ? 'rtl' : 'ltr', priceLabel, ...(cardHolder ? { cardHolder } : {}) }), [payment, lang, isRtl, priceLabel, cardHolder])
   const initRef = useRef(init)
   useEffect(() => { initRef.current = init }, [init])
   const onEventRef = useRef(onEvent)
@@ -45,7 +48,8 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
       const event = parseCardFrameEvent(e.data)
       if (!event) return
       if (event.type === 'hello') { helloed.current = true; post(initRef.current); return }
-      if (event.type === 'height') { setHeight(Math.max(event.px, 200)); return }
+      if (event.type === 'height') { setMeasured(Math.max(event.px, 200)); return }
+      setPhase((current) => nextCardFramePhase(current, event))
       if (event.type === 'ready') setReady(true)
       onEventRef.current(event)
     }
@@ -75,7 +79,9 @@ export default function TranzilaCardFrame({ payment, priceLabel, busy, error, on
         ref={frameRef}
         src={src}
         title={t('checkout_card_title')}
-        allow="payment"
+        allow="payment *"
+        // Tranzila: Google Pay in an iframe needs allowpaymentrequest (older browsers read it in place of `allow`).
+        {...{ allowpaymentrequest: 'true' }}
         style={{ border: 0, width: '100%', height: '100%', background: 'transparent' }}
       />
       {!ready && (

@@ -7,6 +7,10 @@ import type { TranzilaLiveConfig } from '@/lib/payments/tranzilaConfig'
 const config: TranzilaLiveConfig = {
   terminal: 'landly', appKey: 'app-key', apiSecret: 'api-secret', webhookSecret: 'w',
   handshakeUrl: 'https://api.tranzila.com/v2/handshake/create', responseHashSecret: null,
+  verifier: 'failclosed',
+  orderRefField: null,
+  reportsUrl: 'https://report.tranzila.com',
+  wallets: { applePay: false, googlePay: false },
 }
 const req = { terminal: 'landly', amountAgorot: 1025, orderId: 'user_offer' }
 const reply = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status }))

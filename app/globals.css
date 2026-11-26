@@ -817,3 +817,10 @@ html:has(.admin-scale.adm-light),html:has(.admin-scale.adm-light) body{backgroun
 .origin-dialog{animation:perks-sheet .28s cubic-bezier(.32,.72,0,1);}
 @media (min-width:768px){.origin-dialog{animation:perks-pop .15s ease-out;}}
 @media (prefers-reduced-motion:reduce){.origin-dialog{animation:none;}}
+
+/* Express wallets in the card step (components/checkout/TranzilaHostedFields.tsx). Apple's own button appearance (Safari and
+   iOS only, which are the only places the button is shown); Google's own artwork on a black button. 48px tall like every
+   other control on the payment step. */
+.apple-pay-btn{-webkit-appearance:-apple-pay-button;appearance:-apple-pay-button;-apple-pay-button-type:plain;-apple-pay-button-style:black;display:block;width:100%;height:48px;min-height:48px;padding:0;border:0;border-radius:12px;cursor:pointer;}
+@supports not (-webkit-appearance:-apple-pay-button){.apple-pay-btn{background:#000;color:#fff;font:600 17px/1 sans-serif;}}
+.google-pay-btn{display:block;width:100%;height:48px;min-height:48px;padding:0;border:0;border-radius:12px;background-color:#000;background-repeat:no-repeat;background-position:center;background-size:contain;cursor:pointer;}

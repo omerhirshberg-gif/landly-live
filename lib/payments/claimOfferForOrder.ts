@@ -14,6 +14,7 @@ import { applySettlement, pickCandidates, planSettlement, releaseReservation, ty
 import { decryptVoucherCode, hashCode } from '../inventory/ledger/codes'
 import { issuedVoucherPlan } from '../inventory/ledger/transitions'
 import { prepareLedgerSale } from '../inventory/ledger/prepareSale'
+import { DEV_SANDBOX_TERMINAL } from './devSandbox'
 import { parseFulfillmentType } from '../inventory/types'
 import { parseFrozenTerms } from '../merchants/terms'
 import { savingsAgorotOf } from '../member/savingsMath'
@@ -23,6 +24,12 @@ import { formatOrderNumber, ORDER_COUNTER_PATH, ORDER_SEQUENCE_START, ORDER_SHAR
 function transactionKey(event: TranzilaNotification): string {
   return createHash('sha256').update(JSON.stringify([event.terminal, event.tranzilaTxnId])).digest('hex')
 }
+
+// A decline on a real terminal is an attempt, not the end of the order: the member retries with another card or wallet, so
+// the order stays `pending` (its code stays held) and the declined attempt is kept as an audit receipt. The dev sandbox keeps
+// its terminal `failed` order (initiateOrder replaces it), and so does any approved-then-contradicted record (reconciliation).
+export const isRetryableDecline = (event: TranzilaNotification, orderTerminal: unknown): boolean =>
+  !event.approved && orderTerminal !== DEV_SANDBOX_TERMINAL
 
 // The ledger stores only settlement fields, never the raw callback/card data.
 // Every read precedes every write. Firestore retries this entire decision on
@@ -46,6 +53,7 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
     }
     const voucherRef = db.collection('vouchers').doc(event.orderId)
     const voucherSnap = await tx.get(voucherRef)
+    const retryable = isRetryableDecline(event, order.terminal)
     if (receiptSnap.exists) {
       const receipt = receiptSnap.data()!
       if (receipt.orderId !== event.orderId || receipt.terminal !== event.terminal
@@ -55,15 +63,24 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
         throw new PaymentError('Conflicting transaction replay; reconciliation is required.')
       }
       const voucher = voucherSnap.data()
-      const consistent = event.approved
+      // A retryable decline leaves the order pending (or, if a later attempt was approved, paid by another transaction).
+      const consistent = retryable
+        ? !voucherSnap.exists && order.voucherId === null && order.paidAt === null && order.status === 'pending'
+          || (order.status === 'paid' && order.tranzilaTxnId !== event.tranzilaTxnId && order.voucherId === voucherRef.id)
+        : event.approved
         ? order.status === 'paid' && order.voucherId === voucherRef.id && order.paidAt instanceof Timestamp
           && voucher?.userId === order.userId && voucher?.offerId === order.offerId
           && (direct ? voucher?.businessId === order.businessId : voucher?.businessId === undefined) && voucher?.paymentTransactionKey === receiptRef.id
         : order.status === 'failed' && !voucherSnap.exists && order.paidAt === null && order.voucherId === null
-      if (!consistent || order.tranzilaTxnId !== event.tranzilaTxnId) {
+      if (!consistent || (!retryable && order.tranzilaTxnId !== event.tranzilaTxnId)) {
         throw new PaymentError('Inconsistent settled order; reconciliation is required.')
       }
-      return { alreadyProcessed: true }
+      return retryable ? { alreadyProcessed: true, retryable } : { alreadyProcessed: true }
+    }
+    // A decline that arrives after another attempt was approved: keep it as a receipt, change nothing else.
+    if (retryable && order.status === 'paid' && voucherSnap.exists && order.tranzilaTxnId !== event.tranzilaTxnId) {
+      tx.create(receiptRef, { ...event, processedAt: Timestamp.now() })
+      return retryable ? { alreadyProcessed: true, retryable } : { alreadyProcessed: true }
     }
     // Never overwrite a settled order, even for a different transaction ID.
     // Contradictory events and legacy partial settlements require manual review.
@@ -71,10 +88,16 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       || order.paidAt !== null || order.voucherId !== null) {
       throw new PaymentError('Order is already settled or inconsistent; reconciliation is required.')
     }
+    if (retryable) {
+      tx.create(receiptRef, { ...event, processedAt: Timestamp.now() })
+      // The order stays pending and untouched by any payment (tranzilaTxnId null), so it can be restarted; only the last answer is noted.
+      tx.update(orderRef, { responseCode: event.responseCode })
+      return retryable ? { alreadyProcessed: false, retryable } : { alreadyProcessed: false }
+    }
     if (!event.approved) {
       tx.create(receiptRef, { ...event, processedAt: Timestamp.now() })
       tx.update(orderRef, { status: 'failed', tranzilaTxnId: event.tranzilaTxnId, responseCode: event.responseCode })
-      return { alreadyProcessed: false }
+      return retryable ? { alreadyProcessed: false, retryable } : { alreadyProcessed: false }
     }
     const offerRef = db.collection('offers').doc(order.offerId)
     const businessRef = direct ? db.collection('businesses').doc(order.businessId) : null
@@ -193,10 +216,10 @@ export async function claimOfferForOrder(db: Firestore, event: TranzilaNotificat
       orderNumber, displayOrderNumber,
     })
     tx.create(receiptRef, { ...event, processedAt: now })
-    return { alreadyProcessed: false }
+    return retryable ? { alreadyProcessed: false, retryable } : { alreadyProcessed: false }
   })
-  // A declined payment frees the code its checkout was holding (the 5-minute cron frees any this misses).
-  if (!event.approved && !outcome.alreadyProcessed) await releaseReservation(db, event.orderId).catch(() => 0)
+  // A final decline frees the code its checkout was holding (the 5-minute cron frees any this misses); a retryable one keeps it for the next attempt.
+  if (!event.approved && !outcome.alreadyProcessed && !outcome.retryable) await releaseReservation(db, event.orderId).catch(() => 0)
   return outcome
 }
 

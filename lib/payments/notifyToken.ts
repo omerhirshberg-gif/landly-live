@@ -21,6 +21,8 @@ export function verifyNotifyToken(token: string | null | undefined, claims: Noti
 export function buildNotifyUrl(origin: string, claims: NotifyClaims, secret: string): string {
   const url = new URL('/api/payments/tranzila-webhook', origin)
   url.searchParams.set('o', claims.orderId)
+  // The frozen amount rides in the signed URL so the gate needs no database read; the settlement still compares Tranzila's record with the order.
+  url.searchParams.set('a', String(claims.amountAgorot))
   url.searchParams.set('t', signNotifyToken(claims, secret))
   return url.toString()
 }

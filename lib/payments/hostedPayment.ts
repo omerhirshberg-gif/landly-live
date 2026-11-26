@@ -22,6 +22,6 @@ export async function issueHostedPayment(
   const { thtk, expiresAtMs } = await requestHandshake(claims, config)
   return {
     provider: 'tranzila-hosted-fields', terminal: config.terminal, thtk, expiresAtMs,
-    amountAgorot, currency: 'ILS', notifyUrl,
+    amountAgorot, currency: 'ILS', notifyUrl, wallets: config.wallets,
   }
 }

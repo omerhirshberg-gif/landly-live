@@ -111,7 +111,8 @@ export function settleSandboxOrder(
   return post<{ orderId: string }>(apiBaseUrl, '/api/payments/dev-sandbox', idToken, { orderId, outcome })
 }
 
-export type ConfirmStatus = 'paid' | 'failed' | 'pending'
+/** `declined`: Tranzila declined the attempt; the order stays open and the member can try another card or wallet. */
+export type ConfirmStatus = 'paid' | 'failed' | 'declined' | 'pending'
 
 /**
  * Live terminal: asks the server to settle after Hosted Fields reports a charge. Sends only the order id: the server asks
