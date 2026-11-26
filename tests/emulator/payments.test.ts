@@ -111,10 +111,13 @@ describe('real Firestore transactions', () => {
     expect(await snapshot()).toEqual(before)
   })
   it('preserves failed orders when initiation or contradictory success arrives', async () => {
-    await claimOfferForOrder(db, { ...event, approved: false, responseCode: '005' })
+    // The dev sandbox keeps a decline final; on a live terminal a decline leaves the order pending (see the settlement tests below).
+    await db.doc('orders/user_offer').update({ terminal: 'landly_sandbox' })
+    const sandbox = { ...event, terminal: 'landly_sandbox' }
+    await claimOfferForOrder(db, { ...sandbox, approved: false, responseCode: '005' })
     const before = await snapshot()
-    await expect(initiateOrder(db, 'user', 'offer', terminal)).rejects.toThrow()
-    await expect(claimOfferForOrder(db, event)).rejects.toThrow()
+    await expect(initiateOrder(db, 'user', 'offer', 'landly_sandbox')).rejects.toThrow()
+    await expect(claimOfferForOrder(db, sandbox)).rejects.toThrow()
     expect(await snapshot()).toEqual(before)
   })
   it('does not mark a paid notification failed when stock is exhausted', async () => {
@@ -142,7 +145,7 @@ describe('real Firestore transactions', () => {
 
 // ---- Hosted Fields: verified settlement and the handshake budget (lib/payments/settleVerifiedPayment.ts) ----
 import { MAX_HANDSHAKES_PER_ORDER, takeHandshake } from '@/lib/payments/handshakeBudget'
-import { settleClaimedTransaction, settleOrderById } from '@/lib/payments/settleVerifiedPayment'
+import { settleOrderById } from '@/lib/payments/settleVerifiedPayment'
 import { verifiedTx } from '../helpers/tranzilaLive'
 import type { TranzilaTransactionVerifier } from '@/lib/payments/verifyTranzilaTransaction'
 
@@ -151,21 +154,45 @@ describe('verified settlement against the emulator', () => {
     byTransactionId: async (_t, id) => (record && record.tranzilaTxnId === id ? record : null),
     byOrderId: async () => record,
   })
-  const claim = { orderId: 'user_offer', terminal, tranzilaTxnId: '123', amountAgorot: 1025 }
+  const declined = { ...verifiedTx, tranzilaTxnId: '124', approved: false, responseCode: '005' }
 
-  it('settles once from Tranzila\'s record, and a replay or the confirm path converges on the same receipt', async () => {
-    await settleClaimedTransaction(db, claim, tranzila(verifiedTx))
+  it('settles once from Tranzila\'s record, and a replay or a second Notify converges on the same receipt', async () => {
+    expect((await settleOrderById(db, 'user_offer', { verifier: tranzila(verifiedTx) })).alreadyProcessed).toBe(false)
     await assertFulfilled()
-    expect((await settleClaimedTransaction(db, claim, tranzila(verifiedTx))).alreadyProcessed).toBe(true)
-    expect((await settleOrderById(db, 'user_offer', tranzila(verifiedTx))).alreadyProcessed).toBe(true)
+    expect((await settleOrderById(db, 'user_offer', { verifier: tranzila(verifiedTx) })).alreadyProcessed).toBe(true)
     await assertFulfilled()
   })
-  it('settles nothing when Tranzila does not know the transaction, or reports another amount', async () => {
+  it('settles nothing when Tranzila holds nothing, or reports another amount', async () => {
     const before = await snapshot()
-    await expect(settleClaimedTransaction(db, claim, tranzila(null))).rejects.toMatchObject({ status: 503 })
-    await expect(settleClaimedTransaction(db, claim, tranzila({ ...verifiedTx, amountAgorot: 999 }))).rejects.toMatchObject({ status: 409 })
-    expect(await settleOrderById(db, 'user_offer', tranzila(null))).toMatchObject({ status: 'pending' })
+    expect(await settleOrderById(db, 'user_offer', { verifier: tranzila(null) })).toMatchObject({ status: 'pending' })
+    await expect(settleOrderById(db, 'user_offer', { verifier: tranzila({ ...verifiedTx, amountAgorot: 999 }) })).rejects.toMatchObject({ status: 409 })
     expect(await snapshot()).toEqual(before)
+  })
+  it('rejects a Notify whose signed amount is not the order\'s', async () => {
+    await expect(settleOrderById(db, 'user_offer', { verifier: tranzila(verifiedTx), expectedAmountAgorot: 1 })).rejects.toThrow('reconciliation')
+  })
+  it('keeps a declined live order pending and retryable, then settles a later approved attempt', async () => {
+    const result = await settleOrderById(db, 'user_offer', { verifier: tranzila(declined) })
+    expect(result).toMatchObject({ status: 'declined', approved: false })
+    const order = (await db.doc('orders/user_offer').get()).data()!
+    expect(order.status).toBe('pending')
+    expect(order.responseCode).toBe('005')
+    expect((await db.doc('vouchers/user_offer').get()).exists).toBe(false)
+    // The declined attempt is kept as an audit receipt, and a replay of it changes nothing.
+    expect((await settleOrderById(db, 'user_offer', { verifier: tranzila(declined) })).alreadyProcessed).toBe(true)
+    expect((await db.doc('orders/user_offer').get()).get('status')).toBe('pending')
+    // The member retries with another card: the approved attempt settles the same order.
+    await settleOrderById(db, 'user_offer', { verifier: tranzila(verifiedTx) })
+    expect((await db.doc('orders/user_offer').get()).data()).toMatchObject({ status: 'paid', tranzilaTxnId: '123', voucherId: 'user_offer' })
+    expect((await db.collection('vouchers').get()).size).toBe(1)
+    expect((await db.collection('paymentTransactions').get()).size).toBe(2) // the decline and the approval
+    expect((await db.doc('offers/offer').get()).get('claimedCount')).toBe(1)
+  })
+  it('keeps a decline on the dev sandbox terminal final (failed)', async () => {
+    await db.doc('orders/user_offer').update({ terminal: 'landly_sandbox' })
+    const result = await claimOfferForOrder(db, { ...event, terminal: 'landly_sandbox', approved: false, responseCode: '005' })
+    expect(result.retryable).toBeFalsy()
+    expect((await db.doc('orders/user_offer').get()).get('status')).toBe('failed')
   })
   it('caps handshakes per order on the server-only internal document', async () => {
     for (let i = 0; i < MAX_HANDSHAKES_PER_ORDER; i++) await takeHandshake(db, 'user_offer')

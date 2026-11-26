@@ -2,13 +2,16 @@ import 'server-only'
 import { createHmac } from 'node:crypto'
 import { secretsEqual } from '@/lib/auth/secretCompare'
 import { PaymentError } from './paymentValidation'
+import { createReportsVerifier } from './reportsVerifier'
+import { readTranzilaConfig } from './tranzilaConfig'
 
 // Security finding R2: a notification (or a browser saying "charged") is a CLAIM. Settlement may only follow what Tranzila
 // itself says about the transaction. This module is the seam for that check.
 //
-// FAIL-CLOSED: until Tranzila confirms how a transaction can be looked up (or how a response_hash is built), the active
-// verifier is `failClosedVerifier`, which answers 503 and settles nothing. When Tranzila confirms the lookup API, implement
-// TranzilaTransactionVerifier and register it in `activeVerifier` below; no other file changes.
+// FAIL-CLOSED: unless an operator sets TRANZILA_VERIFIER (tranzilaConfig.ts), the active verifier is `failClosedVerifier`,
+// which answers 503 and settles nothing. `reports` selects the Reports API lookup (reportsVerifier.ts). `response_hash` settles
+// from the signed charge response (responseHashVerifier.ts, via /api/payments/confirm) and has no lookup, so lookups stay
+// fail-closed in that mode. Both are off until Tranzila confirms the reference binding / hash format for the approved merchant.
 export interface VerifiedTransaction {
   terminal: string
   tranzilaTxnId: string
@@ -33,15 +36,22 @@ export const failClosedVerifier: TranzilaTransactionVerifier = {
   async byOrderId() { throw new PaymentError('Payment verification is not available yet.', 503) },
 }
 
-let activeVerifier: TranzilaTransactionVerifier = failClosedVerifier
+let override: TranzilaTransactionVerifier | null = null
+let reports: { key: string; verifier: TranzilaTransactionVerifier } | null = null
 
+/** The verifier for this deployment: a registered one (tests), else what TRANZILA_VERIFIER selects, else fail-closed. */
 export function getTranzilaVerifier(): TranzilaTransactionVerifier {
-  return activeVerifier
+  if (override) return override
+  const config = readTranzilaConfig()
+  if (!config || config.verifier !== 'reports') return failClosedVerifier
+  const key = `${config.terminal}|${config.appKey}|${config.reportsUrl}|${config.orderRefField}`
+  if (!reports || reports.key !== key) reports = { key, verifier: createReportsVerifier(config) }
+  return reports.verifier
 }
 
-/** Registers the real lookup (and, in tests, a fake). Pass null to restore fail-closed. */
+/** Registers a lookup in tests (a fake). Pass null to restore the configured verifier. */
 export function setTranzilaVerifier(verifier: TranzilaTransactionVerifier | null): void {
-  activeVerifier = verifier ?? failClosedVerifier
+  override = verifier
 }
 
 /**

@@ -77,6 +77,7 @@ export default function CardFramePage() {
           priceLabel={init.priceLabel}
           busy={busy}
           externalError={hostError}
+          cardHolder={init.cardHolder}
           onEvent={send}
         />
       )}

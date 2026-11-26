@@ -76,4 +76,62 @@ describe('classifyChargeResult', () => {
     expect(classifyChargeResult(null, undefined)).toMatchObject({ code: 'network' })
     expect(classifyChargeResult(null, { transaction_response: { success: true, processor_response_code: '033' } })).toMatchObject({ ok: false })
   })
+  it('reads both documented error shapes: err.messages[] and errors[] with a code (10001-10016)', () => {
+    expect(classifyChargeResult({ errors: [{ code: 10002, param: 'credit_card_number', message: 'Invalid credit card number' }] }, null))
+      .toEqual({ ok: false, code: 'validation', fields: ['credit_card_number'] })
+    expect(classifyChargeResult(null, { errors: [{ code: 10004, message: 'Invalid expiry' }] })).toEqual({ ok: false, code: 'validation', fields: ['expiry'] })
+    expect(classifyChargeResult({ errors: [{ code: 10003, message: 'Invalid cvv' }, { code: 10002, message: 'x' }] }, null))
+      .toEqual({ ok: false, code: 'validation', fields: ['cvv', 'credit_card_number'] })
+    // A missing key, bad terminal or amount is not the member's typing.
+    expect(classifyChargeResult({ errors: [{ code: 10000, message: 'MANDATORY KEY IS MISSING' }] }, null)).toMatchObject({ code: 'network' })
+    // 10001 is INVALID TERMINAL NAME: our configuration, not a stale handshake and not the member's typing.
+    expect(classifyChargeResult({ errors: [{ code: 10001, message: 'INVALID TERMINAL NAME' }] }, null)).toEqual({ ok: false, code: 'network', fields: [] })
+    expect(classifyChargeResult({ errors: [{ code: 10013, message: 'TERMINAL NOT FOUND OR BAD CONFIGURATION' }] }, null)).toMatchObject({ code: 'network' })
+    // A missing or refused handshake token (or the amount-mismatch 912791) asks for a fresh one.
+    expect(classifyChargeResult({ errors: [{ code: 10000, param: 'thtk', message: 'MANDATORY KEY IS MISSING' }] }, null)).toMatchObject({ code: 'thtk_expired' })
+    expect(classifyChargeResult({ messages: [{ message: 'Illegal Operation 912791' }] }, null)).toMatchObject({ code: 'thtk_expired' })
+    expect(classifyChargeResult({ messages: [] }, null)).toMatchObject({ code: 'network' })
+  })
+})
+
+import { CHALLENGE_MIN_HEIGHT, cardFrameHeight, nextCardFramePhase, sanitizeCardHolder } from '@/lib/payments/hostedFieldsProtocol'
+
+describe('cardHolder (3-D Secure inputs)', () => {
+  const init = { v: 1, type: 'init', payment, lang: 'en', dir: 'ltr', priceLabel: '₪49' }
+  it('is optional and accepted when it is a plain name and email', () => {
+    expect(parseCardFrameInit(init)).not.toHaveProperty('cardHolder')
+    expect(parseCardFrameInit({ ...init, cardHolder: { name: '  Dana   Levi ', email: 'dana@example.com' } })?.cardHolder).toEqual({ name: 'Dana Levi', email: 'dana@example.com' })
+    expect(parseCardFrameInit({ ...init, cardHolder: { name: 'דנה לוי' } })?.cardHolder).toEqual({ name: 'דנה לוי' })
+  })
+  it('drops anything unusable instead of forwarding it', () => {
+    expect(sanitizeCardHolder({ name: 'x'.repeat(101), email: 'not-an-email' })).toBeUndefined()
+    expect(sanitizeCardHolder({ name: '\u0000\n', email: 'a b@c.de' })).toBeUndefined()
+    expect(sanitizeCardHolder({ email: `${'a'.repeat(250)}@b.co` })).toBeUndefined()
+    expect(sanitizeCardHolder({ name: 'Dana', email: 42 })).toEqual({ name: 'Dana' })
+    expect(sanitizeCardHolder(null)).toBeUndefined()
+    expect(sanitizeCardHolder('Dana')).toBeUndefined()
+  })
+})
+
+describe('card frame phase (3-D Secure room)', () => {
+  it('walks idle -> charging -> confirming, and any error returns to idle', () => {
+    expect(nextCardFramePhase('idle', { v: 1, type: 'submitting' })).toBe('charging')
+    expect(nextCardFramePhase('charging', { v: 1, type: 'charged' })).toBe('confirming')
+    expect(nextCardFramePhase('charging', { v: 1, type: 'error', code: 'declined' })).toBe('idle')
+    expect(nextCardFramePhase('confirming', { v: 1, type: 'error', code: 'declined' })).toBe('idle')
+    expect(nextCardFramePhase('charging', { v: 1, type: 'ready' })).toBe('charging')
+  })
+  it('keeps the frame at least as tall as the 400x600 challenge while charging, and compact otherwise', () => {
+    expect(CHALLENGE_MIN_HEIGHT).toBeGreaterThanOrEqual(600)
+    expect(cardFrameHeight('idle', 340)).toBe(340)
+    expect(cardFrameHeight('confirming', 340)).toBe(340)
+    expect(cardFrameHeight('charging', 340)).toBe(CHALLENGE_MIN_HEIGHT)
+    expect(cardFrameHeight('charging', 900)).toBe(900)
+    expect(cardFrameHeight('idle', 10)).toBe(200)
+  })
+  it('parses the wallet flags and defaults them to off', () => {
+    const base = { provider: 'tranzila-hosted-fields', terminal: 'abc', thtk: 'abcdefgh12345678', expiresAtMs: 1, amountAgorot: 100, currency: 'ILS', notifyUrl: 'https://landly.test/api/payments/tranzila-webhook?o=a&t=b' }
+    expect(parseHostedPaymentParams(base)?.wallets).toEqual({ applePay: false, googlePay: false })
+    expect(parseHostedPaymentParams({ ...base, wallets: { applePay: true, googlePay: 'yes' } })?.wallets).toEqual({ applePay: true, googlePay: false })
+  })
 })

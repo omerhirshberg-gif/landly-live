@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, LoaderCircle } from 'lucide-react'
 import TranzilaHostedFields from '@/components/checkout/TranzilaHostedFields'
@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/firebase/useAuth'
 import { subscribeToOrder } from '@/lib/firebase/orders'
 import { formatPrice } from '@/lib/format'
 import { confirmPayment } from '@/lib/payments/checkoutClient'
-import type { CardFrameErrorCode, CardFrameEvent, HostedPaymentParams } from '@/lib/payments/hostedFieldsProtocol'
+import { sanitizeCardHolder, type CardFrameErrorCode, type CardFrameEvent, type HostedPaymentParams } from '@/lib/payments/hostedFieldsProtocol'
 
 interface TranzilaPaymentWidgetProps {
   orderId: string
@@ -34,6 +34,10 @@ const REFRESH_MARGIN_MS = 60_000
 export default function TranzilaPaymentWidget({ orderId, offerTitle, amount, payment, onRefreshPayment, onBack }: TranzilaPaymentWidgetProps) {
   const { t, lang } = useLang()
   const { user } = useAuth()
+  // The member's own name and email, for Tranzila's 3-D Secure inputs.
+  const displayName = user?.displayName ?? undefined
+  const email = user?.email ?? undefined
+  const cardHolder = useMemo(() => sanitizeCardHolder({ name: displayName, email }), [displayName, email])
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<CardFrameErrorCode | null>(null)
@@ -71,7 +75,13 @@ export default function TranzilaPaymentWidget({ orderId, offerTitle, amount, pay
       for (let i = 0; i <= CONFIRM_DELAYS_MS.length && !done.current; i++) {
         const result = await confirmPayment(await user.getIdToken(), orderId)
         if (result.ok && result.data.status === 'paid') return finish()
-        if (result.ok && result.data.status === 'failed') { setBusy(false); setError('declined'); return }
+        // A decline leaves the order open: show it, take a fresh thtk, and the member can try another card or wallet.
+        if (result.ok && (result.data.status === 'declined' || result.data.status === 'failed')) {
+          setBusy(false)
+          setError('declined')
+          if (result.data.status === 'declined') onRefreshPayment().catch(() => {})
+          return
+        }
         if (!result.ok && (result.reason === 'unauthorized' || result.reason === 'conflict')) break
         if (i < CONFIRM_DELAYS_MS.length) await new Promise((r) => setTimeout(r, CONFIRM_DELAYS_MS[i]))
       }
@@ -82,7 +92,7 @@ export default function TranzilaPaymentWidget({ orderId, offerTitle, amount, pay
     } finally {
       confirming.current = false
     }
-  }, [user, orderId, finish])
+  }, [user, orderId, finish, onRefreshPayment])
 
   const onEvent = useCallback((event: CardFrameEvent) => {
     if (event.type === 'submitting') setError(null)
@@ -106,6 +116,7 @@ export default function TranzilaPaymentWidget({ orderId, offerTitle, amount, pay
           priceLabel={priceLabel}
           busy={busy}
           externalError={error}
+          cardHolder={cardHolder}
           onEvent={onEvent}
         />
       ) : (

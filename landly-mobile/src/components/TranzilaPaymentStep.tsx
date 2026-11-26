@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native'
 import { formatPrice } from '@shared/format'
-import type { CardFrameErrorCode, CardFrameEvent, HostedPaymentParams } from '@shared/payments/hostedFieldsProtocol'
+import type { CardFrameErrorCode, CardFrameEvent, CardHolder, HostedPaymentParams } from '@shared/payments/hostedFieldsProtocol'
 import AppText from './AppText'
 import BrandLoader from './BrandLoader'
 import DirectionalIcon from './DirectionalIcon'
@@ -21,6 +21,7 @@ export default function TranzilaPaymentStep({
   busy,
   error,
   delayed,
+  cardHolder,
   onEvent,
   onBack,
 }: {
@@ -33,6 +34,8 @@ export default function TranzilaPaymentStep({
   error: CardFrameErrorCode | null
   /** Tranzila has not confirmed yet: tell the member not to pay again. */
   delayed: boolean
+  /** From the signed-in member's profile; forwarded to Tranzila as the 3-D Secure cardholder name and email. */
+  cardHolder?: CardHolder
   onEvent: (event: CardFrameEvent) => void
   onBack: () => void
 }) {
@@ -47,7 +50,7 @@ export default function TranzilaPaymentStep({
       </View>
 
       {payment ? (
-        <TranzilaCardFrame payment={payment} priceLabel={priceLabel} busy={busy} error={error} onEvent={onEvent} />
+        <TranzilaCardFrame payment={payment} priceLabel={priceLabel} busy={busy} error={error} cardHolder={cardHolder} onEvent={onEvent} />
       ) : (
         <View style={styles.waiting} accessibilityRole="progressbar" accessibilityLabel={t('checkout_card_loading')}>
           <BrandLoader size="md" decorative />

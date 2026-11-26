@@ -9,6 +9,9 @@
 /** The one place the Hosted Fields script may load from. Never taken from a message or the server. */
 export const HOSTED_FIELDS_SCRIPT_URL = 'https://hf.tranzila.com/assets/js/thostedf.js'
 
+/** Apple Pay's script for Hosted Fields (the global `hfChargeApple`). Loaded only where Apple Pay exists and the terminal enables it. */
+export const HOSTED_FIELDS_APPLE_PAY_SCRIPT_URL = 'https://hf.tranzila.com/assets/js/thfapplepay.js'
+
 export const CARD_FRAME_PATH = '/checkout/card-frame'
 export const CARD_FRAME_VERSION = 1
 
@@ -20,6 +23,8 @@ export interface HostedPaymentParams {
   amountAgorot: number
   currency: 'ILS'
   notifyUrl: string
+  /** Wallets Tranzila has enabled on the terminal (TRANZILA_APPLE_PAY / TRANZILA_GOOGLE_PAY). The device still has to support them. */
+  wallets: { applePay: boolean; googlePay: boolean }
 }
 
 export type CardFrameErrorCode = 'validation' | 'declined' | 'thtk_expired' | 'network' | '3ds_failed' | 'load_failed'
@@ -27,6 +32,13 @@ export const CARD_FRAME_ERROR_CODES: readonly CardFrameErrorCode[] = ['validatio
 
 export type CardFrameLang = 'he' | 'en' | 'ru' | 'fr' | 'es'
 const LANGS: readonly CardFrameLang[] = ['he', 'en', 'ru', 'fr', 'es']
+
+/**
+ * The member's name and email, sent to Tranzila's frame as `card_holder_name` / `card_holder_email` (documented optional 3-D Secure
+ * inputs that help the issuer approve without a challenge). Both come from the signed-in member's own profile and go only into
+ * Tranzila's charge call: they are never logged and never part of any settlement decision.
+ */
+export interface CardHolder { name?: string; email?: string }
 
 /** Host -> frame. */
 export interface CardFrameInit {
@@ -37,6 +49,8 @@ export interface CardFrameInit {
   dir: 'ltr' | 'rtl'
   /** The formatted price for the Pay button (the host already localises it). */
   priceLabel: string
+  /** Optional; see CardHolder. */
+  cardHolder?: CardHolder
 }
 
 /** Host -> frame: the host is confirming the charge with the server (busy), or shows the frame an error of its own. */
@@ -70,13 +84,32 @@ function asRecord(data: unknown): Record<string, unknown> | null {
 export function parseHostedPaymentParams(value: unknown): HostedPaymentParams | null {
   if (!isRecord(value)) return null
   const { provider, terminal, thtk, expiresAtMs, amountAgorot, currency, notifyUrl } = value
+  const rawWallets = isRecord(value.wallets) ? value.wallets : {}
   if (provider !== 'tranzila-hosted-fields' || currency !== 'ILS') return null
   if (typeof terminal !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(terminal)) return null
   if (typeof thtk !== 'string' || !/^[A-Za-z0-9]{8,128}$/.test(thtk)) return null
   if (typeof expiresAtMs !== 'number' || !Number.isFinite(expiresAtMs)) return null
   if (typeof amountAgorot !== 'number' || !Number.isSafeInteger(amountAgorot) || amountAgorot <= 0) return null
   if (typeof notifyUrl !== 'string' || notifyUrl.length > 512 || !notifyUrl.startsWith('https://')) return null
-  return { provider, terminal, thtk, expiresAtMs, amountAgorot, currency, notifyUrl }
+  return { provider, terminal, thtk, expiresAtMs, amountAgorot, currency, notifyUrl, wallets: { applePay: rawWallets.applePay === true, googlePay: rawWallets.googlePay === true } }
+}
+
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,63}$/
+
+/** A value the member's profile supplied, reduced to what is safe to forward; undefined when nothing usable remains. */
+export function sanitizeCardHolder(value: unknown): CardHolder | undefined {
+  if (!isRecord(value)) return undefined
+  const out: CardHolder = {}
+  if (typeof value.name === 'string') {
+    // eslint-disable-next-line no-control-regex
+    const name = value.name.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (name.length >= 1 && name.length <= 100) out.name = name
+  }
+  if (typeof value.email === 'string') {
+    const email = value.email.trim()
+    if (email.length <= 254 && EMAIL.test(email)) out.email = email
+  }
+  return out.name || out.email ? out : undefined
 }
 
 export function parseCardFrameInit(data: unknown): CardFrameInit | null {
@@ -85,7 +118,8 @@ export function parseCardFrameInit(data: unknown): CardFrameInit | null {
   const payment = parseHostedPaymentParams(m.payment)
   if (!payment || !LANGS.includes(m.lang as CardFrameLang) || (m.dir !== 'ltr' && m.dir !== 'rtl')) return null
   if (typeof m.priceLabel !== 'string' || m.priceLabel.length > 40) return null
-  return { v: 1, type: 'init', payment, lang: m.lang as CardFrameLang, dir: m.dir, priceLabel: m.priceLabel }
+  const cardHolder = sanitizeCardHolder(m.cardHolder)
+  return { v: 1, type: 'init', payment, lang: m.lang as CardFrameLang, dir: m.dir, priceLabel: m.priceLabel, ...(cardHolder ? { cardHolder } : {}) }
 }
 
 export function parseCardFrameState(data: unknown): CardFrameState | null {
@@ -117,4 +151,29 @@ export function isAllowedCardFrameUrl(url: string, frameOrigin: string): boolean
   if (url === 'about:blank') return true
   if (parsed.protocol !== 'https:' && parsed.origin !== frameOrigin) return false
   return parsed.origin === frameOrigin || parsed.hostname === 'tranzila.com' || parsed.hostname.endsWith('.tranzila.com')
+}
+
+// ---- The frame's phase: what the host needs to size the WebView ----
+//
+// Tranzila draws its 3-D Secure challenge as a 400x600 iframe centred in the page (and Bit/bank flows the same way), so
+// while a charge is in flight the frame must be at least that tall or the challenge is clipped. The host shrinks it back
+// once the charge has a result.
+export type CardFramePhase = 'idle' | 'charging' | 'confirming'
+
+/** 600px of challenge plus breathing room. */
+export const CHALLENGE_MIN_HEIGHT = 640
+
+export function nextCardFramePhase(phase: CardFramePhase, event: CardFrameEvent): CardFramePhase {
+  switch (event.type) {
+    case 'submitting': return 'charging'
+    case 'charged': return 'confirming'
+    case 'error': return 'idle'
+    default: return phase
+  }
+}
+
+/** The height the host gives the frame: its own content normally, never less than the challenge while charging. */
+export function cardFrameHeight(phase: CardFramePhase, measuredPx: number, minContentPx = 200): number {
+  const content = Math.max(Math.ceil(measuredPx), minContentPx)
+  return phase === 'charging' ? Math.max(content, CHALLENGE_MIN_HEIGHT) : content
 }

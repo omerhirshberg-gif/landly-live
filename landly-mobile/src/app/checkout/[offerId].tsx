@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { superTavHeadline } from '@shared/offers/superTav'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { router, Stack, useLocalSearchParams, type Href } from 'expo-router'
@@ -7,6 +7,7 @@ import { getOffer, type OfferDocument } from '@shared/firebase/offers'
 import { subscribeToOrder } from '@shared/firebase/orders'
 import { getClaimedPoolIds } from '@shared/firebase/vouchers'
 import { useAuth } from '@shared/firebase/useAuth'
+import { sanitizeCardHolder } from '@shared/payments/hostedFieldsProtocol'
 import { formatPrice, priceDifference } from '@shared/format'
 import type { TranslationKey } from '@shared/i18n/translations'
 import { confirmPayment, initiateCheckout, settleSandboxOrder, type CheckoutFailure, type CheckoutOrder } from '@shared/payments/checkoutClient'
@@ -77,6 +78,10 @@ export default function CheckoutScreen() {
   // The voucher value picked on a multi-denomination offer (a pool id); the server prices from its own list.
   const variantPoolId = typeof variant === 'string' && variant ? variant : null
   const { user } = useAuth()
+  // The member's own name and email, for Tranzila's 3-D Secure inputs (sanitised again inside the frame's protocol parser).
+  const displayName = user?.displayName ?? undefined
+  const email = user?.email ?? undefined
+  const cardHolder = useMemo(() => sanitizeCardHolder({ name: displayName, email }), [displayName, email])
   // The photo and category are decoration from the live offer; the order holds what is bought.
   const [offer, setOffer] = useState<OfferDocument | undefined>(() => (offerId ? cachedOffer(offerId) : undefined))
   const [order, setOrder] = useState<CheckoutOrder | null>(null)
@@ -205,7 +210,13 @@ export default function CheckoutScreen() {
       for (let i = 0; i <= CONFIRM_DELAYS_MS.length && !completed.current; i++) {
         const result = await confirmPayment(await user.getIdToken(), orderId, API_BASE_URL)
         if (result.ok && result.data.status === 'paid') return complete(orderId)
-        if (result.ok && result.data.status === 'failed') { setCardError('declined'); setCardBusy(false); return }
+        // A decline leaves the order open: show it, take a fresh Handshake, and the member can try another card.
+        if (result.ok && (result.data.status === 'declined' || result.data.status === 'failed')) {
+          setCardError('declined')
+          setCardBusy(false)
+          if (result.data.status === 'declined') void refreshPayment()
+          return
+        }
         if (!result.ok && (result.reason === 'unauthorized' || result.reason === 'conflict')) break
         if (i < CONFIRM_DELAYS_MS.length) await new Promise((r) => setTimeout(r, CONFIRM_DELAYS_MS[i]))
       }
@@ -217,7 +228,7 @@ export default function CheckoutScreen() {
       confirming.current = false
       setCardConfirming(false)
     }
-  }, [user, orderId, complete])
+  }, [user, orderId, complete, refreshPayment])
 
   const onCardEvent = useCallback((event: CardFrameEvent) => {
     if (event.type === 'submitting') { setCardBusy(true); setCardError(null) }
@@ -325,6 +336,7 @@ export default function CheckoutScreen() {
             busy={cardConfirming}
             error={cardError}
             delayed={cardDelayed}
+            cardHolder={cardHolder}
             onEvent={onCardEvent}
             onBack={() => setStep('summary')}
           />

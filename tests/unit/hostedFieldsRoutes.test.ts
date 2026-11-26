@@ -56,43 +56,56 @@ it('rejects a token signed for another amount or order, before any database acce
   expect(mocks.getDb).not.toHaveBeenCalled()
 })
 it('settles a signed notification only after Tranzila confirms the transaction', async () => {
-  expect(await (await webhook(notify(`?o=user_offer&t=${token()}`))).text()).toBe('OK')
+  expect(await (await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).text()).toBe('OK')
   expect(store.read('orders/user_offer')?.status).toBe('paid')
   expect(mocks.scheduleConfirmation).toHaveBeenCalledOnce()
   // A retry replays without a second voucher or email.
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(200)
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(200)
   expect(store.count('vouchers')).toBe(1)
   expect(mocks.scheduleConfirmation).toHaveBeenCalledOnce()
 })
 it('FAILS CLOSED: a forged but correctly signed notification settles nothing while Tranzila does not know the transaction', async () => {
   tranzila.current = null
   const before = store.snapshot()
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(503)
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(503)
   expect(store.snapshot()).toEqual(before)
 })
 it('FAILS CLOSED with the default verifier (lookup not yet confirmed with Tranzila)', async () => {
   setTranzilaVerifier(null)
   const before = store.snapshot()
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(503)
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(503)
   expect(store.snapshot()).toEqual(before)
 })
 it('refuses a notification whose amount differs from Tranzila\'s own record', async () => {
   tranzila.current = { ...verifiedTx, amountAgorot: 999 }
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(409)
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(409)
   expect(store.count('vouchers')).toBe(0)
 })
-it('settles with what Tranzila reports (a decline) even when the notification claims approval', async () => {
+it('settles with what Tranzila reports (a decline) even when the notification claims approval, and keeps the order retryable', async () => {
   tranzila.current = { ...verifiedTx, approved: false, responseCode: '004' }
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(200)
-  expect(store.read('orders/user_offer')?.status).toBe('failed')
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(200)
+  expect(store.read('orders/user_offer')?.status).toBe('pending')
+  expect(store.read('orders/user_offer')?.responseCode).toBe('004')
+  expect(store.count('vouchers')).toBe(0)
   expect(mocks.scheduleConfirmation).not.toHaveBeenCalled()
+})
+it('is a trigger only: an empty body, or one with unrelated fields, still settles through the lookup', async () => {
+  const bare = new Request(`https://landly.test/api/payments/tranzila-webhook?o=user_offer&a=1025&t=${token()}`, { method: 'POST' })
+  expect(await (await webhook(bare)).text()).toBe('OK')
+  expect(store.read('orders/user_offer')?.status).toBe('paid')
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`, { Response: '000', sum: '1.00', TranzilaTK: 'x' }))).status).toBe(200)
+  expect(store.count('vouchers')).toBe(1)
+})
+it('answers 503 (Notify retries) while Tranzila holds nothing for the order', async () => {
+  tranzila.current = null
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(503)
 })
 it('still accepts the optional secret header as the gate', async () => {
   expect((await webhook(notify('', form, { 'x-tranzila-webhook-secret': 'test-secret' }))).status).toBe(200)
 })
 it('is 503 when the terminal is half-configured', async () => {
   vi.stubEnv('TRANZILA_API_SECRET', '')
-  expect((await webhook(notify(`?o=user_offer&t=${token()}`))).status).toBe(503)
+  expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(503)
 })
 
 // ---- initiate: handshake ----
@@ -115,6 +128,8 @@ it('issues a handshake bound to the frozen amount, with a signed notify URL, onc
   const url = new URL(data.payment.notifyUrl)
   expect(url.origin).toBe('https://landly.test')
   expect(verifyNotifyToken(url.searchParams.get('t'), claims, 'test-secret')).toBe(true)
+  expect(url.searchParams.get('a')).toBe('1025')
+  expect(data.payment.wallets).toEqual({ applePay: false, googlePay: false })
 })
 it('answers 503 and keeps the order when the handshake is refused', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error_code: 400 }), { status: 400 })))
@@ -144,6 +159,13 @@ it('rejects a sandbox order', async () => {
   store.seed('orders/user_offer', { ...pending, terminal: 'landly_sandbox' })
   expect((await confirm(authed('/api/payments/confirm', { orderId: 'user_offer' }))).status).toBe(409)
 })
+it('answers declined for a live decline, and leaves the order pending for another attempt', async () => {
+  tranzila.current = { ...verifiedTx, approved: false, responseCode: '005' }
+  const res = await confirm(authed('/api/payments/confirm', { orderId: 'user_offer' }))
+  expect(res.status).toBe(200)
+  expect((await res.json()).status).toBe('declined')
+  expect(store.read('orders/user_offer')?.status).toBe('pending')
+})
 it('answers 202 pending while Tranzila holds nothing for the order yet', async () => {
   tranzila.current = null
   const res = await confirm(authed('/api/payments/confirm', { orderId: 'user_offer' }))
@@ -155,7 +177,7 @@ it('settles from Tranzila\'s record, ignores any client-sent amount, and converg
   const res = await confirm(authed('/api/payments/confirm', { orderId: 'user_offer', amountAgorot: 1, tranzilaTxnId: '666' }))
   expect(await res.json()).toEqual({ orderId: 'user_offer', status: 'paid' })
   expect(store.read('orders/user_offer')?.tranzilaTxnId).toBe('123')
-  expect(await (await webhook(notify(`?o=user_offer&t=${token()}`))).text()).toBe('OK')
+  expect(await (await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).text()).toBe('OK')
   expect(store.count('vouchers')).toBe(1)
   expect(mocks.scheduleConfirmation).toHaveBeenCalledOnce()
   // A settled order is simply reported.
@@ -171,4 +193,70 @@ it('refuses a Tranzila record that does not match the frozen order', async () =>
   tranzila.current = { ...verifiedTx, amountAgorot: 1 }
   expect((await confirm(authed('/api/payments/confirm', { orderId: 'user_offer' }))).status).toBe(409)
   expect(store.count('vouchers')).toBe(0)
+})
+
+// ---- R2 verifier modes (TRANZILA_VERIFIER) ----
+import { createHmac } from 'node:crypto'
+import { getTranzilaVerifier } from '@/lib/payments/verifyTranzilaTransaction'
+import { setResponseHashCanonicalizer } from '@/lib/payments/responseHashVerifier'
+
+const signedResponse = (orderId = 'user_offer', amount = 10.25) => {
+  const body = { errors: null, transaction_response: { success: true, processor_response_code: '000', transaction_id: 41711, amount, currency_code: 'ILS', tranmode: 'A', user_form_data: { orderId } } }
+  return { ...body, response_hash: createHmac('sha256', 'hash-secret').update(JSON.stringify(body)).digest('hex') }
+}
+const forwardsResponse = (chargeResponse: unknown) => confirm(authed('/api/payments/confirm', { orderId: 'user_offer', chargeResponse }))
+
+it('stays fail-closed with the default mode and with no verifier registered, whatever the client forwards', async () => {
+  setTranzilaVerifier(null)
+  await expect(getTranzilaVerifier().byOrderId(terminal, 'user_offer')).rejects.toMatchObject({ status: 503 })
+  const before = store.snapshot()
+  expect((await forwardsResponse(signedResponse())).status).toBe(503) // the field is ignored outside response_hash mode
+  expect(store.snapshot()).toEqual(before)
+})
+it('is fail-closed with no terminal at all (the dev sandbox)', async () => {
+  setTranzilaVerifier(null)
+  vi.stubEnv('TRANZILA_TERMINAL', '')
+  vi.stubEnv('TRANZILA_VERIFIER', 'reports')
+  await expect(getTranzilaVerifier().byOrderId(terminal, 'user_offer')).rejects.toMatchObject({ status: 503 })
+})
+it('selects the Reports verifier only when TRANZILA_VERIFIER=reports (with its reference field)', async () => {
+  setTranzilaVerifier(null)
+  vi.stubEnv('TRANZILA_VERIFIER', 'reports')
+  vi.stubEnv('TRANZILA_ORDER_REF_FIELD', 'order_ref')
+  const calls: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    calls.push(new URL(url).pathname)
+    return new Response(JSON.stringify(url.endsWith('/list') ? { fields: [{ field_id: 7, api_parameter_name: 'order_ref' }] } : { transactions: [] }))
+  }))
+  expect(await getTranzilaVerifier().byOrderId(terminal, 'user_offer')).toBeNull()
+  expect(calls).toEqual(['/v1/terminals/settings/fields/list', '/v1/transaction'])
+})
+it('response_hash mode: settles from a verified signed response through /confirm, and rejects a forged one', async () => {
+  setTranzilaVerifier(null)
+  vi.stubEnv('TRANZILA_VERIFIER', 'response_hash')
+  vi.stubEnv('TRANZILA_RESPONSE_HASH_SECRET', 'hash-secret')
+  setResponseHashCanonicalizer((body) => JSON.stringify(body))
+  try {
+    const before = store.snapshot()
+    const forged = signedResponse(); (forged.transaction_response as { amount: number }).amount = 0.01
+    expect((await forwardsResponse(forged)).status).toBe(409)
+    expect((await forwardsResponse(signedResponse('other_order'))).status).toBe(409)
+    expect(store.snapshot()).toEqual(before)
+    expect(await (await forwardsResponse(signedResponse())).json()).toEqual({ orderId: 'user_offer', status: 'paid' })
+    expect(store.count('vouchers')).toBe(1)
+    expect(mocks.scheduleConfirmation).toHaveBeenCalledOnce()
+    // A repeat Notify for a settled order is acknowledged without a lookup (the lookup itself stays fail-closed in this mode).
+    expect((await webhook(notify(`?o=user_offer&a=1025&t=${token()}`))).status).toBe(200)
+    expect(mocks.scheduleConfirmation).toHaveBeenCalledOnce()
+  } finally {
+    setResponseHashCanonicalizer(null)
+  }
+})
+it('response_hash mode without a registered canonical form answers 503', async () => {
+  setTranzilaVerifier(null)
+  vi.stubEnv('TRANZILA_VERIFIER', 'response_hash')
+  vi.stubEnv('TRANZILA_RESPONSE_HASH_SECRET', 'hash-secret')
+  const before = store.snapshot()
+  expect((await forwardsResponse(signedResponse())).status).toBe(503)
+  expect(store.snapshot()).toEqual(before)
 })

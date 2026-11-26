@@ -69,13 +69,23 @@ describe('a ledger-backed Raayonit sale', () => {
     expect(db.read(`vouchers/${a.orderId}`)!.externalCode).not.toBe(db.read(`vouchers/${b.orderId}`)!.externalCode)
   })
 
-  it('a declined payment releases the held code back to stock', async () => {
+  it('a declined payment on the dev sandbox terminal releases the held code back to stock', async () => {
     const db = store(['AAAA-0001-XXXX'])
-    const order = await initiateOrder(db.db, 'u1', 'offer', terminal, { variantPoolId: 'p100' })
-    await claimOfferForOrder(db.db, pay(order.orderId, false))
+    const order = await initiateOrder(db.db, 'u1', 'offer', 'landly_sandbox', { variantPoolId: 'p100' })
+    await claimOfferForOrder(db.db, { ...pay(order.orderId, false), terminal: 'landly_sandbox' })
     expect(vouchers(db)[0]).toMatchObject({ status: 'IN_STOCK', reservedForOrderId: null })
     expect(events(db).map((e) => e.type)).toEqual(['RESERVED', 'RELEASED'])
     expect(db.read(`vouchers/${order.orderId}`)).toBeUndefined()
+  })
+
+  it('a declined payment on a live terminal keeps the code held so the member can retry, and the approval then sells it', async () => {
+    const db = store(['AAAA-0001-XXXX'])
+    const order = await initiateOrder(db.db, 'u1', 'offer', terminal, { variantPoolId: 'p100' })
+    await claimOfferForOrder(db.db, pay(order.orderId, false, 'td'))
+    expect(vouchers(db)[0]).toMatchObject({ status: 'RESERVED', reservedForOrderId: order.orderId })
+    expect(events(db).map((e) => e.type)).toEqual(['RESERVED'])
+    await claimOfferForOrder(db.db, pay(order.orderId, true, 'ta'))
+    expect(db.read(`vouchers/${order.orderId}`)!.externalCode).toBe('AAAA-0001-XXXX')
   })
 
   it('a replayed webhook sells nothing twice', async () => {

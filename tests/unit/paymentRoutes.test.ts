@@ -39,7 +39,9 @@ it('authenticates before any database access', async () => {
   expect(mocks.getDb).not.toHaveBeenCalled()
 })
 it('rejects malformed notifications without accessing the database', async () => {
-  expect((await callback(notification({ Response: 'false' }))).status).toBe(400)
+  // Notify is a trigger: all it must carry is our order id (the signed URL, or `orderId` for the header gate).
+  const noOrder = new Request('https://test.invalid/api/payments/tranzila-webhook', { method: 'POST', headers: { 'x-tranzila-webhook-secret': 'test-secret' }, body: new URLSearchParams({ Response: '000' }) })
+  expect((await callback(noOrder)).status).toBe(400)
   expect(mocks.getDb).not.toHaveBeenCalled()
 })
 it('acknowledges success and retries with plain OK', async () => {
@@ -67,7 +69,8 @@ it('returns 503 on commit failure and successfully processes a retry', async () 
   expect(store.read(`orders/${event.orderId}`)?.status).toBe('paid')
 })
 it('returns a reconciliation conflict for mismatched payment details', async () => {
-  expect((await callback(notification({ sum: '9.99' }))).status).toBe(409)
+  verifier.current = { ...verifiedTx, amountAgorot: 999 }
+  expect((await callback(notification())).status).toBe(409)
   expect(store.count('vouchers')).toBe(0)
 })
 it('requires authentication for initiation', async () => {

@@ -34,6 +34,34 @@ describe('readTranzilaConfig', () => {
   })
 })
 
+describe('R2 verifier mode (TRANZILA_VERIFIER)', () => {
+  it('is fail-closed by default, with the Tranzila report host', () => {
+    expect(readTranzilaConfig(full)).toMatchObject({ verifier: 'failclosed', orderRefField: null, reportsUrl: 'https://report.tranzila.com' })
+    expect(readTranzilaConfig({ ...full, TRANZILA_VERIFIER: '' })?.verifier).toBe('failclosed')
+  })
+  it('rejects an unknown mode', () => {
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'trust' })).toThrow(/TRANZILA_VERIFIER must be one of/)
+  })
+  it('reports mode needs the order reference field, so a payment can always be tied to an order', () => {
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'reports' })).toThrow(/TRANZILA_ORDER_REF_FIELD/)
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'reports', TRANZILA_ORDER_REF_FIELD: 'bad name' })).toThrow(/malformed/)
+    expect(readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'reports', TRANZILA_ORDER_REF_FIELD: 'order_ref' })).toMatchObject({ verifier: 'reports', orderRefField: 'order_ref' })
+  })
+  it('response_hash mode needs its secret', () => {
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'response_hash' })).toThrow(/TRANZILA_RESPONSE_HASH_SECRET/)
+    expect(readTranzilaConfig({ ...full, TRANZILA_VERIFIER: 'response_hash', TRANZILA_RESPONSE_HASH_SECRET: 'h' })?.verifier).toBe('response_hash')
+  })
+  it('keeps the verifier off with no terminal (the dev sandbox), whatever is set', () => {
+    expect(readTranzilaConfig({ TRANZILA_VERIFIER: 'reports' })).toBeNull()
+  })
+  it('validates the reports origin and refuses look-alike hosts', () => {
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_REPORTS_URL: 'http://report.tranzila.com' })).toThrow(/https/)
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_REPORTS_URL: 'https://eviltranzila.com' })).toThrow(/tranzila\.com/)
+    expect(() => readTranzilaConfig({ ...full, TRANZILA_HANDSHAKE_URL: 'https://eviltranzila.com/x' })).toThrow(/tranzila\.com/)
+    expect(readTranzilaConfig({ ...full, TRANZILA_REPORTS_URL: 'https://report.tranzila.com/ignored/path' })?.reportsUrl).toBe('https://report.tranzila.com')
+  })
+})
+
 describe('notifyOrigin', () => {
   it('prefers the explicit origin, then production, then the deployment; never a request host', () => {
     expect(notifyOrigin({ TRANZILA_NOTIFY_ORIGIN: 'https://pay.example.com/ignored' })).toBe('https://pay.example.com')

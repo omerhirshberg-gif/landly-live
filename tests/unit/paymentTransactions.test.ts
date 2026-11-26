@@ -194,15 +194,33 @@ describe('atomic payment settlement', () => {
     await expect(claimOfferForOrder(db.db, { ...event, ...change })).rejects.toThrow()
     expect(db.snapshot()).toEqual(before)
   })
-  it('records an identified failure atomically; failure replay is idempotent and later success conflicts', async () => {
-    const db = store(), failure = { ...event, approved: false, responseCode: '005' }
+  it('keeps a declined attempt on a live terminal as a receipt and leaves the order pending; a replay is idempotent and a later approval settles it', async () => {
+    const db = store(), failure = { ...event, tranzilaTxnId: '999', approved: false, responseCode: '005' }
+    expect(await claimOfferForOrder(db.db, failure)).toEqual({ alreadyProcessed: false, retryable: true })
+    expect(db.read('orders/user_offer')).toMatchObject({ status: 'pending', responseCode: '005' })
+    expect(db.count('vouchers')).toBe(0)
+    expect(db.count('paymentTransactions')).toBe(1)
+    expect(await claimOfferForOrder(db.db, failure)).toEqual({ alreadyProcessed: true, retryable: true })
+    await claimOfferForOrder(db.db, event)
+    expect(db.read('orders/user_offer')?.status).toBe('paid')
+    expect(db.count('vouchers')).toBe(1)
+    // A decline that arrives after the approval is kept as a receipt and changes nothing else.
+    const before = db.read('orders/user_offer')
+    await claimOfferForOrder(db.db, { ...failure, tranzilaTxnId: '1000' })
+    expect(db.read('orders/user_offer')).toEqual(before)
+    expect(db.count('vouchers')).toBe(1)
+  })
+  it('records an identified failure atomically on the dev sandbox terminal; replay is idempotent and later success conflicts', async () => {
+    const db = store()
+    db.seed('orders/user_offer', { ...pending, terminal: 'landly_sandbox' })
+    const failure = { ...event, terminal: 'landly_sandbox', approved: false, responseCode: '005' }
     await claimOfferForOrder(db.db, failure)
     expect(db.read('orders/user_offer')?.status).toBe('failed')
     expect(db.count('vouchers')).toBe(0)
     expect(db.count('paymentTransactions')).toBe(1)
     const before = db.snapshot()
     expect(await claimOfferForOrder(db.db, failure)).toEqual({ alreadyProcessed: true })
-    await expect(claimOfferForOrder(db.db, event)).rejects.toThrow()
+    await expect(claimOfferForOrder(db.db, { ...event, terminal: 'landly_sandbox' })).rejects.toThrow()
     expect(db.snapshot()).toEqual(before)
   })
   it.each(['stock', 'expired', 'business', 'legacy', 'voucher'])('leaves %s conflicts unchanged for reconciliation', async (condition) => {
