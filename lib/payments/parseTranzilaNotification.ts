@@ -16,6 +16,11 @@ export interface TranzilaNotification {
 // https://docs.tranzila.com/docs/payments-and-billing/iframe-integration-directng
 // orderId is OUR required echoed custom field, not a built-in Tranzila field.
 export async function parseTranzilaNotification(request: Request, terminal: string): Promise<TranzilaNotification> {
+  return notificationFromForm(await readNotificationForm(request), terminal)
+}
+
+/** The bounded QSTR body of a Notify request. */
+export async function readNotificationForm(request: Request): Promise<URLSearchParams> {
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/x-www-form-urlencoded') {
     throw new PaymentError('Expected a QSTR form notification.', 415)
   }
@@ -34,7 +39,11 @@ export async function parseTranzilaNotification(request: Request, terminal: stri
     }
     chunks.push(value)
   }
-  const form = new URLSearchParams(Buffer.concat(chunks).toString('utf8'))
+  return new URLSearchParams(Buffer.concat(chunks).toString('utf8'))
+}
+
+/** Validates the canonical iframe-notify fields (see the contract table in docs/payment-and-email-configuration.md). */
+export function notificationFromForm(form: URLSearchParams, terminal: string): TranzilaNotification {
   const field = (name: string): string => {
     const values = form.getAll(name)
     if (values.length !== 1 || !values[0]) throw new PaymentError(`Missing or duplicate ${name}.`, 400)

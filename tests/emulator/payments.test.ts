@@ -139,3 +139,37 @@ describe('real Firestore transactions', () => {
     expect((await db.doc('vouchers/user_offer').get()).data()).toMatchObject({ commissionRate: 0.1, paymentTerms: 'net_30' })
   })
 })
+
+// ---- Hosted Fields: verified settlement and the handshake budget (lib/payments/settleVerifiedPayment.ts) ----
+import { MAX_HANDSHAKES_PER_ORDER, takeHandshake } from '@/lib/payments/handshakeBudget'
+import { settleClaimedTransaction, settleOrderById } from '@/lib/payments/settleVerifiedPayment'
+import { verifiedTx } from '../helpers/tranzilaLive'
+import type { TranzilaTransactionVerifier } from '@/lib/payments/verifyTranzilaTransaction'
+
+describe('verified settlement against the emulator', () => {
+  const tranzila = (record: typeof verifiedTx | null): TranzilaTransactionVerifier => ({
+    byTransactionId: async (_t, id) => (record && record.tranzilaTxnId === id ? record : null),
+    byOrderId: async () => record,
+  })
+  const claim = { orderId: 'user_offer', terminal, tranzilaTxnId: '123', amountAgorot: 1025 }
+
+  it('settles once from Tranzila\'s record, and a replay or the confirm path converges on the same receipt', async () => {
+    await settleClaimedTransaction(db, claim, tranzila(verifiedTx))
+    await assertFulfilled()
+    expect((await settleClaimedTransaction(db, claim, tranzila(verifiedTx))).alreadyProcessed).toBe(true)
+    expect((await settleOrderById(db, 'user_offer', tranzila(verifiedTx))).alreadyProcessed).toBe(true)
+    await assertFulfilled()
+  })
+  it('settles nothing when Tranzila does not know the transaction, or reports another amount', async () => {
+    const before = await snapshot()
+    await expect(settleClaimedTransaction(db, claim, tranzila(null))).rejects.toMatchObject({ status: 503 })
+    await expect(settleClaimedTransaction(db, claim, tranzila({ ...verifiedTx, amountAgorot: 999 }))).rejects.toMatchObject({ status: 409 })
+    expect(await settleOrderById(db, 'user_offer', tranzila(null))).toMatchObject({ status: 'pending' })
+    expect(await snapshot()).toEqual(before)
+  })
+  it('caps handshakes per order on the server-only internal document', async () => {
+    for (let i = 0; i < MAX_HANDSHAKES_PER_ORDER; i++) await takeHandshake(db, 'user_offer')
+    await expect(takeHandshake(db, 'user_offer')).rejects.toMatchObject({ status: 429 })
+    expect((await db.doc('orders/user_offer/internal/handshakes').get()).get('count')).toBe(MAX_HANDSHAKES_PER_ORDER)
+  })
+})

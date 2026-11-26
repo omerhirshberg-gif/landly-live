@@ -14,20 +14,51 @@ Firebase's configured hosted action handler. Existing EMAIL_FROM and RESEND_API_
 settings remain required. Missing/invalid APP_URL prevents email sending; the
 forgot-password endpoint deliberately retains its generic response.
 
-## Go-live blocker: notification authentication is not yet provider-verified
+## Go-live blocker: R2 transaction verification is fail-closed
 
-**The custom `x-tranzila-webhook-secret` header is an application-specific gate,
-NOT a confirmed Tranzila notification authentication mechanism.** It is retained
-with timing-safe comparison and fails closed if missing or misconfigured.
+Live checkout runs on **Tranzila Hosted Fields** with a server-issued **Handshake V2**
+token (`thtk`). The card is entered in Tranzila's own iframes (web: in-page; app: a
+WebView on `/checkout/card-frame`), so card data never reaches GoLandly.
 
-Before enabling real payments, the owner must verify actual notification transport
-and authentication with **Tranzila support or the terminal documentation**, and
-complete an end-to-end sandbox payment. The QSTR parser and local transaction tests
-do not prove sender authenticity or that Tranzila will send this header. Do not
-remove the gate to make callbacks work, expose its value in the iframe/client, or
-mistake outbound API HMAC authentication for an inbound webhook signature.
+**Nothing a browser, an app or a Notify request says can create a voucher.** Settlement
+(`lib/payments/settleVerifiedPayment.ts`, used by the webhook and `POST /api/payments/confirm`)
+asks a `TranzilaTransactionVerifier` (`lib/payments/verifyTranzilaTransaction.ts`) what
+Tranzila itself holds for the transaction, requires terminal, `ILS`, the order's frozen
+`amountAgorot`, a standard charge and (when echoed) the order id to match, and only then
+calls `claimOfferForOrder` with Tranzila's values.
 
-The payment widget remains a placeholder; this change does not enable charging.
+**The active verifier is fail-closed** (`503`, nothing settled) until Tranzila confirms how
+a transaction is looked up or how `response_hash` is built. Charging stays disabled
+in practice until then. To go live, implement `TranzilaTransactionVerifier` and register it
+in `verifyTranzilaTransaction.ts`; no other file changes. Do not weaken the gate to make
+callbacks work.
+
+The notify URL handed to Hosted Fields carries a signed token (`?o=<orderId>&t=<hmac>`,
+`lib/payments/notifyToken.ts`) binding the call to the order, terminal and amount the
+server froze. It stops a client re-pointing Notify at another order or amount; it is NOT
+proof Tranzila sent the request (the URL is visible to the member). The optional
+`x-tranzila-webhook-secret` header is still accepted as an alternative gate.
+
+Checkout flow: Pay (terms accepted) -> `/api/payments/initiate` returns `payment`
+(`thtk` bound to the frozen amount, notify URL) -> Hosted Fields `charge` ->
+the page/app calls `/api/payments/confirm` (order id only) while the order listener
+moves the member on. `thtk` lasts 20 minutes; the client renews it 60 s early.
+A thtk is requested at most 8 times per order (`orders/{id}/internal/handshakes`).
+
+### Open questions for Tranzila (after Shva approves the terminal)
+
+1. Is there an authenticated API to read a transaction by `index`/`transaction_id` or by our reference? Otherwise, the exact `response_hash` concatenation and which secret.
+2. Notify for Hosted Fields: QSTR? Which field names (`lib/payments/parseHostedFieldsNotification.ts` maps the documented names)? Can a custom `orderId` be echoed?
+3. Is the `thtk` bound to terminal and sum only, or also to `request_params`? Single-use? Token Module and "Enable Hand Shake" enabled?
+4. Does 3-D Secure work inside Hosted Fields in an iOS/Android WebView? Which hosts must be navigable?
+5. A test terminal or non-3DS test cards for Preview (the docs say always `sandbox: false`).
+6. The Tranzila hosts for a future CSP (none is configured today), and whether the domain must be registered.
+7. Terminal parameters: `tran_mode` A, installments, CVV/ID requirements under the Shva agreement.
+8. The legacy `direct.tranzila.com` iframe and V1 handshake are deprecated (support ends 2027-01-01); this integration uses neither.
+
+A decline inside Hosted Fields may also reach Notify and mark the order `failed`; failed
+orders are not reopened (see State and replay handling), so decide with Tranzila whether
+declines should be notified.
 
 ## Payment sandbox (no gateway)
 
@@ -65,8 +96,22 @@ environment with `vercel env pull <file> --environment=preview` (outside the
 repo; secret values come back masked) and
 `node scripts/check-firebase-env.mjs --target=preview --env-file=<file>`.
 
-Setting `TRANZILA_TERMINAL` and `TRANZILA_WEBHOOK_SECRET` later switches to live
-Hosted Fields and the webhook with no code change.
+Setting the Tranzila variables below switches to live Hosted Fields with no code change.
+`lib/payments/tranzilaConfig.ts` validates them: all-or-nothing when `TRANZILA_TERMINAL` is set
+(a missing credential is a 503, never a half-working checkout), `PAYMENT_SANDBOX=1` beside a live
+terminal is a hard error, and a `NEXT_PUBLIC_TRANZILA_*` secret is refused.
+Until Shva approves the merchant number, keep Preview and `.env.local` on `PAYMENT_SANDBOX=1`
+with `TRANZILA_TERMINAL` unset.
+
+| Variable | `.env.local` | Preview (`landly-dev`) | Production (`landly-be752`) |
+| --- | --- | --- | --- |
+| `TRANZILA_TERMINAL` | unset | unset (sandbox) | live terminal |
+| `TRANZILA_API_APP_KEY` | unset | unset | Tranzila API app key |
+| `TRANZILA_API_SECRET` | unset | unset | its secret (signs API calls; server only) |
+| `TRANZILA_WEBHOOK_SECRET` | unset | unset | HMAC key for the notify token |
+| `TRANZILA_NOTIFY_ORIGIN` | unset | optional (default: the deployment URL) | optional (default: `https://www.golandly.com`) |
+| `TRANZILA_HANDSHAKE_URL` | unset | unset | optional override; https `tranzila.com` host only |
+| `TRANZILA_RESPONSE_HASH_SECRET` | unset | unset | only for a response_hash verifier |
 
 ## Other server secrets (both Firebase projects, separate values)
 
@@ -84,7 +129,9 @@ Configure the iframe terminal for **POST** notifications with **QSTR** format
 (`application/x-www-form-urlencoded`). Set these server environment variables:
 
 - `TRANZILA_TERMINAL`: the exact terminal/supplier identifier.
-- `TRANZILA_WEBHOOK_SECRET`: the existing application-specific secret described above.
+- `TRANZILA_WEBHOOK_SECRET`: HMAC key for the signed notify token (and the optional header gate).
+
+The handler also maps the Hosted Fields names (`terminal_name`, `transaction_id`, `processor_response_code`, `amount`, `currency_code` `ILS`, `tran_mode`) onto these when the canonical name is absent, and reads the order from the signed URL's `o`.
 
 The handler requires exactly one of each:
 
@@ -103,7 +150,7 @@ If `transaction_id` is also present, it must identify the same transaction as
 are rejected. Bodies larger than 64 KiB are rejected. No order matching by amount,
 email, or recent timestamp is permitted. No raw callback/card/token data is stored.
 
-The future iframe/handshake integration must bind the server-created orderId,
+The Handshake binds the server-created orderId,
 amount, currency, terminal, and transaction type to the provider transaction and
 verify that the custom reference is returned unchanged. Confirm that rejected
 payments include the required fields; incomplete failures cannot mutate an order.

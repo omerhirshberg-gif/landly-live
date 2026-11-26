@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { TransactionStore } from '../helpers/transactionStore'
 import { business, event, notification, offer, pending, terminal } from '../helpers/paymentFixtures'
+import { stubLiveTranzila, useFakeVerifier, verifiedTx } from '../helpers/tranzilaLive'
+import { setTranzilaVerifier } from '@/lib/payments/verifyTranzilaTransaction'
 
 const mocks = vi.hoisted(() => {
   class MockRequestAuthError extends Error { status: 401 | 403 | 503; constructor(message: string, status: 401 | 403 | 503) { super(message); this.status = status } }
@@ -15,10 +17,11 @@ import { POST as callback } from '@/app/api/payments/tranzila-webhook/route'
 import { POST as initiate } from '@/app/api/payments/initiate/route'
 
 let store: TransactionStore
+let verifier: ReturnType<typeof useFakeVerifier>
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubEnv('TRANZILA_WEBHOOK_SECRET', 'test-secret')
-  vi.stubEnv('TRANZILA_TERMINAL', terminal)
+  stubLiveTranzila()
+  verifier = useFakeVerifier()
   store = new TransactionStore()
   store.seed('orders/user_offer', pending)
   store.seed('offers/offer', offer)
@@ -27,7 +30,7 @@ beforeEach(() => {
   mocks.verifiedUid.mockResolvedValue('user')
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); setTranzilaVerifier(null) })
 
 it('authenticates before any database access', async () => {
   const req = notification()
@@ -51,6 +54,7 @@ it('sends no confirmation for a declined payment or a failed commit', async () =
   store.beforeCommit = async () => { throw new Error('unavailable') }
   expect((await callback(notification())).status).toBe(503)
   store.beforeCommit = undefined
+  verifier.current = { ...verifiedTx, approved: false, responseCode: '004' }
   expect((await callback(notification({ Response: '004' }))).status).toBe(200)
   expect(mocks.scheduleConfirmation).not.toHaveBeenCalled()
 })
